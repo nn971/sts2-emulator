@@ -1092,6 +1092,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeCardPlaySeriesState? cardPlaySeries = null,
         bool moveSourceCardOnCompletion = true,
         bool removeSourceCardOnCompletion = false,
+        bool sourceCardAlreadyMoved = false,
         long? eventSourceCardInstanceId = null,
         PrototypeEventDispatchContinuationState? eventDispatchContinuation = null)
     {
@@ -1376,6 +1377,8 @@ public sealed partial class PrototypeGameEngine
                                 moveSourceCardOnCompletion,
                             RemoveSourceCardOnCompletion:
                                 removeSourceCardOnCompletion,
+                            SourceCardAlreadyMoved:
+                                sourceCardAlreadyMoved,
                             SelectedCardPower:
                                 operation.SelectedCardPower,
                             SelectedCardKeyword:
@@ -1518,7 +1521,8 @@ public sealed partial class PrototypeGameEngine
         if (sourceCardInstanceId is not null
             && moveSourceCardOnCompletion)
         {
-            if (!removeSourceCardOnCompletion)
+            if (!sourceCardAlreadyMoved
+                && !removeSourceCardOnCompletion)
             {
                 var destination = GetZone(combat, sourceCardDestination);
                 combat = SetZone(
@@ -1530,16 +1534,52 @@ public sealed partial class PrototypeGameEngine
             combat = combat with { PendingChoice = null };
         }
 
-        foreach (var completionEvent in completionEvents ?? Array.Empty<PrototypeCombatEvent>())
+        var completionEventArray =
+            completionEvents ?? Array.Empty<PrototypeCombatEvent>();
+        for (var completionEventIndex = 0;
+             completionEventIndex < completionEventArray.Length;
+             completionEventIndex++)
         {
             var dispatched = DispatchCombatEvent(
                 player,
                 combat,
-                completionEvent,
+                completionEventArray[completionEventIndex],
                 rng,
-                eventDepth + 1);
+                eventDepth + 1,
+                allowSuspension: true);
             player = dispatched.Player;
             combat = dispatched.Combat;
+
+            if (combat.PendingChoice is not null)
+            {
+                var outerContinuation =
+                    new PrototypeChoiceResolutionContinuationState(
+                        SourceCardInstanceId: sourceCardInstanceId,
+                        SourceCardDestination: sourceCardDestination,
+                        Operations:
+                            Array.Empty<PrototypeQueuedOperation>(),
+                        PendingDiscardEvents:
+                            Array.Empty<PrototypeCombatEvent>(),
+                        PendingSlyCardInstanceIds:
+                            Array.Empty<long>(),
+                        CompletionEvents:
+                            completionEventArray
+                                .Skip(completionEventIndex + 1)
+                                .ToArray(),
+                        CardPlaySeries: cardPlaySeries,
+                        MoveSourceCardOnCompletion:
+                            moveSourceCardOnCompletion,
+                        RemoveSourceCardOnCompletion:
+                            removeSourceCardOnCompletion,
+                        SourceCardAlreadyMoved:
+                            sourceCardAlreadyMoved
+                            || (sourceCardInstanceId is not null
+                                && moveSourceCardOnCompletion));
+                combat = AttachOuterChoiceContinuation(
+                    combat,
+                    outerContinuation);
+                return (player, combat);
+            }
         }
 
         if (sourceCardInstanceId is not null
