@@ -550,15 +550,19 @@ public sealed partial class PrototypeGameEngine
 
                 var ethereal = combat.Hand
                     .Where(instanceId =>
-                        PrototypeContent.Card(
-                            RequireCombatCard(combat, instanceId).CardId).Ethereal)
+                        CardHasKeyword(
+                            combat,
+                            instanceId,
+                            PrototypeCardKeyword.Ethereal))
                     .ToArray();
                 var etherealSet = ethereal.ToHashSet();
                 var retained = combat.Hand
                     .Where(instanceId =>
                         !etherealSet.Contains(instanceId)
-                        && PrototypeContent.Card(
-                            RequireCombatCard(combat, instanceId).CardId).Retain)
+                        && CardHasKeyword(
+                            combat,
+                            instanceId,
+                            PrototypeCardKeyword.Retain))
                     .ToArray();
                 var retainedSet = retained.ToHashSet();
                 var discarded = combat.Hand
@@ -588,6 +592,10 @@ public sealed partial class PrototypeGameEngine
                     player = exhausted.Player;
                     combat = exhausted.Combat;
                 }
+
+                combat = ClearTemporaryCardKeywordOverrides(
+                    combat,
+                    PrototypeCardKeywordOverrideExpiry.EndOfTurn);
 
                 break;
             }
@@ -942,6 +950,12 @@ public sealed partial class PrototypeGameEngine
                         : new PrototypeSelectedCardPowerAction(
                             effect.SelectedCardPower.PowerId,
                             effect.SelectedCardPower.AmountAt(upgradeLevel)),
+                    SelectedCardKeyword: effect.SelectedCardKeyword is null
+                        ? null
+                        : new PrototypeSelectedCardKeywordAction(
+                            effect.SelectedCardKeyword.Keyword,
+                            effect.SelectedCardKeyword.Enabled,
+                            effect.SelectedCardKeyword.Expiry),
                     PowerCardPayload: powerCardPayload?.Fork()));
             }
         }
@@ -1163,6 +1177,16 @@ public sealed partial class PrototypeGameEngine
                     var selection = operation.Selection
                         ?? throw new InvalidOperationException("Choose-cards operation has no selection specification.");
                     var candidates = GetZone(combat, selection.SourceZone);
+                    if (selection.RequiredCardType is not null)
+                    {
+                        candidates = candidates
+                            .Where(instanceId =>
+                                PrototypeContent.Card(
+                                    RequireCombatCard(combat, instanceId).CardId).Type
+                                == selection.RequiredCardType.Value)
+                            .ToArray();
+                    }
+
                     if (candidates.Length == 0 || selection.MaxSelections <= 0)
                     {
                         break;
@@ -1192,7 +1216,9 @@ public sealed partial class PrototypeGameEngine
                             RemoveSourceCardOnCompletion:
                                 removeSourceCardOnCompletion,
                             SelectedCardPower:
-                                operation.SelectedCardPower)
+                                operation.SelectedCardPower,
+                            SelectedCardKeyword:
+                                operation.SelectedCardKeyword)
                     };
                     return (player, combat);
                 }
@@ -1346,6 +1372,10 @@ public sealed partial class PrototypeGameEngine
                 combat,
                 sourceCardInstanceId.Value,
                 PrototypeTemporaryCardCostExpiry.WhenPlayed);
+            combat = ClearTemporaryCardKeywordOverrides(
+                combat,
+                sourceCardInstanceId.Value,
+                PrototypeCardKeywordOverrideExpiry.WhenPlayed);
 
             if (removeSourceCardOnCompletion)
             {
@@ -1382,7 +1412,12 @@ public sealed partial class PrototypeGameEngine
                 CombatEnergyCostDelta: snapshot.CombatEnergyCostDelta,
                 TemporaryEnergyCost: snapshot.TemporaryEnergyCost is null
                     ? null
-                    : snapshot.TemporaryEnergyCost with { });
+                    : snapshot.TemporaryEnergyCost with { },
+                KeywordOverrides: snapshot.KeywordOverrides is null
+                    ? null
+                    : snapshot.KeywordOverrides
+                        .Select(item => item with { })
+                        .ToArray());
 
             var addToHand = combat.Hand.Length < maxHandSize;
             combat = combat with
@@ -1736,6 +1771,122 @@ public sealed partial class PrototypeGameEngine
                 .ToArray()
         };
 
+    private static CombatState ClearTemporaryCardKeywordOverrides(
+        CombatState combat,
+        long cardInstanceId,
+        PrototypeCardKeywordOverrideExpiry expiry)
+    {
+        var cards = combat.Cards
+            .Select(card =>
+            {
+                if (card.InstanceId != cardInstanceId
+                    || card.KeywordOverrides is null)
+                {
+                    return card;
+                }
+
+                var remaining = card.KeywordOverrides
+                    .Where(item => !item.Expiry.HasFlag(expiry))
+                    .ToArray();
+                return card with
+                {
+                    KeywordOverrides = remaining.Length == 0
+                        ? null
+                        : remaining
+                };
+            })
+            .ToArray();
+
+        return combat with { Cards = cards };
+    }
+
+    private static CombatState ClearTemporaryCardKeywordOverrides(
+        CombatState combat,
+        PrototypeCardKeywordOverrideExpiry expiry)
+    {
+        var cards = combat.Cards
+            .Select(card =>
+            {
+                if (card.KeywordOverrides is null)
+                {
+                    return card;
+                }
+
+                var remaining = card.KeywordOverrides
+                    .Where(item => !item.Expiry.HasFlag(expiry))
+                    .ToArray();
+                return card with
+                {
+                    KeywordOverrides = remaining.Length == 0
+                        ? null
+                        : remaining
+                };
+            })
+            .ToArray();
+
+        return combat with { Cards = cards };
+    }
+
+    private static bool CardHasKeyword(
+        CombatState combat,
+        long cardInstanceId,
+        PrototypeCardKeyword keyword)
+    {
+        var card = RequireCombatCard(combat, cardInstanceId);
+        var baseValue = keyword switch
+        {
+            PrototypeCardKeyword.Retain =>
+                PrototypeContent.Card(card.CardId).Retain,
+            PrototypeCardKeyword.Sly =>
+                PrototypeContent.Card(card.CardId).Sly,
+            PrototypeCardKeyword.Ethereal =>
+                PrototypeContent.Card(card.CardId).Ethereal,
+            _ => throw new ArgumentOutOfRangeException(nameof(keyword))
+        };
+
+        var matching = card.KeywordOverrides?
+            .Where(item => item.Keyword == keyword)
+            .ToArray();
+        return matching is { Length: > 0 }
+            ? matching[^1].Enabled
+            : baseValue;
+    }
+
+    private static CombatState ApplySelectedCardKeywordOverride(
+        CombatState combat,
+        long cardInstanceId,
+        PrototypeSelectedCardKeywordAction action)
+    {
+        var cards = combat.Cards
+            .Select(card =>
+            {
+                if (card.InstanceId != cardInstanceId)
+                {
+                    return card;
+                }
+
+                var overrides = card.KeywordOverrides
+                    ?? Array.Empty<PrototypeCardKeywordOverride>();
+                return card with
+                {
+                    KeywordOverrides = overrides.Append(
+                        new PrototypeCardKeywordOverride(
+                            action.Keyword,
+                            action.Enabled,
+                            action.Expiry)).ToArray()
+                };
+            })
+            .ToArray();
+
+        if (!cards.Any(card => card.InstanceId == cardInstanceId))
+        {
+            throw new InvalidOperationException(
+                $"Combat card instance {cardInstanceId} is missing.");
+        }
+
+        return combat with { Cards = cards };
+    }
+
     private static CombatState ModifyCombatCardEnergyCost(
         CombatState combat,
         long cardInstanceId,
@@ -2028,7 +2179,12 @@ public sealed partial class PrototypeGameEngine
             selectedCard.CombatEnergyCostDelta,
             selectedCard.TemporaryEnergyCost is null
                 ? null
-                : selectedCard.TemporaryEnergyCost with { });
+                : selectedCard.TemporaryEnergyCost with { },
+            selectedCard.KeywordOverrides is null
+                ? null
+                : selectedCard.KeywordOverrides
+                    .Select(item => item with { })
+                    .ToArray());
 
         return AddPlayerPowerInstance(
             combat,
@@ -2444,7 +2600,11 @@ public sealed partial class PrototypeGameEngine
             && pending.Selection.Resolution == PrototypeCardSelectionResolutionKind.MoveToDiscard
                 ? selected
                     .Select(cardId => RequireCombatCard(combat, cardId))
-                    .Where(card => PrototypeContent.Card(card.CardId).Sly)
+                    .Where(card =>
+                        CardHasKeyword(
+                            combat,
+                            card.InstanceId,
+                            PrototypeCardKeyword.Sly))
                     .Select(card => card.InstanceId)
                     .ToArray()
                 : Array.Empty<long>();
@@ -2464,6 +2624,17 @@ public sealed partial class PrototypeGameEngine
                 combat,
                 pending.SelectedCardPower,
                 RequireCombatCard(combat, selected[0]));
+        }
+
+        if (pending.SelectedCardKeyword is not null)
+        {
+            foreach (var cardInstanceId in selected)
+            {
+                combat = ApplySelectedCardKeywordOverride(
+                    combat,
+                    cardInstanceId,
+                    pending.SelectedCardKeyword);
+            }
         }
 
         var player = state.Player;
@@ -2553,7 +2724,10 @@ public sealed partial class PrototypeGameEngine
 
         var card = RequireCombatCard(combat, cardInstanceId);
         var definition = PrototypeContent.Card(card.CardId);
-        if (!definition.Sly)
+        if (!CardHasKeyword(
+                combat,
+                cardInstanceId,
+                PrototypeCardKeyword.Sly))
         {
             throw new InvalidOperationException(
                 $"Card {cardInstanceId} is not Sly.");
