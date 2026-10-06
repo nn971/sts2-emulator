@@ -66,6 +66,7 @@ public enum PrototypeTurnStage
 public enum PrototypeAutomaticStepKind
 {
     DispatchEnemyStatusStage,
+    ResetEnemyBlock,
     ResolveEnemyActions,
     AdvanceTurn,
     ResetPlayerBlock,
@@ -198,10 +199,21 @@ public sealed record PrototypePowerInstanceState(
     int Stacks,
     long ApplicationOrder);
 
+public enum PrototypeEnemyEffectKind
+{
+    DamagePlayer,
+    GainBlock
+}
+
+public sealed record PrototypeEnemyEffectSpec(
+    PrototypeEnemyEffectKind Kind,
+    int Amount,
+    int AmountPerAct = 0,
+    int Repetitions = 1);
+
 public sealed record PrototypeEnemyMoveDefinition(
     string Id,
-    int Damage,
-    int DamagePerAct = 0);
+    PrototypeEnemyEffectSpec[] Effects);
 
 public sealed record PrototypeEnemyDefinition(
     string Id,
