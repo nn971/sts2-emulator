@@ -194,6 +194,18 @@ public static class PrototypeContent
                         1,
                         1,
                         PowerId: "proto.power.noxious_fumes")
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.envenom",
+                "Envenom",
+                2,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        0,
+                        PowerId: "proto.power.envenom")
                 ])
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
@@ -262,6 +274,22 @@ public static class PrototypeContent
                             new PrototypeCombatEffectSpec(
                                 PrototypeCombatEffectKind.GainPlayerBlock,
                                 0,
+                                AmountPerPowerStack: 1)
+                        ])
+                ]),
+            new PrototypePlayerPowerDefinition(
+                "proto.power.envenom",
+                "Envenom",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.EnemyDamaged,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyEnemyStatus,
+                                0,
+                                StatusId: "proto.status.poison",
                                 AmountPerPowerStack: 1)
                         ])
                 ])
@@ -410,7 +438,8 @@ public static class PrototypeContent
         "proto.silent.dagger_spray",
         "proto.silent.skewer",
         "proto.silent.footwork",
-        "proto.silent.noxious_fumes"
+        "proto.silent.noxious_fumes",
+        "proto.silent.envenom"
     ];
 
     public static string[] PotionPool { get; } = Potions.Keys.Order(StringComparer.Ordinal).ToArray();
