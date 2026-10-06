@@ -6,6 +6,7 @@ public sealed partial class PrototypeGameEngine
         long ApplicationOrder,
         PrototypeCombatEffectSpec[] Effects,
         int PowerStacks,
+        PrototypeEffectSourceKind SourceKind,
         int? RelicStateIndex = null,
         int? RelicTriggerIndex = null,
         int EveryNth = 1);
@@ -308,7 +309,8 @@ public sealed partial class PrototypeGameEngine
                 card.UpgradeLevel,
                 energySpent,
                 payload.TargetEnemyId,
-                combat);
+                combat,
+                sourceKind: PrototypeEffectSourceKind.Card);
         }
 
         var sourceDestination = definition.ExhaustOnUse
@@ -378,7 +380,8 @@ public sealed partial class PrototypeGameEngine
                 0,
                 0,
                 payload.TargetEnemyId,
-                combat);
+                combat,
+                sourceKind: PrototypeEffectSourceKind.Potion);
         }
 
         var resolved = ResolveOperations(state.Player, combat, operations, state.Rng);
@@ -697,7 +700,8 @@ public sealed partial class PrototypeGameEngine
         int energySpent,
         int? actionTargetEnemyId,
         CombatState combat,
-        int powerStacks = 0)
+        int powerStacks = 0,
+        PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System)
     {
         var repetitions = effect.RepetitionsAt(upgradeLevel, energySpent)
             + (effect.RepetitionsPerPowerStack * powerStacks);
@@ -742,7 +746,8 @@ public sealed partial class PrototypeGameEngine
                     effect.PowerId,
                     effect.GeneratedCardUpgradeLevel
                         + (effect.GeneratedCardUpgradePerSourceUpgrade * upgradeLevel),
-                    TargetMode: effect.Target));
+                    TargetMode: effect.Target,
+                    SourceKind: sourceKind));
             }
         }
     }
@@ -832,7 +837,9 @@ public sealed partial class PrototypeGameEngine
                     {
                         PlayerBlock = combat.PlayerBlock
                             + operation.Amount
-                            + PlayerBlockBonus(combat)
+                            + (operation.SourceKind == PrototypeEffectSourceKind.Card
+                                ? PlayerBlockBonus(combat)
+                                : 0)
                     };
                     break;
 
@@ -1159,7 +1166,8 @@ public sealed partial class PrototypeGameEngine
                     .Select(trigger => new PrototypeEventSubscriber(
                         power.ApplicationOrder,
                         trigger.Effects,
-                        power.Stacks)));
+                        power.Stacks,
+                        PrototypeEffectSourceKind.Power)));
         }
 
         foreach (var enemy in combat.Enemies)
@@ -1179,7 +1187,8 @@ public sealed partial class PrototypeGameEngine
                         .Select(trigger => new PrototypeEventSubscriber(
                             power.ApplicationOrder,
                             trigger.Effects,
-                            power.Stacks)));
+                            power.Stacks,
+                            PrototypeEffectSourceKind.Power)));
             }
         }
 
@@ -1200,6 +1209,7 @@ public sealed partial class PrototypeGameEngine
                     relic.ApplicationOrder,
                     trigger.Effects,
                     PowerStacks: 0,
+                    SourceKind: PrototypeEffectSourceKind.Relic,
                     RelicStateIndex: relicIndex,
                     RelicTriggerIndex: triggerIndex,
                     EveryNth: trigger.EveryNth));
@@ -1236,7 +1246,8 @@ public sealed partial class PrototypeGameEngine
                     energySpent: 0,
                     actionTargetEnemyId: combatEvent.TargetEnemyId,
                     combat: combat,
-                    powerStacks: subscriber.PowerStacks);
+                    powerStacks: subscriber.PowerStacks,
+                    sourceKind: subscriber.SourceKind);
             }
 
             var resolved = ResolveOperations(
@@ -1435,7 +1446,8 @@ public sealed partial class PrototypeGameEngine
                 card.UpgradeLevel,
                 energySpent: 0,
                 actionTargetEnemyId: null,
-                combat);
+                combat,
+                sourceKind: PrototypeEffectSourceKind.Card);
         }
 
         var sourceDestination = definition.ExhaustOnUse
