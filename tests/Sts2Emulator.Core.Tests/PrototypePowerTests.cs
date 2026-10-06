@@ -268,6 +268,103 @@ public sealed class PrototypePowerTests
         Assert.Equal(2, enemy.Statuses["proto.status.poison"]);
     }
 
+
+    [Fact]
+    public void EnemyReactivePowerUsesOwnerTargetAndSharedEventOrder()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var player = new PlayerState(
+            70,
+            70,
+            0,
+            [
+                new CardInstance(90, "proto.silent.strike", 0, empty),
+                new CardInstance(91, "proto.silent.strike", 0, empty)
+            ],
+            Array.Empty<RelicInstance>(),
+            new PotionInstance?[PrototypeContent.Rules.PotionSlots]);
+
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [1, 2],
+            DrawPile: Array.Empty<long>(),
+            DiscardPile: Array.Empty<long>(),
+            ExhaustPile: Array.Empty<long>(),
+            Enemies:
+            [
+                new EnemyCombatState(
+                    1,
+                    "proto.enemy.elite",
+                    55,
+                    0,
+                    0,
+                    new Dictionary<string, int>(StringComparer.Ordinal),
+                    [
+                        new PrototypePowerInstanceState(
+                            "proto.power.thorns",
+                            1,
+                            1)
+                    ]),
+                new EnemyCombatState(
+                    2,
+                    "proto.enemy.crawler",
+                    24,
+                    0,
+                    0,
+                    new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 3,
+            Cards:
+            [
+                new CombatCardInstance(1, 90, "proto.silent.strike", 0, false, empty),
+                new CombatCardInstance(2, 91, "proto.silent.strike", 0, false, empty)
+            ],
+            PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
+            NextPowerApplicationOrder: 2);
+
+        var state = CreateState("enemy-power-test", player, combat, 92);
+        var engine = new PrototypeGameEngine();
+
+        var hitCrawler = engine.GetLegalActions(state)
+            .Single(action =>
+            {
+                if (action.Kind != "play_card")
+                {
+                    return false;
+                }
+
+                var payload = action.ReadPayload<PlayCardPayload>();
+                return payload.CardInstanceId == 1 && payload.TargetEnemyId == 2;
+            });
+        state = engine.Step(state, hitCrawler).State;
+        PrototypeStateInvariants.Validate(state);
+        Assert.Equal(70, state.Player.Hp);
+
+        var hitElite = engine.GetLegalActions(state)
+            .Single(action =>
+            {
+                if (action.Kind != "play_card")
+                {
+                    return false;
+                }
+
+                var payload = action.ReadPayload<PlayCardPayload>();
+                return payload.CardInstanceId == 2 && payload.TargetEnemyId == 1;
+            });
+        state = engine.Step(state, hitElite).State;
+        PrototypeStateInvariants.Validate(state);
+
+        Assert.Equal(68, state.Player.Hp);
+        Assert.Equal(
+            49,
+            state.World!.Combat!.Enemies.Single(enemy => enemy.InstanceId == 1).Hp);
+        Assert.Equal(
+            18,
+            state.World.Combat.Enemies.Single(enemy => enemy.InstanceId == 2).Hp);
+    }
+
     private static RunState CreateState(
         string seed,
         PlayerState player,
