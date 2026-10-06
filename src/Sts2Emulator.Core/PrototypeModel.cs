@@ -366,7 +366,10 @@ public sealed record PrototypePowerDefinition(
     bool PreventsPlayerBlockClear = false,
     bool DecrementAfterPlayerTurnStart = false,
     string? AttackDamageBonusRequiredCardTag = null,
-    int AttackDamageBonusPerStack = 0);
+    int AttackDamageBonusPerStack = 0,
+    PrototypeCardType? ReplayCardType = null,
+    int AdditionalPlayCount = 0,
+    bool ConsumeOnMatchingPlayCountModification = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -562,6 +565,17 @@ public sealed record CombatRelicState(
     };
 }
 
+public sealed record PrototypeCardPlaySeriesState(
+    long SourceCardInstanceId,
+    PrototypeCardZone SourceCardDestination,
+    int? TargetEnemyId,
+    int EnergySpent,
+    int PlayCount,
+    int NextPlayIndex)
+{
+    public bool HasRemainingExecutions => NextPlayIndex < PlayCount;
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -569,7 +583,9 @@ public sealed record PendingCombatChoiceState(
     PrototypeCardSelectionSpec Selection,
     long[] CandidateCardInstanceIds,
     PrototypeQueuedOperation[] Continuation,
-    PrototypeCombatEvent[] CompletionEvents)
+    PrototypeCombatEvent[] CompletionEvents,
+    PrototypeCardPlaySeriesState? CardPlaySeries = null,
+    bool MoveSourceCardOnCompletion = true)
 {
     public PendingCombatChoiceState Fork() => this with
     {
