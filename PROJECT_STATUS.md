@@ -53,3 +53,13 @@ Still to do:
 
 Search, strategic databases, and AI learning remain outside this repository and belong in the
 future parent project.
+
+
+## Native fidelity target
+
+The first pinned native oracle is STS2 `v0.111.0` / commit `41cef1ea`, fingerprint
+`3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`.
+
+Implemented native-fidelity groundwork now includes build fingerprinting, metadata inspection,
+the native-neutral reference-trace v0.2 contract, and a single-DLL passive reference recorder
+staged outside the clean oracle. The recorder still requires its first live in-game validation.
