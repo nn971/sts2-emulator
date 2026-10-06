@@ -344,6 +344,7 @@ public sealed partial class PrototypeGameEngine
         var playCountResult =
             ResolveCardPlayCountAndConsumeModifiers(
                 combat,
+                card,
                 definition.Type);
         combat = playCountResult.Combat;
 
@@ -1440,7 +1441,8 @@ public sealed partial class PrototypeGameEngine
                     ? null
                     : snapshot.KeywordOverrides
                         .Select(item => item with { })
-                        .ToArray());
+                        .ToArray(),
+                ReplayCount: snapshot.ReplayCount);
 
             var addToHand = combat.Hand.Length < maxHandSize;
             combat = combat with
@@ -1466,6 +1468,7 @@ public sealed partial class PrototypeGameEngine
     private static PrototypeCardPlayCountResult
         ResolveCardPlayCountAndConsumeModifiers(
             CombatState combat,
+            CombatCardInstance card,
             PrototypeCardType cardType)
     {
         var modifiers = combat.PlayerPowers
@@ -1479,8 +1482,10 @@ public sealed partial class PrototypeGameEngine
             .OrderBy(power => power.ApplicationOrder)
             .ToArray();
 
-        var playCount = 1 + modifiers.Sum(power =>
-            PrototypeContent.Power(power.PowerId).AdditionalPlayCount);
+        var playCount = 1
+            + Math.Max(0, card.ReplayCount)
+            + modifiers.Sum(power =>
+                PrototypeContent.Power(power.PowerId).AdditionalPlayCount);
 
         if (modifiers.Length == 0)
         {
@@ -2207,7 +2212,8 @@ public sealed partial class PrototypeGameEngine
                 ? null
                 : selectedCard.KeywordOverrides
                     .Select(item => item with { })
-                    .ToArray());
+                    .ToArray(),
+            selectedCard.ReplayCount);
 
         return AddPlayerPowerInstance(
             combat,
