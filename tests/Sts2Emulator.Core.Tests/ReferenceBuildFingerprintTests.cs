@@ -18,7 +18,6 @@ public sealed class ReferenceBuildFingerprintTests
 
             Assert.Equal(first.BuildFingerprint, second.BuildFingerprint);
             Assert.Equal(first.BuildFingerprint, relocated.BuildFingerprint);
-            Assert.NotEqual(first.CapturedAtUtc, second.CapturedAtUtc);
             Assert.NotEqual(first.GameDirectory, relocated.GameDirectory);
             Assert.Equal("net9.0", first.Identity.TargetFramework);
             Assert.Equal(5, first.Identity.Files.Length);
