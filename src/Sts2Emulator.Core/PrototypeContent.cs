@@ -1405,6 +1405,15 @@ public static class PrototypeContent
                 AttackDamageBonusRequiredCardTag: "Shiv",
                 AttackDamageBonusPerStack: 1),
             new PrototypePowerDefinition(
+                "proto.power.phantom_blades",
+                "Phantom Blades",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                GrantedCardKeyword: PrototypeCardKeyword.Retain,
+                GrantedCardKeywordRequiredCardTag: "Shiv",
+                FirstAttackDamageBonusRequiredCardTag: "Shiv",
+                FirstAttackDamageBonusPerStack: 1),
+            new PrototypePowerDefinition(
                 "proto.power.tracking",
                 "Tracking",
                 BlockBonusPerStack: 0,
