@@ -2,19 +2,6 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
-    private sealed record PrototypeEventSubscriber(
-        long ApplicationOrder,
-        PrototypeCombatEffectSpec[] Effects,
-        int PowerStacks,
-        PrototypeEffectSourceKind SourceKind,
-        long? SourcePowerApplicationOrder = null,
-        int? SourcePowerEnemyId = null,
-        PrototypeCombatCardSnapshot? PowerCardPayload = null,
-        bool RemoveSourcePowerAfterTrigger = false,
-        int? RelicStateIndex = null,
-        int? RelicTriggerIndex = null,
-        int EveryNth = 1);
-
     private static RunState StartCombat(RunState state, PrototypeRoomType roomType)
     {
         var world = RequireWorld(state);
@@ -448,31 +435,187 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
-        combat = combat with { IsPlayerTurn = false };
+        combat = combat with
+        {
+            IsPlayerTurn = false,
+            AutomaticPipelineContinuation = null
+        };
         state = state with
         {
             World = world with { Combat = combat }
         };
 
-        foreach (var automaticStep in PrototypeContent.Rules.EndTurnPipeline)
+        return ResumeAutomaticPipeline(state, 0);
+    }
+
+    private static RunState ResumeAutomaticPipeline(
+        RunState state,
+        int startIndex,
+        PrototypeCombatEventKind? pendingPostDispatchEventKind = null)
+    {
+        if (pendingPostDispatchEventKind is not null)
         {
+            state = ResolvePostDispatchAutomaticPolicy(
+                state,
+                pendingPostDispatchEventKind.Value);
+
+            if (RequireWorld(state).Combat?.PendingChoice is not null)
+            {
+                return SetAutomaticPipelineContinuation(
+                    state,
+                    startIndex,
+                    pendingPostDispatchEventKind: null);
+            }
+        }
+
+        for (var index = startIndex;
+             index < PrototypeContent.Rules.EndTurnPipeline.Length;
+             index++)
+        {
+            var automaticStep =
+                PrototypeContent.Rules.EndTurnPipeline[index];
             state = ResolveAutomaticStep(state, automaticStep);
+
+            var currentCombat = RequireWorld(state).Combat
+                ?? throw new InvalidOperationException(
+                    "Combat unexpectedly disappeared.");
+
+            if (currentCombat.PendingChoice is not null)
+            {
+                return SetAutomaticPipelineContinuation(
+                    state,
+                    index + 1,
+                    automaticStep.Kind
+                            == PrototypeAutomaticStepKind.DispatchCombatEvent
+                        ? automaticStep.EventKind
+                        : null);
+            }
+
+            if (automaticStep.Kind
+                    == PrototypeAutomaticStepKind.DispatchCombatEvent
+                && automaticStep.EventKind is not null)
+            {
+                state = ResolvePostDispatchAutomaticPolicy(
+                    state,
+                    automaticStep.EventKind.Value);
+
+                currentCombat = RequireWorld(state).Combat
+                    ?? throw new InvalidOperationException(
+                        "Combat unexpectedly disappeared.");
+                if (currentCombat.PendingChoice is not null)
+                {
+                    return SetAutomaticPipelineContinuation(
+                        state,
+                        index + 1,
+                        pendingPostDispatchEventKind: null);
+                }
+            }
 
             if (state.Player.Hp <= 0)
             {
                 return EndRun(state, "defeat");
             }
 
-            var currentCombat = RequireWorld(state).Combat
-                ?? throw new InvalidOperationException("Combat unexpectedly disappeared.");
-
+            currentCombat = RequireWorld(state).Combat
+                ?? throw new InvalidOperationException(
+                    "Combat unexpectedly disappeared.");
             if (AllEnemiesDefeated(currentCombat))
             {
                 return EnterReward(state);
             }
         }
 
-        return state;
+        var world = RequireWorld(state);
+        var combat = world.Combat
+            ?? throw new InvalidOperationException(
+                "Combat unexpectedly disappeared.");
+        return state with
+        {
+            World = world with
+            {
+                Combat = combat with
+                {
+                    AutomaticPipelineContinuation = null
+                }
+            }
+        };
+    }
+
+    private static RunState SetAutomaticPipelineContinuation(
+        RunState state,
+        int nextStepIndex,
+        PrototypeCombatEventKind? pendingPostDispatchEventKind)
+    {
+        var world = RequireWorld(state);
+        var combat = world.Combat
+            ?? throw new InvalidOperationException(
+                "Combat unexpectedly disappeared.");
+        return state with
+        {
+            World = world with
+            {
+                Combat = combat with
+                {
+                    AutomaticPipelineContinuation =
+                        new PrototypeAutomaticPipelineContinuationState(
+                            nextStepIndex,
+                            pendingPostDispatchEventKind)
+                }
+            }
+        };
+    }
+
+    private static RunState ResolvePostDispatchAutomaticPolicy(
+        RunState state,
+        PrototypeCombatEventKind eventKind)
+    {
+        if (eventKind != PrototypeCombatEventKind.PlayerTurnStarted)
+        {
+            return state;
+        }
+
+        var world = RequireWorld(state);
+        var combat = world.Combat
+            ?? throw new InvalidOperationException(
+                "Combat unexpectedly disappeared.");
+        var discardCount = combat.PlayerPowers.Sum(power =>
+            PrototypeContent.Power(power.PowerId)
+                .DiscardAfterPlayerTurnStartPerStack
+            * power.Stacks);
+
+        if (discardCount <= 0 || combat.Hand.Length == 0)
+        {
+            return state;
+        }
+
+        var effectiveCount = Math.Min(
+            discardCount,
+            combat.Hand.Length);
+        combat = combat with
+        {
+            PendingChoice = new PendingCombatChoiceState(
+                ChoiceId: "select_cards",
+                SourceCardInstanceId: null,
+                SourceCardDestination:
+                    PrototypeCardZone.DiscardPile,
+                Selection: new PrototypeCardSelectionSpec(
+                    PrototypeCardZone.Hand,
+                    effectiveCount,
+                    effectiveCount,
+                    PrototypeCardSelectionResolutionKind
+                        .MoveToDiscard),
+                CandidateCardInstanceIds:
+                    (long[])combat.Hand.Clone(),
+                Continuation:
+                    Array.Empty<PrototypeQueuedOperation>(),
+                CompletionEvents:
+                    Array.Empty<PrototypeCombatEvent>())
+        };
+
+        return state with
+        {
+            World = world with { Combat = combat }
+        };
     }
 
     private static RunState ResolveAutomaticStep(
@@ -505,43 +648,6 @@ public sealed partial class PrototypeGameEngine
                     state.Rng);
                 player = dispatched.Player;
                 combat = dispatched.Combat;
-
-                if (automaticStep.EventKind
-                        == PrototypeCombatEventKind.PlayerTurnStarted
-                    && combat.PendingChoice is null)
-                {
-                    var discardCount = combat.PlayerPowers.Sum(power =>
-                        PrototypeContent.Power(power.PowerId)
-                            .DiscardAfterPlayerTurnStartPerStack
-                        * power.Stacks);
-
-                    if (discardCount > 0 && combat.Hand.Length > 0)
-                    {
-                        var effectiveCount = Math.Min(
-                            discardCount,
-                            combat.Hand.Length);
-                        combat = combat with
-                        {
-                            PendingChoice = new PendingCombatChoiceState(
-                                ChoiceId: "select_cards",
-                                SourceCardInstanceId: null,
-                                SourceCardDestination:
-                                    PrototypeCardZone.DiscardPile,
-                                Selection: new PrototypeCardSelectionSpec(
-                                    PrototypeCardZone.Hand,
-                                    effectiveCount,
-                                    effectiveCount,
-                                    PrototypeCardSelectionResolutionKind
-                                        .MoveToDiscard),
-                                CandidateCardInstanceIds:
-                                    (long[])combat.Hand.Clone(),
-                                Continuation:
-                                    Array.Empty<PrototypeQueuedOperation>(),
-                                CompletionEvents:
-                                    Array.Empty<PrototypeCombatEvent>())
-                        };
-                    }
-                }
 
                 break;
 
@@ -2444,7 +2550,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
-        var subscribers = new List<PrototypeEventSubscriber>();
+        var subscribers = new List<PrototypeEventSubscriberState>();
 
         foreach (var power in combat.PlayerPowers)
         {
@@ -2466,7 +2572,7 @@ public sealed partial class PrototypeGameEngine
                         && (combatEvent.PowerApplicationOrderCeiling is null
                             || power.ApplicationOrder
                                 <= combatEvent.PowerApplicationOrderCeiling.Value))
-                    .Select(trigger => new PrototypeEventSubscriber(
+                    .Select(trigger => new PrototypeEventSubscriberState(
                         power.ApplicationOrder,
                         trigger.Effects,
                         power.Stacks,
@@ -2503,7 +2609,7 @@ public sealed partial class PrototypeGameEngine
                             && (enemy.Hp > 0
                                 || (trigger.RequiresOwnerTarget
                                     && combatEvent.TargetEnemyId == enemy.InstanceId)))
-                        .Select(trigger => new PrototypeEventSubscriber(
+                        .Select(trigger => new PrototypeEventSubscriberState(
                             power.ApplicationOrder,
                             trigger.Effects,
                             power.Stacks,
@@ -2529,7 +2635,7 @@ public sealed partial class PrototypeGameEngine
                     continue;
                 }
 
-                subscribers.Add(new PrototypeEventSubscriber(
+                subscribers.Add(new PrototypeEventSubscriberState(
                     relic.ApplicationOrder,
                     trigger.Effects,
                     PowerStacks: 0,
