@@ -19,7 +19,7 @@ public sealed class PrototypeMapTests
         Assert.Equal(14, map.Nodes.Length);
         Assert.Equal(2, map.EntryNodeIds!.Length);
         Assert.Equal(2, map.AvailableNodes().Length);
-        Assert.Single(map.Nodes.Where(node => node.RoomType == PrototypeRoomType.Boss));
+        Assert.Single(map.Nodes, node => node.RoomType == PrototypeRoomType.Boss);
 
         foreach (var node in map.Nodes)
         {
