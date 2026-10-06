@@ -3021,85 +3021,52 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
-        var player = state.Player;
-        if (pending.Selection.SourceZone == PrototypeCardZone.Hand
-            && pending.Selection.Resolution == PrototypeCardSelectionResolutionKind.MoveToDiscard)
-        {
-            foreach (var cardId in selected)
-            {
-                var discardedCard = RequireCombatCard(combat, cardId);
-                var dispatched = DispatchCombatEvent(
-                    player,
-                    combat,
-                    new PrototypeCombatEvent(
+        var discardEvents =
+            pending.Selection.SourceZone == PrototypeCardZone.Hand
+            && pending.Selection.Resolution
+                == PrototypeCardSelectionResolutionKind.MoveToDiscard
+                ? selected.Select(cardId =>
+                {
+                    var discardedCard =
+                        RequireCombatCard(combat, cardId);
+                    return new PrototypeCombatEvent(
                         PrototypeCombatEventKind.CardDiscarded,
                         SourceCardInstanceId: cardId,
-                        CardId: discardedCard.CardId),
-                    state.Rng);
-                player = dispatched.Player;
-                combat = dispatched.Combat;
-            }
+                        CardId: discardedCard.CardId);
+                }).ToArray()
+                : Array.Empty<PrototypeCombatEvent>();
 
-            foreach (var slyCardId in slyCards)
-            {
-                var autoPlayed = AutoPlaySlyCard(
-                    player,
-                    combat,
-                    slyCardId,
-                    state.Rng);
-                player = autoPlayed.Player;
-                combat = autoPlayed.Combat;
+        var resolutionContinuation =
+            new PrototypeChoiceResolutionContinuationState(
+                SourceCardInstanceId:
+                    pending.SourceCardInstanceId,
+                SourceCardDestination:
+                    pending.SourceCardDestination,
+                Operations:
+                    (PrototypeQueuedOperation[])
+                    pending.Continuation.Clone(),
+                PendingDiscardEvents: discardEvents,
+                PendingSlyCardInstanceIds:
+                    (long[])slyCards.Clone(),
+                CompletionEvents:
+                    (PrototypeCombatEvent[])
+                    pending.CompletionEvents.Clone(),
+                CardPlaySeries:
+                    pending.CardPlaySeries,
+                MoveSourceCardOnCompletion:
+                    pending.MoveSourceCardOnCompletion,
+                RemoveSourceCardOnCompletion:
+                    pending.RemoveSourceCardOnCompletion,
+                EventDispatchContinuation:
+                    pending.EventDispatchContinuation?.Fork(),
+                Parent:
+                    pending.OuterChoiceContinuation?.Fork());
 
-                if (AllEnemiesDefeated(combat))
-                {
-                    break;
-                }
-            }
-        }
-
-        var operations = new Queue<PrototypeQueuedOperation>(pending.Continuation);
-        var resolved = ResolveOperations(
-            player,
+        var resolved = ResumeChoiceResolutionContinuation(
+            state.Player,
             combat,
-            operations,
             state.Rng,
-            pending.SourceCardInstanceId,
-            pending.SourceCardDestination,
-            pending.CompletionEvents,
-            cardPlaySeries: pending.CardPlaySeries,
-            moveSourceCardOnCompletion:
-                pending.MoveSourceCardOnCompletion,
-            removeSourceCardOnCompletion:
-                pending.RemoveSourceCardOnCompletion,
-            eventDispatchContinuation:
-                pending.EventDispatchContinuation);
-
-        if (resolved.Combat.PendingChoice is null
-            && pending.EventDispatchContinuation is not null)
-        {
-            resolved = ResumeEventDispatchContinuation(
-                resolved.Player,
-                resolved.Combat,
-                pending.EventDispatchContinuation,
-                state.Rng);
-        }
-
-        if (resolved.Combat.PendingChoice is null
-            && pending.CardPlaySeries is
-                { HasRemainingExecutions: true } series)
-        {
-            resolved = AllEnemiesDefeated(resolved.Combat)
-                ? FinalizeInterruptedCardPlaySeries(
-                    resolved.Player,
-                    resolved.Combat,
-                    state.Rng,
-                    series)
-                : ResolveCardPlaySeries(
-                    resolved.Player,
-                    resolved.Combat,
-                    state.Rng,
-                    series);
-        }
+            resolutionContinuation);
 
         state = state with
         {
@@ -3143,6 +3110,201 @@ public sealed partial class PrototypeGameEngine
             ? EnterReward(state)
             : state;
     }
+
+    private static (PlayerState Player, CombatState Combat)
+        ResumeChoiceResolutionContinuation(
+            PlayerState player,
+            CombatState combat,
+            RngBundle rng,
+            PrototypeChoiceResolutionContinuationState continuation)
+    {
+        for (var eventIndex = 0;
+             eventIndex < continuation.PendingDiscardEvents.Length;
+             eventIndex++)
+        {
+            var dispatched = DispatchCombatEvent(
+                player,
+                combat,
+                continuation.PendingDiscardEvents[eventIndex],
+                rng);
+            player = dispatched.Player;
+            combat = dispatched.Combat;
+
+            if (combat.PendingChoice is not null)
+            {
+                var remaining = continuation with
+                {
+                    PendingDiscardEvents =
+                        continuation.PendingDiscardEvents
+                            .Skip(eventIndex + 1)
+                            .ToArray()
+                };
+                combat = AttachOuterChoiceContinuation(
+                    combat,
+                    remaining);
+                return (player, combat);
+            }
+        }
+
+        for (var slyIndex = 0;
+             slyIndex < continuation.PendingSlyCardInstanceIds.Length;
+             slyIndex++)
+        {
+            if (AllEnemiesDefeated(combat))
+            {
+                break;
+            }
+
+            var slyCardId =
+                continuation.PendingSlyCardInstanceIds[slyIndex];
+            if (!combat.DiscardPile.Contains(slyCardId))
+            {
+                continue;
+            }
+
+            var autoPlayed = AutoPlaySlyCard(
+                player,
+                combat,
+                slyCardId,
+                rng);
+            player = autoPlayed.Player;
+            combat = autoPlayed.Combat;
+
+            if (combat.PendingChoice is not null)
+            {
+                var remaining = continuation with
+                {
+                    PendingDiscardEvents =
+                        Array.Empty<PrototypeCombatEvent>(),
+                    PendingSlyCardInstanceIds =
+                        continuation.PendingSlyCardInstanceIds
+                            .Skip(slyIndex + 1)
+                            .ToArray()
+                };
+                combat = AttachOuterChoiceContinuation(
+                    combat,
+                    remaining);
+                return (player, combat);
+            }
+        }
+
+        var resolved = ResolveOperations(
+            player,
+            combat,
+            new Queue<PrototypeQueuedOperation>(
+                continuation.Operations),
+            rng,
+            continuation.SourceCardInstanceId,
+            continuation.SourceCardDestination,
+            continuation.CompletionEvents,
+            cardPlaySeries: continuation.CardPlaySeries,
+            moveSourceCardOnCompletion:
+                continuation.MoveSourceCardOnCompletion,
+            removeSourceCardOnCompletion:
+                continuation.RemoveSourceCardOnCompletion,
+            eventDispatchContinuation:
+                continuation.EventDispatchContinuation);
+
+        if (resolved.Combat.PendingChoice is not null)
+        {
+            return (
+                resolved.Player,
+                AttachParentChoiceContinuation(
+                    resolved.Combat,
+                    continuation.Parent));
+        }
+
+        if (continuation.EventDispatchContinuation is not null)
+        {
+            resolved = ResumeEventDispatchContinuation(
+                resolved.Player,
+                resolved.Combat,
+                continuation.EventDispatchContinuation,
+                rng);
+            if (resolved.Combat.PendingChoice is not null)
+            {
+                return (
+                    resolved.Player,
+                    AttachParentChoiceContinuation(
+                        resolved.Combat,
+                        continuation.Parent));
+            }
+        }
+
+        if (continuation.CardPlaySeries is
+            { HasRemainingExecutions: true } series)
+        {
+            resolved = AllEnemiesDefeated(resolved.Combat)
+                ? FinalizeInterruptedCardPlaySeries(
+                    resolved.Player,
+                    resolved.Combat,
+                    rng,
+                    series)
+                : ResolveCardPlaySeries(
+                    resolved.Player,
+                    resolved.Combat,
+                    rng,
+                    series);
+
+            if (resolved.Combat.PendingChoice is not null)
+            {
+                return (
+                    resolved.Player,
+                    AttachParentChoiceContinuation(
+                        resolved.Combat,
+                        continuation.Parent));
+            }
+        }
+
+        return continuation.Parent is null
+            ? resolved
+            : ResumeChoiceResolutionContinuation(
+                resolved.Player,
+                resolved.Combat,
+                rng,
+                continuation.Parent);
+    }
+
+    private static CombatState AttachOuterChoiceContinuation(
+        CombatState combat,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        var pending = combat.PendingChoice
+            ?? throw new InvalidOperationException(
+                "Nested choice continuation requires a pending choice.");
+        var combined = pending.OuterChoiceContinuation is null
+            ? continuation.Fork()
+            : AppendChoiceContinuationParent(
+                pending.OuterChoiceContinuation,
+                continuation);
+        return combat with
+        {
+            PendingChoice = pending with
+            {
+                OuterChoiceContinuation = combined
+            }
+        };
+    }
+
+    private static CombatState AttachParentChoiceContinuation(
+        CombatState combat,
+        PrototypeChoiceResolutionContinuationState? parent) =>
+        parent is null
+            ? combat
+            : AttachOuterChoiceContinuation(combat, parent);
+
+    private static PrototypeChoiceResolutionContinuationState
+        AppendChoiceContinuationParent(
+            PrototypeChoiceResolutionContinuationState current,
+            PrototypeChoiceResolutionContinuationState parent) =>
+        current.Parent is null
+            ? current with { Parent = parent.Fork() }
+            : current with
+            {
+                Parent = AppendChoiceContinuationParent(
+                    current.Parent,
+                    parent)
+            };
 
     private static (PlayerState Player, CombatState Combat) AutoPlaySlyCard(
         PlayerState player,
