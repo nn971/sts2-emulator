@@ -189,6 +189,112 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "batch_step":
+                    {
+                        if (!request.TryGetProperty("items", out var itemsElement)
+                            || itemsElement.ValueKind != JsonValueKind.Array)
+                        {
+                            throw new InvalidOperationException(
+                                "Request field 'items' must be an array.");
+                        }
+
+                        var transitions = itemsElement.EnumerateArray()
+                            .Select(item =>
+                            {
+                                if (item.ValueKind != JsonValueKind.Object)
+                                {
+                                    throw new InvalidOperationException(
+                                        "Every batch_step item must be an object.");
+                                }
+
+                                var parentHandle = RequiredString(item, "state_handle");
+                                var actionId = RequiredString(item, "action_id");
+                                var state = states.TryGetValue(parentHandle, out var found)
+                                    ? found
+                                    : throw new InvalidOperationException(
+                                        $"Unknown state handle '{parentHandle}'.");
+
+                                var frame = environment.Observe(state);
+                                var action = frame.LegalActions.SingleOrDefault(candidate =>
+                                    StringComparer.Ordinal.Equals(candidate.ActionId, actionId))
+                                    ?? throw new InvalidOperationException(
+                                        $"Action '{actionId}' is not legal in state '{parentHandle}'.");
+
+                                var next = environment.Step(state, actionId).State;
+                                var childHandle = Store(next);
+                                return new
+                                {
+                                    parent = parentHandle,
+                                    action = ActionWire(action),
+                                    child = childHandle,
+                                    terminal = next.Phase == RunPhase.Terminal,
+                                    exactHash = CanonicalJson.Sha256(next)
+                                };
+                            })
+                            .ToArray();
+
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            transitions
+                        });
+                        break;
+                    }
+
+                    case "batch_observe":
+                    {
+                        var policyId = RequiredString(request, "policy_id");
+                        if (!StringComparer.Ordinal.Equals(policyId, FairPolicyId))
+                        {
+                            throw new NotSupportedException(
+                                $"Prototype JSONL bridge supports only information policy '{FairPolicyId}'.");
+                        }
+
+                        if (!request.TryGetProperty("state_handles", out var handlesElement)
+                            || handlesElement.ValueKind != JsonValueKind.Array)
+                        {
+                            throw new InvalidOperationException(
+                                "Request field 'state_handles' must be an array.");
+                        }
+
+                        var observations = handlesElement.EnumerateArray()
+                            .Select(element =>
+                            {
+                                if (element.ValueKind != JsonValueKind.String)
+                                {
+                                    throw new InvalidOperationException(
+                                        "Every state_handles entry must be a string.");
+                                }
+
+                                var handle = element.GetString()
+                                    ?? throw new InvalidOperationException(
+                                        "state_handles entry is null.");
+                                var state = states.TryGetValue(handle, out var found)
+                                    ? found
+                                    : throw new InvalidOperationException(
+                                        $"Unknown state handle '{handle}'.");
+                                var frame = environment.Observe(state);
+                                return new
+                                {
+                                    stateHandle = handle,
+                                    policyId,
+                                    payloadJson = CanonicalJson.Serialize(frame.Observation),
+                                    observationHash = frame.ObservationHash,
+                                    schemaId = frame.SchemaId
+                                };
+                            })
+                            .ToArray();
+
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            observations
+                        });
+                        break;
+                    }
+
                     case "batch_expand":
                     {
                         if (!request.TryGetProperty("state_handles", out var handlesElement)
