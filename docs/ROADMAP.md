@@ -32,8 +32,8 @@ native fidelity and high throughput.
 
 ## Milestone 2 — expressive mechanics kernel
 
-- [ ] card-selection prompts
-- [ ] discard/exhaust/generated cards
+- [x] card-selection prompts
+- [x] discard/exhaust/generated cards
 - [ ] variable/X costs
 - [ ] multi-target effects
 - [ ] general player/enemy power model
