@@ -67,7 +67,7 @@ central dispatch branches.
 - [x] observation and canonical-state hashes
 - [x] machine-readable capability manifest
 - [x] deterministic multi-run sweep report
-- [ ] parent `sts2-ai` integration against this adapter
+- [x] parent `sts2-ai` integration against this adapter via the versioned JSONL bridge
 
 ## Milestone 4 — native-data and fidelity convergence
 
