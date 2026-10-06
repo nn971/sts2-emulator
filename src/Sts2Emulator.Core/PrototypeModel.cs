@@ -325,7 +325,8 @@ public sealed record PrototypeRelicDefinition(
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
     PrototypeCombatEffectSpec[] Effects,
-    bool RequiresOwnerTarget = false);
+    bool RequiresOwnerTarget = false,
+    bool ExcludeHandDraw = false);
 
 public sealed record PrototypePowerDefinition(
     string Id,
