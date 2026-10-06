@@ -310,7 +310,8 @@ public sealed partial class PrototypeGameEngine
                 energySpent,
                 payload.TargetEnemyId,
                 combat,
-                sourceKind: PrototypeEffectSourceKind.Card);
+                sourceKind: PrototypeEffectSourceKind.Card,
+                isPoweredAttack: definition.Type == PrototypeCardType.Attack);
         }
 
         var sourceDestination = definition.ExhaustOnUse
@@ -718,7 +719,8 @@ public sealed partial class PrototypeGameEngine
         int? actionTargetEnemyId,
         CombatState combat,
         int powerStacks = 0,
-        PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System)
+        PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System,
+        bool isPoweredAttack = false)
     {
         var repetitions = effect.RepetitionsAt(upgradeLevel, energySpent)
             + (effect.RepetitionsPerPowerStack * powerStacks);
@@ -764,7 +766,8 @@ public sealed partial class PrototypeGameEngine
                     effect.GeneratedCardUpgradeLevel
                         + (effect.GeneratedCardUpgradePerSourceUpgrade * upgradeLevel),
                     TargetMode: effect.Target,
-                    SourceKind: sourceKind));
+                    SourceKind: sourceKind,
+                    IsPoweredAttack: isPoweredAttack && effect.Kind == PrototypeCombatEffectKind.DamageEnemy));
             }
         }
     }
@@ -811,10 +814,17 @@ public sealed partial class PrototypeGameEngine
                         throw new InvalidOperationException("Damage operation requires an enemy target.");
                     }
 
+                    var damageAmount = operation.IsPoweredAttack
+                        ? ModifyIncomingAttackDamage(
+                            combat,
+                            targetEnemyId.Value,
+                            operation.Amount)
+                        : operation.Amount;
+
                     var damageResult = DamageEnemy(
                         combat,
                         targetEnemyId.Value,
-                        operation.Amount);
+                        damageAmount);
                     combat = damageResult.Combat;
 
                     if (damageResult.DamageDealt > 0)
@@ -1033,6 +1043,25 @@ public sealed partial class PrototypeGameEngine
     private static int PlayerBlockBonus(CombatState combat) =>
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
+
+    private static int ModifyIncomingAttackDamage(
+        CombatState combat,
+        int enemyId,
+        int damage)
+    {
+        var enemy = combat.Enemies.SingleOrDefault(item => item.InstanceId == enemyId)
+            ?? throw new InvalidOperationException($"Enemy {enemyId} is missing.");
+
+        var modified = damage;
+        foreach (var status in enemy.Statuses)
+        {
+            var definition = PrototypeContent.Status(status.Key);
+            modified = (modified * definition.IncomingAttackDamageNumerator)
+                / definition.IncomingAttackDamageDenominator;
+        }
+
+        return modified;
+    }
 
     private static int PlayerAttackRetaliation(CombatState combat) =>
         combat.PlayerPowers.Sum(power =>
