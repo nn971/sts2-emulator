@@ -679,6 +679,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             PrototypeContent.Rules.BaseEnergy);
 
         var nativeDeck = ReadStringArray(silent.Data, "starting_deck")
+            .Select(token => ResolveReferenceName(corpus, "cards", token))
             .Select(ReferenceCorpus.NormalizeIdentifier)
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -696,6 +697,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
         }
 
         var nativeRelics = ReadStringArray(silent.Data, "starting_relics")
+            .Select(token => ResolveReferenceName(corpus, "relics", token))
             .Select(ReferenceCorpus.NormalizeIdentifier)
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -713,6 +715,26 @@ public static partial class ReferenceMechanicsGapAnalyzer
         }
 
         return mismatches.ToArray();
+    }
+
+    private static string ResolveReferenceName(
+        ReferenceCorpus corpus,
+        string kind,
+        string token)
+    {
+        try
+        {
+            var resolved = corpus.Resolve(kind, token);
+            return resolved.Name ?? resolved.Id;
+        }
+        catch (FileNotFoundException)
+        {
+            return token;
+        }
+        catch (KeyNotFoundException)
+        {
+            return token;
+        }
     }
 
     private static void CompareEffectAmount(
