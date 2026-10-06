@@ -29,6 +29,10 @@ public static class PrototypeContent
         ],
         EndTurnPipeline:
         [
+            new(
+                PrototypeAutomaticStepKind.DispatchCombatEvent,
+                EventKind: PrototypeCombatEventKind.PlayerTurnEnded),
+            new(PrototypeAutomaticStepKind.DiscardPlayerHand),
             new(PrototypeAutomaticStepKind.DispatchEnemyStatusStage, PrototypeTurnStage.EnemyTurnStart),
             new(PrototypeAutomaticStepKind.ResetEnemyBlock),
             new(PrototypeAutomaticStepKind.ResolveEnemyActions),
@@ -36,7 +40,9 @@ public static class PrototypeContent
             new(PrototypeAutomaticStepKind.AdvanceTurn),
             new(PrototypeAutomaticStepKind.ResetPlayerBlock),
             new(PrototypeAutomaticStepKind.RefreshPlayerEnergy),
-            new(PrototypeAutomaticStepKind.DispatchPlayerPowerStage, PrototypeTurnStage.PlayerTurnStart),
+            new(
+                PrototypeAutomaticStepKind.DispatchCombatEvent,
+                EventKind: PrototypeCombatEventKind.PlayerTurnStarted),
             new(PrototypeAutomaticStepKind.DrawPlayerHand)
         ]);
 
@@ -234,13 +240,28 @@ public static class PrototypeContent
                 Triggers:
                 [
                     new PrototypePowerTriggerSpec(
-                        PrototypeTurnStage.PlayerTurnStart,
+                        PrototypeCombatEventKind.PlayerTurnStarted,
                         [
                             new PrototypeCombatEffectSpec(
                                 PrototypeCombatEffectKind.ApplyEnemyStatus,
                                 0,
                                 StatusId: "proto.status.poison",
                                 Target: PrototypeEffectTarget.AllEnemies,
+                                AmountPerPowerStack: 1)
+                        ])
+                ]),
+            new PrototypePlayerPowerDefinition(
+                "proto.power.afterimage",
+                "Afterimage",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.GainPlayerBlock,
+                                0,
                                 AmountPerPowerStack: 1)
                         ])
                 ])
