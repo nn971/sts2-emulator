@@ -373,6 +373,36 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void BulletTimeMatchesPinnedV01110TemporaryCostAndNoDraw()
+    {
+        var card = PrototypeContent.Card(
+            "proto.silent.bullet_time");
+
+        Assert.Equal(3, card.Cost.Amount);
+        Assert.Equal(-1, card.Cost.UpgradeDelta);
+        Assert.Equal(PrototypeCardType.Skill, card.Type);
+        Assert.Equal(PrototypeCardRarity.Rare, card.Rarity);
+
+        var freeHand = Assert.Single(
+            card.Effects,
+            effect =>
+                effect.Kind
+                == PrototypeCombatEffectKind.SetHandCardsEnergyCostUntilTurnEndOrPlayed);
+        Assert.Equal(0, freeHand.Amount);
+
+        var noDraw = Assert.Single(
+            card.Effects,
+            effect =>
+                effect.Kind
+                == PrototypeCombatEffectKind.ApplyPlayerPower);
+        Assert.Equal("proto.power.no_draw", noDraw.PowerId);
+
+        var power = PrototypeContent.Power("proto.power.no_draw");
+        Assert.True(power.PreventsAdditionalDraw);
+        Assert.True(power.RemoveAtPlayerTurnEnd);
+    }
+
+    [Fact]
     public void UpMySleeveMatchesPinnedV01110CardLocalCostMutation()
     {
         var card = PrototypeContent.Card(
