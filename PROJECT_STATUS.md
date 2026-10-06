@@ -79,7 +79,7 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through nine gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through ten gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
 play-series replay for Burst (including repeated nested choices), Tools of the Trade's
@@ -96,10 +96,17 @@ enemy-status values. Source-backed Tracking applies +50% Attack damage per stack
 targets, while Mirage gains Block from total Poison on living enemies. Mirage also adds the first
 upgrade-sensitive removal of Exhaust.
 
-The next high-value structural target is general automatic-hook/event-dispatch suspension. After
-that, continue source-driven value/counter mechanics such as Phantom Blades and enrich card-local
-state for enchantments/afflictions as the pinned source requires. See
-`docs/reference-builds/v0.111.0-mechanics-gap-009.md`.
+Top-level automatic combat-event dispatch is now suspendable. Ordered power/relic subscribers
+can pause for a player card choice, preserve the current subscriber cleanup and remaining subscriber
+order, and then resume the remaining automatic turn pipeline. Tools of the Trade now uses its native
+PlayerTurnStarted choice hook instead of the former stage-specific discard shortcut, including
+stack-scaled discard counts.
+
+The remaining continuation boundary is event suspension nested inside a card-play/completion
+lifecycle: that path still deliberately rejects suspension until the outer play-series/result-pile
+cleanup frame is represented. After that, continue source-driven value/counter mechanics such as
+Phantom Blades and enrich card-local state for enchantments/afflictions as the pinned source
+requires. See `docs/reference-builds/v0.111.0-mechanics-gap-010.md`.
 
 
 ## First live native capture
