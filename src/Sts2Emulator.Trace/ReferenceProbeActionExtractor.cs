@@ -223,7 +223,7 @@ public static class ReferenceProbeActionExtractor
             boundary.Sequence,
             ToRef(
                 boundary,
-                "PlayerEndedTurn snapshot is settled before hand/side transition"),
+                "PlayerEndedTurn snapshot preserves settled hand/state after end-turn acceptance and before hand/side transition"),
             LifecycleFinish: null,
             CandidateAfter: after,
             diagnostics);
@@ -276,6 +276,12 @@ public static class ReferenceProbeActionExtractor
         for (var index = finishIndex + 1; index < boundaries.Count; index++)
         {
             var candidate = boundaries[index];
+            if (IsCombatTerminalBoundary(candidate.Boundary))
+            {
+                diagnostics.Add("combat_ended_before_next_player_decision");
+                return null;
+            }
+
             var historyType = HistoryType(candidate.HistoryEntry);
 
             if (historyType.EndsWith(
@@ -291,10 +297,10 @@ public static class ReferenceProbeActionExtractor
                     candidate.Boundary,
                     "combat_manager.PlayerEndedTurn"))
             {
-                return IsPlayerReadyShape(candidate.State)
+                return IsSettledPlayerShape(candidate.State)
                     ? ToRef(
                         candidate,
-                        "settled player state immediately before end-turn transition")
+                        "settled player state at accepted end-turn action")
                     : null;
             }
 
@@ -319,6 +325,11 @@ public static class ReferenceProbeActionExtractor
         for (var scan = index + 1; scan < boundaries.Count; scan++)
         {
             var candidate = boundaries[scan];
+            if (IsCombatTerminalBoundary(candidate.Boundary))
+            {
+                return null;
+            }
+
             if (!StringComparer.Ordinal.Equals(
                     candidate.Boundary,
                     "combat_manager.TurnStarted"))
@@ -490,13 +501,19 @@ public static class ReferenceProbeActionExtractor
     private static bool IsPlayerReadyShape(JsonElement state)
     {
         var manager = GetObject(state, "manager");
+        return IsSettledPlayerShape(state)
+            && GetBool(manager, "player_actions_disabled") == false;
+    }
+
+    private static bool IsSettledPlayerShape(JsonElement state)
+    {
+        var manager = GetObject(state, "manager");
         var combat = GetObject(state, "combat");
         var player = FirstPlayer(state);
         var playerCombat = GetObject(player, "combat");
 
         return GetBool(manager, "is_in_progress") == true
             && GetBool(manager, "is_over_or_ending") == false
-            && GetBool(manager, "player_actions_disabled") == false
             && StringComparer.Ordinal.Equals(
                 GetString(combat, "current_side"),
                 "Player")
@@ -505,6 +522,17 @@ public static class ReferenceProbeActionExtractor
                 "Play")
             && PlayPileItems(state).Length == 0;
     }
+
+    private static bool IsCombatTerminalBoundary(string boundary) =>
+        StringComparer.Ordinal.Equals(
+            boundary,
+            "combat_manager.CombatWon")
+        || StringComparer.Ordinal.Equals(
+            boundary,
+            "combat_manager.CombatEnded")
+        || StringComparer.Ordinal.Equals(
+            boundary,
+            "combat_manager.CombatSetUp");
 
     private static int HandCount(JsonElement state) =>
         HandItems(state).Length;
