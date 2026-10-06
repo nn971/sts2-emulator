@@ -192,7 +192,8 @@ public static class PrototypeContent
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Token,
                 RewardEligible: false,
-                Type: PrototypeCardType.Attack),
+                Type: PrototypeCardType.Attack,
+                Tags: ["Shiv"]),
             new PrototypeCardDefinition(
                 "proto.status.dazed",
                 "Dazed",
@@ -388,6 +389,20 @@ public static class PrototypeContent
                         2,
                         1,
                         PowerId: "proto.power.dexterity")
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Power),
+            new PrototypeCardDefinition(
+                "proto.silent.accuracy",
+                "Accuracy",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        4,
+                        2,
+                        PowerId: "proto.power.accuracy")
                 ],
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Power),
@@ -1225,6 +1240,13 @@ public static class PrototypeContent
                 BlockBonusPerStack: 1,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AllowNegative: true),
+            new PrototypePowerDefinition(
+                "proto.power.accuracy",
+                "Accuracy",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                AttackDamageBonusRequiredCardTag: "Shiv",
+                AttackDamageBonusPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.noxious_fumes",
                 "Noxious Fumes",
