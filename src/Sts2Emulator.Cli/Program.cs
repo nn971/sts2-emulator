@@ -510,8 +510,19 @@ switch (args[0])
                         $"Prototype sweep stuck on seed {seed} in {state.Phase}.");
                 }
 
-                state = engine.Step(state, ChoosePrototypeAction(state, legal)).State;
-                PrototypeStateInvariants.Validate(state);
+                var chosen = ChoosePrototypeAction(state, legal);
+                state = engine.Step(state, chosen).State;
+                try
+                {
+                    PrototypeStateInvariants.Validate(state);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Prototype sweep invariant failure on seed {seed}, " +
+                        $"step {step}, phase {state.Phase}, action {chosen.Kind}.",
+                        ex);
+                }
             }
 
             if (state.Phase != RunPhase.Terminal)
