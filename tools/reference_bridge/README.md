@@ -37,9 +37,10 @@ The first recorder is passive:
 Default recorded boundaries currently include combat setup/start, turn start/end, player end-turn,
 switch-to-enemy, combat victory, and combat end.
 
-This is a **probe** format (`sts2-reference-probe-v0`), not yet a parity-complete
-`reference-trace-v0.2`. We first need a live capture to verify which state properties are exposed
-at each observed boundary.
+`sts2-reference-probe-v0` has now been live-validated on two Silent A0 combats. The current bridge
+emits **`sts2-reference-probe-v1`**, adding passive `CombatHistory.Changed` records, player-creature
+discovery, field-level native RNG serialization, and one-time runtime type catalogs. It is still a
+probe rather than parity-complete `reference-trace-v0.2` until those additions are live-validated.
 
 ## Preserve the clean oracle
 
@@ -68,7 +69,7 @@ cp -r artifacts/reference_bridge_mod/Sts2ReferenceBridge \
     "/path/to/instrumented/game/mods/"
 ```
 
-Then launch the instrumented copy with mods enabled and play a small combat. The probe should appear
+Then launch the instrumented copy with mods enabled and play one ordinary Silent combat. The v1 probe should appear
 under:
 
 ```text
