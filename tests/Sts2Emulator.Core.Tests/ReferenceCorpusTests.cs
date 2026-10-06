@@ -63,6 +63,12 @@ public sealed class ReferenceCorpusTests
             Assert.Contains("random_effect", mystery.UnsupportedFeatures);
             Assert.Contains("random_target", mystery.UnsupportedFeatures);
             Assert.Contains("retain", mystery.UnsupportedFeatures);
+            Assert.Contains(
+                mystery.SourceWarnings,
+                warning => warning.Contains("cards_draw", StringComparison.Ordinal));
+            Assert.Contains(
+                mystery.SourceWarnings,
+                warning => warning.Contains("spawns_cards", StringComparison.Ordinal));
 
             var strike = Assert.Single(
                 report.Cards,
@@ -181,7 +187,7 @@ public sealed class ReferenceCorpusTests
               {
                 "id":"MYSTERY_CHOICE",
                 "name":"Mystery Choice",
-                "description":"Choose 1 of 3 random cards. Play it for free.",
+                "description":"Choose 1 of 3 random cards. Add it into your Hand. Play it for free.",
                 "cost":1,
                 "is_x_cost":null,
                 "is_x_star_cost":null,
@@ -193,7 +199,7 @@ public sealed class ReferenceCorpusTests
                 "block":null,
                 "hit_count":null,
                 "powers_applied":null,
-                "cards_draw":null,
+                "cards_draw":3,
                 "energy_gain":null,
                 "hp_loss":null,
                 "keywords":["Retain"],
