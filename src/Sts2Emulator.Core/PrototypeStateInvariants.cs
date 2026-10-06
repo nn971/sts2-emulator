@@ -140,6 +140,27 @@ public static class PrototypeStateInvariants
         }
     }
 
+    private static void ValidatePowerOwner(
+        string owner,
+        PrototypePowerInstanceState[] powers)
+    {
+        if (powers.Any(power => power.Stacks <= 0))
+        {
+            throw new InvalidOperationException($"{owner} power stacks must stay positive.");
+        }
+
+        if (powers.Select(power => power.PowerId).Distinct(StringComparer.Ordinal).Count()
+            != powers.Length)
+        {
+            throw new InvalidOperationException($"{owner} power IDs must be unique after stacking.");
+        }
+
+        foreach (var power in powers)
+        {
+            _ = PrototypeContent.Power(power.PowerId);
+        }
+    }
+
     private static void ValidateMap(RunWorldState world)
     {
         var map = world.Map;
@@ -287,31 +308,37 @@ public static class PrototypeStateInvariants
             }
         }
 
-        if (combat.PlayerPowers.Any(power => power.Stacks <= 0))
+        ValidatePowerOwner("player", combat.PlayerPowers);
+
+        foreach (var enemy in combat.Enemies)
         {
-            throw new InvalidOperationException("Player power stacks must stay positive.");
+            ValidatePowerOwner($"enemy {enemy.InstanceId}", enemy.PowerStates);
         }
 
-        if (combat.PlayerPowers.Select(power => power.PowerId).Distinct().Count()
-            != combat.PlayerPowers.Length)
+        var allPowers = combat.PlayerPowers
+            .Concat(combat.Enemies.SelectMany(enemy => enemy.PowerStates))
+            .ToArray();
+
+        if (allPowers.Select(power => power.ApplicationOrder).Distinct().Count()
+            != allPowers.Length)
         {
-            throw new InvalidOperationException("Player power IDs must be unique after stacking.");
+            throw new InvalidOperationException(
+                "Power application order must be globally unique across combat owners.");
         }
 
-        if (combat.PlayerPowers.Select(power => power.ApplicationOrder).Distinct().Count()
-            != combat.PlayerPowers.Length)
+        if (allPowers.Any(power =>
+            power.ApplicationOrder <= 0
+            || power.ApplicationOrder >= combat.NextPowerApplicationOrder))
         {
-            throw new InvalidOperationException("Player power application order must be unique.");
+            throw new InvalidOperationException("Power application order is invalid.");
         }
 
-        foreach (var power in combat.PlayerPowers)
+        if (combat.NextPowerApplicationOrder <= allPowers
+                .Select(power => power.ApplicationOrder)
+                .DefaultIfEmpty(0)
+                .Max())
         {
-            _ = PrototypeContent.Power(power.PowerId);
-            if (power.ApplicationOrder <= 0
-                || power.ApplicationOrder >= combat.NextPowerApplicationOrder)
-            {
-                throw new InvalidOperationException("Player power application order is invalid.");
-            }
+            throw new InvalidOperationException("Next power application order is not fresh.");
         }
 
         var zones = combat.Hand
