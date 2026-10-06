@@ -326,7 +326,8 @@ public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
     PrototypeCombatEffectSpec[] Effects,
     bool RequiresOwnerTarget = false,
-    bool ExcludeHandDraw = false);
+    bool ExcludeHandDraw = false,
+    bool RequiresPlayerTurn = false);
 
 public sealed record PrototypePowerDefinition(
     string Id,
@@ -568,7 +569,8 @@ public sealed record CombatState(
     CombatRelicState[]? Relics = null,
     CombatPotionState[]? Potions = null,
     PendingCombatChoiceState? PendingChoice = null,
-    PrototypeCombatCounters? Counters = null)
+    PrototypeCombatCounters? Counters = null,
+    bool IsPlayerTurn = true)
 {
     public CombatState Fork() => this with
     {
