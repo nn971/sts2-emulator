@@ -94,14 +94,6 @@ Then:
 
 ## Sprint E — fidelity loop
 
-Once the prototype supports varied strategic runs:
-
-1. pin a reference STS2 build;
-2. inventory real content/data sources and legally appropriate extraction/translation routes;
-3. build the native reference bridge;
-4. compare legal actions and decision-boundary states;
-5. replace prototype generation, RNG, timing, and content through versioned rulesets.
-
 Use differential replay to turn native observations into minimized regression cases. Treat every
 verified ordering/RNG/content correction as version-pinned evidence rather than a global assumption.
 
