@@ -31,16 +31,18 @@ See [PROTOTYPE_SCOPE.md](PROTOTYPE_SCOPE.md).
 
 ## Sprint A — finish prototype run generation
 
-Prioritize strategic run-level decisions:
+Most first-pass run-generation structure is now implemented:
 
-1. richer shop inventory generation, including rarity/price variation;
-2. event eligibility and event-history constraints;
-3. larger potion/relic pools and pool-history rules;
-4. elite/boss selection by act;
-5. map-generation constraints beyond the current layered DAG;
-6. card removal/transformation and additional rest-site choices where useful.
+- rarity/price-aware shops and one-use card removal;
+- weighted event eligibility/history;
+- expanded potion/relic pools;
+- act-specific elite/boss content;
+- floor-rule-driven map generation with constrained special-room placement;
+- a guaranteed pre-boss rest layer;
+- heal/upgrade/permanent-max-HP rest decisions.
 
-Keep generation state explicit so the future AI can reason from the complete observable run state.
+Remaining work should focus on richer topology and pool-history behavior only when it creates useful
+strategic distinctions for AI experiments.
 
 ## Sprint B — enlarge the Silent content slice
 
@@ -62,19 +64,27 @@ content entries genuinely need it.
 
 ## Sprint C — expose an AI-oriented environment boundary
 
-Before serious learning/search work:
+The first prototype adapter is complete:
 
-1. define compact observation/legal-action DTOs;
-2. add deterministic reset/step/fork APIs suitable for batch consumers;
-3. provide stable action identifiers independent of CLI formatting;
-4. add rollout statistics and representative whole-run benchmarks;
-5. keep canonical state/hash APIs available for verification.
+- `prototype-ai-v0` observation schema;
+- stable action IDs independent of legal-action ordering;
+- reset / observe / step / fork;
+- sibling expansion for search;
+- observation and canonical-state hashes;
+- AI observe/expand microbenchmarks;
+- deterministic multi-run sweep reporting;
+- machine-readable prototype capability manifest.
 
-The learning/search implementation itself belongs in the parent `sts2-ai` repository.
+The next step is to consume this boundary from the parent `sts2-ai` repository and let real search
+workloads determine which batching/performance improvements matter.
 
-## Sprint D — connect real game data
+## Sprint D — parent AI integration, then connect real game data
 
-Once the prototype supports varied strategic runs:
+Before deep fidelity work, add a thin `sts2-ai` integration that can reset, observe, enumerate stable
+actions, fork/expand, and run deterministic prototype evaluations. Keep all strategy/search code in
+the parent repository.
+
+Then:
 
 1. pin a reference STS2 build;
 2. inventory real content/data sources and legally appropriate extraction/translation routes;
@@ -83,6 +93,14 @@ Once the prototype supports varied strategic runs:
 5. replace prototype generation, RNG, timing, and content through versioned rulesets.
 
 ## Sprint E — fidelity loop
+
+Once the prototype supports varied strategic runs:
+
+1. pin a reference STS2 build;
+2. inventory real content/data sources and legally appropriate extraction/translation routes;
+3. build the native reference bridge;
+4. compare legal actions and decision-boundary states;
+5. replace prototype generation, RNG, timing, and content through versioned rulesets.
 
 Use differential replay to turn native observations into minimized regression cases. Treat every
 verified ordering/RNG/content correction as version-pinned evidence rather than a global assumption.
