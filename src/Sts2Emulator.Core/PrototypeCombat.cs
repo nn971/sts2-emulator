@@ -580,7 +580,8 @@ public sealed partial class PrototypeGameEngine
         RngBundle rng,
         long? sourceCardInstanceId = null,
         PrototypeCardZone sourceCardDestination = PrototypeCardZone.DiscardPile,
-        PrototypeCombatEvent[]? completionEvents = null)
+        PrototypeCombatEvent[]? completionEvents = null,
+        int eventDepth = 0)
     {
         while (operations.Count > 0)
         {
@@ -593,7 +594,42 @@ public sealed partial class PrototypeGameEngine
                         throw new InvalidOperationException("Damage operation requires an enemy target.");
                     }
 
-                    combat = DamageEnemy(combat, operation.TargetEnemyId.Value, operation.Amount);
+                    var damageResult = DamageEnemy(
+                        combat,
+                        operation.TargetEnemyId.Value,
+                        operation.Amount);
+                    combat = damageResult.Combat;
+
+                    if (damageResult.DamageDealt > 0)
+                    {
+                        var damaged = DispatchCombatEvent(
+                            player,
+                            combat,
+                            new PrototypeCombatEvent(
+                                PrototypeCombatEventKind.EnemyDamaged,
+                                TargetEnemyId: operation.TargetEnemyId.Value,
+                                Amount: damageResult.DamageDealt),
+                            rng,
+                            eventDepth + 1);
+                        player = damaged.Player;
+                        combat = damaged.Combat;
+                    }
+
+                    if (damageResult.Defeated)
+                    {
+                        var defeated = DispatchCombatEvent(
+                            player,
+                            combat,
+                            new PrototypeCombatEvent(
+                                PrototypeCombatEventKind.EnemyDefeated,
+                                TargetEnemyId: operation.TargetEnemyId.Value,
+                                Amount: damageResult.DamageDealt),
+                            rng,
+                            eventDepth + 1);
+                        player = defeated.Player;
+                        combat = defeated.Combat;
+                    }
+
                     break;
 
                 case PrototypeCombatEffectKind.GainPlayerBlock:
@@ -709,7 +745,12 @@ public sealed partial class PrototypeGameEngine
 
         foreach (var completionEvent in completionEvents ?? Array.Empty<PrototypeCombatEvent>())
         {
-            var dispatched = DispatchCombatEvent(player, combat, completionEvent, rng);
+            var dispatched = DispatchCombatEvent(
+                player,
+                combat,
+                completionEvent,
+                rng,
+                eventDepth + 1);
             player = dispatched.Player;
             combat = dispatched.Combat;
         }
@@ -767,8 +808,14 @@ public sealed partial class PrototypeGameEngine
         PlayerState player,
         CombatState combat,
         PrototypeCombatEvent combatEvent,
-        RngBundle rng)
+        RngBundle rng,
+        int eventDepth = 0)
     {
+        if (eventDepth > 64)
+        {
+            throw new InvalidOperationException(
+                "Prototype combat event chain exceeded the safety depth limit.");
+        }
         var subscribers = combat.PlayerPowers
             .OrderBy(power => power.ApplicationOrder)
             .SelectMany(power =>
@@ -790,12 +837,17 @@ public sealed partial class PrototypeGameEngine
                     effect,
                     upgradeLevel: 0,
                     energySpent: 0,
-                    actionTargetEnemyId: null,
+                    actionTargetEnemyId: combatEvent.TargetEnemyId,
                     combat: combat,
                     powerStacks: subscriber.Power.Stacks);
             }
 
-            var resolved = ResolveOperations(player, combat, operations, rng);
+            var resolved = ResolveOperations(
+                player,
+                combat,
+                operations,
+                rng,
+                eventDepth: eventDepth);
             player = resolved.Player;
             combat = resolved.Combat;
 
@@ -1009,38 +1061,44 @@ public sealed partial class PrototypeGameEngine
         combat.Cards.FirstOrDefault(card => card.InstanceId == instanceId)
         ?? throw new InvalidOperationException($"Combat card instance {instanceId} is missing.");
 
-    private static CombatState DamageEnemy(CombatState combat, int enemyId, int damage)
+    private sealed record PrototypeDamageResult(
+        CombatState Combat,
+        int DamageDealt,
+        bool Defeated);
+
+    private static PrototypeDamageResult DamageEnemy(
+        CombatState combat,
+        int enemyId,
+        int damage)
     {
-        var found = false;
-        var enemies = combat.Enemies
-            .Select(enemy =>
-            {
-                if (enemy.InstanceId != enemyId)
-                {
-                    return enemy;
-                }
-
-                found = true;
-                if (enemy.Hp <= 0)
-                {
-                    return enemy;
-                }
-
-                var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
-                return enemy with
-                {
-                    Block = enemy.Block - absorbed,
-                    Hp = Math.Max(0, enemy.Hp - Math.Max(0, damage - absorbed))
-                };
-            })
-            .ToArray();
-
-        if (!found)
+        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
+        var index = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
+        if (index < 0)
         {
             throw new InvalidOperationException($"Enemy {enemyId} is missing.");
         }
 
-        return combat with { Enemies = enemies };
+        var enemy = enemies[index];
+        if (enemy.Hp <= 0)
+        {
+            return new PrototypeDamageResult(combat, 0, false);
+        }
+
+        var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
+        var hpDamage = Math.Max(0, damage - absorbed);
+        var nextHp = Math.Max(0, enemy.Hp - hpDamage);
+        var damageDealt = enemy.Hp - nextHp;
+
+        enemies[index] = enemy with
+        {
+            Block = enemy.Block - absorbed,
+            Hp = nextHp
+        };
+
+        return new PrototypeDamageResult(
+            combat with { Enemies = enemies },
+            damageDealt,
+            Defeated: enemy.Hp > 0 && nextHp == 0);
     }
 
     private static CombatState ApplyEnemyStatus(
