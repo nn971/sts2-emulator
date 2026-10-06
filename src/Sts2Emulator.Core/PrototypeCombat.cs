@@ -2,12 +2,6 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
-    private sealed record PrototypeOperation(
-        PrototypeCombatEffectKind Kind,
-        int Amount,
-        int? TargetEnemyId = null,
-        string? StatusId = null);
-
     private static RunState StartCombat(RunState state, PrototypeRoomType roomType)
     {
         var world = RequireWorld(state);
@@ -69,6 +63,12 @@ public sealed partial class PrototypeGameEngine
     {
         var combat = RequireWorld(state).Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
+
+        if (combat.PendingChoice is not null)
+        {
+            return GetPendingChoiceActions(combat.PendingChoice);
+        }
+
         var actions = new List<GameAction>();
 
         foreach (var instanceId in combat.Hand)
@@ -129,6 +129,14 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepCombat(RunState state, GameAction action)
     {
+        var combat = RequireWorld(state).Combat
+            ?? throw new InvalidOperationException("Combat phase has no combat state.");
+
+        if (combat.PendingChoice is not null)
+        {
+            return ResolvePendingChoice(state, action);
+        }
+
         return action.Kind switch
         {
             "play_card" => PlayCard(state, action.ReadPayload<PlayCardPayload>()),
@@ -164,21 +172,24 @@ public sealed partial class PrototypeGameEngine
             Hand = combat.Hand.Where(id => id != payload.CardInstanceId).ToArray()
         };
 
-        var operations = new Queue<PrototypeOperation>();
+        var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
-            operations.Enqueue(new PrototypeOperation(
+            operations.Enqueue(new PrototypeQueuedOperation(
                 effect.Kind,
                 effect.AmountAtUpgrade(card.UpgradeLevel),
                 payload.TargetEnemyId,
-                effect.StatusId));
+                effect.StatusId,
+                effect.Selection));
         }
 
-        var resolved = ResolveOperations(state.Player, combat, operations, state.Rng);
-        combat = resolved.Combat with
-        {
-            DiscardPile = resolved.Combat.DiscardPile.Append(payload.CardInstanceId).ToArray()
-        };
+        var resolved = ResolveOperations(
+            state.Player,
+            combat,
+            operations,
+            state.Rng,
+            payload.CardInstanceId);
+        combat = resolved.Combat;
 
         state = state with
         {
@@ -207,14 +218,15 @@ public sealed partial class PrototypeGameEngine
 
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
 
-        var operations = new Queue<PrototypeOperation>();
+        var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
-            operations.Enqueue(new PrototypeOperation(
+            operations.Enqueue(new PrototypeQueuedOperation(
                 effect.Kind,
                 effect.Amount,
                 payload.TargetEnemyId,
-                effect.StatusId));
+                effect.StatusId,
+                effect.Selection));
         }
 
         var resolved = ResolveOperations(state.Player, combat, operations, state.Rng);
@@ -410,8 +422,9 @@ public sealed partial class PrototypeGameEngine
     private static (PlayerState Player, CombatState Combat) ResolveOperations(
         PlayerState player,
         CombatState combat,
-        Queue<PrototypeOperation> operations,
-        RngBundle rng)
+        Queue<PrototypeQueuedOperation> operations,
+        RngBundle rng,
+        long? sourceCardInstanceId = null)
     {
         while (operations.Count > 0)
         {
@@ -451,9 +464,46 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.ChooseCards:
+                {
+                    var selection = operation.Selection
+                        ?? throw new InvalidOperationException("Choose-cards operation has no selection specification.");
+                    var candidates = GetZone(combat, selection.SourceZone);
+                    if (candidates.Length == 0 || selection.MaxSelections <= 0)
+                    {
+                        break;
+                    }
+
+                    var effective = selection with
+                    {
+                        MinSelections = Math.Min(selection.MinSelections, candidates.Length),
+                        MaxSelections = Math.Min(selection.MaxSelections, candidates.Length)
+                    };
+
+                    combat = combat with
+                    {
+                        PendingChoice = new PendingCombatChoiceState(
+                            ChoiceId: "select_cards",
+                            SourceCardInstanceId: sourceCardInstanceId,
+                            Selection: effective,
+                            CandidateCardInstanceIds: (long[])candidates.Clone(),
+                            Continuation: operations.ToArray())
+                    };
+                    return (player, combat);
+                }
+
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+        }
+
+        if (sourceCardInstanceId is not null)
+        {
+            combat = combat with
+            {
+                DiscardPile = combat.DiscardPile.Append(sourceCardInstanceId.Value).ToArray(),
+                PendingChoice = null
+            };
         }
 
         return (player, combat);
