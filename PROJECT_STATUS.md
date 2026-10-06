@@ -61,8 +61,8 @@ The first pinned native oracle is STS2 `v0.111.0` / commit `41cef1ea`, fingerpri
 `3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`.
 
 Implemented native-fidelity groundwork now includes build fingerprinting, metadata inspection,
-the native-neutral reference-trace v0.2 contract, and a single-DLL passive reference recorder
-staged outside the clean oracle. The recorder still requires its first live in-game validation.
+the native-neutral reference-trace v0.2 contract, a single-DLL passive reference recorder staged
+outside the clean oracle, and emulator-side structured probe auditing for history/state/RNG shapes.
 
 
 ## First live native capture
@@ -77,4 +77,6 @@ The capture exposed three concrete next needs now implemented in probe v1:
 - field-level projection of native SerializableRng state;
 - passive CombatHistory.Changed capture for card-play/damage/energy/potion/monster-move granularity.
 
-See `docs/reference-builds/v0.111.0-capture-001.md`.
+See `docs/reference-builds/v0.111.0-capture-001.md`. The next live capture should use probe v1;
+`reference-probe-audit` can then turn it directly into evidence for native action/boundary
+normalization without hard-coding runtime class names in advance.
