@@ -546,7 +546,16 @@ public sealed partial class PrototypeGameEngine
             }
 
             case PrototypeAutomaticStepKind.AdvanceTurn:
-                combat = combat with { Turn = combat.Turn + 1 };
+                combat = combat with
+                {
+                    Turn = combat.Turn + 1,
+                    Counters = combat.CounterState with
+                    {
+                        AttacksPlayedThisTurn = 0,
+                        SkillsPlayedThisTurn = 0,
+                        CardsDiscardedThisTurn = 0
+                    }
+                };
                 break;
 
             case PrototypeAutomaticStepKind.ResetPlayerBlock:
@@ -735,8 +744,13 @@ public sealed partial class PrototypeGameEngine
         PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System,
         bool isPoweredAttack = false)
     {
+        var count = effect.CountKind is null
+            ? 0
+            : ResolveCombatCount(effect.CountKind.Value, combat);
+
         var repetitions = effect.RepetitionsAt(upgradeLevel, energySpent)
-            + (effect.RepetitionsPerPowerStack * powerStacks);
+            + (effect.RepetitionsPerPowerStack * powerStacks)
+            + (effect.RepetitionsPerCount * count);
         if (repetitions <= 0)
         {
             return;
@@ -770,7 +784,8 @@ public sealed partial class PrototypeGameEngine
                 operations.Enqueue(new PrototypeQueuedOperation(
                     effect.Kind,
                     effect.AmountAt(upgradeLevel, energySpent)
-                        + (effect.AmountPerPowerStack * powerStacks),
+                        + (effect.AmountPerPowerStack * powerStacks)
+                        + (effect.AmountPerCount * count),
                     targetEnemyId,
                     effect.StatusId,
                     effect.Selection,
@@ -1066,6 +1081,70 @@ public sealed partial class PrototypeGameEngine
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
 
+    private static int ResolveCombatCount(
+        PrototypeCombatCountKind kind,
+        CombatState combat) =>
+        kind switch
+        {
+            PrototypeCombatCountKind.SkillsInHand =>
+                combat.Hand.Count(instanceId =>
+                    PrototypeContent.Card(
+                        RequireCombatCard(combat, instanceId).CardId).Type
+                    == PrototypeCardType.Skill),
+            PrototypeCombatCountKind.AttacksPlayedThisTurn =>
+                combat.CounterState.AttacksPlayedThisTurn,
+            PrototypeCombatCountKind.CardsDiscardedThisTurn =>
+                combat.CounterState.CardsDiscardedThisTurn,
+            PrototypeCombatCountKind.CardsDrawnThisCombat =>
+                combat.CounterState.CardsDrawnThisCombat,
+            PrototypeCombatCountKind.OtherCardsInHand =>
+                combat.Hand.Length,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+
+    private static CombatState RecordCombatCounterEvent(
+        CombatState combat,
+        PrototypeCombatEvent combatEvent)
+    {
+        var counters = combat.CounterState;
+
+        switch (combatEvent.Kind)
+        {
+            case PrototypeCombatEventKind.CardPlayed:
+                if (combatEvent.CardId is null)
+                {
+                    return combat;
+                }
+
+                var type = PrototypeContent.Card(combatEvent.CardId).Type;
+                counters = type switch
+                {
+                    PrototypeCardType.Attack => counters with
+                    {
+                        AttacksPlayedThisTurn =
+                            counters.AttacksPlayedThisTurn + 1
+                    },
+                    PrototypeCardType.Skill => counters with
+                    {
+                        SkillsPlayedThisTurn =
+                            counters.SkillsPlayedThisTurn + 1
+                    },
+                    _ => counters
+                };
+                break;
+
+            case PrototypeCombatEventKind.CardDiscarded:
+                counters = counters with
+                {
+                    CardsDiscardedThisTurn =
+                        counters.CardsDiscardedThisTurn + 1
+                };
+                break;
+        }
+
+        return combat with { Counters = counters };
+    }
+
     private static bool EvaluateCombatPredicate(
         PrototypeCombatPredicateSpec? predicate,
         CombatState combat,
@@ -1264,6 +1343,8 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Prototype combat event chain exceeded the safety depth limit.");
         }
+
+        combat = RecordCombatCounterEvent(combat, combatEvent);
         var subscribers = new List<PrototypeEventSubscriber>();
 
         foreach (var power in combat.PlayerPowers)
@@ -1819,6 +1900,7 @@ public sealed partial class PrototypeGameEngine
         var hand = combat.Hand.ToList();
         var draw = combat.DrawPile.ToList();
         var discard = combat.DiscardPile.ToList();
+        var drawnCount = 0;
 
         for (var drawNumber = 0; drawNumber < count; drawNumber++)
         {
@@ -1838,13 +1920,19 @@ public sealed partial class PrototypeGameEngine
             var index = draw.Count - 1;
             hand.Add(draw[index]);
             draw.RemoveAt(index);
+            drawnCount++;
         }
 
         return combat with
         {
             Hand = hand.ToArray(),
             DrawPile = draw.ToArray(),
-            DiscardPile = discard.ToArray()
+            DiscardPile = discard.ToArray(),
+            Counters = combat.CounterState with
+            {
+                CardsDrawnThisCombat =
+                    combat.CounterState.CardsDrawnThisCombat + drawnCount
+            }
         };
     }
 
