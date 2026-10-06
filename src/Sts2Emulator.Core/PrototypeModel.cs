@@ -719,6 +719,34 @@ public sealed record PrototypeCardPlaySeriesState(
     public bool HasRemainingExecutions => NextPlayIndex < PlayCount;
 }
 
+public sealed record PrototypeChoiceResolutionContinuationState(
+    long? SourceCardInstanceId,
+    PrototypeCardZone SourceCardDestination,
+    PrototypeQueuedOperation[] Operations,
+    PrototypeCombatEvent[] PendingDiscardEvents,
+    long[] PendingSlyCardInstanceIds,
+    PrototypeCombatEvent[] CompletionEvents,
+    PrototypeCardPlaySeriesState? CardPlaySeries = null,
+    bool MoveSourceCardOnCompletion = true,
+    bool RemoveSourceCardOnCompletion = false,
+    PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
+    PrototypeChoiceResolutionContinuationState? Parent = null)
+{
+    public PrototypeChoiceResolutionContinuationState Fork() => this with
+    {
+        Operations = (PrototypeQueuedOperation[])Operations.Clone(),
+        PendingDiscardEvents =
+            (PrototypeCombatEvent[])PendingDiscardEvents.Clone(),
+        PendingSlyCardInstanceIds =
+            (long[])PendingSlyCardInstanceIds.Clone(),
+        CompletionEvents =
+            (PrototypeCombatEvent[])CompletionEvents.Clone(),
+        EventDispatchContinuation =
+            EventDispatchContinuation?.Fork(),
+        Parent = Parent?.Fork()
+    };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -732,14 +760,16 @@ public sealed record PendingCombatChoiceState(
     bool RemoveSourceCardOnCompletion = false,
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
-    PrototypeEventDispatchContinuationState? EventDispatchContinuation = null)
+    PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
+    PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
         Continuation = (PrototypeQueuedOperation[])Continuation.Clone(),
         CompletionEvents = (PrototypeCombatEvent[])CompletionEvents.Clone(),
-        EventDispatchContinuation = EventDispatchContinuation?.Fork()
+        EventDispatchContinuation = EventDispatchContinuation?.Fork(),
+        OuterChoiceContinuation = OuterChoiceContinuation?.Fork()
     };
 }
 
