@@ -51,7 +51,9 @@ public sealed class PrototypeEffectQueueTests
                     0,
                     false,
                     empty)
-            ]);
+            ],
+            PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
+            NextPowerApplicationOrder: 1);
 
         var state = new RunState(
             "prototype-unbound",
@@ -124,7 +126,9 @@ public sealed class PrototypeEffectQueueTests
             Cards:
             [
                 new CombatCardInstance(1, 30, "proto.silent.skewer", 0, false, empty)
-            ]);
+            ],
+            PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
+            NextPowerApplicationOrder: 1);
 
         var state = new RunState(
             "prototype-unbound",
