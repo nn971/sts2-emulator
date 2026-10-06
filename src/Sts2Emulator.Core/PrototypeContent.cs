@@ -62,7 +62,8 @@ public static class PrototypeContent
                 RoomPool:
                 [
                     PrototypeRoomType.Rest
-                ]),
+                ],
+                AllowDuplicateSpecialRooms: true),
             new(
                 MinFloor: 6,
                 MaxFloor: 6,
