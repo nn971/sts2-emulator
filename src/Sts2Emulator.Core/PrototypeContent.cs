@@ -723,6 +723,25 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
+                "proto.silent.bullet_time",
+                "Bullet Time",
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.Fixed,
+                    3,
+                    UpgradeDelta: -1),
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.SetHandCardsEnergyCostUntilTurnEndOrPlayed,
+                        0),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.no_draw")
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.up_my_sleeve",
                 "Up My Sleeve",
                 2,
@@ -1237,6 +1256,13 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
+            new PrototypePowerDefinition(
+                "proto.power.no_draw",
+                "No Draw",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                RemoveAtPlayerTurnEnd: true,
+                PreventsAdditionalDraw: true),
             new PrototypePowerDefinition(
                 "proto.power.temporary_dexterity",
                 "Temporary Dexterity",
