@@ -7,6 +7,10 @@ public sealed partial class PrototypeGameEngine
         PrototypeCombatEffectSpec[] Effects,
         int PowerStacks,
         PrototypeEffectSourceKind SourceKind,
+        long? SourcePowerApplicationOrder = null,
+        int? SourcePowerEnemyId = null,
+        PrototypeCombatCardSnapshot? PowerCardPayload = null,
+        bool RemoveSourcePowerAfterTrigger = false,
         int? RelicStateIndex = null,
         int? RelicTriggerIndex = null,
         int EveryNth = 1);
@@ -875,7 +879,8 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         int powerStacks = 0,
         PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System,
-        bool isPoweredAttack = false)
+        bool isPoweredAttack = false,
+        PrototypeCombatCardSnapshot? powerCardPayload = null)
     {
         var count = effect.CountKind is null
             ? 0
@@ -931,7 +936,13 @@ public sealed partial class PrototypeGameEngine
                     TargetMode: effect.Target,
                     SourceKind: sourceKind,
                     IsPoweredAttack: isPoweredAttack && effect.Kind == PrototypeCombatEffectKind.DamageEnemy,
-                    Condition: effect.Condition));
+                    Condition: effect.Condition,
+                    SelectedCardPower: effect.SelectedCardPower is null
+                        ? null
+                        : new PrototypeSelectedCardPowerAction(
+                            effect.SelectedCardPower.PowerId,
+                            effect.SelectedCardPower.AmountAt(upgradeLevel)),
+                    PowerCardPayload: powerCardPayload?.Fork()));
             }
         }
     }
@@ -1179,7 +1190,9 @@ public sealed partial class PrototypeGameEngine
                             MoveSourceCardOnCompletion:
                                 moveSourceCardOnCompletion,
                             RemoveSourceCardOnCompletion:
-                                removeSourceCardOnCompletion)
+                                removeSourceCardOnCompletion,
+                            SelectedCardPower:
+                                operation.SelectedCardPower)
                     };
                     return (player, combat);
                 }
@@ -1272,25 +1285,25 @@ public sealed partial class PrototypeGameEngine
                         throw new InvalidOperationException("Create-card operation is missing a card ID.");
                     }
 
-                    _ = PrototypeContent.Card(operation.CardId);
-                    for (var index = 0; index < operation.Amount; index++)
-                    {
-                        var instance = new CombatCardInstance(
-                            InstanceId: combat.NextCardInstanceId,
-                            PersistentCardInstanceId: null,
-                            CardId: operation.CardId,
-                            UpgradeLevel: operation.GeneratedCardUpgradeLevel,
-                            IsTemporary: true,
-                            State: PrototypeJson.EmptyObject());
+                    combat = AddGeneratedCardCopies(
+                        combat,
+                        new PrototypeCombatCardSnapshot(
+                            operation.CardId,
+                            operation.GeneratedCardUpgradeLevel,
+                            PrototypeJson.EmptyObject()),
+                        operation.Amount);
+                    break;
+                }
 
-                        combat = combat with
-                        {
-                            NextCardInstanceId = combat.NextCardInstanceId + 1,
-                            Cards = combat.Cards.Append(instance).ToArray(),
-                            Hand = combat.Hand.Append(instance.InstanceId).ToArray()
-                        };
-                    }
-
+                case PrototypeCombatEffectKind.CreateCardsInHandFromPowerCardPayload:
+                {
+                    var snapshot = operation.PowerCardPayload
+                        ?? throw new InvalidOperationException(
+                            "Power-payload card generation requires a stored card snapshot.");
+                    combat = AddGeneratedCardCopies(
+                        combat,
+                        snapshot,
+                        operation.Amount);
                     break;
                 }
 
@@ -1336,6 +1349,45 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    private static CombatState AddGeneratedCardCopies(
+        CombatState combat,
+        PrototypeCombatCardSnapshot snapshot,
+        int count)
+    {
+        const int maxHandSize = 10;
+
+        _ = PrototypeContent.Card(snapshot.CardId);
+        for (var index = 0; index < Math.Max(0, count); index++)
+        {
+            var instance = new CombatCardInstance(
+                InstanceId: combat.NextCardInstanceId,
+                PersistentCardInstanceId: null,
+                CardId: snapshot.CardId,
+                UpgradeLevel: snapshot.UpgradeLevel,
+                IsTemporary: true,
+                State: snapshot.State.Clone(),
+                CombatEnergyCostDelta: snapshot.CombatEnergyCostDelta,
+                TemporaryEnergyCost: snapshot.TemporaryEnergyCost is null
+                    ? null
+                    : snapshot.TemporaryEnergyCost with { });
+
+            var addToHand = combat.Hand.Length < maxHandSize;
+            combat = combat with
+            {
+                NextCardInstanceId = combat.NextCardInstanceId + 1,
+                Cards = combat.Cards.Append(instance).ToArray(),
+                Hand = addToHand
+                    ? combat.Hand.Append(instance.InstanceId).ToArray()
+                    : combat.Hand,
+                DiscardPile = addToHand
+                    ? combat.DiscardPile
+                    : combat.DiscardPile.Append(instance.InstanceId).ToArray()
+            };
+        }
+
+        return combat;
     }
 
     private sealed record PrototypeCardPlayCountResult(
@@ -1898,6 +1950,17 @@ public sealed partial class PrototypeGameEngine
         int stacks)
     {
         var definition = PrototypeContent.Power(powerId);
+        if (definition.IsInstanced)
+        {
+            if (definition.RequiresCardPayload)
+            {
+                throw new InvalidOperationException(
+                    $"Instanced power '{powerId}' requires a card payload.");
+            }
+
+            return AddPlayerPowerInstance(combat, powerId, stacks, null);
+        }
+
         var powers = combat.PlayerPowers.ToList();
         var index = powers.FindIndex(power =>
             StringComparer.Ordinal.Equals(power.PowerId, powerId));
@@ -1935,6 +1998,64 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static CombatState ApplyPlayerPowerWithSelectedCard(
+        CombatState combat,
+        PrototypeSelectedCardPowerAction action,
+        CombatCardInstance selectedCard)
+    {
+        var definition = PrototypeContent.Power(action.PowerId);
+        if (!definition.IsInstanced || !definition.RequiresCardPayload)
+        {
+            throw new InvalidOperationException(
+                $"Selected-card power '{action.PowerId}' must be an instanced card-payload power.");
+        }
+
+        var snapshot = new PrototypeCombatCardSnapshot(
+            selectedCard.CardId,
+            selectedCard.UpgradeLevel,
+            selectedCard.State.Clone(),
+            selectedCard.CombatEnergyCostDelta,
+            selectedCard.TemporaryEnergyCost is null
+                ? null
+                : selectedCard.TemporaryEnergyCost with { });
+
+        return AddPlayerPowerInstance(
+            combat,
+            action.PowerId,
+            action.Amount,
+            snapshot);
+    }
+
+    private static CombatState AddPlayerPowerInstance(
+        CombatState combat,
+        string powerId,
+        int stacks,
+        PrototypeCombatCardSnapshot? cardPayload)
+    {
+        var definition = PrototypeContent.Power(powerId);
+        if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
+        {
+            return combat;
+        }
+
+        if (definition.RequiresCardPayload != (cardPayload is not null))
+        {
+            throw new InvalidOperationException(
+                $"Power '{powerId}' card-payload requirement is not satisfied.");
+        }
+
+        return combat with
+        {
+            PlayerPowers = combat.PlayerPowers.Append(
+                new PrototypePowerInstanceState(
+                    powerId,
+                    stacks,
+                    combat.NextPowerApplicationOrder,
+                    cardPayload?.Fork())).ToArray(),
+            NextPowerApplicationOrder = combat.NextPowerApplicationOrder + 1
+        };
+    }
+
     private static CombatState ApplyEnemyPower(
         CombatState combat,
         int enemyId,
@@ -1942,6 +2063,12 @@ public sealed partial class PrototypeGameEngine
         int stacks)
     {
         var definition = PrototypeContent.Power(powerId);
+        if (definition.IsInstanced && definition.RequiresCardPayload)
+        {
+            throw new InvalidOperationException(
+                $"Enemy power '{powerId}' requires a card payload.");
+        }
+
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var enemyIndex = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
         if (enemyIndex < 0)
@@ -1956,8 +2083,10 @@ public sealed partial class PrototypeGameEngine
         }
 
         var powers = enemy.PowerStates.ToList();
-        var powerIndex = powers.FindIndex(power =>
-            StringComparer.Ordinal.Equals(power.PowerId, powerId));
+        var powerIndex = definition.IsInstanced
+            ? -1
+            : powers.FindIndex(power =>
+                StringComparer.Ordinal.Equals(power.PowerId, powerId));
 
         if (powerIndex >= 0)
         {
@@ -2053,7 +2182,11 @@ public sealed partial class PrototypeGameEngine
                         power.ApplicationOrder,
                         trigger.Effects,
                         power.Stacks,
-                        PrototypeEffectSourceKind.Power)));
+                        PrototypeEffectSourceKind.Power,
+                        SourcePowerApplicationOrder: power.ApplicationOrder,
+                        PowerCardPayload: power.CardPayload?.Fork(),
+                        RemoveSourcePowerAfterTrigger:
+                            trigger.RemoveSourcePowerAfterTrigger)));
         }
 
         foreach (var enemy in combat.Enemies)
@@ -2081,7 +2214,12 @@ public sealed partial class PrototypeGameEngine
                             power.ApplicationOrder,
                             trigger.Effects,
                             power.Stacks,
-                            PrototypeEffectSourceKind.Power)));
+                            PrototypeEffectSourceKind.Power,
+                            SourcePowerApplicationOrder: power.ApplicationOrder,
+                            SourcePowerEnemyId: enemy.InstanceId,
+                            PowerCardPayload: power.CardPayload?.Fork(),
+                            RemoveSourcePowerAfterTrigger:
+                                trigger.RemoveSourcePowerAfterTrigger)));
             }
         }
 
@@ -2140,7 +2278,8 @@ public sealed partial class PrototypeGameEngine
                     actionTargetEnemyId: combatEvent.TargetEnemyId,
                     combat: combat,
                     powerStacks: subscriber.PowerStacks,
-                    sourceKind: subscriber.SourceKind);
+                    sourceKind: subscriber.SourceKind,
+                    powerCardPayload: subscriber.PowerCardPayload);
             }
 
             var resolved = ResolveOperations(
@@ -2156,6 +2295,20 @@ public sealed partial class PrototypeGameEngine
             {
                 throw new NotSupportedException(
                     "Automatic combat-event triggers that request player choices are not supported yet.");
+            }
+
+            if (subscriber.RemoveSourcePowerAfterTrigger)
+            {
+                if (subscriber.SourcePowerApplicationOrder is null)
+                {
+                    throw new InvalidOperationException(
+                        "Self-removing power trigger is missing source-power identity.");
+                }
+
+                combat = RemovePowerInstance(
+                    combat,
+                    subscriber.SourcePowerApplicationOrder.Value,
+                    subscriber.SourcePowerEnemyId);
             }
         }
 
@@ -2179,6 +2332,40 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    private static CombatState RemovePowerInstance(
+        CombatState combat,
+        long applicationOrder,
+        int? enemyId)
+    {
+        if (enemyId is null)
+        {
+            return combat with
+            {
+                PlayerPowers = combat.PlayerPowers
+                    .Where(power => power.ApplicationOrder != applicationOrder)
+                    .ToArray()
+            };
+        }
+
+        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
+        var index = Array.FindIndex(
+            enemies,
+            enemy => enemy.InstanceId == enemyId.Value);
+        if (index < 0)
+        {
+            throw new InvalidOperationException(
+                $"Enemy {enemyId.Value} is missing while removing a power.");
+        }
+
+        enemies[index] = enemies[index] with
+        {
+            Powers = enemies[index].PowerStates
+                .Where(power => power.ApplicationOrder != applicationOrder)
+                .ToArray()
+        };
+        return combat with { Enemies = enemies };
     }
 
     private static IReadOnlyList<GameAction> GetPendingChoiceActions(
@@ -2253,6 +2440,20 @@ public sealed partial class PrototypeGameEngine
 
         combat = ApplyCardSelection(combat, pending.Selection, selected);
         combat = combat with { PendingChoice = null };
+
+        if (pending.SelectedCardPower is not null)
+        {
+            if (selected.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    "Selected-card power actions require exactly one selected card.");
+            }
+
+            combat = ApplyPlayerPowerWithSelectedCard(
+                combat,
+                pending.SelectedCardPower,
+                RequireCombatCard(combat, selected[0]));
+        }
 
         var player = state.Player;
         if (pending.Selection.SourceZone == PrototypeCardZone.Hand
@@ -2406,6 +2607,11 @@ public sealed partial class PrototypeGameEngine
         if (selected.Any(cardId => !source.Contains(cardId)))
         {
             throw new InvalidOperationException("Selected card is no longer in the requested source zone.");
+        }
+
+        if (selection.Resolution == PrototypeCardSelectionResolutionKind.Preserve)
+        {
+            return combat;
         }
 
         var destinationZone = selection.Resolution switch

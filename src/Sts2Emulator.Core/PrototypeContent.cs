@@ -768,6 +768,30 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Rare,
                 Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
+                "proto.silent.nightmare",
+                "Nightmare",
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.Fixed,
+                    3,
+                    UpgradeDelta: -1),
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            1,
+                            1,
+                            PrototypeCardSelectionResolutionKind.Preserve),
+                        SelectedCardPower: new(
+                            "proto.power.nightmare",
+                            3))
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.bullet_time",
                 "Bullet Time",
                 new PrototypeCardCostSpec(
@@ -1325,6 +1349,24 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
+            new PrototypePowerDefinition(
+                "proto.power.nightmare",
+                "Nightmare",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.BeforeHandDraw,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.CreateCardsInHandFromPowerCardPayload,
+                                0,
+                                AmountPerPowerStack: 1)
+                        ],
+                        RemoveSourcePowerAfterTrigger: true)
+                ],
+                IsInstanced: true,
+                RequiresCardPayload: true),
             new PrototypePowerDefinition(
                 "proto.power.no_draw",
                 "No Draw",

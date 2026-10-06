@@ -95,17 +95,17 @@ workflow is now **static-first**:
 5. use live probes only for unresolved runtime ordering/RNG/readiness questions;
 6. replace prototype generation, RNG, timing, and content through versioned rulesets.
 
-The static mechanics program has now reached pass 006. Source-backed work includes Sly,
+The static mechanics program has now reached pass 007. Source-backed work includes Sly,
 Innate/Retain/Ethereal/Unplayable/Eternal, random-target attacks, typed predicates/counters,
 card-local and hand-local costs, turn-scoped/delayed powers, whole-card Burst replay, native
-Power-card result-pile semantics, and Tools of the Trade's turn-start draw/discard policy.
+Power-card result-pile semantics, Tools of the Trade's turn-start draw/discard policy, and
+Nightmare's instanced delayed selected-card payload.
 
-The next source-driven target is a typed delayed-card payload, beginning with Nightmare. After that,
-prioritize combat-card keyword overrides, intrinsic Replay, general event-dispatch suspension, and
-aggregate/value-query effects.
+The next source-driven target is typed combat-card keyword overrides. After that, prioritize
+intrinsic Replay, general event-dispatch suspension, and aggregate/value-query effects.
 
 See [REFERENCE_DATA_STRATEGY.md](REFERENCE_DATA_STRATEGY.md) and
-[the latest gap report](reference-builds/v0.111.0-mechanics-gap-006.md).
+[the latest gap report](reference-builds/v0.111.0-mechanics-gap-007.md).
 
 ## Sprint E — fidelity loop
 

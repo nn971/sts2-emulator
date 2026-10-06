@@ -49,6 +49,7 @@ public enum PrototypeCombatEffectKind
     ApplyEnemyStatus,
     ChooseCards,
     CreateCardsInHand,
+    CreateCardsInHandFromPowerCardPayload,
     ApplyPlayerPower,
     ApplyEnemyPower,
     DamagePlayer,
@@ -71,6 +72,22 @@ public sealed record PrototypeTemporaryCardCost(
     int Cost,
     PrototypeTemporaryCardCostExpiry Expiry);
 
+public sealed record PrototypeCombatCardSnapshot(
+    string CardId,
+    int UpgradeLevel,
+    JsonElement State,
+    int CombatEnergyCostDelta = 0,
+    PrototypeTemporaryCardCost? TemporaryEnergyCost = null)
+{
+    public PrototypeCombatCardSnapshot Fork() => this with
+    {
+        State = State.Clone(),
+        TemporaryEnergyCost = TemporaryEnergyCost is null
+            ? null
+            : TemporaryEnergyCost with { }
+    };
+}
+
 public enum PrototypeCardZone
 {
     Hand,
@@ -81,6 +98,7 @@ public enum PrototypeCardZone
 
 public enum PrototypeCardSelectionResolutionKind
 {
+    Preserve,
     MoveToDiscard,
     MoveToExhaust
 }
@@ -195,6 +213,19 @@ public sealed record PrototypeCardSelectionSpec(
     int MaxSelections,
     PrototypeCardSelectionResolutionKind Resolution);
 
+public sealed record PrototypeSelectedCardPowerSpec(
+    string PowerId,
+    int Amount,
+    int UpgradeDelta = 0)
+{
+    public int AmountAt(int upgradeLevel) =>
+        Amount + (UpgradeDelta * upgradeLevel);
+}
+
+public sealed record PrototypeSelectedCardPowerAction(
+    string PowerId,
+    int Amount);
+
 public sealed record PrototypeCardCostSpec(
     PrototypeCardCostKind Kind,
     int Amount = 0,
@@ -269,7 +300,8 @@ public sealed record PrototypeCombatEffectSpec(
     PrototypeCombatCountKind? CountKind = null,
     int AmountPerCount = 0,
     int RepetitionsPerCount = 0,
-    int AmountPerCountUpgradeDelta = 0)
+    int AmountPerCountUpgradeDelta = 0,
+    PrototypeSelectedCardPowerSpec? SelectedCardPower = null)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -294,7 +326,9 @@ public sealed record PrototypeQueuedOperation(
     PrototypeEffectTarget TargetMode = PrototypeEffectTarget.ActionTargetEnemy,
     PrototypeEffectSourceKind SourceKind = PrototypeEffectSourceKind.System,
     bool IsPoweredAttack = false,
-    PrototypeCombatPredicateSpec? Condition = null);
+    PrototypeCombatPredicateSpec? Condition = null,
+    PrototypeSelectedCardPowerAction? SelectedCardPower = null,
+    PrototypeCombatCardSnapshot? PowerCardPayload = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -344,7 +378,8 @@ public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEffectSpec[] Effects,
     bool RequiresOwnerTarget = false,
     bool ExcludeHandDraw = false,
-    bool RequiresPlayerTurn = false);
+    bool RequiresPlayerTurn = false,
+    bool RemoveSourcePowerAfterTrigger = false);
 
 public sealed record PrototypePowerDefinition(
     string Id,
@@ -370,12 +405,21 @@ public sealed record PrototypePowerDefinition(
     int AttackDamageBonusPerStack = 0,
     PrototypeCardType? ReplayCardType = null,
     int AdditionalPlayCount = 0,
-    bool ConsumeOnMatchingPlayCountModification = false);
+    bool ConsumeOnMatchingPlayCountModification = false,
+    bool IsInstanced = false,
+    bool RequiresCardPayload = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
     int Stacks,
-    long ApplicationOrder);
+    long ApplicationOrder,
+    PrototypeCombatCardSnapshot? CardPayload = null)
+{
+    public PrototypePowerInstanceState Fork() => this with
+    {
+        CardPayload = CardPayload?.Fork()
+    };
+}
 
 public enum PrototypeEnemyEffectKind
 {
@@ -526,7 +570,7 @@ public sealed record EnemyCombatState(
         Statuses = new Dictionary<string, int>(Statuses, StringComparer.Ordinal),
         Powers = Powers is null
             ? null
-            : (PrototypePowerInstanceState[])Powers.Clone()
+            : Powers.Select(power => power.Fork()).ToArray()
     };
 
     public PrototypePowerInstanceState[] PowerStates =>
@@ -588,7 +632,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeCombatEvent[] CompletionEvents,
     PrototypeCardPlaySeriesState? CardPlaySeries = null,
     bool MoveSourceCardOnCompletion = true,
-    bool RemoveSourceCardOnCompletion = false)
+    bool RemoveSourceCardOnCompletion = false,
+    PrototypeSelectedCardPowerAction? SelectedCardPower = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -631,7 +676,7 @@ public sealed record CombatState(
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
-        PlayerPowers = (PrototypePowerInstanceState[])PlayerPowers.Clone(),
+        PlayerPowers = PlayerPowers.Select(power => power.Fork()).ToArray(),
         Relics = Relics is null
             ? null
             : Relics.Select(relic => relic.Fork()).ToArray(),

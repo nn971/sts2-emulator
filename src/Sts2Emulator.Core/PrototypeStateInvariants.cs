@@ -396,15 +396,31 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException($"{owner} power stacks must stay positive.");
         }
 
-        if (powers.Select(power => power.PowerId).Distinct(StringComparer.Ordinal).Count()
-            != powers.Length)
+        foreach (var group in powers.GroupBy(
+                     power => power.PowerId,
+                     StringComparer.Ordinal))
         {
-            throw new InvalidOperationException($"{owner} power IDs must be unique after stacking.");
+            var definition = PrototypeContent.Power(group.Key);
+            if (!definition.IsInstanced && group.Count() > 1)
+            {
+                throw new InvalidOperationException(
+                    $"{owner} stacking power '{group.Key}' occurs more than once.");
+            }
         }
 
         foreach (var power in powers)
         {
-            _ = PrototypeContent.Power(power.PowerId);
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.RequiresCardPayload != (power.CardPayload is not null))
+            {
+                throw new InvalidOperationException(
+                    $"{owner} power '{power.PowerId}' has invalid card-payload state.");
+            }
+
+            if (power.CardPayload is not null)
+            {
+                _ = PrototypeContent.Card(power.CardPayload.CardId);
+            }
         }
     }
 

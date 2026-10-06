@@ -272,6 +272,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "no_additional_draw",
             "preserve_block_next_turn",
             "turn_start_draw_discard",
+            "delayed_selected_card_copies",
             "react_on_card_draw",
             "damage",
             "block",
@@ -580,7 +581,11 @@ public static partial class ReferenceMechanicsGapAnalyzer
             features.Add("transform_card");
         }
 
-        if (CopyRegex().IsMatch(description))
+        if (DelayedSelectedCardCopiesRegex().IsMatch(description))
+        {
+            features.Add("delayed_selected_card_copies");
+        }
+        else if (CopyRegex().IsMatch(description))
         {
             features.Add("copy_card");
         }
@@ -1072,6 +1077,11 @@ public static partial class ReferenceMechanicsGapAnalyzer
 
     [GeneratedRegex(@"\btransform\b", RegexOptions.IgnoreCase)]
     private static partial Regex TransformRegex();
+
+    [GeneratedRegex(
+        @"choose\s+a\s+card.*next\s+turn.*add\s+\d+\s+copies?.*hand",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex DelayedSelectedCardCopiesRegex();
 
     [GeneratedRegex(
         @"\bcopy\b|\bcopies\b|\bduplicat",
