@@ -261,6 +261,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "target_self",
             "target_enemy",
             "target_all_enemies",
+            "random_target",
             "damage",
             "block",
             "draw",
@@ -573,7 +574,10 @@ public static partial class ReferenceMechanicsGapAnalyzer
             features.Add("copy_card");
         }
 
-        if (RandomRegex().IsMatch(description))
+        if (RandomRegex().IsMatch(description)
+            && !StringComparer.Ordinal.Equals(
+                GetString(card, "target"),
+                "RandomEnemy"))
         {
             features.Add("random_effect");
         }
