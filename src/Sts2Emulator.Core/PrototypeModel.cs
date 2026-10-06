@@ -571,7 +571,8 @@ public sealed record PrototypeCardPlaySeriesState(
     int? TargetEnemyId,
     int EnergySpent,
     int PlayCount,
-    int NextPlayIndex)
+    int NextPlayIndex,
+    bool RemoveSourceCardOnCompletion = false)
 {
     public bool HasRemainingExecutions => NextPlayIndex < PlayCount;
 }
@@ -585,7 +586,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeQueuedOperation[] Continuation,
     PrototypeCombatEvent[] CompletionEvents,
     PrototypeCardPlaySeriesState? CardPlaySeries = null,
-    bool MoveSourceCardOnCompletion = true)
+    bool MoveSourceCardOnCompletion = true,
+    bool RemoveSourceCardOnCompletion = false)
 {
     public PendingCombatChoiceState Fork() => this with
     {
