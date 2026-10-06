@@ -566,7 +566,7 @@ public static class PrototypeContent
         {
             new PrototypeRelicDefinition(
                 "proto.relic.silent_ring",
-                "Silent Ring",
+                "Ring of the Snake",
                 FirstTurnDrawBonus: 2),
             new PrototypeRelicDefinition(
                 "proto.relic.lantern",
