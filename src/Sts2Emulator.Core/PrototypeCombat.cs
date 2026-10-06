@@ -56,7 +56,9 @@ public sealed partial class PrototypeGameEngine
             ExhaustPile: Array.Empty<long>(),
             Enemies: enemies,
             NextCardInstanceId: nextCombatCardId,
-            Cards: combatCards);
+            Cards: combatCards,
+            PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
+            NextPowerApplicationOrder: 1);
 
         combat = DrawCards(
             combat,
@@ -278,9 +280,9 @@ public sealed partial class PrototypeGameEngine
         };
         state = state with { World = world with { Combat = combat } };
 
-        foreach (var stage in PrototypeContent.Rules.EnemyTurnSequence)
+        foreach (var automaticStep in PrototypeContent.Rules.EndTurnPipeline)
         {
-            state = ResolveTurnStage(state, stage);
+            state = ResolveAutomaticStep(state, automaticStep);
 
             if (state.Player.Hp <= 0)
             {
@@ -299,34 +301,67 @@ public sealed partial class PrototypeGameEngine
         return state;
     }
 
-    private static RunState ResolveTurnStage(RunState state, PrototypeTurnStage stage)
+    private static RunState ResolveAutomaticStep(
+        RunState state,
+        PrototypeAutomaticStep automaticStep)
     {
         var world = RequireWorld(state);
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
         var player = state.Player;
 
-        if (stage is PrototypeTurnStage.EnemyTurnStart or PrototypeTurnStage.EnemyTurnEnd)
+        switch (automaticStep.Kind)
         {
-            combat = ResolveEnemyStatusStage(combat, stage);
-        }
+            case PrototypeAutomaticStepKind.DispatchEnemyStatusStage:
+                if (automaticStep.Stage is null)
+                {
+                    throw new InvalidOperationException("Enemy-status pipeline step is missing a stage.");
+                }
 
-        if (stage == PrototypeTurnStage.EnemyAction)
-        {
-            var result = ResolveEnemyActions(player, combat, world.Act);
-            player = result.Player;
-            combat = result.Combat;
-        }
+                combat = ResolveEnemyStatusStage(combat, automaticStep.Stage.Value);
+                break;
 
-        if (stage == PrototypeTurnStage.PlayerTurnStart)
-        {
-            combat = combat with
+            case PrototypeAutomaticStepKind.ResolveEnemyActions:
             {
-                Turn = combat.Turn + 1,
-                Energy = EnergyPerTurn(player),
-                PlayerBlock = 0
-            };
-            combat = DrawCards(combat, PrototypeContent.Rules.HandSize, state.Rng);
+                var result = ResolveEnemyActions(player, combat, world.Act);
+                player = result.Player;
+                combat = result.Combat;
+                break;
+            }
+
+            case PrototypeAutomaticStepKind.AdvanceTurn:
+                combat = combat with { Turn = combat.Turn + 1 };
+                break;
+
+            case PrototypeAutomaticStepKind.ResetPlayerBlock:
+                combat = combat with { PlayerBlock = 0 };
+                break;
+
+            case PrototypeAutomaticStepKind.RefreshPlayerEnergy:
+                combat = combat with { Energy = EnergyPerTurn(player) };
+                break;
+
+            case PrototypeAutomaticStepKind.DispatchPlayerPowerStage:
+                if (automaticStep.Stage is null)
+                {
+                    throw new InvalidOperationException("Player-power pipeline step is missing a stage.");
+                }
+
+                var triggered = ResolvePlayerPowerTriggers(
+                    player,
+                    combat,
+                    automaticStep.Stage.Value,
+                    state.Rng);
+                player = triggered.Player;
+                combat = triggered.Combat;
+                break;
+
+            case PrototypeAutomaticStepKind.DrawPlayerHand:
+                combat = DrawCards(combat, PrototypeContent.Rules.HandSize, state.Rng);
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
         }
 
         return state with
@@ -446,9 +481,11 @@ public sealed partial class PrototypeGameEngine
         int upgradeLevel,
         int energySpent,
         int? actionTargetEnemyId,
-        CombatState combat)
+        CombatState combat,
+        int powerStacks = 0)
     {
-        var repetitions = effect.RepetitionsAt(upgradeLevel, energySpent);
+        var repetitions = effect.RepetitionsAt(upgradeLevel, energySpent)
+            + (effect.RepetitionsPerPowerStack * powerStacks);
         if (repetitions <= 0)
         {
             return;
@@ -475,11 +512,13 @@ public sealed partial class PrototypeGameEngine
             {
                 operations.Enqueue(new PrototypeQueuedOperation(
                     effect.Kind,
-                    effect.AmountAt(upgradeLevel, energySpent),
+                    effect.AmountAt(upgradeLevel, energySpent)
+                        + (effect.AmountPerPowerStack * powerStacks),
                     targetEnemyId,
                     effect.StatusId,
                     effect.Selection,
-                    effect.CardId));
+                    effect.CardId,
+                    effect.PowerId));
             }
         }
     }
@@ -509,7 +548,9 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeCombatEffectKind.GainPlayerBlock:
                     combat = combat with
                     {
-                        PlayerBlock = combat.PlayerBlock + operation.Amount
+                        PlayerBlock = combat.PlayerBlock
+                            + operation.Amount
+                            + PlayerBlockBonus(combat)
                     };
                     break;
 
@@ -559,6 +600,15 @@ public sealed partial class PrototypeGameEngine
                     return (player, combat);
                 }
 
+                case PrototypeCombatEffectKind.ApplyPlayerPower:
+                    if (operation.PowerId is null)
+                    {
+                        throw new InvalidOperationException("Apply-power operation is missing a power ID.");
+                    }
+
+                    combat = ApplyPlayerPower(combat, operation.PowerId, operation.Amount);
+                    break;
+
                 case PrototypeCombatEffectKind.CreateCardsInHand:
                 {
                     if (operation.CardId is null)
@@ -604,6 +654,89 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    private static int PlayerBlockBonus(CombatState combat) =>
+        combat.PlayerPowers.Sum(power =>
+            PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
+
+    private static CombatState ApplyPlayerPower(
+        CombatState combat,
+        string powerId,
+        int stacks)
+    {
+        _ = PrototypeContent.Power(powerId);
+        var powers = combat.PlayerPowers.ToList();
+        var index = powers.FindIndex(power =>
+            StringComparer.Ordinal.Equals(power.PowerId, powerId));
+
+        if (index >= 0)
+        {
+            var nextStacks = powers[index].Stacks + stacks;
+            if (nextStacks <= 0)
+            {
+                powers.RemoveAt(index);
+            }
+            else
+            {
+                powers[index] = powers[index] with { Stacks = nextStacks };
+            }
+
+            return combat with { PlayerPowers = powers.ToArray() };
+        }
+
+        if (stacks <= 0)
+        {
+            return combat;
+        }
+
+        powers.Add(new PrototypePowerInstanceState(
+            powerId,
+            stacks,
+            combat.NextPowerApplicationOrder));
+
+        return combat with
+        {
+            PlayerPowers = powers.ToArray(),
+            NextPowerApplicationOrder = combat.NextPowerApplicationOrder + 1
+        };
+    }
+
+    private static (PlayerState Player, CombatState Combat) ResolvePlayerPowerTriggers(
+        PlayerState player,
+        CombatState combat,
+        PrototypeTurnStage stage,
+        RngBundle rng)
+    {
+        var operations = new Queue<PrototypeQueuedOperation>();
+
+        foreach (var power in combat.PlayerPowers.OrderBy(power => power.ApplicationOrder))
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            foreach (var trigger in definition.Triggers.Where(trigger => trigger.Stage == stage))
+            {
+                foreach (var effect in trigger.Effects)
+                {
+                    EnqueueEffectOperations(
+                        operations,
+                        effect,
+                        upgradeLevel: 0,
+                        energySpent: 0,
+                        actionTargetEnemyId: null,
+                        combat,
+                        powerStacks: power.Stacks);
+                }
+            }
+        }
+
+        var resolved = ResolveOperations(player, combat, operations, rng);
+        if (resolved.Combat.PendingChoice is not null)
+        {
+            throw new NotSupportedException(
+                "Automatic power triggers that request player choices are not supported yet.");
+        }
+
+        return resolved;
     }
 
     private static IReadOnlyList<GameAction> GetPendingChoiceActions(
