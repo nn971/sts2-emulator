@@ -1454,7 +1454,8 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 var definition = PrototypeContent.Card(card.CardId);
-                if (definition.Cost.Kind == PrototypeCardCostKind.X)
+                if (definition.Cost.Kind == PrototypeCardCostKind.X
+                    || definition.Cost.Amount < 0)
                 {
                     return card;
                 }
