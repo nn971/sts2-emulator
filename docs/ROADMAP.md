@@ -71,8 +71,8 @@ central dispatch branches.
 
 ## Milestone 4 — native-data and fidelity convergence
 
-- [ ] pin a reference STS2 build — `reference-preflight` now produces a stable fingerprint from the local install; repository still needs an actual captured target build
-- [ ] native reference bridge — v0.2 native-neutral trace contract, installed-build fingerprinting, metadata inspector, and local build-pinned workspace are in place; no game hooks until the installed build is audited
+- [x] pin a reference STS2 build — v0.111.0 / 41cef1ea, fingerprint `3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`
+- [ ] native reference bridge — first build-pinned passive combat recorder implemented; live in-game capture/validation still required
 - [ ] real content-data translation/import where appropriate
 - [ ] native RNG stream inventory/codecs
 - [ ] native timing/trigger semantics
