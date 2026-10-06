@@ -65,6 +65,7 @@ public static class PrototypeStateInvariants
         }
 
         ValidateEncounterHistory(world);
+        ValidateEventHistory(world);
         ValidatePhaseState(state, world);
 
         if (world.Combat is not null)
@@ -122,6 +123,8 @@ public static class PrototypeStateInvariants
                 {
                     throw new InvalidOperationException("Shop phase has no shop state.");
                 }
+
+                ValidateShop(world.Shop);
                 break;
 
             case RunPhase.Event:
@@ -140,6 +143,99 @@ public static class PrototypeStateInvariants
 
             default:
                 throw new InvalidOperationException($"Unexpected initialized prototype phase {state.Phase}.");
+        }
+    }
+
+    private static void ValidateEventHistory(RunWorldState world)
+    {
+        foreach (var eventId in world.EventIds)
+        {
+            if (!PrototypeContent.Events.ContainsKey(eventId))
+            {
+                throw new InvalidOperationException(
+                    $"Event history contains unknown event '{eventId}'.");
+            }
+        }
+
+        foreach (var group in world.EventIds.GroupBy(id => id, StringComparer.Ordinal))
+        {
+            var definition = PrototypeContent.Event(group.Key);
+            if (definition.OncePerRun && group.Count() > 1)
+            {
+                throw new InvalidOperationException(
+                    $"Once-per-run event '{group.Key}' appears multiple times.");
+            }
+        }
+
+        if (world.Event is null)
+        {
+            return;
+        }
+
+        var active = PrototypeContent.Event(world.Event.EventId);
+        if (world.Act < active.MinAct || world.Act > active.MaxAct || active.Weight <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Event '{active.Id}' is ineligible in act {world.Act}.");
+        }
+
+        if (world.Map.Nodes.Length > 0)
+        {
+            var latest = world.EventIds.LastOrDefault()
+                ?? throw new InvalidOperationException(
+                    "Map-generated active event has no event-history entry.");
+            if (!StringComparer.Ordinal.Equals(latest, active.Id))
+            {
+                throw new InvalidOperationException(
+                    "Active event disagrees with the latest event-history entry.");
+            }
+        }
+    }
+
+    private static void ValidateShop(ShopState shop)
+    {
+        if (shop.RemovalPrice <= 0)
+        {
+            throw new InvalidOperationException("Shop removal price must be positive.");
+        }
+
+        var offerIds = shop.CardOffers
+            .Select(offer => offer.OfferId)
+            .Concat(shop.PotionOffer is null ? [] : [shop.PotionOffer.OfferId])
+            .Concat(shop.RelicOffer is null ? [] : [shop.RelicOffer.OfferId])
+            .ToArray();
+
+        if (offerIds.Length != offerIds.Distinct().Count())
+        {
+            throw new InvalidOperationException("Shop offer IDs are duplicated.");
+        }
+
+        foreach (var offer in shop.CardOffers)
+        {
+            if (offer.Price <= 0
+                || !PrototypeContent.RewardCardPool.Contains(
+                    offer.ItemId,
+                    StringComparer.Ordinal)
+                || PrototypeContent.Card(offer.ItemId).Rarity == PrototypeCardRarity.Basic)
+            {
+                throw new InvalidOperationException("Shop contains an invalid card offer.");
+            }
+        }
+
+        if (shop.PotionOffer is { } potion)
+        {
+            if (potion.Price <= 0 || !PrototypeContent.Potions.ContainsKey(potion.ItemId))
+            {
+                throw new InvalidOperationException("Shop contains an invalid potion offer.");
+            }
+        }
+
+        if (shop.RelicOffer is { } relic)
+        {
+            if (relic.Price <= 0 || !PrototypeContent.Relics.ContainsKey(relic.ItemId))
+            {
+                throw new InvalidOperationException("Shop contains an invalid relic offer.");
+            }
         }
     }
 
