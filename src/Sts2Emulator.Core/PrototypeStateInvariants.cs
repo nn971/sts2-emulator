@@ -447,6 +447,23 @@ public static class PrototypeStateInvariants
                 throw new InvalidOperationException("Map node has an invalid floor.");
             }
 
+            var matchingRules = PrototypeContent.Rules.MapFloorRules
+                .Where(rule =>
+                    node.Floor >= rule.MinFloor
+                    && node.Floor <= rule.MaxFloor)
+                .ToArray();
+            if (matchingRules.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Floor {node.Floor} must be covered by exactly one map rule.");
+            }
+
+            if (!matchingRules[0].RoomPool.Contains(node.RoomType))
+            {
+                throw new InvalidOperationException(
+                    $"Room {node.RoomType} is not allowed on floor {node.Floor}.");
+            }
+
             foreach (var nextId in node.NextNodeIds ?? Array.Empty<string>())
             {
                 if (!nodesById.TryGetValue(nextId, out var next))
@@ -457,6 +474,33 @@ public static class PrototypeStateInvariants
                 if (next.Floor != node.Floor + 1)
                 {
                     throw new InvalidOperationException("Map edge must advance exactly one floor.");
+                }
+            }
+        }
+
+        foreach (var floorGroup in map.Nodes.GroupBy(node => node.Floor))
+        {
+            var matchingRules = PrototypeContent.Rules.MapFloorRules
+                .Where(rule =>
+                    floorGroup.Key >= rule.MinFloor
+                    && floorGroup.Key <= rule.MaxFloor)
+                .ToArray();
+            if (matchingRules.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Floor {floorGroup.Key} must be covered by exactly one map rule.");
+            }
+
+            if (!matchingRules[0].AllowDuplicateSpecialRooms)
+            {
+                var duplicateSpecial = floorGroup
+                    .Where(node => node.RoomType != PrototypeRoomType.Combat)
+                    .GroupBy(node => node.RoomType)
+                    .FirstOrDefault(group => group.Count() > 1);
+                if (duplicateSpecial is not null)
+                {
+                    throw new InvalidOperationException(
+                        $"Floor {floorGroup.Key} duplicates special room {duplicateSpecial.Key}.");
                 }
             }
         }
