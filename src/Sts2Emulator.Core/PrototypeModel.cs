@@ -177,23 +177,32 @@ public sealed record PrototypeCardSelectionSpec(
 
 public sealed record PrototypeCardCostSpec(
     PrototypeCardCostKind Kind,
-    int Amount = 0)
+    int Amount = 0,
+    int UpgradeDelta = 0)
 {
     public static implicit operator PrototypeCardCostSpec(int fixedCost) =>
         new(PrototypeCardCostKind.Fixed, fixedCost);
 
-    public bool IsPlayable(int availableEnergy) =>
+    public int AmountAt(int upgradeLevel) =>
+        Amount + (UpgradeDelta * upgradeLevel);
+
+    public bool IsPlayable(
+        int availableEnergy,
+        int upgradeLevel = 0) =>
         Kind switch
         {
-            PrototypeCardCostKind.Fixed => Amount <= availableEnergy,
+            PrototypeCardCostKind.Fixed =>
+                AmountAt(upgradeLevel) <= availableEnergy,
             PrototypeCardCostKind.X => true,
             _ => throw new ArgumentOutOfRangeException()
         };
 
-    public int ResolveEnergySpent(int availableEnergy) =>
+    public int ResolveEnergySpent(
+        int availableEnergy,
+        int upgradeLevel = 0) =>
         Kind switch
         {
-            PrototypeCardCostKind.Fixed => Amount,
+            PrototypeCardCostKind.Fixed => AmountAt(upgradeLevel),
             PrototypeCardCostKind.X => availableEnergy,
             _ => throw new ArgumentOutOfRangeException()
         };
@@ -219,7 +228,8 @@ public sealed record PrototypeCombatEffectSpec(
     PrototypeCombatPredicateSpec? Condition = null,
     PrototypeCombatCountKind? CountKind = null,
     int AmountPerCount = 0,
-    int RepetitionsPerCount = 0)
+    int RepetitionsPerCount = 0,
+    int AmountPerCountUpgradeDelta = 0)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
