@@ -533,6 +533,38 @@ public static class PrototypeContent
                 ],
                 Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
+                "proto.silent.finisher",
+                "Finisher",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        6,
+                        2,
+                        Repetitions: 0,
+                        CountKind: PrototypeCombatCountKind.AttacksPlayedThisTurn,
+                        RepetitionsPerCount: 1)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
+                "proto.silent.flechettes",
+                "Flechettes",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        5,
+                        2,
+                        Repetitions: 0,
+                        CountKind: PrototypeCombatCountKind.SkillsInHand,
+                        RepetitionsPerCount: 1)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
                 "proto.silent.bubble_bubble",
                 "Bubble Bubble",
                 1,
