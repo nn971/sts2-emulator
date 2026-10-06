@@ -936,7 +936,7 @@ public sealed partial class PrototypeGameEngine
                     .Select(trigger => (power, trigger, (int?)null)));
         }
 
-        foreach (var enemy in combat.Enemies.Where(enemy => enemy.Hp > 0))
+        foreach (var enemy in combat.Enemies)
         {
             foreach (var power in enemy.PowerStates)
             {
@@ -946,7 +946,10 @@ public sealed partial class PrototypeGameEngine
                         .Where(trigger =>
                             trigger.EventKind == combatEvent.Kind
                             && (!trigger.RequiresOwnerTarget
-                                || combatEvent.TargetEnemyId == enemy.InstanceId))
+                                || combatEvent.TargetEnemyId == enemy.InstanceId)
+                            && (enemy.Hp > 0
+                                || (trigger.RequiresOwnerTarget
+                                    && combatEvent.TargetEnemyId == enemy.InstanceId)))
                         .Select(trigger => (power, trigger, (int?)enemy.InstanceId)));
             }
         }
