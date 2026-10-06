@@ -29,7 +29,7 @@ public sealed class ReferenceCorpusTests
                 summary.Tables,
                 table => table.Kind == "cards");
 
-            Assert.Equal(11, cards.Count);
+            Assert.Equal(12, cards.Count);
             Assert.Contains("description", cards.Fields);
             Assert.Contains("target", cards.Fields);
         }
@@ -49,9 +49,9 @@ public sealed class ReferenceCorpusTests
             var report = ReferenceMechanicsGapAnalyzer.Analyze(
                 ReferenceCorpus.Open(root));
 
-            Assert.Equal(11, report.NativeSilentCardCount);
-            Assert.Equal(10, report.NameMatchedCardCount);
-            Assert.Equal(10, report.StructuredFieldMatchCount);
+            Assert.Equal(12, report.NativeSilentCardCount);
+            Assert.Equal(11, report.NameMatchedCardCount);
+            Assert.Equal(11, report.StructuredFieldMatchCount);
             Assert.Equal(1, report.MissingNativeCardCount);
 
             var mystery = Assert.Single(
@@ -144,6 +144,19 @@ public sealed class ReferenceCorpusTests
             Assert.DoesNotContain(
                 "cost_mutation",
                 upMySleeve.RequiredFeatures);
+
+            var burst = Assert.Single(
+                report.Cards,
+                card => card.NativeId == "BURST");
+            Assert.Contains(
+                "next_skill_replay",
+                burst.RequiredFeatures);
+            Assert.DoesNotContain(
+                "next_skill_replay",
+                burst.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "replay",
+                burst.RequiredFeatures);
 
             var bulletTime = Assert.Single(
                 report.Cards,
@@ -408,6 +421,29 @@ public sealed class ReferenceCorpusTests
                 "keywords":null,
                 "spawns_cards":["SHIV"],
                 "upgrade":{"cards":"+1"}
+              },
+              {
+                "id":"BURST",
+                "name":"Burst",
+                "description":"This turn, your next Skill is played an extra time.",
+                "cost":1,
+                "is_x_cost":null,
+                "is_x_star_cost":null,
+                "star_cost":null,
+                "type":"Skill",
+                "rarity":"Rare",
+                "target":"Self",
+                "color":"silent",
+                "damage":null,
+                "block":null,
+                "hit_count":null,
+                "powers_applied":null,
+                "cards_draw":null,
+                "energy_gain":null,
+                "hp_loss":null,
+                "keywords":null,
+                "spawns_cards":null,
+                "upgrade":{"skills":"+1"}
               },
               {
                 "id":"BULLET_TIME",
