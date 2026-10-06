@@ -30,7 +30,8 @@ public sealed class ReferenceSourceSearchTests
 
             var result = ReferenceSourceSearch.Search(
                 root,
-                "sly");
+                "sly",
+                contextLines: 1);
 
             Assert.Equal(2, result.FilesScanned);
             var match = Assert.Single(result.Matches);
@@ -41,6 +42,13 @@ public sealed class ReferenceSourceSearchTests
             Assert.Equal(
                 "public static void ResolveSly() { }",
                 match.Line);
+            Assert.NotNull(match.Context);
+            Assert.Equal(3, match.Context.Count);
+            Assert.Contains(
+                match.Context,
+                line => line.IsMatch
+                    && line.LineNumber == 4
+                    && line.Line.Contains("ResolveSly", StringComparison.Ordinal));
         }
         finally
         {
