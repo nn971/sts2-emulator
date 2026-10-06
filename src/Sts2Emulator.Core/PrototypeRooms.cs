@@ -144,7 +144,7 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeRunEffectKind.LoseHp:
-                    player = player with { Hp = player.Hp - effect.Amount };
+                    player = player with { Hp = Math.Max(0, player.Hp - effect.Amount) };
                     break;
 
                 case PrototypeRunEffectKind.GainGold:
