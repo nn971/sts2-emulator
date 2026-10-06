@@ -29,7 +29,7 @@ public sealed class ReferenceCorpusTests
                 summary.Tables,
                 table => table.Kind == "cards");
 
-            Assert.Equal(12, cards.Count);
+            Assert.Equal(13, cards.Count);
             Assert.Contains("description", cards.Fields);
             Assert.Contains("target", cards.Fields);
         }
@@ -49,9 +49,9 @@ public sealed class ReferenceCorpusTests
             var report = ReferenceMechanicsGapAnalyzer.Analyze(
                 ReferenceCorpus.Open(root));
 
-            Assert.Equal(12, report.NativeSilentCardCount);
-            Assert.Equal(11, report.NameMatchedCardCount);
-            Assert.Equal(11, report.StructuredFieldMatchCount);
+            Assert.Equal(13, report.NativeSilentCardCount);
+            Assert.Equal(12, report.NameMatchedCardCount);
+            Assert.Equal(12, report.StructuredFieldMatchCount);
             Assert.Equal(1, report.MissingNativeCardCount);
 
             var mystery = Assert.Single(
@@ -144,6 +144,19 @@ public sealed class ReferenceCorpusTests
             Assert.DoesNotContain(
                 "cost_mutation",
                 upMySleeve.RequiredFeatures);
+
+            var tools = Assert.Single(
+                report.Cards,
+                card => card.NativeId == "TOOLS_OF_THE_TRADE");
+            Assert.Contains(
+                "turn_start_draw_discard",
+                tools.RequiredFeatures);
+            Assert.DoesNotContain(
+                "turn_start_draw_discard",
+                tools.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "conditional_effect",
+                tools.RequiredFeatures);
 
             var burst = Assert.Single(
                 report.Cards,
@@ -421,6 +434,29 @@ public sealed class ReferenceCorpusTests
                 "keywords":null,
                 "spawns_cards":["SHIV"],
                 "upgrade":{"cards":"+1"}
+              },
+              {
+                "id":"TOOLS_OF_THE_TRADE",
+                "name":"Tools of the Trade",
+                "description":"At the start of your turn, draw 1 card and discard 1 card.",
+                "cost":1,
+                "is_x_cost":null,
+                "is_x_star_cost":null,
+                "star_cost":null,
+                "type":"Power",
+                "rarity":"Rare",
+                "target":"Self",
+                "color":"silent",
+                "damage":null,
+                "block":null,
+                "hit_count":null,
+                "powers_applied":null,
+                "cards_draw":null,
+                "energy_gain":null,
+                "hp_loss":null,
+                "keywords":null,
+                "spawns_cards":null,
+                "upgrade":{"cost":0}
               },
               {
                 "id":"BURST",
