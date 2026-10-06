@@ -211,6 +211,132 @@ public sealed class PrototypePowerTests
 
 
     [Fact]
+    public void DexterityOnlyModifiesCardSourcedBlock()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var player = new PlayerState(
+            70,
+            70,
+            0,
+            [
+                new CardInstance(75, "proto.silent.strike", 0, empty),
+                new CardInstance(76, "proto.silent.defend", 0, empty)
+            ],
+            Array.Empty<RelicInstance>(),
+            new PotionInstance?[PrototypeContent.Rules.PotionSlots]);
+
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [1, 2],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies:
+            [
+                new EnemyCombatState(
+                    1,
+                    "proto.enemy.crawler",
+                    24,
+                    0,
+                    0,
+                    new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 3,
+            Cards:
+            [
+                new CombatCardInstance(1, 75, "proto.silent.strike", 0, false, empty),
+                new CombatCardInstance(2, 76, "proto.silent.defend", 0, false, empty)
+            ],
+            PlayerPowers:
+            [
+                new PrototypePowerInstanceState("proto.power.dexterity", 2, 1),
+                new PrototypePowerInstanceState("proto.power.afterimage", 1, 2)
+            ],
+            NextPowerApplicationOrder: 3);
+
+        var state = CreateState("dex-provenance-test", player, combat, 77);
+        var engine = new PrototypeGameEngine();
+
+        var strike = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1
+                && action.ReadPayload<PlayCardPayload>().TargetEnemyId == 1);
+        state = engine.Step(state, strike).State;
+
+        Assert.Equal(1, state.World!.Combat!.PlayerBlock);
+
+        var defend = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 2);
+        state = engine.Step(state, defend).State;
+
+        Assert.Equal(8, state.World!.Combat!.PlayerBlock);
+    }
+
+    [Fact]
+    public void AbrasiveThornsRetaliatesBeforeDamageAndStopsLaterHits()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var player = new PlayerState(
+            70,
+            70,
+            0,
+            [new CardInstance(78, "proto.silent.abrasive", 0, empty)],
+            Array.Empty<RelicInstance>(),
+            new PotionInstance?[PrototypeContent.Rules.PotionSlots]);
+
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [1],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies:
+            [
+                new EnemyCombatState(
+                    1,
+                    "proto.enemy.elite",
+                    4,
+                    0,
+                    0,
+                    new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 2,
+            Cards:
+            [
+                new CombatCardInstance(1, 78, "proto.silent.abrasive", 0, false, empty)
+            ],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1);
+
+        var state = CreateState("abrasive-thorns-test", player, combat, 79);
+        var engine = new PrototypeGameEngine();
+
+        var abrasive = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "play_card");
+        state = engine.Step(state, abrasive).State;
+
+        var powers = state.World!.Combat!.PlayerPowers;
+        Assert.Equal(
+            1,
+            powers.Single(power => power.PowerId == "proto.power.dexterity").Stacks);
+        Assert.Equal(
+            4,
+            powers.Single(power => power.PowerId == "proto.power.thorns").Stacks);
+
+        state = engine.Step(state, GameAction.Empty("end_turn")).State;
+
+        Assert.Equal(RunPhase.Reward, state.Phase);
+        Assert.Equal(59, state.Player.Hp);
+    }
+
+    [Fact]
     public void EnemyDamagedEventCarriesTargetIntoReactivePower()
     {
         var empty = PrototypeJson.EmptyObject();
@@ -304,7 +430,7 @@ public sealed class PrototypePowerTests
                     [
                         new PrototypePowerInstanceState(
                             "proto.power.thorns",
-                            1,
+                            2,
                             1)
                     ]),
                 new EnemyCombatState(
