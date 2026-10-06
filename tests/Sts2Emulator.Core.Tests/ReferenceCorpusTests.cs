@@ -29,7 +29,7 @@ public sealed class ReferenceCorpusTests
                 summary.Tables,
                 table => table.Kind == "cards");
 
-            Assert.Equal(10, cards.Count);
+            Assert.Equal(11, cards.Count);
             Assert.Contains("description", cards.Fields);
             Assert.Contains("target", cards.Fields);
         }
@@ -49,9 +49,9 @@ public sealed class ReferenceCorpusTests
             var report = ReferenceMechanicsGapAnalyzer.Analyze(
                 ReferenceCorpus.Open(root));
 
-            Assert.Equal(10, report.NativeSilentCardCount);
-            Assert.Equal(9, report.NameMatchedCardCount);
-            Assert.Equal(9, report.StructuredFieldMatchCount);
+            Assert.Equal(11, report.NativeSilentCardCount);
+            Assert.Equal(10, report.NameMatchedCardCount);
+            Assert.Equal(10, report.StructuredFieldMatchCount);
             Assert.Equal(1, report.MissingNativeCardCount);
 
             var mystery = Assert.Single(
@@ -144,6 +144,25 @@ public sealed class ReferenceCorpusTests
             Assert.DoesNotContain(
                 "cost_mutation",
                 upMySleeve.RequiredFeatures);
+
+            var bulletTime = Assert.Single(
+                report.Cards,
+                card => card.NativeId == "BULLET_TIME");
+            Assert.Contains(
+                "hand_cards_free_this_turn",
+                bulletTime.RequiredFeatures);
+            Assert.Contains(
+                "no_additional_draw",
+                bulletTime.RequiredFeatures);
+            Assert.DoesNotContain(
+                "hand_cards_free_this_turn",
+                bulletTime.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "no_additional_draw",
+                bulletTime.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "cost_mutation",
+                bulletTime.RequiredFeatures);
 
             Assert.Empty(report.StartingRunMismatches);
         }
@@ -389,6 +408,29 @@ public sealed class ReferenceCorpusTests
                 "keywords":null,
                 "spawns_cards":["SHIV"],
                 "upgrade":{"cards":"+1"}
+              },
+              {
+                "id":"BULLET_TIME",
+                "name":"Bullet Time",
+                "description":"You cannot draw additional cards this turn. ALL cards in your Hand are free to play this turn.",
+                "cost":3,
+                "is_x_cost":null,
+                "is_x_star_cost":null,
+                "star_cost":null,
+                "type":"Skill",
+                "rarity":"Rare",
+                "target":"Self",
+                "color":"silent",
+                "damage":null,
+                "block":null,
+                "hit_count":null,
+                "powers_applied":null,
+                "cards_draw":null,
+                "energy_gain":null,
+                "hp_loss":null,
+                "keywords":null,
+                "spawns_cards":null,
+                "upgrade":{"cost":2}
               }
             ]
             """);
