@@ -45,13 +45,15 @@ public sealed class ReferenceProbeAuditorTests
 
             Assert.Equal(2, audit.RngShapes.Count);
             var runRng = Assert.Single(
-                audit.RngShapes.Where(shape => shape.Scope == "run"));
+                audit.RngShapes,
+                shape => shape.Scope == "run");
             Assert.Equal("Example.SerializableRunRng", runRng.RuntimeType);
             Assert.Equal(3, runRng.Count);
             Assert.Contains("$.shuffle.state", runRng.PayloadPaths);
 
             var playerRng = Assert.Single(
-                audit.RngShapes.Where(shape => shape.Scope == "player"));
+                audit.RngShapes,
+                shape => shape.Scope == "player");
             Assert.Contains("$.card_rng.state", playerRng.PayloadPaths);
 
             var catalog = Assert.Single(audit.TypeCatalogs);
