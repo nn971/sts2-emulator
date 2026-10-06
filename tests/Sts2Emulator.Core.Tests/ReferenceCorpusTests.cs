@@ -119,6 +119,19 @@ public sealed class ReferenceCorpusTests
                 "cost_mutation",
                 pinpoint.RequiredFeatures);
 
+            var pounce = Assert.Single(
+                report.Cards,
+                card => card.NativeId == "POUNCE");
+            Assert.Contains(
+                "next_skill_free",
+                pounce.RequiredFeatures);
+            Assert.DoesNotContain(
+                "next_skill_free",
+                pounce.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "cost_mutation",
+                pounce.RequiredFeatures);
+
             Assert.Empty(report.StartingRunMismatches);
         }
         finally
@@ -317,6 +330,29 @@ public sealed class ReferenceCorpusTests
                 "keywords":null,
                 "spawns_cards":null,
                 "upgrade":{"damage":"+4"}
+              },
+              {
+                "id":"POUNCE",
+                "name":"Pounce",
+                "description":"Deal 14 damage. The next Skill you play costs 0 [energy:1].",
+                "cost":2,
+                "is_x_cost":null,
+                "is_x_star_cost":null,
+                "star_cost":null,
+                "type":"Attack",
+                "rarity":"Uncommon",
+                "target":"AnyEnemy",
+                "color":"silent",
+                "damage":14,
+                "block":null,
+                "hit_count":null,
+                "powers_applied":null,
+                "cards_draw":null,
+                "energy_gain":null,
+                "hp_loss":null,
+                "keywords":null,
+                "spawns_cards":null,
+                "upgrade":{"damage":"+6"}
               }
             ]
             """);
