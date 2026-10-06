@@ -12,6 +12,14 @@ public enum PrototypeRoomType
     Boss
 }
 
+public enum PrototypeCardRarity
+{
+    Basic,
+    Common,
+    Uncommon,
+    Rare
+}
+
 public enum PrototypeCardTarget
 {
     None,
@@ -190,7 +198,8 @@ public sealed record PrototypeCardDefinition(
     PrototypeCardCostSpec Cost,
     PrototypeCardTarget Target,
     PrototypeCombatEffectSpec[] Effects,
-    bool ExhaustOnUse = false);
+    bool ExhaustOnUse = false,
+    PrototypeCardRarity Rarity = PrototypeCardRarity.Common);
 
 public sealed record PrototypePotionDefinition(
     string Id,
@@ -257,7 +266,12 @@ public sealed record PrototypeEnemyDefinition(
 public sealed record PrototypeEncounterDefinition(
     string Id,
     PrototypeRoomType RoomType,
-    string[] EnemyIds);
+    string[] EnemyIds,
+    int MinAct = 1,
+    int MaxAct = int.MaxValue,
+    int MinFloor = 1,
+    int MaxFloor = int.MaxValue,
+    int Weight = 1);
 
 public sealed record PrototypeStatusDefinition(
     string Id,
@@ -500,7 +514,8 @@ public sealed record RunWorldState(
     RewardState? Reward,
     ShopState? Shop,
     EventState? Event,
-    string? TerminalOutcome)
+    string? TerminalOutcome,
+    string[]? EncounterHistory = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -508,8 +523,14 @@ public sealed record RunWorldState(
         Combat = Combat?.Fork(),
         Reward = Reward?.Fork(),
         Shop = Shop?.Fork(),
-        Event = Event is null ? null : Event with { }
+        Event = Event is null ? null : Event with { },
+        EncounterHistory = EncounterHistory is null
+            ? null
+            : (string[])EncounterHistory.Clone()
     };
+
+    public string[] EncounterIds =>
+        EncounterHistory ?? Array.Empty<string>();
 }
 
 public sealed record ChooseMapNodePayload(string NodeId);
