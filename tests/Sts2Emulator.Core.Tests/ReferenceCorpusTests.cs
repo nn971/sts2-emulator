@@ -29,7 +29,7 @@ public sealed class ReferenceCorpusTests
                 summary.Tables,
                 table => table.Kind == "cards");
 
-            Assert.Equal(5, cards.Count);
+            Assert.Equal(7, cards.Count);
             Assert.Contains("description", cards.Fields);
             Assert.Contains("target", cards.Fields);
         }
@@ -49,9 +49,9 @@ public sealed class ReferenceCorpusTests
             var report = ReferenceMechanicsGapAnalyzer.Analyze(
                 ReferenceCorpus.Open(root));
 
-            Assert.Equal(5, report.NativeSilentCardCount);
-            Assert.Equal(4, report.NameMatchedCardCount);
-            Assert.Equal(4, report.StructuredFieldMatchCount);
+            Assert.Equal(7, report.NativeSilentCardCount);
+            Assert.Equal(6, report.NameMatchedCardCount);
+            Assert.Equal(6, report.StructuredFieldMatchCount);
             Assert.Equal(1, report.MissingNativeCardCount);
 
             var mystery = Assert.Single(
@@ -61,7 +61,7 @@ public sealed class ReferenceCorpusTests
             Assert.Null(mystery.PrototypeId);
             Assert.Contains("choose_generated", mystery.UnsupportedFeatures);
             Assert.Contains("random_effect", mystery.UnsupportedFeatures);
-            Assert.Contains("random_target", mystery.UnsupportedFeatures);
+            Assert.DoesNotContain("random_target", mystery.UnsupportedFeatures);
             Assert.DoesNotContain("retain", mystery.UnsupportedFeatures);
             var retainCoverage = Assert.Single(
                 report.FeatureCoverage,
@@ -79,6 +79,32 @@ public sealed class ReferenceCorpusTests
                 card => card.NativeId == "STRIKE_SILENT");
             Assert.Equal("proto.silent.strike", strike.PrototypeId);
             Assert.Empty(strike.StructuredMismatches);
+
+            var grandFinale = Assert.Single(
+                report.Cards,
+                card => card.NativeId == "GRAND_FINALE");
+            Assert.Contains(
+                "play_condition_draw_pile_empty",
+                grandFinale.RequiredFeatures);
+            Assert.DoesNotContain(
+                "play_condition_draw_pile_empty",
+                grandFinale.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "conditional_effect",
+                grandFinale.RequiredFeatures);
+
+            var bubbleBubble = Assert.Single(
+                report.Cards,
+                card => card.NativeId == "BUBBLE_BUBBLE");
+            Assert.Contains(
+                "condition_target_has_status",
+                bubbleBubble.RequiredFeatures);
+            Assert.DoesNotContain(
+                "condition_target_has_status",
+                bubbleBubble.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "conditional_effect",
+                bubbleBubble.RequiredFeatures);
 
             Assert.Empty(report.StartingRunMismatches);
         }
@@ -209,6 +235,52 @@ public sealed class ReferenceCorpusTests
                 "keywords":["Retain"],
                 "spawns_cards":null,
                 "upgrade":{}
+              },
+              {
+                "id":"GRAND_FINALE",
+                "name":"Grand Finale",
+                "description":"Can only be played if there are no cards in your Draw Pile. Deal 60 damage to ALL enemies.",
+                "cost":0,
+                "is_x_cost":null,
+                "is_x_star_cost":null,
+                "star_cost":null,
+                "type":"Attack",
+                "rarity":"Rare",
+                "target":"AllEnemies",
+                "color":"silent",
+                "damage":60,
+                "block":null,
+                "hit_count":null,
+                "powers_applied":null,
+                "cards_draw":null,
+                "energy_gain":null,
+                "hp_loss":null,
+                "keywords":null,
+                "spawns_cards":null,
+                "upgrade":{"damage":"+15"}
+              },
+              {
+                "id":"BUBBLE_BUBBLE",
+                "name":"Bubble Bubble",
+                "description":"If the enemy has Poison, apply 9 Poison.",
+                "cost":1,
+                "is_x_cost":null,
+                "is_x_star_cost":null,
+                "star_cost":null,
+                "type":"Skill",
+                "rarity":"Uncommon",
+                "target":"AnyEnemy",
+                "color":"silent",
+                "damage":null,
+                "block":null,
+                "hit_count":null,
+                "powers_applied":[{"power":"Poison","amount":9}],
+                "cards_draw":null,
+                "energy_gain":null,
+                "hp_loss":null,
+                "keywords":null,
+                "spawns_cards":null,
+                "upgrade":{"poison":"+3"}
               }
             ]
             """);
