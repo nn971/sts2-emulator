@@ -277,6 +277,21 @@ public static class PrototypeContent
                 ],
                 Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
+                "proto.silent.mirage",
+                "Mirage",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal,
+                        0,
+                        StatusId: "proto.status.poison")
+                ],
+                ExhaustOnUse: true,
+                LoseExhaustOnUpgrade: true,
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.bouncing_flask",
                 "Bouncing Flask",
                 2,
