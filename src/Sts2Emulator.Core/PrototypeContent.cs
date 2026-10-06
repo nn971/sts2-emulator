@@ -133,6 +133,19 @@ public static class PrototypeContent
                         3,
                         1,
                         CardId: "proto.silent.shiv")
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.dagger_spray",
+                "Dagger Spray",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        4,
+                        2,
+                        Target: PrototypeEffectTarget.AllEnemies,
+                        Repetitions: 2)
                 ])
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
@@ -288,7 +301,8 @@ public static class PrototypeContent
         "proto.silent.poisoned_stab",
         "proto.silent.slice",
         "proto.silent.acrobatics",
-        "proto.silent.blade_dance"
+        "proto.silent.blade_dance",
+        "proto.silent.dagger_spray"
     ];
 
     public static string[] PotionPool { get; } = Potions.Keys.Order(StringComparer.Ordinal).ToArray();
