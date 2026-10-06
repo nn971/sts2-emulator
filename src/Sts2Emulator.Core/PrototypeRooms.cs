@@ -336,9 +336,11 @@ public sealed partial class PrototypeGameEngine
         if (!shop.RemovalUsed && shop.RemovalPrice <= state.Player.Gold)
         {
             actions.AddRange(
-                state.Player.Deck.Select(card => GameAction.Create(
-                    "remove_card",
-                    new RemoveCardPayload(card.InstanceId))));
+                state.Player.Deck
+                    .Where(card => !PrototypeContent.Card(card.CardId).Eternal)
+                    .Select(card => GameAction.Create(
+                        "remove_card",
+                        new RemoveCardPayload(card.InstanceId))));
         }
 
         actions.Add(GameAction.Empty("leave_shop"));
@@ -372,10 +374,15 @@ public sealed partial class PrototypeGameEngine
             }
 
             var payload = action.ReadPayload<RemoveCardPayload>();
-            if (!player.Deck.Any(card => card.InstanceId == payload.CardInstanceId))
+            var cardToRemove = player.Deck.FirstOrDefault(
+                card => card.InstanceId == payload.CardInstanceId)
+                ?? throw new InvalidOperationException(
+                    $"Card instance {payload.CardInstanceId} is missing.");
+
+            if (PrototypeContent.Card(cardToRemove.CardId).Eternal)
             {
                 throw new InvalidOperationException(
-                    $"Card instance {payload.CardInstanceId} is missing.");
+                    $"Eternal card {payload.CardInstanceId} cannot be removed from the deck.");
             }
 
             player = player with

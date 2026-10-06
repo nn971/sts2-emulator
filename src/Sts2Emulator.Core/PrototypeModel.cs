@@ -17,7 +17,11 @@ public enum PrototypeCardRarity
     Basic,
     Common,
     Uncommon,
-    Rare
+    Rare,
+    Ancient,
+    Curse,
+    Status,
+    Token
 }
 
 public enum PrototypeCardTarget
@@ -81,6 +85,7 @@ public enum PrototypeCombatEventKind
     PlayerTurnEnded,
     CardPlayed,
     CardDiscarded,
+    CardExhausted,
     EnemyDamaged,
     EnemyDefeated
 }
@@ -208,7 +213,11 @@ public sealed record PrototypeCardDefinition(
     PrototypeCardRarity Rarity = PrototypeCardRarity.Common,
     bool Innate = false,
     bool Retain = false,
-    bool Sly = false);
+    bool Sly = false,
+    bool Ethereal = false,
+    bool Unplayable = false,
+    bool Eternal = false,
+    bool RewardEligible = true);
 
 public sealed record PrototypePotionDefinition(
     string Id,

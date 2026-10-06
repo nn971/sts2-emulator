@@ -194,7 +194,8 @@ public sealed partial class PrototypeGameEngine
         {
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
-            if (!definition.Cost.IsPlayable(combat.Energy))
+            if (definition.Unplayable
+                || !definition.Cost.IsPlayable(combat.Energy))
             {
                 continue;
             }
@@ -278,6 +279,12 @@ public sealed partial class PrototypeGameEngine
 
         var card = RequireCombatCard(combat, payload.CardInstanceId);
         var definition = PrototypeContent.Card(card.CardId);
+        if (definition.Unplayable)
+        {
+            throw new InvalidOperationException(
+                $"Card {payload.CardInstanceId} is unplayable.");
+        }
+
         if (!definition.Cost.IsPlayable(combat.Energy))
         {
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is unaffordable.");
@@ -451,21 +458,47 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.DiscardPlayerHand:
             {
-                var retained = combat.Hand
+                var ethereal = combat.Hand
                     .Where(instanceId =>
                         PrototypeContent.Card(
+                            RequireCombatCard(combat, instanceId).CardId).Ethereal)
+                    .ToArray();
+                var etherealSet = ethereal.ToHashSet();
+                var retained = combat.Hand
+                    .Where(instanceId =>
+                        !etherealSet.Contains(instanceId)
+                        && PrototypeContent.Card(
                             RequireCombatCard(combat, instanceId).CardId).Retain)
                     .ToArray();
                 var retainedSet = retained.ToHashSet();
                 var discarded = combat.Hand
-                    .Where(instanceId => !retainedSet.Contains(instanceId))
+                    .Where(instanceId =>
+                        !etherealSet.Contains(instanceId)
+                        && !retainedSet.Contains(instanceId))
                     .ToArray();
 
                 combat = combat with
                 {
+                    ExhaustPile = combat.ExhaustPile.Concat(ethereal).ToArray(),
                     DiscardPile = combat.DiscardPile.Concat(discarded).ToArray(),
                     Hand = retained
                 };
+
+                foreach (var cardInstanceId in ethereal)
+                {
+                    var exhaustedCard = RequireCombatCard(combat, cardInstanceId);
+                    var exhausted = DispatchCombatEvent(
+                        player,
+                        combat,
+                        new PrototypeCombatEvent(
+                            PrototypeCombatEventKind.CardExhausted,
+                            SourceCardInstanceId: cardInstanceId,
+                            CardId: exhaustedCard.CardId),
+                        state.Rng);
+                    player = exhausted.Player;
+                    combat = exhausted.Combat;
+                }
+
                 break;
             }
 

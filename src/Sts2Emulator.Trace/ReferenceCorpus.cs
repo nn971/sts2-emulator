@@ -277,6 +277,9 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "innate",
             "retain",
             "sly",
+            "ethereal",
+            "unplayable",
+            "eternal",
             "upgrade_scalar"
         };
 

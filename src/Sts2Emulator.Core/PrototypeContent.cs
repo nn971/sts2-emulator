@@ -182,7 +182,29 @@ public static class PrototypeContent
                 PrototypeCardTarget.Enemy,
                 [new(PrototypeCombatEffectKind.DamageEnemy, 4)],
                 ExhaustOnUse: true,
-                Rarity: PrototypeCardRarity.Basic),
+                Rarity: PrototypeCardRarity.Token,
+                RewardEligible: false),
+            new PrototypeCardDefinition(
+                "proto.status.dazed",
+                "Dazed",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Rarity: PrototypeCardRarity.Status,
+                Ethereal: true,
+                Unplayable: true,
+                RewardEligible: false),
+            new PrototypeCardDefinition(
+                "proto.curse.ascenders_bane",
+                "Ascender's Bane",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Rarity: PrototypeCardRarity.Curse,
+                Ethereal: true,
+                Unplayable: true,
+                Eternal: true,
+                RewardEligible: false),
             new PrototypeCardDefinition(
                 "proto.silent.blade_dance",
                 "Blade Dance",
@@ -1231,8 +1253,11 @@ public static class PrototypeContent
 
     public static string[] RewardCardPool { get; } = Cards.Values
         .Where(card =>
-            card.Rarity != PrototypeCardRarity.Basic
-            && !StringComparer.Ordinal.Equals(card.Id, "proto.silent.shiv"))
+            card.RewardEligible
+            && card.Rarity is
+                PrototypeCardRarity.Common
+                or PrototypeCardRarity.Uncommon
+                or PrototypeCardRarity.Rare)
         .Select(card => card.Id)
         .Order(StringComparer.Ordinal)
         .ToArray();
