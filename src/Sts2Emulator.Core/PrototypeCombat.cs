@@ -196,7 +196,10 @@ public sealed partial class PrototypeGameEngine
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
             if (definition.Unplayable
-                || !definition.Cost.IsPlayable(combat.Energy, card.UpgradeLevel)
+                || !definition.Cost.IsPlayable(
+                    combat.Energy,
+                    card.UpgradeLevel,
+                    ResolveCardCostReductionCount(definition.Cost, combat))
                 || !EvaluateCombatPredicate(
                     definition.PlayCondition,
                     combat,
@@ -290,7 +293,10 @@ public sealed partial class PrototypeGameEngine
                 $"Card {payload.CardInstanceId} is unplayable.");
         }
 
-        if (!definition.Cost.IsPlayable(combat.Energy, card.UpgradeLevel))
+        if (!definition.Cost.IsPlayable(
+                combat.Energy,
+                card.UpgradeLevel,
+                ResolveCardCostReductionCount(definition.Cost, combat)))
         {
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is unaffordable.");
         }
@@ -305,7 +311,10 @@ public sealed partial class PrototypeGameEngine
         }
 
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
-        var energySpent = definition.Cost.ResolveEnergySpent(combat.Energy, card.UpgradeLevel);
+        var energySpent = definition.Cost.ResolveEnergySpent(
+            combat.Energy,
+            card.UpgradeLevel,
+            ResolveCardCostReductionCount(definition.Cost, combat));
 
         combat = combat with
         {
@@ -1128,6 +1137,13 @@ public sealed partial class PrototypeGameEngine
     private static int PlayerBlockBonus(CombatState combat) =>
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
+
+    private static int ResolveCardCostReductionCount(
+        PrototypeCardCostSpec cost,
+        CombatState combat) =>
+        cost.ReductionCountKind is null
+            ? 0
+            : ResolveCombatCount(cost.ReductionCountKind.Value, combat);
 
     private static int ResolveCombatCount(
         PrototypeCombatCountKind kind,
