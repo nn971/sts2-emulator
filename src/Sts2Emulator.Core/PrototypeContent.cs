@@ -434,7 +434,7 @@ public static class PrototypeContent
                 [
                     new(
                         PrototypeCombatEffectKind.DamageEnemy,
-                        6,
+                        7,
                         2,
                         Target: PrototypeEffectTarget.AllEnemies)
                 ],

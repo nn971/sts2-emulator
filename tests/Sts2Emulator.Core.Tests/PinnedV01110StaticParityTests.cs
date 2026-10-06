@@ -30,6 +30,41 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void SourceBackedSlyCardsUsePinnedV01110Scalars()
+    {
+        var reflex = PrototypeContent.Card("proto.silent.reflex");
+        Assert.True(reflex.Sly);
+        Assert.Equal(3, reflex.Cost.Amount);
+        var reflexDraw = Assert.Single(reflex.Effects);
+        Assert.Equal(PrototypeCombatEffectKind.DrawCards, reflexDraw.Kind);
+        Assert.Equal(2, reflexDraw.Amount);
+        Assert.Equal(1, reflexDraw.UpgradeDelta);
+
+        var tactician = PrototypeContent.Card("proto.silent.tactician");
+        Assert.True(tactician.Sly);
+        Assert.Equal(3, tactician.Cost.Amount);
+        var tacticianEnergy = Assert.Single(tactician.Effects);
+        Assert.Equal(PrototypeCombatEffectKind.GainEnergy, tacticianEnergy.Kind);
+        Assert.Equal(1, tacticianEnergy.Amount);
+        Assert.Equal(1, tacticianEnergy.UpgradeDelta);
+
+        var untouchable = PrototypeContent.Card("proto.silent.untouchable");
+        Assert.True(untouchable.Sly);
+        Assert.Equal(2, untouchable.Cost.Amount);
+        var untouchableBlock = Assert.Single(untouchable.Effects);
+        Assert.Equal(6, untouchableBlock.Amount);
+        Assert.Equal(3, untouchableBlock.UpgradeDelta);
+
+        var flickFlack = PrototypeContent.Card("proto.silent.flick_flack");
+        Assert.True(flickFlack.Sly);
+        Assert.Equal(1, flickFlack.Cost.Amount);
+        var flickFlackDamage = Assert.Single(flickFlack.Effects);
+        Assert.Equal(7, flickFlackDamage.Amount);
+        Assert.Equal(2, flickFlackDamage.UpgradeDelta);
+        Assert.Equal(PrototypeEffectTarget.AllEnemies, flickFlackDamage.Target);
+    }
+
+    [Fact]
     public void NewlyImportedSimpleSilentCardsMatchPinnedV01110()
     {
         var haze = PrototypeContent.Card("proto.silent.haze");

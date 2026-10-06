@@ -276,6 +276,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "generate_cards_in_hand",
             "innate",
             "retain",
+            "sly",
             "upgrade_scalar"
         };
 

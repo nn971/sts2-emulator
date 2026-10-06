@@ -300,6 +300,12 @@ The following remain genuine oracle questions:
 For these, first inspect the decompiled pinned DLL. Only use the live bridge if static source still
 leaves a runtime ambiguity.
 
+A public decompilation from another STS2 build can be useful as a source map for locating relevant
+classes and control flow, but it is not evidence for pinned scalar values. This distinction is
+already observable: a public current-build `Flick-Flack` source uses a different base damage than
+the pinned v0.111.0 corpus. Use the exact pinned corpus and local v0.111.0 decompilation whenever
+build-specific behavior or values matter.
+
 ## Pinned source oracle
 
 STS2's gameplay code is managed C#. Keep a local, gitignored decompilation of the exact pinned
