@@ -17,7 +17,7 @@ public sealed class ReferenceProbeAuditorTests
                 path,
                 [
                     """{"type":"session","schema":"sts2-reference-probe-v1"}""",
-                    """{"type":"type_catalog","runtime_type":"Example.CardPlayStarted","properties":[{"name":"Card"},{"name":"Target"}],"fields":[{"name":"_sequence"}]}""",
+                    """{"type":"type_catalog","runtime_type":"Example.CardPlayStarted","properties":[{"name":"Card"},{"name":"Target"}],"fields":[{"name":"_sequence"}],"events":[{"name":"Changed"}]}""",
                     """{"type":"boundary","boundary":"combat_manager.CombatSetUp","state_hash":"h0","state":{"run_rng":{"type":"Example.SerializableRunRng","shuffle":{"type":"Example.SerializableRng","state":11}},"players":[{"creature":{"current_hp":70},"player_rng":{"type":"Example.SerializablePlayerRng","card_rng":{"type":"Example.SerializableRng","state":22}}}]}}""",
                     """{"type":"boundary","boundary":"combat_history.Changed","state_hash":"h1","history_entry":{"type":"Example.CardPlayStarted","card":{"type":"Example.Strike","combat_id":7},"target":null},"state":{"run_rng":{"type":"Example.SerializableRunRng","shuffle":{"type":"Example.SerializableRng","state":12}},"players":[{"creature":{"current_hp":70},"player_rng":{"type":"Example.SerializablePlayerRng","card_rng":{"type":"Example.SerializableRng","state":22}}}]}}""",
                     """{"type":"boundary","boundary":"combat_history.Changed","state_hash":"h1","history_entry":{"type":"Example.CardPlayStarted","card":{"type":"Example.Strike","combat_id":7},"target":null},"state":{"run_rng":{"type":"Example.SerializableRunRng","shuffle":{"type":"Example.SerializableRng","state":12}},"players":[{"creature":{"current_hp":70},"player_rng":{"type":"Example.SerializablePlayerRng","card_rng":{"type":"Example.SerializableRng","state":22}}}]}}""",
@@ -60,6 +60,7 @@ public sealed class ReferenceProbeAuditorTests
             Assert.Equal("Example.CardPlayStarted", catalog.RuntimeType);
             Assert.Equal(new[] { "Card", "Target" }, catalog.Properties);
             Assert.Equal(new[] { "_sequence" }, catalog.Fields);
+            Assert.Equal(new[] { "Changed" }, catalog.Events);
         }
         finally
         {
