@@ -24,7 +24,8 @@ public enum PrototypeCombatEffectKind
     GainPlayerBlock,
     DrawCards,
     ApplyEnemyStatus,
-    ChooseCards
+    ChooseCards,
+    CreateCardsInHand
 }
 
 public enum PrototypeCardZone
@@ -74,7 +75,8 @@ public sealed record PrototypeCombatEffectSpec(
     int Amount,
     int UpgradeDelta = 0,
     string? StatusId = null,
-    PrototypeCardSelectionSpec? Selection = null)
+    PrototypeCardSelectionSpec? Selection = null,
+    string? CardId = null)
 {
     public int AmountAtUpgrade(int upgradeLevel) => Amount + (UpgradeDelta * upgradeLevel);
 }
@@ -84,7 +86,8 @@ public sealed record PrototypeQueuedOperation(
     int Amount,
     int? TargetEnemyId = null,
     string? StatusId = null,
-    PrototypeCardSelectionSpec? Selection = null);
+    PrototypeCardSelectionSpec? Selection = null,
+    string? CardId = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -96,7 +99,8 @@ public sealed record PrototypeCardDefinition(
     string Name,
     int Cost,
     PrototypeCardTarget Target,
-    PrototypeCombatEffectSpec[] Effects);
+    PrototypeCombatEffectSpec[] Effects,
+    bool ExhaustOnUse = false);
 
 public sealed record PrototypePotionDefinition(
     string Id,
@@ -185,9 +189,21 @@ public sealed record EnemyCombatState(
     };
 }
 
+public sealed record CombatCardInstance(
+    long InstanceId,
+    long? PersistentCardInstanceId,
+    string CardId,
+    int UpgradeLevel,
+    bool IsTemporary,
+    JsonElement State)
+{
+    public CombatCardInstance Fork() => this with { State = State.Clone() };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
+    PrototypeCardZone SourceCardDestination,
     PrototypeCardSelectionSpec Selection,
     long[] CandidateCardInstanceIds,
     PrototypeQueuedOperation[] Continuation)
@@ -208,6 +224,8 @@ public sealed record CombatState(
     long[] DiscardPile,
     long[] ExhaustPile,
     EnemyCombatState[] Enemies,
+    long NextCardInstanceId,
+    CombatCardInstance[] Cards,
     PendingCombatChoiceState? PendingChoice = null)
 {
     public CombatState Fork() => this with
@@ -217,6 +235,7 @@ public sealed record CombatState(
         DiscardPile = (long[])DiscardPile.Clone(),
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
+        Cards = Cards.Select(card => card.Fork()).ToArray(),
         PendingChoice = PendingChoice?.Fork()
     };
 }
