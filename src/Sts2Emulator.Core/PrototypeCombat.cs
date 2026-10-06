@@ -641,6 +641,15 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.DrawPlayerHand:
             {
+                var beforeHandDraw = DispatchCombatEvent(
+                    player,
+                    combat,
+                    new PrototypeCombatEvent(
+                        PrototypeCombatEventKind.BeforeHandDraw),
+                    state.Rng);
+                player = beforeHandDraw.Player;
+                combat = beforeHandDraw.Combat;
+
                 var handDrawBonus = combat.PlayerPowers.Sum(power =>
                     PrototypeContent.Power(power.PowerId)
                         .HandDrawBonusPerStack * power.Stacks);
