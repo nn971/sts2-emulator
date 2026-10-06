@@ -65,4 +65,79 @@ public sealed class PrototypeGenerationTests
             "proto.encounter.crawler",
             Assert.Single(combatState!.World!.EncounterIds));
     }
+    [Theory]
+    [InlineData(1, "proto.enemy.boss")]
+    [InlineData(2, "proto.enemy.boss_two")]
+    [InlineData(3, "proto.enemy.boss_three")]
+    public void BossEncounterSelectionIsActSpecific(
+        int act,
+        string expectedEnemyId)
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var player = new PlayerState(
+            70,
+            70,
+            0,
+            [new CardInstance(1, "proto.silent.strike", 0, empty)],
+            Array.Empty<RelicInstance>(),
+            new PotionInstance?[PrototypeContent.Rules.PotionSlots]);
+
+        var nodes = Enumerable.Range(1, PrototypeContent.Rules.FloorsPerAct)
+            .Select(floor =>
+            {
+                var isBoss = floor == PrototypeContent.Rules.FloorsPerAct;
+                var nodeId = $"test:{act}:{floor}";
+                var next = isBoss
+                    ? Array.Empty<string>()
+                    : new[] { $"test:{act}:{floor + 1}" };
+                return new MapNodeState(
+                    nodeId,
+                    act,
+                    floor,
+                    isBoss ? PrototypeRoomType.Boss : PrototypeRoomType.Rest,
+                    next);
+            })
+            .ToArray();
+
+        var map = new MapState(
+            nodes,
+            CurrentNodeId: $"test:{act}:{PrototypeContent.Rules.FloorsPerAct - 1}",
+            EntryNodeIds: [nodes[0].NodeId]);
+
+        var state = new RunState(
+            "prototype-unbound",
+            "prototype-0.1",
+            $"boss-act-{act}",
+            $"boss-act-{act}",
+            0,
+            RunPhase.MapChoice,
+            player,
+            PrototypeRng.CreateBundle($"boss-act-{act}"),
+            empty,
+            new RunWorldState(
+                PrototypeContent.RulesetId,
+                PrototypeContent.CharacterId,
+                act,
+                PrototypeContent.Rules.FloorsPerAct - 1,
+                2,
+                null,
+                map,
+                null,
+                null,
+                null,
+                null,
+                null));
+
+        var engine = new PrototypeGameEngine();
+        var chooseBoss = Assert.Single(engine.GetLegalActions(state));
+        state = engine.Step(state, chooseBoss).State;
+        PrototypeStateInvariants.Validate(state);
+
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        Assert.Equal(
+            expectedEnemyId,
+            Assert.Single(state.World!.Combat!.Enemies).EnemyId);
+    }
+
+
 }
