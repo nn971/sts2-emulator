@@ -140,6 +140,45 @@ public static class PrototypeStateInvariants
         }
     }
 
+    private static void ValidateCombatRelics(
+        PlayerState player,
+        CombatState combat)
+    {
+        if (combat.RelicStates.Length != player.Relics.Length)
+        {
+            throw new InvalidOperationException(
+                "Persistent relics are not represented exactly once in combat.");
+        }
+
+        foreach (var relic in combat.RelicStates)
+        {
+            if (relic.PersistentIndex < 0 || relic.PersistentIndex >= player.Relics.Length)
+            {
+                throw new InvalidOperationException("Combat relic has an invalid persistent index.");
+            }
+
+            var persistent = player.Relics[relic.PersistentIndex];
+            if (!StringComparer.Ordinal.Equals(relic.RelicId, persistent.RelicId))
+            {
+                throw new InvalidOperationException("Combat relic disagrees with its persistent origin.");
+            }
+
+            var definition = PrototypeContent.Relic(relic.RelicId);
+            var triggerCount = (definition.Triggers ?? Array.Empty<PrototypeRelicTriggerSpec>()).Length;
+            if (relic.TriggerCounts.Length != triggerCount
+                || relic.TriggerCounts.Any(count => count < 0))
+            {
+                throw new InvalidOperationException("Combat relic trigger counters are invalid.");
+            }
+        }
+
+        if (combat.RelicStates.Select(relic => relic.PersistentIndex).Distinct().Count()
+            != combat.RelicStates.Length)
+        {
+            throw new InvalidOperationException("Combat relic persistent indices are duplicated.");
+        }
+    }
+
     private static void ValidatePowerOwner(
         string owner,
         PrototypePowerInstanceState[] powers)
@@ -319,26 +358,28 @@ public static class PrototypeStateInvariants
             .Concat(combat.Enemies.SelectMany(enemy => enemy.PowerStates))
             .ToArray();
 
-        if (allPowers.Select(power => power.ApplicationOrder).Distinct().Count()
-            != allPowers.Length)
+        ValidateCombatRelics(player, combat);
+
+        var allSubscriberOrders = allPowers
+            .Select(power => power.ApplicationOrder)
+            .Concat(combat.RelicStates.Select(relic => relic.ApplicationOrder))
+            .ToArray();
+
+        if (allSubscriberOrders.Distinct().Count() != allSubscriberOrders.Length)
         {
             throw new InvalidOperationException(
-                "Power application order must be globally unique across combat owners.");
+                "Event-subscriber application order must be globally unique.");
         }
 
-        if (allPowers.Any(power =>
-            power.ApplicationOrder <= 0
-            || power.ApplicationOrder >= combat.NextPowerApplicationOrder))
+        if (allSubscriberOrders.Any(order =>
+            order <= 0 || order >= combat.NextPowerApplicationOrder))
         {
-            throw new InvalidOperationException("Power application order is invalid.");
+            throw new InvalidOperationException("Event-subscriber application order is invalid.");
         }
 
-        if (combat.NextPowerApplicationOrder <= allPowers
-                .Select(power => power.ApplicationOrder)
-                .DefaultIfEmpty(0)
-                .Max())
+        if (combat.NextPowerApplicationOrder <= allSubscriberOrders.DefaultIfEmpty(0).Max())
         {
-            throw new InvalidOperationException("Next power application order is not fresh.");
+            throw new InvalidOperationException("Next event-subscriber application order is not fresh.");
         }
 
         var zones = combat.Hand
