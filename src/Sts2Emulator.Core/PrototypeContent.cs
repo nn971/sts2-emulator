@@ -234,7 +234,21 @@ public static class PrototypeContent
             new PrototypeRelicDefinition(
                 "proto.relic.lantern",
                 "Lantern",
-                EnergyPerTurnBonus: 1)
+                EnergyPerTurnBonus: 1),
+            new PrototypeRelicDefinition(
+                "proto.relic.ink_bottle",
+                "Ink Bottle",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DrawCards,
+                                1)
+                        ],
+                        EveryNth: 3)
+                ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -463,7 +477,11 @@ public static class PrototypeContent
     ];
 
     public static string[] PotionPool { get; } = Potions.Keys.Order(StringComparer.Ordinal).ToArray();
-    public static string[] RelicPool { get; } = ["proto.relic.lantern"];
+    public static string[] RelicPool { get; } =
+    [
+        "proto.relic.lantern",
+        "proto.relic.ink_bottle"
+    ];
 
     public static PrototypeCardDefinition Card(string id) =>
         Cards.TryGetValue(id, out var value)
