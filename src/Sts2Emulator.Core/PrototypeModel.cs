@@ -251,16 +251,11 @@ public sealed record PrototypeSelectedCardPowerAction(
     string PowerId,
     int Amount);
 
-public sealed record PrototypeSelectedCardKeywordSpec(
+public sealed record PrototypeCardKeywordOverrideSpec(
     PrototypeCardKeyword Keyword,
     bool Enabled = true,
     PrototypeCardKeywordOverrideExpiry Expiry =
         PrototypeCardKeywordOverrideExpiry.EndOfTurn);
-
-public sealed record PrototypeSelectedCardKeywordAction(
-    PrototypeCardKeyword Keyword,
-    bool Enabled,
-    PrototypeCardKeywordOverrideExpiry Expiry);
 
 public sealed record PrototypeCardCostSpec(
     PrototypeCardCostKind Kind,
@@ -338,7 +333,8 @@ public sealed record PrototypeCombatEffectSpec(
     int RepetitionsPerCount = 0,
     int AmountPerCountUpgradeDelta = 0,
     PrototypeSelectedCardPowerSpec? SelectedCardPower = null,
-    PrototypeSelectedCardKeywordSpec? SelectedCardKeyword = null)
+    PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
+    PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -365,7 +361,8 @@ public sealed record PrototypeQueuedOperation(
     bool IsPoweredAttack = false,
     PrototypeCombatPredicateSpec? Condition = null,
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
-    PrototypeSelectedCardKeywordAction? SelectedCardKeyword = null,
+    PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
+    PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null,
     PrototypeCombatCardSnapshot? PowerCardPayload = null);
 
 public sealed record PrototypeRunEffectSpec(
@@ -682,7 +679,7 @@ public sealed record PendingCombatChoiceState(
     bool MoveSourceCardOnCompletion = true,
     bool RemoveSourceCardOnCompletion = false,
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
-    PrototypeSelectedCardKeywordAction? SelectedCardKeyword = null)
+    PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
