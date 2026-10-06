@@ -1079,7 +1079,8 @@ public sealed partial class PrototypeGameEngine
         PrototypeCardPlaySeriesState? cardPlaySeries = null,
         bool moveSourceCardOnCompletion = true,
         bool removeSourceCardOnCompletion = false,
-        long? eventSourceCardInstanceId = null)
+        long? eventSourceCardInstanceId = null,
+        PrototypeEventDispatchContinuationState? eventDispatchContinuation = null)
     {
         while (operations.Count > 0)
         {
@@ -1365,7 +1366,9 @@ public sealed partial class PrototypeGameEngine
                             SelectedCardPower:
                                 operation.SelectedCardPower,
                             SelectedCardKeyword:
-                                operation.SelectedCardKeyword)
+                                operation.SelectedCardKeyword,
+                            EventDispatchContinuation:
+                                eventDispatchContinuation?.Fork())
                     };
                     return (player, combat);
                 }
