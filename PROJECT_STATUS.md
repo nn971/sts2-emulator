@@ -77,6 +77,14 @@ The capture exposed three concrete next needs now implemented in probe v1:
 - field-level projection of native SerializableRng state;
 - passive CombatHistory.Changed capture for card-play/damage/energy/potion/monster-move granularity.
 
-See `docs/reference-builds/v0.111.0-capture-001.md`. The next live capture should use probe v1;
-`reference-probe-audit` can then turn it directly into evidence for native action/boundary
-normalization without hard-coding runtime class names in advance.
+See `docs/reference-builds/v0.111.0-capture-001.md`.
+
+A second live capture validated full Player -> Creature coverage, full SerializableRng state,
+21 matched card-play start/finish lifecycles, one potion use, and six end-turn actions. It also
+showed that card-finish and potion-used history entries are lifecycle markers rather than universal
+decision boundaries, and that Survivor introduces a nested player-selection decision inside a card
+play.
+
+`ReferenceProbeActionExtractor` now emits evidence-backed observed action envelopes without
+promoting gaps to parity claims. Probe v2 adds event catalogs plus richer card/potion/player state to
+discover the native choice surface. See `docs/reference-builds/v0.111.0-capture-002.md`.
