@@ -5,7 +5,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using MegaCrit.Sts2.Core.Modding;
-using Sts2Emulator.Trace;
 
 namespace Sts2ReferenceBridge;
 
@@ -23,10 +22,15 @@ internal static class PassiveReferenceRecorder
     private static StreamWriter? _writer;
     private static object? _combatManager;
     private static long _sequence;
-    private static string? _outputPath;
+    private static int _initialized;
 
     public static void Initialize()
     {
+        if (Interlocked.Exchange(ref _initialized, 1) != 0)
+        {
+            return;
+        }
+
         try
         {
             var sts2Assembly = typeof(ModInitializerAttribute).Assembly;
@@ -35,16 +39,7 @@ internal static class PassiveReferenceRecorder
             var gameDirectory = Directory.GetParent(dataDirectory)?.FullName
                 ?? throw new InvalidOperationException("Cannot locate STS2 game directory.");
 
-            var build = ReferenceBuildFingerprint.Capture(gameDirectory, dataDirectory);
-            if (!StringComparer.Ordinal.Equals(
-                    build.BuildFingerprint,
-                    BridgeWorkspace.ExpectedBuildFingerprint))
-            {
-                Console.Error.WriteLine(
-                    "[Sts2ReferenceBridge] Refusing to record: installed build fingerprint " +
-                    $"{build.BuildFingerprint} != expected {BridgeWorkspace.ExpectedBuildFingerprint}.");
-                return;
-            }
+            var build = VerifyPinnedBuild(gameDirectory, dataDirectory);
 
             var traceDirectory =
                 Environment.GetEnvironmentVariable("STS2_REFERENCE_TRACE_DIR");
@@ -54,14 +49,14 @@ internal static class PassiveReferenceRecorder
             }
 
             Directory.CreateDirectory(traceDirectory);
-            _outputPath = Path.Combine(
+            var outputPath = Path.Combine(
                 traceDirectory,
                 $"probe-{DateTime.UtcNow:yyyyMMdd-HHmmss}-" +
-                $"{build.BuildFingerprint[..12]}.jsonl");
+                $"{BridgeWorkspace.ExpectedBuildFingerprint[..12]}.jsonl");
 
             _writer = new StreamWriter(
                 new FileStream(
-                    _outputPath,
+                    outputPath,
                     FileMode.CreateNew,
                     FileAccess.Write,
                     FileShare.Read),
@@ -77,50 +72,19 @@ internal static class PassiveReferenceRecorder
                 ["captured_at_utc"] = DateTimeOffset.UtcNow,
                 ["expected_game_version"] = BridgeWorkspace.ExpectedGameVersion,
                 ["expected_game_commit"] = BridgeWorkspace.ExpectedGameCommit,
-                ["build_fingerprint"] = build.BuildFingerprint,
-                ["build"] = build.Identity,
+                ["build_fingerprint"] = BridgeWorkspace.ExpectedBuildFingerprint,
+                ["build"] = build,
                 ["bridge_assembly"] = typeof(PassiveReferenceRecorder).Assembly
                     .GetName().Version?.ToString(),
-                ["output_path"] = _outputPath
+                ["output_path"] = outputPath
             });
 
-            _combatManager = ResolveSingleton(
-                sts2Assembly,
-                "MegaCrit.Sts2.Core.Combat.CombatManager");
-
-            foreach (var signal in new[]
-            {
-                "CombatSetUp",
-                "CombatBegan",
-                "TurnStarted",
-                "PlayerEndedTurn",
-                "AboutToSwitchToEnemyTurn",
-                "TurnEnded",
-                "CombatWon",
-                "CombatEnded"
-            })
-            {
-                SubscribeIfPresent(_combatManager, signal, $"combat_manager.{signal}");
-            }
-
-            var verbose = StringComparer.Ordinal.Equals(
-                Environment.GetEnvironmentVariable("STS2_REFERENCE_VERBOSE"),
-                "1");
-            if (verbose)
-            {
-                var tracker = GetProperty(_combatManager, "StateTracker");
-                if (tracker is not null)
-                {
-                    SubscribeIfPresent(
-                        tracker,
-                        "CombatStateChanged",
-                        "combat_state_tracker.CombatStateChanged");
-                }
-            }
-
             AppDomain.CurrentDomain.ProcessExit += (_, _) => Shutdown();
+
             Console.WriteLine(
-                $"[Sts2ReferenceBridge] passive recorder active: {_outputPath}");
+                $"[Sts2ReferenceBridge] pinned build verified; recorder output: {outputPath}");
+
+            _ = Task.Run(() => AttachWhenReadyAsync(sts2Assembly));
         }
         catch (Exception ex)
         {
@@ -130,25 +94,242 @@ internal static class PassiveReferenceRecorder
         }
     }
 
+    private static async Task AttachWhenReadyAsync(Assembly sts2Assembly)
+    {
+        const int attempts = 480;
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            try
+            {
+                var manager = TryResolveSingleton(
+                    sts2Assembly,
+                    "MegaCrit.Sts2.Core.Combat.CombatManager");
+
+                if (manager is not null)
+                {
+                    AttachCombatSignals(manager);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteDiagnostic(
+                    "attach_attempt_failed",
+                    $"attempt={attempt}: {ex.GetType().Name}: {ex.Message}");
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
+        }
+
+        WriteDiagnostic(
+            "combat_manager_timeout",
+            "CombatManager.Instance did not become available within 120 seconds.");
+    }
+
+    private static void AttachCombatSignals(object manager)
+    {
+        lock (Gate)
+        {
+            if (_combatManager is not null)
+            {
+                return;
+            }
+
+            _combatManager = manager;
+        }
+
+        foreach (var signal in new[]
+        {
+            "CombatSetUp",
+            "CombatBegan",
+            "TurnStarted",
+            "PlayerEndedTurn",
+            "AboutToSwitchToEnemyTurn",
+            "TurnEnded",
+            "CombatWon",
+            "CombatEnded"
+        })
+        {
+            SubscribeIfPresent(manager, signal, $"combat_manager.{signal}");
+        }
+
+        var verbose = StringComparer.Ordinal.Equals(
+            Environment.GetEnvironmentVariable("STS2_REFERENCE_VERBOSE"),
+            "1");
+        if (verbose)
+        {
+            var tracker = GetProperty(manager, "StateTracker");
+            if (tracker is not null)
+            {
+                SubscribeIfPresent(
+                    tracker,
+                    "CombatStateChanged",
+                    "combat_state_tracker.CombatStateChanged");
+            }
+            else
+            {
+                WriteDiagnostic(
+                    "state_tracker_missing",
+                    "CombatManager.StateTracker was null when recorder attached.");
+            }
+        }
+
+        WriteDiagnostic(
+            "recorder_attached",
+            $"Subscribed to passive combat signals on {manager.GetType().FullName}.");
+    }
+
+    private static Dictionary<string, object?> VerifyPinnedBuild(
+        string gameDirectory,
+        string dataDirectory)
+    {
+        var releaseInfoPath = ResolveMetadataFile(
+            gameDirectory,
+            dataDirectory,
+            "release_info.json");
+        var runtimeConfigPath = ResolveMetadataFile(
+            gameDirectory,
+            dataDirectory,
+            "sts2.runtimeconfig.json");
+
+        var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sts2.dll"] = Path.Combine(dataDirectory, "sts2.dll"),
+            ["0Harmony.dll"] = Path.Combine(dataDirectory, "0Harmony.dll"),
+            ["GodotSharp.dll"] = Path.Combine(dataDirectory, "GodotSharp.dll"),
+            ["release_info.json"] = releaseInfoPath,
+            ["sts2.runtimeconfig.json"] = runtimeConfigPath
+        };
+
+        var fileInfo = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var expected in BridgeWorkspace.ExpectedFileHashes)
+        {
+            if (!paths.TryGetValue(expected.Key, out var path) || !File.Exists(path))
+            {
+                throw new FileNotFoundException(
+                    $"Pinned reference file is missing: {expected.Key}",
+                    path);
+            }
+
+            var actualHash = Sha256File(path);
+            if (!StringComparer.OrdinalIgnoreCase.Equals(actualHash, expected.Value))
+            {
+                throw new InvalidOperationException(
+                    $"Pinned reference hash mismatch for {expected.Key}: " +
+                    $"{actualHash} != {expected.Value}.");
+            }
+
+            fileInfo[expected.Key] = new Dictionary<string, object?>
+            {
+                ["sha256"] = actualHash,
+                ["size_bytes"] = new FileInfo(path).Length
+            };
+        }
+
+        using var releaseDocument = JsonDocument.Parse(
+            File.ReadAllText(releaseInfoPath));
+        var release = releaseDocument.RootElement;
+        var version = release.TryGetProperty("version", out var versionElement)
+            ? versionElement.GetString()
+            : null;
+        var commit = release.TryGetProperty("commit", out var commitElement)
+            ? commitElement.GetString()
+            : null;
+
+        if (!StringComparer.Ordinal.Equals(
+                version,
+                BridgeWorkspace.ExpectedGameVersion)
+            || !StringComparer.Ordinal.Equals(
+                commit,
+                BridgeWorkspace.ExpectedGameCommit))
+        {
+            throw new InvalidOperationException(
+                $"Pinned release mismatch: version={version}, commit={commit}.");
+        }
+
+        using var runtimeDocument = JsonDocument.Parse(
+            File.ReadAllText(runtimeConfigPath));
+        var tfm = runtimeDocument.RootElement
+            .GetProperty("runtimeOptions")
+            .GetProperty("tfm")
+            .GetString();
+
+        if (!StringComparer.Ordinal.Equals(
+                tfm,
+                BridgeWorkspace.ExpectedTargetFramework))
+        {
+            throw new InvalidOperationException(
+                $"Pinned target framework mismatch: {tfm}.");
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["version"] = version,
+            ["commit"] = commit,
+            ["target_framework"] = tfm,
+            ["files"] = fileInfo
+        };
+    }
+
+    private static string ResolveMetadataFile(
+        string gameDirectory,
+        string dataDirectory,
+        string fileName)
+    {
+        var rootPath = Path.Combine(gameDirectory, fileName);
+        if (File.Exists(rootPath))
+        {
+            return rootPath;
+        }
+
+        var dataPath = Path.Combine(dataDirectory, fileName);
+        if (File.Exists(dataPath))
+        {
+            return dataPath;
+        }
+
+        throw new FileNotFoundException(
+            $"Required pinned metadata file '{fileName}' was not found.");
+    }
+
+    private static string Sha256File(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexStringLower(SHA256.HashData(stream));
+    }
+
     private static void SubscribeIfPresent(
         object source,
         string eventName,
         string boundary)
     {
-        var evt = source.GetType().GetEvent(
-            eventName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        if (evt?.EventHandlerType is null)
+        try
+        {
+            var evt = source.GetType().GetEvent(
+                eventName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (evt?.EventHandlerType is null)
+            {
+                WriteDiagnostic(
+                    "event_missing",
+                    $"{source.GetType().FullName}.{eventName}");
+                return;
+            }
+
+            var handler = CreateForwarder(evt.EventHandlerType, boundary);
+            evt.AddEventHandler(source, handler);
+
+            lock (Gate)
+            {
+                Subscriptions.Add((source, evt, handler));
+            }
+        }
+        catch (Exception ex)
         {
             WriteDiagnostic(
-                "event_missing",
-                $"{source.GetType().FullName}.{eventName}");
-            return;
+                "event_subscribe_failed",
+                $"{source.GetType().FullName}.{eventName}: {ex}");
         }
-
-        var handler = CreateForwarder(evt.EventHandlerType, boundary);
-        evt.AddEventHandler(source, handler);
-        Subscriptions.Add((source, evt, handler));
     }
 
     private static Delegate CreateForwarder(
@@ -212,13 +393,14 @@ internal static class PassiveReferenceRecorder
     private static Dictionary<string, object?> CaptureState()
     {
         var result = new Dictionary<string, object?>(StringComparer.Ordinal);
-        if (_combatManager is null)
+        var manager = _combatManager;
+        if (manager is null)
         {
             return result;
         }
 
         result["manager"] = ReadNamed(
-            _combatManager,
+            manager,
             "CurrentCombatId",
             "IsInProgress",
             "IsOverOrEnding",
@@ -227,7 +409,7 @@ internal static class PassiveReferenceRecorder
             "IsEnemyTurnStarted",
             "PlayerActionsDisabled");
 
-        var combatState = InvokeNoArg(_combatManager, "DebugOnlyGetState");
+        var combatState = TryInvokeNoArg(manager, "DebugOnlyGetState");
         if (combatState is null)
         {
             result["combat"] = null;
@@ -261,8 +443,8 @@ internal static class PassiveReferenceRecorder
                 "Floor",
                 "AscensionLevel");
 
-            var runRng = GetProperty(runState, "Rng");
-            result["run_rng"] = CaptureRngSet(runRng);
+            result["run_rng"] = CaptureRngSet(
+                GetProperty(runState, "Rng"));
         }
 
         return result;
@@ -276,8 +458,7 @@ internal static class PassiveReferenceRecorder
             "CurrentHp",
             "MaxHp",
             "Gold",
-            "Character",
-            "PlayerRng");
+            "Character");
 
         var combat = GetProperty(player, "PlayerCombatState");
         if (combat is not null)
@@ -299,23 +480,20 @@ internal static class PassiveReferenceRecorder
                 "PlayPile"
             })
             {
-                var pile = GetProperty(combat, pileName);
-                result[ToSnakeCase(pileName)] = SummarizeCollection(pile);
+                result[ToSnakeCase(pileName)] =
+                    SummarizeCollection(GetProperty(combat, pileName));
             }
         }
 
-        var playerRng = GetProperty(player, "PlayerRng");
-        if (playerRng is not null)
-        {
-            result["player_rng"] = CaptureRngSet(playerRng);
-        }
+        result["player_rng"] = CaptureRngSet(
+            GetProperty(player, "PlayerRng"));
 
         return result;
     }
 
     private static Dictionary<string, object?> SummarizeCreature(object creature)
     {
-        var result = ReadNamed(
+        return ReadNamed(
             creature,
             "CombatId",
             "CurrentHp",
@@ -324,8 +502,6 @@ internal static class PassiveReferenceRecorder
             "IsDead",
             "Model",
             "Powers");
-
-        return result;
     }
 
     private static object? CaptureRngSet(object? rngSet)
@@ -337,7 +513,7 @@ internal static class PassiveReferenceRecorder
 
         try
         {
-            var serializable = InvokeNoArg(rngSet, "ToSerializable");
+            var serializable = TryInvokeNoArg(rngSet, "ToSerializable");
             return ProjectSerializable(serializable, depth: 5);
         }
         catch (Exception ex)
@@ -362,16 +538,28 @@ internal static class PassiveReferenceRecorder
 
         foreach (var propertyName in propertyNames)
         {
-            var value = GetProperty(target, propertyName);
-            if (value is null)
+            var property = target.GetType().GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (property is null
+                || !property.CanRead
+                || property.GetIndexParameters().Length != 0)
             {
                 continue;
             }
 
-            result[ToSnakeCase(propertyName)] =
-                propertyName is "PlayerRng" or "Powers"
-                    ? SummarizeOpaque(value)
-                    : ProjectSimple(value);
+            try
+            {
+                var value = property.GetValue(target);
+                result[ToSnakeCase(propertyName)] =
+                    propertyName is "Powers"
+                        ? SummarizeCollection(value)
+                        : SummarizeOpaque(value);
+            }
+            catch
+            {
+                // Observation must not disturb gameplay.
+            }
         }
 
         return result;
@@ -384,7 +572,24 @@ internal static class PassiveReferenceRecorder
             return null;
         }
 
-        var items = Enumerate(value).Take(128).ToArray();
+        var source = value;
+        var items = Enumerate(source).Take(128).ToArray();
+
+        if (items.Length == 0)
+        {
+            foreach (var alternate in new[] { "Cards", "Contents", "Items" })
+            {
+                var nested = GetProperty(value, alternate);
+                var nestedItems = Enumerate(nested).Take(128).ToArray();
+                if (nestedItems.Length > 0)
+                {
+                    source = nested!;
+                    items = nestedItems;
+                    break;
+                }
+            }
+        }
+
         return new Dictionary<string, object?>
         {
             ["type"] = value.GetType().FullName,
@@ -400,10 +605,14 @@ internal static class PassiveReferenceRecorder
             return null;
         }
 
-        var simple = ProjectSimple(value);
-        if (!ReferenceEquals(simple, value))
+        if (TryProjectSimple(value, out var simple))
         {
             return simple;
+        }
+
+        if (value is IEnumerable and not string)
+        {
+            return SummarizeCollection(value);
         }
 
         return ReadNamed(
@@ -418,17 +627,21 @@ internal static class PassiveReferenceRecorder
             "Index");
     }
 
-    private static object? ProjectSimple(object? value)
+    private static bool TryProjectSimple(
+        object value,
+        out object? projected)
     {
-        if (value is null)
-        {
-            return null;
-        }
-
         var type = value.GetType();
         if (type.IsEnum)
         {
-            return value.ToString();
+            projected = value.ToString();
+            return true;
+        }
+
+        if (value is JsonElement element)
+        {
+            projected = element.Clone();
+            return true;
         }
 
         if (value is string
@@ -448,10 +661,12 @@ internal static class PassiveReferenceRecorder
             or DateTimeOffset
             or Guid)
         {
-            return value;
+            projected = value;
+            return true;
         }
 
-        return value;
+        projected = null;
+        return false;
     }
 
     private static object? ProjectSerializable(
@@ -463,15 +678,9 @@ internal static class PassiveReferenceRecorder
             return null;
         }
 
-        var simple = ProjectSimple(value);
-        if (!ReferenceEquals(simple, value))
+        if (TryProjectSimple(value, out var simple))
         {
             return simple;
-        }
-
-        if (value is JsonElement element)
-        {
-            return element.Clone();
         }
 
         if (depth <= 0)
@@ -532,27 +741,22 @@ internal static class PassiveReferenceRecorder
             }
             catch
             {
-                // Probe serialization is best-effort and must never disturb gameplay.
+                // Serializable projection is best-effort.
             }
         }
 
         return result;
     }
 
-    private static object ResolveSingleton(
+    private static object? TryResolveSingleton(
         Assembly assembly,
         string typeName)
     {
-        var type = assembly.GetType(typeName, throwOnError: true)
-            ?? throw new InvalidOperationException($"Missing type {typeName}.");
-        var instance = type.GetProperty(
+        var type = assembly.GetType(typeName, throwOnError: false);
+        return type?.GetProperty(
             "Instance",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             ?.GetValue(null);
-
-        return instance
-            ?? throw new InvalidOperationException(
-                $"{typeName}.Instance returned null during mod initialization.");
     }
 
     private static object? GetProperty(
@@ -563,8 +767,7 @@ internal static class PassiveReferenceRecorder
         {
             return target.GetType().GetProperty(
                 propertyName,
-                BindingFlags.Instance | BindingFlags.Static |
-                BindingFlags.Public | BindingFlags.NonPublic)
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 ?.GetValue(target);
         }
         catch
@@ -573,18 +776,25 @@ internal static class PassiveReferenceRecorder
         }
     }
 
-    private static object? InvokeNoArg(
+    private static object? TryInvokeNoArg(
         object target,
         string methodName)
     {
-        var method = target.GetType().GetMethod(
-            methodName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null);
+        try
+        {
+            var method = target.GetType().GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: Type.EmptyTypes,
+                modifiers: null);
 
-        return method?.Invoke(target, null);
+            return method?.Invoke(target, null);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static IEnumerable<object> Enumerate(object? value)
@@ -668,6 +878,8 @@ internal static class PassiveReferenceRecorder
 
                 _writer = null;
             }
+
+            _combatManager = null;
         }
     }
 }
