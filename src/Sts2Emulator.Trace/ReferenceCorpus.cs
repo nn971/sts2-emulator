@@ -244,6 +244,8 @@ public sealed record ReferenceMechanicsGapReport(
     int StructuredFieldMatchCount,
     int MissingNativeCardCount,
     int CardsWithUnsupportedFeatures,
+    string[] PrototypeCardsOutsideSilentPool,
+    string[] PrototypeCardsAbsentFromReference,
     string[] StartingRunMismatches,
     IReadOnlyList<ReferenceMechanicCoverage> FeatureCoverage,
     IReadOnlyList<ReferenceNativeCardGap> Cards);
@@ -277,13 +279,23 @@ public static partial class ReferenceMechanicsGapAnalyzer
     public static ReferenceMechanicsGapReport Analyze(
         ReferenceCorpus corpus)
     {
-        var nativeCards = corpus.ReadKind("cards")
+        var allReferenceCards = corpus.ReadKind("cards");
+        var nativeCards = allReferenceCards
             .Where(card =>
                 StringComparer.OrdinalIgnoreCase.Equals(
                     GetString(card.Data, "color"),
                     "silent"))
             .OrderBy(card => card.Id, StringComparer.Ordinal)
             .ToArray();
+
+        var allReferenceByName = allReferenceCards
+            .GroupBy(
+                card => ReferenceCorpus.NormalizeIdentifier(card.Name ?? card.Id),
+                StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToArray(),
+                StringComparer.Ordinal);
 
         var prototypeByName = PrototypeContent.Cards.Values
             .GroupBy(
@@ -338,6 +350,27 @@ public static partial class ReferenceMechanicsGapAnalyzer
                 PrototypeCapabilities.Contains(item.Key)))
             .ToArray();
 
+        var outsideSilentPool = PrototypeContent.Cards.Values
+            .Where(prototype =>
+                allReferenceByName.TryGetValue(
+                    ReferenceCorpus.NormalizeIdentifier(prototype.Name),
+                    out var references)
+                && references.All(reference =>
+                    !StringComparer.OrdinalIgnoreCase.Equals(
+                        GetString(reference.Data, "color"),
+                        "silent")))
+            .Select(prototype => prototype.Id)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        var absentFromReference = PrototypeContent.Cards.Values
+            .Where(prototype =>
+                !allReferenceByName.ContainsKey(
+                    ReferenceCorpus.NormalizeIdentifier(prototype.Name)))
+            .Select(prototype => prototype.Id)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
         return new ReferenceMechanicsGapReport(
             nativeCards.Length,
             PrototypeContent.Cards.Count,
@@ -347,6 +380,8 @@ public static partial class ReferenceMechanicsGapAnalyzer
                 && card.StructuredMismatches.Length == 0),
             cardGaps.Count(card => card.PrototypeId is null),
             cardGaps.Count(card => card.UnsupportedFeatures.Length > 0),
+            outsideSilentPool,
+            absentFromReference,
             startingRunMismatches,
             coverage,
             cardGaps);
