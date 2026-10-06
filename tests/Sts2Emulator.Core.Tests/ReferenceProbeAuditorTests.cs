@@ -56,8 +56,8 @@ public sealed class ReferenceProbeAuditorTests
 
             var catalog = Assert.Single(audit.TypeCatalogs);
             Assert.Equal("Example.CardPlayStarted", catalog.RuntimeType);
-            Assert.Equal(["Card", "Target"], catalog.Properties);
-            Assert.Equal(["_sequence"], catalog.Fields);
+            Assert.Equal(new[] { "Card", "Target" }, catalog.Properties);
+            Assert.Equal(new[] { "_sequence" }, catalog.Fields);
         }
         finally
         {
