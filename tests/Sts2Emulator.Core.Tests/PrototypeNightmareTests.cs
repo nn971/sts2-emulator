@@ -57,7 +57,8 @@ public sealed class PrototypeNightmareTests
         var selected = Card(2, "proto.silent.defend", upgradeLevel: 1) with
         {
             State = selectedState,
-            CombatEnergyCostDelta = -1
+            CombatEnergyCostDelta = -1,
+            ReplayCount = 2
         };
         var drawPile = Enumerable.Range(3, 5)
             .Select(id => Card(id, "proto.silent.strike"))
@@ -84,6 +85,7 @@ public sealed class PrototypeNightmareTests
         Assert.Equal(selected.CardId, power.CardPayload!.CardId);
         Assert.Equal(1, power.CardPayload.UpgradeLevel);
         Assert.Equal(-1, power.CardPayload.CombatEnergyCostDelta);
+        Assert.Equal(2, power.CardPayload.ReplayCount);
         Assert.Equal(
             7,
             power.CardPayload.State.GetProperty("marker").GetInt32());
@@ -109,6 +111,7 @@ public sealed class PrototypeNightmareTests
         {
             Assert.Equal(1, card.UpgradeLevel);
             Assert.Equal(-1, card.CombatEnergyCostDelta);
+            Assert.Equal(2, card.ReplayCount);
             Assert.Equal(
                 7,
                 card.State.GetProperty("marker").GetInt32());
