@@ -144,3 +144,43 @@ Additional generic mechanics now include:
 These structures are prototype semantics rather than claims about STS2's internal implementation.
 They are designed so native behavior can later be represented without card-ID conditionals or
 globally hard-coded hook order.
+
+
+## Generic combat events
+
+Combat now has a semantic event layer shared by multiple mechanic families. Current event kinds
+include turn boundaries, completed card plays, enemy damage, and enemy defeat.
+
+Events carry context such as the source card, target enemy, and actual HP damage. Player powers,
+enemy powers, and relics subscribe through one deterministic application-order sequence. Target-owned
+enemy reactions can require that the event target match their owner.
+
+A bounded trigger depth guards accidental recursive event cycles. Operation-generated events are
+currently dispatched immediately after their semantic operation and before the next queued
+operation; this is an explicit prototype scheduling choice to revisit during native timing work.
+
+Card-play completion events are stored inside pending choice continuations. Thus a card that opens a
+discard/selection prompt emits `CardPlayed` only after the prompt resolves and the remaining effect
+queue finishes.
+
+## Combat-local persistent-object mirrors
+
+The combat state now owns explicit local representations for:
+
+- combat card instances, including generated/temporary cards;
+- relic instances, including mutable trigger counters;
+- occupied potion slots, consumed atomically with their run-persistent slot.
+
+This separates within-combat mutation from the persistent run objects without losing provenance.
+
+## Prototype generation rules
+
+The whole-run generator now uses more game-shaped data:
+
+- encounters have act/floor eligibility and integer weights;
+- encounter IDs are recorded in run history and immediate repeats are avoided when alternatives exist;
+- reward cards have prototype rarity;
+- starter/generated basic cards are excluded from normal reward pools;
+- reward rarity weights change by act.
+
+These are development generation rules rather than reconstructed STS2 probabilities.
