@@ -189,6 +189,100 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "batch_expand":
+                    {
+                        if (!request.TryGetProperty("state_handles", out var handlesElement)
+                            || handlesElement.ValueKind != JsonValueKind.Array)
+                        {
+                            throw new InvalidOperationException(
+                                "Request field 'state_handles' must be an array.");
+                        }
+
+                        var handles = handlesElement.EnumerateArray()
+                            .Select(element =>
+                                element.ValueKind == JsonValueKind.String
+                                    ? element.GetString()
+                                    : throw new InvalidOperationException(
+                                        "Every state_handles entry must be a string."))
+                            .Select(handle => handle
+                                ?? throw new InvalidOperationException(
+                                    "state_handles entry is null."))
+                            .ToArray();
+
+                        var batches = handles.Select(parentHandle =>
+                        {
+                            var state = states.TryGetValue(parentHandle, out var found)
+                                ? found
+                                : throw new InvalidOperationException(
+                                    $"Unknown state handle '{parentHandle}'.");
+
+                            var expansions = environment.Expand(state)
+                                .Select(expansion =>
+                                {
+                                    var childHandle = Store(expansion.State);
+                                    return new
+                                    {
+                                        parent = parentHandle,
+                                        action = ActionWire(expansion.Action),
+                                        child = childHandle,
+                                        terminal = expansion.State.Phase == RunPhase.Terminal,
+                                        exactHash = expansion.CanonicalStateHash
+                                    };
+                                })
+                                .ToArray();
+
+                            return new
+                            {
+                                parent = parentHandle,
+                                expansions
+                            };
+                        }).ToArray();
+
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            batches
+                        });
+                        break;
+                    }
+
+                    case "release_many":
+                    {
+                        if (!request.TryGetProperty("state_handles", out var handlesElement)
+                            || handlesElement.ValueKind != JsonValueKind.Array)
+                        {
+                            throw new InvalidOperationException(
+                                "Request field 'state_handles' must be an array.");
+                        }
+
+                        var released = 0;
+                        foreach (var element in handlesElement.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String)
+                            {
+                                throw new InvalidOperationException(
+                                    "Every state_handles entry must be a string.");
+                            }
+
+                            var handle = element.GetString()
+                                ?? throw new InvalidOperationException(
+                                    "state_handles entry is null.");
+                            if (states.Remove(handle))
+                            {
+                                released++;
+                            }
+                        }
+
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            released
+                        });
+                        break;
+                    }
+
                     case "fork":
                     {
                         var state = RequireState(request);
