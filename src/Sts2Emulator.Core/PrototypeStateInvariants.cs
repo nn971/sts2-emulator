@@ -64,6 +64,7 @@ public static class PrototypeStateInvariants
             ValidateMap(world);
         }
 
+        ValidateEncounterHistory(world);
         ValidatePhaseState(state, world);
 
         if (world.Combat is not null)
@@ -112,6 +113,8 @@ public static class PrototypeStateInvariants
                 {
                     throw new InvalidOperationException("Reward phase has no reward state.");
                 }
+
+                ValidateReward(world.Reward);
                 break;
 
             case RunPhase.Shop:
@@ -137,6 +140,66 @@ public static class PrototypeStateInvariants
 
             default:
                 throw new InvalidOperationException($"Unexpected initialized prototype phase {state.Phase}.");
+        }
+    }
+
+    private static void ValidateEncounterHistory(RunWorldState world)
+    {
+        foreach (var encounterId in world.EncounterIds)
+        {
+            if (!PrototypeContent.Encounters.Any(encounter =>
+                StringComparer.Ordinal.Equals(encounter.Id, encounterId)))
+            {
+                throw new InvalidOperationException(
+                    $"Encounter history contains unknown encounter '{encounterId}'.");
+            }
+        }
+
+        if (world.ActiveRoom is not (
+                PrototypeRoomType.Combat
+                or PrototypeRoomType.Elite
+                or PrototypeRoomType.Boss))
+        {
+            return;
+        }
+
+        var encounterId = world.EncounterIds.LastOrDefault()
+            ?? throw new InvalidOperationException(
+                "Active combat room has no encounter-history entry.");
+        var encounter = PrototypeContent.Encounters.Single(item =>
+            StringComparer.Ordinal.Equals(item.Id, encounterId));
+
+        if (encounter.RoomType != world.ActiveRoom
+            || world.Act < encounter.MinAct
+            || world.Act > encounter.MaxAct
+            || world.Floor < encounter.MinFloor
+            || world.Floor > encounter.MaxFloor
+            || encounter.Weight <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");
+        }
+    }
+
+    private static void ValidateReward(RewardState reward)
+    {
+        if (reward.CardOptions.Length != reward.CardOptions.Distinct(StringComparer.Ordinal).Count())
+        {
+            throw new InvalidOperationException("Reward card options contain duplicates.");
+        }
+
+        foreach (var cardId in reward.CardOptions)
+        {
+            if (!PrototypeContent.RewardCardPool.Contains(cardId, StringComparer.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"Reward contains card '{cardId}' outside the reward pool.");
+            }
+
+            if (PrototypeContent.Card(cardId).Rarity == PrototypeCardRarity.Basic)
+            {
+                throw new InvalidOperationException("Reward contains a basic-only card.");
+            }
         }
     }
 
