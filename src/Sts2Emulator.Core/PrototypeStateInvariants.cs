@@ -152,7 +152,36 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Enemy HP/block cannot be negative.");
         }
 
-        var known = player.Deck.Select(card => card.InstanceId).ToHashSet();
+        var known = combat.Cards.Select(card => card.InstanceId).ToHashSet();
+        if (known.Count != combat.Cards.Length)
+        {
+            throw new InvalidOperationException("Combat card instance IDs are not unique.");
+        }
+
+        if (combat.NextCardInstanceId <= known.DefaultIfEmpty(0).Max())
+        {
+            throw new InvalidOperationException("Next combat card instance ID is not fresh.");
+        }
+
+        var persistentIds = player.Deck.Select(card => card.InstanceId).ToHashSet();
+        var persistentCombatCards = combat.Cards
+            .Where(card => card.PersistentCardInstanceId is not null)
+            .ToArray();
+
+        if (persistentCombatCards.Length != persistentIds.Count
+            || persistentCombatCards.Any(card =>
+                card.PersistentCardInstanceId is null
+                || !persistentIds.Contains(card.PersistentCardInstanceId.Value)))
+        {
+            throw new InvalidOperationException(
+                "Persistent deck cards are not represented exactly once in combat.");
+        }
+
+        if (combat.Cards.Any(card => card.IsTemporary != (card.PersistentCardInstanceId is null)))
+        {
+            throw new InvalidOperationException("Combat temporary-card provenance is inconsistent.");
+        }
+
         var zones = combat.Hand
             .Concat(combat.DrawPile)
             .Concat(combat.DiscardPile)
