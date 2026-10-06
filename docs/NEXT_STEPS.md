@@ -87,12 +87,16 @@ the parent repository.
 The native build is now pinned and the data-source inventory is substantially complete. The fidelity
 workflow is now **static-first**:
 
-1. sync/query the exact Spire Codex `v0.111.0` structured corpus locally;
-2. decompile and search the pinned local `sts2.dll`;
-3. derive generic primitives and versioned rules from those two sources;
+1. sync/query the exact, commit- and blob-pinned Spire Codex `v0.111.0` corpus locally;
+2. decompile once and search the pinned local `sts2.dll`;
+3. derive generic primitives and versioned rules from those two sources, while treating parser-derived
+   columns as hints that must survive text/source cross-checking;
 4. compare legal actions and decision-boundary states against native evidence;
 5. use live probes only for unresolved runtime ordering/RNG/readiness questions;
 6. replace prototype generation, RNG, timing, and content through versioned rulesets.
+
+The first mechanics gap pass is complete. The next source-driven target is Sly/discard ordering,
+followed by Innate/Retain and generic random-target/random-choice operations.
 
 See [REFERENCE_DATA_STRATEGY.md](REFERENCE_DATA_STRATEGY.md).
 
