@@ -262,6 +262,8 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "target_enemy",
             "target_all_enemies",
             "random_target",
+            "play_condition_draw_pile_empty",
+            "condition_target_has_status",
             "damage",
             "block",
             "draw",
@@ -592,7 +594,22 @@ public static partial class ReferenceMechanicsGapAnalyzer
             features.Add("automatic_play");
         }
 
-        if (ConditionalRegex().IsMatch(description))
+        var hasSpecificConditional = false;
+
+        if (DrawPileEmptyConditionRegex().IsMatch(description))
+        {
+            features.Add("play_condition_draw_pile_empty");
+            hasSpecificConditional = true;
+        }
+
+        if (TargetHasStatusConditionRegex().IsMatch(description))
+        {
+            features.Add("condition_target_has_status");
+            hasSpecificConditional = true;
+        }
+
+        if (ConditionalRegex().IsMatch(description)
+            && !hasSpecificConditional)
         {
             features.Add("conditional_effect");
         }
@@ -996,6 +1013,16 @@ public static partial class ReferenceMechanicsGapAnalyzer
         @"\bplay(?:ed)? automatically\b|\bplay it for free\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex AutoPlayRegex();
+
+    [GeneratedRegex(
+        @"can only be played if there are no cards in your .*draw pile",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex DrawPileEmptyConditionRegex();
+
+    [GeneratedRegex(
+        @"\bif the enemy has\b",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex TargetHasStatusConditionRegex();
 
     [GeneratedRegex(
         @"(^|[.\n]\s*)if\b|\bwhenever\b|\bfor each\b|\bevery time\b",
