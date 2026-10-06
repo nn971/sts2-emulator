@@ -62,7 +62,8 @@ public enum PrototypeCardSelectionResolutionKind
 public enum PrototypeEffectTarget
 {
     ActionTargetEnemy,
-    AllEnemies
+    AllEnemies,
+    RandomEnemy
 }
 
 public enum PrototypeCardCostKind
@@ -196,7 +197,8 @@ public sealed record PrototypeQueuedOperation(
     PrototypeCardSelectionSpec? Selection = null,
     string? CardId = null,
     string? PowerId = null,
-    int GeneratedCardUpgradeLevel = 0);
+    int GeneratedCardUpgradeLevel = 0,
+    PrototypeEffectTarget TargetMode = PrototypeEffectTarget.ActionTargetEnemy);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
