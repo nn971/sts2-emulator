@@ -676,6 +676,23 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
+                "proto.silent.pounce",
+                "Pounce",
+                2,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        14,
+                        6),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.free_next_skill")
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
                 "proto.silent.finisher",
                 "Finisher",
                 1,
@@ -1140,6 +1157,13 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
+            new PrototypePowerDefinition(
+                "proto.power.free_next_skill",
+                "Free Skill",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                FreeCardType: PrototypeCardType.Skill,
+                ConsumeOnMatchingCardPlay: true),
             new PrototypePowerDefinition(
                 "proto.power.block_next_turn",
                 "Block Next Turn",
