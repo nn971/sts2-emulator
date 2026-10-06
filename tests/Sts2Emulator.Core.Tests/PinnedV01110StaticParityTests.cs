@@ -151,6 +151,26 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void PinpointMatchesPinnedV01110DynamicCostAndDamage()
+    {
+        var pinpoint = PrototypeContent.Card("proto.silent.pinpoint");
+
+        Assert.Equal(PrototypeCardType.Attack, pinpoint.Type);
+        Assert.Equal(PrototypeCardRarity.Uncommon, pinpoint.Rarity);
+        Assert.Equal(3, pinpoint.Cost.Amount);
+        Assert.Equal(
+            PrototypeCombatCountKind.SkillsPlayedThisTurn,
+            pinpoint.Cost.ReductionCountKind);
+        Assert.Equal(1, pinpoint.Cost.ReductionPerCount);
+        Assert.Equal(0, pinpoint.Cost.MinimumAmount);
+
+        var damage = Assert.Single(pinpoint.Effects);
+        Assert.Equal(PrototypeCombatEffectKind.DamageEnemy, damage.Kind);
+        Assert.Equal(15, damage.Amount);
+        Assert.Equal(4, damage.UpgradeDelta);
+    }
+
+    [Fact]
     public void CountBackedCardsMatchPinnedV01110Scalars()
     {
         var finisher = PrototypeContent.Card("proto.silent.finisher");
