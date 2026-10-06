@@ -20,6 +20,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Summarize a passive native reference probe");
     Console.WriteLine("  reference-probe-audit <probe.jsonl>");
     Console.WriteLine("                          Audit history/state/RNG shapes for parity work");
+    Console.WriteLine("  reference-probe-actions <probe.jsonl>");
+    Console.WriteLine("                          Extract evidence-backed native action envelopes");
     return;
 }
 
@@ -144,6 +146,53 @@ switch (args[0])
                 $"    properties: {string.Join(", ", catalog.Properties)}");
             Console.WriteLine(
                 $"    fields: {string.Join(", ", catalog.Fields)}");
+        }
+
+        break;
+    }
+
+    case "reference-probe-actions":
+    {
+        if (args.Length != 2)
+        {
+            throw new ArgumentException(
+                "reference-probe-actions requires exactly one JSONL path.");
+        }
+
+        var report = Sts2Emulator.Trace.ReferenceProbeActionExtractor.Analyze(args[1]);
+        Console.WriteLine(
+            $"Actions: cards={report.CardPlayCount}, potions={report.PotionUseCount}, " +
+            $"end_turn={report.EndTurnCount}");
+        Console.WriteLine(
+            $"Candidate boundaries: before={report.ActionsWithCandidateBefore}/{report.Actions.Count}, " +
+            $"after={report.ActionsWithCandidateAfter}/{report.Actions.Count}");
+
+        foreach (var action in report.Actions)
+        {
+            Console.WriteLine(
+                $"[{action.ActionIndex}] {action.Action.Kind} observed={action.ObservedSequence} " +
+                $"before={action.CandidateBefore?.Sequence.ToString() ?? "-"} " +
+                $"finish={action.LifecycleFinish?.Sequence.ToString() ?? "-"} " +
+                $"after={action.CandidateAfter?.Sequence.ToString() ?? "-"}");
+            Console.WriteLine(
+                $"  payload: {action.Action.Payload.GetRawText()}");
+
+            if (action.CandidateBefore is not null)
+            {
+                Console.WriteLine(
+                    $"  before evidence: {action.CandidateBefore.Evidence}");
+            }
+
+            if (action.CandidateAfter is not null)
+            {
+                Console.WriteLine(
+                    $"  after evidence: {action.CandidateAfter.Evidence}");
+            }
+
+            foreach (var diagnostic in action.Diagnostics)
+            {
+                Console.WriteLine($"  diagnostic: {diagnostic}");
+            }
         }
 
         break;
