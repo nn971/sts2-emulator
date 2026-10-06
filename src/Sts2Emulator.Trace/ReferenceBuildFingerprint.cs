@@ -132,23 +132,20 @@ public static class ReferenceBuildFingerprint
         string gameDirectory,
         string dataDirectory)
     {
-        var candidates = new[]
+        var gamePath = Path.Combine(gameDirectory, fileName);
+        if (File.Exists(gamePath))
         {
-            Path.Combine(gameDirectory, fileName),
-            Path.Combine(dataDirectory, fileName)
+            return gamePath;
         }
-        .Distinct(StringComparer.Ordinal)
-        .Where(File.Exists)
-        .ToArray();
 
-        return candidates.Length switch
+        var dataPath = Path.Combine(dataDirectory, fileName);
+        if (File.Exists(dataPath))
         {
-            1 => candidates[0],
-            0 => throw new FileNotFoundException(
-                $"Required STS2 metadata file '{fileName}' was not found in the game or data directory."),
-            _ => throw new InvalidOperationException(
-                $"Found multiple '{fileName}' files. Pass a data directory that matches the intended build.")
-        };
+            return dataPath;
+        }
+
+        throw new FileNotFoundException(
+            $"Required STS2 metadata file '{fileName}' was not found in the game or data directory.");
     }
 
     private static ReferenceBuildFile DescribeFile(
