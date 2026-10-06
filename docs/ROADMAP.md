@@ -28,7 +28,7 @@ native fidelity and high throughput.
 - [x] victory/death terminal states
 - [x] CLI whole-run smoke driver
 - [x] deterministic whole-run smoke tests
-- [ ] harden CI and edge-case validation
+- [x] prototype CI hardening, structural invariants, and 500-seed whole-run sweep
 
 ## Milestone 2 — expressive mechanics kernel
 
@@ -52,11 +52,22 @@ central dispatch branches.
 - [x] rarity-aware card rewards
 - [x] rarity-aware shops with one-use card removal
 - [x] weighted event eligibility/history with repeat constraints
-- [ ] richer rest-site choices
-- [ ] substantially larger Silent card pool
+- [x] richer rest-site choices, including permanent max-HP training
+- [ ] substantially larger Silent card pool — first major supported-mechanics expansion complete
 - [x] first expanded potion/relic pool
 - [x] act-specific boss and later-elite encounter expansion
-- [ ] enough variety for meaningful strategic AI experiments
+- [ ] enough variety for meaningful strategic AI experiments — deterministic sweep reporting now available
+
+## Prototype AI handoff
+
+- [x] player-facing observation DTO
+- [x] stable semantic action IDs
+- [x] deterministic reset/step/fork adapter
+- [x] sibling expansion API for search
+- [x] observation and canonical-state hashes
+- [x] machine-readable capability manifest
+- [x] deterministic multi-run sweep report
+- [ ] parent `sts2-ai` integration against this adapter
 
 ## Milestone 4 — native-data and fidelity convergence
 
@@ -72,24 +83,24 @@ central dispatch branches.
 
 ## Milestone 5 — practical speed
 
-- [ ] representative AI/search benchmark suite
+- [ ] representative AI/search benchmark suite — prototype observe/expand microbenchmarks added
 - [ ] profile state copy/fork
 - [ ] compact state layouts where justified
 - [ ] structural sharing/copy-on-write where justified
 - [ ] efficient transposition hashes
 - [ ] allocation/GC reduction
-- [ ] parallel/batch API
+- [ ] parallel/batch API — deterministic sibling expansion API added; parallel execution remains
 - [ ] memory-per-branch budgets
 - [ ] NativeAOT/interoperability evaluation
 
 ## Milestone 6 — stable consumer release
 
 - [ ] versioned public engine API
-- [ ] versioned state/action schemas
+- [ ] versioned state/action schemas — `prototype-ai-v0` adapter schema exists; cross-language schema remains
 - [ ] deterministic save/load
 - [ ] Python binding
 - [ ] compatibility/version negotiation
-- [ ] supported-mechanics manifest
+- [x] prototype supported-mechanics/content capability manifest
 - [ ] reproducible fidelity/performance report
 
 ## Maintenance
