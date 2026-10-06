@@ -67,9 +67,17 @@ a static-first reference-data strategy.
 The exact Spire Codex beta archive for `v0.111.0` has been verified to contain structured cards,
 characters, relics, potions, powers, monsters, encounters, events, acts, ascensions, afflictions,
 enchantments, keywords, intents, orbs, modifiers, rest-site options and progression metadata.
-Local sync and pinned-`sts2.dll` decompilation helpers now live under `tools/reference_source/`.
-The external corpus and decompiled source are deliberately gitignored and must not be redistributed.
-See `docs/REFERENCE_DATA_STRATEGY.md`.
+The corpus sync is pinned to Spire Codex commit
+`b59c6f96043051afee8683237d04f943309ced35` and verifies per-file Git blob hashes.
+
+`ReferenceCorpus`, `ReferenceMechanicsGapAnalyzer`, and `ReferenceSourceSearch` now provide local
+querying, Silent mechanic-gap analysis, parser-artifact warnings, and line-oriented search over the
+one-time ILSpy source tree. The external corpus and decompiled source are deliberately gitignored
+and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
+`docs/reference-builds/v0.111.0-mechanics-gap-001.md`.
+
+The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
+Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
 
 ## First live native capture
