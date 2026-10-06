@@ -713,6 +713,7 @@ public sealed partial class PrototypeGameEngine
                 .Where(enemy => enemy.Hp > 0)
                 .Select(enemy => (int?)enemy.InstanceId)
                 .ToArray(),
+            PrototypeEffectTarget.RandomEnemy => new int?[] { null },
             _ => throw new ArgumentOutOfRangeException()
         };
 
@@ -740,7 +741,8 @@ public sealed partial class PrototypeGameEngine
                     effect.CardId,
                     effect.PowerId,
                     effect.GeneratedCardUpgradeLevel
-                        + (effect.GeneratedCardUpgradePerSourceUpgrade * upgradeLevel)));
+                        + (effect.GeneratedCardUpgradePerSourceUpgrade * upgradeLevel),
+                    TargetMode: effect.Target));
             }
         }
     }
@@ -758,17 +760,38 @@ public sealed partial class PrototypeGameEngine
         while (operations.Count > 0)
         {
             var operation = operations.Dequeue();
+            var targetEnemyId = operation.TargetEnemyId;
+
+            if (operation.TargetMode == PrototypeEffectTarget.RandomEnemy)
+            {
+                var liveEnemies = combat.Enemies
+                    .Where(enemy => enemy.Hp > 0)
+                    .Select(enemy => enemy.InstanceId)
+                    .ToArray();
+
+                if (liveEnemies.Length == 0)
+                {
+                    continue;
+                }
+
+                targetEnemyId = liveEnemies[
+                    PrototypeRng.NextInt(
+                        rng,
+                        "combat_targets",
+                        liveEnemies.Length)];
+            }
+
             switch (operation.Kind)
             {
                 case PrototypeCombatEffectKind.DamageEnemy:
-                    if (operation.TargetEnemyId is null)
+                    if (targetEnemyId is null)
                     {
                         throw new InvalidOperationException("Damage operation requires an enemy target.");
                     }
 
                     var damageResult = DamageEnemy(
                         combat,
-                        operation.TargetEnemyId.Value,
+                        targetEnemyId.Value,
                         operation.Amount);
                     combat = damageResult.Combat;
 
@@ -779,7 +802,7 @@ public sealed partial class PrototypeGameEngine
                             combat,
                             new PrototypeCombatEvent(
                                 PrototypeCombatEventKind.EnemyDamaged,
-                                TargetEnemyId: operation.TargetEnemyId.Value,
+                                TargetEnemyId: targetEnemyId.Value,
                                 Amount: damageResult.DamageDealt),
                             rng,
                             eventDepth + 1);
@@ -794,7 +817,7 @@ public sealed partial class PrototypeGameEngine
                             combat,
                             new PrototypeCombatEvent(
                                 PrototypeCombatEventKind.EnemyDefeated,
-                                TargetEnemyId: operation.TargetEnemyId.Value,
+                                TargetEnemyId: targetEnemyId.Value,
                                 Amount: damageResult.DamageDealt),
                             rng,
                             eventDepth + 1);
@@ -818,14 +841,14 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeCombatEffectKind.ApplyEnemyStatus:
-                    if (operation.TargetEnemyId is null || operation.StatusId is null)
+                    if (targetEnemyId is null || operation.StatusId is null)
                     {
                         throw new InvalidOperationException("Status operation requires target and status ID.");
                     }
 
                     combat = ApplyEnemyStatus(
                         combat,
-                        operation.TargetEnemyId.Value,
+                        targetEnemyId.Value,
                         operation.StatusId,
                         operation.Amount);
                     break;
@@ -872,7 +895,7 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeCombatEffectKind.ApplyEnemyPower:
-                    if (operation.PowerId is null || operation.TargetEnemyId is null)
+                    if (operation.PowerId is null || targetEnemyId is null)
                     {
                         throw new InvalidOperationException(
                             "Apply-enemy-power operation requires a power ID and enemy target.");
@@ -880,7 +903,7 @@ public sealed partial class PrototypeGameEngine
 
                     combat = ApplyEnemyPower(
                         combat,
-                        operation.TargetEnemyId.Value,
+                        targetEnemyId.Value,
                         operation.PowerId,
                         operation.Amount);
                     break;
@@ -911,7 +934,7 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeCombatEffectKind.MultiplyEnemyStatus:
-                    if (operation.TargetEnemyId is null || operation.StatusId is null)
+                    if (targetEnemyId is null || operation.StatusId is null)
                     {
                         throw new InvalidOperationException(
                             "Multiply-status operation requires target and status ID.");
@@ -919,7 +942,7 @@ public sealed partial class PrototypeGameEngine
 
                     combat = MultiplyEnemyStatus(
                         combat,
-                        operation.TargetEnemyId.Value,
+                        targetEnemyId.Value,
                         operation.StatusId,
                         operation.Amount);
                     break;
