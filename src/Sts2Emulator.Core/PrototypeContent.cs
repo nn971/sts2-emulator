@@ -936,7 +936,60 @@ public static class PrototypeContent
                         [new(PrototypeRunEffectKind.GainGold, 75)])
                 ],
                 MinAct: 2,
-                Weight: 2)
+                Weight: 2),
+            new PrototypeEventDefinition(
+                "proto.event.knife_shrine",
+                "Knife Shrine",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "practice",
+                        "Practice the pattern",
+                        [
+                            new(PrototypeRunEffectKind.LoseHp, 7),
+                            new(PrototypeRunEffectKind.AddCard, CardId: "proto.silent.blade_dance")
+                        ]),
+                    new PrototypeEventChoiceDefinition(
+                        "leave",
+                        "Take an offering",
+                        [new(PrototypeRunEffectKind.GainGold, 35)])
+                ],
+                Weight: 2),
+            new PrototypeEventDefinition(
+                "proto.event.alchemist",
+                "Back-Alley Alchemist",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "remedy",
+                        "Accept the remedy",
+                        [new(PrototypeRunEffectKind.Heal, 18)]),
+                    new PrototypeEventChoiceDefinition(
+                        "formula",
+                        "Buy the formula with blood",
+                        [
+                            new(PrototypeRunEffectKind.LoseHp, 10),
+                            new(PrototypeRunEffectKind.AddCard, CardId: "proto.silent.catalyst")
+                        ])
+                ],
+                MinAct: 2,
+                Weight: 2),
+            new PrototypeEventDefinition(
+                "proto.event.gambling_den",
+                "Gambling Den",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "safe",
+                        "Take the safe purse",
+                        [new(PrototypeRunEffectKind.GainGold, 30)]),
+                    new PrototypeEventChoiceDefinition(
+                        "risk",
+                        "Take the dangerous table",
+                        [
+                            new(PrototypeRunEffectKind.LoseHp, 12),
+                            new(PrototypeRunEffectKind.GainGold, 110)
+                        ])
+                ],
+                Weight: 2,
+                OncePerRun: false)
         }.ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
     public static PrototypeEncounterDefinition[] Encounters { get; } =
