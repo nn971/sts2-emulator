@@ -79,25 +79,27 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through six gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through nine gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
-play-series replay for Burst (including repeated nested choices), and Tools of the Trade's
-hand-draw/post-turn-start discard policy. See
-`docs/reference-builds/v0.111.0-mechanics-gap-006.md`.
+play-series replay for Burst (including repeated nested choices), Tools of the Trade's
+hand-draw/post-turn-start discard policy, and Nightmare's instanced delayed selected-card payload.
 
-The typed delayed-card snapshot/payload target is now implemented through Nightmare: selected
-card identity, upgrade, opaque card state, combat-local cost state, and combat keyword overrides are
-snapshotted into an instanced power and cloned into Hand before the next normal hand draw.
+Combat-card state now includes typed Retain/Sly/Ethereal overrides plus a card-local Replay count.
+Hand Trick and Expertise exercise selected-card and just-drawn-card mutation. Master Planner adds
+persistent Sly by mutating the exact Skill instance carried by a CardPlayed event. Intrinsic Replay
+shares the same play-series continuation as Burst, including repeated player choices, and card
+snapshots such as Nightmare preserve Replay.
 
-Static-first Silent work has also added typed combat-card keyword overrides. Selection can filter by
-card type; temporary Retain/Sly/Ethereal state lives on combat card instances and participates in
-normal discard/autoplay semantics; and draw effects can mutate exactly the card instances they drew.
-Source-backed Hand Trick and Expertise are the first acceptance cases.
+The value-query layer now also supports target-status-conditioned Attack modifiers and aggregate
+enemy-status values. Source-backed Tracking applies +50% Attack damage per stack against Weak
+targets, while Mirage gains Block from total Poison on living enemies. Mirage also adds the first
+upgrade-sensitive removal of Exhaust.
 
-The next high-value structural targets are intrinsic Replay, general automatic-hook suspension, and
-aggregate/value-query effects. Master Planner is also a useful follow-up acceptance case for
-persistent card-local Sly mutation driven by CardPlayed events.
+The next high-value structural target is general automatic-hook/event-dispatch suspension. After
+that, continue source-driven value/counter mechanics such as Phantom Blades and enrich card-local
+state for enchantments/afflictions as the pinned source requires. See
+`docs/reference-builds/v0.111.0-mechanics-gap-009.md`.
 
 
 ## First live native capture
