@@ -84,17 +84,30 @@ Before deep fidelity work, add a thin `sts2-ai` integration that can reset, obse
 actions, fork/expand, and run deterministic prototype evaluations. Keep all strategy/search code in
 the parent repository.
 
-Then:
+The native build is now pinned and the data-source inventory is substantially complete. The fidelity
+workflow is now **static-first**:
 
-1. pin a reference STS2 build;
-2. inventory real content/data sources and legally appropriate extraction/translation routes;
-3. build the native reference bridge;
-4. compare legal actions and decision-boundary states;
-5. replace prototype generation, RNG, timing, and content through versioned rulesets.
+1. sync/query the exact Spire Codex `v0.111.0` structured corpus locally;
+2. decompile and search the pinned local `sts2.dll`;
+3. derive generic primitives and versioned rules from those two sources;
+4. compare legal actions and decision-boundary states against native evidence;
+5. use live probes only for unresolved runtime ordering/RNG/readiness questions;
+6. replace prototype generation, RNG, timing, and content through versioned rulesets.
+
+See [REFERENCE_DATA_STRATEGY.md](REFERENCE_DATA_STRATEGY.md).
 
 ## Sprint E — fidelity loop
 
-Use differential replay to turn native observations into minimized regression cases. Treat every
+Work subsystem-first rather than probe-first. Prioritize:
+
+1. core combat/card/power primitives from the pinned corpus;
+2. Silent-native content translation;
+3. run generation/reward/shop/rest rules;
+4. monster state machines;
+5. nested player choices;
+6. exact RNG consumption and hook ordering.
+
+Use differential replay only after static sources have produced an implementation. Treat every
 verified ordering/RNG/content correction as version-pinned evidence rather than a global assumption.
 
 ## Sprint F — performance loop
