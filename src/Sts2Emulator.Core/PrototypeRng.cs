@@ -10,7 +10,15 @@ public static class PrototypeRng
 
     public static RngBundle CreateBundle(string seed)
     {
-        var streamIds = new[] { "map", "combat", "reward", "shop", "event" };
+        var streamIds = new[]
+        {
+            "map",
+            "combat",
+            "combat_targets",
+            "reward",
+            "shop",
+            "event"
+        };
         return new RngBundle(
             streamIds
                 .Select(streamId => new RngStreamState(
