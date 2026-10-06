@@ -11,6 +11,7 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  prototype-run [seed]   Drive the restrictive Silent prototype to terminal state");
     Console.WriteLine("  prototype-sweep [n]    Run a deterministic smoke policy over many seeds");
     Console.WriteLine("  prototype-manifest     Print the machine-readable prototype capability manifest");
+    Console.WriteLine("  prototype-ai-jsonl     Run the long-lived prototype AI JSONL bridge on stdin/stdout");
     return;
 }
 
@@ -50,6 +51,10 @@ switch (args[0])
 
     case "prototype-manifest":
         Console.WriteLine(CanonicalJson.Serialize(PrototypeCapabilities.Create()));
+        break;
+
+    case "prototype-ai-jsonl":
+        Sts2Emulator.Cli.PrototypeAiJsonlServer.Run(Console.In, Console.Out);
         break;
 
     case "prototype-run":
