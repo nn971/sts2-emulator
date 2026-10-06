@@ -43,7 +43,9 @@ public sealed class PrototypeChoiceTests
             [
                 new CombatCardInstance(1, 1, "proto.silent.survivor", 0, false, empty),
                 new CombatCardInstance(2, 2, "proto.silent.strike", 0, false, empty)
-            ]);
+            ],
+            PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
+            NextPowerApplicationOrder: 1);
 
         var state = new RunState(
             GameBuild: "prototype-unbound",
@@ -134,7 +136,9 @@ public sealed class PrototypeChoiceTests
             Cards:
             [
                 new CombatCardInstance(1, 10, "proto.silent.blade_dance", 0, false, empty)
-            ]);
+            ],
+            PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
+            NextPowerApplicationOrder: 1);
 
         var state = new RunState(
             GameBuild: "prototype-unbound",
