@@ -198,11 +198,17 @@ public sealed record PrototypePotionDefinition(
     PrototypeCardTarget Target,
     PrototypeCombatEffectSpec[] Effects);
 
+public sealed record PrototypeRelicTriggerSpec(
+    PrototypeCombatEventKind EventKind,
+    PrototypeCombatEffectSpec[] Effects,
+    int EveryNth = 1);
+
 public sealed record PrototypeRelicDefinition(
     string Id,
     string Name,
     int FirstTurnDrawBonus = 0,
-    int EnergyPerTurnBonus = 0);
+    int EnergyPerTurnBonus = 0,
+    PrototypeRelicTriggerSpec[]? Triggers = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -369,6 +375,18 @@ public sealed record CombatCardInstance(
     public CombatCardInstance Fork() => this with { State = State.Clone() };
 }
 
+public sealed record CombatRelicState(
+    int PersistentIndex,
+    string RelicId,
+    long ApplicationOrder,
+    int[] TriggerCounts)
+{
+    public CombatRelicState Fork() => this with
+    {
+        TriggerCounts = (int[])TriggerCounts.Clone()
+    };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -399,6 +417,7 @@ public sealed record CombatState(
     CombatCardInstance[] Cards,
     PrototypePowerInstanceState[] PlayerPowers,
     long NextPowerApplicationOrder,
+    CombatRelicState[]? Relics = null,
     PendingCombatChoiceState? PendingChoice = null)
 {
     public CombatState Fork() => this with
@@ -410,8 +429,14 @@ public sealed record CombatState(
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
         PlayerPowers = (PrototypePowerInstanceState[])PlayerPowers.Clone(),
+        Relics = Relics is null
+            ? null
+            : Relics.Select(relic => relic.Fork()).ToArray(),
         PendingChoice = PendingChoice?.Fork()
     };
+
+    public CombatRelicState[] RelicStates =>
+        Relics ?? Array.Empty<CombatRelicState>();
 }
 
 public sealed record RewardState(
