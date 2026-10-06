@@ -321,6 +321,15 @@ public sealed partial class PrototypeGameEngine
                 combat = ResolveEnemyStatusStage(combat, automaticStep.Stage.Value);
                 break;
 
+            case PrototypeAutomaticStepKind.ResetEnemyBlock:
+                combat = combat with
+                {
+                    Enemies = combat.Enemies
+                        .Select(enemy => enemy with { Block = 0 })
+                        .ToArray()
+                };
+                break;
+
             case PrototypeAutomaticStepKind.ResolveEnemyActions:
             {
                 var result = ResolveEnemyActions(player, combat, world.Act);
@@ -446,18 +455,49 @@ public sealed partial class PrototypeGameEngine
             }
 
             var move = definition.Moves[enemy.MoveIndex % definition.Moves.Length];
-            var damage = move.Damage + ((act - 1) * move.DamagePerAct);
 
-            foreach (var status in enemy.Statuses)
+            foreach (var effect in move.Effects)
             {
-                var statusDefinition = PrototypeContent.Status(status.Key);
-                damage = (damage * statusDefinition.OutgoingDamageNumerator)
-                    / statusDefinition.OutgoingDamageDenominator;
-            }
+                var amount = effect.Amount + ((act - 1) * effect.AmountPerAct);
+                for (var repetition = 0; repetition < effect.Repetitions; repetition++)
+                {
+                    switch (effect.Kind)
+                    {
+                        case PrototypeEnemyEffectKind.DamagePlayer:
+                        {
+                            var damage = amount;
+                            foreach (var status in enemy.Statuses)
+                            {
+                                var statusDefinition = PrototypeContent.Status(status.Key);
+                                damage = (damage * statusDefinition.OutgoingDamageNumerator)
+                                    / statusDefinition.OutgoingDamageDenominator;
+                            }
 
-            var absorbed = Math.Min(block, Math.Max(0, damage));
-            block -= absorbed;
-            hp = Math.Max(0, hp - Math.Max(0, damage - absorbed));
+                            var absorbed = Math.Min(block, Math.Max(0, damage));
+                            block -= absorbed;
+                            hp = Math.Max(0, hp - Math.Max(0, damage - absorbed));
+                            break;
+                        }
+
+                        case PrototypeEnemyEffectKind.GainBlock:
+                            enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
+                            break;
+
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+
+                    if (hp <= 0)
+                    {
+                        break;
+                    }
+                }
+
+                if (hp <= 0)
+                {
+                    break;
+                }
+            }
 
             enemies[index] = enemy with { MoveIndex = enemy.MoveIndex + 1 };
             if (hp <= 0)
