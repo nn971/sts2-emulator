@@ -37,6 +37,12 @@ public sealed class PrototypeChoiceTests
                     0,
                     0,
                     new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 3,
+            Cards:
+            [
+                new CombatCardInstance(1, 1, "proto.silent.survivor", 0, false, empty),
+                new CombatCardInstance(2, 2, "proto.silent.strike", 0, false, empty)
             ]);
 
         var state = new RunState(
