@@ -909,14 +909,46 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Rare,
                 Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
+                "proto.silent.dodge_and_roll",
+                "Dodge and Roll",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain,
+                        4,
+                        2,
+                        PowerId: "proto.power.block_next_turn")
+                ],
+                Rarity: PrototypeCardRarity.Common,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
+                "proto.silent.sidestep",
+                "Sidestep",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        1,
+                        PowerId: "proto.power.energy_next_turn")
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.predator",
                 "Predator",
                 2,
                 PrototypeCardTarget.Enemy,
                 [
-                    new(PrototypeCombatEffectKind.DamageEnemy, 15, 5)
+                    new(PrototypeCombatEffectKind.DamageEnemy, 15, 5),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        PowerId: "proto.power.draw_cards_next_turn")
                 ],
-                Rarity: PrototypeCardRarity.Uncommon,
+                Rarity: PrototypeCardRarity.Common,
                 Type: PrototypeCardType.Attack)
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
@@ -1108,6 +1140,27 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
+            new PrototypePowerDefinition(
+                "proto.power.block_next_turn",
+                "Block Next Turn",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                BlockAfterClearPerStack: 1,
+                RemoveAfterBlockClear: true),
+            new PrototypePowerDefinition(
+                "proto.power.energy_next_turn",
+                "Energy Next Turn",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                EnergyAfterResetPerStack: 1,
+                RemoveAfterEnergyReset: true),
+            new PrototypePowerDefinition(
+                "proto.power.draw_cards_next_turn",
+                "Draw Cards Next Turn",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                HandDrawBonusPerStack: 1,
+                RemoveAfterHandDraw: true),
             new PrototypePowerDefinition(
                 "proto.power.corrosive_wave",
                 "Corrosive Wave",
