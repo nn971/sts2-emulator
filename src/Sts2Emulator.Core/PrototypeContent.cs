@@ -440,6 +440,20 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
+                "proto.silent.phantom_blades",
+                "Phantom Blades",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        9,
+                        3,
+                        PowerId: "proto.power.phantom_blades")
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Power),
+            new PrototypeCardDefinition(
                 "proto.silent.tracking",
                 "Tracking",
                 new PrototypeCardCostSpec(
