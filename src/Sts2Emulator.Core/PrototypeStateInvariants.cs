@@ -145,13 +145,13 @@ public static class PrototypeStateInvariants
 
     private static void ValidateEncounterHistory(RunWorldState world)
     {
-        foreach (var encounterId in world.EncounterIds)
+        foreach (var historicalEncounterId in world.EncounterIds)
         {
             if (!PrototypeContent.Encounters.Any(encounter =>
-                StringComparer.Ordinal.Equals(encounter.Id, encounterId)))
+                StringComparer.Ordinal.Equals(encounter.Id, historicalEncounterId)))
             {
                 throw new InvalidOperationException(
-                    $"Encounter history contains unknown encounter '{encounterId}'.");
+                    $"Encounter history contains unknown encounter '{historicalEncounterId}'.");
             }
         }
 
