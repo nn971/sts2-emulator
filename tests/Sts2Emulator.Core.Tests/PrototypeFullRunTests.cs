@@ -42,10 +42,35 @@ public sealed class PrototypeFullRunTests
         Assert.Equal(CanonicalJson.Sha256(left), CanonicalJson.Sha256(right));
     }
 
+    [Fact]
+    public void FiveHundredSeedsTerminateWithoutInvariantViolations()
+    {
+        for (var seedIndex = 0; seedIndex < 500; seedIndex++)
+        {
+            var engine = new PrototypeGameEngine();
+            var state = PrototypeGameFactory.Create($"sweep-{seedIndex}");
+            PrototypeStateInvariants.Validate(state);
+
+            for (var step = 0; step < 5_000 && state.Phase != RunPhase.Terminal; step++)
+            {
+                var legal = engine.GetLegalActions(state);
+                Assert.NotEmpty(legal);
+
+                var actionIndex = Math.Abs((seedIndex * 31) + (step * 17)) % legal.Count;
+                state = engine.Step(state, legal[actionIndex]).State;
+                PrototypeStateInvariants.Validate(state);
+            }
+
+            Assert.Equal(RunPhase.Terminal, state.Phase);
+            Assert.True(state.DecisionIndex < 5_000);
+        }
+    }
+
     private static RunState DriveToTerminal(string seed)
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeGameFactory.Create(seed);
+        PrototypeStateInvariants.Validate(state);
 
         for (var step = 0; step < 5_000 && state.Phase != RunPhase.Terminal; step++)
         {
@@ -53,6 +78,7 @@ public sealed class PrototypeFullRunTests
             Assert.NotEmpty(legal);
             var action = ChooseAction(state, legal);
             state = engine.Step(state, action).State;
+            PrototypeStateInvariants.Validate(state);
         }
 
         return state;
