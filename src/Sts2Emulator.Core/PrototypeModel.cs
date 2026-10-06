@@ -54,7 +54,8 @@ public enum PrototypeCombatEffectKind
     DamagePlayer,
     GainEnergy,
     MultiplyEnemyStatus,
-    GainPlayerBlockAndApplyPowerFromActualGain
+    GainPlayerBlockAndApplyPowerFromActualGain,
+    ModifySourceCardEnergyCost
 }
 
 public enum PrototypeCardZone
@@ -515,7 +516,8 @@ public sealed record CombatCardInstance(
     string CardId,
     int UpgradeLevel,
     bool IsTemporary,
-    JsonElement State)
+    JsonElement State,
+    int CombatEnergyCostDelta = 0)
 {
     public CombatCardInstance Fork() => this with { State = State.Clone() };
 }
