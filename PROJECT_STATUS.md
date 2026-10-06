@@ -63,3 +63,18 @@ The first pinned native oracle is STS2 `v0.111.0` / commit `41cef1ea`, fingerpri
 Implemented native-fidelity groundwork now includes build fingerprinting, metadata inspection,
 the native-neutral reference-trace v0.2 contract, and a single-DLL passive reference recorder
 staged outside the clean oracle. The recorder still requires its first live in-game validation.
+
+
+## First live native capture
+
+The v0 passive recorder has now been validated in-game on two Ascension-0 Silent combats against
+the pinned v0.111.0 / 41cef1ea oracle. The 54-record JSONL contained two coherent
+setup/start/turn/win/end lifecycles and no capture failures.
+
+The capture exposed three concrete next needs now implemented in probe v1:
+
+- Player -> Creature discovery for player HP/block/power state;
+- field-level projection of native SerializableRng state;
+- passive CombatHistory.Changed capture for card-play/damage/energy/potion/monster-move granularity.
+
+See `docs/reference-builds/v0.111.0-capture-001.md`.
