@@ -106,6 +106,51 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void CountScaledDamageCardsMatchPinnedV01110Scalars()
+    {
+        var memento = PrototypeContent.Card("proto.silent.memento_mori");
+        Assert.Equal(PrototypeCardType.Attack, memento.Type);
+        Assert.Equal(1, memento.Cost.Amount);
+        Assert.Equal(PrototypeCardRarity.Uncommon, memento.Rarity);
+
+        var mementoDamage = Assert.Single(memento.Effects);
+        Assert.Equal(9, mementoDamage.Amount);
+        Assert.Equal(2, mementoDamage.UpgradeDelta);
+        Assert.Equal(
+            PrototypeCombatCountKind.CardsDiscardedThisTurn,
+            mementoDamage.CountKind);
+        Assert.Equal(4, mementoDamage.AmountPerCount);
+        Assert.Equal(1, mementoDamage.AmountPerCountUpgradeDelta);
+
+        var murder = PrototypeContent.Card("proto.silent.murder");
+        Assert.Equal(PrototypeCardType.Attack, murder.Type);
+        Assert.Equal(3, murder.Cost.Amount);
+        Assert.Equal(-1, murder.Cost.UpgradeDelta);
+        Assert.Equal(2, murder.Cost.AmountAt(1));
+        Assert.Equal(PrototypeCardRarity.Rare, murder.Rarity);
+
+        var murderDamage = Assert.Single(murder.Effects);
+        Assert.Equal(1, murderDamage.Amount);
+        Assert.Equal(
+            PrototypeCombatCountKind.CardsDrawnThisCombat,
+            murderDamage.CountKind);
+        Assert.Equal(1, murderDamage.AmountPerCount);
+
+        var preciseCut = PrototypeContent.Card("proto.silent.precise_cut");
+        Assert.Equal(PrototypeCardType.Attack, preciseCut.Type);
+        Assert.Equal(0, preciseCut.Cost.Amount);
+        Assert.Equal(PrototypeCardRarity.Uncommon, preciseCut.Rarity);
+
+        var preciseDamage = Assert.Single(preciseCut.Effects);
+        Assert.Equal(13, preciseDamage.Amount);
+        Assert.Equal(3, preciseDamage.UpgradeDelta);
+        Assert.Equal(
+            PrototypeCombatCountKind.OtherCardsInHand,
+            preciseDamage.CountKind);
+        Assert.Equal(-2, preciseDamage.AmountPerCount);
+    }
+
+    [Fact]
     public void CountBackedCardsMatchPinnedV01110Scalars()
     {
         var finisher = PrototypeContent.Card("proto.silent.finisher");
