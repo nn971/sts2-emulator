@@ -146,6 +146,19 @@ public static class PrototypeContent
                         2,
                         Target: PrototypeEffectTarget.AllEnemies,
                         Repetitions: 2)
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.skewer",
+                "Skewer",
+                new PrototypeCardCostSpec(PrototypeCardCostKind.X),
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        7,
+                        3,
+                        Repetitions: 0,
+                        RepetitionsPerEnergySpent: 1)
                 ])
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
@@ -302,7 +315,8 @@ public static class PrototypeContent
         "proto.silent.slice",
         "proto.silent.acrobatics",
         "proto.silent.blade_dance",
-        "proto.silent.dagger_spray"
+        "proto.silent.dagger_spray",
+        "proto.silent.skewer"
     ];
 
     public static string[] PotionPool { get; } = Potions.Keys.Order(StringComparer.Ordinal).ToArray();
