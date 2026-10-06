@@ -425,6 +425,22 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
+                "proto.silent.tracking",
+                "Tracking",
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.Fixed,
+                    2,
+                    -1),
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.tracking")
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Power),
+            new PrototypeCardDefinition(
                 "proto.silent.noxious_fumes",
                 "Noxious Fumes",
                 1,
@@ -1359,6 +1375,14 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AttackDamageBonusRequiredCardTag: "Shiv",
                 AttackDamageBonusPerStack: 1),
+            new PrototypePowerDefinition(
+                "proto.power.tracking",
+                "Tracking",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                AttackDamageBonusRequiredTargetStatus: "proto.status.weak",
+                AttackDamageBonusTargetNumeratorPerStack: 1,
+                AttackDamageBonusTargetDenominator: 2),
             new PrototypePowerDefinition(
                 "proto.power.noxious_fumes",
                 "Noxious Fumes",
