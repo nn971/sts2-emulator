@@ -397,7 +397,37 @@ public static class PrototypeContent
                 "proto.potion.swift",
                 "Swift Potion",
                 PrototypeCardTarget.None,
-                [new(PrototypeCombatEffectKind.DrawCards, 3)])
+                [new(PrototypeCombatEffectKind.DrawCards, 3)]),
+            new PrototypePotionDefinition(
+                "proto.potion.weak",
+                "Weak Potion",
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        3,
+                        StatusId: "proto.status.weak")
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.dexterity",
+                "Dexterity Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        PowerId: "proto.power.dexterity")
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.explosive",
+                "Explosive Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        10,
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
@@ -565,6 +595,45 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.sentry",
+                "Prototype Sentry",
+                38,
+                4,
+                [
+                    new(
+                        "guard",
+                        [
+                            new(PrototypeEnemyEffectKind.GainBlock, 8),
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 7, 1)
+                        ]),
+                    new("beam", [new(PrototypeEnemyEffectKind.DamagePlayer, 12, 1)])
+                ]),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.assassin",
+                "Prototype Assassin",
+                34,
+                5,
+                [
+                    new(
+                        "flurry",
+                        [new(PrototypeEnemyEffectKind.DamagePlayer, 5, 1, Repetitions: 2)]),
+                    new("lunge", [new(PrototypeEnemyEffectKind.DamagePlayer, 13, 2)])
+                ]),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.brute",
+                "Prototype Brute",
+                48,
+                6,
+                [
+                    new("smash", [new(PrototypeEnemyEffectKind.DamagePlayer, 15, 2)]),
+                    new(
+                        "brace",
+                        [
+                            new(PrototypeEnemyEffectKind.GainBlock, 10),
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 9, 1)
+                        ])
+                ]),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.elite_guardian",
                 "Prototype Guardian",
                 70,
@@ -718,6 +787,33 @@ public static class PrototypeContent
             MaxFloor: 6,
             Weight: 4),
         new(
+            "proto.encounter.sentry",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.sentry"],
+            MinAct: 2,
+            MaxAct: 3,
+            MinFloor: 2,
+            MaxFloor: 4,
+            Weight: 3),
+        new(
+            "proto.encounter.assassin_pair",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.assassin", "proto.enemy.raider"],
+            MinAct: 2,
+            MaxAct: 3,
+            MinFloor: 2,
+            MaxFloor: 4,
+            Weight: 2),
+        new(
+            "proto.encounter.brute",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.brute"],
+            MinAct: 3,
+            MaxAct: 3,
+            MinFloor: 2,
+            MaxFloor: 4,
+            Weight: 3),
+        new(
             "proto.encounter.elite",
             PrototypeRoomType.Elite,
             ["proto.enemy.elite"],
@@ -729,6 +825,13 @@ public static class PrototypeContent
             PrototypeRoomType.Elite,
             ["proto.enemy.elite_guardian"],
             MinAct: 2,
+            MaxAct: 2,
+            Weight: 1),
+        new(
+            "proto.encounter.elite_assassins",
+            PrototypeRoomType.Elite,
+            ["proto.enemy.assassin", "proto.enemy.assassin"],
+            MinAct: 3,
             MaxAct: 3,
             Weight: 1),
         new(
