@@ -516,6 +516,10 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.DiscardPlayerHand:
             {
+                combat = ClearTemporaryCardCosts(
+                    combat,
+                    PrototypeTemporaryCardCostExpiry.EndOfTurn);
+
                 var ethereal = combat.Hand
                     .Where(instanceId =>
                         PrototypeContent.Card(
@@ -1195,6 +1199,12 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.SetHandCardsEnergyCostUntilTurnEndOrPlayed:
+                    combat = SetHandCardsTemporaryEnergyCost(
+                        combat,
+                        operation.Amount);
+                    break;
+
                 case PrototypeCombatEffectKind.MultiplyEnemyStatus:
                     if (targetEnemyId is null || operation.StatusId is null)
                     {
@@ -1263,6 +1273,14 @@ public sealed partial class PrototypeGameEngine
                 eventDepth + 1);
             player = dispatched.Player;
             combat = dispatched.Combat;
+        }
+
+        if (sourceCardInstanceId is not null)
+        {
+            combat = ClearTemporaryCardCost(
+                combat,
+                sourceCardInstanceId.Value,
+                PrototypeTemporaryCardCostExpiry.WhenPlayed);
         }
 
         return (player, combat);
@@ -1372,6 +1390,11 @@ public sealed partial class PrototypeGameEngine
         CombatCardInstance card,
         PrototypeCardDefinition definition)
     {
+        if (card.TemporaryEnergyCost is not null)
+        {
+            return Math.Max(0, card.TemporaryEnergyCost.Cost);
+        }
+
         var baseCost = definition.Cost.AmountAt(
             card.UpgradeLevel,
             ResolveCardCostReductionCount(
@@ -1382,6 +1405,70 @@ public sealed partial class PrototypeGameEngine
             0,
             baseCost + card.CombatEnergyCostDelta);
     }
+
+    private static CombatState SetHandCardsTemporaryEnergyCost(
+        CombatState combat,
+        int cost)
+    {
+        var hand = combat.Hand.ToHashSet();
+        var cards = combat.Cards
+            .Select(card =>
+            {
+                if (!hand.Contains(card.InstanceId))
+                {
+                    return card;
+                }
+
+                var definition = PrototypeContent.Card(card.CardId);
+                if (definition.Cost.Kind == PrototypeCardCostKind.X)
+                {
+                    return card;
+                }
+
+                return card with
+                {
+                    TemporaryEnergyCost =
+                        new PrototypeTemporaryCardCost(
+                            Math.Max(0, cost),
+                            PrototypeTemporaryCardCostExpiry.EndOfTurn
+                            | PrototypeTemporaryCardCostExpiry.WhenPlayed)
+                };
+            })
+            .ToArray();
+
+        return combat with { Cards = cards };
+    }
+
+    private static CombatState ClearTemporaryCardCost(
+        CombatState combat,
+        long cardInstanceId,
+        PrototypeTemporaryCardCostExpiry expiry)
+    {
+        var cards = combat.Cards
+            .Select(card =>
+                card.InstanceId == cardInstanceId
+                    && card.TemporaryEnergyCost is not null
+                    && card.TemporaryEnergyCost.Expiry.HasFlag(expiry)
+                        ? card with { TemporaryEnergyCost = null }
+                        : card)
+            .ToArray();
+
+        return combat with { Cards = cards };
+    }
+
+    private static CombatState ClearTemporaryCardCosts(
+        CombatState combat,
+        PrototypeTemporaryCardCostExpiry expiry) =>
+        combat with
+        {
+            Cards = combat.Cards
+                .Select(card =>
+                    card.TemporaryEnergyCost is not null
+                    && card.TemporaryEnergyCost.Expiry.HasFlag(expiry)
+                        ? card with { TemporaryEnergyCost = null }
+                        : card)
+                .ToArray()
+        };
 
     private static CombatState ModifyCombatCardEnergyCost(
         CombatState combat,
@@ -2309,6 +2396,14 @@ public sealed partial class PrototypeGameEngine
 
         for (var drawNumber = 0; drawNumber < count; drawNumber++)
         {
+            if (!fromHandDraw
+                && combat.PlayerPowers.Any(power =>
+                    PrototypeContent.Power(power.PowerId)
+                        .PreventsAdditionalDraw))
+            {
+                break;
+            }
+
             if (combat.Hand.Length >= maxHandSize)
             {
                 break;
