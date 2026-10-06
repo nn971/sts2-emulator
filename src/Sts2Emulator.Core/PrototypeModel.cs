@@ -201,7 +201,9 @@ public sealed record PrototypeCardDefinition(
     PrototypeCardTarget Target,
     PrototypeCombatEffectSpec[] Effects,
     bool ExhaustOnUse = false,
-    PrototypeCardRarity Rarity = PrototypeCardRarity.Common);
+    PrototypeCardRarity Rarity = PrototypeCardRarity.Common,
+    bool Innate = false,
+    bool Retain = false);
 
 public sealed record PrototypePotionDefinition(
     string Id,

@@ -274,6 +274,8 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "choose_discard_exhaust",
             "choose_exhaust_exhaust",
             "generate_cards_in_hand",
+            "innate",
+            "retain",
             "upgrade_scalar"
         };
 

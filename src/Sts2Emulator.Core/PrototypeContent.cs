@@ -403,6 +403,29 @@ public static class PrototypeContent
                 ],
                 Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
+                "proto.silent.backstab",
+                "Backstab",
+                0,
+                PrototypeCardTarget.Enemy,
+                [new(PrototypeCombatEffectKind.DamageEnemy, 11, 4)],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Uncommon,
+                Innate: true),
+            new PrototypeCardDefinition(
+                "proto.silent.snakebite",
+                "Snakebite",
+                2,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        7,
+                        3,
+                        StatusId: "proto.status.poison")
+                ],
+                Rarity: PrototypeCardRarity.Common,
+                Retain: true),
+            new PrototypeCardDefinition(
                 "proto.silent.adrenaline",
                 "Adrenaline",
                 0,

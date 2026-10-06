@@ -108,14 +108,21 @@ public sealed partial class PrototypeGameEngine
                 State: card.PersistentState.Clone()))
             .ToArray();
 
-        var drawPile = combatCards.Select(card => card.InstanceId).ToArray();
+        var innateCards = combatCards
+            .Where(card => PrototypeContent.Card(card.CardId).Innate)
+            .Select(card => card.InstanceId)
+            .ToArray();
+        var drawPile = combatCards
+            .Where(card => !PrototypeContent.Card(card.CardId).Innate)
+            .Select(card => card.InstanceId)
+            .ToArray();
         PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
 
         var combat = new CombatState(
             Turn: 1,
             Energy: EnergyPerTurn(state.Player),
             PlayerBlock: 0,
-            Hand: Array.Empty<long>(),
+            Hand: innateCards,
             DrawPile: drawPile,
             DiscardPile: Array.Empty<long>(),
             ExhaustPile: Array.Empty<long>(),
@@ -127,9 +134,11 @@ public sealed partial class PrototypeGameEngine
             Relics: combatRelics,
             Potions: combatPotions);
 
+        var openingHandTarget =
+            PrototypeContent.Rules.HandSize + FirstTurnDrawBonus(state.Player);
         combat = DrawCards(
             combat,
-            PrototypeContent.Rules.HandSize + FirstTurnDrawBonus(state.Player),
+            Math.Max(0, openingHandTarget - combat.Hand.Length),
             state.Rng);
 
         world = world with
@@ -441,12 +450,24 @@ public sealed partial class PrototypeGameEngine
                 break;
 
             case PrototypeAutomaticStepKind.DiscardPlayerHand:
+            {
+                var retained = combat.Hand
+                    .Where(instanceId =>
+                        PrototypeContent.Card(
+                            RequireCombatCard(combat, instanceId).CardId).Retain)
+                    .ToArray();
+                var retainedSet = retained.ToHashSet();
+                var discarded = combat.Hand
+                    .Where(instanceId => !retainedSet.Contains(instanceId))
+                    .ToArray();
+
                 combat = combat with
                 {
-                    DiscardPile = combat.DiscardPile.Concat(combat.Hand).ToArray(),
-                    Hand = Array.Empty<long>()
+                    DiscardPile = combat.DiscardPile.Concat(discarded).ToArray(),
+                    Hand = retained
                 };
                 break;
+            }
 
             case PrototypeAutomaticStepKind.DispatchEnemyStatusStage:
                 if (automaticStep.Stage is null)
