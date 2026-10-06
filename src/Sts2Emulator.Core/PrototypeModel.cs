@@ -67,13 +67,17 @@ public enum PrototypeCombatEventKind
 {
     PlayerTurnStarted,
     PlayerTurnEnded,
-    CardPlayed
+    CardPlayed,
+    EnemyDamaged,
+    EnemyDefeated
 }
 
 public sealed record PrototypeCombatEvent(
     PrototypeCombatEventKind Kind,
     long? SourceCardInstanceId = null,
-    string? CardId = null);
+    string? CardId = null,
+    int? TargetEnemyId = null,
+    int Amount = 0);
 
 public enum PrototypeAutomaticStepKind
 {
