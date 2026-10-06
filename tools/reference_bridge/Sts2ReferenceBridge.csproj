@@ -14,10 +14,6 @@
     <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(GameDir)' != '' and Exists('$(GameDir)/data_sts2_macos_arm64/sts2.dll')">$(GameDir)/data_sts2_macos_arm64</Sts2DataDir>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="../../src/Sts2Emulator.Trace/Sts2Emulator.Trace.csproj" />
-  </ItemGroup>
-
   <ItemGroup Condition="'$(Sts2DataDir)' != ''">
     <Reference Include="sts2">
       <HintPath>$(Sts2DataDir)/sts2.dll</HintPath>
