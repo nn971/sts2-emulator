@@ -738,6 +738,20 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
+                "proto.silent.burst",
+                "Burst",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        1,
+                        PowerId: "proto.power.burst")
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.bullet_time",
                 "Bullet Time",
                 new PrototypeCardCostSpec(
@@ -1309,6 +1323,15 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AllowNegative: true,
                 RemoveAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.burst",
+                "Burst",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                RemoveAtPlayerTurnEnd: true,
+                ReplayCardType: PrototypeCardType.Skill,
+                AdditionalPlayCount: 1,
+                ConsumeOnMatchingPlayCountModification: true),
             new PrototypePowerDefinition(
                 "proto.power.free_next_skill",
                 "Free Skill",
