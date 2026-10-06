@@ -373,6 +373,37 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void AccuracyMatchesPinnedV01110TaggedShivDamage()
+    {
+        var accuracy = PrototypeContent.Card(
+            "proto.silent.accuracy");
+
+        Assert.Equal(1, accuracy.Cost.Amount);
+        Assert.Equal(PrototypeCardType.Power, accuracy.Type);
+        Assert.Equal(
+            PrototypeCardRarity.Uncommon,
+            accuracy.Rarity);
+
+        var effect = Assert.Single(accuracy.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyPlayerPower,
+            effect.Kind);
+        Assert.Equal(4, effect.Amount);
+        Assert.Equal(2, effect.UpgradeDelta);
+        Assert.Equal("proto.power.accuracy", effect.PowerId);
+
+        var shiv = PrototypeContent.Card("proto.silent.shiv");
+        Assert.Contains("Shiv", shiv.Tags ?? []);
+
+        var power = PrototypeContent.Power(
+            "proto.power.accuracy");
+        Assert.Equal(
+            "Shiv",
+            power.AttackDamageBonusRequiredCardTag);
+        Assert.Equal(1, power.AttackDamageBonusPerStack);
+    }
+
+    [Fact]
     public void BlurMatchesPinnedV01110BlockPreservation()
     {
         var blur = PrototypeContent.Card("proto.silent.blur");
