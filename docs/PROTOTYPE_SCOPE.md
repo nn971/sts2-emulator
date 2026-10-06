@@ -57,33 +57,42 @@ changing the public run/action model.
 
 The engine does not claim the prototype combat timing sequence is native STS2 order.
 
-Automatic enemy-turn stages are supplied by the ruleset as data:
+Automatic sequencing is supplied by the ruleset as an explicit pipeline. The current prototype
+orders operations approximately as:
 
 ```text
-EnemyTurnStart
-EnemyAction
-EnemyTurnEnd
-PlayerTurnStart
+enemy status start-stage
+enemy block reset
+enemy actions
+enemy status end-stage
+advance turn
+player block reset
+energy refresh
+player-power start-turn triggers
+draw
 ```
 
-Status definitions declare the stage at which they trigger/decay. Card and potion definitions emit
-ordered semantic effects into a generic operation queue.
+Status and power definitions declare stages at which they trigger. Cards, potions, powers, and
+enemy moves are expressed as ordered semantic effects. The current sequence is a development
+ruleset choice rather than a native-order claim.
 
 When native timing is understood, introduce a new ruleset/timing model rather than scattering
 special-case ordering checks throughout card implementations.
 
 ### Map structure
 
-The prototype map offers generated choices floor by floor instead of reproducing the native map
-graph. `MapState` and semantic `choose_map_node` actions already provide a boundary where a real
-graph generator can be substituted.
+Each act now generates a complete layered DAG before the first route choice. The graph remains
+stable while the player traverses the act; `MapState.CurrentNodeId` records the chosen route and
+`choose_map_node` ranges only over outgoing neighbors. The topology and room-generation rules
+remain prototype fixtures, so a native map generator can replace them behind the same state/action
+boundary later.
 
 ## Current prototype content
 
 The initial catalog intentionally stays small:
 
 - basic Silent attacks and blocks;
-- a few draw/poison/zero-cost cards;
+- basic attacks/blocks plus draw, discard, poison, generated cards, AoE/multi-hit, X-cost, and power examples;
 - two potions;
 - a starting relic and one additional relic;
 - normal, elite and boss encounters;
@@ -124,5 +133,14 @@ Combat card identity is also separated from persistent deck identity. Each comba
 optional persistent-origin ID. This permits deterministic generated/temporary cards and combat-local
 state without mutating the run deck. Blade Dance/Shiv exercise this path, including exhaust-on-use.
 
+Additional generic mechanics now include:
+
+- repeated and all-enemy effects through operation expansion;
+- fixed and X-cost cards with effects that scale from energy spent;
+- player powers with application order, stacking, block modifiers, and ruleset-stage triggers;
+- enemy moves as ordered effect programs rather than enemy-ID branches;
+- a persistent per-act DAG whose future nodes are generated before route decisions.
+
 These structures are prototype semantics rather than claims about STS2's internal implementation.
-They are designed so native behavior can later be represented without card-ID conditionals.
+They are designed so native behavior can later be represented without card-ID conditionals or
+globally hard-coded hook order.
