@@ -1,74 +1,77 @@
 # Immediate next steps
 
-The next work should focus on evidence acquisition, not breadth of guessed mechanics.
+The near-term goal is a **useful complete-run emulator first**. Fidelity and speed are refinement
+tracks; architectural choices should still keep native data, RNG and timing replaceable.
 
-## Sprint 1 — choose and pin the reference build
+## Sprint 1 — stabilize the Silent whole-run prototype
 
-1. Record the exact installed STS2 version/build.
-2. Record the mod-loader/toolchain versions used for instrumentation.
-3. Create `reference-builds/<build>/manifest.json` locally or in a small redistributable manifest.
-4. Freeze trace schema `0.1` for the first experiment, accepting that it will evolve.
+1. Keep a seeded run playable from start to victory/death.
+2. Exercise every top-level phase in tests.
+3. Make invalid actions fail clearly.
+4. Keep all provisional content under the `proto.*` namespace.
+5. Preserve deterministic save/fork/hash behavior.
 
-## Sprint 2 — inspect prior art before coding the bridge
+See [PROTOTYPE_SCOPE.md](PROTOTYPE_SCOPE.md).
 
-Study, side by side:
+## Sprint 2 — broaden semantic primitives
 
-- CombatSolver's snapshot/fork/RNG boundaries;
-- `sts2-simulator`'s live bridge and parity replay protocol;
-- Zamiell's C# NativeAOT emulator/binding architecture.
+Add mechanics because they unlock families of cards/content:
 
-Write an ADR for what we reuse conceptually and what we deliberately redesign.
+- explicit card-selection prompts;
+- choose-and-discard;
+- exhaust and generated/temporary cards;
+- X-cost and variable-cost cards;
+- multi-hit and all-enemy effects;
+- player/enemy powers;
+- generic triggered effects;
+- card/relic/potion state that persists within a combat;
+- more enemy move types.
 
-## Sprint 3 — minimal native recorder
+Prefer generic operations and trigger registrations over card-ID switches.
 
-Implement passive recording for one decision class at a time:
+## Sprint 3 — make run generation more game-shaped
 
-1. run metadata + seed;
-2. map choice;
-3. one combat state/action;
-4. card reward.
+Replace the floor-by-floor choice generator with a graph-shaped map abstraction while preserving
+semantic `choose_map_node` actions.
 
-Do not attempt full coverage yet.
+Then enrich:
 
-The output must be inspectable JSONL and stable across two recordings of the same deterministic scenario.
+- encounter pools by act/floor/history;
+- elite/boss selection;
+- reward pools and rarity;
+- shop inventory;
+- event eligibility/history;
+- potion/relic pools.
 
-## Sprint 4 — RNG inventory
+## Sprint 4 — enlarge the Silent content slice
 
-Build a table:
+Grow from the restrictive development catalog toward enough cards, potions, relics and enemies to
+produce varied strategic runs.
 
-| Stream | Native owner/type | Init point | Full state recoverable? | First parity fixture |
-|---|---|---|---|---|
-| TBD | | | | |
+Content definitions should stay data-oriented wherever possible.
 
-Recover exact stream semantics before implementing a PRNG codec in the emulator.
+## Sprint 5 — connect real game data
 
-## Sprint 5 — first emulator transition
+Once the model can represent a substantial run:
 
-Choose the smallest nontrivial run-level transition whose native trace is fully understood—likely a map/reward choice rather than combat.
+1. pin a reference STS2 build;
+2. import/translate real definitions where legally appropriate;
+3. build the native reference bridge;
+4. identify mechanics whose prototype semantics differ;
+5. replace prototype RNG/timing/content through versioned rulesets rather than patches spread
+   through the engine.
 
-Implement it in `Sts2Emulator.Core`, then make replay pass exactly.
+## Sprint 6 — fidelity loop
 
-The rule for early development is:
+Add decision-boundary traces and differential replay. Native parity then becomes an iterative
+correction process over an already useful emulator.
 
-> one audited transition end-to-end is more valuable than fifty approximate cards.
+## Sprint 7 — performance loop
 
-## Sprint 6 — parity harness automation
+After the parent AI/search project provides representative workloads:
 
-Add a command roughly equivalent to:
-
-```text
-sts2sim replay reference.jsonl
-```
-
-It should stop on first divergence and print canonical state/RNG/legal-action differences.
-
-## Sprint 7 — establish a performance baseline
-
-Only after several genuine mechanics exist, record:
-
-- step throughput by phase;
-- fork throughput;
-- canonical hash cost;
-- allocations and memory.
-
-Then optimize the largest measured bottleneck without changing parity fixtures.
+- benchmark full-run rollouts and branch-heavy search;
+- profile allocations and copying;
+- optimize state representation/forking;
+- add batch APIs;
+- keep canonical behavior unchanged while optimizing.
