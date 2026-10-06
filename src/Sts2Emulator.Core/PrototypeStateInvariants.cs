@@ -140,6 +140,47 @@ public static class PrototypeStateInvariants
         }
     }
 
+    private static void ValidateCombatPotions(
+        PlayerState player,
+        CombatState combat)
+    {
+        var occupiedSlots = player.PotionSlots
+            .Select((potion, slot) => (Potion: potion, Slot: slot))
+            .Where(item => item.Potion is not null)
+            .ToArray();
+
+        if (combat.PotionStates.Length != occupiedSlots.Length)
+        {
+            throw new InvalidOperationException(
+                "Occupied persistent potion slots are not represented exactly once in combat.");
+        }
+
+        if (combat.PotionStates.Select(potion => potion.Slot).Distinct().Count()
+            != combat.PotionStates.Length)
+        {
+            throw new InvalidOperationException("Combat potion slots are duplicated.");
+        }
+
+        foreach (var combatPotion in combat.PotionStates)
+        {
+            if (combatPotion.Slot < 0 || combatPotion.Slot >= player.PotionSlots.Length)
+            {
+                throw new InvalidOperationException("Combat potion has an invalid slot.");
+            }
+
+            var persistent = player.PotionSlots[combatPotion.Slot]
+                ?? throw new InvalidOperationException(
+                    "Combat potion points to an empty persistent slot.");
+            if (!StringComparer.Ordinal.Equals(combatPotion.PotionId, persistent.PotionId))
+            {
+                throw new InvalidOperationException(
+                    "Combat potion disagrees with its persistent origin.");
+            }
+
+            _ = PrototypeContent.Potion(combatPotion.PotionId);
+        }
+    }
+
     private static void ValidateCombatRelics(
         PlayerState player,
         CombatState combat)
@@ -359,6 +400,7 @@ public static class PrototypeStateInvariants
             .ToArray();
 
         ValidateCombatRelics(player, combat);
+        ValidateCombatPotions(player, combat);
 
         var allSubscriberOrders = allPowers
             .Select(power => power.ApplicationOrder)
