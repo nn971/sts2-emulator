@@ -114,6 +114,25 @@ public static class PrototypeContent
                             1,
                             1,
                             PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.shiv",
+                "Shiv",
+                0,
+                PrototypeCardTarget.Enemy,
+                [new(PrototypeCombatEffectKind.DamageEnemy, 4)],
+                ExhaustOnUse: true),
+            new PrototypeCardDefinition(
+                "proto.silent.blade_dance",
+                "Blade Dance",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.CreateCardsInHand,
+                        3,
+                        1,
+                        CardId: "proto.silent.shiv")
                 ])
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
@@ -268,7 +287,8 @@ public static class PrototypeContent
         "proto.silent.backflip",
         "proto.silent.poisoned_stab",
         "proto.silent.slice",
-        "proto.silent.acrobatics"
+        "proto.silent.acrobatics",
+        "proto.silent.blade_dance"
     ];
 
     public static string[] PotionPool { get; } = Potions.Keys.Order(StringComparer.Ordinal).ToArray();
