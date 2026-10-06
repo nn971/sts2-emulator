@@ -373,6 +373,33 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void PounceMatchesPinnedV01110OneShotSkillCostSemantics()
+    {
+        var pounce = PrototypeContent.Card("proto.silent.pounce");
+
+        Assert.Equal(2, pounce.Cost.Amount);
+        Assert.Equal(PrototypeCardTarget.Enemy, pounce.Target);
+        Assert.Equal(PrototypeCardType.Attack, pounce.Type);
+        Assert.Equal(PrototypeCardRarity.Uncommon, pounce.Rarity);
+
+        var damage = Assert.Single(
+            pounce.Effects,
+            effect => effect.Kind == PrototypeCombatEffectKind.DamageEnemy);
+        Assert.Equal(14, damage.Amount);
+        Assert.Equal(6, damage.UpgradeDelta);
+
+        var freeSkill = Assert.Single(
+            pounce.Effects,
+            effect => effect.Kind == PrototypeCombatEffectKind.ApplyPlayerPower);
+        Assert.Equal(1, freeSkill.Amount);
+        Assert.Equal("proto.power.free_next_skill", freeSkill.PowerId);
+
+        var power = PrototypeContent.Power("proto.power.free_next_skill");
+        Assert.Equal(PrototypeCardType.Skill, power.FreeCardType);
+        Assert.True(power.ConsumeOnMatchingCardPlay);
+    }
+
+    [Fact]
     public void CorrectedSilentCardsMatchPinnedV01110BaseAndUpgradeScalars()
     {
         var bladeDance = PrototypeContent.Card("proto.silent.blade_dance");
