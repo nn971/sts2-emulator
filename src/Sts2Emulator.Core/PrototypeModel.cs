@@ -264,11 +264,51 @@ public sealed record MapNodeState(
     string NodeId,
     int Act,
     int Floor,
-    PrototypeRoomType RoomType);
-
-public sealed record MapState(MapNodeState[] Options)
+    PrototypeRoomType RoomType,
+    string[]? NextNodeIds = null)
 {
-    public MapState Fork() => this with { Options = (MapNodeState[])Options.Clone() };
+    public MapNodeState Fork() => this with
+    {
+        NextNodeIds = NextNodeIds is null ? null : (string[])NextNodeIds.Clone()
+    };
+}
+
+public sealed record MapState(
+    MapNodeState[] Nodes,
+    string? CurrentNodeId = null,
+    string[]? EntryNodeIds = null)
+{
+    public MapState Fork() => this with
+    {
+        Nodes = Nodes.Select(node => node.Fork()).ToArray(),
+        EntryNodeIds = EntryNodeIds is null ? null : (string[])EntryNodeIds.Clone()
+    };
+
+    public MapNodeState[] AvailableNodes()
+    {
+        IEnumerable<string> ids;
+        if (CurrentNodeId is null)
+        {
+            ids = EntryNodeIds ?? Array.Empty<string>();
+        }
+        else
+        {
+            var current = Nodes.FirstOrDefault(node =>
+                StringComparer.Ordinal.Equals(node.NodeId, CurrentNodeId))
+                ?? throw new InvalidOperationException($"Map current node '{CurrentNodeId}' is missing.");
+            ids = current.NextNodeIds ?? Array.Empty<string>();
+        }
+
+        var byId = Nodes.ToDictionary(node => node.NodeId, StringComparer.Ordinal);
+        return ids
+            .Select(id => byId.TryGetValue(id, out var node)
+                ? node
+                : throw new InvalidOperationException($"Map edge targets missing node '{id}'."))
+            .ToArray();
+    }
+
+    // Compatibility/readability alias for code that only needs the currently legal map choices.
+    public MapNodeState[] Options => AvailableNodes();
 }
 
 public sealed record EnemyCombatState(
