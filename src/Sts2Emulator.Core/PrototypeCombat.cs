@@ -2800,6 +2800,7 @@ public sealed partial class PrototypeGameEngine
         var playCountResult =
             ResolveCardPlayCountAndConsumeModifiers(
                 combat,
+                card,
                 definition.Type);
         combat = playCountResult.Combat;
 
