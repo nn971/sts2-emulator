@@ -63,21 +63,35 @@ public enum PrototypeTurnStage
     PlayerTurnStart
 }
 
+public enum PrototypeCombatEventKind
+{
+    PlayerTurnStarted,
+    PlayerTurnEnded,
+    CardPlayed
+}
+
+public sealed record PrototypeCombatEvent(
+    PrototypeCombatEventKind Kind,
+    long? SourceCardInstanceId = null,
+    string? CardId = null);
+
 public enum PrototypeAutomaticStepKind
 {
+    DispatchCombatEvent,
+    DiscardPlayerHand,
     DispatchEnemyStatusStage,
     ResetEnemyBlock,
     ResolveEnemyActions,
     AdvanceTurn,
     ResetPlayerBlock,
     RefreshPlayerEnergy,
-    DispatchPlayerPowerStage,
     DrawPlayerHand
 }
 
 public sealed record PrototypeAutomaticStep(
     PrototypeAutomaticStepKind Kind,
-    PrototypeTurnStage? Stage = null);
+    PrototypeTurnStage? Stage = null,
+    PrototypeCombatEventKind? EventKind = null);
 
 public enum PrototypeStatusTriggerKind
 {
@@ -185,7 +199,7 @@ public sealed record PrototypeRelicDefinition(
     int EnergyPerTurnBonus = 0);
 
 public sealed record PrototypePowerTriggerSpec(
-    PrototypeTurnStage Stage,
+    PrototypeCombatEventKind EventKind,
     PrototypeCombatEffectSpec[] Effects);
 
 public sealed record PrototypePlayerPowerDefinition(
@@ -342,12 +356,14 @@ public sealed record PendingCombatChoiceState(
     PrototypeCardZone SourceCardDestination,
     PrototypeCardSelectionSpec Selection,
     long[] CandidateCardInstanceIds,
-    PrototypeQueuedOperation[] Continuation)
+    PrototypeQueuedOperation[] Continuation,
+    PrototypeCombatEvent[] CompletionEvents)
 {
     public PendingCombatChoiceState Fork() => this with
     {
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
-        Continuation = (PrototypeQueuedOperation[])Continuation.Clone()
+        Continuation = (PrototypeQueuedOperation[])Continuation.Clone(),
+        CompletionEvents = (PrototypeCombatEvent[])CompletionEvents.Clone()
     };
 }
 
