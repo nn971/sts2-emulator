@@ -87,6 +87,51 @@ public sealed class PrototypeCardKeywordOverrideTests
     }
 
     [Fact]
+    public void ExpertiseDrawsCardsAndAddsRetainForThisTurn()
+    {
+        var expertise = Card(1, "proto.silent.expertise");
+        var drawPile = new[]
+        {
+            Card(2, "proto.silent.strike"),
+            Card(3, "proto.silent.defend"),
+            Card(4, "proto.silent.neutralize")
+        };
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(
+            energy: 3,
+            hand: [expertise],
+            drawPile: drawPile);
+
+        state = PlayCard(engine, state, expertise.InstanceId);
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(
+            [4L, 3L],
+            combat.Hand);
+        foreach (var cardInstanceId in combat.Hand)
+        {
+            var card = combat.Cards.Single(
+                item => item.InstanceId == cardInstanceId);
+            var keyword = Assert.Single(card.KeywordOverrides!);
+            Assert.Equal(PrototypeCardKeyword.Retain, keyword.Keyword);
+            Assert.True(keyword.Enabled);
+            Assert.Equal(
+                PrototypeCardKeywordOverrideExpiry.EndOfTurn,
+                keyword.Expiry);
+        }
+
+        state = EndTurn(engine, state);
+        combat = state.World!.Combat!;
+
+        Assert.Contains(4L, combat.Hand);
+        Assert.Contains(3L, combat.Hand);
+        Assert.Null(combat.Cards.Single(item => item.InstanceId == 4L)
+            .KeywordOverrides);
+        Assert.Null(combat.Cards.Single(item => item.InstanceId == 3L)
+            .KeywordOverrides);
+    }
+
+    [Fact]
     public void TemporarySlyParticipatesInDiscardAutoplay()
     {
         var survivor = Card(1, "proto.silent.survivor");
