@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Sts2Emulator.Core/Sts2Emulator.Core.csproj" />
+    <ProjectReference Include="../Sts2Emulator.Trace/Sts2Emulator.Trace.csproj" />
+  </ItemGroup>
+</Project>

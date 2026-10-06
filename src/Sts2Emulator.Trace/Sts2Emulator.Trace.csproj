@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Sts2Emulator.Core/Sts2Emulator.Core.csproj" />
+  </ItemGroup>
+</Project>

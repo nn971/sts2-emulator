@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/sts2-emulator/canonical-state.schema.json",
+  "title": "Bootstrap canonical run state",
+  "type": "object",
+  "required": [
+    "game_build",
+    "emulator_schema",
+    "run_id",
+    "run_seed",
+    "decision_index",
+    "phase",
+    "player",
+    "rng",
+    "extension_state"
+  ],
+  "additionalProperties": true
+}

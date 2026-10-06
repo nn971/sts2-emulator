@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore Sts2Emulator.sln
+      - name: Build
+        run: dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Test
+        run: dotnet test Sts2Emulator.sln -c Release --no-build
+      - name: Trace diff self-check
+        run: |
+          printf '%s\n' '{"type":"header","trace_schema":"0.1","game_build":"test","bridge_version":"test","run_id":"r","run_seed":"1"}' > /tmp/a.jsonl
+          cp /tmp/a.jsonl /tmp/b.jsonl
+          python tools/trace_diff.py /tmp/a.jsonl /tmp/b.jsonl

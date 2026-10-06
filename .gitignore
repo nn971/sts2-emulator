@@ -1,0 +1,26 @@
+bin/
+obj/
+out/
+TestResults/
+.vs/
+.idea/
+*.user
+*.suo
+*.log
+.DS_Store
+
+# Local/native game-derived data and large trace corpora
+data/traces/**
+!data/traces/.gitkeep
+data/extracted/**
+!data/extracted/.gitkeep
+
+# Python research tooling
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Benchmark output
+BenchmarkDotNet.Artifacts/
+artifacts/

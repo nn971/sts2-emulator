@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/sts2-emulator/trace.schema.json",
+  "title": "STS2 Emulator trace line",
+  "description": "Bootstrap schema for JSONL header/transition records. Tighten as native capture stabilizes.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["type", "trace_schema", "game_build", "bridge_version", "run_id", "run_seed"],
+      "properties": {
+        "type": { "const": "header" },
+        "trace_schema": { "type": "string" },
+        "game_build": { "type": "string" },
+        "bridge_version": { "type": "string" },
+        "emulator_version": { "type": ["string", "null"] },
+        "run_id": { "type": "string" },
+        "run_seed": { "type": "string" },
+        "captured_at_utc": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": ["type", "decision_index", "phase", "action", "before", "after"],
+      "properties": {
+        "type": { "const": "transition" },
+        "decision_index": { "type": "integer", "minimum": 0 },
+        "phase": { "type": ["string", "integer"] },
+        "action": { "type": "object" },
+        "before": { "$ref": "#/$defs/stateEnvelope" },
+        "after": { "$ref": "#/$defs/stateEnvelope" }
+      },
+      "additionalProperties": true
+    }
+  ],
+  "$defs": {
+    "stateEnvelope": {
+      "type": "object",
+      "required": ["hash", "state"],
+      "properties": {
+        "hash": { "type": "string" },
+        "state": { "type": "object" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "0.1",
+  "status": "provisional",
+  "notes": "Do not fail CI on these until representative workloads exist.",
+  "targets": {
+    "single_core_lightweight_transitions_per_second": 50000,
+    "workstation_aggregate_transitions_per_second": 500000,
+    "stretch_workstation_aggregate_transitions_per_second": 1000000
+  }
+}

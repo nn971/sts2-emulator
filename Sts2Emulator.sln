@@ -1,0 +1,42 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sts2Emulator.Core", "src/Sts2Emulator.Core/Sts2Emulator.Core.csproj", "{A1F1D77D-3E93-4E41-8B84-96CC6B9B0A01}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sts2Emulator.Trace", "src/Sts2Emulator.Trace/Sts2Emulator.Trace.csproj", "{A1F1D77D-3E93-4E41-8B84-96CC6B9B0A02}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sts2Emulator.Cli", "src/Sts2Emulator.Cli/Sts2Emulator.Cli.csproj", "{A1F1D77D-3E93-4E41-8B84-96CC6B9B0A03}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sts2Emulator.Core.Tests", "tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj", "{A1F1D77D-3E93-4E41-8B84-96CC6B9B0A04}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sts2Emulator.Microbench", "benchmarks/Sts2Emulator.Microbench/Sts2Emulator.Microbench.csproj", "{A1F1D77D-3E93-4E41-8B84-96CC6B9B0A05}"
+EndProject
+Global
+    GlobalSection(SolutionConfigurationPlatforms) = preSolution
+        Debug|Any CPU = Debug|Any CPU
+        Release|Any CPU = Release|Any CPU
+    EndGlobalSection
+    GlobalSection(ProjectConfigurationPlatforms) = postSolution
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A01}.Release|Any CPU.Build.0 = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A02}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A02}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A02}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A02}.Release|Any CPU.Build.0 = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A03}.Release|Any CPU.Build.0 = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A04}.Release|Any CPU.Build.0 = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {A1F1D77D-3E93-4E41-8B84-96CC6B9B0A05}.Release|Any CPU.Build.0 = Release|Any CPU
+    EndGlobalSection
+EndGlobal

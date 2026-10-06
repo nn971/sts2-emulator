@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Canonical deterministic state and engine contracts for the STS2 Emulator.</Description>
+  </PropertyGroup>
+</Project>
