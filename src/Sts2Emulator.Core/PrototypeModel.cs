@@ -26,7 +26,9 @@ public enum PrototypeCombatEffectKind
     ApplyEnemyStatus,
     ChooseCards,
     CreateCardsInHand,
-    ApplyPlayerPower
+    ApplyPlayerPower,
+    ApplyEnemyPower,
+    DamagePlayer
 }
 
 public enum PrototypeCardZone
@@ -204,9 +206,10 @@ public sealed record PrototypeRelicDefinition(
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
-    PrototypeCombatEffectSpec[] Effects);
+    PrototypeCombatEffectSpec[] Effects,
+    bool RequiresOwnerTarget = false);
 
-public sealed record PrototypePlayerPowerDefinition(
+public sealed record PrototypePowerDefinition(
     string Id,
     string Name,
     int BlockBonusPerStack,
@@ -233,12 +236,17 @@ public sealed record PrototypeEnemyMoveDefinition(
     string Id,
     PrototypeEnemyEffectSpec[] Effects);
 
+public sealed record PrototypeStartingPowerSpec(
+    string PowerId,
+    int Stacks);
+
 public sealed record PrototypeEnemyDefinition(
     string Id,
     string Name,
     int MaxHp,
     int HpPerAct,
-    PrototypeEnemyMoveDefinition[] Moves);
+    PrototypeEnemyMoveDefinition[] Moves,
+    PrototypeStartingPowerSpec[]? StartingPowers = null);
 
 public sealed record PrototypeEncounterDefinition(
     string Id,
@@ -335,12 +343,19 @@ public sealed record EnemyCombatState(
     int Hp,
     int Block,
     int MoveIndex,
-    Dictionary<string, int> Statuses)
+    Dictionary<string, int> Statuses,
+    PrototypePowerInstanceState[]? Powers = null)
 {
     public EnemyCombatState Fork() => this with
     {
-        Statuses = new Dictionary<string, int>(Statuses, StringComparer.Ordinal)
+        Statuses = new Dictionary<string, int>(Statuses, StringComparer.Ordinal),
+        Powers = Powers is null
+            ? null
+            : (PrototypePowerInstanceState[])Powers.Clone()
     };
+
+    public PrototypePowerInstanceState[] PowerStates =>
+        Powers ?? Array.Empty<PrototypePowerInstanceState>();
 }
 
 public sealed record CombatCardInstance(
