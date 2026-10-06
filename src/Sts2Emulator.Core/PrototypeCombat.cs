@@ -509,6 +509,198 @@ public sealed partial class PrototypeGameEngine
         return (player, combat);
     }
 
+    private static IReadOnlyList<GameAction> GetPendingChoiceActions(
+        PendingCombatChoiceState pending)
+    {
+        if (!StringComparer.Ordinal.Equals(pending.ChoiceId, "select_cards"))
+        {
+            throw new InvalidOperationException($"Unknown pending combat choice '{pending.ChoiceId}'.");
+        }
+
+        var actions = new List<GameAction>();
+        for (var count = pending.Selection.MinSelections;
+             count <= pending.Selection.MaxSelections;
+             count++)
+        {
+            foreach (var selection in ChooseCombinations(
+                         pending.CandidateCardInstanceIds,
+                         count))
+            {
+                actions.Add(GameAction.Create(
+                    "select_cards",
+                    new SelectCardsPayload(selection)));
+            }
+        }
+
+        return actions;
+    }
+
+    private static RunState ResolvePendingChoice(RunState state, GameAction action)
+    {
+        RequireKind(action, "select_cards");
+        var payload = action.ReadPayload<SelectCardsPayload>();
+        var world = RequireWorld(state);
+        var combat = world.Combat
+            ?? throw new InvalidOperationException("Combat phase has no combat state.");
+        var pending = combat.PendingChoice
+            ?? throw new InvalidOperationException("Combat has no pending choice.");
+
+        if (!StringComparer.Ordinal.Equals(pending.ChoiceId, "select_cards"))
+        {
+            throw new InvalidOperationException($"Unknown pending combat choice '{pending.ChoiceId}'.");
+        }
+
+        var selected = payload.CardInstanceIds;
+        if (selected.Length != selected.Distinct().Count())
+        {
+            throw new InvalidOperationException("Card selection contains duplicate instance IDs.");
+        }
+
+        if (selected.Length < pending.Selection.MinSelections
+            || selected.Length > pending.Selection.MaxSelections)
+        {
+            throw new InvalidOperationException(
+                $"Selection count {selected.Length} is outside " +
+                $"{pending.Selection.MinSelections}..{pending.Selection.MaxSelections}.");
+        }
+
+        var candidates = pending.CandidateCardInstanceIds.ToHashSet();
+        if (selected.Any(cardId => !candidates.Contains(cardId)))
+        {
+            throw new InvalidOperationException("Selection contains a card outside the pending candidate set.");
+        }
+
+        combat = ApplyCardSelection(combat, pending.Selection, selected);
+        combat = combat with { PendingChoice = null };
+
+        var operations = new Queue<PrototypeQueuedOperation>(pending.Continuation);
+        var resolved = ResolveOperations(
+            state.Player,
+            combat,
+            operations,
+            state.Rng,
+            pending.SourceCardInstanceId);
+
+        state = state with
+        {
+            Player = resolved.Player,
+            World = world with { Combat = resolved.Combat }
+        };
+
+        return AllEnemiesDefeated(resolved.Combat)
+            ? EnterReward(state)
+            : state;
+    }
+
+    private static CombatState ApplyCardSelection(
+        CombatState combat,
+        PrototypeCardSelectionSpec selection,
+        long[] selected)
+    {
+        var source = GetZone(combat, selection.SourceZone);
+        var selectedSet = selected.ToHashSet();
+
+        if (selected.Any(cardId => !source.Contains(cardId)))
+        {
+            throw new InvalidOperationException("Selected card is no longer in the requested source zone.");
+        }
+
+        var destinationZone = selection.Resolution switch
+        {
+            PrototypeCardSelectionResolutionKind.MoveToDiscard => PrototypeCardZone.DiscardPile,
+            PrototypeCardSelectionResolutionKind.MoveToExhaust => PrototypeCardZone.ExhaustPile,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        if (destinationZone == selection.SourceZone)
+        {
+            throw new InvalidOperationException("Card-selection source and destination zones coincide.");
+        }
+
+        combat = SetZone(
+            combat,
+            selection.SourceZone,
+            source.Where(cardId => !selectedSet.Contains(cardId)).ToArray());
+
+        var destination = GetZone(combat, destinationZone);
+        combat = SetZone(
+            combat,
+            destinationZone,
+            destination.Concat(selected).ToArray());
+
+        return combat;
+    }
+
+    private static long[] GetZone(CombatState combat, PrototypeCardZone zone) =>
+        zone switch
+        {
+            PrototypeCardZone.Hand => combat.Hand,
+            PrototypeCardZone.DrawPile => combat.DrawPile,
+            PrototypeCardZone.DiscardPile => combat.DiscardPile,
+            PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
+            _ => throw new ArgumentOutOfRangeException(nameof(zone))
+        };
+
+    private static CombatState SetZone(
+        CombatState combat,
+        PrototypeCardZone zone,
+        long[] cards) =>
+        zone switch
+        {
+            PrototypeCardZone.Hand => combat with { Hand = cards },
+            PrototypeCardZone.DrawPile => combat with { DrawPile = cards },
+            PrototypeCardZone.DiscardPile => combat with { DiscardPile = cards },
+            PrototypeCardZone.ExhaustPile => combat with { ExhaustPile = cards },
+            _ => throw new ArgumentOutOfRangeException(nameof(zone))
+        };
+
+    private static IEnumerable<long[]> ChooseCombinations(long[] source, int count)
+    {
+        if (count < 0 || count > source.Length)
+        {
+            yield break;
+        }
+
+        if (count == 0)
+        {
+            yield return Array.Empty<long>();
+            yield break;
+        }
+
+        var buffer = new long[count];
+        foreach (var result in ChooseCombinationsCore(source, 0, 0, buffer))
+        {
+            yield return result;
+        }
+    }
+
+    private static IEnumerable<long[]> ChooseCombinationsCore(
+        long[] source,
+        int start,
+        int depth,
+        long[] buffer)
+    {
+        if (depth == buffer.Length)
+        {
+            yield return (long[])buffer.Clone();
+            yield break;
+        }
+
+        var remaining = buffer.Length - depth;
+        for (var index = start; index <= source.Length - remaining; index++)
+        {
+            buffer[depth] = source[index];
+            foreach (var result in ChooseCombinationsCore(
+                         source,
+                         index + 1,
+                         depth + 1,
+                         buffer))
+            {
+                yield return result;
+            }
+        }
+    }
+
     private static CombatState DamageEnemy(CombatState combat, int enemyId, int damage)
     {
         var found = false;
