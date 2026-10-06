@@ -163,9 +163,17 @@ public static class PrototypeStateInvariants
             return;
         }
 
-        var encounterId = world.EncounterIds.LastOrDefault()
-            ?? throw new InvalidOperationException(
-                "Active combat room has no encounter-history entry.");
+        var encounterId = world.EncounterIds.LastOrDefault();
+        if (encounterId is null)
+        {
+            if (world.Map.Nodes.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    "Map-generated active combat room has no encounter-history entry.");
+            }
+
+            return;
+        }
         var encounter = PrototypeContent.Encounters.Single(item =>
             StringComparer.Ordinal.Equals(item.Id, encounterId));
 
