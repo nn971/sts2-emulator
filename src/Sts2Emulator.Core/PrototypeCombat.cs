@@ -470,12 +470,12 @@ public sealed partial class PrototypeGameEngine
                     return enemy;
                 }
 
+                found = true;
                 if (enemy.Hp <= 0)
                 {
-                    throw new InvalidOperationException($"Enemy {enemyId} is already defeated.");
+                    return enemy;
                 }
 
-                found = true;
                 var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
                 return enemy with
                 {
@@ -510,12 +510,12 @@ public sealed partial class PrototypeGameEngine
                     return enemy;
                 }
 
+                found = true;
                 if (enemy.Hp <= 0)
                 {
-                    throw new InvalidOperationException($"Enemy {enemyId} is already defeated.");
+                    return enemy;
                 }
 
-                found = true;
                 var statuses = new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal);
                 statuses[statusId] = statuses.GetValueOrDefault(statusId) + amount;
                 return enemy with { Statuses = statuses };
