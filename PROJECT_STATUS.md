@@ -86,9 +86,18 @@ play-series replay for Burst (including repeated nested choices), and Tools of t
 hand-draw/post-turn-start discard policy. See
 `docs/reference-builds/v0.111.0-mechanics-gap-006.md`.
 
-The next structural target is a typed delayed-card snapshot/payload, motivated by Nightmare's native
-behavior: clone the selected card at selection time, store that clone in an instanced power, and
-clone it into Hand before the next normal hand draw.
+The typed delayed-card snapshot/payload target is now implemented through Nightmare: selected
+card identity, upgrade, opaque card state, combat-local cost state, and combat keyword overrides are
+snapshotted into an instanced power and cloned into Hand before the next normal hand draw.
+
+Static-first Silent work has also added typed combat-card keyword overrides. Selection can filter by
+card type; temporary Retain/Sly/Ethereal state lives on combat card instances and participates in
+normal discard/autoplay semantics; and draw effects can mutate exactly the card instances they drew.
+Source-backed Hand Trick and Expertise are the first acceptance cases.
+
+The next high-value structural targets are intrinsic Replay, general automatic-hook suspension, and
+aggregate/value-query effects. Master Planner is also a useful follow-up acceptance case for
+persistent card-local Sly mutation driven by CardPlayed events.
 
 
 ## First live native capture
