@@ -271,6 +271,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "hand_cards_free_this_turn",
             "no_additional_draw",
             "preserve_block_next_turn",
+            "turn_start_draw_discard",
             "react_on_card_draw",
             "damage",
             "block",
@@ -641,6 +642,12 @@ public static partial class ReferenceMechanicsGapAnalyzer
         if (PreserveBlockNextTurnRegex().IsMatch(description))
         {
             features.Add("preserve_block_next_turn");
+            hasSpecificConditional = true;
+        }
+
+        if (TurnStartDrawDiscardRegex().IsMatch(description))
+        {
+            features.Add("turn_start_draw_discard");
             hasSpecificConditional = true;
         }
 
@@ -1114,6 +1121,11 @@ public static partial class ReferenceMechanicsGapAnalyzer
         @"block.*not\s+removed.*start\s+of\s+your\s+next\s+turn",
         RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex PreserveBlockNextTurnRegex();
+
+    [GeneratedRegex(
+        @"start\s+of\s+your\s+turn.*draw\s+\d+\s+card.*discard\s+\d+\s+card",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex TurnStartDrawDiscardRegex();
 
     [GeneratedRegex(
         @"(^|[.\n]\s*)if\b|\bwhenever\b|\bfor each\b|\bevery time\b",
