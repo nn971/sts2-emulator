@@ -243,7 +243,22 @@ public static class PrototypeContent
                 "proto.potion.fire",
                 "Fire Potion",
                 PrototypeCardTarget.Enemy,
-                [new(PrototypeCombatEffectKind.DamageEnemy, 20)])
+                [new(PrototypeCombatEffectKind.DamageEnemy, 20)]),
+            new PrototypePotionDefinition(
+                "proto.potion.poison",
+                "Poison Potion",
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        6,
+                        StatusId: "proto.status.poison")
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.swift",
+                "Swift Potion",
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.DrawCards, 3)])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
@@ -270,7 +285,11 @@ public static class PrototypeContent
                                 1)
                         ],
                         EveryNth: 3)
-                ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.bag_of_preparation",
+                "Bag of Preparation",
+                FirstTurnDrawBonus: 2)
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -405,6 +424,57 @@ public static class PrototypeContent
                             new(PrototypeEnemyEffectKind.GainBlock, 12),
                             new(PrototypeEnemyEffectKind.DamagePlayer, 10, 2)
                         ])
+                ]),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.elite_guardian",
+                "Prototype Guardian",
+                70,
+                7,
+                [
+                    new(
+                        "brace",
+                        [
+                            new(PrototypeEnemyEffectKind.GainBlock, 12),
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 8, 1)
+                        ]),
+                    new(
+                        "double_strike",
+                        [
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 7, 1, Repetitions: 2)
+                        ])
+                ]),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.boss_two",
+                "Prototype Act Two Boss",
+                100,
+                0,
+                [
+                    new(
+                        "assault",
+                        [new(PrototypeEnemyEffectKind.DamagePlayer, 14, Repetitions: 2)]),
+                    new(
+                        "guarded_hit",
+                        [
+                            new(PrototypeEnemyEffectKind.GainBlock, 16),
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 18)
+                        ])
+                ]),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.boss_three",
+                "Prototype Act Three Boss",
+                125,
+                0,
+                [
+                    new("heavy", [new(PrototypeEnemyEffectKind.DamagePlayer, 24)]),
+                    new(
+                        "barrage",
+                        [new(PrototypeEnemyEffectKind.DamagePlayer, 9, Repetitions: 3)]),
+                    new(
+                        "fortress",
+                        [
+                            new(PrototypeEnemyEffectKind.GainBlock, 20),
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 16)
+                        ])
                 ])
         }.ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
@@ -512,11 +582,36 @@ public static class PrototypeContent
             "proto.encounter.elite",
             PrototypeRoomType.Elite,
             ["proto.enemy.elite"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 1),
+        new(
+            "proto.encounter.elite_guardian",
+            PrototypeRoomType.Elite,
+            ["proto.enemy.elite_guardian"],
+            MinAct: 2,
+            MaxAct: 3,
             Weight: 1),
         new(
             "proto.encounter.boss",
             PrototypeRoomType.Boss,
             ["proto.enemy.boss"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 1),
+        new(
+            "proto.encounter.boss_two",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.boss_two"],
+            MinAct: 2,
+            MaxAct: 2,
+            Weight: 1),
+        new(
+            "proto.encounter.boss_three",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.boss_three"],
+            MinAct: 3,
+            MaxAct: 3,
             Weight: 1)
     ];
 
@@ -588,7 +683,8 @@ public static class PrototypeContent
     public static string[] RelicPool { get; } =
     [
         "proto.relic.lantern",
-        "proto.relic.ink_bottle"
+        "proto.relic.ink_bottle",
+        "proto.relic.bag_of_preparation"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>
