@@ -153,6 +153,21 @@ internal static class PassiveReferenceRecorder
             SubscribeIfPresent(manager, signal, $"combat_manager.{signal}");
         }
 
+        var history = GetProperty(manager, "History");
+        if (history is not null)
+        {
+            SubscribeIfPresent(
+                history,
+                "Changed",
+                "combat_history.Changed");
+        }
+        else
+        {
+            WriteDiagnostic(
+                "combat_history_missing",
+                "CombatManager.History was null when recorder attached.");
+        }
+
         var verbose = StringComparer.Ordinal.Equals(
             Environment.GetEnvironmentVariable("STS2_REFERENCE_VERBOSE"),
             "1");
@@ -372,7 +387,7 @@ internal static class PassiveReferenceRecorder
             var stateJson = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
             var stateHash = Convert.ToHexStringLower(SHA256.HashData(stateJson));
 
-            WriteRecord(new Dictionary<string, object?>
+            var record = new Dictionary<string, object?>
             {
                 ["type"] = "boundary",
                 ["schema"] = BridgeWorkspace.ProbeSchema,
@@ -382,7 +397,16 @@ internal static class PassiveReferenceRecorder
                 ["state_hash"] = stateHash,
                 ["arguments"] = args.Select(SummarizeOpaque).ToArray(),
                 ["state"] = state
-            });
+            };
+
+            if (StringComparer.Ordinal.Equals(
+                    boundary,
+                    "combat_history.Changed"))
+            {
+                record["history_entry"] = CaptureHistoryTail();
+            }
+
+            WriteRecord(record);
         }
         catch (Exception ex)
         {
@@ -459,6 +483,14 @@ internal static class PassiveReferenceRecorder
             "MaxHp",
             "Gold",
             "Character");
+
+        var creature = FindNestedByTypeSuffix(
+            player,
+            ".Entities.Creatures.Creature");
+        if (creature is not null)
+        {
+            result["creature"] = SummarizeCreature(creature);
+        }
 
         var combat = GetProperty(player, "PlayerCombatState");
         if (combat is not null)
@@ -624,7 +656,15 @@ internal static class PassiveReferenceRecorder
             "MaxHp",
             "Block",
             "Amount",
-            "Index");
+            "Index",
+            "UpgradeLevel",
+            "UpgradeCount",
+            "IsUpgraded",
+            "EnergyCost",
+            "CurrentEnergyCost",
+            "Cost",
+            "Target",
+            "Owner");
     }
 
     private static bool TryProjectSimple(
@@ -745,7 +785,124 @@ internal static class PassiveReferenceRecorder
             }
         }
 
+        // SerializableRng in the pinned build exposes its state through fields
+        // rather than public getters. Fall back to fields only when public
+        // properties yielded no semantic payload.
+        if (result.Count == 1)
+        {
+            foreach (var field in value.GetType().GetFields(
+                         BindingFlags.Instance |
+                         BindingFlags.Public |
+                         BindingFlags.NonPublic))
+            {
+                if (field.IsStatic || typeof(Delegate).IsAssignableFrom(field.FieldType))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    result[NormalizeFieldName(field.Name)] = ProjectSerializable(
+                        field.GetValue(value),
+                        depth - 1);
+                }
+                catch
+                {
+                    // Private-field projection is best-effort and read-only.
+                }
+            }
+        }
+
         return result;
+    }
+
+    private static object? CaptureHistoryTail()
+    {
+        var manager = _combatManager;
+        if (manager is null)
+        {
+            return null;
+        }
+
+        var history = GetProperty(manager, "History");
+        var entries = history is null
+            ? null
+            : GetProperty(history, "Entries");
+        var last = Enumerate(entries).LastOrDefault();
+
+        return last is null
+            ? null
+            : ProjectSerializable(last, depth: 3);
+    }
+
+    private static object? FindNestedByTypeSuffix(
+        object target,
+        string typeSuffix)
+    {
+        var flags =
+            BindingFlags.Instance |
+            BindingFlags.Public |
+            BindingFlags.NonPublic;
+
+        foreach (var property in target.GetType().GetProperties(flags))
+        {
+            if (!property.CanRead || property.GetIndexParameters().Length != 0)
+            {
+                continue;
+            }
+
+            try
+            {
+                var value = property.GetValue(target);
+                if (value?.GetType().FullName?.EndsWith(
+                        typeSuffix,
+                        StringComparison.Ordinal) == true)
+                {
+                    return value;
+                }
+            }
+            catch
+            {
+                // Discovery is read-only and best-effort.
+            }
+        }
+
+        foreach (var field in target.GetType().GetFields(flags))
+        {
+            if (field.IsStatic)
+            {
+                continue;
+            }
+
+            try
+            {
+                var value = field.GetValue(target);
+                if (value?.GetType().FullName?.EndsWith(
+                        typeSuffix,
+                        StringComparison.Ordinal) == true)
+                {
+                    return value;
+                }
+            }
+            catch
+            {
+                // Discovery is read-only and best-effort.
+            }
+        }
+
+        return null;
+    }
+
+    private static string NormalizeFieldName(string fieldName)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            fieldName,
+            "^<(?<name>.+)>k__BackingField$");
+        var name = match.Success
+            ? match.Groups["name"].Value
+            : fieldName.TrimStart('_');
+
+        return ToSnakeCase(name);
     }
 
     private static object? TryResolveSingleton(
