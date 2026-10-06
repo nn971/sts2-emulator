@@ -85,10 +85,10 @@ public static class PrototypeContent
             new(PrototypeAutomaticStepKind.AdvanceTurn),
             new(PrototypeAutomaticStepKind.ResetPlayerBlock),
             new(PrototypeAutomaticStepKind.RefreshPlayerEnergy),
+            new(PrototypeAutomaticStepKind.DrawPlayerHand),
             new(
                 PrototypeAutomaticStepKind.DispatchCombatEvent,
-                EventKind: PrototypeCombatEventKind.PlayerTurnStarted),
-            new(PrototypeAutomaticStepKind.DrawPlayerHand)
+                EventKind: PrototypeCombatEventKind.PlayerTurnStarted)
         ]);
 
     public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
