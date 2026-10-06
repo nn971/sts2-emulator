@@ -72,6 +72,62 @@ public sealed class PrototypeSlyTests
     }
 
     [Fact]
+    public void SlySurvivorCanSuspendForNestedDiscardAndResumeOuterCard()
+    {
+        var slySurvivor = Card(
+            2,
+            "proto.silent.survivor") with
+        {
+            KeywordOverrides =
+            [
+                new PrototypeCardKeywordOverride(
+                    PrototypeCardKeyword.Sly,
+                    true,
+                    PrototypeCardKeywordOverrideExpiry.None)
+            ]
+        };
+        var state = CreateState(
+            energy: 3,
+            hand:
+            [
+                Card(1, "proto.silent.survivor"),
+                slySurvivor,
+                Card(3, "proto.silent.strike")
+            ],
+            drawPile: []);
+
+        var engine = new PrototypeGameEngine();
+        state = PlayCard(engine, state, 1);
+
+        var discardSlySurvivor = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "select_cards"
+                && action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.SequenceEqual([2]));
+        state = engine.Step(state, discardSlySurvivor).State;
+
+        var nested = state.World!.Combat!;
+        Assert.NotNull(nested.PendingChoice);
+        Assert.Equal(16, nested.PlayerBlock);
+        PrototypeStateInvariants.Validate(state);
+
+        var discardStrike = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "select_cards"
+                && action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.SequenceEqual([3]));
+        state = engine.Step(state, discardStrike).State;
+
+        var combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Equal(16, combat.PlayerBlock);
+        Assert.Equal(2, combat.Energy);
+        Assert.Empty(combat.Hand);
+        Assert.Equal(new long[] { 3, 2, 1 }, combat.DiscardPile);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void HiddenDaggersDiscardingSlyCardsAutoPlaysAllBeforeGeneratingShivs()
     {
         var state = CreateState(
