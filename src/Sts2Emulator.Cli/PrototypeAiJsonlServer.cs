@@ -157,6 +157,38 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "expand":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var state = states.TryGetValue(parentHandle, out var found)
+                            ? found
+                            : throw new InvalidOperationException(
+                                $"Unknown state handle '{parentHandle}'.");
+
+                        var expansions = environment.Expand(state)
+                            .Select(expansion =>
+                            {
+                                var childHandle = Store(expansion.State);
+                                return new
+                                {
+                                    parent = parentHandle,
+                                    action = ActionWire(expansion.Action),
+                                    child = childHandle,
+                                    terminal = expansion.State.Phase == RunPhase.Terminal,
+                                    exactHash = expansion.CanonicalStateHash
+                                };
+                            })
+                            .ToArray();
+
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            expansions
+                        });
+                        break;
+                    }
+
                     case "fork":
                     {
                         var state = RequireState(request);
