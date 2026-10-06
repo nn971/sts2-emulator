@@ -37,6 +37,17 @@ public sealed partial class PrototypeGameEngine
             })
             .ToArray();
 
+        var combatPotions = state.Player.PotionSlots
+            .Select((potion, slot) => potion is null
+                ? null
+                : new CombatPotionState(
+                    Slot: slot,
+                    PotionId: potion.PotionId,
+                    State: potion.PersistentState.Clone()))
+            .Where(potion => potion is not null)
+            .Select(potion => potion!)
+            .ToArray();
+
         var nextPowerApplicationOrder = combatRelics.Length + 1L;
         var enemies = encounter.EnemyIds
             .Select((enemyId, index) =>
@@ -93,7 +104,8 @@ public sealed partial class PrototypeGameEngine
             Cards: combatCards,
             PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
             NextPowerApplicationOrder: nextPowerApplicationOrder,
-            Relics: combatRelics);
+            Relics: combatRelics,
+            Potions: combatPotions);
 
         combat = DrawCards(
             combat,
@@ -277,11 +289,20 @@ public sealed partial class PrototypeGameEngine
 
         var potion = state.Player.PotionSlots[payload.Slot]
             ?? throw new InvalidOperationException($"Potion slot {payload.Slot} is empty.");
-        var definition = PrototypeContent.Potion(potion.PotionId);
         var world = RequireWorld(state);
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
+        var combatPotion = combat.PotionStates.SingleOrDefault(item => item.Slot == payload.Slot)
+            ?? throw new InvalidOperationException(
+                $"Combat potion state for slot {payload.Slot} is missing.");
 
+        if (!StringComparer.Ordinal.Equals(potion.PotionId, combatPotion.PotionId))
+        {
+            throw new InvalidOperationException(
+                $"Persistent/combat potion IDs disagree in slot {payload.Slot}.");
+        }
+
+        var definition = PrototypeContent.Potion(combatPotion.PotionId);
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
 
         var operations = new Queue<PrototypeQueuedOperation>();
@@ -300,13 +321,20 @@ public sealed partial class PrototypeGameEngine
         var slots = (PotionInstance?[])resolved.Player.PotionSlots.Clone();
         slots[payload.Slot] = null;
 
+        var combatAfterPotion = resolved.Combat with
+        {
+            Potions = resolved.Combat.PotionStates
+                .Where(item => item.Slot != payload.Slot)
+                .ToArray()
+        };
+
         state = state with
         {
             Player = resolved.Player with { PotionSlots = slots },
-            World = world with { Combat = resolved.Combat }
+            World = world with { Combat = combatAfterPotion }
         };
 
-        return AllEnemiesDefeated(resolved.Combat)
+        return AllEnemiesDefeated(combatAfterPotion)
             ? EnterReward(state)
             : state;
     }
