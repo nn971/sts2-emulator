@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>13.0</LangVersion>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(GameDir)' != '' and Exists('$(GameDir)/data_sts2_windows_x86_64/sts2.dll')">$(GameDir)/data_sts2_windows_x86_64</Sts2DataDir>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(GameDir)' != '' and Exists('$(GameDir)/data_sts2_linuxbsd_x86_64/sts2.dll')">$(GameDir)/data_sts2_linuxbsd_x86_64</Sts2DataDir>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(GameDir)' != '' and Exists('$(GameDir)/data_sts2_macos_x86_64/sts2.dll')">$(GameDir)/data_sts2_macos_x86_64</Sts2DataDir>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(GameDir)' != '' and Exists('$(GameDir)/data_sts2_macos_arm64/sts2.dll')">$(GameDir)/data_sts2_macos_arm64</Sts2DataDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Sts2Emulator.Trace/Sts2Emulator.Trace.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Sts2DataDir)' != ''">
+    <Reference Include="sts2">
+      <HintPath>$(Sts2DataDir)/sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(Sts2DataDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GodotSharp">
+      <HintPath>$(Sts2DataDir)/GodotSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="RequirePinnedSts2Assemblies" BeforeTargets="ResolveReferences">
+    <Error
+      Condition="'$(Sts2DataDir)' == ''"
+      Text="Set GameDir or Sts2DataDir to the exact installed STS2 build before building the reference bridge." />
+    <Error
+      Condition="!Exists('$(Sts2DataDir)/sts2.dll')"
+      Text="sts2.dll is missing from Sts2DataDir=$(Sts2DataDir)." />
+    <Error
+      Condition="!Exists('$(Sts2DataDir)/0Harmony.dll')"
+      Text="0Harmony.dll is missing from Sts2DataDir=$(Sts2DataDir)." />
+    <Error
+      Condition="!Exists('$(Sts2DataDir)/GodotSharp.dll')"
+      Text="GodotSharp.dll is missing from Sts2DataDir=$(Sts2DataDir)." />
+  </Target>
+</Project>
