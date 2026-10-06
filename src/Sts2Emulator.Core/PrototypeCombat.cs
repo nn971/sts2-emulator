@@ -664,6 +664,11 @@ public sealed partial class PrototypeGameEngine
 
         if (targets.Length == 0)
         {
+            if (effect.Target == PrototypeEffectTarget.AllEnemies)
+            {
+                return;
+            }
+
             targets = new int?[] { null };
         }
 
