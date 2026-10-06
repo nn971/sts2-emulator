@@ -723,7 +723,7 @@ public sealed partial class PrototypeGameEngine
                         upgradeLevel: 0,
                         energySpent: 0,
                         actionTargetEnemyId: null,
-                        combat,
+                        combat: combat,
                         powerStacks: power.Stacks);
                 }
             }
