@@ -125,6 +125,7 @@ public enum PrototypeCombatEventKind
     PlayerTurnStarted,
     PlayerTurnEnded,
     CardPlayed,
+    CardDrawn,
     CardDiscarded,
     CardExhausted,
     EnemyDamaged,
@@ -137,7 +138,8 @@ public sealed record PrototypeCombatEvent(
     string? CardId = null,
     int? TargetEnemyId = null,
     int Amount = 0,
-    long? PowerApplicationOrderCeiling = null);
+    long? PowerApplicationOrderCeiling = null,
+    bool FromHandDraw = false);
 
 public enum PrototypeAutomaticStepKind
 {
@@ -330,7 +332,8 @@ public sealed record PrototypePowerDefinition(
     int BlockBonusPerStack,
     PrototypePowerTriggerSpec[] Triggers,
     int AttackRetaliationPerStack = 0,
-    bool AllowNegative = false);
+    bool AllowNegative = false,
+    bool RemoveAtPlayerTurnEnd = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
