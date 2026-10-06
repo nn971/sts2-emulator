@@ -58,7 +58,8 @@ public enum PrototypeCombatEffectKind
     GainPlayerBlockAndApplyPowerFromActualGain,
     ModifySourceCardEnergyCost,
     SetHandCardsEnergyCostUntilTurnEndOrPlayed,
-    ModifyEventSourceCardKeyword
+    ModifyEventSourceCardKeyword,
+    GainPlayerBlockFromEnemyStatusTotal
 }
 
 public enum PrototypeCardKeyword
@@ -381,6 +382,7 @@ public sealed record PrototypeCardDefinition(
     PrototypeCardTarget Target,
     PrototypeCombatEffectSpec[] Effects,
     bool ExhaustOnUse = false,
+    bool LoseExhaustOnUpgrade = false,
     PrototypeCardRarity Rarity = PrototypeCardRarity.Common,
     bool Innate = false,
     bool InnateOnUpgrade = false,
