@@ -301,7 +301,7 @@ public sealed class PrototypePowerTests
             [
                 new EnemyCombatState(
                     1,
-                    "proto.enemy.elite",
+                    "proto.enemy.assassin",
                     4,
                     0,
                     0,
@@ -333,7 +333,7 @@ public sealed class PrototypePowerTests
         state = engine.Step(state, GameAction.Empty("end_turn")).State;
 
         Assert.Equal(RunPhase.Reward, state.Phase);
-        Assert.Equal(59, state.Player.Hp);
+        Assert.Equal(65, state.Player.Hp);
     }
 
     [Fact]
