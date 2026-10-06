@@ -463,6 +463,21 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Common,
                 Sly: true),
             new PrototypeCardDefinition(
+                "proto.silent.ricochet",
+                "Ricochet",
+                2,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        3,
+                        Target: PrototypeEffectTarget.RandomEnemy,
+                        Repetitions: 4,
+                        RepetitionUpgradeDelta: 1)
+                ],
+                Rarity: PrototypeCardRarity.Common,
+                Sly: true),
+            new PrototypeCardDefinition(
                 "proto.silent.hidden_daggers",
                 "Hidden Daggers",
                 0,
