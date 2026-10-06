@@ -245,7 +245,8 @@ public sealed partial class PrototypeGameEngine
                 effect.Amount,
                 payload.TargetEnemyId,
                 effect.StatusId,
-                effect.Selection));
+                effect.Selection,
+                effect.CardId));
         }
 
         var resolved = ResolveOperations(state.Player, combat, operations, state.Rng);
@@ -443,7 +444,8 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         Queue<PrototypeQueuedOperation> operations,
         RngBundle rng,
-        long? sourceCardInstanceId = null)
+        long? sourceCardInstanceId = null,
+        PrototypeCardZone sourceCardDestination = PrototypeCardZone.DiscardPile)
     {
         while (operations.Count > 0)
         {
@@ -504,11 +506,41 @@ public sealed partial class PrototypeGameEngine
                         PendingChoice = new PendingCombatChoiceState(
                             ChoiceId: "select_cards",
                             SourceCardInstanceId: sourceCardInstanceId,
+                            SourceCardDestination: sourceCardDestination,
                             Selection: effective,
                             CandidateCardInstanceIds: (long[])candidates.Clone(),
                             Continuation: operations.ToArray())
                     };
                     return (player, combat);
+                }
+
+                case PrototypeCombatEffectKind.CreateCardsInHand:
+                {
+                    if (operation.CardId is null)
+                    {
+                        throw new InvalidOperationException("Create-card operation is missing a card ID.");
+                    }
+
+                    _ = PrototypeContent.Card(operation.CardId);
+                    for (var index = 0; index < operation.Amount; index++)
+                    {
+                        var instance = new CombatCardInstance(
+                            InstanceId: combat.NextCardInstanceId,
+                            PersistentCardInstanceId: null,
+                            CardId: operation.CardId,
+                            UpgradeLevel: 0,
+                            IsTemporary: true,
+                            State: PrototypeJson.EmptyObject());
+
+                        combat = combat with
+                        {
+                            NextCardInstanceId = combat.NextCardInstanceId + 1,
+                            Cards = combat.Cards.Append(instance).ToArray(),
+                            Hand = combat.Hand.Append(instance.InstanceId).ToArray()
+                        };
+                    }
+
+                    break;
                 }
 
                 default:
@@ -518,11 +550,12 @@ public sealed partial class PrototypeGameEngine
 
         if (sourceCardInstanceId is not null)
         {
-            combat = combat with
-            {
-                DiscardPile = combat.DiscardPile.Append(sourceCardInstanceId.Value).ToArray(),
-                PendingChoice = null
-            };
+            var destination = GetZone(combat, sourceCardDestination);
+            combat = SetZone(
+                combat,
+                sourceCardDestination,
+                destination.Append(sourceCardInstanceId.Value).ToArray());
+            combat = combat with { PendingChoice = null };
         }
 
         return (player, combat);
@@ -598,7 +631,8 @@ public sealed partial class PrototypeGameEngine
             combat,
             operations,
             state.Rng,
-            pending.SourceCardInstanceId);
+            pending.SourceCardInstanceId,
+            pending.SourceCardDestination);
 
         state = state with
         {
@@ -719,6 +753,12 @@ public sealed partial class PrototypeGameEngine
             }
         }
     }
+
+    private static CombatCardInstance RequireCombatCard(
+        CombatState combat,
+        long instanceId) =>
+        combat.Cards.FirstOrDefault(card => card.InstanceId == instanceId)
+        ?? throw new InvalidOperationException($"Combat card instance {instanceId} is missing.");
 
     private static CombatState DamageEnemy(CombatState combat, int enemyId, int damage)
     {
