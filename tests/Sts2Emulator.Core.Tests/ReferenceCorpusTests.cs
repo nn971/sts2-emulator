@@ -29,7 +29,7 @@ public sealed class ReferenceCorpusTests
                 summary.Tables,
                 table => table.Kind == "cards");
 
-            Assert.Equal(7, cards.Count);
+            Assert.Equal(8, cards.Count);
             Assert.Contains("description", cards.Fields);
             Assert.Contains("target", cards.Fields);
         }
@@ -49,9 +49,9 @@ public sealed class ReferenceCorpusTests
             var report = ReferenceMechanicsGapAnalyzer.Analyze(
                 ReferenceCorpus.Open(root));
 
-            Assert.Equal(7, report.NativeSilentCardCount);
-            Assert.Equal(6, report.NameMatchedCardCount);
-            Assert.Equal(6, report.StructuredFieldMatchCount);
+            Assert.Equal(8, report.NativeSilentCardCount);
+            Assert.Equal(7, report.NameMatchedCardCount);
+            Assert.Equal(7, report.StructuredFieldMatchCount);
             Assert.Equal(1, report.MissingNativeCardCount);
 
             var mystery = Assert.Single(
@@ -105,6 +105,19 @@ public sealed class ReferenceCorpusTests
             Assert.DoesNotContain(
                 "conditional_effect",
                 bubbleBubble.RequiredFeatures);
+
+            var pinpoint = Assert.Single(
+                report.Cards,
+                card => card.NativeId == "PINPOINT");
+            Assert.Contains(
+                "dynamic_cost_skills_played",
+                pinpoint.RequiredFeatures);
+            Assert.DoesNotContain(
+                "dynamic_cost_skills_played",
+                pinpoint.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "cost_mutation",
+                pinpoint.RequiredFeatures);
 
             Assert.Empty(report.StartingRunMismatches);
         }
@@ -281,6 +294,29 @@ public sealed class ReferenceCorpusTests
                 "keywords":null,
                 "spawns_cards":null,
                 "upgrade":{"poison":"+3"}
+              },
+              {
+                "id":"PINPOINT",
+                "name":"Pinpoint",
+                "description":"Deal 15 damage. Costs 1 less for each Skill played this turn.",
+                "cost":3,
+                "is_x_cost":null,
+                "is_x_star_cost":null,
+                "star_cost":null,
+                "type":"Attack",
+                "rarity":"Uncommon",
+                "target":"AnyEnemy",
+                "color":"silent",
+                "damage":15,
+                "block":null,
+                "hit_count":null,
+                "powers_applied":null,
+                "cards_draw":null,
+                "energy_gain":null,
+                "hp_loss":null,
+                "keywords":null,
+                "spawns_cards":null,
+                "upgrade":{"damage":"+4"}
               }
             ]
             """);
