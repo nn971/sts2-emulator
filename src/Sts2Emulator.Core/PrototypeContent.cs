@@ -1501,9 +1501,24 @@ public static class PrototypeContent
                 "proto.power.tools_of_the_trade",
                 "Tools of the Trade",
                 BlockBonusPerStack: 0,
-                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
-                HandDrawBonusPerStack: 1,
-                DiscardAfterPlayerTurnStartPerStack: 1),
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ChooseCards,
+                                0,
+                                Selection: new(
+                                    PrototypeCardZone.Hand,
+                                    0,
+                                    0,
+                                    PrototypeCardSelectionResolutionKind
+                                        .MoveToDiscard,
+                                    SelectionsPerPowerStack: 1))
+                        ])
+                ],
+                HandDrawBonusPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.burst",
                 "Burst",
