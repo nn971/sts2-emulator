@@ -22,7 +22,7 @@ public sealed class PrototypeRandomTargetTests
         state = engine.Step(state, action).State;
         var afterCalls = StreamCalls(state, "combat_targets");
 
-        Assert.Equal(4, afterCalls - beforeCalls);
+        Assert.Equal<ulong>(4UL, afterCalls - beforeCalls);
 
         var enemies = state.World!.Combat!.Enemies;
         var totalDamage = enemies.Sum(enemy => 100 - enemy.Hp);
@@ -43,7 +43,7 @@ public sealed class PrototypeRandomTargetTests
         state = engine.Step(state, action).State;
         var afterCalls = StreamCalls(state, "combat_targets");
 
-        Assert.Equal(5, afterCalls - beforeCalls);
+        Assert.Equal<ulong>(5UL, afterCalls - beforeCalls);
 
         var enemies = state.World!.Combat!.Enemies;
         var totalDamage = enemies.Sum(enemy => 100 - enemy.Hp);
