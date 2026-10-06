@@ -113,9 +113,11 @@ static GameAction ChoosePrototypeAction(
 
     if (state.Phase == RunPhase.Combat)
     {
-        return legal.FirstOrDefault(action => action.Kind == "use_potion")
+        return legal.FirstOrDefault(action => action.Kind == "select_cards")
+            ?? legal.FirstOrDefault(action => action.Kind == "use_potion")
             ?? legal.FirstOrDefault(action => action.Kind == "play_card")
-            ?? legal.First(action => action.Kind == "end_turn");
+            ?? legal.FirstOrDefault(action => action.Kind == "end_turn")
+            ?? legal[0];
     }
 
     return legal[0];
