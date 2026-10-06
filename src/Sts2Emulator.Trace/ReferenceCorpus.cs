@@ -576,7 +576,13 @@ public static partial class ReferenceMechanicsGapAnalyzer
             features.Add("copy_card");
         }
 
+        if (RandomEnemyDescriptionRegex().IsMatch(description))
+        {
+            features.Add("random_target");
+        }
+
         if (RandomRegex().IsMatch(description)
+            && !RandomEnemyDescriptionRegex().IsMatch(description)
             && !StringComparer.Ordinal.Equals(
                 GetString(card, "target"),
                 "RandomEnemy"))
@@ -1002,6 +1008,9 @@ public static partial class ReferenceMechanicsGapAnalyzer
         @"\bcopy\b|\bcopies\b|\bduplicat",
         RegexOptions.IgnoreCase)]
     private static partial Regex CopyRegex();
+
+    [GeneratedRegex(@"\brandom enemy\b", RegexOptions.IgnoreCase)]
+    private static partial Regex RandomEnemyDescriptionRegex();
 
     [GeneratedRegex(@"\brandom\b", RegexOptions.IgnoreCase)]
     private static partial Regex RandomRegex();
