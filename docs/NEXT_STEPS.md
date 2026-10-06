@@ -1,77 +1,99 @@
 # Immediate next steps
 
-The near-term goal is a **useful complete-run emulator first**. Fidelity and speed are refinement
-tracks; architectural choices should still keep native data, RNG and timing replaceable.
+The emulator now has a complete-run skeleton and a reasonably expressive prototype mechanics
+kernel. The near-term priority shifts from inventing engine primitives to making prototype runs
+strategically varied enough to exercise the future AI project.
 
-## Sprint 1 — stabilize the Silent whole-run prototype
+Fidelity and speed remain refinement tracks; prototype generation rules and semantics stay
+explicitly versioned and replaceable.
 
-1. Keep a seeded run playable from start to victory/death.
-2. Exercise every top-level phase in tests.
-3. Make invalid actions fail clearly.
-4. Keep all provisional content under the `proto.*` namespace.
-5. Preserve deterministic save/fork/hash behavior.
+## Completed foundation
+
+The current branch already has:
+
+- end-to-end seeded Silent runs;
+- persistent graph-shaped act maps;
+- deterministic named RNG streams;
+- card-selection continuations;
+- discard/exhaust/generated cards;
+- fixed and X costs;
+- repeated and all-enemy effects;
+- generic contextual combat events;
+- shared player/enemy powers;
+- stateful relic event triggers;
+- combat-local card/relic/potion state;
+- ordered enemy move programs;
+- structural invariants and a 500-seed whole-run sweep;
+- act/floor/history-sensitive encounter selection;
+- prototype rarity-aware card rewards.
 
 See [PROTOTYPE_SCOPE.md](PROTOTYPE_SCOPE.md).
 
-## Sprint 2 — broaden semantic primitives
+## Sprint A — finish prototype run generation
 
-Add mechanics because they unlock families of cards/content:
+Prioritize strategic run-level decisions:
 
-- explicit card-selection prompts;
-- choose-and-discard;
-- exhaust and generated/temporary cards;
-- X-cost and variable-cost cards;
-- multi-hit and all-enemy effects;
-- player/enemy powers;
-- generic triggered effects;
-- card/relic/potion state that persists within a combat;
-- more enemy move types.
+1. richer shop inventory generation, including rarity/price variation;
+2. event eligibility and event-history constraints;
+3. larger potion/relic pools and pool-history rules;
+4. elite/boss selection by act;
+5. map-generation constraints beyond the current layered DAG;
+6. card removal/transformation and additional rest-site choices where useful.
 
-Prefer generic operations and trigger registrations over card-ID switches.
+Keep generation state explicit so the future AI can reason from the complete observable run state.
 
-## Sprint 3 — make run generation more game-shaped
+## Sprint B — enlarge the Silent content slice
 
-Replace the floor-by-floor choice generator with a graph-shaped map abstraction while preserving
-semantic `choose_map_node` actions.
+Add content in mechanic families rather than card-by-card order:
 
-Then enrich:
+- attack/damage archetypes;
+- poison;
+- discard/draw;
+- Shiv/generated-card play;
+- defensive/dexterity;
+- powers/reactive triggers;
+- energy and X-cost interactions.
 
-- encounter pools by act/floor/history;
-- elite/boss selection;
-- reward pools and rarity;
-- shop inventory;
-- event eligibility/history;
-- potion/relic pools.
+Add enough normal enemies, elites, bosses, potions, relics, and events that different routes and
+reward choices produce materially different runs.
 
-## Sprint 4 — enlarge the Silent content slice
+Prefer data definitions and reusable semantic effects. Add a new primitive only when several
+content entries genuinely need it.
 
-Grow from the restrictive development catalog toward enough cards, potions, relics and enemies to
-produce varied strategic runs.
+## Sprint C — expose an AI-oriented environment boundary
 
-Content definitions should stay data-oriented wherever possible.
+Before serious learning/search work:
 
-## Sprint 5 — connect real game data
+1. define compact observation/legal-action DTOs;
+2. add deterministic reset/step/fork APIs suitable for batch consumers;
+3. provide stable action identifiers independent of CLI formatting;
+4. add rollout statistics and representative whole-run benchmarks;
+5. keep canonical state/hash APIs available for verification.
 
-Once the model can represent a substantial run:
+The learning/search implementation itself belongs in the parent `sts2-ai` repository.
+
+## Sprint D — connect real game data
+
+Once the prototype supports varied strategic runs:
 
 1. pin a reference STS2 build;
-2. import/translate real definitions where legally appropriate;
+2. inventory real content/data sources and legally appropriate extraction/translation routes;
 3. build the native reference bridge;
-4. identify mechanics whose prototype semantics differ;
-5. replace prototype RNG/timing/content through versioned rulesets rather than patches spread
-   through the engine.
+4. compare legal actions and decision-boundary states;
+5. replace prototype generation, RNG, timing, and content through versioned rulesets.
 
-## Sprint 6 — fidelity loop
+## Sprint E — fidelity loop
 
-Add decision-boundary traces and differential replay. Native parity then becomes an iterative
-correction process over an already useful emulator.
+Use differential replay to turn native observations into minimized regression cases. Treat every
+verified ordering/RNG/content correction as version-pinned evidence rather than a global assumption.
 
-## Sprint 7 — performance loop
+## Sprint F — performance loop
 
-After the parent AI/search project provides representative workloads:
+After `sts2-ai` supplies representative workloads:
 
 - benchmark full-run rollouts and branch-heavy search;
-- profile allocations and copying;
-- optimize state representation/forking;
-- add batch APIs;
-- keep canonical behavior unchanged while optimizing.
+- profile state copying/forking and event dispatch;
+- optimize layouts and structural sharing;
+- add batch/parallel APIs;
+- track memory per branch and transitions per second;
+- evaluate NativeAOT/interoperability only after profiles justify it.
