@@ -2,57 +2,97 @@
 
 This project is intentionally **not** part of `Sts2Emulator.sln`.
 
-It must compile against the exact assemblies shipped by the STS2 build being observed. CI does not
-have those proprietary game assemblies and should not download or vendor them.
+It is compiled only against the exact assemblies shipped by the pinned STS2 reference build. CI
+does not contain those proprietary assemblies.
 
-## Preflight first
+## Pinned target
 
-On the machine with STS2 installed:
+The current bridge target is:
+
+- STS2 `v0.111.0`
+- commit `41cef1ea`
+- target framework `net9.0`
+- build fingerprint
+  `3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`
+
+See `../../data/reference_builds/v0.111.0-41cef1ea.json`.
+
+The recorder verifies the exact hashes of `sts2.dll`, `0Harmony.dll`,
+`GodotSharp.dll`, `release_info.json`, and `sts2.runtimeconfig.json` at startup. If any file
+differs, it refuses to record.
+
+## Current recorder
+
+The first recorder is passive:
+
+- enters through the game's `[ModInitializer]` loader surface;
+- does **not** Harmony-patch combat methods;
+- subscribes reflectively to `CombatManager` lifecycle events;
+- reads `CombatManager.DebugOnlyGetState()`;
+- snapshots run/player RNG through their native `ToSerializable()` methods;
+- writes JSONL under `<instrumented-game>/reference_traces/`;
+- optionally subscribes to `CombatStateTracker.CombatStateChanged` when
+  `STS2_REFERENCE_VERBOSE=1`.
+
+Default recorded boundaries currently include combat setup/start, turn start/end, player end-turn,
+switch-to-enemy, combat victory, and combat end.
+
+This is a **probe** format (`sts2-reference-probe-v0`), not yet a parity-complete
+`reference-trace-v0.2`. We first need a live capture to verify which state properties are exposed
+at each observed boundary.
+
+## Preserve the clean oracle
+
+Do not install this mod into the clean oracle copy.
+
+Build **against** the oracle, but stage the mod separately:
 
 ```fish
-dotnet run --project ../../src/Sts2Emulator.Cli -- \
-    reference-preflight "/path/to/Slay the Spire 2"
+fish tools/reference_bridge/stage.fish "/path/to/clean/oracle/game"
 ```
 
-Keep the emitted build fingerprint with every trace corpus.
+By default this creates:
 
-Then inspect candidate semantic APIs from that exact `sts2.dll`:
+```text
+artifacts/reference_bridge_mod/Sts2ReferenceBridge/
+  Sts2ReferenceBridge.dll
+  Sts2ReferenceBridge.json
+```
+
+The staging script does not modify the oracle.
+
+Copy that folder into an expendable/instrumented game copy:
 
 ```fish
-dotnet run --project ../../src/Sts2Emulator.Cli -- \
-    reference-inspect "/path/to/Slay the Spire 2" "ModInitializer"
-
-dotnet run --project ../../src/Sts2Emulator.Cli -- \
-    reference-inspect "/path/to/Slay the Spire 2" "Combat"
-
-dotnet run --project ../../src/Sts2Emulator.Cli -- \
-    reference-inspect "/path/to/Slay the Spire 2" "Rng"
+cp -r artifacts/reference_bridge_mod/Sts2ReferenceBridge \
+    "/path/to/instrumented/game/mods/"
 ```
 
-The search patterns are discovery aids, not protocol assumptions.
+Then launch the instrumented copy with mods enabled and play a small combat. The probe should appear
+under:
 
-## Build
+```text
+<instrumented-game>/reference_traces/
+```
 
-The project accepts either `GameDir` or an exact `Sts2DataDir`:
+## Verbose state-change capture
+
+The default lifecycle stream is intentionally small. For a diagnostic run, set:
 
 ```fish
-dotnet build Sts2ReferenceBridge.csproj \
-    -p:GameDir="/path/to/Slay the Spire 2"
+set -x STS2_REFERENCE_VERBOSE 1
 ```
 
-or:
+before launching the game from the same environment. This additionally records
+`CombatStateTracker.CombatStateChanged` and can produce a much larger trace.
+
+## Re-audit after updates
+
+For any different installed build:
 
 ```fish
-dotnet build Sts2ReferenceBridge.csproj \
-    -p:Sts2DataDir="/path/to/Slay the Spire 2/data_sts2_linuxbsd_x86_64"
+fish scripts/reference_audit.fish "/path/to/game" > reference-audit.txt 2>&1
 ```
 
-## Why there is no hook code yet
-
-Do not add a guessed `[ModInitializer]`, Harmony target, RNG field name, or decision-boundary
-method based on another STS2 version. The first hook commit should cite the local build fingerprint
-and the inspected type/method names it was written against.
-
-The bridge should emit `reference-trace-v0.2` records and depend on
-`Sts2Emulator.Trace` for the versioned trace/build DTOs. It must not depend on prototype gameplay
-semantics from `Sts2Emulator.Core` beyond protocol utilities transitively used by Trace.
+Do not update the pinned constants merely because the displayed version is similar. Treat a new
+fingerprint as a separate oracle version and inspect its semantic surfaces first.
