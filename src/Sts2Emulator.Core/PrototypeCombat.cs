@@ -3058,7 +3058,19 @@ public sealed partial class PrototypeGameEngine
             moveSourceCardOnCompletion:
                 pending.MoveSourceCardOnCompletion,
             removeSourceCardOnCompletion:
-                pending.RemoveSourceCardOnCompletion);
+                pending.RemoveSourceCardOnCompletion,
+            eventDispatchContinuation:
+                pending.EventDispatchContinuation);
+
+        if (resolved.Combat.PendingChoice is null
+            && pending.EventDispatchContinuation is not null)
+        {
+            resolved = ResumeEventDispatchContinuation(
+                resolved.Player,
+                resolved.Combat,
+                pending.EventDispatchContinuation,
+                state.Rng);
+        }
 
         if (resolved.Combat.PendingChoice is null
             && pending.CardPlaySeries is
@@ -3083,7 +3095,39 @@ public sealed partial class PrototypeGameEngine
             World = world with { Combat = resolved.Combat }
         };
 
-        return AllEnemiesDefeated(resolved.Combat)
+        if (resolved.Combat.PendingChoice is null
+            && resolved.Combat.AutomaticPipelineContinuation is
+                { } automaticContinuation)
+        {
+            var resumedWorld = RequireWorld(state);
+            var resumedCombat = resumedWorld.Combat
+                ?? throw new InvalidOperationException(
+                    "Combat unexpectedly disappeared.");
+            state = state with
+            {
+                World = resumedWorld with
+                {
+                    Combat = resumedCombat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }
+                }
+            };
+            state = ResumeAutomaticPipeline(
+                state,
+                automaticContinuation.NextStepIndex,
+                automaticContinuation.PendingPostDispatchEventKind);
+        }
+
+        if (state.Phase != RunPhase.Combat)
+        {
+            return state;
+        }
+
+        var currentCombat = RequireWorld(state).Combat
+            ?? throw new InvalidOperationException(
+                "Combat unexpectedly disappeared.");
+        return AllEnemiesDefeated(currentCombat)
             ? EnterReward(state)
             : state;
     }
