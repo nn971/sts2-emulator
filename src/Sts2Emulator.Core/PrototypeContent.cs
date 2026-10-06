@@ -184,6 +184,24 @@ public static class PrototypeContent
                 ],
                 Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
+                "proto.silent.expertise",
+                "Expertise",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DrawCards,
+                        2,
+                        1,
+                        DrawnCardKeyword: new(
+                            PrototypeCardKeyword.Retain,
+                            Expiry:
+                                PrototypeCardKeywordOverrideExpiry.EndOfTurn))
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
+
+            new PrototypeCardDefinition(
                 "proto.silent.shiv",
                 "Shiv",
                 0,
