@@ -267,6 +267,8 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "dynamic_cost_skills_played",
             "next_skill_free",
             "combat_card_cost_mutation",
+            "hand_cards_free_this_turn",
+            "no_additional_draw",
             "react_on_card_draw",
             "damage",
             "block",
@@ -653,6 +655,17 @@ public static partial class ReferenceMechanicsGapAnalyzer
         {
             features.Add("combat_card_cost_mutation");
             hasSpecificCostMutation = true;
+        }
+
+        if (HandCardsFreeThisTurnRegex().IsMatch(description))
+        {
+            features.Add("hand_cards_free_this_turn");
+            hasSpecificCostMutation = true;
+        }
+
+        if (NoAdditionalDrawRegex().IsMatch(description))
+        {
+            features.Add("no_additional_draw");
         }
 
         if (CostMutationRegex().IsMatch(description)
@@ -1098,6 +1111,16 @@ public static partial class ReferenceMechanicsGapAnalyzer
         @"reduce\s+this\s+card['’]s\s+cost\s+by\s+1",
         RegexOptions.IgnoreCase)]
     private static partial Regex SelfCostReductionRegex();
+
+    [GeneratedRegex(
+        @"all\s+cards\s+in\s+your.*hand.*free\s+to\s+play\s+this\s+turn",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex HandCardsFreeThisTurnRegex();
+
+    [GeneratedRegex(
+        @"cannot\s+draw\s+additional\s+cards\s+this\s+turn",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex NoAdditionalDrawRegex();
 
     [GeneratedRegex(
         @"\bcost\b.*\b(?:less|more|free|0|1|2|3|random)\b|\breduce\b.*\bcost\b|\bincrease\b.*\bcost\b",
