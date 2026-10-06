@@ -135,6 +135,80 @@ public sealed class PrototypePowerTests
         Assert.Equal(1, Assert.Single(combat.PlayerPowers).Stacks);
     }
 
+
+    [Fact]
+    public void CardPlayedEventWaitsForSuspendedChoiceCompletion()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var player = new PlayerState(
+            70,
+            70,
+            0,
+            [
+                new CardInstance(70, "proto.silent.survivor", 0, empty),
+                new CardInstance(71, "proto.silent.strike", 0, empty)
+            ],
+            Array.Empty<RelicInstance>(),
+            new PotionInstance?[PrototypeContent.Rules.PotionSlots]);
+
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [1, 2],
+            DrawPile: Array.Empty<long>(),
+            DiscardPile: Array.Empty<long>(),
+            ExhaustPile: Array.Empty<long>(),
+            Enemies:
+            [
+                new EnemyCombatState(
+                    1,
+                    "proto.enemy.crawler",
+                    24,
+                    0,
+                    0,
+                    new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 3,
+            Cards:
+            [
+                new CombatCardInstance(1, 70, "proto.silent.survivor", 0, false, empty),
+                new CombatCardInstance(2, 71, "proto.silent.strike", 0, false, empty)
+            ],
+            PlayerPowers:
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.afterimage",
+                    1,
+                    1)
+            ],
+            NextPowerApplicationOrder: 2);
+
+        var state = CreateState("event-continuation-test", player, combat, 72);
+        var engine = new PrototypeGameEngine();
+
+        var play = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1);
+
+        state = engine.Step(state, play).State;
+        PrototypeStateInvariants.Validate(state);
+
+        Assert.NotNull(state.World!.Combat!.PendingChoice);
+        Assert.Equal(8, state.World.Combat.PlayerBlock);
+
+        var chooseDiscard = Assert.Single(engine.GetLegalActions(state));
+        Assert.Equal("select_cards", chooseDiscard.Kind);
+
+        state = engine.Step(state, chooseDiscard).State;
+        PrototypeStateInvariants.Validate(state);
+
+        Assert.Null(state.World!.Combat!.PendingChoice);
+        Assert.Equal(9, state.World.Combat.PlayerBlock);
+        Assert.Equal(new long[] { 2, 1 }, state.World.Combat.DiscardPile);
+    }
+
     private static RunState CreateState(
         string seed,
         PlayerState player,
