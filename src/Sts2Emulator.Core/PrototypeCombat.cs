@@ -645,7 +645,8 @@ public sealed partial class PrototypeGameEngine
                     player,
                     combat,
                     new PrototypeCombatEvent(automaticStep.EventKind.Value),
-                    state.Rng);
+                    state.Rng,
+                    allowSuspension: true);
                 player = dispatched.Player;
                 combat = dispatched.Combat;
 
@@ -2556,7 +2557,8 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         PrototypeCombatEvent combatEvent,
         RngBundle rng,
-        int eventDepth = 0)
+        int eventDepth = 0,
+        bool allowSuspension = false)
     {
         if (eventDepth > 64)
         {
@@ -2727,6 +2729,12 @@ public sealed partial class PrototypeGameEngine
 
             if (combat.PendingChoice is not null)
             {
+                if (!allowSuspension)
+                {
+                    throw new NotSupportedException(
+                        "Combat-event suspension outside a top-level automatic event step requires an outer continuation frame.");
+                }
+
                 return (player, combat);
             }
 
