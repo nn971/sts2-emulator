@@ -389,7 +389,7 @@ public sealed partial class PrototypeGameEngine
 
             var absorbed = Math.Min(block, Math.Max(0, damage));
             block -= absorbed;
-            hp -= Math.Max(0, damage - absorbed);
+            hp = Math.Max(0, hp - Math.Max(0, damage - absorbed));
 
             enemies[index] = enemy with { MoveIndex = enemy.MoveIndex + 1 };
             if (hp <= 0)
