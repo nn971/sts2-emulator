@@ -373,6 +373,33 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void BlurMatchesPinnedV01110BlockPreservation()
+    {
+        var blur = PrototypeContent.Card("proto.silent.blur");
+
+        Assert.Equal(1, blur.Cost.Amount);
+        Assert.Equal(PrototypeCardType.Skill, blur.Type);
+        Assert.Equal(PrototypeCardRarity.Uncommon, blur.Rarity);
+
+        var block = Assert.Single(
+            blur.Effects,
+            effect =>
+                effect.Kind == PrototypeCombatEffectKind.GainPlayerBlock);
+        Assert.Equal(5, block.Amount);
+        Assert.Equal(3, block.UpgradeDelta);
+
+        var powerEffect = Assert.Single(
+            blur.Effects,
+            effect =>
+                effect.Kind == PrototypeCombatEffectKind.ApplyPlayerPower);
+        Assert.Equal("proto.power.blur", powerEffect.PowerId);
+
+        var power = PrototypeContent.Power("proto.power.blur");
+        Assert.True(power.PreventsPlayerBlockClear);
+        Assert.True(power.DecrementAfterPlayerTurnStart);
+    }
+
+    [Fact]
     public void BulletTimeMatchesPinnedV01110TemporaryCostAndNoDraw()
     {
         var card = PrototypeContent.Card(
