@@ -16,6 +16,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Fingerprint the exact installed STS2 build");
     Console.WriteLine("  reference-inspect <game-dir> <pattern> [data-dir]");
     Console.WriteLine("                          Search managed type/method metadata in installed sts2.dll");
+    Console.WriteLine("  reference-probe-summary <probe.jsonl>");
+    Console.WriteLine("                          Summarize a passive native reference probe");
     return;
 }
 
@@ -52,6 +54,43 @@ switch (args[0])
             Console.WriteLine(CanonicalJson.Sha256(state));
         }
         break;
+
+    case "reference-probe-summary":
+    {
+        if (args.Length != 2)
+        {
+            throw new ArgumentException(
+                "reference-probe-summary requires exactly one JSONL path.");
+        }
+
+        var summary = Sts2Emulator.Trace.ReferenceProbeAnalyzer.Analyze(args[1]);
+        Console.WriteLine($"Schema: {summary.Schema}");
+        Console.WriteLine($"Build fingerprint: {summary.BuildFingerprint}");
+        Console.WriteLine(
+            $"Records: {summary.ValidRecords} valid, {summary.InvalidRecords} invalid, {summary.Lines} lines");
+        Console.WriteLine($"Combats: {summary.CombatCount}");
+        Console.WriteLine($"Type catalogs: {summary.TypeCatalogCount}");
+
+        Console.WriteLine("Record types:");
+        foreach (var item in summary.RecordTypes)
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        Console.WriteLine("Boundaries:");
+        foreach (var item in summary.Boundaries)
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        Console.WriteLine("Diagnostics:");
+        foreach (var item in summary.Diagnostics)
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        break;
+    }
 
     case "reference-inspect":
     {
