@@ -348,7 +348,9 @@ public sealed partial class PrototypeGameEngine
                 definition.Type);
         combat = playCountResult.Combat;
 
-        var sourceDestination = definition.ExhaustOnUse
+        var sourceDestination = CardExhaustsOnUse(
+                definition,
+                card.UpgradeLevel)
             ? PrototypeCardZone.ExhaustPile
             : PrototypeCardZone.DiscardPile;
 
@@ -1117,6 +1119,34 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal:
+                {
+                    if (operation.StatusId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Status-total block operation is missing a status ID.");
+                    }
+
+                    var statusTotal = combat.Enemies
+                        .Where(enemy => enemy.Hp > 0)
+                        .Sum(enemy =>
+                            Math.Max(
+                                0,
+                                enemy.Statuses.GetValueOrDefault(
+                                    operation.StatusId)));
+                    var modifiedAmount = operation.Amount
+                        + statusTotal
+                        + (operation.SourceKind == PrototypeEffectSourceKind.Card
+                            ? PlayerBlockBonus(combat)
+                            : 0);
+                    combat = combat with
+                    {
+                        PlayerBlock = combat.PlayerBlock
+                            + Math.Max(0, modifiedAmount)
+                    };
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain:
                 {
                     if (operation.PowerId is null)
@@ -1713,6 +1743,12 @@ public sealed partial class PrototypeGameEngine
             PrototypeCardCostKind.X => combat.Energy,
             _ => throw new ArgumentOutOfRangeException()
         };
+
+    private static bool CardExhaustsOnUse(
+        PrototypeCardDefinition definition,
+        int upgradeLevel) =>
+        definition.ExhaustOnUse
+        && !(upgradeLevel > 0 && definition.LoseExhaustOnUpgrade);
 
     private static int ResolveFixedCardEnergyCost(
         CombatState combat,
@@ -2827,7 +2863,9 @@ public sealed partial class PrototypeGameEngine
                 definition.Type);
         combat = playCountResult.Combat;
 
-        var sourceDestination = definition.ExhaustOnUse
+        var sourceDestination = CardExhaustsOnUse(
+                definition,
+                card.UpgradeLevel)
             ? PrototypeCardZone.ExhaustPile
             : PrototypeCardZone.DiscardPile;
 
