@@ -17,6 +17,11 @@ Implemented on the current prototype branch:
 - shops, events and rest sites;
 - three-act transition flow;
 - terminal victory/death;
+- suspendable combat card-selection prompts with resumable effect continuations;
+- combat-local/generated card identities and exhaust-on-use;
+- fixed/X costs, repeated effects, and all-enemy targeting;
+- player powers with ruleset-ordered turn-stage triggers;
+- enemy moves expressed as ordered effect lists;
 - CLI whole-run smoke driver;
 - deterministic whole-run smoke tests;
 - trace/diff and benchmark scaffolding.
