@@ -297,6 +297,12 @@ public sealed record PrototypeEventDefinition(
     int Weight = 1,
     bool OncePerRun = true);
 
+public sealed record PrototypeMapFloorRule(
+    int MinFloor,
+    int MaxFloor,
+    PrototypeRoomType[] RoomPool,
+    bool AllowDuplicateSpecialRooms = false);
+
 public sealed record PrototypeRuleset(
     string Id,
     int Acts,
@@ -307,7 +313,8 @@ public sealed record PrototypeRuleset(
     int BaseEnergy,
     int HandSize,
     int RestHealPercent,
-    PrototypeRoomType[] RoomPool,
+    int RestTrainMaxHp,
+    PrototypeMapFloorRule[] MapFloorRules,
     PrototypeAutomaticStep[] EndTurnPipeline);
 
 public sealed record MapNodeState(
