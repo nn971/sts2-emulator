@@ -373,6 +373,35 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void UpMySleeveMatchesPinnedV01110CardLocalCostMutation()
+    {
+        var card = PrototypeContent.Card(
+            "proto.silent.up_my_sleeve");
+
+        Assert.Equal(2, card.Cost.Amount);
+        Assert.Equal(PrototypeCardType.Skill, card.Type);
+        Assert.Equal(
+            PrototypeCardRarity.Uncommon,
+            card.Rarity);
+
+        var shivs = Assert.Single(
+            card.Effects,
+            effect =>
+                effect.Kind
+                == PrototypeCombatEffectKind.CreateCardsInHand);
+        Assert.Equal(3, shivs.Amount);
+        Assert.Equal(1, shivs.UpgradeDelta);
+        Assert.Equal("proto.silent.shiv", shivs.CardId);
+
+        var cost = Assert.Single(
+            card.Effects,
+            effect =>
+                effect.Kind
+                == PrototypeCombatEffectKind.ModifySourceCardEnergyCost);
+        Assert.Equal(-1, cost.Amount);
+    }
+
+    [Fact]
     public void InfiniteBladesAndSuppressMatchPinnedV01110()
     {
         var infiniteBlades = PrototypeContent.Card(
