@@ -738,6 +738,22 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
+                "proto.silent.tools_of_the_trade",
+                "Tools of the Trade",
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.Fixed,
+                    1,
+                    UpgradeDelta: -1),
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.tools_of_the_trade")
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Power),
+            new PrototypeCardDefinition(
                 "proto.silent.burst",
                 "Burst",
                 1,
@@ -1323,6 +1339,13 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AllowNegative: true,
                 RemoveAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.tools_of_the_trade",
+                "Tools of the Trade",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                HandDrawBonusPerStack: 1,
+                DiscardAfterPlayerTurnStartPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.burst",
                 "Burst",
