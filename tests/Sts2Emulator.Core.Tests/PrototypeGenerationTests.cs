@@ -90,11 +90,18 @@ public sealed class PrototypeGenerationTests
                 var next = isBoss
                     ? Array.Empty<string>()
                     : new[] { $"test:{act}:{floor + 1}" };
+                var room = floor switch
+                {
+                    5 => PrototypeRoomType.Rest,
+                    var value when value == PrototypeContent.Rules.FloorsPerAct
+                        => PrototypeRoomType.Boss,
+                    _ => PrototypeRoomType.Combat
+                };
                 return new MapNodeState(
                     nodeId,
                     act,
                     floor,
-                    isBoss ? PrototypeRoomType.Boss : PrototypeRoomType.Rest,
+                    room,
                     next);
             })
             .ToArray();
