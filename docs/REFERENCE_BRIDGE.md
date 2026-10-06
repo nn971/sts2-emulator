@@ -1,5 +1,18 @@
 # Native reference bridge
 
+## First pinned oracle
+
+The first native fidelity target is STS2 `v0.111.0`, commit `41cef1ea`, build fingerprint
+`3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`.
+
+See `data/reference_builds/v0.111.0-41cef1ea.json` and
+`docs/reference-builds/v0.111.0-41cef1ea.md`.
+
+A first passive recorder now lives in `tools/reference_bridge`. It verifies the exact audited
+file hashes before attaching, subscribes to observed `CombatManager` lifecycle events without
+Harmony-patching gameplay methods, and snapshots combat/RNG state into a probe JSONL file. This
+probe must be live-validated before it is promoted to parity-complete `reference-trace-v0.2`.
+
 The bridge is tied to an **installed build fingerprint**, not to a version string copied into source.
 Before inspecting or building against the game, run:
 
