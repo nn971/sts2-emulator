@@ -86,6 +86,16 @@ public enum PrototypeEffectSourceKind
     Relic
 }
 
+public enum PrototypeCombatPredicateKind
+{
+    DrawPileEmpty,
+    TargetHasStatus
+}
+
+public sealed record PrototypeCombatPredicateSpec(
+    PrototypeCombatPredicateKind Kind,
+    string? StatusId = null);
+
 public enum PrototypeCardCostKind
 {
     Fixed,
@@ -196,7 +206,8 @@ public sealed record PrototypeCombatEffectSpec(
     int AmountPerPowerStack = 0,
     int RepetitionsPerPowerStack = 0,
     int GeneratedCardUpgradeLevel = 0,
-    int GeneratedCardUpgradePerSourceUpgrade = 0)
+    int GeneratedCardUpgradePerSourceUpgrade = 0,
+    PrototypeCombatPredicateSpec? Condition = null)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -220,7 +231,8 @@ public sealed record PrototypeQueuedOperation(
     int GeneratedCardUpgradeLevel = 0,
     PrototypeEffectTarget TargetMode = PrototypeEffectTarget.ActionTargetEnemy,
     PrototypeEffectSourceKind SourceKind = PrototypeEffectSourceKind.System,
-    bool IsPoweredAttack = false);
+    bool IsPoweredAttack = false,
+    PrototypeCombatPredicateSpec? Condition = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -242,7 +254,8 @@ public sealed record PrototypeCardDefinition(
     bool Unplayable = false,
     bool Eternal = false,
     bool RewardEligible = true,
-    PrototypeCardType Type = PrototypeCardType.Unknown);
+    PrototypeCardType Type = PrototypeCardType.Unknown,
+    PrototypeCombatPredicateSpec? PlayCondition = null);
 
 public sealed record PrototypePotionDefinition(
     string Id,
