@@ -103,6 +103,18 @@ dotnet run --project benchmarks/Sts2Emulator.Microbench/Sts2Emulator.Microbench.
 
 The current development branch contains a **restrictive Silent whole-run prototype**. Its `proto.*` content, development RNG, room generation, and timing model are intentionally provisional; they exist to exercise the complete run architecture before native-fidelity replacement.
 
+Useful developer commands:
+
+```fish
+dotnet run --project src/Sts2Emulator.Cli -- prototype-run my-seed
+dotnet run --project src/Sts2Emulator.Cli -- prototype-sweep 100
+dotnet run --project src/Sts2Emulator.Cli -- prototype-manifest
+```
+
+The prototype also exposes `PrototypeAiEnvironment` with the versioned `prototype-ai-v0`
+observation/action boundary, stable action IDs, deterministic reset/step/fork, and sibling
+expansion for search consumers.
+
 ## Start here
 
 1. [docs/PURPOSE.md](docs/PURPOSE.md) — emulator charter and repository boundary.
@@ -115,13 +127,14 @@ The current development branch contains a **restrictive Silent whole-run prototy
 8. [docs/PERFORMANCE.md](docs/PERFORMANCE.md) — speed, memory, fork, and batch metrics.
 9. [docs/REFERENCE_BRIDGE.md](docs/REFERENCE_BRIDGE.md) — native-game oracle responsibilities.
 10. [docs/PROTOTYPE_SCOPE.md](docs/PROTOTYPE_SCOPE.md) — current Silent whole-run prototype and replacement boundaries.
-11. [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) — concrete next implementation sprints.
-12. [docs/ROADMAP.md](docs/ROADMAP.md) — emulator-only roadmap.
-13. [docs/REFERENCES.md](docs/REFERENCES.md) — relevant STS2 emulator/prediction prior art.
+11. [docs/AI_INTERFACE.md](docs/AI_INTERFACE.md) — prototype observation/action boundary for search and learning.
+12. [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) — concrete next implementation sprints.
+13. [docs/ROADMAP.md](docs/ROADMAP.md) — emulator-only roadmap.
+14. [docs/REFERENCES.md](docs/REFERENCES.md) — relevant STS2 emulator/prediction prior art.
 
 ## Current status
 
-**Whole-run prototype / Milestone 1.** A restrictive Silent ruleset now supports seeded runs through map choices, combat, rewards, shops, events, rests, bosses, act transitions, and terminal victory/death. Prototype semantics carry no native-fidelity claim yet.
+**AI-ready whole-run prototype.** A restrictive Silent ruleset supports seeded runs through constrained maps, varied encounters, combat, rewards, shops, events, richer rests, bosses, act transitions, and terminal victory/death. A versioned prototype AI adapter and capability manifest are available. Prototype semantics still carry no native-fidelity claim.
 
 ## Independence
 
