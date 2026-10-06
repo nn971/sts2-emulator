@@ -47,6 +47,29 @@ public sealed class ReferenceBuildFingerprintTests
         }
     }
 
+
+    [Fact]
+    public void MetadataInspectorFindsManagedTypesAndMethods()
+    {
+        var assemblyPath = typeof(ReferenceAssemblyInspector).Assembly.Location;
+        var matches = ReferenceAssemblyInspector.Search(
+            assemblyPath,
+            "ReferenceAssemblyInspector");
+
+        Assert.Contains(
+            matches,
+            match =>
+                match.MethodName is null
+                && match.TypeName.EndsWith(
+                    ".ReferenceAssemblyInspector",
+                    StringComparison.Ordinal));
+        Assert.Contains(
+            matches,
+            match =>
+                StringComparer.Ordinal.Equals(match.MethodName, "Search")
+                && match.ParameterCount == 2);
+    }
+
     private static (string Root, string GameDir, string DataDir) CreateFakeGame(
         string suffix)
     {
