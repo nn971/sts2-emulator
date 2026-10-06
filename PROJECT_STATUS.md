@@ -27,6 +27,9 @@ Implemented on the current prototype branch:
 - combat-local potion mirrors with atomic consumption;
 - act/floor/history-sensitive weighted encounters;
 - prototype rarity-aware card rewards;
+- weighted event eligibility/history;
+- rarity-aware shops with one-use card removal;
+- expanded potion/relic pools and act-specific later encounters/bosses;
 - CLI whole-run smoke driver;
 - deterministic whole-run smoke tests;
 - trace/diff and benchmark scaffolding.
