@@ -403,6 +403,39 @@ public static class PrototypeContent
                 ],
                 Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
+                "proto.silent.haze",
+                "Haze",
+                2,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        4,
+                        2,
+                        StatusId: "proto.status.poison",
+                        Target: PrototypeEffectTarget.AllEnemies),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        1,
+                        1,
+                        StatusId: "proto.status.weak",
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon),
+            new PrototypeCardDefinition(
+                "proto.silent.leading_strike",
+                "Leading Strike",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.DamageEnemy, 3, 3),
+                    new(
+                        PrototypeCombatEffectKind.CreateCardsInHand,
+                        2,
+                        CardId: "proto.silent.shiv")
+                ],
+                Rarity: PrototypeCardRarity.Common),
+            new PrototypeCardDefinition(
                 "proto.silent.backstab",
                 "Backstab",
                 0,

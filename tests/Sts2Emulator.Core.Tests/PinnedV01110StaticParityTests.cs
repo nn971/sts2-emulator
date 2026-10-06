@@ -30,6 +30,47 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void NewlyImportedSimpleSilentCardsMatchPinnedV01110()
+    {
+        var haze = PrototypeContent.Card("proto.silent.haze");
+        Assert.Equal(2, haze.Cost.Amount);
+        Assert.Equal(PrototypeCardTarget.None, haze.Target);
+        var hazePoison = Assert.Single(
+            haze.Effects,
+            effect =>
+                effect.Kind == PrototypeCombatEffectKind.ApplyEnemyStatus
+                && effect.StatusId == "proto.status.poison");
+        Assert.Equal(4, hazePoison.Amount);
+        Assert.Equal(2, hazePoison.UpgradeDelta);
+        Assert.Equal(PrototypeEffectTarget.AllEnemies, hazePoison.Target);
+
+        var hazeWeak = Assert.Single(
+            haze.Effects,
+            effect =>
+                effect.Kind == PrototypeCombatEffectKind.ApplyEnemyStatus
+                && effect.StatusId == "proto.status.weak");
+        Assert.Equal(1, hazeWeak.Amount);
+        Assert.Equal(1, hazeWeak.UpgradeDelta);
+        Assert.Equal(PrototypeEffectTarget.AllEnemies, hazeWeak.Target);
+
+        var leadingStrike = PrototypeContent.Card("proto.silent.leading_strike");
+        Assert.Equal(1, leadingStrike.Cost.Amount);
+        Assert.Equal(PrototypeCardTarget.Enemy, leadingStrike.Target);
+
+        var damage = Assert.Single(
+            leadingStrike.Effects,
+            effect => effect.Kind == PrototypeCombatEffectKind.DamageEnemy);
+        Assert.Equal(3, damage.Amount);
+        Assert.Equal(3, damage.UpgradeDelta);
+
+        var shivs = Assert.Single(
+            leadingStrike.Effects,
+            effect => effect.Kind == PrototypeCombatEffectKind.CreateCardsInHand);
+        Assert.Equal(2, shivs.Amount);
+        Assert.Equal("proto.silent.shiv", shivs.CardId);
+    }
+
+    [Fact]
     public void CorrectedSilentCardsMatchPinnedV01110BaseAndUpgradeScalars()
     {
         var bladeDance = PrototypeContent.Card("proto.silent.blade_dance");
