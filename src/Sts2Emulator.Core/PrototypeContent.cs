@@ -553,7 +553,12 @@ public static class PrototypeContent
                         PrototypeCombatEffectKind.DamageEnemy,
                         10,
                         Target: PrototypeEffectTarget.AllEnemies)
-                ])
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.energy",
+                "Energy Potion",
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.GainEnergy, 2)])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
@@ -584,7 +589,58 @@ public static class PrototypeContent
             new PrototypeRelicDefinition(
                 "proto.relic.bag_of_preparation",
                 "Bag of Preparation",
-                FirstTurnDrawBonus: 2)
+                FirstTurnDrawBonus: 2),
+            new PrototypeRelicDefinition(
+                "proto.relic.ornamental_fan",
+                "Ornamental Fan",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [new PrototypeCombatEffectSpec(
+                            PrototypeCombatEffectKind.GainPlayerBlock,
+                            4)],
+                        EveryNth: 3)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.nunchaku",
+                "Nunchaku",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [new PrototypeCombatEffectSpec(
+                            PrototypeCombatEffectKind.GainEnergy,
+                            1)],
+                        EveryNth: 4)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.letter_opener",
+                "Letter Opener",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy,
+                                5,
+                                Target: PrototypeEffectTarget.AllEnemies)
+                        ],
+                        EveryNth: 3)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.happy_flower",
+                "Happy Flower",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [new PrototypeCombatEffectSpec(
+                            PrototypeCombatEffectKind.GainEnergy,
+                            1)],
+                        EveryNth: 3)
+                ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -1052,7 +1108,11 @@ public static class PrototypeContent
     [
         "proto.relic.lantern",
         "proto.relic.ink_bottle",
-        "proto.relic.bag_of_preparation"
+        "proto.relic.bag_of_preparation",
+        "proto.relic.ornamental_fan",
+        "proto.relic.nunchaku",
+        "proto.relic.letter_opener",
+        "proto.relic.happy_flower"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>
