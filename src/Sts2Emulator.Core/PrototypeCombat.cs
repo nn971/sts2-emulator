@@ -498,6 +498,44 @@ public sealed partial class PrototypeGameEngine
                     state.Rng);
                 player = dispatched.Player;
                 combat = dispatched.Combat;
+
+                if (automaticStep.EventKind
+                        == PrototypeCombatEventKind.PlayerTurnStarted
+                    && combat.PendingChoice is null)
+                {
+                    var discardCount = combat.PlayerPowers.Sum(power =>
+                        PrototypeContent.Power(power.PowerId)
+                            .DiscardAfterPlayerTurnStartPerStack
+                        * power.Stacks);
+
+                    if (discardCount > 0 && combat.Hand.Length > 0)
+                    {
+                        var effectiveCount = Math.Min(
+                            discardCount,
+                            combat.Hand.Length);
+                        combat = combat with
+                        {
+                            PendingChoice = new PendingCombatChoiceState(
+                                ChoiceId: "select_cards",
+                                SourceCardInstanceId: null,
+                                SourceCardDestination:
+                                    PrototypeCardZone.DiscardPile,
+                                Selection: new PrototypeCardSelectionSpec(
+                                    PrototypeCardZone.Hand,
+                                    effectiveCount,
+                                    effectiveCount,
+                                    PrototypeCardSelectionResolutionKind
+                                        .MoveToDiscard),
+                                CandidateCardInstanceIds:
+                                    (long[])combat.Hand.Clone(),
+                                Continuation:
+                                    Array.Empty<PrototypeQueuedOperation>(),
+                                CompletionEvents:
+                                    Array.Empty<PrototypeCombatEvent>())
+                        };
+                    }
+                }
+
                 break;
 
             case PrototypeAutomaticStepKind.DiscardPlayerHand:
