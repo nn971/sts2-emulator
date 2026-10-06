@@ -315,7 +315,6 @@ public sealed partial class PrototypeGameEngine
             return CompleteRoomToMap(state);
         }
 
-        var payload = action.ReadPayload<BuyOfferPayload>();
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
 
@@ -349,6 +348,7 @@ public sealed partial class PrototypeGameEngine
         }
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_card"))
         {
+            var payload = action.ReadPayload<BuyOfferPayload>();
             var offer = shop.CardOffers.FirstOrDefault(item => item.OfferId == payload.OfferId)
                 ?? throw new InvalidOperationException($"Unknown card offer {payload.OfferId}.");
             EnsurePurchasable(player, offer);
@@ -362,6 +362,7 @@ public sealed partial class PrototypeGameEngine
         }
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_potion"))
         {
+            var payload = action.ReadPayload<BuyOfferPayload>();
             var offer = shop.PotionOffer
                 ?? throw new InvalidOperationException("Shop has no potion offer.");
             if (offer.OfferId != payload.OfferId)
@@ -387,6 +388,7 @@ public sealed partial class PrototypeGameEngine
         }
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_relic"))
         {
+            var payload = action.ReadPayload<BuyOfferPayload>();
             var offer = shop.RelicOffer
                 ?? throw new InvalidOperationException("Shop has no relic offer.");
             if (offer.OfferId != payload.OfferId)
