@@ -1057,6 +1057,7 @@ public sealed partial class PrototypeGameEngine
                         damageAmount = ModifyPlayerAttackDamage(
                             combat,
                             sourceCardInstanceId,
+                            targetEnemyId.Value,
                             damageAmount);
                         damageAmount = ModifyIncomingAttackDamage(
                             combat,
@@ -2063,6 +2064,7 @@ public sealed partial class PrototypeGameEngine
     private static int ModifyPlayerAttackDamage(
         CombatState combat,
         long? sourceCardInstanceId,
+        int targetEnemyId,
         int damage)
     {
         if (sourceCardInstanceId is null)
@@ -2095,7 +2097,28 @@ public sealed partial class PrototypeGameEngine
                 * power.Stacks;
         });
 
-        return damage + additive;
+        var modified = damage + additive;
+        var conditionalBonus = combat.PlayerPowers.Sum(power =>
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.AttackDamageBonusRequiredTargetStatus is null
+                || definition.AttackDamageBonusTargetNumeratorPerStack == 0
+                || definition.AttackDamageBonusTargetDenominator <= 0
+                || !TargetHasStatus(
+                    combat,
+                    targetEnemyId,
+                    definition.AttackDamageBonusRequiredTargetStatus))
+            {
+                return 0;
+            }
+
+            return (modified
+                    * definition.AttackDamageBonusTargetNumeratorPerStack
+                    * power.Stacks)
+                / definition.AttackDamageBonusTargetDenominator;
+        });
+
+        return modified + conditionalBonus;
     }
 
     private static int ModifyIncomingAttackDamage(
