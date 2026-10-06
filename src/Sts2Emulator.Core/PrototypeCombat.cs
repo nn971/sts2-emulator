@@ -110,11 +110,11 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
 
         var innateCards = combatCards
-            .Where(card => PrototypeContent.Card(card.CardId).Innate)
+            .Where(IsInnate)
             .Select(card => card.InstanceId)
             .ToArray();
         var drawPile = combatCards
-            .Where(card => !PrototypeContent.Card(card.CardId).Innate)
+            .Where(card => !IsInnate(card))
             .Select(card => card.InstanceId)
             .ToArray();
         PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
@@ -1904,6 +1904,13 @@ public sealed partial class PrototypeGameEngine
                 yield return result;
             }
         }
+    }
+
+    private static bool IsInnate(CombatCardInstance card)
+    {
+        var definition = PrototypeContent.Card(card.CardId);
+        return definition.Innate
+            || (card.UpgradeLevel > 0 && definition.InnateOnUpgrade);
     }
 
     private static CombatCardInstance RequireCombatCard(
