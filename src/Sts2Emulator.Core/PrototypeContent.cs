@@ -723,6 +723,23 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
+                "proto.silent.up_my_sleeve",
+                "Up My Sleeve",
+                2,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.CreateCardsInHand,
+                        3,
+                        1,
+                        CardId: "proto.silent.shiv"),
+                    new(
+                        PrototypeCombatEffectKind.ModifySourceCardEnergyCost,
+                        -1)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.pounce",
                 "Pounce",
                 2,
