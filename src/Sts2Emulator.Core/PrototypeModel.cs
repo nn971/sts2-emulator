@@ -42,6 +42,12 @@ public enum PrototypeCardSelectionResolutionKind
     MoveToExhaust
 }
 
+public enum PrototypeEffectTarget
+{
+    ActionTargetEnemy,
+    AllEnemies
+}
+
 public enum PrototypeTurnStage
 {
     EnemyTurnStart,
@@ -76,7 +82,10 @@ public sealed record PrototypeCombatEffectSpec(
     int UpgradeDelta = 0,
     string? StatusId = null,
     PrototypeCardSelectionSpec? Selection = null,
-    string? CardId = null)
+    string? CardId = null,
+    PrototypeEffectTarget Target = PrototypeEffectTarget.ActionTargetEnemy,
+    int Repetitions = 1,
+    int RepetitionUpgradeDelta = 0)
 {
     public int AmountAtUpgrade(int upgradeLevel) => Amount + (UpgradeDelta * upgradeLevel);
 }
