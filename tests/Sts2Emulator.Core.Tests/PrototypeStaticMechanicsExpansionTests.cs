@@ -110,6 +110,62 @@ public sealed class PrototypeStaticMechanicsExpansionTests
         Assert.Equal<ulong>(1UL, StreamCalls(state, "combat_targets"));
     }
 
+    [Fact]
+    public void CorrosiveWaveTriggersPerCardDrawAndExpiresAtTurnEnd()
+    {
+        var state = CreateState(
+            "corrosive-wave-test",
+            [
+                Card(1, 1001, "proto.silent.corrosive_wave"),
+                Card(2, 1002, "proto.silent.quick_slash")
+            ],
+            enemies:
+            [
+                Enemy(1, 40),
+                Enemy(2, 40)
+            ],
+            drawPile:
+            [
+                Card(3, 1003, "proto.silent.defend")
+            ]);
+
+        var engine = new PrototypeGameEngine();
+
+        var corrosiveWave = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1);
+        state = engine.Step(state, corrosiveWave).State;
+
+        Assert.Equal(
+            2,
+            Assert.Single(
+                state.World!.Combat!.PlayerPowers,
+                power => power.PowerId == "proto.power.corrosive_wave").Stacks);
+
+        var quickSlash = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 2
+                && action.ReadPayload<PlayCardPayload>().TargetEnemyId == 1);
+        state = engine.Step(state, quickSlash).State;
+
+        Assert.All(
+            state.World!.Combat!.Enemies,
+            enemy => Assert.Equal(
+                2,
+                enemy.Statuses.GetValueOrDefault("proto.status.poison")));
+        Assert.Equal(
+            1,
+            state.World.Combat.CounterState.CardsDrawnThisCombat);
+
+        state = engine.Step(state, GameAction.Empty("end_turn")).State;
+
+        Assert.DoesNotContain(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.corrosive_wave");
+    }
+
     private static ulong StreamCalls(RunState state, string streamId) =>
         state.Rng.Streams
             .Single(stream => stream.StreamId == streamId)
@@ -141,14 +197,17 @@ public sealed class PrototypeStaticMechanicsExpansionTests
     private static RunState CreateState(
         string seed,
         CombatCardInstance[] hand,
-        EnemyCombatState[] enemies)
+        EnemyCombatState[] enemies,
+        CombatCardInstance[]? drawPile = null)
     {
+        drawPile ??= [];
         var empty = PrototypeJson.EmptyObject();
+        var allCards = hand.Concat(drawPile).ToArray();
         var player = new PlayerState(
             70,
             70,
             0,
-            hand.Select(card => new CardInstance(
+            allCards.Select(card => new CardInstance(
                 card.PersistentCardInstanceId!.Value,
                 card.CardId,
                 card.UpgradeLevel,
@@ -161,12 +220,12 @@ public sealed class PrototypeStaticMechanicsExpansionTests
             Energy: 3,
             PlayerBlock: 0,
             Hand: hand.Select(card => card.InstanceId).ToArray(),
-            DrawPile: [],
+            DrawPile: drawPile.Select(card => card.InstanceId).ToArray(),
             DiscardPile: [],
             ExhaustPile: [],
             Enemies: enemies,
-            NextCardInstanceId: hand.Max(card => card.InstanceId) + 1,
-            Cards: hand,
+            NextCardInstanceId: allCards.Max(card => card.InstanceId) + 1,
+            Cards: allCards,
             PlayerPowers: [],
             NextPowerApplicationOrder: 1);
 
