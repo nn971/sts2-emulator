@@ -44,7 +44,7 @@ The pinned archive currently contains structured data for:
 - epochs/timeline metadata;
 - glossary/localization support.
 
-The card dataset already exposes useful semantic columns including:
+The card dataset exposes useful semantic/index columns including:
 
 - energy cost and star cost, including X-cost flags;
 - card type, rarity, color/pool, and target type;
@@ -52,10 +52,16 @@ The card dataset already exposes useful semantic columns including:
 - powers applied;
 - draw, energy gain, HP loss;
 - keywords and tags;
-- generated cards;
+- generated-card hints;
 - dynamic variables;
 - upgrades;
 - generation restrictions.
+
+These columns are parser output, not an executable specification. Cross-check them against localized
+text and decompiled source. Known examples such as Blade Dance show that a derived field can be
+populated with the right number but the wrong semantic interpretation. `ReferenceMechanicsGapAnalyzer`
+therefore emits source warnings for suspicious contradictions rather than silently converting them
+into emulator mechanics.
 
 The monster parser includes move state machines with cycle/random/conditional/mixed patterns,
 per-move intents, damage/multihit, block, healing, powers, innate powers, encounter membership and
