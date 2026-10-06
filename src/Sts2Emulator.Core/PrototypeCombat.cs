@@ -1497,7 +1497,8 @@ public sealed partial class PrototypeGameEngine
                 energySpent: 0,
                 actionTargetEnemyId: null,
                 combat,
-                sourceKind: PrototypeEffectSourceKind.Card);
+                sourceKind: PrototypeEffectSourceKind.Card,
+                isPoweredAttack: definition.Type == PrototypeCardType.Attack);
         }
 
         var sourceDestination = definition.ExhaustOnUse
