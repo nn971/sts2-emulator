@@ -33,9 +33,9 @@ public sealed record PlayerState(
 }
 
 /// <summary>
-/// Minimal canonical run-state envelope. It will grow only as audited semantics are recovered.
-/// ExtensionState prevents the trace layer from losing newly discovered hidden state before
-/// a stable typed representation is designed.
+/// Canonical run-state envelope. World contains typed whole-run mechanics for implemented
+/// rulesets; ExtensionState remains available for versioned reference data that has not
+/// yet earned a stable typed representation.
 /// </summary>
 public sealed record RunState(
     string GameBuild,
@@ -46,12 +46,14 @@ public sealed record RunState(
     RunPhase Phase,
     PlayerState Player,
     RngBundle Rng,
-    JsonElement ExtensionState)
+    JsonElement ExtensionState,
+    RunWorldState? World = null)
 {
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
         Rng = Rng.Fork(),
-        ExtensionState = ExtensionState.Clone()
+        ExtensionState = ExtensionState.Clone(),
+        World = World?.Fork()
     };
 }
