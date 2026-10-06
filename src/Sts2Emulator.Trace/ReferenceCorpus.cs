@@ -265,6 +265,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "play_condition_draw_pile_empty",
             "condition_target_has_status",
             "dynamic_cost_skills_played",
+            "next_skill_free",
             "react_on_card_draw",
             "damage",
             "block",
@@ -638,6 +639,12 @@ public static partial class ReferenceMechanicsGapAnalyzer
         if (SkillsPlayedCostReductionRegex().IsMatch(description))
         {
             features.Add("dynamic_cost_skills_played");
+            hasSpecificCostMutation = true;
+        }
+
+        if (NextSkillFreeRegex().IsMatch(description))
+        {
+            features.Add("next_skill_free");
             hasSpecificCostMutation = true;
         }
 
@@ -1074,6 +1081,11 @@ public static partial class ReferenceMechanicsGapAnalyzer
         @"Costs?\s+1\s+less.*for\s+each\s+Skill\s+played\s+this\s+turn",
         RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex SkillsPlayedCostReductionRegex();
+
+    [GeneratedRegex(
+        @"next\s+Skill\s+you\s+play\s+costs?\s+0",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex NextSkillFreeRegex();
 
     [GeneratedRegex(
         @"\bcost\b.*\b(?:less|more|free|0|1|2|3|random)\b|\breduce\b.*\bcost\b|\bincrease\b.*\bcost\b",
