@@ -196,7 +196,7 @@ public sealed partial class PrototypeGameEngine
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
             if (definition.Unplayable
-                || !definition.Cost.IsPlayable(combat.Energy)
+                || !definition.Cost.IsPlayable(combat.Energy, card.UpgradeLevel)
                 || !EvaluateCombatPredicate(
                     definition.PlayCondition,
                     combat,
@@ -290,7 +290,7 @@ public sealed partial class PrototypeGameEngine
                 $"Card {payload.CardInstanceId} is unplayable.");
         }
 
-        if (!definition.Cost.IsPlayable(combat.Energy))
+        if (!definition.Cost.IsPlayable(combat.Energy, card.UpgradeLevel))
         {
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is unaffordable.");
         }
@@ -305,7 +305,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
-        var energySpent = definition.Cost.ResolveEnergySpent(combat.Energy);
+        var energySpent = definition.Cost.ResolveEnergySpent(combat.Energy, card.UpgradeLevel);
 
         combat = combat with
         {
@@ -785,7 +785,9 @@ public sealed partial class PrototypeGameEngine
                     effect.Kind,
                     effect.AmountAt(upgradeLevel, energySpent)
                         + (effect.AmountPerPowerStack * powerStacks)
-                        + (effect.AmountPerCount * count),
+                        + ((effect.AmountPerCount
+                            + (effect.AmountPerCountUpgradeDelta * upgradeLevel))
+                            * count),
                     targetEnemyId,
                     effect.StatusId,
                     effect.Selection,
