@@ -319,6 +319,16 @@ switch (args[0])
                 $"  {card.NativeId} ({card.NativeName}){unsupported}");
         }
 
+        Console.WriteLine("Reference-data warnings:");
+        foreach (var card in report.Cards.Where(card => card.SourceWarnings.Length > 0))
+        {
+            foreach (var warning in card.SourceWarnings)
+            {
+                Console.WriteLine(
+                    $"  {card.NativeId}: {warning}");
+            }
+        }
+
         break;
     }
 
