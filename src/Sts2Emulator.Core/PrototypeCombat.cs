@@ -199,11 +199,13 @@ public sealed partial class PrototypeGameEngine
         {
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
+            var isFreeByPower = IsCardFreeByPower(combat, definition);
             if (definition.Unplayable
-                || !definition.Cost.IsPlayable(
-                    combat.Energy,
-                    card.UpgradeLevel,
-                    ResolveCardCostReductionCount(definition.Cost, combat))
+                || (!isFreeByPower
+                    && !definition.Cost.IsPlayable(
+                        combat.Energy,
+                        card.UpgradeLevel,
+                        ResolveCardCostReductionCount(definition.Cost, combat)))
                 || !EvaluateCombatPredicate(
                     definition.PlayCondition,
                     combat,
@@ -297,7 +299,9 @@ public sealed partial class PrototypeGameEngine
                 $"Card {payload.CardInstanceId} is unplayable.");
         }
 
-        if (!definition.Cost.IsPlayable(
+        var isFreeByPower = IsCardFreeByPower(combat, definition);
+        if (!isFreeByPower
+            && !definition.Cost.IsPlayable(
                 combat.Energy,
                 card.UpgradeLevel,
                 ResolveCardCostReductionCount(definition.Cost, combat)))
@@ -315,16 +319,23 @@ public sealed partial class PrototypeGameEngine
         }
 
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
-        var energySpent = definition.Cost.ResolveEnergySpent(
-            combat.Energy,
-            card.UpgradeLevel,
-            ResolveCardCostReductionCount(definition.Cost, combat));
+        var energySpent = isFreeByPower
+            ? 0
+            : definition.Cost.ResolveEnergySpent(
+                combat.Energy,
+                card.UpgradeLevel,
+                ResolveCardCostReductionCount(definition.Cost, combat));
 
         combat = combat with
         {
             Energy = combat.Energy - energySpent,
             Hand = combat.Hand.Where(id => id != payload.CardInstanceId).ToArray()
         };
+
+        if (isFreeByPower)
+        {
+            combat = ConsumeMatchingFreeCardPower(combat, definition.Type);
+        }
 
         var powerApplicationOrderCeiling =
             combat.NextPowerApplicationOrder - 1;
@@ -1250,6 +1261,60 @@ public sealed partial class PrototypeGameEngine
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
 
+    private static bool IsCardFreeByPower(
+        CombatState combat,
+        PrototypeCardDefinition card) =>
+        combat.PlayerPowers.Any(power =>
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            return power.Stacks > 0
+                && definition.FreeCardType == card.Type;
+        });
+
+    private static CombatState ConsumeMatchingFreeCardPower(
+        CombatState combat,
+        PrototypeCardType cardType)
+    {
+        var candidate = combat.PlayerPowers
+            .Where(power =>
+            {
+                var definition = PrototypeContent.Power(power.PowerId);
+                return power.Stacks > 0
+                    && definition.FreeCardType == cardType
+                    && definition.ConsumeOnMatchingCardPlay;
+            })
+            .OrderBy(power => power.ApplicationOrder)
+            .FirstOrDefault();
+
+        if (candidate is null)
+        {
+            return combat;
+        }
+
+        var powers = combat.PlayerPowers.ToList();
+        var index = powers.FindIndex(power =>
+            power.ApplicationOrder == candidate.ApplicationOrder);
+        if (index < 0)
+        {
+            throw new InvalidOperationException(
+                "Free-card power disappeared before consumption.");
+        }
+
+        if (powers[index].Stacks <= 1)
+        {
+            powers.RemoveAt(index);
+        }
+        else
+        {
+            powers[index] = powers[index] with
+            {
+                Stacks = powers[index].Stacks - 1
+            };
+        }
+
+        return combat with { PlayerPowers = powers.ToArray() };
+    }
+
     private static int ResolveCardCostReductionCount(
         PrototypeCardCostSpec cost,
         CombatState combat) =>
@@ -1855,6 +1920,11 @@ public sealed partial class PrototypeGameEngine
                 .Where(id => id != cardInstanceId)
                 .ToArray()
         };
+
+        if (IsCardFreeByPower(combat, definition))
+        {
+            combat = ConsumeMatchingFreeCardPower(combat, definition.Type);
+        }
 
         var powerApplicationOrderCeiling =
             combat.NextPowerApplicationOrder - 1;
