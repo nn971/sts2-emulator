@@ -105,6 +105,8 @@ switch (args[0])
         var outcomes = new Dictionary<string, int>(StringComparer.Ordinal);
         var encounterCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var eventCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var cardCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var relicCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var terminalActs = new Dictionary<int, int>();
         long totalDecisions = 0;
         var maxDecisions = 0L;
@@ -152,6 +154,21 @@ switch (args[0])
                 eventCounts[eventId] = eventCounts.GetValueOrDefault(eventId) + 1;
             }
 
+            foreach (var card in state.Player.Deck)
+            {
+                if (PrototypeContent.Card(card.CardId).Rarity == PrototypeCardRarity.Basic)
+                {
+                    continue;
+                }
+
+                cardCounts[card.CardId] = cardCounts.GetValueOrDefault(card.CardId) + 1;
+            }
+
+            foreach (var relic in state.Player.Relics)
+            {
+                relicCounts[relic.RelicId] = relicCounts.GetValueOrDefault(relic.RelicId) + 1;
+            }
+
             totalDecisions += state.DecisionIndex;
             maxDecisions = Math.Max(maxDecisions, state.DecisionIndex);
             totalDeckSize += state.Player.Deck.Length;
@@ -178,6 +195,23 @@ switch (args[0])
         {
             Console.WriteLine($"  {item.Key}: {item.Value}");
         }
+
+        Console.WriteLine("Terminal non-basic card counts:");
+        foreach (var item in cardCounts.OrderByDescending(item => item.Value).ThenBy(item => item.Key))
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        Console.WriteLine("Terminal relic counts:");
+        foreach (var item in relicCounts.OrderByDescending(item => item.Value).ThenBy(item => item.Key))
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        Console.WriteLine(
+            $"Distinct terminal non-basic cards: {cardCounts.Count}/{PrototypeContent.RewardCardPool.Length}");
+        Console.WriteLine(
+            $"Distinct terminal relics: {relicCounts.Count}/{PrototypeContent.RelicPool.Length + 1}");
 
         break;
     }
