@@ -489,6 +489,10 @@ public sealed record PrototypePowerDefinition(
     string? AttackDamageBonusRequiredTargetStatus = null,
     int AttackDamageBonusTargetNumeratorPerStack = 0,
     int AttackDamageBonusTargetDenominator = 1,
+    PrototypeCardKeyword? GrantedCardKeyword = null,
+    string? GrantedCardKeywordRequiredCardTag = null,
+    string? FirstAttackDamageBonusRequiredCardTag = null,
+    int FirstAttackDamageBonusPerStack = 0,
     PrototypeCardType? ReplayCardType = null,
     int AdditionalPlayCount = 0,
     bool ConsumeOnMatchingPlayCountModification = false,
@@ -779,7 +783,24 @@ public sealed record PrototypeCombatCounters(
     int AttacksPlayedThisTurn = 0,
     int SkillsPlayedThisTurn = 0,
     int CardsDiscardedThisTurn = 0,
-    int CardsDrawnThisCombat = 0);
+    int CardsDrawnThisCombat = 0,
+    string[]? PlayedCardTagsThisTurn = null)
+{
+    public string[] PlayedTags =>
+        PlayedCardTagsThisTurn ?? Array.Empty<string>();
+
+    public int PlaysWithTag(string tag) =>
+        PlayedTags.Count(item =>
+            StringComparer.Ordinal.Equals(item, tag));
+
+    public PrototypeCombatCounters Fork() => this with
+    {
+        PlayedCardTagsThisTurn =
+            PlayedCardTagsThisTurn is null
+                ? null
+                : (string[])PlayedCardTagsThisTurn.Clone()
+    };
+}
 
 public sealed record CombatState(
     int Turn,
@@ -817,7 +838,7 @@ public sealed record CombatState(
             ? null
             : Potions.Select(potion => potion.Fork()).ToArray(),
         PendingChoice = PendingChoice?.Fork(),
-        Counters = Counters is null ? null : Counters with { },
+        Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
             AutomaticPipelineContinuation is null
                 ? null
