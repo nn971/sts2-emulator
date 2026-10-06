@@ -1,27 +1,41 @@
 # Project status
 
-**Stage:** Milestone 0 scaffold.
+**Stage:** whole-run prototype development.
 
-Implemented now:
+Implemented on the current prototype branch:
 
 - emulator charter and subrepo boundary;
-- C# canonical engine interfaces;
-- generic forkable RNG-state container;
-- canonical JSON/hash bootstrap;
-- trace DTOs/schema;
-- first-divergence trace diff;
-- invariant tests;
-- microbenchmark scaffold;
-- CI and issue templates.
+- deterministic engine interfaces and canonical hashing;
+- typed whole-run world state;
+- restrictive Silent ruleset/content catalog;
+- deterministic prototype RNG with named streams;
+- generated floor-by-floor map choices;
+- normal, elite and boss combats;
+- card play, draw/discard/shuffle, block, simple statuses and enemy turns;
+- potions and relics;
+- combat rewards and persistent deck growth;
+- shops, events and rest sites;
+- three-act transition flow;
+- terminal victory/death;
+- CLI whole-run smoke driver;
+- deterministic whole-run smoke tests;
+- trace/diff and benchmark scaffolding.
 
-Not implemented yet:
+Prototype semantics deliberately use `proto.*` content IDs and carry no native-fidelity claim.
+See `docs/PROTOTYPE_SCOPE.md`.
 
-- native game bridge;
-- STS2 RNG codec(s);
-- actual STS2 mechanics;
-- whole-run replay engine;
+Still to do:
+
+- compile/CI hardening of the prototype branch;
+- broaden the semantic primitive set and content coverage;
+- richer map topology and encounter generation;
+- card-selection/discard/exhaust/temporary-card prompts;
+- powers/relic triggers and general trigger scheduling;
+- native STS2 data import;
+- native RNG/timing parity;
+- reference bridge and differential testing;
+- performance work after representative AI workloads exist;
 - production language binding.
 
-Search, strategic databases, and AI learning are intentionally outside this repository and belong in the future parent project.
-
-The current semantic emptiness is intentional: the emulator should not manufacture fake coverage before the native reference pipeline exists.
+Search, strategic databases, and AI learning remain outside this repository and belong in the
+future parent project.
