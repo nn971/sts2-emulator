@@ -125,6 +125,19 @@ public sealed partial class PrototypeGameEngine
                 $"No prototype event is eligible in act {world.Act}.");
         }
 
+        var previousEvent = world.EventIds.LastOrDefault();
+        if (previousEvent is not null && eligible.Length > 1)
+        {
+            var withoutImmediateRepeat = eligible
+                .Where(evt =>
+                    !StringComparer.Ordinal.Equals(evt.Id, previousEvent))
+                .ToArray();
+            if (withoutImmediateRepeat.Length > 0)
+            {
+                eligible = withoutImmediateRepeat;
+            }
+        }
+
         var totalWeight = eligible.Sum(evt => evt.Weight);
         var roll = PrototypeRng.NextInt(state.Rng, "event", totalWeight);
         var selected = eligible[^1];
