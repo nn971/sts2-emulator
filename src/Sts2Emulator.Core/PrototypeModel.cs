@@ -318,7 +318,8 @@ public sealed record PrototypeCardDefinition(
     bool Eternal = false,
     bool RewardEligible = true,
     PrototypeCardType Type = PrototypeCardType.Unknown,
-    PrototypeCombatPredicateSpec? PlayCondition = null);
+    PrototypeCombatPredicateSpec? PlayCondition = null,
+    string[]? Tags = null);
 
 public sealed record PrototypePotionDefinition(
     string Id,
@@ -363,7 +364,9 @@ public sealed record PrototypePowerDefinition(
     bool ConsumeOnMatchingCardPlay = false,
     bool PreventsAdditionalDraw = false,
     bool PreventsPlayerBlockClear = false,
-    bool DecrementAfterPlayerTurnStart = false);
+    bool DecrementAfterPlayerTurnStart = false,
+    string? AttackDamageBonusRequiredCardTag = null,
+    int AttackDamageBonusPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
