@@ -389,6 +389,19 @@ internal static class PassiveReferenceRecorder
             var stateJson = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
             var stateHash = Convert.ToHexStringLower(SHA256.HashData(stateJson));
 
+            // Complete all reflective observation before reserving the boundary
+            // sequence number. Observation can emit one-time type catalogs, so
+            // assigning the sequence earlier would make file order disagree with
+            // sequence order on the first occurrence of a runtime type.
+            var arguments = args.Select(SummarizeOpaque).ToArray();
+            object? historyEntry = null;
+            if (StringComparer.Ordinal.Equals(
+                    boundary,
+                    "combat_history.Changed"))
+            {
+                historyEntry = CaptureHistoryTail();
+            }
+
             var record = new Dictionary<string, object?>
             {
                 ["type"] = "boundary",
@@ -397,15 +410,13 @@ internal static class PassiveReferenceRecorder
                 ["captured_at_utc"] = DateTimeOffset.UtcNow,
                 ["boundary"] = boundary,
                 ["state_hash"] = stateHash,
-                ["arguments"] = args.Select(SummarizeOpaque).ToArray(),
+                ["arguments"] = arguments,
                 ["state"] = state
             };
 
-            if (StringComparer.Ordinal.Equals(
-                    boundary,
-                    "combat_history.Changed"))
+            if (historyEntry is not null)
             {
-                record["history_entry"] = CaptureHistoryTail();
+                record["history_entry"] = historyEntry;
             }
 
             WriteRecord(record);
@@ -775,9 +786,20 @@ internal static class PassiveReferenceRecorder
             return projected;
         }
 
+        var projectedType = value.GetType();
+        var projectedTypeName = projectedType.FullName ?? projectedType.Name;
+        if (projectedTypeName.Contains("Rng", StringComparison.OrdinalIgnoreCase)
+            || projectedTypeName.Contains(".Models.Cards.", StringComparison.Ordinal)
+            || projectedTypeName.Contains(
+                ".Combat.History.Entries.",
+                StringComparison.Ordinal))
+        {
+            WriteTypeCatalogOnce(projectedType);
+        }
+
         var result = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["type"] = value.GetType().FullName
+            ["type"] = projectedType.FullName
         };
 
         foreach (var property in value.GetType().GetProperties(
@@ -900,9 +922,13 @@ internal static class PassiveReferenceRecorder
             : GetProperty(history, "Entries");
         var last = Enumerate(entries).LastOrDefault();
 
-        return last is null
-            ? null
-            : ProjectSerializable(last, depth: 3);
+        if (last is null)
+        {
+            return null;
+        }
+
+        WriteTypeCatalogOnce(last.GetType());
+        return ProjectSerializable(last, depth: 3);
     }
 
     private static object? FindNestedByTypeSuffix(
