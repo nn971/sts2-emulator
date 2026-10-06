@@ -361,7 +361,9 @@ public sealed record PrototypePowerDefinition(
     bool RemoveAfterHandDraw = false,
     PrototypeCardType? FreeCardType = null,
     bool ConsumeOnMatchingCardPlay = false,
-    bool PreventsAdditionalDraw = false);
+    bool PreventsAdditionalDraw = false,
+    bool PreventsPlayerBlockClear = false,
+    bool DecrementAfterPlayerTurnStart = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
