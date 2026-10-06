@@ -171,8 +171,9 @@ public sealed class PrototypeRelicTests
                 null));
 
         var engine = new PrototypeGameEngine();
-        var play = Assert.Single(engine.GetLegalActions(state)
-            .Where(action => action.Kind == "play_card"));
+        var play = Assert.Single(
+            engine.GetLegalActions(state),
+            action => action.Kind == "play_card");
 
         state = engine.Step(state, play).State;
         PrototypeStateInvariants.Validate(state);
