@@ -307,7 +307,8 @@ public sealed record PrototypePowerDefinition(
     string Name,
     int BlockBonusPerStack,
     PrototypePowerTriggerSpec[] Triggers,
-    int AttackRetaliationPerStack = 0);
+    int AttackRetaliationPerStack = 0,
+    bool AllowNegative = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
