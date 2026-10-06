@@ -12,6 +12,8 @@ internal static class PassiveReferenceRecorder
 {
     private static readonly object Gate = new();
     private static readonly List<(object Source, EventInfo Event, Delegate Handler)> Subscriptions = [];
+    private static readonly HashSet<string> CataloguedTypes =
+        new(StringComparer.Ordinal);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -476,6 +478,8 @@ internal static class PassiveReferenceRecorder
 
     private static Dictionary<string, object?> SummarizePlayer(object player)
     {
+        WriteTypeCatalogOnce(player.GetType());
+
         var result = ReadNamed(
             player,
             "CombatId",
@@ -546,6 +550,11 @@ internal static class PassiveReferenceRecorder
         try
         {
             var serializable = TryInvokeNoArg(rngSet, "ToSerializable");
+            if (serializable is not null)
+            {
+                WriteTypeCatalogOnce(serializable.GetType());
+            }
+
             return ProjectSerializable(serializable, depth: 5);
         }
         catch (Exception ex)
@@ -645,6 +654,13 @@ internal static class PassiveReferenceRecorder
         if (value is IEnumerable and not string)
         {
             return SummarizeCollection(value);
+        }
+
+        var fullName = value.GetType().FullName ?? string.Empty;
+        if (fullName.Contains(".Models.Cards.", StringComparison.Ordinal)
+            || fullName.Contains(".Combat.History.Entries.", StringComparison.Ordinal))
+        {
+            WriteTypeCatalogOnce(value.GetType());
         }
 
         return ReadNamed(
@@ -814,6 +830,60 @@ internal static class PassiveReferenceRecorder
         }
 
         return result;
+    }
+
+    private static void WriteTypeCatalogOnce(Type type)
+    {
+        var typeName = type.FullName ?? type.Name;
+        lock (Gate)
+        {
+            if (!CataloguedTypes.Add(typeName))
+            {
+                return;
+            }
+        }
+
+        var flags =
+            BindingFlags.Instance |
+            BindingFlags.Public |
+            BindingFlags.NonPublic;
+
+        var properties = type.GetProperties(flags)
+            .Where(property => property.GetIndexParameters().Length == 0)
+            .Select(property => new Dictionary<string, object?>
+            {
+                ["name"] = property.Name,
+                ["type"] = property.PropertyType.FullName,
+                ["can_read"] = property.CanRead,
+                ["can_write"] = property.CanWrite,
+                ["getter_public"] = property.GetMethod?.IsPublic == true
+            })
+            .OrderBy(item => item["name"]?.ToString(), StringComparer.Ordinal)
+            .ToArray();
+
+        var fields = type.GetFields(flags)
+            .Where(field => !field.IsStatic)
+            .Select(field => new Dictionary<string, object?>
+            {
+                ["name"] = field.Name,
+                ["type"] = field.FieldType.FullName,
+                ["public"] = field.IsPublic,
+                ["init_only"] = field.IsInitOnly
+            })
+            .OrderBy(item => item["name"]?.ToString(), StringComparer.Ordinal)
+            .ToArray();
+
+        WriteRecord(new Dictionary<string, object?>
+        {
+            ["type"] = "type_catalog",
+            ["schema"] = BridgeWorkspace.ProbeSchema,
+            ["sequence"] = Interlocked.Increment(ref _sequence),
+            ["captured_at_utc"] = DateTimeOffset.UtcNow,
+            ["runtime_type"] = typeName,
+            ["base_type"] = type.BaseType?.FullName,
+            ["properties"] = properties,
+            ["fields"] = fields
+        });
     }
 
     private static object? CaptureHistoryTail()
