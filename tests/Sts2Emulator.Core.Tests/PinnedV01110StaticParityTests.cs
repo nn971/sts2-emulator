@@ -610,6 +610,30 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void BurstMatchesPinnedV01110PlayCountSemantics()
+    {
+        var burst = PrototypeContent.Card("proto.silent.burst");
+
+        Assert.Equal(1, burst.Cost.Amount);
+        Assert.Equal(PrototypeCardType.Skill, burst.Type);
+        Assert.Equal(PrototypeCardRarity.Rare, burst.Rarity);
+
+        var apply = Assert.Single(burst.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyPlayerPower,
+            apply.Kind);
+        Assert.Equal("proto.power.burst", apply.PowerId);
+        Assert.Equal(1, apply.Amount);
+        Assert.Equal(1, apply.UpgradeDelta);
+
+        var power = PrototypeContent.Power("proto.power.burst");
+        Assert.Equal(PrototypeCardType.Skill, power.ReplayCardType);
+        Assert.Equal(1, power.AdditionalPlayCount);
+        Assert.True(power.ConsumeOnMatchingPlayCountModification);
+        Assert.True(power.RemoveAtPlayerTurnEnd);
+    }
+
+    [Fact]
     public void CorrectedSilentCardsMatchPinnedV01110BaseAndUpgradeScalars()
     {
         var bladeDance = PrototypeContent.Card("proto.silent.blade_dance");
