@@ -952,6 +952,7 @@ public sealed partial class PrototypeGameEngine
                             effect.SelectedCardPower.AmountAt(upgradeLevel)),
                     SelectedCardKeyword: effect.SelectedCardKeyword,
                     DrawnCardKeyword: effect.DrawnCardKeyword,
+                    EventSourceCardKeyword: effect.EventSourceCardKeyword,
                     PowerCardPayload: powerCardPayload?.Fork()));
             }
         }
@@ -968,7 +969,8 @@ public sealed partial class PrototypeGameEngine
         int eventDepth = 0,
         PrototypeCardPlaySeriesState? cardPlaySeries = null,
         bool moveSourceCardOnCompletion = true,
-        bool removeSourceCardOnCompletion = false)
+        bool removeSourceCardOnCompletion = false,
+        long? eventSourceCardInstanceId = null)
     {
         while (operations.Count > 0)
         {
@@ -1295,6 +1297,20 @@ public sealed partial class PrototypeGameEngine
                     combat = SetHandCardsTemporaryEnergyCost(
                         combat,
                         operation.Amount);
+                    break;
+
+                case PrototypeCombatEffectKind.ModifyEventSourceCardKeyword:
+                    if (eventSourceCardInstanceId is null
+                        || operation.EventSourceCardKeyword is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Event-source card keyword mutation requires a source card and keyword specification.");
+                    }
+
+                    combat = ApplyCardKeywordOverride(
+                        combat,
+                        eventSourceCardInstanceId.Value,
+                        operation.EventSourceCardKeyword);
                     break;
 
                 case PrototypeCombatEffectKind.MultiplyEnemyStatus:
@@ -2348,6 +2364,11 @@ public sealed partial class PrototypeGameEngine
                             || !combatEvent.FromHandDraw)
                         && (!trigger.RequiresPlayerTurn
                             || combat.IsPlayerTurn)
+                        && (trigger.RequiredSourceCardType is null
+                            || (combatEvent.CardId is not null
+                                && PrototypeContent.Card(
+                                    combatEvent.CardId).Type
+                                    == trigger.RequiredSourceCardType.Value))
                         && !trigger.RequiresOwnerTarget
                         && (combatEvent.PowerApplicationOrderCeiling is null
                             || power.ApplicationOrder
@@ -2376,6 +2397,11 @@ public sealed partial class PrototypeGameEngine
                                 || !combatEvent.FromHandDraw)
                             && (!trigger.RequiresPlayerTurn
                                 || combat.IsPlayerTurn)
+                            && (trigger.RequiredSourceCardType is null
+                                || (combatEvent.CardId is not null
+                                    && PrototypeContent.Card(
+                                        combatEvent.CardId).Type
+                                        == trigger.RequiredSourceCardType.Value))
                             && (combatEvent.PowerApplicationOrderCeiling is null
                                 || power.ApplicationOrder
                                     <= combatEvent.PowerApplicationOrderCeiling.Value)
@@ -2461,7 +2487,9 @@ public sealed partial class PrototypeGameEngine
                 combat,
                 operations,
                 rng,
-                eventDepth: eventDepth);
+                eventDepth: eventDepth,
+                eventSourceCardInstanceId:
+                    combatEvent.SourceCardInstanceId);
             player = resolved.Player;
             combat = resolved.Combat;
 
