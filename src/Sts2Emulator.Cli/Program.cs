@@ -146,6 +146,8 @@ switch (args[0])
                 $"    properties: {string.Join(", ", catalog.Properties)}");
             Console.WriteLine(
                 $"    fields: {string.Join(", ", catalog.Fields)}");
+            Console.WriteLine(
+                $"    events: {string.Join(", ", catalog.Events)}");
         }
 
         break;
