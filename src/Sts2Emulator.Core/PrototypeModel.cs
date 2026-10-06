@@ -729,6 +729,7 @@ public sealed record PrototypeChoiceResolutionContinuationState(
     PrototypeCardPlaySeriesState? CardPlaySeries = null,
     bool MoveSourceCardOnCompletion = true,
     bool RemoveSourceCardOnCompletion = false,
+    bool SourceCardAlreadyMoved = false,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
     PrototypeChoiceResolutionContinuationState? Parent = null)
 {
@@ -758,6 +759,7 @@ public sealed record PendingCombatChoiceState(
     PrototypeCardPlaySeriesState? CardPlaySeries = null,
     bool MoveSourceCardOnCompletion = true,
     bool RemoveSourceCardOnCompletion = false,
+    bool SourceCardAlreadyMoved = false,
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
