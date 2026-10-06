@@ -22,6 +22,11 @@ Implemented on the current prototype branch:
 - fixed/X costs, repeated effects, and all-enemy targeting;
 - player powers with ruleset-ordered turn-stage triggers;
 - enemy moves expressed as ordered effect lists;
+- generic combat events with contextual targets/amounts and bounded trigger recursion;
+- one ordered subscriber system for player powers, enemy powers, and stateful relics;
+- combat-local potion mirrors with atomic consumption;
+- act/floor/history-sensitive weighted encounters;
+- prototype rarity-aware card rewards;
 - CLI whole-run smoke driver;
 - deterministic whole-run smoke tests;
 - trace/diff and benchmark scaffolding.
