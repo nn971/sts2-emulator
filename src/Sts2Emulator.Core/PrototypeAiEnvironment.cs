@@ -94,6 +94,11 @@ public sealed record PrototypeAiFrame(
     string ObservationHash,
     string CanonicalStateHash);
 
+public sealed record PrototypeAiExpansion(
+    PrototypeAiAction Action,
+    RunState State,
+    string CanonicalStateHash);
+
 /// <summary>
 /// Stateless adapter for search/learning consumers. The canonical RunState remains the source of
 /// truth; this layer exposes a player-facing observation plus stable semantic action IDs.
@@ -124,6 +129,21 @@ public sealed class PrototypeAiEnvironment
             legalActions,
             CanonicalJson.Sha256(observation),
             CanonicalJson.Sha256(state));
+    }
+
+    public PrototypeAiExpansion[] Expand(RunState state)
+    {
+        return _engine.GetLegalActions(state)
+            .Select(action =>
+            {
+                var view = CreateAction(action);
+                var next = _engine.Step(state, action).State;
+                return new PrototypeAiExpansion(
+                    view,
+                    next,
+                    CanonicalJson.Sha256(next));
+            })
+            .ToArray();
     }
 
     public TransitionResult Step(RunState state, string actionId)
