@@ -147,7 +147,8 @@ public static class PrototypeContent
                 [
                     new(PrototypeCombatEffectKind.GainPlayerBlock, 5, 3),
                     new(PrototypeCombatEffectKind.DrawCards, 2)
-                ]),
+                ],
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.poisoned_stab",
                 "Poisoned Stab",
@@ -180,7 +181,8 @@ public static class PrototypeContent
                             1,
                             1,
                             PrototypeCardSelectionResolutionKind.MoveToDiscard))
-                ]),
+                ],
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.shiv",
                 "Shiv",
@@ -200,7 +202,8 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Status,
                 Ethereal: true,
                 Unplayable: true,
-                RewardEligible: false),
+                RewardEligible: false,
+                Type: PrototypeCardType.Status),
             new PrototypeCardDefinition(
                 "proto.curse.ascenders_bane",
                 "Ascender's Bane",
@@ -211,7 +214,8 @@ public static class PrototypeContent
                 Ethereal: true,
                 Unplayable: true,
                 Eternal: true,
-                RewardEligible: false),
+                RewardEligible: false,
+                Type: PrototypeCardType.Curse),
             new PrototypeCardDefinition(
                 "proto.silent.blade_dance",
                 "Blade Dance",
@@ -224,7 +228,8 @@ public static class PrototypeContent
                         1,
                         CardId: "proto.silent.shiv")
                 ],
-                ExhaustOnUse: true),
+                ExhaustOnUse: true,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.dagger_spray",
                 "Dagger Spray",
@@ -250,7 +255,8 @@ public static class PrototypeContent
                         5,
                         2,
                         StatusId: "proto.status.poison")
-                ]),
+                ],
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.quick_slash",
                 "Quick Slash",
@@ -291,13 +297,15 @@ public static class PrototypeContent
                         1,
                         1,
                         CardId: "proto.silent.shiv")
-                ]),
+                ],
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.deflect",
                 "Deflect",
                 0,
                 PrototypeCardTarget.None,
-                [new(PrototypeCombatEffectKind.GainPlayerBlock, 4, 3)]),
+                [new(PrototypeCombatEffectKind.GainPlayerBlock, 4, 3)],
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.sucker_punch",
                 "Sucker Punch",
@@ -336,7 +344,8 @@ public static class PrototypeContent
                         1,
                         StatusId: "proto.status.weak")
                 ],
-                Rarity: PrototypeCardRarity.Uncommon),
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.skewer",
                 "Skewer",
@@ -364,7 +373,8 @@ public static class PrototypeContent
                         1,
                         PowerId: "proto.power.dexterity")
                 ],
-                Rarity: PrototypeCardRarity.Uncommon),
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.noxious_fumes",
                 "Noxious Fumes",
@@ -377,7 +387,8 @@ public static class PrototypeContent
                         1,
                         PowerId: "proto.power.noxious_fumes")
                 ],
-                Rarity: PrototypeCardRarity.Uncommon),
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.envenom",
                 "Envenom",
@@ -390,7 +401,8 @@ public static class PrototypeContent
                         0,
                         PowerId: "proto.power.envenom")
                 ],
-                Rarity: PrototypeCardRarity.Rare),
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.afterimage",
                 "Afterimage",
@@ -403,7 +415,8 @@ public static class PrototypeContent
                         0,
                         PowerId: "proto.power.afterimage")
                 ],
-                Rarity: PrototypeCardRarity.Rare),
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.prepared",
                 "Prepared",
@@ -419,7 +432,8 @@ public static class PrototypeContent
                             1,
                             1,
                             PrototypeCardSelectionResolutionKind.MoveToDiscard))
-                ]),
+                ],
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.concentrate",
                 "Concentrate",
@@ -444,7 +458,8 @@ public static class PrototypeContent
                 PrototypeCardTarget.None,
                 [new(PrototypeCombatEffectKind.DrawCards, 2, 1)],
                 Rarity: PrototypeCardRarity.Uncommon,
-                Sly: true),
+                Sly: true,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.tactician",
                 "Tactician",
@@ -452,7 +467,8 @@ public static class PrototypeContent
                 PrototypeCardTarget.None,
                 [new(PrototypeCombatEffectKind.GainEnergy, 1, 1)],
                 Rarity: PrototypeCardRarity.Uncommon,
-                Sly: true),
+                Sly: true,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.untouchable",
                 "Untouchable",
@@ -460,7 +476,8 @@ public static class PrototypeContent
                 PrototypeCardTarget.None,
                 [new(PrototypeCombatEffectKind.GainPlayerBlock, 6, 3)],
                 Rarity: PrototypeCardRarity.Common,
-                Sly: true),
+                Sly: true,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.flick_flack",
                 "Flick-Flack",
@@ -531,7 +548,8 @@ public static class PrototypeContent
                         CardId: "proto.silent.shiv",
                         GeneratedCardUpgradePerSourceUpgrade: 1)
                 ],
-                Rarity: PrototypeCardRarity.Uncommon),
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.memento_mori",
                 "Memento Mori",
@@ -648,7 +666,8 @@ public static class PrototypeContent
                         StatusId: "proto.status.weak",
                         Target: PrototypeEffectTarget.AllEnemies)
                 ],
-                Rarity: PrototypeCardRarity.Uncommon),
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.leading_strike",
                 "Leading Strike",
@@ -706,7 +725,8 @@ public static class PrototypeContent
                         StatusId: "proto.status.poison")
                 ],
                 Rarity: PrototypeCardRarity.Common,
-                Retain: true),
+                Retain: true,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.adrenaline",
                 "Adrenaline",
@@ -717,7 +737,8 @@ public static class PrototypeContent
                     new(PrototypeCombatEffectKind.DrawCards, 2)
                 ],
                 ExhaustOnUse: true,
-                Rarity: PrototypeCardRarity.Rare),
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.catalyst",
                 "Catalyst",
@@ -740,7 +761,8 @@ public static class PrototypeContent
                 [
                     new(PrototypeCombatEffectKind.DrawCards, 1),
                     new(PrototypeCombatEffectKind.GainPlayerBlock, 3, 2)
-                ]),
+                ],
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.piercing_wail",
                 "Piercing Wail",
@@ -755,7 +777,8 @@ public static class PrototypeContent
                         Target: PrototypeEffectTarget.AllEnemies)
                 ],
                 ExhaustOnUse: true,
-                Rarity: PrototypeCardRarity.Uncommon),
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.crippling_cloud",
                 "Crippling Cloud",
