@@ -589,23 +589,61 @@ public sealed partial class PrototypeGameEngine
                 break;
 
             case PrototypeAutomaticStepKind.ResetPlayerBlock:
+            {
                 combat = combat with { PlayerBlock = 0 };
+                var delayedBlock = combat.PlayerPowers.Sum(power =>
+                    PrototypeContent.Power(power.PowerId)
+                        .BlockAfterClearPerStack * power.Stacks);
+                if (delayedBlock > 0)
+                {
+                    combat = combat with
+                    {
+                        PlayerBlock = combat.PlayerBlock + delayedBlock
+                    };
+                }
+
+                combat = RemovePlayerPowers(
+                    combat,
+                    definition => definition.RemoveAfterBlockClear);
                 break;
+            }
 
             case PrototypeAutomaticStepKind.RefreshPlayerEnergy:
+            {
                 combat = combat with { Energy = EnergyPerTurn(player) };
+                var delayedEnergy = combat.PlayerPowers.Sum(power =>
+                    PrototypeContent.Power(power.PowerId)
+                        .EnergyAfterResetPerStack * power.Stacks);
+                if (delayedEnergy > 0)
+                {
+                    combat = combat with
+                    {
+                        Energy = combat.Energy + delayedEnergy
+                    };
+                }
+
+                combat = RemovePlayerPowers(
+                    combat,
+                    definition => definition.RemoveAfterEnergyReset);
                 break;
+            }
 
             case PrototypeAutomaticStepKind.DrawPlayerHand:
             {
+                var handDrawBonus = combat.PlayerPowers.Sum(power =>
+                    PrototypeContent.Power(power.PowerId)
+                        .HandDrawBonusPerStack * power.Stacks);
                 var drawn = DrawCards(
                     player,
                     combat,
-                    PrototypeContent.Rules.HandSize,
+                    PrototypeContent.Rules.HandSize
+                        + Math.Max(0, handDrawBonus),
                     state.Rng,
                     fromHandDraw: true);
                 player = drawn.Player;
-                combat = drawn.Combat;
+                combat = RemovePlayerPowers(
+                    drawn.Combat,
+                    definition => definition.RemoveAfterHandDraw);
                 break;
             }
 
@@ -989,6 +1027,34 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain:
+                {
+                    if (operation.PowerId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Block-and-delay operation is missing a power ID.");
+                    }
+
+                    var modifiedAmount = operation.Amount
+                        + (operation.SourceKind == PrototypeEffectSourceKind.Card
+                            ? PlayerBlockBonus(combat)
+                            : 0);
+                    var actualGain = Math.Max(0, modifiedAmount);
+                    combat = combat with
+                    {
+                        PlayerBlock = combat.PlayerBlock + actualGain
+                    };
+                    if (actualGain > 0)
+                    {
+                        combat = ApplyPlayerPower(
+                            combat,
+                            operation.PowerId,
+                            actualGain);
+                    }
+
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.DrawCards:
                 {
                     var drawn = DrawCards(
@@ -1168,6 +1234,17 @@ public sealed partial class PrototypeGameEngine
 
         return (player, combat);
     }
+
+    private static CombatState RemovePlayerPowers(
+        CombatState combat,
+        Func<PrototypePowerDefinition, bool> predicate) =>
+        combat with
+        {
+            PlayerPowers = combat.PlayerPowers
+                .Where(power =>
+                    !predicate(PrototypeContent.Power(power.PowerId)))
+                .ToArray()
+        };
 
     private static int PlayerBlockBonus(CombatState combat) =>
         combat.PlayerPowers.Sum(power =>
