@@ -34,20 +34,20 @@ native fidelity and high throughput.
 
 - [x] card-selection prompts
 - [x] discard/exhaust/generated cards
-- [ ] variable/X costs
-- [ ] multi-target effects
-- [ ] general player/enemy power model
-- [ ] generic trigger registration and scheduling
-- [ ] richer enemy intent/move model
-- [ ] combat-local mutable card/relic/potion state
-- [ ] explicit temporary entities and lifetime rules
+- [x] variable/X costs
+- [x] multi-target and repeated effects
+- [ ] general player/enemy power model — player powers are implemented; enemy-side unification remains
+- [ ] generic trigger registration and scheduling — ruleset turn pipeline + player-power stage triggers are implemented; broader event hooks remain
+- [x] richer ordered enemy move-effect model; intent selection remains simple
+- [ ] combat-local mutable card/relic/potion state — combat-local card identity exists; mutation/relic/potion state remains
+- [x] temporary/generated combat card identities and exhaust lifetime
 
 Hook/timing ordering must remain ruleset-driven or otherwise replaceable; avoid card-specific
 central dispatch branches.
 
 ## Milestone 3 — broader Silent + richer run generation
 
-- [ ] graph-shaped maps
+- [x] persistent graph-shaped maps
 - [ ] act/floor/history-sensitive encounter pools
 - [ ] rarity-aware card rewards
 - [ ] richer shops/events/rest choices
