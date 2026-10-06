@@ -70,11 +70,7 @@ public sealed class ReferenceCorpusTests
             Assert.Equal("proto.silent.strike", strike.PrototypeId);
             Assert.Empty(strike.StructuredMismatches);
 
-            Assert.Single(report.StartingRunMismatches);
-            Assert.Contains(
-                "starting_relics",
-                report.StartingRunMismatches[0],
-                StringComparison.Ordinal);
+            Assert.Empty(report.StartingRunMismatches);
         }
         finally
         {
