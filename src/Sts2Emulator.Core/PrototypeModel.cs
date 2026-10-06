@@ -57,7 +57,8 @@ public enum PrototypeCombatEffectKind
     MultiplyEnemyStatus,
     GainPlayerBlockAndApplyPowerFromActualGain,
     ModifySourceCardEnergyCost,
-    SetHandCardsEnergyCostUntilTurnEndOrPlayed
+    SetHandCardsEnergyCostUntilTurnEndOrPlayed,
+    ModifyEventSourceCardKeyword
 }
 
 public enum PrototypeCardKeyword
@@ -334,7 +335,8 @@ public sealed record PrototypeCombatEffectSpec(
     int AmountPerCountUpgradeDelta = 0,
     PrototypeSelectedCardPowerSpec? SelectedCardPower = null,
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
-    PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null)
+    PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null,
+    PrototypeCardKeywordOverrideSpec? EventSourceCardKeyword = null)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -363,6 +365,7 @@ public sealed record PrototypeQueuedOperation(
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
     PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null,
+    PrototypeCardKeywordOverrideSpec? EventSourceCardKeyword = null,
     PrototypeCombatCardSnapshot? PowerCardPayload = null);
 
 public sealed record PrototypeRunEffectSpec(
@@ -414,7 +417,8 @@ public sealed record PrototypePowerTriggerSpec(
     bool RequiresOwnerTarget = false,
     bool ExcludeHandDraw = false,
     bool RequiresPlayerTurn = false,
-    bool RemoveSourcePowerAfterTrigger = false);
+    bool RemoveSourcePowerAfterTrigger = false,
+    PrototypeCardType? RequiredSourceCardType = null);
 
 public sealed record PrototypePowerDefinition(
     string Id,
