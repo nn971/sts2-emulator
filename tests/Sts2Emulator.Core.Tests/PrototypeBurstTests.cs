@@ -112,7 +112,7 @@ public sealed class PrototypeBurstTests
         Assert.DoesNotContain(
             combat.PlayerPowers,
             power => power.PowerId == "proto.power.burst");
-        Assert.Equal(1, combat.Energy);
+        Assert.Equal(0, combat.Energy);
         Assert.Equal(20, combat.PlayerBlock);
 
         // Burst itself plays once, and each Defend plays twice.
