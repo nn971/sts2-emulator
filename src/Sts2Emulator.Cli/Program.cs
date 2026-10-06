@@ -28,6 +28,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Print one reference corpus entity");
     Console.WriteLine("  reference-mechanics-gap <eng-dir> [--json]");
     Console.WriteLine("                          Compare native Silent mechanics with the prototype");
+    Console.WriteLine("  reference-source-search <source-dir> <query> [max]");
+    Console.WriteLine("                          Search a local decompiled sts2.dll source tree");
     return;
 }
 
@@ -269,6 +271,12 @@ switch (args[0])
         Console.WriteLine($"Missing native card definitions: {report.MissingNativeCardCount}");
         Console.WriteLine(
             $"Native cards requiring unsupported features: {report.CardsWithUnsupportedFeatures}");
+        Console.WriteLine(
+            $"Prototype cards outside Silent pool: " +
+            $"{string.Join(", ", report.PrototypeCardsOutsideSilentPool)}");
+        Console.WriteLine(
+            $"Prototype cards absent from pinned reference: " +
+            $"{string.Join(", ", report.PrototypeCardsAbsentFromReference)}");
 
         Console.WriteLine("Starting-run gaps:");
         if (report.StartingRunMismatches.Length == 0)
@@ -309,6 +317,40 @@ switch (args[0])
                 : $" [gaps: {string.Join(",", card.UnsupportedFeatures)}]";
             Console.WriteLine(
                 $"  {card.NativeId} ({card.NativeName}){unsupported}");
+        }
+
+        break;
+    }
+
+    case "reference-source-search":
+    {
+        if (args.Length is < 3 or > 4)
+        {
+            throw new ArgumentException(
+                "reference-source-search requires <source-dir> <query> and optionally [max].");
+        }
+
+        var maxMatches = 200;
+        if (args.Length == 4
+            && (!int.TryParse(args[3], out maxMatches) || maxMatches <= 0))
+        {
+            throw new ArgumentException(
+                "reference-source-search max must be a positive integer.");
+        }
+
+        var result = Sts2Emulator.Trace.ReferenceSourceSearch.Search(
+            args[1],
+            args[2],
+            maxMatches);
+
+        Console.WriteLine($"Root: {result.RootDirectory}");
+        Console.WriteLine($"Query: {result.Query}");
+        Console.WriteLine($"Files scanned: {result.FilesScanned}");
+        Console.WriteLine($"Matches: {result.Matches.Count}");
+        foreach (var match in result.Matches)
+        {
+            Console.WriteLine(
+                $"{match.RelativePath}:{match.LineNumber}: {match.Line}");
         }
 
         break;
