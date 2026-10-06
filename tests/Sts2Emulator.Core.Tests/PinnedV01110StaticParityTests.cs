@@ -340,6 +340,39 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void DrawReactiveSilentCardsMatchPinnedV01110()
+    {
+        var corrosiveWave = PrototypeContent.Card(
+            "proto.silent.corrosive_wave");
+        Assert.Equal(PrototypeCardType.Skill, corrosiveWave.Type);
+        Assert.Equal(PrototypeCardRarity.Rare, corrosiveWave.Rarity);
+        Assert.Equal(1, corrosiveWave.Cost.Amount);
+
+        var corrosiveApply = Assert.Single(corrosiveWave.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyPlayerPower,
+            corrosiveApply.Kind);
+        Assert.Equal("proto.power.corrosive_wave", corrosiveApply.PowerId);
+        Assert.Equal(2, corrosiveApply.Amount);
+        Assert.Equal(1, corrosiveApply.UpgradeDelta);
+
+        var speedster = PrototypeContent.Card("proto.silent.speedster");
+        Assert.Equal(PrototypeCardType.Power, speedster.Type);
+        Assert.Equal(PrototypeCardRarity.Uncommon, speedster.Rarity);
+        Assert.Equal(2, speedster.Cost.Amount);
+        Assert.False(speedster.Innate);
+        Assert.True(speedster.InnateOnUpgrade);
+
+        var speedsterApply = Assert.Single(speedster.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyPlayerPower,
+            speedsterApply.Kind);
+        Assert.Equal("proto.power.speedster", speedsterApply.PowerId);
+        Assert.Equal(2, speedsterApply.Amount);
+        Assert.Equal(0, speedsterApply.UpgradeDelta);
+    }
+
+    [Fact]
     public void CorrectedSilentCardsMatchPinnedV01110BaseAndUpgradeScalars()
     {
         var bladeDance = PrototypeContent.Card("proto.silent.blade_dance");
