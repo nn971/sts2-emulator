@@ -337,45 +337,29 @@ public sealed partial class PrototypeGameEngine
             combat = ConsumeMatchingFreeCardPower(combat, definition.Type);
         }
 
-        var powerApplicationOrderCeiling =
-            combat.NextPowerApplicationOrder - 1;
-
-        var operations = new Queue<PrototypeQueuedOperation>();
-        foreach (var effect in definition.Effects)
-        {
-            EnqueueEffectOperations(
-                operations,
-                effect,
-                card.UpgradeLevel,
-                energySpent,
-                payload.TargetEnemyId,
+        var playCountResult =
+            ResolveCardPlayCountAndConsumeModifiers(
                 combat,
-                sourceKind: PrototypeEffectSourceKind.Card,
-                isPoweredAttack: definition.Type == PrototypeCardType.Attack);
-        }
+                definition.Type);
+        combat = playCountResult.Combat;
 
         var sourceDestination = definition.ExhaustOnUse
             ? PrototypeCardZone.ExhaustPile
             : PrototypeCardZone.DiscardPile;
 
-        var completionEvents = new[]
-        {
-            new PrototypeCombatEvent(
-                PrototypeCombatEventKind.CardPlayed,
-                SourceCardInstanceId: payload.CardInstanceId,
-                CardId: card.CardId,
-                PowerApplicationOrderCeiling:
-                    powerApplicationOrderCeiling)
-        };
+        var series = new PrototypeCardPlaySeriesState(
+            SourceCardInstanceId: payload.CardInstanceId,
+            SourceCardDestination: sourceDestination,
+            TargetEnemyId: payload.TargetEnemyId,
+            EnergySpent: energySpent,
+            PlayCount: playCountResult.PlayCount,
+            NextPlayIndex: 0);
 
-        var resolved = ResolveOperations(
+        var resolved = ResolveCardPlaySeries(
             state.Player,
             combat,
-            operations,
             state.Rng,
-            payload.CardInstanceId,
-            sourceDestination,
-            completionEvents);
+            series);
         combat = resolved.Combat;
 
         state = state with
@@ -920,7 +904,9 @@ public sealed partial class PrototypeGameEngine
         long? sourceCardInstanceId = null,
         PrototypeCardZone sourceCardDestination = PrototypeCardZone.DiscardPile,
         PrototypeCombatEvent[]? completionEvents = null,
-        int eventDepth = 0)
+        int eventDepth = 0,
+        PrototypeCardPlaySeriesState? cardPlaySeries = null,
+        bool moveSourceCardOnCompletion = true)
     {
         while (operations.Count > 0)
         {
@@ -1147,7 +1133,10 @@ public sealed partial class PrototypeGameEngine
                             Continuation: operations.ToArray(),
                             CompletionEvents: completionEvents is null
                                 ? Array.Empty<PrototypeCombatEvent>()
-                                : (PrototypeCombatEvent[])completionEvents.Clone())
+                                : (PrototypeCombatEvent[])completionEvents.Clone(),
+                            CardPlaySeries: cardPlaySeries,
+                            MoveSourceCardOnCompletion:
+                                moveSourceCardOnCompletion)
                     };
                     return (player, combat);
                 }
@@ -1267,7 +1256,8 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
-        if (sourceCardInstanceId is not null)
+        if (sourceCardInstanceId is not null
+            && moveSourceCardOnCompletion)
         {
             var destination = GetZone(combat, sourceCardDestination);
             combat = SetZone(
@@ -1289,7 +1279,8 @@ public sealed partial class PrototypeGameEngine
             combat = dispatched.Combat;
         }
 
-        if (sourceCardInstanceId is not null)
+        if (sourceCardInstanceId is not null
+            && moveSourceCardOnCompletion)
         {
             combat = ClearTemporaryCardCost(
                 combat,
@@ -1298,6 +1289,134 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    private sealed record PrototypeCardPlayCountResult(
+        CombatState Combat,
+        int PlayCount);
+
+    private static PrototypeCardPlayCountResult
+        ResolveCardPlayCountAndConsumeModifiers(
+            CombatState combat,
+            PrototypeCardType cardType)
+    {
+        var modifiers = combat.PlayerPowers
+            .Where(power =>
+            {
+                var definition = PrototypeContent.Power(power.PowerId);
+                return power.Stacks > 0
+                    && definition.ReplayCardType == cardType
+                    && definition.AdditionalPlayCount > 0;
+            })
+            .OrderBy(power => power.ApplicationOrder)
+            .ToArray();
+
+        var playCount = 1 + modifiers.Sum(power =>
+            PrototypeContent.Power(power.PowerId).AdditionalPlayCount);
+
+        if (modifiers.Length == 0)
+        {
+            return new PrototypeCardPlayCountResult(combat, playCount);
+        }
+
+        var consumedOrders = modifiers
+            .Where(power =>
+                PrototypeContent.Power(power.PowerId)
+                    .ConsumeOnMatchingPlayCountModification)
+            .Select(power => power.ApplicationOrder)
+            .ToHashSet();
+
+        if (consumedOrders.Count > 0)
+        {
+            var powers = combat.PlayerPowers
+                .Select(power =>
+                {
+                    if (!consumedOrders.Contains(power.ApplicationOrder))
+                    {
+                        return power;
+                    }
+
+                    return power with { Stacks = power.Stacks - 1 };
+                })
+                .Where(power => power.Stacks > 0)
+                .ToArray();
+            combat = combat with { PlayerPowers = powers };
+        }
+
+        return new PrototypeCardPlayCountResult(combat, playCount);
+    }
+
+    private static (PlayerState Player, CombatState Combat)
+        ResolveCardPlaySeries(
+            PlayerState player,
+            CombatState combat,
+            RngBundle rng,
+            PrototypeCardPlaySeriesState series)
+    {
+        if (!series.HasRemainingExecutions)
+        {
+            return (player, combat);
+        }
+
+        var card = RequireCombatCard(
+            combat,
+            series.SourceCardInstanceId);
+        var definition = PrototypeContent.Card(card.CardId);
+        var powerApplicationOrderCeiling =
+            combat.NextPowerApplicationOrder - 1;
+
+        var operations = new Queue<PrototypeQueuedOperation>();
+        foreach (var effect in definition.Effects)
+        {
+            EnqueueEffectOperations(
+                operations,
+                effect,
+                card.UpgradeLevel,
+                series.EnergySpent,
+                series.TargetEnemyId,
+                combat,
+                sourceKind: PrototypeEffectSourceKind.Card,
+                isPoweredAttack:
+                    definition.Type == PrototypeCardType.Attack);
+        }
+
+        var nextSeries = series with
+        {
+            NextPlayIndex = series.NextPlayIndex + 1
+        };
+        var isLastExecution = !nextSeries.HasRemainingExecutions;
+
+        var resolved = ResolveOperations(
+            player,
+            combat,
+            operations,
+            rng,
+            series.SourceCardInstanceId,
+            series.SourceCardDestination,
+            [
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardPlayed,
+                    SourceCardInstanceId:
+                        series.SourceCardInstanceId,
+                    CardId: card.CardId,
+                    PowerApplicationOrderCeiling:
+                        powerApplicationOrderCeiling)
+            ],
+            cardPlaySeries: nextSeries,
+            moveSourceCardOnCompletion: isLastExecution);
+
+        if (resolved.Combat.PendingChoice is not null
+            || isLastExecution
+            || resolved.Player.Hp <= 0)
+        {
+            return resolved;
+        }
+
+        return ResolveCardPlaySeries(
+            resolved.Player,
+            resolved.Combat,
+            rng,
+            nextSeries);
     }
 
     private static CombatState DecrementPlayerPowers(
@@ -2130,7 +2249,21 @@ public sealed partial class PrototypeGameEngine
             state.Rng,
             pending.SourceCardInstanceId,
             pending.SourceCardDestination,
-            pending.CompletionEvents);
+            pending.CompletionEvents,
+            cardPlaySeries: pending.CardPlaySeries,
+            moveSourceCardOnCompletion:
+                pending.MoveSourceCardOnCompletion);
+
+        if (resolved.Combat.PendingChoice is null
+            && pending.CardPlaySeries is
+                { HasRemainingExecutions: true } series)
+        {
+            resolved = ResolveCardPlaySeries(
+                resolved.Player,
+                resolved.Combat,
+                state.Rng,
+                series);
+        }
 
         state = state with
         {
@@ -2186,42 +2319,27 @@ public sealed partial class PrototypeGameEngine
             combat = ConsumeMatchingFreeCardPower(combat, definition.Type);
         }
 
-        var powerApplicationOrderCeiling =
-            combat.NextPowerApplicationOrder - 1;
-
-        var operations = new Queue<PrototypeQueuedOperation>();
-        foreach (var effect in definition.Effects)
-        {
-            EnqueueEffectOperations(
-                operations,
-                effect,
-                card.UpgradeLevel,
-                energySpent: 0,
-                actionTargetEnemyId: null,
+        var playCountResult =
+            ResolveCardPlayCountAndConsumeModifiers(
                 combat,
-                sourceKind: PrototypeEffectSourceKind.Card,
-                isPoweredAttack: definition.Type == PrototypeCardType.Attack);
-        }
+                definition.Type);
+        combat = playCountResult.Combat;
 
         var sourceDestination = definition.ExhaustOnUse
             ? PrototypeCardZone.ExhaustPile
             : PrototypeCardZone.DiscardPile;
 
-        return ResolveOperations(
+        return ResolveCardPlaySeries(
             player,
             combat,
-            operations,
             rng,
-            cardInstanceId,
-            sourceDestination,
-            [
-                new PrototypeCombatEvent(
-                    PrototypeCombatEventKind.CardPlayed,
-                    SourceCardInstanceId: cardInstanceId,
-                    CardId: card.CardId,
-                    PowerApplicationOrderCeiling:
-                        powerApplicationOrderCeiling)
-            ]);
+            new PrototypeCardPlaySeriesState(
+                SourceCardInstanceId: cardInstanceId,
+                SourceCardDestination: sourceDestination,
+                TargetEnemyId: null,
+                EnergySpent: 0,
+                PlayCount: playCountResult.PlayCount,
+                NextPlayIndex: 0));
     }
 
     private static CombatState ApplyCardSelection(
