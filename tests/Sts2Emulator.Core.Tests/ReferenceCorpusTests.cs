@@ -29,7 +29,7 @@ public sealed class ReferenceCorpusTests
                 summary.Tables,
                 table => table.Kind == "cards");
 
-            Assert.Equal(8, cards.Count);
+            Assert.Equal(9, cards.Count);
             Assert.Contains("description", cards.Fields);
             Assert.Contains("target", cards.Fields);
         }
@@ -49,9 +49,9 @@ public sealed class ReferenceCorpusTests
             var report = ReferenceMechanicsGapAnalyzer.Analyze(
                 ReferenceCorpus.Open(root));
 
-            Assert.Equal(8, report.NativeSilentCardCount);
-            Assert.Equal(7, report.NameMatchedCardCount);
-            Assert.Equal(7, report.StructuredFieldMatchCount);
+            Assert.Equal(9, report.NativeSilentCardCount);
+            Assert.Equal(8, report.NameMatchedCardCount);
+            Assert.Equal(8, report.StructuredFieldMatchCount);
             Assert.Equal(1, report.MissingNativeCardCount);
 
             var mystery = Assert.Single(
