@@ -72,7 +72,7 @@ central dispatch branches.
 ## Milestone 4 — native-data and fidelity convergence
 
 - [x] pin a reference STS2 build — v0.111.0 / 41cef1ea, fingerprint `3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`
-- [ ] native reference bridge — first build-pinned passive combat recorder implemented; live in-game capture/validation still required
+- [ ] native reference bridge — v0 passive recorder live-validated on two Silent A0 combats; probe v1 adds combat-history/action granularity, player creature state, and serialized RNG fields and awaits live validation
 - [ ] real content-data translation/import where appropriate
 - [ ] native RNG stream inventory/codecs
 - [ ] native timing/trigger semantics
