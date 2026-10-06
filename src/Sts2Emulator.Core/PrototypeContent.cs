@@ -629,6 +629,25 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
+                "proto.silent.pinpoint",
+                "Pinpoint",
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.Fixed,
+                    3,
+                    ReductionCountKind:
+                        PrototypeCombatCountKind.SkillsPlayedThisTurn,
+                    ReductionPerCount: 1,
+                    MinimumAmount: 0),
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        15,
+                        4)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
                 "proto.silent.finisher",
                 "Finisher",
                 1,
