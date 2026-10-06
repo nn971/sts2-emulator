@@ -10,6 +10,9 @@ public sealed record ReferenceProbeSummary(
     string? BuildFingerprint,
     int CombatCount,
     int TypeCatalogCount,
+    int SequencedRecordCount,
+    int SequenceRegressionCount,
+    int DuplicateSequenceCount,
     IReadOnlyDictionary<string, int> RecordTypes,
     IReadOnlyDictionary<string, int> Boundaries,
     IReadOnlyDictionary<string, int> Diagnostics);
@@ -27,6 +30,11 @@ public static class ReferenceProbeAnalyzer
         var invalid = 0;
         var combatCount = 0;
         var typeCatalogCount = 0;
+        var sequencedRecordCount = 0;
+        var sequenceRegressionCount = 0;
+        var duplicateSequenceCount = 0;
+        var seenSequences = new HashSet<long>();
+        long? previousSequence = null;
         string? schema = null;
         string? buildFingerprint = null;
 
@@ -54,6 +62,24 @@ public static class ReferenceProbeAnalyzer
                     && fingerprintElement.ValueKind == JsonValueKind.String)
                 {
                     buildFingerprint ??= fingerprintElement.GetString();
+                }
+
+                if (root.TryGetProperty("sequence", out var sequenceElement)
+                    && sequenceElement.TryGetInt64(out var sequence))
+                {
+                    sequencedRecordCount++;
+                    if (previousSequence is not null
+                        && sequence < previousSequence.Value)
+                    {
+                        sequenceRegressionCount++;
+                    }
+
+                    if (!seenSequences.Add(sequence))
+                    {
+                        duplicateSequenceCount++;
+                    }
+
+                    previousSequence = sequence;
                 }
 
                 var type = root.TryGetProperty("type", out var typeElement)
@@ -106,6 +132,9 @@ public static class ReferenceProbeAnalyzer
             buildFingerprint,
             combatCount,
             typeCatalogCount,
+            sequencedRecordCount,
+            sequenceRegressionCount,
+            duplicateSequenceCount,
             new SortedDictionary<string, int>(recordTypes, StringComparer.Ordinal),
             new SortedDictionary<string, int>(boundaries, StringComparer.Ordinal),
             new SortedDictionary<string, int>(diagnostics, StringComparer.Ordinal));
