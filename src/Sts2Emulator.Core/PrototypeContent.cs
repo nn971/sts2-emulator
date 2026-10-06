@@ -420,6 +420,20 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Rare,
                 Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
+                "proto.silent.speedster",
+                "Speedster",
+                2,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        PowerId: "proto.power.speedster")
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                InnateOnUpgrade: true,
+                Type: PrototypeCardType.Power),
+            new PrototypeCardDefinition(
                 "proto.silent.serpent_form",
                 "Serpent Form",
                 3,
@@ -1112,6 +1126,23 @@ public static class PrototypeContent
                         ])
                 ],
                 RemoveAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.speedster",
+                "Speedster",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardDrawn,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy,
+                                0,
+                                Target: PrototypeEffectTarget.AllEnemies,
+                                AmountPerPowerStack: 1)
+                        ],
+                        ExcludeHandDraw: true)
+                ]),
             new PrototypePowerDefinition(
                 "proto.power.serpent_form",
                 "Serpent Form",
