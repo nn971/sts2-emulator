@@ -70,6 +70,8 @@ public sealed record PrototypeAiShop(
     bool RemovalUsed);
 
 public sealed record PrototypeAiObservation(
+    string RulesetId,
+    string CharacterId,
     long DecisionIndex,
     RunPhase Phase,
     int? Act,
@@ -89,6 +91,7 @@ public sealed record PrototypeAiObservation(
     string? TerminalOutcome);
 
 public sealed record PrototypeAiFrame(
+    string SchemaId,
     PrototypeAiObservation Observation,
     PrototypeAiAction[] LegalActions,
     string ObservationHash,
@@ -105,6 +108,8 @@ public sealed record PrototypeAiExpansion(
 /// </summary>
 public sealed class PrototypeAiEnvironment
 {
+    public const string SchemaId = "prototype-ai-v0";
+
     private readonly PrototypeGameEngine _engine = new();
 
     public RunState Reset(string seed) => PrototypeGameFactory.Create(seed);
@@ -125,6 +130,7 @@ public sealed class PrototypeAiEnvironment
         }
 
         return new PrototypeAiFrame(
+            SchemaId,
             observation,
             legalActions,
             CanonicalJson.Sha256(observation),
@@ -179,6 +185,8 @@ public sealed class PrototypeAiEnvironment
     {
         var world = state.World;
         return new PrototypeAiObservation(
+            RulesetId: world?.RulesetId ?? PrototypeContent.RulesetId,
+            CharacterId: world?.CharacterId ?? PrototypeContent.CharacterId,
             DecisionIndex: state.DecisionIndex,
             Phase: state.Phase,
             Act: world?.Act,
