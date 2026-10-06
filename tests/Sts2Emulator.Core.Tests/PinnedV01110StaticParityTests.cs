@@ -106,6 +106,23 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void RicochetMatchesPinnedV01110RandomTargetScalars()
+    {
+        var ricochet = PrototypeContent.Card("proto.silent.ricochet");
+
+        Assert.True(ricochet.Sly);
+        Assert.Equal(2, ricochet.Cost.Amount);
+        Assert.Equal(PrototypeCardTarget.None, ricochet.Target);
+
+        var damage = Assert.Single(ricochet.Effects);
+        Assert.Equal(PrototypeCombatEffectKind.DamageEnemy, damage.Kind);
+        Assert.Equal(3, damage.Amount);
+        Assert.Equal(4, damage.Repetitions);
+        Assert.Equal(1, damage.RepetitionUpgradeDelta);
+        Assert.Equal(PrototypeEffectTarget.RandomEnemy, damage.Target);
+    }
+
+    [Fact]
     public void CorrectedSilentCardsMatchPinnedV01110BaseAndUpgradeScalars()
     {
         var bladeDance = PrototypeContent.Card("proto.silent.blade_dance");
