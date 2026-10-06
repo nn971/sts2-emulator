@@ -353,7 +353,9 @@ public sealed partial class PrototypeGameEngine
             TargetEnemyId: payload.TargetEnemyId,
             EnergySpent: energySpent,
             PlayCount: playCountResult.PlayCount,
-            NextPlayIndex: 0);
+            NextPlayIndex: 0,
+            RemoveSourceCardOnCompletion:
+                definition.Type == PrototypeCardType.Power);
 
         var resolved = ResolveCardPlaySeries(
             state.Player,
@@ -906,7 +908,8 @@ public sealed partial class PrototypeGameEngine
         PrototypeCombatEvent[]? completionEvents = null,
         int eventDepth = 0,
         PrototypeCardPlaySeriesState? cardPlaySeries = null,
-        bool moveSourceCardOnCompletion = true)
+        bool moveSourceCardOnCompletion = true,
+        bool removeSourceCardOnCompletion = false)
     {
         while (operations.Count > 0)
         {
@@ -1136,7 +1139,9 @@ public sealed partial class PrototypeGameEngine
                                 : (PrototypeCombatEvent[])completionEvents.Clone(),
                             CardPlaySeries: cardPlaySeries,
                             MoveSourceCardOnCompletion:
-                                moveSourceCardOnCompletion)
+                                moveSourceCardOnCompletion,
+                            RemoveSourceCardOnCompletion:
+                                removeSourceCardOnCompletion)
                     };
                     return (player, combat);
                 }
@@ -1259,11 +1264,15 @@ public sealed partial class PrototypeGameEngine
         if (sourceCardInstanceId is not null
             && moveSourceCardOnCompletion)
         {
-            var destination = GetZone(combat, sourceCardDestination);
-            combat = SetZone(
-                combat,
-                sourceCardDestination,
-                destination.Append(sourceCardInstanceId.Value).ToArray());
+            if (!removeSourceCardOnCompletion)
+            {
+                var destination = GetZone(combat, sourceCardDestination);
+                combat = SetZone(
+                    combat,
+                    sourceCardDestination,
+                    destination.Append(sourceCardInstanceId.Value).ToArray());
+            }
+
             combat = combat with { PendingChoice = null };
         }
 
@@ -1403,7 +1412,9 @@ public sealed partial class PrototypeGameEngine
                         powerApplicationOrderCeiling)
             ],
             cardPlaySeries: nextSeries,
-            moveSourceCardOnCompletion: isLastExecution);
+            moveSourceCardOnCompletion: isLastExecution,
+            removeSourceCardOnCompletion:
+                series.RemoveSourceCardOnCompletion);
 
         if (resolved.Combat.PendingChoice is not null
             || isLastExecution
@@ -2252,7 +2263,9 @@ public sealed partial class PrototypeGameEngine
             pending.CompletionEvents,
             cardPlaySeries: pending.CardPlaySeries,
             moveSourceCardOnCompletion:
-                pending.MoveSourceCardOnCompletion);
+                pending.MoveSourceCardOnCompletion,
+            removeSourceCardOnCompletion:
+                pending.RemoveSourceCardOnCompletion);
 
         if (resolved.Combat.PendingChoice is null
             && pending.CardPlaySeries is
@@ -2339,7 +2352,9 @@ public sealed partial class PrototypeGameEngine
                 TargetEnemyId: null,
                 EnergySpent: 0,
                 PlayCount: playCountResult.PlayCount,
-                NextPlayIndex: 0));
+                NextPlayIndex: 0,
+                RemoveSourceCardOnCompletion:
+                    definition.Type == PrototypeCardType.Power));
     }
 
     private static CombatState ApplyCardSelection(
