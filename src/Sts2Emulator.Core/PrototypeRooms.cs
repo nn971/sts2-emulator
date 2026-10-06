@@ -60,13 +60,41 @@ public sealed partial class PrototypeGameEngine
                 _ => 3
             };
 
+            var floorRule = rules.MapFloorRules.SingleOrDefault(rule =>
+                floor >= rule.MinFloor && floor <= rule.MaxFloor)
+                ?? throw new InvalidOperationException(
+                    $"No prototype map rule covers floor {floor}.");
+
+            if (floorRule.RoomPool.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Prototype map rule for floor {floor} has an empty room pool.");
+            }
+
             var nodes = new MapNodeState[width];
+            var usedSpecialRooms = new HashSet<PrototypeRoomType>();
             for (var index = 0; index < width; index++)
             {
-                var room = floor == rules.FloorsPerAct
-                    ? PrototypeRoomType.Boss
-                    : rules.RoomPool[
-                        PrototypeRng.NextInt(rng, "map", rules.RoomPool.Length)];
+                var candidates = floorRule.RoomPool;
+                if (!floorRule.AllowDuplicateSpecialRooms)
+                {
+                    var filtered = candidates
+                        .Where(room =>
+                            room == PrototypeRoomType.Combat
+                            || !usedSpecialRooms.Contains(room))
+                        .ToArray();
+                    if (filtered.Length > 0)
+                    {
+                        candidates = filtered;
+                    }
+                }
+
+                var room = candidates[
+                    PrototypeRng.NextInt(rng, "map", candidates.Length)];
+                if (room != PrototypeRoomType.Combat)
+                {
+                    usedSpecialRooms.Add(room);
+                }
 
                 nodes[index] = new MapNodeState(
                     NodeId: $"{act}:{floor}:{index}:{room}",
@@ -452,6 +480,11 @@ public sealed partial class PrototypeGameEngine
     private static IReadOnlyList<GameAction> GetRestActions(RunState state)
     {
         var actions = new List<GameAction> { GameAction.Empty("rest_heal") };
+        if (PrototypeContent.Rules.RestTrainMaxHp > 0)
+        {
+            actions.Add(GameAction.Empty("rest_train"));
+        }
+
         actions.AddRange(
             state.Player.Deck
                 .Where(card => card.UpgradeLevel == 0)
@@ -473,6 +506,25 @@ public sealed partial class PrototypeGameEngine
                 Player = state.Player with
                 {
                     Hp = Math.Min(state.Player.MaxHp, state.Player.Hp + amount)
+                }
+            };
+            return CompleteRoomToMap(state);
+        }
+
+        if (StringComparer.Ordinal.Equals(action.Kind, "rest_train"))
+        {
+            var gain = PrototypeContent.Rules.RestTrainMaxHp;
+            if (gain <= 0)
+            {
+                throw new InvalidOperationException("Rest training is disabled by the active ruleset.");
+            }
+
+            state = state with
+            {
+                Player = state.Player with
+                {
+                    MaxHp = state.Player.MaxHp + gain,
+                    Hp = state.Player.Hp + gain
                 }
             };
             return CompleteRoomToMap(state);
