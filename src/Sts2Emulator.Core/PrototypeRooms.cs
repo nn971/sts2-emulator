@@ -109,9 +109,41 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StartEvent(RunState state)
     {
-        var ids = PrototypeContent.Events.Keys.Order(StringComparer.Ordinal).ToArray();
-        var id = ids[PrototypeRng.NextInt(state.Rng, "event", ids.Length)];
-        var world = RequireWorld(state) with { Event = new EventState(id) };
+        var world = RequireWorld(state);
+        var eligible = PrototypeContent.Events.Values
+            .Where(evt =>
+                world.Act >= evt.MinAct
+                && world.Act <= evt.MaxAct
+                && evt.Weight > 0
+                && (!evt.OncePerRun
+                    || !world.EventIds.Contains(evt.Id, StringComparer.Ordinal)))
+            .ToArray();
+
+        if (eligible.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"No prototype event is eligible in act {world.Act}.");
+        }
+
+        var totalWeight = eligible.Sum(evt => evt.Weight);
+        var roll = PrototypeRng.NextInt(state.Rng, "event", totalWeight);
+        var selected = eligible[^1];
+        foreach (var evt in eligible)
+        {
+            if (roll < evt.Weight)
+            {
+                selected = evt;
+                break;
+            }
+
+            roll -= evt.Weight;
+        }
+
+        world = world with
+        {
+            Event = new EventState(selected.Id),
+            EventHistory = world.EventIds.Append(selected.Id).ToArray()
+        };
 
         return state with
         {
@@ -195,17 +227,16 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartShop(RunState state)
     {
         var world = RequireWorld(state);
-        var cardIds = PickDistinct(
-            PrototypeContent.RewardCardPool,
+        var cardIds = PickShopCards(
+            world.Act,
             3,
-            state.Rng,
-            "shop");
+            state.Rng);
 
         var offers = cardIds
             .Select((cardId, index) => new ShopOffer(
                 index + 1,
                 cardId,
-                45 + PrototypeRng.NextInt(state.Rng, "shop", 31),
+                ShopCardPrice(cardId, state.Rng),
                 false))
             .ToArray();
 
@@ -216,8 +247,17 @@ public sealed partial class PrototypeGameEngine
 
         var shop = new ShopState(
             offers,
-            new ShopOffer(100, potionId, 45, false),
-            new ShopOffer(200, relicId, 120, false));
+            new ShopOffer(
+                100,
+                potionId,
+                40 + PrototypeRng.NextInt(state.Rng, "shop", 21),
+                false),
+            new ShopOffer(
+                200,
+                relicId,
+                100 + PrototypeRng.NextInt(state.Rng, "shop", 41),
+                false),
+            RemovalPrice: 75 + ((world.Act - 1) * 15));
 
         world = world with { Shop = shop };
 
@@ -252,6 +292,14 @@ public sealed partial class PrototypeGameEngine
             actions.Add(GameAction.Create("buy_relic", new BuyOfferPayload(relic.OfferId)));
         }
 
+        if (!shop.RemovalUsed && shop.RemovalPrice <= state.Player.Gold)
+        {
+            actions.AddRange(
+                state.Player.Deck.Select(card => GameAction.Create(
+                    "remove_card",
+                    new RemoveCardPayload(card.InstanceId))));
+        }
+
         actions.Add(GameAction.Empty("leave_shop"));
         return actions;
     }
@@ -271,7 +319,35 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
 
-        if (StringComparer.Ordinal.Equals(action.Kind, "buy_card"))
+        if (StringComparer.Ordinal.Equals(action.Kind, "remove_card"))
+        {
+            if (shop.RemovalUsed)
+            {
+                throw new InvalidOperationException("Shop card removal was already used.");
+            }
+
+            if (player.Gold < shop.RemovalPrice)
+            {
+                throw new InvalidOperationException("Shop card removal is unaffordable.");
+            }
+
+            var payload = action.ReadPayload<RemoveCardPayload>();
+            if (!player.Deck.Any(card => card.InstanceId == payload.CardInstanceId))
+            {
+                throw new InvalidOperationException(
+                    $"Card instance {payload.CardInstanceId} is missing.");
+            }
+
+            player = player with
+            {
+                Gold = player.Gold - shop.RemovalPrice,
+                Deck = player.Deck
+                    .Where(card => card.InstanceId != payload.CardInstanceId)
+                    .ToArray()
+            };
+            shop = shop with { RemovalUsed = true };
+        }
+        else if (StringComparer.Ordinal.Equals(action.Kind, "buy_card"))
         {
             var offer = shop.CardOffers.FirstOrDefault(item => item.OfferId == payload.OfferId)
                 ?? throw new InvalidOperationException($"Unknown card offer {payload.OfferId}.");
@@ -645,6 +721,70 @@ public sealed partial class PrototypeGameEngine
             World = world,
             Phase = RunPhase.MapChoice
         };
+    }
+
+    private static string[] PickShopCards(
+        int act,
+        int count,
+        RngBundle rng)
+    {
+        var available = PrototypeContent.RewardCardPool.ToList();
+        var selected = new List<string>(Math.Min(count, available.Count));
+
+        while (selected.Count < count && available.Count > 0)
+        {
+            var weights = PrototypeContent.ShopRarityWeights(act)
+                .Where(item =>
+                    item.Weight > 0
+                    && available.Any(cardId =>
+                        PrototypeContent.Card(cardId).Rarity == item.Rarity))
+                .ToArray();
+            if (weights.Length == 0)
+            {
+                break;
+            }
+
+            var roll = PrototypeRng.NextInt(
+                rng,
+                "shop",
+                weights.Sum(item => item.Weight));
+            var rarity = weights[^1].Rarity;
+            foreach (var item in weights)
+            {
+                if (roll < item.Weight)
+                {
+                    rarity = item.Rarity;
+                    break;
+                }
+
+                roll -= item.Weight;
+            }
+
+            var candidates = available
+                .Where(cardId => PrototypeContent.Card(cardId).Rarity == rarity)
+                .ToArray();
+            var selectedId = candidates[
+                PrototypeRng.NextInt(rng, "shop", candidates.Length)];
+            selected.Add(selectedId);
+            available.Remove(selectedId);
+        }
+
+        return selected.ToArray();
+    }
+
+    private static int ShopCardPrice(string cardId, RngBundle rng)
+    {
+        var rarity = PrototypeContent.Card(cardId).Rarity;
+        var (minimum, spread) = rarity switch
+        {
+            PrototypeCardRarity.Common => (45, 16),
+            PrototypeCardRarity.Uncommon => (65, 21),
+            PrototypeCardRarity.Rare => (100, 31),
+            _ => throw new InvalidOperationException(
+                $"Basic card '{cardId}' cannot be a normal shop offer.")
+        };
+
+        return minimum + PrototypeRng.NextInt(rng, "shop", spread);
     }
 
     private static string[] PickRewardCards(
