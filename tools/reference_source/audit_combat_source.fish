@@ -26,7 +26,13 @@ set -l queries     Sly     CardKeyword     Discard     CardDiscarded     CardPla
 
 for query in $queries
     printf '\n===== %s =====\n' "$query" >> "$report"
-    dotnet "$cli_dll"         reference-source-search         "$source_dir"         "$query"         120         >> "$report"
+    dotnet "$cli_dll" \
+        reference-source-search \
+        "$source_dir" \
+        "$query" \
+        60 \
+        8 \
+        >> "$report"
     or exit 1
 end
 
