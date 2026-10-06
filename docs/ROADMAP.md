@@ -53,10 +53,10 @@ central dispatch branches.
 - [x] rarity-aware shops with one-use card removal
 - [x] weighted event eligibility/history with repeat constraints
 - [x] richer rest-site choices, including permanent max-HP training
-- [ ] substantially larger Silent card pool — first major supported-mechanics expansion complete
+- [x] substantially larger Silent card pool — 28 non-basic reward cards plus starter/generated cards
 - [x] first expanded potion/relic pool
 - [x] act-specific boss and later-elite encounter expansion
-- [ ] enough variety for meaningful strategic AI experiments — deterministic sweep reporting now available
+- [x] enough variety for first strategic AI experiments — 500-run sweep covers 28/28 reward cards, 8/8 relics, all events, and all acts
 
 ## Prototype AI handoff
 
