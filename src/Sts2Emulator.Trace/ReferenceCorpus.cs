@@ -269,6 +269,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "combat_card_cost_mutation",
             "hand_cards_free_this_turn",
             "no_additional_draw",
+            "preserve_block_next_turn",
             "react_on_card_draw",
             "damage",
             "block",
@@ -628,6 +629,12 @@ public static partial class ReferenceMechanicsGapAnalyzer
         if (TargetHasStatusConditionRegex().IsMatch(description))
         {
             features.Add("condition_target_has_status");
+            hasSpecificConditional = true;
+        }
+
+        if (PreserveBlockNextTurnRegex().IsMatch(description))
+        {
+            features.Add("preserve_block_next_turn");
             hasSpecificConditional = true;
         }
 
@@ -1091,6 +1098,11 @@ public static partial class ReferenceMechanicsGapAnalyzer
         @"\bif the enemy has\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex TargetHasStatusConditionRegex();
+
+    [GeneratedRegex(
+        @"block.*not\s+removed.*start\s+of\s+your\s+next\s+turn",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex PreserveBlockNextTurnRegex();
 
     [GeneratedRegex(
         @"(^|[.\n]\s*)if\b|\bwhenever\b|\bfor each\b|\bevery time\b",
