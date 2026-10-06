@@ -202,6 +202,46 @@ public sealed record PrototypeCombatEvent(
     long? PowerApplicationOrderCeiling = null,
     bool FromHandDraw = false);
 
+public sealed record PrototypeEventSubscriberState(
+    long ApplicationOrder,
+    PrototypeCombatEffectSpec[] Effects,
+    int PowerStacks,
+    PrototypeEffectSourceKind SourceKind,
+    long? SourcePowerApplicationOrder = null,
+    int? SourcePowerEnemyId = null,
+    PrototypeCombatCardSnapshot? PowerCardPayload = null,
+    bool RemoveSourcePowerAfterTrigger = false,
+    int? RelicStateIndex = null,
+    int? RelicTriggerIndex = null,
+    int EveryNth = 1)
+{
+    public PrototypeEventSubscriberState Fork() => this with
+    {
+        Effects = (PrototypeCombatEffectSpec[])Effects.Clone(),
+        PowerCardPayload = PowerCardPayload?.Fork()
+    };
+}
+
+public sealed record PrototypeEventDispatchContinuationState(
+    PrototypeCombatEvent CombatEvent,
+    PrototypeEventSubscriberState CurrentSubscriber,
+    PrototypeEventSubscriberState[] RemainingSubscribers,
+    int EventDepth)
+{
+    public PrototypeEventDispatchContinuationState Fork() => this with
+    {
+        CombatEvent = CombatEvent with { },
+        CurrentSubscriber = CurrentSubscriber.Fork(),
+        RemainingSubscribers = RemainingSubscribers
+            .Select(item => item.Fork())
+            .ToArray()
+    };
+}
+
+public sealed record PrototypeAutomaticPipelineContinuationState(
+    int NextStepIndex,
+    PrototypeCombatEventKind? PendingPostDispatchEventKind = null);
+
 public enum PrototypeAutomaticStepKind
 {
     DispatchCombatEvent,
@@ -690,13 +730,15 @@ public sealed record PendingCombatChoiceState(
     bool MoveSourceCardOnCompletion = true,
     bool RemoveSourceCardOnCompletion = false,
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
-    PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null)
+    PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
+    PrototypeEventDispatchContinuationState? EventDispatchContinuation = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
         Continuation = (PrototypeQueuedOperation[])Continuation.Clone(),
-        CompletionEvents = (PrototypeCombatEvent[])CompletionEvents.Clone()
+        CompletionEvents = (PrototypeCombatEvent[])CompletionEvents.Clone(),
+        EventDispatchContinuation = EventDispatchContinuation?.Fork()
     };
 }
 
@@ -723,7 +765,8 @@ public sealed record CombatState(
     CombatPotionState[]? Potions = null,
     PendingCombatChoiceState? PendingChoice = null,
     PrototypeCombatCounters? Counters = null,
-    bool IsPlayerTurn = true)
+    bool IsPlayerTurn = true,
+    PrototypeAutomaticPipelineContinuationState? AutomaticPipelineContinuation = null)
 {
     public CombatState Fork() => this with
     {
@@ -741,7 +784,11 @@ public sealed record CombatState(
             ? null
             : Potions.Select(potion => potion.Fork()).ToArray(),
         PendingChoice = PendingChoice?.Fork(),
-        Counters = Counters is null ? null : Counters with { }
+        Counters = Counters is null ? null : Counters with { },
+        AutomaticPipelineContinuation =
+            AutomaticPipelineContinuation is null
+                ? null
+                : AutomaticPipelineContinuation with { }
     };
 
     public CombatRelicState[] RelicStates =>
