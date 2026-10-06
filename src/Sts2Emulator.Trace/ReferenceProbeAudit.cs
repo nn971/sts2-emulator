@@ -325,7 +325,8 @@ public static class ReferenceProbeAuditor
 
                 foreach (var property in properties)
                 {
-                    if (StringComparer.Ordinal.Equals(property.Name, "type"))
+                    if (StringComparer.Ordinal.Equals(property.Name, "type")
+                        || StringComparer.Ordinal.Equals(property.Name, "runtime_type"))
                     {
                         continue;
                     }
