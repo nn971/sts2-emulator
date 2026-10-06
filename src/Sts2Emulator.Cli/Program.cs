@@ -14,6 +14,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  prototype-ai-jsonl     Run the long-lived prototype AI JSONL bridge on stdin/stdout");
     Console.WriteLine("  reference-preflight <game-dir> [data-dir]");
     Console.WriteLine("                          Fingerprint the exact installed STS2 build");
+    Console.WriteLine("  reference-inspect <game-dir> <pattern> [data-dir]");
+    Console.WriteLine("                          Search managed type/method metadata in installed sts2.dll");
     return;
 }
 
@@ -50,6 +52,35 @@ switch (args[0])
             Console.WriteLine(CanonicalJson.Sha256(state));
         }
         break;
+
+    case "reference-inspect":
+    {
+        if (args.Length < 3)
+        {
+            throw new ArgumentException(
+                "reference-inspect requires <game-dir> <pattern> and optionally [data-dir].");
+        }
+
+        var manifest = Sts2Emulator.Trace.ReferenceBuildFingerprint.Capture(
+            args[1],
+            args.Length >= 4 ? args[3] : null);
+        var assemblyPath = Path.Combine(manifest.DataDirectory, "sts2.dll");
+        var matches = Sts2Emulator.Trace.ReferenceAssemblyInspector.Search(
+            assemblyPath,
+            args[2]);
+
+        Console.WriteLine($"Build fingerprint: {manifest.BuildFingerprint}");
+        Console.WriteLine($"Matches: {matches.Length}");
+        foreach (var match in matches)
+        {
+            Console.WriteLine(
+                match.MethodName is null
+                    ? $"type\t{match.TypeName}"
+                    : $"method\t{match.TypeName}\t{match.MethodName}\tparams={match.ParameterCount}");
+        }
+
+        break;
+    }
 
     case "reference-preflight":
     {
