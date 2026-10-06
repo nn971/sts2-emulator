@@ -669,10 +669,28 @@ public static class PrototypeStateInvariants
             .Concat(combat.ExhaustPile)
             .ToArray();
 
-        var suspendedSource = combat.PendingChoice?.SourceCardInstanceId;
-        var represented = suspendedSource is null
-            ? zones
-            : zones.Append(suspendedSource.Value).ToArray();
+        var suspendedSources = new List<long>();
+        if (combat.PendingChoice?.SourceCardInstanceId is
+            { } pendingSource)
+        {
+            suspendedSources.Add(pendingSource);
+        }
+
+        for (var continuation =
+                 combat.PendingChoice?.OuterChoiceContinuation;
+             continuation is not null;
+             continuation = continuation.Parent)
+        {
+            if (continuation.SourceCardInstanceId is
+                { } continuationSource)
+            {
+                suspendedSources.Add(continuationSource);
+            }
+        }
+
+        var represented = zones
+            .Concat(suspendedSources)
+            .ToArray();
 
         if (represented.Any(cardId => !known.Contains(cardId)))
         {
@@ -717,6 +735,28 @@ public static class PrototypeStateInvariants
                 || pending.Selection.MaxSelections > pending.CandidateCardInstanceIds.Length)
             {
                 throw new InvalidOperationException("Pending choice has an invalid selection range.");
+            }
+
+
+            for (var continuation = pending.OuterChoiceContinuation;
+                 continuation is not null;
+                 continuation = continuation.Parent)
+            {
+                if (continuation.PendingSlyCardInstanceIds.Any(
+                        cardId => !combat.DiscardPile.Contains(cardId)))
+                {
+                    throw new InvalidOperationException(
+                        "Nested choice continuation has a pending Sly card outside Discard.");
+                }
+
+                if (continuation.PendingDiscardEvents.Any(combatEvent =>
+                        combatEvent.SourceCardInstanceId is
+                            { } cardId
+                        && !combat.DiscardPile.Contains(cardId)))
+                {
+                    throw new InvalidOperationException(
+                        "Nested choice continuation has a pending discard event for a card outside Discard.");
+                }
             }
         }
     }
