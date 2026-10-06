@@ -1009,6 +1009,23 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Rare,
                 Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
+                "proto.silent.blur",
+                "Blur",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.GainPlayerBlock,
+                        5,
+                        3),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.blur")
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.dodge_and_roll",
                 "Dodge and Roll",
                 1,
@@ -1277,6 +1294,13 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 FreeCardType: PrototypeCardType.Skill,
                 ConsumeOnMatchingCardPlay: true),
+            new PrototypePowerDefinition(
+                "proto.power.blur",
+                "Blur",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                PreventsPlayerBlockClear: true,
+                DecrementAfterPlayerTurnStart: true),
             new PrototypePowerDefinition(
                 "proto.power.block_next_turn",
                 "Block Next Turn",
