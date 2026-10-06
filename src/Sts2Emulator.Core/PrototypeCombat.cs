@@ -2649,8 +2649,15 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
-        foreach (var subscriber in subscribers.OrderBy(item => item.ApplicationOrder))
+        var orderedSubscribers = subscribers
+            .OrderBy(item => item.ApplicationOrder)
+            .ToArray();
+
+        for (var subscriberIndex = 0;
+             subscriberIndex < orderedSubscribers.Length;
+             subscriberIndex++)
         {
+            var subscriber = orderedSubscribers[subscriberIndex];
             if (subscriber.RelicStateIndex is not null)
             {
                 if (subscriber.RelicTriggerIndex is null || subscriber.EveryNth <= 0)
@@ -2684,6 +2691,15 @@ public sealed partial class PrototypeGameEngine
                     powerCardPayload: subscriber.PowerCardPayload);
             }
 
+            var continuation =
+                new PrototypeEventDispatchContinuationState(
+                    combatEvent,
+                    subscriber.Fork(),
+                    orderedSubscribers
+                        .Skip(subscriberIndex + 1)
+                        .Select(item => item.Fork())
+                        .ToArray(),
+                    eventDepth);
             var resolved = ResolveOperations(
                 player,
                 combat,
@@ -2691,29 +2707,20 @@ public sealed partial class PrototypeGameEngine
                 rng,
                 eventDepth: eventDepth,
                 eventSourceCardInstanceId:
-                    combatEvent.SourceCardInstanceId);
+                    combatEvent.SourceCardInstanceId,
+                eventDispatchContinuation:
+                    continuation);
             player = resolved.Player;
             combat = resolved.Combat;
 
             if (combat.PendingChoice is not null)
             {
-                throw new NotSupportedException(
-                    "Automatic combat-event triggers that request player choices are not supported yet.");
+                return (player, combat);
             }
 
-            if (subscriber.RemoveSourcePowerAfterTrigger)
-            {
-                if (subscriber.SourcePowerApplicationOrder is null)
-                {
-                    throw new InvalidOperationException(
-                        "Self-removing power trigger is missing source-power identity.");
-                }
-
-                combat = RemovePowerInstance(
-                    combat,
-                    subscriber.SourcePowerApplicationOrder.Value,
-                    subscriber.SourcePowerEnemyId);
-            }
+            combat = FinalizeEventSubscriber(
+                combat,
+                subscriber);
         }
 
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
@@ -2736,6 +2743,134 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    private static (PlayerState Player, CombatState Combat)
+        ResumeEventDispatchContinuation(
+            PlayerState player,
+            CombatState combat,
+            PrototypeEventDispatchContinuationState continuation,
+            RngBundle rng)
+    {
+        combat = FinalizeEventSubscriber(
+            combat,
+            continuation.CurrentSubscriber);
+
+        var remaining = continuation.RemainingSubscribers;
+        for (var index = 0; index < remaining.Length; index++)
+        {
+            var subscriber = remaining[index];
+            if (subscriber.RelicStateIndex is not null)
+            {
+                if (subscriber.RelicTriggerIndex is null
+                    || subscriber.EveryNth <= 0)
+                {
+                    throw new InvalidOperationException(
+                        "Relic trigger counter metadata is invalid.");
+                }
+
+                var incremented = IncrementRelicTriggerCounter(
+                    combat,
+                    subscriber.RelicStateIndex.Value,
+                    subscriber.RelicTriggerIndex.Value);
+                combat = incremented.Combat;
+                if (incremented.Count % subscriber.EveryNth != 0)
+                {
+                    continue;
+                }
+            }
+
+            var operations = new Queue<PrototypeQueuedOperation>();
+            foreach (var effect in subscriber.Effects)
+            {
+                EnqueueEffectOperations(
+                    operations,
+                    effect,
+                    upgradeLevel: 0,
+                    energySpent: 0,
+                    actionTargetEnemyId:
+                        continuation.CombatEvent.TargetEnemyId,
+                    combat: combat,
+                    powerStacks: subscriber.PowerStacks,
+                    sourceKind: subscriber.SourceKind,
+                    powerCardPayload: subscriber.PowerCardPayload);
+            }
+
+            var nextContinuation =
+                new PrototypeEventDispatchContinuationState(
+                    continuation.CombatEvent,
+                    subscriber.Fork(),
+                    remaining
+                        .Skip(index + 1)
+                        .Select(item => item.Fork())
+                        .ToArray(),
+                    continuation.EventDepth);
+            var resolved = ResolveOperations(
+                player,
+                combat,
+                operations,
+                rng,
+                eventDepth: continuation.EventDepth,
+                eventSourceCardInstanceId:
+                    continuation.CombatEvent.SourceCardInstanceId,
+                eventDispatchContinuation:
+                    nextContinuation);
+            player = resolved.Player;
+            combat = resolved.Combat;
+
+            if (combat.PendingChoice is not null)
+            {
+                return (player, combat);
+            }
+
+            combat = FinalizeEventSubscriber(
+                combat,
+                subscriber);
+        }
+
+        if (continuation.CombatEvent.Kind
+            == PrototypeCombatEventKind.PlayerTurnEnded)
+        {
+            combat = combat with
+            {
+                PlayerPowers = combat.PlayerPowers
+                    .Where(power =>
+                        !PrototypeContent.Power(power.PowerId)
+                            .RemoveAtPlayerTurnEnd)
+                    .ToArray()
+            };
+        }
+
+        if (continuation.CombatEvent.Kind
+            == PrototypeCombatEventKind.PlayerTurnStarted)
+        {
+            combat = DecrementPlayerPowers(
+                combat,
+                definition => definition.DecrementAfterPlayerTurnStart);
+        }
+
+        return (player, combat);
+    }
+
+    private static CombatState FinalizeEventSubscriber(
+        CombatState combat,
+        PrototypeEventSubscriberState subscriber)
+    {
+        if (!subscriber.RemoveSourcePowerAfterTrigger)
+        {
+            return combat;
+        }
+
+        if (subscriber.SourcePowerApplicationOrder is null)
+        {
+            throw new InvalidOperationException(
+                "Self-removing power trigger is missing source-power identity.");
+        }
+
+        return RemovePowerInstance(
+            combat,
+            subscriber.SourcePowerApplicationOrder.Value,
+            subscriber.SourcePowerEnemyId);
     }
 
     private static CombatState RemovePowerInstance(
