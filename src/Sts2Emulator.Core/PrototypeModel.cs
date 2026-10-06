@@ -375,6 +375,14 @@ public sealed record CombatCardInstance(
     public CombatCardInstance Fork() => this with { State = State.Clone() };
 }
 
+public sealed record CombatPotionState(
+    int Slot,
+    string PotionId,
+    JsonElement State)
+{
+    public CombatPotionState Fork() => this with { State = State.Clone() };
+}
+
 public sealed record CombatRelicState(
     int PersistentIndex,
     string RelicId,
@@ -418,6 +426,7 @@ public sealed record CombatState(
     PrototypePowerInstanceState[] PlayerPowers,
     long NextPowerApplicationOrder,
     CombatRelicState[]? Relics = null,
+    CombatPotionState[]? Potions = null,
     PendingCombatChoiceState? PendingChoice = null)
 {
     public CombatState Fork() => this with
@@ -432,11 +441,17 @@ public sealed record CombatState(
         Relics = Relics is null
             ? null
             : Relics.Select(relic => relic.Fork()).ToArray(),
+        Potions = Potions is null
+            ? null
+            : Potions.Select(potion => potion.Fork()).ToArray(),
         PendingChoice = PendingChoice?.Fork()
     };
 
     public CombatRelicState[] RelicStates =>
         Relics ?? Array.Empty<CombatRelicState>();
+
+    public CombatPotionState[] PotionStates =>
+        Potions ?? Array.Empty<CombatPotionState>();
 }
 
 public sealed record RewardState(
