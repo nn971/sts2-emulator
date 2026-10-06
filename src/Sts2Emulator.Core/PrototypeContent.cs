@@ -403,6 +403,44 @@ public static class PrototypeContent
                 ],
                 Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
+                "proto.silent.reflex",
+                "Reflex",
+                3,
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.DrawCards, 2, 1)],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Sly: true),
+            new PrototypeCardDefinition(
+                "proto.silent.tactician",
+                "Tactician",
+                3,
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.GainEnergy, 1, 1)],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Sly: true),
+            new PrototypeCardDefinition(
+                "proto.silent.untouchable",
+                "Untouchable",
+                2,
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.GainPlayerBlock, 6, 3)],
+                Rarity: PrototypeCardRarity.Common,
+                Sly: true),
+            new PrototypeCardDefinition(
+                "proto.silent.flick_flack",
+                "Flick-Flack",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        6,
+                        2,
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ],
+                Rarity: PrototypeCardRarity.Common,
+                Sly: true),
+            new PrototypeCardDefinition(
                 "proto.silent.hidden_daggers",
                 "Hidden Daggers",
                 0,

@@ -80,6 +80,7 @@ public enum PrototypeCombatEventKind
     PlayerTurnStarted,
     PlayerTurnEnded,
     CardPlayed,
+    CardDiscarded,
     EnemyDamaged,
     EnemyDefeated
 }
@@ -206,7 +207,8 @@ public sealed record PrototypeCardDefinition(
     bool ExhaustOnUse = false,
     PrototypeCardRarity Rarity = PrototypeCardRarity.Common,
     bool Innate = false,
-    bool Retain = false);
+    bool Retain = false,
+    bool Sly = false);
 
 public sealed record PrototypePotionDefinition(
     string Id,

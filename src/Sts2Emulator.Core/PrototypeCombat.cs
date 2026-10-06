@@ -1263,12 +1263,57 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Selection contains a card outside the pending candidate set.");
         }
 
+        var slyCards = pending.Selection.SourceZone == PrototypeCardZone.Hand
+            && pending.Selection.Resolution == PrototypeCardSelectionResolutionKind.MoveToDiscard
+                ? selected
+                    .Select(cardId => RequireCombatCard(combat, cardId))
+                    .Where(card => PrototypeContent.Card(card.CardId).Sly)
+                    .Select(card => card.InstanceId)
+                    .ToArray()
+                : Array.Empty<long>();
+
         combat = ApplyCardSelection(combat, pending.Selection, selected);
         combat = combat with { PendingChoice = null };
 
+        var player = state.Player;
+        if (pending.Selection.SourceZone == PrototypeCardZone.Hand
+            && pending.Selection.Resolution == PrototypeCardSelectionResolutionKind.MoveToDiscard)
+        {
+            foreach (var cardId in selected)
+            {
+                var discardedCard = RequireCombatCard(combat, cardId);
+                var dispatched = DispatchCombatEvent(
+                    player,
+                    combat,
+                    new PrototypeCombatEvent(
+                        PrototypeCombatEventKind.CardDiscarded,
+                        SourceCardInstanceId: cardId,
+                        CardId: discardedCard.CardId),
+                    state.Rng);
+                player = dispatched.Player;
+                combat = dispatched.Combat;
+            }
+
+            foreach (var slyCardId in slyCards)
+            {
+                var autoPlayed = AutoPlaySlyCard(
+                    player,
+                    combat,
+                    slyCardId,
+                    state.Rng);
+                player = autoPlayed.Player;
+                combat = autoPlayed.Combat;
+
+                if (AllEnemiesDefeated(combat))
+                {
+                    break;
+                }
+            }
+        }
+
         var operations = new Queue<PrototypeQueuedOperation>(pending.Continuation);
         var resolved = ResolveOperations(
-            state.Player,
+            player,
             combat,
             operations,
             state.Rng,
@@ -1285,6 +1330,75 @@ public sealed partial class PrototypeGameEngine
         return AllEnemiesDefeated(resolved.Combat)
             ? EnterReward(state)
             : state;
+    }
+
+    private static (PlayerState Player, CombatState Combat) AutoPlaySlyCard(
+        PlayerState player,
+        CombatState combat,
+        long cardInstanceId,
+        RngBundle rng)
+    {
+        if (!combat.DiscardPile.Contains(cardInstanceId))
+        {
+            throw new InvalidOperationException(
+                $"Sly card {cardInstanceId} must be in the discard pile before auto-play.");
+        }
+
+        var card = RequireCombatCard(combat, cardInstanceId);
+        var definition = PrototypeContent.Card(card.CardId);
+        if (!definition.Sly)
+        {
+            throw new InvalidOperationException(
+                $"Card {cardInstanceId} is not Sly.");
+        }
+
+        // Native CardCmd.AutoPlay receives target=null for SlyDiscard. Self,
+        // all-enemy and intrinsically-random cards resolve targeting inside
+        // their own effect implementation. Explicit enemy-target Sly cards
+        // remain unsupported until native target resolution is modeled.
+        if (definition.Target == PrototypeCardTarget.Enemy)
+        {
+            throw new NotSupportedException(
+                $"Sly auto-play for explicit enemy-target card '{definition.Name}' " +
+                "requires native target-resolution semantics.");
+        }
+
+        combat = combat with
+        {
+            DiscardPile = combat.DiscardPile
+                .Where(id => id != cardInstanceId)
+                .ToArray()
+        };
+
+        var operations = new Queue<PrototypeQueuedOperation>();
+        foreach (var effect in definition.Effects)
+        {
+            EnqueueEffectOperations(
+                operations,
+                effect,
+                card.UpgradeLevel,
+                energySpent: 0,
+                actionTargetEnemyId: null,
+                combat);
+        }
+
+        var sourceDestination = definition.ExhaustOnUse
+            ? PrototypeCardZone.ExhaustPile
+            : PrototypeCardZone.DiscardPile;
+
+        return ResolveOperations(
+            player,
+            combat,
+            operations,
+            rng,
+            cardInstanceId,
+            sourceDestination,
+            [
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardPlayed,
+                    SourceCardInstanceId: cardInstanceId,
+                    CardId: card.CardId)
+            ]);
     }
 
     private static CombatState ApplyCardSelection(
