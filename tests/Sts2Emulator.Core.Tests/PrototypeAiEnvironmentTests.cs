@@ -13,6 +13,9 @@ public sealed class PrototypeAiEnvironmentTests
         var first = environment.Observe(state);
         var second = environment.Observe(state);
 
+        Assert.Equal(PrototypeAiEnvironment.SchemaId, first.SchemaId);
+        Assert.Equal(PrototypeContent.RulesetId, first.Observation.RulesetId);
+        Assert.Equal(PrototypeContent.CharacterId, first.Observation.CharacterId);
         Assert.Equal(
             first.LegalActions.Select(action => action.ActionId),
             second.LegalActions.Select(action => action.ActionId));
