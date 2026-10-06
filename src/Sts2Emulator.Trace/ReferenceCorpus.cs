@@ -266,6 +266,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "condition_target_has_status",
             "dynamic_cost_skills_played",
             "next_skill_free",
+            "next_skill_replay",
             "combat_card_cost_mutation",
             "hand_cards_free_this_turn",
             "no_additional_draw",
@@ -595,6 +596,11 @@ public static partial class ReferenceMechanicsGapAnalyzer
                 "RandomEnemy"))
         {
             features.Add("random_effect");
+        }
+
+        if (NextSkillReplayRegex().IsMatch(description))
+        {
+            features.Add("next_skill_replay");
         }
 
         if (ReplayRegex().IsMatch(description))
@@ -1070,6 +1076,11 @@ public static partial class ReferenceMechanicsGapAnalyzer
 
     [GeneratedRegex(@"\brandom\b", RegexOptions.IgnoreCase)]
     private static partial Regex RandomRegex();
+
+    [GeneratedRegex(
+        @"next\s+(?:(?:\d+|your)\s+)?skills?.*played\s+an\s+extra\s+time",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex NextSkillReplayRegex();
 
     [GeneratedRegex(@"\breplay\b", RegexOptions.IgnoreCase)]
     private static partial Regex ReplayRegex();
