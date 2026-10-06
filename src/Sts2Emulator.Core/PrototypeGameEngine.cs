@@ -61,12 +61,11 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             MaxHp: rules.StartingHp,
             Gold: rules.StartingGold,
             Deck: deck,
-            Relics:
-            [
-                new RelicInstance(
-                    "proto.relic.silent_ring",
-                    PrototypeJson.EmptyObject())
-            ],
+            Relics: PrototypeContent.StartingRelics
+                .Select(relicId => new RelicInstance(
+                    relicId,
+                    PrototypeJson.EmptyObject()))
+                .ToArray(),
             PotionSlots: new PotionInstance?[rules.PotionSlots]);
 
         var world = new RunWorldState(
