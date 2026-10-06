@@ -166,7 +166,25 @@ The audit reports:
 - run/player RNG payload runtime types and semantic leaf paths;
 - CombatHistory entry runtime types and projected payload paths;
 - per-history-type counts of state-changing versus state-preserving observations;
-- one-time runtime type-catalog members discovered by the bridge.
+- one-time runtime type-catalog members and events discovered by the bridge.
+
+The complementary action-evidence command is:
+
+```fish
+dotnet run --project src/Sts2Emulator.Cli -- \
+    reference-probe-actions probe.jsonl
+```
+
+It pairs observed card-play lifecycle entries and identifies evidence-backed candidate states around
+card plays, potion use, and end-turn. Missing decision states remain explicit diagnostics. This
+output is intentionally weaker than `reference-trace-v0.2`: an observed lifecycle marker becomes a
+reference transition only after the bridge can prove the corresponding decision boundary and legal
+action set.
+
+Probe v2 additionally preserves `runtime_type` separately from semantic `Type` properties,
+captures potion/relic inventory state, and catalogs events on core combat state types. The immediate
+goal is to expose nested combat choices such as Survivor's discard prompt without encoding guessed
+hook order.
 
 This layer deliberately avoids mapping native history classes directly to emulator actions. We first
 validate the observed class/member shapes on the pinned build, then define versioned normalization
