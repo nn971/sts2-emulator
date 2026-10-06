@@ -106,3 +106,23 @@ A useful sequence for future work is:
 
 Fidelity and performance remain important, but they are refinement tracks rather than blockers for
 whole-run functionality.
+
+
+## Expressive mechanics now implemented
+
+The prototype now has a first generic suspension mechanism for player prompts:
+
+- combat effects may request a card selection from a declared zone;
+- the engine records the legal candidate set and selection bounds;
+- unresolved effect operations are serialized as a continuation;
+- resolving the player choice moves selected cards according to the resolution rule and resumes the continuation;
+- ordinary combat actions are unavailable while a prompt is pending.
+
+Survivor and Acrobatics exercise choose-and-discard through this mechanism.
+
+Combat card identity is also separated from persistent deck identity. Each combat card records an
+optional persistent-origin ID. This permits deterministic generated/temporary cards and combat-local
+state without mutating the run deck. Blade Dance/Shiv exercise this path, including exhaust-on-use.
+
+These structures are prototype semantics rather than claims about STS2's internal implementation.
+They are designed so native behavior can later be represented without card-ID conditionals.
