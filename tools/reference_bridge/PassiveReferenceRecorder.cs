@@ -140,6 +140,8 @@ internal static class PassiveReferenceRecorder
             _combatManager = manager;
         }
 
+        WriteTypeCatalogOnce(manager.GetType());
+
         foreach (var signal in new[]
         {
             "CombatSetUp",
@@ -158,6 +160,7 @@ internal static class PassiveReferenceRecorder
         var history = GetProperty(manager, "History");
         if (history is not null)
         {
+            WriteTypeCatalogOnce(history.GetType());
             SubscribeIfPresent(
                 history,
                 "Changed",
@@ -178,6 +181,7 @@ internal static class PassiveReferenceRecorder
             var tracker = GetProperty(manager, "StateTracker");
             if (tracker is not null)
             {
+                WriteTypeCatalogOnce(tracker.GetType());
                 SubscribeIfPresent(
                     tracker,
                     "CombatStateChanged",
@@ -453,6 +457,8 @@ internal static class PassiveReferenceRecorder
             return result;
         }
 
+        WriteTypeCatalogOnce(combatState.GetType());
+
         result["combat"] = ReadNamed(
             combatState,
             "CurrentSide",
@@ -510,6 +516,8 @@ internal static class PassiveReferenceRecorder
         var combat = GetProperty(player, "PlayerCombatState");
         if (combat is not null)
         {
+            WriteTypeCatalogOnce(combat.GetType());
+
             result["combat"] = ReadNamed(
                 combat,
                 "Energy",
@@ -531,6 +539,13 @@ internal static class PassiveReferenceRecorder
                     SummarizeCollection(GetProperty(combat, pileName));
             }
         }
+
+        result["potions"] = SummarizeCollection(
+            GetProperty(player, "Potions"));
+        result["potion_slots"] = SummarizeCollection(
+            GetProperty(player, "PotionSlots"));
+        result["relics"] = SummarizeCollection(
+            GetProperty(player, "Relics"));
 
         result["player_rng"] = CaptureRngSet(
             GetProperty(player, "PlayerRng"));
@@ -669,6 +684,8 @@ internal static class PassiveReferenceRecorder
 
         var fullName = value.GetType().FullName ?? string.Empty;
         if (fullName.Contains(".Models.Cards.", StringComparison.Ordinal)
+            || fullName.Contains(".Models.Potions.", StringComparison.Ordinal)
+            || fullName.Contains(".Entities.Cards.CardEnergyCost", StringComparison.Ordinal)
             || fullName.Contains(".Combat.History.Entries.", StringComparison.Ordinal))
         {
             WriteTypeCatalogOnce(value.GetType());
@@ -687,9 +704,24 @@ internal static class PassiveReferenceRecorder
             "UpgradeLevel",
             "UpgradeCount",
             "IsUpgraded",
+            "IsPlayable",
+            "TargetType",
+            "CanonicalEnergyCost",
             "EnergyCost",
             "CurrentEnergyCost",
+            "CurrentStarCost",
+            "HasEnergyCostX",
+            "HasStarCostX",
+            "TemporaryStarCost",
+            "LastStarsSpent",
             "Cost",
+            "Canonical",
+            "CostsX",
+            "HasLocalModifiers",
+            "WasJustUpgraded",
+            "Usage",
+            "IsQueued",
+            "HasBeenRemovedFromState",
             "Target",
             "Owner");
     }
@@ -799,6 +831,7 @@ internal static class PassiveReferenceRecorder
 
         var result = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
+            ["runtime_type"] = projectedType.FullName,
             ["type"] = projectedType.FullName
         };
 
@@ -826,7 +859,7 @@ internal static class PassiveReferenceRecorder
         // SerializableRng in the pinned build exposes its state through fields
         // rather than public getters. Fall back to fields only when public
         // properties yielded no semantic payload.
-        if (result.Count == 1)
+        if (result.Count == 2)
         {
             foreach (var field in value.GetType().GetFields(
                          BindingFlags.Instance |
@@ -895,6 +928,16 @@ internal static class PassiveReferenceRecorder
             .OrderBy(item => item["name"]?.ToString(), StringComparer.Ordinal)
             .ToArray();
 
+        var events = type.GetEvents(flags)
+            .Select(evt => new Dictionary<string, object?>
+            {
+                ["name"] = evt.Name,
+                ["handler_type"] = evt.EventHandlerType?.FullName,
+                ["add_public"] = evt.AddMethod?.IsPublic == true
+            })
+            .OrderBy(item => item["name"]?.ToString(), StringComparer.Ordinal)
+            .ToArray();
+
         WriteRecord(new Dictionary<string, object?>
         {
             ["type"] = "type_catalog",
@@ -904,7 +947,8 @@ internal static class PassiveReferenceRecorder
             ["runtime_type"] = typeName,
             ["base_type"] = type.BaseType?.FullName,
             ["properties"] = properties,
-            ["fields"] = fields
+            ["fields"] = fields,
+            ["events"] = events
         });
     }
 
