@@ -29,7 +29,7 @@ public sealed class ReferenceCorpusTests
                 summary.Tables,
                 table => table.Kind == "cards");
 
-            Assert.Equal(9, cards.Count);
+            Assert.Equal(10, cards.Count);
             Assert.Contains("description", cards.Fields);
             Assert.Contains("target", cards.Fields);
         }
@@ -49,9 +49,9 @@ public sealed class ReferenceCorpusTests
             var report = ReferenceMechanicsGapAnalyzer.Analyze(
                 ReferenceCorpus.Open(root));
 
-            Assert.Equal(9, report.NativeSilentCardCount);
-            Assert.Equal(8, report.NameMatchedCardCount);
-            Assert.Equal(8, report.StructuredFieldMatchCount);
+            Assert.Equal(10, report.NativeSilentCardCount);
+            Assert.Equal(9, report.NameMatchedCardCount);
+            Assert.Equal(9, report.StructuredFieldMatchCount);
             Assert.Equal(1, report.MissingNativeCardCount);
 
             var mystery = Assert.Single(
@@ -131,6 +131,19 @@ public sealed class ReferenceCorpusTests
             Assert.DoesNotContain(
                 "cost_mutation",
                 pounce.RequiredFeatures);
+
+            var upMySleeve = Assert.Single(
+                report.Cards,
+                card => card.NativeId == "UP_MY_SLEEVE");
+            Assert.Contains(
+                "combat_card_cost_mutation",
+                upMySleeve.RequiredFeatures);
+            Assert.DoesNotContain(
+                "combat_card_cost_mutation",
+                upMySleeve.UnsupportedFeatures);
+            Assert.DoesNotContain(
+                "cost_mutation",
+                upMySleeve.RequiredFeatures);
 
             Assert.Empty(report.StartingRunMismatches);
         }
@@ -353,6 +366,29 @@ public sealed class ReferenceCorpusTests
                 "keywords":null,
                 "spawns_cards":null,
                 "upgrade":{"damage":"+6"}
+              },
+              {
+                "id":"UP_MY_SLEEVE",
+                "name":"Up My Sleeve",
+                "description":"Add 3 Shivs into your Hand. Reduce this card's cost by 1.",
+                "cost":2,
+                "is_x_cost":null,
+                "is_x_star_cost":null,
+                "star_cost":null,
+                "type":"Skill",
+                "rarity":"Uncommon",
+                "target":"Self",
+                "color":"silent",
+                "damage":null,
+                "block":null,
+                "hit_count":null,
+                "powers_applied":null,
+                "cards_draw":3,
+                "energy_gain":null,
+                "hp_loss":null,
+                "keywords":null,
+                "spawns_cards":["SHIV"],
+                "upgrade":{"cards":"+1"}
               }
             ]
             """);
