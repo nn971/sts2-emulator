@@ -278,6 +278,72 @@ public sealed class PrototypePowerTests
     }
 
     [Fact]
+    public void NegativeDexterityCannotTurnCardBlockIntoBlockLoss()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var player = new PlayerState(
+            70,
+            70,
+            0,
+            [new CardInstance(77, "proto.silent.defend", 0, empty)],
+            Array.Empty<RelicInstance>(),
+            new PotionInstance?[PrototypeContent.Rules.PotionSlots]);
+
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 2,
+            Hand: [1],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies:
+            [
+                new EnemyCombatState(
+                    1,
+                    "proto.enemy.crawler",
+                    24,
+                    0,
+                    0,
+                    new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 2,
+            Cards:
+            [
+                new CombatCardInstance(
+                    1,
+                    77,
+                    "proto.silent.defend",
+                    0,
+                    false,
+                    empty)
+            ],
+            PlayerPowers:
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.dexterity",
+                    -10,
+                    1)
+            ],
+            NextPowerApplicationOrder: 2);
+
+        var state = CreateState("negative-dex-test", player, combat, 78);
+        var engine = new PrototypeGameEngine();
+
+        var defend = Assert.Single(
+            engine.GetLegalActions(state),
+            action => action.Kind == "play_card");
+        state = engine.Step(state, defend).State;
+
+        Assert.Equal(2, state.World!.Combat!.PlayerBlock);
+        Assert.Equal(
+            -10,
+            Assert.Single(state.World.Combat.PlayerPowers).Stacks);
+        Assert.True(
+            PrototypeContent.Power("proto.power.dexterity").AllowNegative);
+    }
+
+    [Fact]
     public void AbrasiveThornsRetaliatesBeforeDamageAndStopsLaterHits()
     {
         var empty = PrototypeJson.EmptyObject();
