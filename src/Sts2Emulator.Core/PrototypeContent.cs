@@ -406,6 +406,39 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
+                "proto.silent.infinite_blades",
+                "Infinite Blades",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.infinite_blades")
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                InnateOnUpgrade: true,
+                Type: PrototypeCardType.Power),
+            new PrototypeCardDefinition(
+                "proto.silent.suppress",
+                "Suppress",
+                0,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        11,
+                        6),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        3,
+                        2,
+                        StatusId: "proto.status.weak")
+                ],
+                Rarity: PrototypeCardRarity.Ancient,
+                Innate: true,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
                 "proto.silent.anticipate",
                 "Anticipate",
                 0,
@@ -1168,6 +1201,22 @@ public static class PrototypeContent
                             new PrototypeCombatEffectSpec(
                                 PrototypeCombatEffectKind.GainPlayerBlock,
                                 0,
+                                AmountPerPowerStack: 1)
+                        ])
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.infinite_blades",
+                "Infinite Blades",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.BeforeHandDraw,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.CreateCardsInHand,
+                                0,
+                                CardId: "proto.silent.shiv",
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
