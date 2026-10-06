@@ -158,7 +158,7 @@ public static class PrototypeContent
                 "Slice",
                 0,
                 PrototypeCardTarget.Enemy,
-                [new(PrototypeCombatEffectKind.DamageEnemy, 5, 3)]),
+                [new(PrototypeCombatEffectKind.DamageEnemy, 6, 3)]),
             new PrototypeCardDefinition(
                 "proto.silent.acrobatics",
                 "Acrobatics",
@@ -194,7 +194,8 @@ public static class PrototypeContent
                         3,
                         1,
                         CardId: "proto.silent.shiv")
-                ]),
+                ],
+                ExhaustOnUse: true),
             new PrototypeCardDefinition(
                 "proto.silent.dagger_spray",
                 "Dagger Spray",
@@ -271,7 +272,7 @@ public static class PrototypeContent
                 1,
                 PrototypeCardTarget.Enemy,
                 [
-                    new(PrototypeCombatEffectKind.DamageEnemy, 7, 3),
+                    new(PrototypeCombatEffectKind.DamageEnemy, 8, 2),
                     new(
                         PrototypeCombatEffectKind.ApplyEnemyStatus,
                         1,
@@ -310,7 +311,7 @@ public static class PrototypeContent
                 [
                     new(
                         PrototypeCombatEffectKind.DamageEnemy,
-                        7,
+                        8,
                         3,
                         Repetitions: 0,
                         RepetitionsPerEnergySpent: 1)
