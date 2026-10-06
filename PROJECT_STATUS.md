@@ -79,6 +79,17 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
+Static-first Silent mechanics work has now progressed through six gap passes. The engine includes
+source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
+turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
+play-series replay for Burst (including repeated nested choices), and Tools of the Trade's
+hand-draw/post-turn-start discard policy. See
+`docs/reference-builds/v0.111.0-mechanics-gap-006.md`.
+
+The next structural target is a typed delayed-card snapshot/payload, motivated by Nightmare's native
+behavior: clone the selected card at selection time, store that clone in an instanced power, and
+clone it into Hand before the next normal hand draw.
+
 
 ## First live native capture
 
