@@ -406,6 +406,20 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
+                "proto.silent.anticipate",
+                "Anticipate",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        2,
+                        PowerId: "proto.power.temporary_dexterity")
+                ],
+                Rarity: PrototypeCardRarity.Common,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.corrosive_wave",
                 "Corrosive Wave",
                 1,
@@ -1157,6 +1171,13 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
+            new PrototypePowerDefinition(
+                "proto.power.temporary_dexterity",
+                "Temporary Dexterity",
+                BlockBonusPerStack: 1,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                AllowNegative: true,
+                RemoveAtPlayerTurnEnd: true),
             new PrototypePowerDefinition(
                 "proto.power.free_next_skill",
                 "Free Skill",
