@@ -22,6 +22,12 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Audit history/state/RNG shapes for parity work");
     Console.WriteLine("  reference-probe-actions <probe.jsonl>");
     Console.WriteLine("                          Extract evidence-backed native action envelopes");
+    Console.WriteLine("  reference-corpus-summary <eng-dir>");
+    Console.WriteLine("                          Summarize a local version-pinned reference corpus");
+    Console.WriteLine("  reference-corpus-get <eng-dir> <kind> <id-or-name>");
+    Console.WriteLine("                          Print one reference corpus entity");
+    Console.WriteLine("  reference-mechanics-gap <eng-dir> [--json]");
+    Console.WriteLine("                          Compare native Silent mechanics with the prototype");
     return;
 }
 
@@ -195,6 +201,114 @@ switch (args[0])
             {
                 Console.WriteLine($"  diagnostic: {diagnostic}");
             }
+        }
+
+        break;
+    }
+
+    case "reference-corpus-summary":
+    {
+        if (args.Length != 2)
+        {
+            throw new ArgumentException(
+                "reference-corpus-summary requires exactly one corpus eng directory.");
+        }
+
+        var corpus = Sts2Emulator.Trace.ReferenceCorpus.Open(args[1]);
+        var summary = corpus.Summarize();
+        Console.WriteLine($"Root: {summary.RootDirectory}");
+        foreach (var table in summary.Tables)
+        {
+            Console.WriteLine(
+                $"{table.Kind}: {table.Count} entries; fields={string.Join(",", table.Fields)}");
+        }
+
+        break;
+    }
+
+    case "reference-corpus-get":
+    {
+        if (args.Length != 4)
+        {
+            throw new ArgumentException(
+                "reference-corpus-get requires <eng-dir> <kind> <id-or-name>.");
+        }
+
+        var corpus = Sts2Emulator.Trace.ReferenceCorpus.Open(args[1]);
+        var entity = corpus.Resolve(args[2], args[3]);
+        Console.WriteLine(JsonSerializer.Serialize(
+            entity.Data,
+            new JsonSerializerOptions { WriteIndented = true }));
+        break;
+    }
+
+    case "reference-mechanics-gap":
+    {
+        if (args.Length is < 2 or > 3
+            || (args.Length == 3
+                && !StringComparer.Ordinal.Equals(args[2], "--json")))
+        {
+            throw new ArgumentException(
+                "reference-mechanics-gap requires <eng-dir> and optionally --json.");
+        }
+
+        var corpus = Sts2Emulator.Trace.ReferenceCorpus.Open(args[1]);
+        var report = Sts2Emulator.Trace.ReferenceMechanicsGapAnalyzer.Analyze(corpus);
+
+        if (args.Length == 3)
+        {
+            Console.WriteLine(CanonicalJson.Serialize(report));
+            break;
+        }
+
+        Console.WriteLine($"Native Silent cards: {report.NativeSilentCardCount}");
+        Console.WriteLine($"Prototype cards: {report.PrototypeCardCount}");
+        Console.WriteLine($"Name-matched cards: {report.NameMatchedCardCount}");
+        Console.WriteLine(
+            $"Structured-field matches: {report.StructuredFieldMatchCount}/{report.NameMatchedCardCount}");
+        Console.WriteLine($"Missing native card definitions: {report.MissingNativeCardCount}");
+        Console.WriteLine(
+            $"Native cards requiring unsupported features: {report.CardsWithUnsupportedFeatures}");
+
+        Console.WriteLine("Starting-run gaps:");
+        if (report.StartingRunMismatches.Length == 0)
+        {
+            Console.WriteLine("  none");
+        }
+        else
+        {
+            foreach (var mismatch in report.StartingRunMismatches)
+            {
+                Console.WriteLine($"  {mismatch}");
+            }
+        }
+
+        Console.WriteLine("Mechanic coverage:");
+        foreach (var feature in report.FeatureCoverage)
+        {
+            Console.WriteLine(
+                $"  {(feature.PrototypeEngineHasPrimitive ? "covered" : "GAP"),-7} " +
+                $"{feature.Feature}: {feature.NativeSilentCards} cards");
+        }
+
+        Console.WriteLine("Matched cards with structured mismatches:");
+        foreach (var card in report.Cards.Where(
+                     card => card.PrototypeId is not null
+                         && card.StructuredMismatches.Length > 0))
+        {
+            Console.WriteLine(
+                $"  {card.NativeId} -> {card.PrototypeId}: " +
+                string.Join("; ", card.StructuredMismatches));
+        }
+
+        Console.WriteLine("Native cards missing from prototype:");
+        foreach (var card in report.Cards.Where(card => card.PrototypeId is null))
+        {
+            var unsupported = card.UnsupportedFeatures.Length == 0
+                ? string.Empty
+                : $" [gaps: {string.Join(",", card.UnsupportedFeatures)}]";
+            Console.WriteLine(
+                $"  {card.NativeId} ({card.NativeName}){unsupported}");
         }
 
         break;
