@@ -64,7 +64,17 @@ public static class PrototypeContent
                 "Survivor",
                 1,
                 PrototypeCardTarget.None,
-                [new(PrototypeCombatEffectKind.GainPlayerBlock, 8, 3)]),
+                [
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 8, 3),
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            1,
+                            1,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ]),
             new PrototypeCardDefinition(
                 "proto.silent.backflip",
                 "Backflip",
@@ -94,7 +104,17 @@ public static class PrototypeContent
                 "Acrobatics",
                 1,
                 PrototypeCardTarget.None,
-                [new(PrototypeCombatEffectKind.DrawCards, 3, 1)])
+                [
+                    new(PrototypeCombatEffectKind.DrawCards, 3, 1),
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            1,
+                            1,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ])
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
