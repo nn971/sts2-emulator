@@ -313,6 +313,9 @@ public sealed partial class PrototypeGameEngine
             Hand = combat.Hand.Where(id => id != payload.CardInstanceId).ToArray()
         };
 
+        var powerApplicationOrderCeiling =
+            combat.NextPowerApplicationOrder - 1;
+
         var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
@@ -336,7 +339,9 @@ public sealed partial class PrototypeGameEngine
             new PrototypeCombatEvent(
                 PrototypeCombatEventKind.CardPlayed,
                 SourceCardInstanceId: payload.CardInstanceId,
-                CardId: card.CardId)
+                CardId: card.CardId,
+                PowerApplicationOrderCeiling:
+                    powerApplicationOrderCeiling)
         };
 
         var resolved = ResolveOperations(
@@ -1412,7 +1417,10 @@ public sealed partial class PrototypeGameEngine
                 definition.Triggers
                     .Where(trigger =>
                         trigger.EventKind == combatEvent.Kind
-                        && !trigger.RequiresOwnerTarget)
+                        && !trigger.RequiresOwnerTarget
+                        && (combatEvent.PowerApplicationOrderCeiling is null
+                            || power.ApplicationOrder
+                                <= combatEvent.PowerApplicationOrderCeiling.Value))
                     .Select(trigger => new PrototypeEventSubscriber(
                         power.ApplicationOrder,
                         trigger.Effects,
@@ -1429,6 +1437,9 @@ public sealed partial class PrototypeGameEngine
                     definition.Triggers
                         .Where(trigger =>
                             trigger.EventKind == combatEvent.Kind
+                            && (combatEvent.PowerApplicationOrderCeiling is null
+                                || power.ApplicationOrder
+                                    <= combatEvent.PowerApplicationOrderCeiling.Value)
                             && (!trigger.RequiresOwnerTarget
                                 || combatEvent.TargetEnemyId == enemy.InstanceId)
                             && (enemy.Hp > 0
@@ -1687,6 +1698,9 @@ public sealed partial class PrototypeGameEngine
                 .ToArray()
         };
 
+        var powerApplicationOrderCeiling =
+            combat.NextPowerApplicationOrder - 1;
+
         var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
@@ -1716,7 +1730,9 @@ public sealed partial class PrototypeGameEngine
                 new PrototypeCombatEvent(
                     PrototypeCombatEventKind.CardPlayed,
                     SourceCardInstanceId: cardInstanceId,
-                    CardId: card.CardId)
+                    CardId: card.CardId,
+                    PowerApplicationOrderCeiling:
+                        powerApplicationOrderCeiling)
             ]);
     }
 
