@@ -643,6 +643,23 @@ public sealed partial class PrototypeGameEngine
                     {
                         case PrototypeEnemyEffectKind.DamagePlayer:
                         {
+                            var retaliation = PlayerAttackRetaliation(combat);
+                            if (retaliation > 0 && enemy.Hp > 0)
+                            {
+                                var retaliationBlocked = Math.Min(
+                                    enemy.Block,
+                                    retaliation);
+                                enemy = enemy with
+                                {
+                                    Block = enemy.Block - retaliationBlocked,
+                                    Hp = Math.Max(
+                                        0,
+                                        enemy.Hp - Math.Max(
+                                            0,
+                                            retaliation - retaliationBlocked))
+                                };
+                            }
+
                             var damage = amount;
                             foreach (var status in enemy.Statuses)
                             {
@@ -665,13 +682,13 @@ public sealed partial class PrototypeGameEngine
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    if (hp <= 0)
+                    if (hp <= 0 || enemy.Hp <= 0)
                     {
                         break;
                     }
                 }
 
-                if (hp <= 0)
+                if (hp <= 0 || enemy.Hp <= 0)
                 {
                     break;
                 }
@@ -1016,6 +1033,10 @@ public sealed partial class PrototypeGameEngine
     private static int PlayerBlockBonus(CombatState combat) =>
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
+
+    private static int PlayerAttackRetaliation(CombatState combat) =>
+        combat.PlayerPowers.Sum(power =>
+            PrototypeContent.Power(power.PowerId).AttackRetaliationPerStack * power.Stacks);
 
     private static CombatState ApplyPlayerPower(
         CombatState combat,
