@@ -15,7 +15,8 @@ public sealed class ReferenceProbeActionExtractorTests
         {
             File.WriteAllLines(
                 path,
-                [
+                new[]
+                {
                     Boundary(
                         1,
                         "combat_manager.TurnStarted",
@@ -80,7 +81,7 @@ public sealed class ReferenceProbeActionExtractorTests
                             energy: 3,
                             hand: [Card("DEFEND_SILENT")],
                             play: []))
-                ]);
+                }.Select(Compact));
 
             var report = ReferenceProbeActionExtractor.Analyze(path);
 
@@ -135,7 +136,8 @@ public sealed class ReferenceProbeActionExtractorTests
         {
             File.WriteAllLines(
                 path,
-                [
+                new[]
+                {
                     HistoryBoundary(
                         1,
                         "h1",
@@ -144,7 +146,7 @@ public sealed class ReferenceProbeActionExtractorTests
                             energy: 3,
                             hand: [Card("STRIKE_SILENT")],
                             play: []))
-                ]);
+                }.Select(Compact));
 
             var report = ReferenceProbeActionExtractor.Analyze(path);
 
@@ -166,6 +168,9 @@ public sealed class ReferenceProbeActionExtractorTests
             File.Delete(path);
         }
     }
+
+    private static string Compact(string value) =>
+        value.Replace("\r", string.Empty).Replace("\n", string.Empty);
 
     private static string Boundary(
         long sequence,
