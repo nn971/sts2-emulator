@@ -1,5 +1,41 @@
 # Native reference bridge
 
+The bridge is tied to an **installed build fingerprint**, not to a version string copied into source.
+Before inspecting or building against the game, run:
+
+```fish
+dotnet run --project src/Sts2Emulator.Cli -- reference-preflight "/path/to/Slay the Spire 2"
+```
+
+If the install contains more than one `data_sts2_*` directory, pass the intended data directory
+as the second argument.
+
+The preflight manifest records:
+
+- the full `release_info.json` value;
+- the target framework from `sts2.runtimeconfig.json`;
+- SHA-256 and size for `sts2.dll`, `0Harmony.dll`, and `GodotSharp.dll`;
+- a stable build fingerprint that excludes local paths and capture time.
+
+This follows the same maintenance principle as current STS2 modding guidance: compile against the
+assemblies shipped by the exact installed build and re-check release/runtime metadata after game
+updates. The repository does **not** vendor those game assemblies.
+
+## Trace protocol
+
+New native capture work should emit `schemas/reference-trace-v0.2.schema.json` using the
+`Reference*V02` models in `Sts2Emulator.Trace`.
+
+The v0.2 trace is intentionally native-neutral:
+
+- semantic state is JSON rather than `RunState`;
+- legal actions are normalized semantic action objects;
+- RNG streams carry semantic IDs, codec IDs, fingerprints, and optional full codec state;
+- the trace header embeds the build identity and stable fingerprint.
+
+The older bootstrap trace model remains available for existing tests/tools, but native bridge work
+should not force live-game state into the prototype emulator model.
+
 The first implementation sprint should build a small instrumentation mod whose job is to turn the live game into a semantic oracle.
 
 ## Responsibilities
