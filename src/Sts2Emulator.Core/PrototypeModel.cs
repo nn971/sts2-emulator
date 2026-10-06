@@ -55,8 +55,21 @@ public enum PrototypeCombatEffectKind
     GainEnergy,
     MultiplyEnemyStatus,
     GainPlayerBlockAndApplyPowerFromActualGain,
-    ModifySourceCardEnergyCost
+    ModifySourceCardEnergyCost,
+    SetHandCardsEnergyCostUntilTurnEndOrPlayed
 }
+
+[Flags]
+public enum PrototypeTemporaryCardCostExpiry
+{
+    None = 0,
+    EndOfTurn = 1,
+    WhenPlayed = 2
+}
+
+public sealed record PrototypeTemporaryCardCost(
+    int Cost,
+    PrototypeTemporaryCardCostExpiry Expiry);
 
 public enum PrototypeCardZone
 {
@@ -347,7 +360,8 @@ public sealed record PrototypePowerDefinition(
     bool RemoveAfterEnergyReset = false,
     bool RemoveAfterHandDraw = false,
     PrototypeCardType? FreeCardType = null,
-    bool ConsumeOnMatchingCardPlay = false);
+    bool ConsumeOnMatchingCardPlay = false,
+    bool PreventsAdditionalDraw = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -517,7 +531,8 @@ public sealed record CombatCardInstance(
     int UpgradeLevel,
     bool IsTemporary,
     JsonElement State,
-    int CombatEnergyCostDelta = 0)
+    int CombatEnergyCostDelta = 0,
+    PrototypeTemporaryCardCost? TemporaryEnergyCost = null)
 {
     public CombatCardInstance Fork() => this with { State = State.Clone() };
 }
