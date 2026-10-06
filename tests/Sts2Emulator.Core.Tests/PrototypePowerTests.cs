@@ -209,6 +209,65 @@ public sealed class PrototypePowerTests
         Assert.Equal(new long[] { 2, 1 }, state.World.Combat.DiscardPile);
     }
 
+
+    [Fact]
+    public void EnemyDamagedEventCarriesTargetIntoReactivePower()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var player = new PlayerState(
+            70,
+            70,
+            0,
+            [new CardInstance(80, "proto.silent.strike", 0, empty)],
+            Array.Empty<RelicInstance>(),
+            new PotionInstance?[PrototypeContent.Rules.PotionSlots]);
+
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [1],
+            DrawPile: Array.Empty<long>(),
+            DiscardPile: Array.Empty<long>(),
+            ExhaustPile: Array.Empty<long>(),
+            Enemies:
+            [
+                new EnemyCombatState(
+                    1,
+                    "proto.enemy.crawler",
+                    24,
+                    0,
+                    0,
+                    new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 2,
+            Cards:
+            [
+                new CombatCardInstance(1, 80, "proto.silent.strike", 0, false, empty)
+            ],
+            PlayerPowers:
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.envenom",
+                    2,
+                    1)
+            ],
+            NextPowerApplicationOrder: 2);
+
+        var state = CreateState("damage-event-test", player, combat, 81);
+        var engine = new PrototypeGameEngine();
+
+        var play = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "play_card");
+
+        state = engine.Step(state, play).State;
+        PrototypeStateInvariants.Validate(state);
+
+        var enemy = Assert.Single(state.World!.Combat!.Enemies);
+        Assert.Equal(18, enemy.Hp);
+        Assert.Equal(2, enemy.Statuses["proto.status.poison"]);
+    }
+
     private static RunState CreateState(
         string seed,
         PlayerState player,
