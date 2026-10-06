@@ -463,6 +463,24 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Common,
                 Sly: true),
             new PrototypeCardDefinition(
+                "proto.silent.abrasive",
+                "Abrasive",
+                3,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.dexterity"),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        4,
+                        2,
+                        PowerId: "proto.power.thorns")
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Sly: true),
+            new PrototypeCardDefinition(
                 "proto.silent.ricochet",
                 "Ricochet",
                 2,
@@ -864,10 +882,11 @@ public static class PrototypeContent
                             new PrototypeCombatEffectSpec(
                                 PrototypeCombatEffectKind.DamagePlayer,
                                 0,
-                                AmountPerPowerStack: 2)
+                                AmountPerPowerStack: 1)
                         ],
                         RequiresOwnerTarget: true)
-                ])
+                ],
+                AttackRetaliationPerStack: 1)
         }.ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
