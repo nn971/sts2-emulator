@@ -555,6 +555,30 @@ public static class PrototypeContent
                 ],
                 Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
+                "proto.silent.hand_trick",
+                "Hand Trick",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 7, 3),
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            1,
+                            1,
+                            PrototypeCardSelectionResolutionKind.Preserve,
+                            RequiredCardType: PrototypeCardType.Skill),
+                        SelectedCardKeyword: new(
+                            PrototypeCardKeyword.Sly,
+                            Expiry:
+                                PrototypeCardKeywordOverrideExpiry.EndOfTurn))
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
+
+            new PrototypeCardDefinition(
                 "proto.silent.concentrate",
                 "Concentrate",
                 0,
