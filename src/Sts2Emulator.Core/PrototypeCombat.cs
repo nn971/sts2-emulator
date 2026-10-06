@@ -605,7 +605,15 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.ResetPlayerBlock:
             {
-                combat = combat with { PlayerBlock = 0 };
+                var preventsBlockClear = combat.PlayerPowers.Any(power =>
+                    power.Stacks > 0
+                    && PrototypeContent.Power(power.PowerId)
+                        .PreventsPlayerBlockClear);
+                if (!preventsBlockClear)
+                {
+                    combat = combat with { PlayerBlock = 0 };
+                }
+
                 var delayedBlock = combat.PlayerPowers.Sum(power =>
                     PrototypeContent.Power(power.PowerId)
                         .BlockAfterClearPerStack * power.Stacks);
@@ -1286,6 +1294,26 @@ public sealed partial class PrototypeGameEngine
         return (player, combat);
     }
 
+    private static CombatState DecrementPlayerPowers(
+        CombatState combat,
+        Func<PrototypePowerDefinition, bool> predicate)
+    {
+        var powers = combat.PlayerPowers
+            .Select(power =>
+            {
+                if (!predicate(PrototypeContent.Power(power.PowerId)))
+                {
+                    return power;
+                }
+
+                return power with { Stacks = power.Stacks - 1 };
+            })
+            .Where(power => power.Stacks > 0)
+            .ToArray();
+
+        return combat with { PlayerPowers = powers };
+    }
+
     private static CombatState RemovePlayerPowers(
         CombatState combat,
         Func<PrototypePowerDefinition, bool> predicate) =>
@@ -1928,6 +1956,13 @@ public sealed partial class PrototypeGameEngine
                             .RemoveAtPlayerTurnEnd)
                     .ToArray()
             };
+        }
+
+        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnStarted)
+        {
+            combat = DecrementPlayerPowers(
+                combat,
+                definition => definition.DecrementAfterPlayerTurnStart);
         }
 
         return (player, combat);
