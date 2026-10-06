@@ -50,7 +50,7 @@ public sealed class PrototypeRandomTargetTests
         Assert.Equal(15, totalDamage);
     }
 
-    private static long StreamCalls(RunState state, string streamId) =>
+    private static ulong StreamCalls(RunState state, string streamId) =>
         state.Rng.Streams
             .Single(stream => stream.StreamId == streamId)
             .CallCount
