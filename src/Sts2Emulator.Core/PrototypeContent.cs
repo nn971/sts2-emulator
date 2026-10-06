@@ -100,14 +100,16 @@ public static class PrototypeContent
                 1,
                 PrototypeCardTarget.Enemy,
                 [new(PrototypeCombatEffectKind.DamageEnemy, 6, 3)],
-                Rarity: PrototypeCardRarity.Basic),
+                Rarity: PrototypeCardRarity.Basic,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.defend",
                 "Defend",
                 1,
                 PrototypeCardTarget.None,
                 [new(PrototypeCombatEffectKind.GainPlayerBlock, 5, 3)],
-                Rarity: PrototypeCardRarity.Basic),
+                Rarity: PrototypeCardRarity.Basic,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.neutralize",
                 "Neutralize",
@@ -117,7 +119,8 @@ public static class PrototypeContent
                     new(PrototypeCombatEffectKind.DamageEnemy, 3, 1),
                     new(PrototypeCombatEffectKind.ApplyEnemyStatus, 1, 1, "proto.status.weak")
                 ],
-                Rarity: PrototypeCardRarity.Basic),
+                Rarity: PrototypeCardRarity.Basic,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.survivor",
                 "Survivor",
@@ -134,7 +137,8 @@ public static class PrototypeContent
                             1,
                             PrototypeCardSelectionResolutionKind.MoveToDiscard))
                 ],
-                Rarity: PrototypeCardRarity.Basic),
+                Rarity: PrototypeCardRarity.Basic,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.backflip",
                 "Backflip",
@@ -152,13 +156,15 @@ public static class PrototypeContent
                 [
                     new(PrototypeCombatEffectKind.DamageEnemy, 6, 2),
                     new(PrototypeCombatEffectKind.ApplyEnemyStatus, 3, 2, "proto.status.poison")
-                ]),
+                ],
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.slice",
                 "Slice",
                 0,
                 PrototypeCardTarget.Enemy,
-                [new(PrototypeCombatEffectKind.DamageEnemy, 6, 3)]),
+                [new(PrototypeCombatEffectKind.DamageEnemy, 6, 3)],
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.acrobatics",
                 "Acrobatics",
@@ -183,7 +189,8 @@ public static class PrototypeContent
                 [new(PrototypeCombatEffectKind.DamageEnemy, 4)],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Token,
-                RewardEligible: false),
+                RewardEligible: false,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.status.dazed",
                 "Dazed",
@@ -230,7 +237,8 @@ public static class PrototypeContent
                         2,
                         Target: PrototypeEffectTarget.AllEnemies,
                         Repetitions: 2)
-                ]),
+                ],
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.deadly_poison",
                 "Deadly Poison",
@@ -251,7 +259,8 @@ public static class PrototypeContent
                 [
                     new(PrototypeCombatEffectKind.DamageEnemy, 8, 3),
                     new(PrototypeCombatEffectKind.DrawCards, 1)
-                ]),
+                ],
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.dagger_throw",
                 "Dagger Throw",
@@ -268,7 +277,8 @@ public static class PrototypeContent
                             1,
                             1,
                             PrototypeCardSelectionResolutionKind.MoveToDiscard))
-                ]),
+                ],
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.cloak_and_dagger",
                 "Cloak and Dagger",
@@ -300,7 +310,8 @@ public static class PrototypeContent
                         1,
                         1,
                         StatusId: "proto.status.weak")
-                ]),
+                ],
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.dash",
                 "Dash",
@@ -310,7 +321,8 @@ public static class PrototypeContent
                     new(PrototypeCombatEffectKind.DamageEnemy, 10, 3),
                     new(PrototypeCombatEffectKind.GainPlayerBlock, 10, 3)
                 ],
-                Rarity: PrototypeCardRarity.Uncommon),
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.leg_sweep",
                 "Leg Sweep",
@@ -338,7 +350,8 @@ public static class PrototypeContent
                         Repetitions: 0,
                         RepetitionsPerEnergySpent: 1)
                 ],
-                Rarity: PrototypeCardRarity.Uncommon),
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.footwork",
                 "Footwork",
@@ -461,7 +474,8 @@ public static class PrototypeContent
                         Target: PrototypeEffectTarget.AllEnemies)
                 ],
                 Rarity: PrototypeCardRarity.Common,
-                Sly: true),
+                Sly: true,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.abrasive",
                 "Abrasive",
@@ -479,7 +493,8 @@ public static class PrototypeContent
                         PowerId: "proto.power.thorns")
                 ],
                 Rarity: PrototypeCardRarity.Rare,
-                Sly: true),
+                Sly: true,
+                Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.ricochet",
                 "Ricochet",
@@ -494,7 +509,8 @@ public static class PrototypeContent
                         RepetitionUpgradeDelta: 1)
                 ],
                 Rarity: PrototypeCardRarity.Common,
-                Sly: true),
+                Sly: true,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.hidden_daggers",
                 "Hidden Daggers",
@@ -548,7 +564,28 @@ public static class PrototypeContent
                         2,
                         CardId: "proto.silent.shiv")
                 ],
-                Rarity: PrototypeCardRarity.Common),
+                Rarity: PrototypeCardRarity.Common,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
+                "proto.silent.assassinate",
+                "Assassinate",
+                0,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        10,
+                        3),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        1,
+                        1,
+                        StatusId: "proto.status.vulnerable")
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Rare,
+                Innate: true,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.backstab",
                 "Backstab",
@@ -557,7 +594,8 @@ public static class PrototypeContent
                 [new(PrototypeCombatEffectKind.DamageEnemy, 11, 4)],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Uncommon,
-                Innate: true),
+                Innate: true,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.snakebite",
                 "Snakebite",
@@ -655,7 +693,8 @@ public static class PrototypeContent
                         Target: PrototypeEffectTarget.AllEnemies)
                 ],
                 ExhaustOnUse: true,
-                Rarity: PrototypeCardRarity.Rare),
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.predator",
                 "Predator",
@@ -664,7 +703,8 @@ public static class PrototypeContent
                 [
                     new(PrototypeCombatEffectKind.DamageEnemy, 15, 5)
                 ],
-                Rarity: PrototypeCardRarity.Uncommon)
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack)
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
@@ -1053,7 +1093,13 @@ public static class PrototypeContent
                 DecayStage: PrototypeTurnStage.EnemyTurnEnd,
                 DecayAtStage: 1,
                 OutgoingDamageNumerator: 3,
-                OutgoingDamageDenominator: 4)
+                OutgoingDamageDenominator: 4),
+            new PrototypeStatusDefinition(
+                "proto.status.vulnerable",
+                DecayStage: PrototypeTurnStage.EnemyTurnEnd,
+                DecayAtStage: 1,
+                IncomingAttackDamageNumerator: 3,
+                IncomingAttackDamageDenominator: 2)
         }.ToDictionary(status => status.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEventDefinition> Events { get; } =
