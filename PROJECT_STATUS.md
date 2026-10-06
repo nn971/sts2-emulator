@@ -42,12 +42,11 @@ See `docs/PROTOTYPE_SCOPE.md`.
 Still to do:
 
 - integrate the prototype AI adapter from the parent `sts2-ai` project;
-- continue Silent/content breadth only where it creates strategic variety;
-- richer map topology/pool-history rules if AI experiments show value;
-- pin and inventory a reference STS2 build;
-- native STS2 data translation/import;
+- replace prototype content/generation from the pinned structured reference corpus;
+- translate exact Silent mechanics from structured data plus decompiled source;
 - native RNG/timing parity;
-- reference bridge and differential testing;
+- legal-action and nested-choice parity;
+- focused reference-bridge differential testing for unresolved runtime questions;
 - performance work driven by representative AI/search workloads;
 - production cross-language binding and compatibility negotiation.
 
@@ -62,7 +61,15 @@ The first pinned native oracle is STS2 `v0.111.0` / commit `41cef1ea`, fingerpri
 
 Implemented native-fidelity groundwork now includes build fingerprinting, metadata inspection,
 the native-neutral reference-trace v0.2 contract, a single-DLL passive reference recorder staged
-outside the clean oracle, and emulator-side structured probe auditing for history/state/RNG shapes.
+outside the clean oracle, emulator-side structured probe auditing for history/state/RNG shapes, and
+a static-first reference-data strategy.
+
+The exact Spire Codex beta archive for `v0.111.0` has been verified to contain structured cards,
+characters, relics, potions, powers, monsters, encounters, events, acts, ascensions, afflictions,
+enchantments, keywords, intents, orbs, modifiers, rest-site options and progression metadata.
+Local sync and pinned-`sts2.dll` decompilation helpers now live under `tools/reference_source/`.
+The external corpus and decompiled source are deliberately gitignored and must not be redistributed.
+See `docs/REFERENCE_DATA_STRATEGY.md`.
 
 
 ## First live native capture
