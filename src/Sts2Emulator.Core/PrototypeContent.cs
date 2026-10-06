@@ -367,7 +367,65 @@ public static class PrototypeContent
                         0,
                         PowerId: "proto.power.afterimage")
                 ],
-                Rarity: PrototypeCardRarity.Rare)
+                Rarity: PrototypeCardRarity.Rare),
+            new PrototypeCardDefinition(
+                "proto.silent.prepared",
+                "Prepared",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.DrawCards, 1, 1),
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            1,
+                            1,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.concentrate",
+                "Concentrate",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            3,
+                            3,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard)),
+                    new(PrototypeCombatEffectKind.GainEnergy, 2, 1)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon),
+            new PrototypeCardDefinition(
+                "proto.silent.adrenaline",
+                "Adrenaline",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainEnergy, 1, 1),
+                    new(PrototypeCombatEffectKind.DrawCards, 2)
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Rare),
+            new PrototypeCardDefinition(
+                "proto.silent.catalyst",
+                "Catalyst",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.MultiplyEnemyStatus,
+                        2,
+                        1,
+                        StatusId: "proto.status.poison")
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Uncommon)
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
