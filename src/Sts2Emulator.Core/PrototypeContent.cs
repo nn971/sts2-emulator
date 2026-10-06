@@ -533,6 +533,23 @@ public static class PrototypeContent
                 ],
                 Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
+                "proto.silent.bubble_bubble",
+                "Bubble Bubble",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        9,
+                        3,
+                        StatusId: "proto.status.poison",
+                        Condition: new(
+                            PrototypeCombatPredicateKind.TargetHasStatus,
+                            "proto.status.poison"))
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.haze",
                 "Haze",
                 2,
@@ -680,6 +697,22 @@ public static class PrototypeContent
                 ],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Uncommon),
+            new PrototypeCardDefinition(
+                "proto.silent.grand_finale",
+                "Grand Finale",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        60,
+                        15,
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Attack,
+                PlayCondition: new(
+                    PrototypeCombatPredicateKind.DrawPileEmpty)),
             new PrototypeCardDefinition(
                 "proto.silent.die_die_die",
                 "Die Die Die",
