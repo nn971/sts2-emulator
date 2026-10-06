@@ -32,7 +32,18 @@ public sealed partial class PrototypeGameEngine
             })
             .ToArray();
 
-        var drawPile = state.Player.Deck.Select(card => card.InstanceId).ToArray();
+        var nextCombatCardId = 1L;
+        var combatCards = state.Player.Deck
+            .Select(card => new CombatCardInstance(
+                InstanceId: nextCombatCardId++,
+                PersistentCardInstanceId: card.InstanceId,
+                CardId: card.CardId,
+                UpgradeLevel: card.UpgradeLevel,
+                IsTemporary: false,
+                State: card.PersistentState.Clone()))
+            .ToArray();
+
+        var drawPile = combatCards.Select(card => card.InstanceId).ToArray();
         PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
 
         var combat = new CombatState(
@@ -43,7 +54,9 @@ public sealed partial class PrototypeGameEngine
             DrawPile: drawPile,
             DiscardPile: Array.Empty<long>(),
             ExhaustPile: Array.Empty<long>(),
-            Enemies: enemies);
+            Enemies: enemies,
+            NextCardInstanceId: nextCombatCardId,
+            Cards: combatCards);
 
         combat = DrawCards(
             combat,
@@ -73,7 +86,7 @@ public sealed partial class PrototypeGameEngine
 
         foreach (var instanceId in combat.Hand)
         {
-            var card = RequireCard(state.Player, instanceId);
+            var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
             if (definition.Cost > combat.Energy)
             {
@@ -157,7 +170,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is not in hand.");
         }
 
-        var card = RequireCard(state.Player, payload.CardInstanceId);
+        var card = RequireCombatCard(combat, payload.CardInstanceId);
         var definition = PrototypeContent.Card(card.CardId);
         if (definition.Cost > combat.Energy)
         {
@@ -180,15 +193,21 @@ public sealed partial class PrototypeGameEngine
                 effect.AmountAtUpgrade(card.UpgradeLevel),
                 payload.TargetEnemyId,
                 effect.StatusId,
-                effect.Selection));
+                effect.Selection,
+                effect.CardId));
         }
+
+        var sourceDestination = definition.ExhaustOnUse
+            ? PrototypeCardZone.ExhaustPile
+            : PrototypeCardZone.DiscardPile;
 
         var resolved = ResolveOperations(
             state.Player,
             combat,
             operations,
             state.Rng,
-            payload.CardInstanceId);
+            payload.CardInstanceId,
+            sourceDestination);
         combat = resolved.Combat;
 
         state = state with
