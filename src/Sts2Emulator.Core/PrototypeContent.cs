@@ -406,6 +406,20 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
+                "proto.silent.corrosive_wave",
+                "Corrosive Wave",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        1,
+                        PowerId: "proto.power.corrosive_wave")
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.serpent_form",
                 "Serpent Form",
                 3,
@@ -1080,6 +1094,24 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
+            new PrototypePowerDefinition(
+                "proto.power.corrosive_wave",
+                "Corrosive Wave",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardDrawn,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyEnemyStatus,
+                                0,
+                                StatusId: "proto.status.poison",
+                                Target: PrototypeEffectTarget.AllEnemies,
+                                AmountPerPowerStack: 1)
+                        ])
+                ],
+                RemoveAtPlayerTurnEnd: true),
             new PrototypePowerDefinition(
                 "proto.power.serpent_form",
                 "Serpent Form",
