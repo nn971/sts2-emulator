@@ -173,7 +173,8 @@ public sealed class PrototypeChoiceTests
 
         combat = state.World!.Combat!;
         Assert.Equal(3, combat.Hand.Length);
-        Assert.Equal(new long[] { 1 }, combat.DiscardPile);
+        Assert.Empty(combat.DiscardPile);
+        Assert.Equal(new long[] { 1 }, combat.ExhaustPile);
         Assert.All(
             combat.Hand,
             id =>
