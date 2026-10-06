@@ -202,10 +202,10 @@ public sealed partial class PrototypeGameEngine
             var isFreeByPower = IsCardFreeByPower(combat, definition);
             if (definition.Unplayable
                 || (!isFreeByPower
-                    && !definition.Cost.IsPlayable(
-                        combat.Energy,
-                        card.UpgradeLevel,
-                        ResolveCardCostReductionCount(definition.Cost, combat)))
+                    && !IsCardAffordable(
+                        combat,
+                        card,
+                        definition))
                 || !EvaluateCombatPredicate(
                     definition.PlayCondition,
                     combat,
@@ -301,10 +301,10 @@ public sealed partial class PrototypeGameEngine
 
         var isFreeByPower = IsCardFreeByPower(combat, definition);
         if (!isFreeByPower
-            && !definition.Cost.IsPlayable(
-                combat.Energy,
-                card.UpgradeLevel,
-                ResolveCardCostReductionCount(definition.Cost, combat)))
+            && !IsCardAffordable(
+                combat,
+                card,
+                definition))
         {
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is unaffordable.");
         }
@@ -321,10 +321,10 @@ public sealed partial class PrototypeGameEngine
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
         var energySpent = isFreeByPower
             ? 0
-            : definition.Cost.ResolveEnergySpent(
-                combat.Energy,
-                card.UpgradeLevel,
-                ResolveCardCostReductionCount(definition.Cost, combat));
+            : ResolveCardEnergySpent(
+                combat,
+                card,
+                definition);
 
         combat = combat with
         {
@@ -1182,6 +1182,19 @@ public sealed partial class PrototypeGameEngine
                     };
                     break;
 
+                case PrototypeCombatEffectKind.ModifySourceCardEnergyCost:
+                    if (sourceCardInstanceId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Source-card cost mutation requires a source card.");
+                    }
+
+                    combat = ModifyCombatCardEnergyCost(
+                        combat,
+                        sourceCardInstanceId.Value,
+                        operation.Amount);
+                    break;
+
                 case PrototypeCombatEffectKind.MultiplyEnemyStatus:
                     if (targetEnemyId is null || operation.StatusId is null)
                     {
@@ -1322,6 +1335,77 @@ public sealed partial class PrototypeGameEngine
         }
 
         return combat with { PlayerPowers = powers.ToArray() };
+    }
+
+    private static bool IsCardAffordable(
+        CombatState combat,
+        CombatCardInstance card,
+        PrototypeCardDefinition definition) =>
+        definition.Cost.Kind switch
+        {
+            PrototypeCardCostKind.Fixed =>
+                ResolveFixedCardEnergyCost(
+                    combat,
+                    card,
+                    definition) <= combat.Energy,
+            PrototypeCardCostKind.X => true,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+    private static int ResolveCardEnergySpent(
+        CombatState combat,
+        CombatCardInstance card,
+        PrototypeCardDefinition definition) =>
+        definition.Cost.Kind switch
+        {
+            PrototypeCardCostKind.Fixed =>
+                ResolveFixedCardEnergyCost(
+                    combat,
+                    card,
+                    definition),
+            PrototypeCardCostKind.X => combat.Energy,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+    private static int ResolveFixedCardEnergyCost(
+        CombatState combat,
+        CombatCardInstance card,
+        PrototypeCardDefinition definition)
+    {
+        var baseCost = definition.Cost.AmountAt(
+            card.UpgradeLevel,
+            ResolveCardCostReductionCount(
+                definition.Cost,
+                combat));
+
+        return Math.Max(
+            0,
+            baseCost + card.CombatEnergyCostDelta);
+    }
+
+    private static CombatState ModifyCombatCardEnergyCost(
+        CombatState combat,
+        long cardInstanceId,
+        int delta)
+    {
+        var cards = combat.Cards
+            .Select(card =>
+                card.InstanceId == cardInstanceId
+                    ? card with
+                    {
+                        CombatEnergyCostDelta =
+                            card.CombatEnergyCostDelta + delta
+                    }
+                    : card)
+            .ToArray();
+
+        if (!cards.Any(card => card.InstanceId == cardInstanceId))
+        {
+            throw new InvalidOperationException(
+                $"Combat card instance {cardInstanceId} is missing.");
+        }
+
+        return combat with { Cards = cards };
     }
 
     private static int ResolveCardCostReductionCount(
