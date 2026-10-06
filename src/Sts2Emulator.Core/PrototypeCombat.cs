@@ -842,6 +842,27 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.GainEnergy:
+                    combat = combat with
+                    {
+                        Energy = combat.Energy + Math.Max(0, operation.Amount)
+                    };
+                    break;
+
+                case PrototypeCombatEffectKind.MultiplyEnemyStatus:
+                    if (operation.TargetEnemyId is null || operation.StatusId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Multiply-status operation requires target and status ID.");
+                    }
+
+                    combat = MultiplyEnemyStatus(
+                        combat,
+                        operation.TargetEnemyId.Value,
+                        operation.StatusId,
+                        operation.Amount);
+                    break;
+
                 case PrototypeCombatEffectKind.CreateCardsInHand:
                 {
                     if (operation.CardId is null)
@@ -1391,6 +1412,47 @@ public sealed partial class PrototypeGameEngine
             combat with { Enemies = enemies },
             damageDealt,
             Defeated: enemy.Hp > 0 && nextHp == 0);
+    }
+
+    private static CombatState MultiplyEnemyStatus(
+        CombatState combat,
+        int enemyId,
+        string statusId,
+        int multiplier)
+    {
+        _ = PrototypeContent.Status(statusId);
+        if (multiplier < 0)
+        {
+            throw new InvalidOperationException("Status multiplier cannot be negative.");
+        }
+
+        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
+        var index = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
+        if (index < 0)
+        {
+            throw new InvalidOperationException($"Enemy {enemyId} is missing.");
+        }
+
+        var enemy = enemies[index];
+        if (enemy.Hp <= 0)
+        {
+            return combat;
+        }
+
+        var statuses = new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal);
+        var current = statuses.GetValueOrDefault(statusId);
+        var next = current * multiplier;
+        if (next > 0)
+        {
+            statuses[statusId] = next;
+        }
+        else
+        {
+            statuses.Remove(statusId);
+        }
+
+        enemies[index] = enemy with { Statuses = statuses };
+        return combat with { Enemies = enemies };
     }
 
     private static CombatState ApplyEnemyStatus(
