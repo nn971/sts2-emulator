@@ -279,7 +279,8 @@ public sealed record PrototypeCardSelectionSpec(
     int MinSelections,
     int MaxSelections,
     PrototypeCardSelectionResolutionKind Resolution,
-    PrototypeCardType? RequiredCardType = null);
+    PrototypeCardType? RequiredCardType = null,
+    int SelectionsPerPowerStack = 0);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
