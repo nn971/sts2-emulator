@@ -142,6 +142,36 @@ Prefer stable semantic identifiers over screen coordinates.
 
 Start with JSONL because it is inspectable and robust during schema churn. Optimize storage only after traces are stable and large enough for I/O to matter.
 
+## Probe audit workflow
+
+Probe v1 captures raw native observations without assigning semantic meaning to native runtime
+classes. The emulator-side audit tool turns those observations into stable evidence for the next
+normalization step:
+
+```fish
+dotnet run --project src/Sts2Emulator.Cli -- \\
+    reference-probe-audit probe.jsonl
+```
+
+For a persistent report, redirect stdout rather than committing the raw probe:
+
+```fish
+dotnet run --project src/Sts2Emulator.Cli -- \\
+    reference-probe-audit probe.jsonl > probe-audit.txt
+```
+
+The audit reports:
+
+- Player -> Creature snapshot coverage;
+- run/player RNG payload runtime types and semantic leaf paths;
+- CombatHistory entry runtime types and projected payload paths;
+- per-history-type counts of state-changing versus state-preserving observations;
+- one-time runtime type-catalog members discovered by the bridge.
+
+This layer deliberately avoids mapping native history classes directly to emulator actions. We first
+validate the observed class/member shapes on the pinned build, then define versioned normalization
+rules from evidence.
+
 ## First bridge success criterion
 
 Capture one short real run segment containing at least:
