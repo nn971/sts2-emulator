@@ -50,10 +50,12 @@ central dispatch branches.
 - [x] persistent graph-shaped maps
 - [x] act/floor/history-sensitive weighted encounter pools
 - [x] rarity-aware card rewards
-- [ ] richer shops/events/rest choices
+- [x] rarity-aware shops with one-use card removal
+- [x] weighted event eligibility/history with repeat constraints
+- [ ] richer rest-site choices
 - [ ] substantially larger Silent card pool
-- [ ] larger potion/relic pool
-- [ ] larger enemy/elite/boss pool
+- [x] first expanded potion/relic pool
+- [x] act-specific boss and later-elite encounter expansion
 - [ ] enough variety for meaningful strategic AI experiments
 
 ## Milestone 4 — native-data and fidelity convergence
