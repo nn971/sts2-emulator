@@ -135,7 +135,8 @@ public sealed record PrototypeCombatEvent(
     long? SourceCardInstanceId = null,
     string? CardId = null,
     int? TargetEnemyId = null,
-    int Amount = 0);
+    int Amount = 0,
+    long? PowerApplicationOrderCeiling = null);
 
 public enum PrototypeAutomaticStepKind
 {
