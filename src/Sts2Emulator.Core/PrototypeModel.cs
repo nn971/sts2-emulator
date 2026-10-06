@@ -95,6 +95,7 @@ public enum PrototypeCombatPredicateKind
 public enum PrototypeCombatCountKind
 {
     SkillsInHand,
+    SkillsPlayedThisTurn,
     AttacksPlayedThisTurn,
     CardsDiscardedThisTurn,
     CardsDrawnThisCombat,
