@@ -1618,12 +1618,40 @@ public sealed partial class PrototypeGameEngine
             return resolved;
         }
 
+        if (AllEnemiesDefeated(resolved.Combat))
+        {
+            return FinalizeInterruptedCardPlaySeries(
+                resolved.Player,
+                resolved.Combat,
+                rng,
+                nextSeries);
+        }
+
         return ResolveCardPlaySeries(
             resolved.Player,
             resolved.Combat,
             rng,
             nextSeries);
     }
+
+    private static (PlayerState Player, CombatState Combat)
+        FinalizeInterruptedCardPlaySeries(
+            PlayerState player,
+            CombatState combat,
+            RngBundle rng,
+            PrototypeCardPlaySeriesState series) =>
+        ResolveOperations(
+            player,
+            combat,
+            new Queue<PrototypeQueuedOperation>(),
+            rng,
+            series.SourceCardInstanceId,
+            series.SourceCardDestination,
+            completionEvents: Array.Empty<PrototypeCombatEvent>(),
+            cardPlaySeries: series,
+            moveSourceCardOnCompletion: true,
+            removeSourceCardOnCompletion:
+                series.RemoveSourceCardOnCompletion);
 
     private static CombatState DecrementPlayerPowers(
         CombatState combat,
@@ -2792,11 +2820,17 @@ public sealed partial class PrototypeGameEngine
             && pending.CardPlaySeries is
                 { HasRemainingExecutions: true } series)
         {
-            resolved = ResolveCardPlaySeries(
-                resolved.Player,
-                resolved.Combat,
-                state.Rng,
-                series);
+            resolved = AllEnemiesDefeated(resolved.Combat)
+                ? FinalizeInterruptedCardPlaySeries(
+                    resolved.Player,
+                    resolved.Combat,
+                    state.Rng,
+                    series)
+                : ResolveCardPlaySeries(
+                    resolved.Player,
+                    resolved.Combat,
+                    state.Rng,
+                    series);
         }
 
         state = state with
