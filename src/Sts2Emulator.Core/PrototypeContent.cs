@@ -1141,7 +1141,8 @@ public static class PrototypeContent
                                 Target: PrototypeEffectTarget.AllEnemies,
                                 AmountPerPowerStack: 1)
                         ],
-                        ExcludeHandDraw: true)
+                        ExcludeHandDraw: true,
+                        RequiresPlayerTurn: true)
                 ]),
             new PrototypePowerDefinition(
                 "proto.power.serpent_form",
