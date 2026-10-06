@@ -14,16 +14,36 @@ public sealed partial class PrototypeGameEngine
     {
         var world = RequireWorld(state);
         var encounters = PrototypeContent.Encounters
-            .Where(encounter => encounter.RoomType == roomType)
+            .Where(encounter =>
+                encounter.RoomType == roomType
+                && world.Act >= encounter.MinAct
+                && world.Act <= encounter.MaxAct
+                && world.Floor >= encounter.MinFloor
+                && world.Floor <= encounter.MaxFloor
+                && encounter.Weight > 0)
             .ToArray();
 
         if (encounters.Length == 0)
         {
-            throw new InvalidOperationException($"No prototype encounter exists for {roomType}.");
+            throw new InvalidOperationException(
+                $"No prototype encounter is eligible for {roomType} " +
+                $"at act {world.Act}, floor {world.Floor}.");
         }
 
-        var encounter = encounters[
-            PrototypeRng.NextInt(state.Rng, "combat", encounters.Length)];
+        var previousEncounter = world.EncounterIds.LastOrDefault();
+        if (previousEncounter is not null && encounters.Length > 1)
+        {
+            var withoutImmediateRepeat = encounters
+                .Where(encounter =>
+                    !StringComparer.Ordinal.Equals(encounter.Id, previousEncounter))
+                .ToArray();
+            if (withoutImmediateRepeat.Length > 0)
+            {
+                encounters = withoutImmediateRepeat;
+            }
+        }
+
+        var encounter = PickWeightedEncounter(encounters, state.Rng);
 
         var combatRelics = state.Player.Relics
             .Select((relic, index) =>
@@ -112,13 +132,41 @@ public sealed partial class PrototypeGameEngine
             PrototypeContent.Rules.HandSize + FirstTurnDrawBonus(state.Player),
             state.Rng);
 
-        world = world with { Combat = combat };
+        world = world with
+        {
+            Combat = combat,
+            EncounterHistory = world.EncounterIds.Append(encounter.Id).ToArray()
+        };
 
         return state with
         {
             World = world,
             Phase = RunPhase.Combat
         };
+    }
+
+    private static PrototypeEncounterDefinition PickWeightedEncounter(
+        PrototypeEncounterDefinition[] encounters,
+        RngBundle rng)
+    {
+        var totalWeight = encounters.Sum(encounter => encounter.Weight);
+        if (totalWeight <= 0)
+        {
+            throw new InvalidOperationException("Eligible encounter pool has no positive weight.");
+        }
+
+        var roll = PrototypeRng.NextInt(rng, "combat", totalWeight);
+        foreach (var encounter in encounters)
+        {
+            if (roll < encounter.Weight)
+            {
+                return encounter;
+            }
+
+            roll -= encounter.Weight;
+        }
+
+        throw new InvalidOperationException("Weighted encounter selection fell through.");
     }
 
     private static IReadOnlyList<GameAction> GetCombatActions(RunState state)
