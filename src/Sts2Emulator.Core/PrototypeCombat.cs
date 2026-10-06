@@ -188,13 +188,12 @@ public sealed partial class PrototypeGameEngine
         var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
-            operations.Enqueue(new PrototypeQueuedOperation(
-                effect.Kind,
-                effect.AmountAtUpgrade(card.UpgradeLevel),
+            EnqueueEffectOperations(
+                operations,
+                effect,
+                card.UpgradeLevel,
                 payload.TargetEnemyId,
-                effect.StatusId,
-                effect.Selection,
-                effect.CardId));
+                combat);
         }
 
         var sourceDestination = definition.ExhaustOnUse
@@ -240,13 +239,12 @@ public sealed partial class PrototypeGameEngine
         var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
-            operations.Enqueue(new PrototypeQueuedOperation(
-                effect.Kind,
-                effect.Amount,
+            EnqueueEffectOperations(
+                operations,
+                effect,
+                0,
                 payload.TargetEnemyId,
-                effect.StatusId,
-                effect.Selection,
-                effect.CardId));
+                combat);
         }
 
         var resolved = ResolveOperations(state.Player, combat, operations, state.Rng);
@@ -437,6 +435,50 @@ public sealed partial class PrototypeGameEngine
                 PlayerBlock = block,
                 Enemies = enemies
             });
+    }
+
+    private static void EnqueueEffectOperations(
+        Queue<PrototypeQueuedOperation> operations,
+        PrototypeCombatEffectSpec effect,
+        int upgradeLevel,
+        int? actionTargetEnemyId,
+        CombatState combat)
+    {
+        var repetitions = effect.Repetitions
+            + (effect.RepetitionUpgradeDelta * upgradeLevel);
+        if (repetitions <= 0)
+        {
+            return;
+        }
+
+        var targets = effect.Target switch
+        {
+            PrototypeEffectTarget.ActionTargetEnemy => new int?[] { actionTargetEnemyId },
+            PrototypeEffectTarget.AllEnemies => combat.Enemies
+                .Where(enemy => enemy.Hp > 0)
+                .Select(enemy => (int?)enemy.InstanceId)
+                .ToArray(),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        if (targets.Length == 0)
+        {
+            targets = new int?[] { null };
+        }
+
+        for (var repetition = 0; repetition < repetitions; repetition++)
+        {
+            foreach (var targetEnemyId in targets)
+            {
+                operations.Enqueue(new PrototypeQueuedOperation(
+                    effect.Kind,
+                    effect.AmountAtUpgrade(upgradeLevel),
+                    targetEnemyId,
+                    effect.StatusId,
+                    effect.Selection,
+                    effect.CardId));
+            }
+        }
     }
 
     private static (PlayerState Player, CombatState Combat) ResolveOperations(
