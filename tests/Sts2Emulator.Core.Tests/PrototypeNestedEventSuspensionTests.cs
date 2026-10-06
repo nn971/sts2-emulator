@@ -182,6 +182,117 @@ public sealed class PrototypeNestedEventSuspensionTests
         }
     }
 
+    [Fact]
+    public void PowerCardRemovalWaitsForSuspendedCardPlayedHook()
+    {
+        var powers = Assert.IsType<
+            Dictionary<string, PrototypePowerDefinition>>(
+                PrototypeContent.Powers);
+
+        powers.Add(
+            ChoicePowerId,
+            new PrototypePowerDefinition(
+                ChoicePowerId,
+                "Card Play Choice Fixture",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ChooseCards,
+                                0,
+                                Selection: new(
+                                    PrototypeCardZone.Hand,
+                                    1,
+                                    1,
+                                    PrototypeCardSelectionResolutionKind
+                                        .MoveToDiscard)),
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.GainPlayerBlock,
+                                2)
+                        ])
+                ]));
+
+        try
+        {
+            var footwork = Card(
+                1,
+                "proto.silent.footwork");
+            var discard = Card(
+                2,
+                "proto.silent.strike");
+            var engine = new PrototypeGameEngine();
+            var state = CreateState(
+                energy: 3,
+                hand:
+                [
+                    footwork,
+                    discard
+                ],
+                powers:
+                [
+                    new PrototypePowerInstanceState(
+                        ChoicePowerId,
+                        1,
+                        1)
+                ]);
+
+            state = PlayCard(
+                engine,
+                state,
+                footwork.InstanceId);
+
+            var combat = state.World!.Combat!;
+            Assert.NotNull(combat.PendingChoice);
+            Assert.Contains(
+                combat.Cards,
+                card => card.InstanceId
+                    == footwork.InstanceId);
+            Assert.DoesNotContain(
+                footwork.InstanceId,
+                combat.Hand);
+            Assert.DoesNotContain(
+                footwork.InstanceId,
+                combat.DrawPile);
+            Assert.DoesNotContain(
+                footwork.InstanceId,
+                combat.DiscardPile);
+            Assert.DoesNotContain(
+                footwork.InstanceId,
+                combat.ExhaustPile);
+            Assert.Contains(
+                combat.PlayerPowers,
+                power => power.PowerId
+                    == "proto.power.dexterity");
+
+            state = SelectOnly(
+                engine,
+                state,
+                discard.InstanceId);
+
+            combat = state.World!.Combat!;
+            Assert.Null(combat.PendingChoice);
+            Assert.DoesNotContain(
+                combat.Cards,
+                card => card.InstanceId
+                    == footwork.InstanceId);
+            Assert.Equal(2, combat.PlayerBlock);
+            Assert.Contains(
+                discard.InstanceId,
+                combat.DiscardPile);
+            Assert.Contains(
+                combat.PlayerPowers,
+                power => power.PowerId
+                    == "proto.power.dexterity");
+        }
+        finally
+        {
+            powers.Remove(ChoicePowerId);
+        }
+    }
+
     private static RunState PlayCard(
         PrototypeGameEngine engine,
         RunState state,
