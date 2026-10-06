@@ -265,6 +265,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "play_condition_draw_pile_empty",
             "condition_target_has_status",
             "dynamic_cost_skills_played",
+            "react_on_card_draw",
             "damage",
             "block",
             "draw",
@@ -602,6 +603,17 @@ public static partial class ReferenceMechanicsGapAnalyzer
         }
 
         var hasSpecificConditional = false;
+
+        if (DrawReactiveRegex().IsMatch(description))
+        {
+            features.Add("react_on_card_draw");
+            hasSpecificConditional = true;
+        }
+
+        if (ActivePlayerTurnConditionRegex().IsMatch(description))
+        {
+            features.Add("condition_active_player_turn");
+        }
 
         if (DrawPileEmptyConditionRegex().IsMatch(description))
         {
@@ -1032,6 +1044,16 @@ public static partial class ReferenceMechanicsGapAnalyzer
         @"\bplay(?:ed)? automatically\b|\bplay it for free\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex AutoPlayRegex();
+
+    [GeneratedRegex(
+        @"whenever\s+you\s+draw\s+a\s+card",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex DrawReactiveRegex();
+
+    [GeneratedRegex(
+        @"during\s+your\s+turn",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex ActivePlayerTurnConditionRegex();
 
     [GeneratedRegex(
         @"can only be played if there are no cards in your .*draw pile",
