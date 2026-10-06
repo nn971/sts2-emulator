@@ -264,6 +264,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "random_target",
             "play_condition_draw_pile_empty",
             "condition_target_has_status",
+            "dynamic_cost_skills_played",
             "damage",
             "block",
             "draw",
@@ -620,7 +621,16 @@ public static partial class ReferenceMechanicsGapAnalyzer
             features.Add("conditional_effect");
         }
 
-        if (CostMutationRegex().IsMatch(description))
+        var hasSpecificCostMutation = false;
+
+        if (SkillsPlayedCostReductionRegex().IsMatch(description))
+        {
+            features.Add("dynamic_cost_skills_played");
+            hasSpecificCostMutation = true;
+        }
+
+        if (CostMutationRegex().IsMatch(description)
+            && !hasSpecificCostMutation)
         {
             features.Add("cost_mutation");
         }
@@ -1037,6 +1047,11 @@ public static partial class ReferenceMechanicsGapAnalyzer
         @"(^|[.\n]\s*)if\b|\bwhenever\b|\bfor each\b|\bevery time\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex ConditionalRegex();
+
+    [GeneratedRegex(
+        @"Costs?\s+1\s+less.*for\s+each\s+Skill\s+played\s+this\s+turn",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex SkillsPlayedCostReductionRegex();
 
     [GeneratedRegex(
         @"\bcost\b.*\b(?:less|more|free|0|1|2|3|random)\b|\breduce\b.*\bcost\b|\bincrease\b.*\bcost\b",
