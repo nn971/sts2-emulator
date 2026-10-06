@@ -1155,6 +1155,8 @@ public sealed partial class PrototypeGameEngine
                     PrototypeContent.Card(
                         RequireCombatCard(combat, instanceId).CardId).Type
                     == PrototypeCardType.Skill),
+            PrototypeCombatCountKind.SkillsPlayedThisTurn =>
+                combat.CounterState.SkillsPlayedThisTurn,
             PrototypeCombatCountKind.AttacksPlayedThisTurn =>
                 combat.CounterState.AttacksPlayedThisTurn,
             PrototypeCombatCountKind.CardsDiscardedThisTurn =>
