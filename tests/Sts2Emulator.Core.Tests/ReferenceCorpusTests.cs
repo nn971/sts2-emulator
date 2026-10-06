@@ -62,7 +62,11 @@ public sealed class ReferenceCorpusTests
             Assert.Contains("choose_generated", mystery.UnsupportedFeatures);
             Assert.Contains("random_effect", mystery.UnsupportedFeatures);
             Assert.Contains("random_target", mystery.UnsupportedFeatures);
-            Assert.Contains("retain", mystery.UnsupportedFeatures);
+            Assert.DoesNotContain("retain", mystery.UnsupportedFeatures);
+            var retainCoverage = Assert.Single(
+                report.FeatureCoverage,
+                item => item.Feature == "retain");
+            Assert.True(retainCoverage.PrototypeEngineHasPrimitive);
             Assert.Contains(
                 mystery.SourceWarnings,
                 warning => warning.Contains("cards_draw", StringComparison.Ordinal));

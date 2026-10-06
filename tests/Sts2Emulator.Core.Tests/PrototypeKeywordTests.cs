@@ -23,6 +23,64 @@ public sealed class PrototypeKeywordTests
     }
 
     [Fact]
+    public void InnateCardStartsInOpeningHandWithoutIncreasingOpeningHandTarget()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("innate-opening-hand");
+
+        state = engine.Step(
+            state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+
+        var empty = PrototypeJson.EmptyObject();
+        var world = state.World!;
+        var backstabPersistentId = world.NextCardInstanceId;
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck
+                    .Append(new CardInstance(
+                        backstabPersistentId,
+                        "proto.silent.backstab",
+                        0,
+                        empty))
+                    .ToArray()
+            },
+            World = world with
+            {
+                NextCardInstanceId = backstabPersistentId + 1,
+                Map = new MapState(
+                    [
+                        new MapNodeState(
+                            "keyword-combat",
+                            1,
+                            1,
+                            PrototypeRoomType.Combat)
+                    ],
+                    EntryNodeIds: ["keyword-combat"])
+            }
+        };
+
+        state = engine.Step(
+            state,
+            GameAction.Create(
+                "choose_map_node",
+                new ChooseMapNodePayload("keyword-combat"))).State;
+
+        var combat = state.World!.Combat!;
+        var backstab = Assert.Single(
+            combat.Cards,
+            card => card.CardId == "proto.silent.backstab");
+
+        Assert.Contains(backstab.InstanceId, combat.Hand);
+        Assert.Equal(
+            PrototypeContent.Rules.HandSize
+                + PrototypeContent.Relic("proto.relic.silent_ring").FirstTurnDrawBonus,
+            combat.Hand.Length);
+    }
+
+    [Fact]
     public void RetainKeepsCardInHandAcrossEndTurn()
     {
         var state = CreateCombatState(
@@ -43,7 +101,7 @@ public sealed class PrototypeKeywordTests
                     false,
                     PrototypeJson.EmptyObject())
             ],
-            drawPile: []);
+            drawPile: [3, 4, 5, 6, 7]);
 
         var engine = new PrototypeGameEngine();
         state = engine.Step(state, GameAction.Empty("end_turn")).State;
