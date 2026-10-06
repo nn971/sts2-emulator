@@ -106,6 +106,40 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void CountBackedCardsMatchPinnedV01110Scalars()
+    {
+        var finisher = PrototypeContent.Card("proto.silent.finisher");
+        Assert.Equal(PrototypeCardType.Attack, finisher.Type);
+        Assert.Equal(1, finisher.Cost.Amount);
+        Assert.Equal(PrototypeCardRarity.Uncommon, finisher.Rarity);
+
+        var finisherDamage = Assert.Single(finisher.Effects);
+        Assert.Equal(PrototypeCombatEffectKind.DamageEnemy, finisherDamage.Kind);
+        Assert.Equal(6, finisherDamage.Amount);
+        Assert.Equal(2, finisherDamage.UpgradeDelta);
+        Assert.Equal(0, finisherDamage.Repetitions);
+        Assert.Equal(
+            PrototypeCombatCountKind.AttacksPlayedThisTurn,
+            finisherDamage.CountKind);
+        Assert.Equal(1, finisherDamage.RepetitionsPerCount);
+
+        var flechettes = PrototypeContent.Card("proto.silent.flechettes");
+        Assert.Equal(PrototypeCardType.Attack, flechettes.Type);
+        Assert.Equal(1, flechettes.Cost.Amount);
+        Assert.Equal(PrototypeCardRarity.Uncommon, flechettes.Rarity);
+
+        var flechettesDamage = Assert.Single(flechettes.Effects);
+        Assert.Equal(PrototypeCombatEffectKind.DamageEnemy, flechettesDamage.Kind);
+        Assert.Equal(5, flechettesDamage.Amount);
+        Assert.Equal(2, flechettesDamage.UpgradeDelta);
+        Assert.Equal(0, flechettesDamage.Repetitions);
+        Assert.Equal(
+            PrototypeCombatCountKind.SkillsInHand,
+            flechettesDamage.CountKind);
+        Assert.Equal(1, flechettesDamage.RepetitionsPerCount);
+    }
+
+    [Fact]
     public void PredicateBackedCardsMatchPinnedV01110Scalars()
     {
         var grandFinale = PrototypeContent.Card("proto.silent.grand_finale");
