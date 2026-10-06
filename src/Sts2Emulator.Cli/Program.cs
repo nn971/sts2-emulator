@@ -18,6 +18,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Search managed type/method metadata in installed sts2.dll");
     Console.WriteLine("  reference-probe-summary <probe.jsonl>");
     Console.WriteLine("                          Summarize a passive native reference probe");
+    Console.WriteLine("  reference-probe-audit <probe.jsonl>");
+    Console.WriteLine("                          Audit history/state/RNG shapes for parity work");
     return;
 }
 
@@ -87,6 +89,57 @@ switch (args[0])
         foreach (var item in summary.Diagnostics)
         {
             Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        break;
+    }
+
+    case "reference-probe-audit":
+    {
+        if (args.Length != 2)
+        {
+            throw new ArgumentException(
+                "reference-probe-audit requires exactly one JSONL path.");
+        }
+
+        var audit = Sts2Emulator.Trace.ReferenceProbeAuditor.Analyze(args[1]);
+        Console.WriteLine($"Boundaries: {audit.BoundaryCount}");
+        Console.WriteLine(
+            $"History payloads: {audit.HistoryPayloadCount}/{audit.HistoryBoundaryCount}");
+        Console.WriteLine(
+            $"Player creature coverage: {audit.PlayerCreatureSnapshotCount}/{audit.PlayerSnapshotCount}");
+        Console.WriteLine(
+            $"RNG snapshots: run={audit.RunRngSnapshotCount}, player={audit.PlayerRngSnapshotCount}");
+
+        Console.WriteLine("History entry shapes:");
+        foreach (var shape in audit.HistoryEntryShapes)
+        {
+            Console.WriteLine(
+                $"  {shape.RuntimeType}: count={shape.Count}, " +
+                $"state_changed={shape.StateChangedCount}, " +
+                $"state_preserved={shape.StatePreservedCount}, " +
+                $"distinct_hashes={shape.DistinctStateHashes}");
+            Console.WriteLine(
+                $"    payload_paths: {string.Join(", ", shape.PayloadPaths)}");
+        }
+
+        Console.WriteLine("RNG payload shapes:");
+        foreach (var shape in audit.RngShapes)
+        {
+            Console.WriteLine(
+                $"  {shape.Scope} {shape.RuntimeType}: count={shape.Count}");
+            Console.WriteLine(
+                $"    payload_paths: {string.Join(", ", shape.PayloadPaths)}");
+        }
+
+        Console.WriteLine("Runtime type catalogs:");
+        foreach (var catalog in audit.TypeCatalogs)
+        {
+            Console.WriteLine($"  {catalog.RuntimeType}");
+            Console.WriteLine(
+                $"    properties: {string.Join(", ", catalog.Properties)}");
+            Console.WriteLine(
+                $"    fields: {string.Join(", ", catalog.Fields)}");
         }
 
         break;
