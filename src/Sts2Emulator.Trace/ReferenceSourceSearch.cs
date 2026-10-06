@@ -1,9 +1,15 @@
 namespace Sts2Emulator.Trace;
 
+public sealed record ReferenceSourceContextLine(
+    int LineNumber,
+    bool IsMatch,
+    string Line);
+
 public sealed record ReferenceSourceMatch(
     string RelativePath,
     int LineNumber,
-    string Line);
+    string Line,
+    IReadOnlyList<ReferenceSourceContextLine>? Context = null);
 
 public sealed record ReferenceSourceSearchResult(
     string RootDirectory,
@@ -16,7 +22,8 @@ public static class ReferenceSourceSearch
     public static ReferenceSourceSearchResult Search(
         string rootDirectory,
         string query,
-        int maxMatches = 200)
+        int maxMatches = 200,
+        int contextLines = 0)
     {
         if (string.IsNullOrWhiteSpace(rootDirectory))
         {
@@ -39,6 +46,13 @@ public static class ReferenceSourceSearch
                 "Maximum match count must be positive.");
         }
 
+        if (contextLines < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(contextLines),
+                "Context line count cannot be negative.");
+        }
+
         var root = Path.GetFullPath(rootDirectory);
         if (!Directory.Exists(root))
         {
@@ -57,10 +71,13 @@ public static class ReferenceSourceSearch
         {
             filesScanned++;
 
-            var lineNumber = 0;
-            foreach (var line in File.ReadLines(path))
+            var lines = File.ReadAllLines(path);
+            var relativePath = Path.GetRelativePath(root, path)
+                .Replace(Path.DirectorySeparatorChar, '/');
+
+            for (var index = 0; index < lines.Length; index++)
             {
-                lineNumber++;
+                var line = lines[index];
                 if (!line.Contains(
                         query,
                         StringComparison.OrdinalIgnoreCase))
@@ -68,11 +85,31 @@ public static class ReferenceSourceSearch
                     continue;
                 }
 
+                IReadOnlyList<ReferenceSourceContextLine>? context = null;
+                if (contextLines > 0)
+                {
+                    var start = Math.Max(0, index - contextLines);
+                    var end = Math.Min(lines.Length - 1, index + contextLines);
+                    var contextBuffer = new List<ReferenceSourceContextLine>();
+
+                    for (var contextIndex = start;
+                         contextIndex <= end;
+                         contextIndex++)
+                    {
+                        contextBuffer.Add(new ReferenceSourceContextLine(
+                            contextIndex + 1,
+                            contextIndex == index,
+                            lines[contextIndex]));
+                    }
+
+                    context = contextBuffer;
+                }
+
                 matches.Add(new ReferenceSourceMatch(
-                    Path.GetRelativePath(root, path)
-                        .Replace(Path.DirectorySeparatorChar, '/'),
-                    lineNumber,
-                    line.Trim()));
+                    relativePath,
+                    index + 1,
+                    line.Trim(),
+                    context));
 
                 if (matches.Count >= maxMatches)
                 {
