@@ -159,19 +159,55 @@ public static class PrototypeStateInvariants
             .Concat(combat.ExhaustPile)
             .ToArray();
 
-        if (zones.Any(cardId => !known.Contains(cardId)))
+        var suspendedSource = combat.PendingChoice?.SourceCardInstanceId;
+        var represented = suspendedSource is null
+            ? zones
+            : zones.Append(suspendedSource.Value).ToArray();
+
+        if (represented.Any(cardId => !known.Contains(cardId)))
         {
             throw new InvalidOperationException("Combat zone contains a card outside the persistent deck.");
         }
 
-        if (zones.Length != zones.Distinct().Count())
+        if (represented.Length != represented.Distinct().Count())
         {
-            throw new InvalidOperationException("A card instance occurs in multiple combat zones.");
+            throw new InvalidOperationException("A card instance occurs in multiple combat zones/continuations.");
         }
 
-        if (zones.Length != known.Count)
+        if (represented.Length != known.Count)
         {
-            throw new InvalidOperationException("Persistent deck is not fully partitioned across combat zones.");
+            throw new InvalidOperationException("Persistent deck is not fully represented by combat state.");
+        }
+
+        if (combat.PendingChoice is not null)
+        {
+            var pending = combat.PendingChoice;
+            var sourceZone = pending.Selection.SourceZone switch
+            {
+                PrototypeCardZone.Hand => combat.Hand,
+                PrototypeCardZone.DrawPile => combat.DrawPile,
+                PrototypeCardZone.DiscardPile => combat.DiscardPile,
+                PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+            if (pending.CandidateCardInstanceIds.Length
+                != pending.CandidateCardInstanceIds.Distinct().Count())
+            {
+                throw new InvalidOperationException("Pending choice contains duplicate candidates.");
+            }
+
+            if (pending.CandidateCardInstanceIds.Any(cardId => !sourceZone.Contains(cardId)))
+            {
+                throw new InvalidOperationException("Pending choice candidate left its declared source zone.");
+            }
+
+            if (pending.Selection.MinSelections < 0
+                || pending.Selection.MaxSelections < pending.Selection.MinSelections
+                || pending.Selection.MaxSelections > pending.CandidateCardInstanceIds.Length)
+            {
+                throw new InvalidOperationException("Pending choice has an invalid selection range.");
+            }
         }
     }
 }
