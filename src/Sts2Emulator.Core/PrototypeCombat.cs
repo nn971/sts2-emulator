@@ -204,13 +204,22 @@ public sealed partial class PrototypeGameEngine
             ? PrototypeCardZone.ExhaustPile
             : PrototypeCardZone.DiscardPile;
 
+        var completionEvents = new[]
+        {
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.CardPlayed,
+                SourceCardInstanceId: payload.CardInstanceId,
+                CardId: card.CardId)
+        };
+
         var resolved = ResolveOperations(
             state.Player,
             combat,
             operations,
             state.Rng,
             payload.CardInstanceId,
-            sourceDestination);
+            sourceDestination,
+            completionEvents);
         combat = resolved.Combat;
 
         state = state with
@@ -273,13 +282,6 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
-        combat = combat with
-        {
-            DiscardPile = combat.DiscardPile.Concat(combat.Hand).ToArray(),
-            Hand = Array.Empty<long>()
-        };
-        state = state with { World = world with { Combat = combat } };
-
         foreach (var automaticStep in PrototypeContent.Rules.EndTurnPipeline)
         {
             state = ResolveAutomaticStep(state, automaticStep);
@@ -312,6 +314,29 @@ public sealed partial class PrototypeGameEngine
 
         switch (automaticStep.Kind)
         {
+            case PrototypeAutomaticStepKind.DispatchCombatEvent:
+                if (automaticStep.EventKind is null)
+                {
+                    throw new InvalidOperationException("Combat-event pipeline step is missing an event kind.");
+                }
+
+                var dispatched = DispatchCombatEvent(
+                    player,
+                    combat,
+                    new PrototypeCombatEvent(automaticStep.EventKind.Value),
+                    state.Rng);
+                player = dispatched.Player;
+                combat = dispatched.Combat;
+                break;
+
+            case PrototypeAutomaticStepKind.DiscardPlayerHand:
+                combat = combat with
+                {
+                    DiscardPile = combat.DiscardPile.Concat(combat.Hand).ToArray(),
+                    Hand = Array.Empty<long>()
+                };
+                break;
+
             case PrototypeAutomaticStepKind.DispatchEnemyStatusStage:
                 if (automaticStep.Stage is null)
                 {
@@ -348,21 +373,6 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.RefreshPlayerEnergy:
                 combat = combat with { Energy = EnergyPerTurn(player) };
-                break;
-
-            case PrototypeAutomaticStepKind.DispatchPlayerPowerStage:
-                if (automaticStep.Stage is null)
-                {
-                    throw new InvalidOperationException("Player-power pipeline step is missing a stage.");
-                }
-
-                var triggered = ResolvePlayerPowerTriggers(
-                    player,
-                    combat,
-                    automaticStep.Stage.Value,
-                    state.Rng);
-                player = triggered.Player;
-                combat = triggered.Combat;
                 break;
 
             case PrototypeAutomaticStepKind.DrawPlayerHand:
@@ -569,7 +579,8 @@ public sealed partial class PrototypeGameEngine
         Queue<PrototypeQueuedOperation> operations,
         RngBundle rng,
         long? sourceCardInstanceId = null,
-        PrototypeCardZone sourceCardDestination = PrototypeCardZone.DiscardPile)
+        PrototypeCardZone sourceCardDestination = PrototypeCardZone.DiscardPile,
+        PrototypeCombatEvent[]? completionEvents = null)
     {
         while (operations.Count > 0)
         {
@@ -635,7 +646,10 @@ public sealed partial class PrototypeGameEngine
                             SourceCardDestination: sourceCardDestination,
                             Selection: effective,
                             CandidateCardInstanceIds: (long[])candidates.Clone(),
-                            Continuation: operations.ToArray())
+                            Continuation: operations.ToArray(),
+                            CompletionEvents: completionEvents is null
+                                ? Array.Empty<PrototypeCombatEvent>()
+                                : (PrototypeCombatEvent[])completionEvents.Clone())
                     };
                     return (player, combat);
                 }
@@ -693,6 +707,13 @@ public sealed partial class PrototypeGameEngine
             combat = combat with { PendingChoice = null };
         }
 
+        foreach (var completionEvent in completionEvents ?? Array.Empty<PrototypeCombatEvent>())
+        {
+            var dispatched = DispatchCombatEvent(player, combat, completionEvent, rng);
+            player = dispatched.Player;
+            combat = dispatched.Combat;
+        }
+
         return (player, combat);
     }
 
@@ -742,41 +763,50 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static (PlayerState Player, CombatState Combat) ResolvePlayerPowerTriggers(
+    private static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
         PlayerState player,
         CombatState combat,
-        PrototypeTurnStage stage,
+        PrototypeCombatEvent combatEvent,
         RngBundle rng)
     {
-        var operations = new Queue<PrototypeQueuedOperation>();
-
-        foreach (var power in combat.PlayerPowers.OrderBy(power => power.ApplicationOrder))
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            foreach (var trigger in definition.Triggers.Where(trigger => trigger.Stage == stage))
+        var subscribers = combat.PlayerPowers
+            .OrderBy(power => power.ApplicationOrder)
+            .SelectMany(power =>
             {
-                foreach (var effect in trigger.Effects)
-                {
-                    EnqueueEffectOperations(
-                        operations,
-                        effect,
-                        upgradeLevel: 0,
-                        energySpent: 0,
-                        actionTargetEnemyId: null,
-                        combat: combat,
-                        powerStacks: power.Stacks);
-                }
+                var definition = PrototypeContent.Power(power.PowerId);
+                return definition.Triggers
+                    .Where(trigger => trigger.EventKind == combatEvent.Kind)
+                    .Select(trigger => (Power: power, Trigger: trigger));
+            })
+            .ToArray();
+
+        foreach (var subscriber in subscribers)
+        {
+            var operations = new Queue<PrototypeQueuedOperation>();
+            foreach (var effect in subscriber.Trigger.Effects)
+            {
+                EnqueueEffectOperations(
+                    operations,
+                    effect,
+                    upgradeLevel: 0,
+                    energySpent: 0,
+                    actionTargetEnemyId: null,
+                    combat: combat,
+                    powerStacks: subscriber.Power.Stacks);
+            }
+
+            var resolved = ResolveOperations(player, combat, operations, rng);
+            player = resolved.Player;
+            combat = resolved.Combat;
+
+            if (combat.PendingChoice is not null)
+            {
+                throw new NotSupportedException(
+                    "Automatic combat-event triggers that request player choices are not supported yet.");
             }
         }
 
-        var resolved = ResolveOperations(player, combat, operations, rng);
-        if (resolved.Combat.PendingChoice is not null)
-        {
-            throw new NotSupportedException(
-                "Automatic power triggers that request player choices are not supported yet.");
-        }
-
-        return resolved;
+        return (player, combat);
     }
 
     private static IReadOnlyList<GameAction> GetPendingChoiceActions(
@@ -850,7 +880,8 @@ public sealed partial class PrototypeGameEngine
             operations,
             state.Rng,
             pending.SourceCardInstanceId,
-            pending.SourceCardDestination);
+            pending.SourceCardDestination,
+            pending.CompletionEvents);
 
         state = state with
         {
