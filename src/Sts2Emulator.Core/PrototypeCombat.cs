@@ -1346,6 +1346,17 @@ public sealed partial class PrototypeGameEngine
                 combat,
                 sourceCardInstanceId.Value,
                 PrototypeTemporaryCardCostExpiry.WhenPlayed);
+
+            if (removeSourceCardOnCompletion)
+            {
+                combat = combat with
+                {
+                    Cards = combat.Cards
+                        .Where(card =>
+                            card.InstanceId != sourceCardInstanceId.Value)
+                        .ToArray()
+                };
+            }
         }
 
         return (player, combat);

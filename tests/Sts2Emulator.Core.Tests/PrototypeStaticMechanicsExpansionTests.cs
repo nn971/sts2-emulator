@@ -80,7 +80,8 @@ public sealed class PrototypeStaticMechanicsExpansionTests
             enemies:
             [
                 Enemy(1, 40)
-            ]);
+            ],
+            energy: 4);
 
         var engine = new PrototypeGameEngine();
 
@@ -274,7 +275,8 @@ public sealed class PrototypeStaticMechanicsExpansionTests
         CombatCardInstance[] hand,
         EnemyCombatState[] enemies,
         CombatCardInstance[]? drawPile = null,
-        PrototypePowerInstanceState[]? powers = null)
+        PrototypePowerInstanceState[]? powers = null,
+        int energy = 3)
     {
         drawPile ??= [];
         powers ??= [];
@@ -294,7 +296,7 @@ public sealed class PrototypeStaticMechanicsExpansionTests
 
         var combat = new CombatState(
             Turn: 1,
-            Energy: 3,
+            Energy: energy,
             PlayerBlock: 0,
             Hand: hand.Select(card => card.InstanceId).ToArray(),
             DrawPile: drawPile.Select(card => card.InstanceId).ToArray(),

@@ -307,7 +307,7 @@ public sealed class ReferenceCorpusTests
                 "is_x_star_cost":null,
                 "star_cost":null,
                 "type":"Skill",
-                "target":"RandomEnemy",
+                "target":"Self",
                 "color":"silent",
                 "damage":null,
                 "block":null,

@@ -584,18 +584,18 @@ public static class PrototypeStateInvariants
         var persistentCombatCards = combat.Cards
             .Where(card => card.PersistentCardInstanceId is not null)
             .ToArray();
+        var representedPersistentIds = persistentCombatCards
+            .Select(card => card.PersistentCardInstanceId!.Value)
+            .ToArray();
 
-        if (persistentCombatCards.Length != persistentIds.Count
-            || persistentCombatCards
-                .Select(card => card.PersistentCardInstanceId!.Value)
-                .Distinct()
-                .Count() != persistentIds.Count
+        if (representedPersistentIds.Distinct().Count()
+                != representedPersistentIds.Length
             || persistentCombatCards.Any(card =>
                 card.PersistentCardInstanceId is null
                 || !persistentIds.Contains(card.PersistentCardInstanceId.Value)))
         {
             throw new InvalidOperationException(
-                "Persistent deck cards are not represented exactly once in combat.");
+                "Persistent deck cards have invalid combat provenance.");
         }
 
         if (combat.Cards.Any(card => card.IsTemporary != (card.PersistentCardInstanceId is null)))
@@ -612,6 +612,18 @@ public static class PrototypeStateInvariants
             {
                 throw new InvalidOperationException(
                     "Combat card no longer matches its persistent origin.");
+            }
+        }
+
+        var representedPersistentSet = representedPersistentIds.ToHashSet();
+        foreach (var persistent in player.Deck.Where(card =>
+                     !representedPersistentSet.Contains(card.InstanceId)))
+        {
+            if (PrototypeContent.Card(persistent.CardId).Type
+                != PrototypeCardType.Power)
+            {
+                throw new InvalidOperationException(
+                    "Only resolved Power cards may leave the combat card scope.");
             }
         }
 

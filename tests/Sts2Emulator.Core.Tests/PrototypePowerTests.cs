@@ -274,7 +274,9 @@ public sealed class PrototypePowerTests
                 && action.ReadPayload<PlayCardPayload>().CardInstanceId == 2);
         state = engine.Step(state, defend).State;
 
-        Assert.Equal(8, state.World!.Combat!.PlayerBlock);
+        // Strike and Defend each trigger Afterimage. Dexterity applies only
+        // to Defend's card-sourced block: 1 + (5 + 2) + 1 = 9.
+        Assert.Equal(9, state.World!.Combat!.PlayerBlock);
     }
 
     [Fact]
