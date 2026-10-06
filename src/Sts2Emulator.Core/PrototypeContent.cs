@@ -54,13 +54,15 @@ public static class PrototypeContent
                 "Strike",
                 1,
                 PrototypeCardTarget.Enemy,
-                [new(PrototypeCombatEffectKind.DamageEnemy, 6, 3)]),
+                [new(PrototypeCombatEffectKind.DamageEnemy, 6, 3)],
+                Rarity: PrototypeCardRarity.Basic),
             new PrototypeCardDefinition(
                 "proto.silent.defend",
                 "Defend",
                 1,
                 PrototypeCardTarget.None,
-                [new(PrototypeCombatEffectKind.GainPlayerBlock, 5, 3)]),
+                [new(PrototypeCombatEffectKind.GainPlayerBlock, 5, 3)],
+                Rarity: PrototypeCardRarity.Basic),
             new PrototypeCardDefinition(
                 "proto.silent.neutralize",
                 "Neutralize",
@@ -69,7 +71,8 @@ public static class PrototypeContent
                 [
                     new(PrototypeCombatEffectKind.DamageEnemy, 3, 1),
                     new(PrototypeCombatEffectKind.ApplyEnemyStatus, 1, 1, "proto.status.weak")
-                ]),
+                ],
+                Rarity: PrototypeCardRarity.Basic),
             new PrototypeCardDefinition(
                 "proto.silent.survivor",
                 "Survivor",
@@ -85,7 +88,8 @@ public static class PrototypeContent
                             1,
                             1,
                             PrototypeCardSelectionResolutionKind.MoveToDiscard))
-                ]),
+                ],
+                Rarity: PrototypeCardRarity.Basic),
             new PrototypeCardDefinition(
                 "proto.silent.backflip",
                 "Backflip",
@@ -132,7 +136,8 @@ public static class PrototypeContent
                 0,
                 PrototypeCardTarget.Enemy,
                 [new(PrototypeCombatEffectKind.DamageEnemy, 4)],
-                ExhaustOnUse: true),
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Basic),
             new PrototypeCardDefinition(
                 "proto.silent.blade_dance",
                 "Blade Dance",
@@ -170,7 +175,8 @@ public static class PrototypeContent
                         3,
                         Repetitions: 0,
                         RepetitionsPerEnergySpent: 1)
-                ]),
+                ],
+                Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
                 "proto.silent.footwork",
                 "Footwork",
@@ -182,7 +188,8 @@ public static class PrototypeContent
                         2,
                         1,
                         PowerId: "proto.power.dexterity")
-                ]),
+                ],
+                Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
                 "proto.silent.noxious_fumes",
                 "Noxious Fumes",
@@ -194,7 +201,8 @@ public static class PrototypeContent
                         1,
                         1,
                         PowerId: "proto.power.noxious_fumes")
-                ]),
+                ],
+                Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
                 "proto.silent.envenom",
                 "Envenom",
@@ -206,7 +214,21 @@ public static class PrototypeContent
                         1,
                         0,
                         PowerId: "proto.power.envenom")
-                ])
+                ],
+                Rarity: PrototypeCardRarity.Rare),
+            new PrototypeCardDefinition(
+                "proto.silent.afterimage",
+                "Afterimage",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        0,
+                        PowerId: "proto.power.afterimage")
+                ],
+                Rarity: PrototypeCardRarity.Rare)
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
@@ -438,10 +460,43 @@ public static class PrototypeContent
 
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
-        new("proto.encounter.crawler", PrototypeRoomType.Combat, ["proto.enemy.crawler"]),
-        new("proto.encounter.raiders", PrototypeRoomType.Combat, ["proto.enemy.raider", "proto.enemy.crawler"]),
-        new("proto.encounter.elite", PrototypeRoomType.Elite, ["proto.enemy.elite"]),
-        new("proto.encounter.boss", PrototypeRoomType.Boss, ["proto.enemy.boss"])
+        new(
+            "proto.encounter.crawler",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.crawler"],
+            MinAct: 1,
+            MaxAct: 1,
+            MinFloor: 1,
+            MaxFloor: 3,
+            Weight: 4),
+        new(
+            "proto.encounter.raider",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.raider"],
+            MinAct: 1,
+            MaxAct: 3,
+            MinFloor: 2,
+            MaxFloor: 6,
+            Weight: 3),
+        new(
+            "proto.encounter.raiders",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.raider", "proto.enemy.crawler"],
+            MinAct: 2,
+            MaxAct: 3,
+            MinFloor: 1,
+            MaxFloor: 6,
+            Weight: 4),
+        new(
+            "proto.encounter.elite",
+            PrototypeRoomType.Elite,
+            ["proto.enemy.elite"],
+            Weight: 1),
+        new(
+            "proto.encounter.boss",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.boss"],
+            Weight: 1)
     ];
 
     public static string[] StartingDeck { get; } =
@@ -460,21 +515,36 @@ public static class PrototypeContent
         "proto.silent.survivor"
     ];
 
-    public static string[] RewardCardPool { get; } =
-    [
-        "proto.silent.strike",
-        "proto.silent.defend",
-        "proto.silent.backflip",
-        "proto.silent.poisoned_stab",
-        "proto.silent.slice",
-        "proto.silent.acrobatics",
-        "proto.silent.blade_dance",
-        "proto.silent.dagger_spray",
-        "proto.silent.skewer",
-        "proto.silent.footwork",
-        "proto.silent.noxious_fumes",
-        "proto.silent.envenom"
-    ];
+    public static string[] RewardCardPool { get; } = Cards.Values
+        .Where(card =>
+            card.Rarity != PrototypeCardRarity.Basic
+            && !StringComparer.Ordinal.Equals(card.Id, "proto.silent.shiv"))
+        .Select(card => card.Id)
+        .Order(StringComparer.Ordinal)
+        .ToArray();
+
+    public static (PrototypeCardRarity Rarity, int Weight)[] RewardRarityWeights(int act) =>
+        act switch
+        {
+            <= 1 =>
+            [
+                (PrototypeCardRarity.Common, 65),
+                (PrototypeCardRarity.Uncommon, 30),
+                (PrototypeCardRarity.Rare, 5)
+            ],
+            2 =>
+            [
+                (PrototypeCardRarity.Common, 55),
+                (PrototypeCardRarity.Uncommon, 35),
+                (PrototypeCardRarity.Rare, 10)
+            ],
+            _ =>
+            [
+                (PrototypeCardRarity.Common, 45),
+                (PrototypeCardRarity.Uncommon, 35),
+                (PrototypeCardRarity.Rare, 20)
+            ]
+        };
 
     public static string[] PotionPool { get; } = Potions.Keys.Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
