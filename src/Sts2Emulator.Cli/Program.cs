@@ -12,6 +12,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  prototype-sweep [n]    Run a deterministic smoke policy over many seeds");
     Console.WriteLine("  prototype-manifest     Print the machine-readable prototype capability manifest");
     Console.WriteLine("  prototype-ai-jsonl     Run the long-lived prototype AI JSONL bridge on stdin/stdout");
+    Console.WriteLine("  reference-preflight <game-dir> [data-dir]");
+    Console.WriteLine("                          Fingerprint the exact installed STS2 build");
     return;
 }
 
@@ -48,6 +50,21 @@ switch (args[0])
             Console.WriteLine(CanonicalJson.Sha256(state));
         }
         break;
+
+    case "reference-preflight":
+    {
+        if (args.Length < 2)
+        {
+            throw new ArgumentException(
+                "reference-preflight requires <game-dir> and optionally [data-dir].");
+        }
+
+        var manifest = Sts2Emulator.Trace.ReferenceBuildFingerprint.Capture(
+            args[1],
+            args.Length >= 3 ? args[2] : null);
+        Console.WriteLine(CanonicalJson.Serialize(manifest));
+        break;
+    }
 
     case "prototype-manifest":
         Console.WriteLine(CanonicalJson.Serialize(PrototypeCapabilities.Create()));
