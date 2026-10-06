@@ -20,6 +20,25 @@ public sealed class PrototypeMapTests
         Assert.Equal(2, map.EntryNodeIds!.Length);
         Assert.Equal(2, map.AvailableNodes().Length);
         Assert.Single(map.Nodes, node => node.RoomType == PrototypeRoomType.Boss);
+        Assert.All(
+            map.Nodes.Where(node => node.Floor == 1),
+            node => Assert.Equal(PrototypeRoomType.Combat, node.RoomType));
+        Assert.All(
+            map.Nodes.Where(node => node.Floor == 5),
+            node => Assert.Equal(PrototypeRoomType.Rest, node.RoomType));
+        Assert.All(
+            map.Nodes.Where(node => node.Floor == 6),
+            node => Assert.Equal(PrototypeRoomType.Boss, node.RoomType));
+
+        foreach (var floorGroup in map.Nodes.GroupBy(node => node.Floor))
+        {
+            var duplicateSpecials = floorGroup
+                .Where(node => node.RoomType != PrototypeRoomType.Combat)
+                .GroupBy(node => node.RoomType)
+                .Where(group => group.Count() > 1)
+                .ToArray();
+            Assert.Empty(duplicateSpecials);
+        }
 
         foreach (var node in map.Nodes)
         {
