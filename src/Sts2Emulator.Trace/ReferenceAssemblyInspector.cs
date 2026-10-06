@@ -76,7 +76,7 @@ public static class ReferenceAssemblyInspector
                 matches.Add(new ReferenceMetadataMatch(
                     fullName,
                     methodName,
-                    signature));
+                    signature.ParameterTypes.Length));
             }
         }
 
@@ -90,75 +90,46 @@ public static class ReferenceAssemblyInspector
         : ISignatureTypeProvider<int, object?>
     {
         public int GetArrayType(int elementType, ArrayShape shape) => 0;
+
         public int GetByReferenceType(int elementType) => 0;
+
         public int GetFunctionPointerType(MethodSignature<int> signature) => 0;
-        public int GetGenericInstantiation(int genericType, System.Collections.Immutable.ImmutableArray<int> typeArguments) => 0;
-        public int GetGenericMethodParameter(object? genericContext, int index) => 0;
-        public int GetGenericTypeParameter(object? genericContext, int index) => 0;
-        public int GetModifiedType(int modifier, int unmodifiedType, bool isRequired) => 0;
-        public int GetPinnedType(int elementType) => 0;
-        public int GetPointerType(int elementType) => 0;
-        public int GetPrimitiveType(PrimitiveTypeCode typeCode) => 0;
-        public int GetSZArrayType(int elementType) => 0;
-        public int GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind) => 0;
-        public int GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind) => 0;
-        public int GetTypeFromSpecification(MetadataReader reader, object? genericContext, TypeSpecificationHandle handle, byte rawTypeKind) => 0;
 
         public int GetGenericInstantiation(
             int genericType,
-            IReadOnlyList<int> typeArguments) => 0;
+            System.Collections.Immutable.ImmutableArray<int> typeArguments) => 0;
 
-        public int GetFunctionPointerType(
-            MethodSignature<int> signature,
-            object? genericContext) => 0;
+        public int GetGenericMethodParameter(object? genericContext, int index) => 0;
+
+        public int GetGenericTypeParameter(object? genericContext, int index) => 0;
 
         public int GetModifiedType(
             int modifier,
             int unmodifiedType,
-            bool isRequired,
-            object? genericContext) => 0;
+            bool isRequired) => 0;
+
+        public int GetPinnedType(int elementType) => 0;
+
+        public int GetPointerType(int elementType) => 0;
+
+        public int GetPrimitiveType(PrimitiveTypeCode typeCode) => 0;
+
+        public int GetSZArrayType(int elementType) => 0;
 
         public int GetTypeFromDefinition(
             MetadataReader reader,
             TypeDefinitionHandle handle,
-            byte rawTypeKind,
-            object? genericContext) => 0;
+            byte rawTypeKind) => 0;
 
         public int GetTypeFromReference(
             MetadataReader reader,
             TypeReferenceHandle handle,
-            byte rawTypeKind,
-            object? genericContext) => 0;
+            byte rawTypeKind) => 0;
 
         public int GetTypeFromSpecification(
             MetadataReader reader,
             object? genericContext,
             TypeSpecificationHandle handle,
-            byte rawTypeKind,
-            object? additionalContext) => 0;
-
-        public int GetUnsupportedSignatureType(byte rawTypeKind) => 0;
-
-        public int GetTypeFromSerializedName(string name) => 0;
-
-        public PrimitiveTypeCode GetUnderlyingEnumType(int type) =>
-            PrimitiveTypeCode.Int32;
-
-        public bool IsSystemType(int type) => false;
-
-        public int GetSystemType() => 0;
-
-        public int GetTypeFromSerializedName(
-            string name,
-            object? genericContext) => 0;
-
-        public int GetUnderlyingEnumType(
-            int type,
-            object? genericContext) => 0;
-
-        public int GetArrayType(
-            int elementType,
-            ArrayShape shape,
-            object? genericContext) => 0;
+            byte rawTypeKind) => 0;
     }
 }
