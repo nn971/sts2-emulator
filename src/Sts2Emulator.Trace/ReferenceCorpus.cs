@@ -235,7 +235,8 @@ public sealed record ReferenceNativeCardGap(
     string? PrototypeId,
     string[] RequiredFeatures,
     string[] UnsupportedFeatures,
-    string[] StructuredMismatches);
+    string[] StructuredMismatches,
+    string[] SourceWarnings);
 
 public sealed record ReferenceMechanicsGapReport(
     int NativeSilentCardCount,
@@ -329,6 +330,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             var mismatches = prototype is null
                 ? Array.Empty<string>()
                 : CompareStructuredFields(native.Data, prototype);
+            var sourceWarnings = DetectSourceWarnings(native.Data);
 
             cardGaps.Add(new ReferenceNativeCardGap(
                 native.Id,
@@ -336,7 +338,8 @@ public static partial class ReferenceMechanicsGapAnalyzer
                 prototype?.Id,
                 required,
                 unsupported,
-                mismatches));
+                mismatches,
+                sourceWarnings));
         }
 
         var startingRunMismatches = CompareStartingRun(corpus);
@@ -441,7 +444,10 @@ public static partial class ReferenceMechanicsGapAnalyzer
             features.Add("block");
         }
 
-        if (HasNumber(card, "cards_draw"))
+        var description = GetString(card, "description") ?? string.Empty;
+
+        if (HasNumber(card, "cards_draw")
+            && DrawRegex().IsMatch(description))
         {
             features.Add("draw");
         }
@@ -466,7 +472,8 @@ public static partial class ReferenceMechanicsGapAnalyzer
             features.Add("apply_power");
         }
 
-        if (HasArrayItems(card, "spawns_cards"))
+        if (HasArrayItems(card, "spawns_cards")
+            || GenerateIntoHandRegex().IsMatch(description))
         {
             features.Add("generate_cards_in_hand");
         }
@@ -514,8 +521,6 @@ public static partial class ReferenceMechanicsGapAnalyzer
                 }
             }
         }
-
-        var description = GetString(card, "description") ?? string.Empty;
 
         if (ChooseGeneratedRegex().IsMatch(description))
         {
@@ -644,12 +649,16 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "block",
             prototype,
             PrototypeCombatEffectKind.GainPlayerBlock);
-        CompareEffectAmount(
-            mismatches,
-            native,
-            "cards_draw",
-            prototype,
-            PrototypeCombatEffectKind.DrawCards);
+        var description = GetString(native, "description") ?? string.Empty;
+        if (DrawRegex().IsMatch(description))
+        {
+            CompareEffectAmount(
+                mismatches,
+                native,
+                "cards_draw",
+                prototype,
+                PrototypeCombatEffectKind.DrawCards);
+        }
         CompareEffectAmount(
             mismatches,
             native,
@@ -750,6 +759,28 @@ public static partial class ReferenceMechanicsGapAnalyzer
         }
 
         return mismatches.ToArray();
+    }
+
+    private static string[] DetectSourceWarnings(JsonElement card)
+    {
+        var warnings = new List<string>();
+        var description = GetString(card, "description") ?? string.Empty;
+
+        if (HasNumber(card, "cards_draw")
+            && !DrawRegex().IsMatch(description))
+        {
+            warnings.Add(
+                "derived cards_draw is populated but localized text contains no draw instruction");
+        }
+
+        if (!HasArrayItems(card, "spawns_cards")
+            && GenerateIntoHandRegex().IsMatch(description))
+        {
+            warnings.Add(
+                "localized text describes card generation but derived spawns_cards is empty");
+        }
+
+        return warnings.ToArray();
     }
 
     private static string ResolveReferenceName(
@@ -893,6 +924,14 @@ public static partial class ReferenceMechanicsGapAnalyzer
             .Cast<string>()
             .ToArray();
     }
+
+    [GeneratedRegex(@"\bdraw\b", RegexOptions.IgnoreCase)]
+    private static partial Regex DrawRegex();
+
+    [GeneratedRegex(
+        @"\badd\b.*\binto (?:your|the) (?:\[gold\])?hand\b",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex GenerateIntoHandRegex();
 
     [GeneratedRegex(
         @"\bchoose\s+(?:up to\s+)?\d+\s+of\s+\d+|\bchoose\s+one\s+of\s+",
