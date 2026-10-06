@@ -357,6 +357,7 @@ public sealed record PrototypePowerDefinition(
     int BlockAfterClearPerStack = 0,
     int EnergyAfterResetPerStack = 0,
     int HandDrawBonusPerStack = 0,
+    int DiscardAfterPlayerTurnStartPerStack = 0,
     bool RemoveAfterBlockClear = false,
     bool RemoveAfterEnergyReset = false,
     bool RemoveAfterHandDraw = false,
