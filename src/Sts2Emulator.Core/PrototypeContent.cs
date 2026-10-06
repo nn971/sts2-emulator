@@ -30,6 +30,7 @@ public static class PrototypeContent
         EndTurnPipeline:
         [
             new(PrototypeAutomaticStepKind.DispatchEnemyStatusStage, PrototypeTurnStage.EnemyTurnStart),
+            new(PrototypeAutomaticStepKind.ResetEnemyBlock),
             new(PrototypeAutomaticStepKind.ResolveEnemyActions),
             new(PrototypeAutomaticStepKind.DispatchEnemyStatusStage, PrototypeTurnStage.EnemyTurnEnd),
             new(PrototypeAutomaticStepKind.AdvanceTurn),
@@ -254,8 +255,8 @@ public static class PrototypeContent
                 24,
                 4,
                 [
-                    new("bite", 7, 1),
-                    new("lunge", 9, 1)
+                    new("bite", [new(PrototypeEnemyEffectKind.DamagePlayer, 7, 1)]),
+                    new("lunge", [new(PrototypeEnemyEffectKind.DamagePlayer, 9, 1)])
                 ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.raider",
@@ -263,8 +264,13 @@ public static class PrototypeContent
                 32,
                 5,
                 [
-                    new("slash", 9, 1),
-                    new("heavy_slash", 11, 2)
+                    new("slash", [new(PrototypeEnemyEffectKind.DamagePlayer, 9, 1)]),
+                    new(
+                        "guard_slash",
+                        [
+                            new(PrototypeEnemyEffectKind.GainBlock, 6),
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 6, 1)
+                        ])
                 ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.elite",
@@ -272,8 +278,13 @@ public static class PrototypeContent
                 55,
                 8,
                 [
-                    new("pressure", 11, 2),
-                    new("burst", 14, 2)
+                    new("pressure", [new(PrototypeEnemyEffectKind.DamagePlayer, 11, 2)]),
+                    new(
+                        "guard_burst",
+                        [
+                            new(PrototypeEnemyEffectKind.GainBlock, 8),
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 9, 2)
+                        ])
                 ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.boss",
@@ -281,9 +292,14 @@ public static class PrototypeContent
                 80,
                 15,
                 [
-                    new("opening", 12, 2),
-                    new("crush", 18, 3),
-                    new("follow_up", 14, 2)
+                    new("opening", [new(PrototypeEnemyEffectKind.DamagePlayer, 12, 2)]),
+                    new("crush", [new(PrototypeEnemyEffectKind.DamagePlayer, 18, 3)]),
+                    new(
+                        "fortify",
+                        [
+                            new(PrototypeEnemyEffectKind.GainBlock, 12),
+                            new(PrototypeEnemyEffectKind.DamagePlayer, 10, 2)
+                        ])
                 ])
         }.ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
