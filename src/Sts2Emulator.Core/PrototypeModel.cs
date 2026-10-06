@@ -60,6 +60,26 @@ public enum PrototypeCombatEffectKind
     SetHandCardsEnergyCostUntilTurnEndOrPlayed
 }
 
+public enum PrototypeCardKeyword
+{
+    Retain,
+    Sly,
+    Ethereal
+}
+
+[Flags]
+public enum PrototypeCardKeywordOverrideExpiry
+{
+    None = 0,
+    EndOfTurn = 1,
+    WhenPlayed = 2
+}
+
+public sealed record PrototypeCardKeywordOverride(
+    PrototypeCardKeyword Keyword,
+    bool Enabled,
+    PrototypeCardKeywordOverrideExpiry Expiry);
+
 [Flags]
 public enum PrototypeTemporaryCardCostExpiry
 {
@@ -77,14 +97,18 @@ public sealed record PrototypeCombatCardSnapshot(
     int UpgradeLevel,
     JsonElement State,
     int CombatEnergyCostDelta = 0,
-    PrototypeTemporaryCardCost? TemporaryEnergyCost = null)
+    PrototypeTemporaryCardCost? TemporaryEnergyCost = null,
+    PrototypeCardKeywordOverride[]? KeywordOverrides = null)
 {
     public PrototypeCombatCardSnapshot Fork() => this with
     {
         State = State.Clone(),
         TemporaryEnergyCost = TemporaryEnergyCost is null
             ? null
-            : TemporaryEnergyCost with { }
+            : TemporaryEnergyCost with { },
+        KeywordOverrides = KeywordOverrides is null
+            ? null
+            : KeywordOverrides.Select(item => item with { }).ToArray()
     };
 }
 
@@ -211,7 +235,8 @@ public sealed record PrototypeCardSelectionSpec(
     PrototypeCardZone SourceZone,
     int MinSelections,
     int MaxSelections,
-    PrototypeCardSelectionResolutionKind Resolution);
+    PrototypeCardSelectionResolutionKind Resolution,
+    PrototypeCardType? RequiredCardType = null);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
@@ -225,6 +250,17 @@ public sealed record PrototypeSelectedCardPowerSpec(
 public sealed record PrototypeSelectedCardPowerAction(
     string PowerId,
     int Amount);
+
+public sealed record PrototypeSelectedCardKeywordSpec(
+    PrototypeCardKeyword Keyword,
+    bool Enabled = true,
+    PrototypeCardKeywordOverrideExpiry Expiry =
+        PrototypeCardKeywordOverrideExpiry.EndOfTurn);
+
+public sealed record PrototypeSelectedCardKeywordAction(
+    PrototypeCardKeyword Keyword,
+    bool Enabled,
+    PrototypeCardKeywordOverrideExpiry Expiry);
 
 public sealed record PrototypeCardCostSpec(
     PrototypeCardCostKind Kind,
@@ -301,7 +337,8 @@ public sealed record PrototypeCombatEffectSpec(
     int AmountPerCount = 0,
     int RepetitionsPerCount = 0,
     int AmountPerCountUpgradeDelta = 0,
-    PrototypeSelectedCardPowerSpec? SelectedCardPower = null)
+    PrototypeSelectedCardPowerSpec? SelectedCardPower = null,
+    PrototypeSelectedCardKeywordSpec? SelectedCardKeyword = null)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -328,6 +365,7 @@ public sealed record PrototypeQueuedOperation(
     bool IsPoweredAttack = false,
     PrototypeCombatPredicateSpec? Condition = null,
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
+    PrototypeSelectedCardKeywordAction? SelectedCardKeyword = null,
     PrototypeCombatCardSnapshot? PowerCardPayload = null);
 
 public sealed record PrototypeRunEffectSpec(
@@ -585,9 +623,19 @@ public sealed record CombatCardInstance(
     bool IsTemporary,
     JsonElement State,
     int CombatEnergyCostDelta = 0,
-    PrototypeTemporaryCardCost? TemporaryEnergyCost = null)
+    PrototypeTemporaryCardCost? TemporaryEnergyCost = null,
+    PrototypeCardKeywordOverride[]? KeywordOverrides = null)
 {
-    public CombatCardInstance Fork() => this with { State = State.Clone() };
+    public CombatCardInstance Fork() => this with
+    {
+        State = State.Clone(),
+        TemporaryEnergyCost = TemporaryEnergyCost is null
+            ? null
+            : TemporaryEnergyCost with { },
+        KeywordOverrides = KeywordOverrides is null
+            ? null
+            : KeywordOverrides.Select(item => item with { }).ToArray()
+    };
 }
 
 public sealed record CombatPotionState(
@@ -633,7 +681,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeCardPlaySeriesState? CardPlaySeries = null,
     bool MoveSourceCardOnCompletion = true,
     bool RemoveSourceCardOnCompletion = false,
-    PrototypeSelectedCardPowerAction? SelectedCardPower = null)
+    PrototypeSelectedCardPowerAction? SelectedCardPower = null,
+    PrototypeSelectedCardKeywordAction? SelectedCardKeyword = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
