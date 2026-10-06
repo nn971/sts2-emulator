@@ -1000,12 +1000,18 @@ public sealed partial class PrototypeGameEngine
                         }
                     }
 
-                    var damageAmount = operation.IsPoweredAttack
-                        ? ModifyIncomingAttackDamage(
+                    var damageAmount = operation.Amount;
+                    if (operation.IsPoweredAttack)
+                    {
+                        damageAmount = ModifyPlayerAttackDamage(
+                            combat,
+                            sourceCardInstanceId,
+                            damageAmount);
+                        damageAmount = ModifyIncomingAttackDamage(
                             combat,
                             targetEnemyId.Value,
-                            operation.Amount)
-                        : operation.Amount;
+                            damageAmount);
+                    }
 
                     var damageResult = DamageEnemy(
                         combat,
@@ -1641,6 +1647,44 @@ public sealed partial class PrototypeGameEngine
             item.InstanceId == targetEnemyId.Value);
         return enemy is not null
             && enemy.Statuses.GetValueOrDefault(statusId) > 0;
+    }
+
+    private static int ModifyPlayerAttackDamage(
+        CombatState combat,
+        long? sourceCardInstanceId,
+        int damage)
+    {
+        if (sourceCardInstanceId is null)
+        {
+            return damage;
+        }
+
+        var sourceCard = RequireCombatCard(
+            combat,
+            sourceCardInstanceId.Value);
+        var sourceDefinition = PrototypeContent.Card(
+            sourceCard.CardId);
+        var tags = sourceDefinition.Tags
+            ?? Array.Empty<string>();
+
+        var additive = combat.PlayerPowers.Sum(power =>
+        {
+            var definition = PrototypeContent.Power(
+                power.PowerId);
+            if (definition.AttackDamageBonusPerStack == 0
+                || definition.AttackDamageBonusRequiredCardTag is null
+                || !tags.Contains(
+                    definition.AttackDamageBonusRequiredCardTag,
+                    StringComparer.Ordinal))
+            {
+                return 0;
+            }
+
+            return definition.AttackDamageBonusPerStack
+                * power.Stacks;
+        });
+
+        return damage + additive;
     }
 
     private static int ModifyIncomingAttackDamage(
