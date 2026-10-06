@@ -237,15 +237,15 @@ public static class PrototypeContent
                 EnergyPerTurnBonus: 1)
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
-    public static IReadOnlyDictionary<string, PrototypePlayerPowerDefinition> Powers { get; } =
+    public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
         new[]
         {
-            new PrototypePlayerPowerDefinition(
+            new PrototypePowerDefinition(
                 "proto.power.dexterity",
                 "Dexterity",
                 BlockBonusPerStack: 1,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>()),
-            new PrototypePlayerPowerDefinition(
+            new PrototypePowerDefinition(
                 "proto.power.noxious_fumes",
                 "Noxious Fumes",
                 BlockBonusPerStack: 0,
@@ -262,7 +262,7 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
-            new PrototypePlayerPowerDefinition(
+            new PrototypePowerDefinition(
                 "proto.power.afterimage",
                 "Afterimage",
                 BlockBonusPerStack: 0,
@@ -277,7 +277,7 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
-            new PrototypePlayerPowerDefinition(
+            new PrototypePowerDefinition(
                 "proto.power.envenom",
                 "Envenom",
                 BlockBonusPerStack: 0,
@@ -292,6 +292,22 @@ public static class PrototypeContent
                                 StatusId: "proto.status.poison",
                                 AmountPerPowerStack: 1)
                         ])
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.thorns",
+                "Thorns",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.EnemyDamaged,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamagePlayer,
+                                0,
+                                AmountPerPowerStack: 2)
+                        ],
+                        RequiresOwnerTarget: true)
                 ])
         }.ToDictionary(power => power.Id, StringComparer.Ordinal);
 
@@ -334,6 +350,10 @@ public static class PrototypeContent
                             new(PrototypeEnemyEffectKind.GainBlock, 8),
                             new(PrototypeEnemyEffectKind.DamagePlayer, 9, 2)
                         ])
+                ],
+                StartingPowers:
+                [
+                    new("proto.power.thorns", 1)
                 ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.boss",
@@ -460,7 +480,7 @@ public static class PrototypeContent
             ? value
             : throw new KeyNotFoundException($"Unknown prototype relic '{id}'.");
 
-    public static PrototypePlayerPowerDefinition Power(string id) =>
+    public static PrototypePowerDefinition Power(string id) =>
         Powers.TryGetValue(id, out var value)
             ? value
             : throw new KeyNotFoundException($"Unknown prototype power '{id}'.");
