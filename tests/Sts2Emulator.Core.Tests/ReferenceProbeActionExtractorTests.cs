@@ -126,6 +126,76 @@ public sealed class ReferenceProbeActionExtractorTests
     }
 
     [Fact]
+    public void DoesNotPairTerminalActionsIntoTheNextCombat()
+    {
+        var path = Path.Combine(
+            Path.GetTempPath(),
+            $"sts2-reference-terminal-{Guid.NewGuid():N}.jsonl");
+
+        try
+        {
+            File.WriteAllLines(
+                path,
+                new[]
+                {
+                    Boundary(
+                        1,
+                        "combat_manager.PlayerEndedTurn",
+                        "h1",
+                        State(
+                            energy: 0,
+                            hand: [Card("DEFEND_SILENT")],
+                            play: [])),
+                    Boundary(
+                        2,
+                        "combat_manager.CombatWon",
+                        "h2",
+                        State(
+                            energy: 0,
+                            hand: [],
+                            play: [])),
+                    Boundary(
+                        3,
+                        "combat_manager.CombatEnded",
+                        "h3",
+                        State(
+                            energy: 0,
+                            hand: [],
+                            play: [])),
+                    Boundary(
+                        4,
+                        "combat_manager.CombatSetUp",
+                        "h4",
+                        State(
+                            energy: 0,
+                            hand: [],
+                            play: [])),
+                    Boundary(
+                        5,
+                        "combat_manager.TurnStarted",
+                        "h5",
+                        State(
+                            energy: 3,
+                            hand: [Card("STRIKE_SILENT")],
+                            play: []))
+                }.Select(Compact));
+
+            var report = ReferenceProbeActionExtractor.Analyze(path);
+
+            var action = Assert.Single(report.Actions);
+            Assert.Equal("end_turn", action.Action.Kind);
+            Assert.Null(action.CandidateAfter);
+            Assert.Contains(
+                "next_player_turn_not_observed",
+                action.Diagnostics);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void TreatsPotionUsedAsPostEffectEvidence()
     {
         var path = Path.Combine(
