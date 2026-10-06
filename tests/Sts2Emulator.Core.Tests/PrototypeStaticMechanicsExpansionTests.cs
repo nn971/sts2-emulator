@@ -166,6 +166,81 @@ public sealed class PrototypeStaticMechanicsExpansionTests
             power => power.PowerId == "proto.power.corrosive_wave");
     }
 
+    [Fact]
+    public void SpeedsterIgnoresNormalHandDraw()
+    {
+        var state = CreateState(
+            "speedster-hand-draw-test",
+            [],
+            enemies:
+            [
+                Enemy(1, 40)
+            ],
+            drawPile:
+            [
+                Card(1, 1001, "proto.silent.defend"),
+                Card(2, 1002, "proto.silent.defend"),
+                Card(3, 1003, "proto.silent.defend"),
+                Card(4, 1004, "proto.silent.defend"),
+                Card(5, 1005, "proto.silent.defend")
+            ],
+            powers:
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.speedster",
+                    2,
+                    1)
+            ]);
+
+        var engine = new PrototypeGameEngine();
+        state = engine.Step(state, GameAction.Empty("end_turn")).State;
+
+        Assert.Equal(
+            40,
+            Assert.Single(state.World!.Combat!.Enemies).Hp);
+        Assert.Equal(
+            5,
+            state.World.Combat.CounterState.CardsDrawnThisCombat);
+    }
+
+    [Fact]
+    public void SpeedsterTriggersOnCardEffectDraw()
+    {
+        var state = CreateState(
+            "speedster-effect-draw-test",
+            [
+                Card(1, 1001, "proto.silent.quick_slash")
+            ],
+            enemies:
+            [
+                Enemy(1, 40)
+            ],
+            drawPile:
+            [
+                Card(2, 1002, "proto.silent.defend")
+            ],
+            powers:
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.speedster",
+                    2,
+                    1)
+            ]);
+
+        var engine = new PrototypeGameEngine();
+        var quickSlash = Assert.Single(
+            engine.GetLegalActions(state),
+            action => action.Kind == "play_card");
+        state = engine.Step(state, quickSlash).State;
+
+        Assert.Equal(
+            30,
+            Assert.Single(state.World!.Combat!.Enemies).Hp);
+        Assert.Equal(
+            1,
+            state.World.Combat.CounterState.CardsDrawnThisCombat);
+    }
+
     private static ulong StreamCalls(RunState state, string streamId) =>
         state.Rng.Streams
             .Single(stream => stream.StreamId == streamId)
@@ -198,9 +273,11 @@ public sealed class PrototypeStaticMechanicsExpansionTests
         string seed,
         CombatCardInstance[] hand,
         EnemyCombatState[] enemies,
-        CombatCardInstance[]? drawPile = null)
+        CombatCardInstance[]? drawPile = null,
+        PrototypePowerInstanceState[]? powers = null)
     {
         drawPile ??= [];
+        powers ??= [];
         var empty = PrototypeJson.EmptyObject();
         var allCards = hand.Concat(drawPile).ToArray();
         var player = new PlayerState(
@@ -226,8 +303,11 @@ public sealed class PrototypeStaticMechanicsExpansionTests
             Enemies: enemies,
             NextCardInstanceId: allCards.Max(card => card.InstanceId) + 1,
             Cards: allCards,
-            PlayerPowers: [],
-            NextPowerApplicationOrder: 1);
+            PlayerPowers: powers,
+            NextPowerApplicationOrder:
+                powers.Length == 0
+                    ? 1
+                    : powers.Max(power => power.ApplicationOrder) + 1);
 
         return new RunState(
             "prototype-unbound",
