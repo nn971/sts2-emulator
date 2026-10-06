@@ -24,6 +24,17 @@ public enum PrototypeCardRarity
     Token
 }
 
+public enum PrototypeCardType
+{
+    Unknown,
+    Attack,
+    Skill,
+    Power,
+    Status,
+    Curse,
+    Quest
+}
+
 public enum PrototypeCardTarget
 {
     None,
@@ -208,7 +219,8 @@ public sealed record PrototypeQueuedOperation(
     string? PowerId = null,
     int GeneratedCardUpgradeLevel = 0,
     PrototypeEffectTarget TargetMode = PrototypeEffectTarget.ActionTargetEnemy,
-    PrototypeEffectSourceKind SourceKind = PrototypeEffectSourceKind.System);
+    PrototypeEffectSourceKind SourceKind = PrototypeEffectSourceKind.System,
+    bool IsPoweredAttack = false);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -229,7 +241,8 @@ public sealed record PrototypeCardDefinition(
     bool Ethereal = false,
     bool Unplayable = false,
     bool Eternal = false,
-    bool RewardEligible = true);
+    bool RewardEligible = true,
+    PrototypeCardType Type = PrototypeCardType.Unknown);
 
 public sealed record PrototypePotionDefinition(
     string Id,
@@ -312,7 +325,9 @@ public sealed record PrototypeStatusDefinition(
     PrototypeTurnStage? DecayStage = null,
     int DecayAtStage = 0,
     int OutgoingDamageNumerator = 1,
-    int OutgoingDamageDenominator = 1);
+    int OutgoingDamageDenominator = 1,
+    int IncomingAttackDamageNumerator = 1,
+    int IncomingAttackDamageDenominator = 1);
 
 public sealed record PrototypeEventChoiceDefinition(
     string Id,
