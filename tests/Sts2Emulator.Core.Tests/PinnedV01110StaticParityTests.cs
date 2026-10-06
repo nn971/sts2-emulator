@@ -630,7 +630,20 @@ public sealed class PinnedV01110StaticParityTests
         var power = PrototypeContent.Power(
             "proto.power.tools_of_the_trade");
         Assert.Equal(1, power.HandDrawBonusPerStack);
-        Assert.Equal(1, power.DiscardAfterPlayerTurnStartPerStack);
+
+        var trigger = Assert.Single(power.Triggers);
+        Assert.Equal(
+            PrototypeCombatEventKind.PlayerTurnStarted,
+            trigger.EventKind);
+        var choose = Assert.Single(trigger.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ChooseCards,
+            choose.Kind);
+        Assert.NotNull(choose.Selection);
+        Assert.Equal(
+            PrototypeCardSelectionResolutionKind.MoveToDiscard,
+            choose.Selection!.Resolution);
+        Assert.Equal(1, choose.Selection.SelectionsPerPowerStack);
     }
 
     [Fact]
