@@ -258,6 +258,22 @@ public static class PrototypeContent
                 ],
                 Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
+                "proto.silent.bouncing_flask",
+                "Bouncing Flask",
+                2,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        3,
+                        StatusId: "proto.status.poison",
+                        Target: PrototypeEffectTarget.RandomEnemy,
+                        Repetitions: 3,
+                        RepetitionUpgradeDelta: 1)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Skill),
+            new PrototypeCardDefinition(
                 "proto.silent.quick_slash",
                 "Quick Slash",
                 1,
@@ -388,6 +404,20 @@ public static class PrototypeContent
                         PowerId: "proto.power.noxious_fumes")
                 ],
                 Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Power),
+            new PrototypeCardDefinition(
+                "proto.silent.serpent_form",
+                "Serpent Form",
+                3,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        4,
+                        2,
+                        PowerId: "proto.power.serpent_form")
+                ],
+                Rarity: PrototypeCardRarity.Rare,
                 Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.envenom",
@@ -1028,6 +1058,22 @@ public static class PrototypeContent
                             new PrototypeCombatEffectSpec(
                                 PrototypeCombatEffectKind.GainPlayerBlock,
                                 0,
+                                AmountPerPowerStack: 1)
+                        ])
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.serpent_form",
+                "Serpent Form",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy,
+                                0,
+                                Target: PrototypeEffectTarget.RandomEnemy,
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
