@@ -27,12 +27,16 @@ public static class PrototypeContent
             PrototypeRoomType.Rest,
             PrototypeRoomType.Elite
         ],
-        EnemyTurnSequence:
+        EndTurnPipeline:
         [
-            PrototypeTurnStage.EnemyTurnStart,
-            PrototypeTurnStage.EnemyAction,
-            PrototypeTurnStage.EnemyTurnEnd,
-            PrototypeTurnStage.PlayerTurnStart
+            new(PrototypeAutomaticStepKind.DispatchEnemyStatusStage, PrototypeTurnStage.EnemyTurnStart),
+            new(PrototypeAutomaticStepKind.ResolveEnemyActions),
+            new(PrototypeAutomaticStepKind.DispatchEnemyStatusStage, PrototypeTurnStage.EnemyTurnEnd),
+            new(PrototypeAutomaticStepKind.AdvanceTurn),
+            new(PrototypeAutomaticStepKind.ResetPlayerBlock),
+            new(PrototypeAutomaticStepKind.RefreshPlayerEnergy),
+            new(PrototypeAutomaticStepKind.DispatchPlayerPowerStage, PrototypeTurnStage.PlayerTurnStart),
+            new(PrototypeAutomaticStepKind.DrawPlayerHand)
         ]);
 
     public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
@@ -159,6 +163,30 @@ public static class PrototypeContent
                         3,
                         Repetitions: 0,
                         RepetitionsPerEnergySpent: 1)
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.footwork",
+                "Footwork",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        1,
+                        PowerId: "proto.power.dexterity")
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.noxious_fumes",
+                "Noxious Fumes",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        1,
+                        PowerId: "proto.power.noxious_fumes")
                 ])
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
@@ -189,6 +217,33 @@ public static class PrototypeContent
                 "Lantern",
                 EnergyPerTurnBonus: 1)
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
+
+    public static IReadOnlyDictionary<string, PrototypePlayerPowerDefinition> Powers { get; } =
+        new[]
+        {
+            new PrototypePlayerPowerDefinition(
+                "proto.power.dexterity",
+                "Dexterity",
+                BlockBonusPerStack: 1,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>()),
+            new PrototypePlayerPowerDefinition(
+                "proto.power.noxious_fumes",
+                "Noxious Fumes",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeTurnStage.PlayerTurnStart,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyEnemyStatus,
+                                0,
+                                StatusId: "proto.status.poison",
+                                Target: PrototypeEffectTarget.AllEnemies,
+                                AmountPerPowerStack: 1)
+                        ])
+                ])
+        }.ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
         new[]
@@ -316,7 +371,9 @@ public static class PrototypeContent
         "proto.silent.acrobatics",
         "proto.silent.blade_dance",
         "proto.silent.dagger_spray",
-        "proto.silent.skewer"
+        "proto.silent.skewer",
+        "proto.silent.footwork",
+        "proto.silent.noxious_fumes"
     ];
 
     public static string[] PotionPool { get; } = Potions.Keys.Order(StringComparer.Ordinal).ToArray();
@@ -336,6 +393,11 @@ public static class PrototypeContent
         Relics.TryGetValue(id, out var value)
             ? value
             : throw new KeyNotFoundException($"Unknown prototype relic '{id}'.");
+
+    public static PrototypePlayerPowerDefinition Power(string id) =>
+        Powers.TryGetValue(id, out var value)
+            ? value
+            : throw new KeyNotFoundException($"Unknown prototype power '{id}'.");
 
     public static PrototypeEnemyDefinition Enemy(string id) =>
         Enemies.TryGetValue(id, out var value)
