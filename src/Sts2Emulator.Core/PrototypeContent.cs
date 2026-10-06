@@ -931,7 +931,7 @@ public static class PrototypeContent
                 ],
                 StartingPowers:
                 [
-                    new("proto.power.thorns", 1)
+                    new("proto.power.thorns", 2)
                 ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.boss",
