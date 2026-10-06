@@ -3105,6 +3105,8 @@ public sealed partial class PrototypeGameEngine
                     pending.MoveSourceCardOnCompletion,
                 RemoveSourceCardOnCompletion:
                     pending.RemoveSourceCardOnCompletion,
+                SourceCardAlreadyMoved:
+                    pending.SourceCardAlreadyMoved,
                 EventDispatchContinuation:
                     pending.EventDispatchContinuation?.Fork(),
                 Parent:
@@ -3250,6 +3252,8 @@ public sealed partial class PrototypeGameEngine
                 continuation.MoveSourceCardOnCompletion,
             removeSourceCardOnCompletion:
                 continuation.RemoveSourceCardOnCompletion,
+            sourceCardAlreadyMoved:
+                continuation.SourceCardAlreadyMoved,
             eventDispatchContinuation:
                 continuation.EventDispatchContinuation);
 
