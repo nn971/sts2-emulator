@@ -997,7 +997,8 @@ public static class PrototypeContent
                 "proto.power.dexterity",
                 "Dexterity",
                 BlockBonusPerStack: 1,
-                Triggers: Array.Empty<PrototypePowerTriggerSpec>()),
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                AllowNegative: true),
             new PrototypePowerDefinition(
                 "proto.power.noxious_fumes",
                 "Noxious Fumes",
@@ -1050,18 +1051,7 @@ public static class PrototypeContent
                 "proto.power.thorns",
                 "Thorns",
                 BlockBonusPerStack: 0,
-                Triggers:
-                [
-                    new PrototypePowerTriggerSpec(
-                        PrototypeCombatEventKind.EnemyDamaged,
-                        [
-                            new PrototypeCombatEffectSpec(
-                                PrototypeCombatEffectKind.DamagePlayer,
-                                0,
-                                AmountPerPowerStack: 1)
-                        ],
-                        RequiresOwnerTarget: true)
-                ],
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AttackRetaliationPerStack: 1)
         }.ToDictionary(power => power.Id, StringComparer.Ordinal);
 
