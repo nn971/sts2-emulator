@@ -36,7 +36,9 @@ public enum PrototypeCombatEffectKind
     CreateCardsInHand,
     ApplyPlayerPower,
     ApplyEnemyPower,
-    DamagePlayer
+    DamagePlayer,
+    GainEnergy,
+    MultiplyEnemyStatus
 }
 
 public enum PrototypeCardZone
