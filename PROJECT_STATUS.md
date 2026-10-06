@@ -79,7 +79,7 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through eleven gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through twelve gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
 play-series replay for Burst (including repeated nested choices), Tools of the Trade's
@@ -111,9 +111,16 @@ Power cards are also represented correctly while they occupy no pile and await f
 The remaining continuation boundary is events emitted from inside effect/zone loops such as
 CardDrawn, EnemyDamaged/EnemyDefeated, CardDiscarded, and CardExhausted. Those need their enclosing
 draw/damage/discard/exhaust loop positions represented before arbitrary subscribers on those events
-can suspend. Continue that only when source-backed content requires it; otherwise proceed with
-Phantom Blades and richer enchantment/affliction card-local state. See
-`docs/reference-builds/v0.111.0-mechanics-gap-011.md`.
+can suspend. Continue that only when source-backed content requires it.
+
+Phantom Blades is now source-backed as well. The power grants Retain to Shiv-tagged cards and uses a
+generic per-turn tagged-card play counter so only the first Shiv each turn receives its 9 (12)
+additional damage. Tagged counters reset with the normal turn counter stage and naturally distinguish
+Replay executions because CardPlayed is recorded after each full execution.
+
+The next high-value static-first frontier is richer card-local enchantment/affliction state. Replay,
+Nightmare snapshots, keyword overrides, and tagged-card modifiers now provide the main substrate for
+that work. See `docs/reference-builds/v0.111.0-mechanics-gap-012.md`.
 
 
 ## First live native capture
