@@ -196,7 +196,11 @@ public sealed partial class PrototypeGameEngine
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
             if (definition.Unplayable
-                || !definition.Cost.IsPlayable(combat.Energy))
+                || !definition.Cost.IsPlayable(combat.Energy)
+                || !EvaluateCombatPredicate(
+                    definition.PlayCondition,
+                    combat,
+                    targetEnemyId: null))
             {
                 continue;
             }
@@ -289,6 +293,15 @@ public sealed partial class PrototypeGameEngine
         if (!definition.Cost.IsPlayable(combat.Energy))
         {
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is unaffordable.");
+        }
+
+        if (!EvaluateCombatPredicate(
+                definition.PlayCondition,
+                combat,
+                payload.TargetEnemyId))
+        {
+            throw new InvalidOperationException(
+                $"Card {payload.CardInstanceId} does not satisfy its play condition.");
         }
 
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
@@ -767,7 +780,8 @@ public sealed partial class PrototypeGameEngine
                         + (effect.GeneratedCardUpgradePerSourceUpgrade * upgradeLevel),
                     TargetMode: effect.Target,
                     SourceKind: sourceKind,
-                    IsPoweredAttack: isPoweredAttack && effect.Kind == PrototypeCombatEffectKind.DamageEnemy));
+                    IsPoweredAttack: isPoweredAttack && effect.Kind == PrototypeCombatEffectKind.DamageEnemy,
+                    Condition: effect.Condition));
             }
         }
     }
@@ -804,6 +818,14 @@ public sealed partial class PrototypeGameEngine
                         rng,
                         "combat_targets",
                         liveEnemies.Length)];
+            }
+
+            if (!EvaluateCombatPredicate(
+                    operation.Condition,
+                    combat,
+                    targetEnemyId))
+            {
+                continue;
             }
 
             switch (operation.Kind)
@@ -1043,6 +1065,30 @@ public sealed partial class PrototypeGameEngine
     private static int PlayerBlockBonus(CombatState combat) =>
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
+
+    private static bool EvaluateCombatPredicate(
+        PrototypeCombatPredicateSpec? predicate,
+        CombatState combat,
+        int? targetEnemyId)
+    {
+        if (predicate is null)
+        {
+            return true;
+        }
+
+        return predicate.Kind switch
+        {
+            PrototypeCombatPredicateKind.DrawPileEmpty =>
+                combat.DrawPile.Length == 0,
+            PrototypeCombatPredicateKind.TargetHasStatus =>
+                targetEnemyId is not null
+                && predicate.StatusId is not null
+                && combat.Enemies
+                    .FirstOrDefault(enemy => enemy.InstanceId == targetEnemyId.Value)
+                    ?.Statuses.GetValueOrDefault(predicate.StatusId) > 0,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
 
     private static int ModifyIncomingAttackDamage(
         CombatState combat,
