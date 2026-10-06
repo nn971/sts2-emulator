@@ -1466,6 +1466,8 @@ public sealed partial class PrototypeGameEngine
                 definition.Triggers
                     .Where(trigger =>
                         trigger.EventKind == combatEvent.Kind
+                        && (!trigger.ExcludeHandDraw
+                            || !combatEvent.FromHandDraw)
                         && !trigger.RequiresOwnerTarget
                         && (combatEvent.PowerApplicationOrderCeiling is null
                             || power.ApplicationOrder
@@ -1486,6 +1488,8 @@ public sealed partial class PrototypeGameEngine
                     definition.Triggers
                         .Where(trigger =>
                             trigger.EventKind == combatEvent.Kind
+                            && (!trigger.ExcludeHandDraw
+                                || !combatEvent.FromHandDraw)
                             && (combatEvent.PowerApplicationOrderCeiling is null
                                 || power.ApplicationOrder
                                     <= combatEvent.PowerApplicationOrderCeiling.Value)
