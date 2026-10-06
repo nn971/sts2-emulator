@@ -106,6 +106,39 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void PredicateBackedCardsMatchPinnedV01110Scalars()
+    {
+        var grandFinale = PrototypeContent.Card("proto.silent.grand_finale");
+        Assert.Equal(PrototypeCardType.Attack, grandFinale.Type);
+        Assert.Equal(0, grandFinale.Cost.Amount);
+        Assert.Equal(PrototypeCardRarity.Rare, grandFinale.Rarity);
+        Assert.Equal(
+            PrototypeCombatPredicateKind.DrawPileEmpty,
+            grandFinale.PlayCondition?.Kind);
+
+        var finaleDamage = Assert.Single(grandFinale.Effects);
+        Assert.Equal(PrototypeCombatEffectKind.DamageEnemy, finaleDamage.Kind);
+        Assert.Equal(60, finaleDamage.Amount);
+        Assert.Equal(15, finaleDamage.UpgradeDelta);
+        Assert.Equal(PrototypeEffectTarget.AllEnemies, finaleDamage.Target);
+
+        var bubble = PrototypeContent.Card("proto.silent.bubble_bubble");
+        Assert.Equal(PrototypeCardType.Skill, bubble.Type);
+        Assert.Equal(1, bubble.Cost.Amount);
+        Assert.Equal(PrototypeCardRarity.Uncommon, bubble.Rarity);
+
+        var bubblePoison = Assert.Single(bubble.Effects);
+        Assert.Equal(PrototypeCombatEffectKind.ApplyEnemyStatus, bubblePoison.Kind);
+        Assert.Equal("proto.status.poison", bubblePoison.StatusId);
+        Assert.Equal(9, bubblePoison.Amount);
+        Assert.Equal(3, bubblePoison.UpgradeDelta);
+        Assert.Equal(
+            PrototypeCombatPredicateKind.TargetHasStatus,
+            bubblePoison.Condition?.Kind);
+        Assert.Equal("proto.status.poison", bubblePoison.Condition?.StatusId);
+    }
+
+    [Fact]
     public void AssassinateMatchesPinnedV01110AttackScalars()
     {
         var assassinate = PrototypeContent.Card("proto.silent.assassinate");
