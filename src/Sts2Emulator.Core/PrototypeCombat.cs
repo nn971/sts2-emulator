@@ -1081,13 +1081,28 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatPredicateKind.DrawPileEmpty =>
                 combat.DrawPile.Length == 0,
             PrototypeCombatPredicateKind.TargetHasStatus =>
-                targetEnemyId is not null
-                && predicate.StatusId is not null
-                && combat.Enemies
-                    .FirstOrDefault(enemy => enemy.InstanceId == targetEnemyId.Value)
-                    ?.Statuses.GetValueOrDefault(predicate.StatusId) > 0,
+                TargetHasStatus(
+                    combat,
+                    targetEnemyId,
+                    predicate.StatusId),
             _ => throw new ArgumentOutOfRangeException()
         };
+    }
+
+    private static bool TargetHasStatus(
+        CombatState combat,
+        int? targetEnemyId,
+        string? statusId)
+    {
+        if (targetEnemyId is null || statusId is null)
+        {
+            return false;
+        }
+
+        var enemy = combat.Enemies.FirstOrDefault(item =>
+            item.InstanceId == targetEnemyId.Value);
+        return enemy is not null
+            && enemy.Statuses.GetValueOrDefault(statusId) > 0;
     }
 
     private static int ModifyIncomingAttackDamage(
