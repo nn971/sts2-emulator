@@ -1108,6 +1108,11 @@ public static class PrototypeContent
         "proto.silent.survivor"
     ];
 
+    public static string[] StartingRelics { get; } =
+    [
+        "proto.relic.silent_ring"
+    ];
+
     public static string[] RewardCardPool { get; } = Cards.Values
         .Where(card =>
             card.Rarity != PrototypeCardRarity.Basic
