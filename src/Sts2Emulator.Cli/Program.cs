@@ -72,6 +72,10 @@ switch (args[0])
             $"Records: {summary.ValidRecords} valid, {summary.InvalidRecords} invalid, {summary.Lines} lines");
         Console.WriteLine($"Combats: {summary.CombatCount}");
         Console.WriteLine($"Type catalogs: {summary.TypeCatalogCount}");
+        Console.WriteLine(
+            $"Sequence health: {summary.SequencedRecordCount} sequenced, " +
+            $"{summary.SequenceRegressionCount} regressions, " +
+            $"{summary.DuplicateSequenceCount} duplicates");
 
         Console.WriteLine("Record types:");
         foreach (var item in summary.RecordTypes)
