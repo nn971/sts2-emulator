@@ -705,7 +705,9 @@ public sealed partial class PrototypeGameEngine
                     effect.StatusId,
                     effect.Selection,
                     effect.CardId,
-                    effect.PowerId));
+                    effect.PowerId,
+                    effect.GeneratedCardUpgradeLevel
+                        + (effect.GeneratedCardUpgradePerSourceUpgrade * upgradeLevel)));
             }
         }
     }
@@ -903,7 +905,7 @@ public sealed partial class PrototypeGameEngine
                             InstanceId: combat.NextCardInstanceId,
                             PersistentCardInstanceId: null,
                             CardId: operation.CardId,
-                            UpgradeLevel: 0,
+                            UpgradeLevel: operation.GeneratedCardUpgradeLevel,
                             IsTemporary: true,
                             State: PrototypeJson.EmptyObject());
 

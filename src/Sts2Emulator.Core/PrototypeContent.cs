@@ -403,6 +403,27 @@ public static class PrototypeContent
                 ],
                 Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
+                "proto.silent.hidden_daggers",
+                "Hidden Daggers",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            2,
+                            2,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard)),
+                    new(
+                        PrototypeCombatEffectKind.CreateCardsInHand,
+                        2,
+                        CardId: "proto.silent.shiv",
+                        GeneratedCardUpgradePerSourceUpgrade: 1)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon),
+            new PrototypeCardDefinition(
                 "proto.silent.haze",
                 "Haze",
                 2,

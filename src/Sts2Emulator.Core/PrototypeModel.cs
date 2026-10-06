@@ -167,7 +167,9 @@ public sealed record PrototypeCombatEffectSpec(
     int RepetitionsPerEnergySpent = 0,
     string? PowerId = null,
     int AmountPerPowerStack = 0,
-    int RepetitionsPerPowerStack = 0)
+    int RepetitionsPerPowerStack = 0,
+    int GeneratedCardUpgradeLevel = 0,
+    int GeneratedCardUpgradePerSourceUpgrade = 0)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -187,7 +189,8 @@ public sealed record PrototypeQueuedOperation(
     string? StatusId = null,
     PrototypeCardSelectionSpec? Selection = null,
     string? CardId = null,
-    string? PowerId = null);
+    string? PowerId = null,
+    int GeneratedCardUpgradeLevel = 0);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
