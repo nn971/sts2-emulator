@@ -83,7 +83,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Event: null,
             TerminalOutcome: null);
 
-        world = world with { Map = GenerateMapOptions(world, rng) };
+        world = world with { Map = GenerateActMap(world.Act, rng) };
 
         return state with
         {
@@ -114,7 +114,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Shop = null,
             Event = null
         };
-        world = world with { Map = GenerateMapOptions(world, state.Rng) };
+        world = world with { Map = GenerateActMap(world.Act, state.Rng) };
 
         return state with
         {
