@@ -17,10 +17,10 @@ public sealed class ReferenceProbeAnalyzerTests
                 path,
                 [
                     """{"type":"session","schema":"sts2-reference-probe-v1","build_fingerprint":"abc"}""",
-                    """{"type":"diagnostic","schema":"sts2-reference-probe-v1","code":"recorder_attached"}""",
-                    """{"type":"type_catalog","schema":"sts2-reference-probe-v1","runtime_type":"Example"}""",
-                    """{"type":"boundary","schema":"sts2-reference-probe-v1","boundary":"combat_manager.CombatSetUp"}""",
-                    """{"type":"boundary","schema":"sts2-reference-probe-v1","boundary":"combat_history.Changed"}""",
+                    """{"type":"diagnostic","schema":"sts2-reference-probe-v1","sequence":1,"code":"recorder_attached"}""",
+                    """{"type":"type_catalog","schema":"sts2-reference-probe-v1","sequence":3,"runtime_type":"Example"}""",
+                    """{"type":"boundary","schema":"sts2-reference-probe-v1","sequence":2,"boundary":"combat_manager.CombatSetUp"}""",
+                    """{"type":"boundary","schema":"sts2-reference-probe-v1","sequence":2,"boundary":"combat_history.Changed"}""",
                     """not-json"""
                 ]);
 
@@ -33,6 +33,9 @@ public sealed class ReferenceProbeAnalyzerTests
             Assert.Equal("abc", summary.BuildFingerprint);
             Assert.Equal(1, summary.CombatCount);
             Assert.Equal(1, summary.TypeCatalogCount);
+            Assert.Equal(4, summary.SequencedRecordCount);
+            Assert.Equal(1, summary.SequenceRegressionCount);
+            Assert.Equal(1, summary.DuplicateSequenceCount);
             Assert.Equal(2, summary.RecordTypes["boundary"]);
             Assert.Equal(1, summary.Diagnostics["recorder_attached"]);
             Assert.Equal(1, summary.Boundaries["combat_history.Changed"]);
