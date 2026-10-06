@@ -10,6 +10,7 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
     Console.WriteLine("  prototype-run [seed]   Drive the restrictive Silent prototype to terminal state");
     Console.WriteLine("  prototype-sweep [n]    Run a deterministic smoke policy over many seeds");
+    Console.WriteLine("  prototype-manifest     Print the machine-readable prototype capability manifest");
     return;
 }
 
@@ -45,6 +46,10 @@ switch (args[0])
 
             Console.WriteLine(CanonicalJson.Sha256(state));
         }
+        break;
+
+    case "prototype-manifest":
+        Console.WriteLine(CanonicalJson.Serialize(PrototypeCapabilities.Create()));
         break;
 
     case "prototype-run":
