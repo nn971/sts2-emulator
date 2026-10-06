@@ -28,7 +28,7 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Print one reference corpus entity");
     Console.WriteLine("  reference-mechanics-gap <eng-dir> [--json]");
     Console.WriteLine("                          Compare native Silent mechanics with the prototype");
-    Console.WriteLine("  reference-source-search <source-dir> <query> [max]");
+    Console.WriteLine("  reference-source-search <source-dir> <query> [max] [context]");
     Console.WriteLine("                          Search a local decompiled sts2.dll source tree");
     return;
 }
@@ -334,24 +334,33 @@ switch (args[0])
 
     case "reference-source-search":
     {
-        if (args.Length is < 3 or > 4)
+        if (args.Length is < 3 or > 5)
         {
             throw new ArgumentException(
-                "reference-source-search requires <source-dir> <query> and optionally [max].");
+                "reference-source-search requires <source-dir> <query> and optionally [max] [context].");
         }
 
         var maxMatches = 200;
-        if (args.Length == 4
+        if (args.Length >= 4
             && (!int.TryParse(args[3], out maxMatches) || maxMatches <= 0))
         {
             throw new ArgumentException(
                 "reference-source-search max must be a positive integer.");
         }
 
+        var contextLines = 0;
+        if (args.Length == 5
+            && (!int.TryParse(args[4], out contextLines) || contextLines < 0))
+        {
+            throw new ArgumentException(
+                "reference-source-search context must be a non-negative integer.");
+        }
+
         var result = Sts2Emulator.Trace.ReferenceSourceSearch.Search(
             args[1],
             args[2],
-            maxMatches);
+            maxMatches,
+            contextLines);
 
         Console.WriteLine($"Root: {result.RootDirectory}");
         Console.WriteLine($"Query: {result.Query}");
@@ -359,8 +368,20 @@ switch (args[0])
         Console.WriteLine($"Matches: {result.Matches.Count}");
         foreach (var match in result.Matches)
         {
+            if (match.Context is null || match.Context.Count == 0)
+            {
+                Console.WriteLine(
+                    $"{match.RelativePath}:{match.LineNumber}: {match.Line}");
+                continue;
+            }
+
             Console.WriteLine(
-                $"{match.RelativePath}:{match.LineNumber}: {match.Line}");
+                $"--- {match.RelativePath}:{match.LineNumber} ---");
+            foreach (var line in match.Context)
+            {
+                Console.WriteLine(
+                    $"{(line.IsMatch ? ">" : " ")} {line.LineNumber,6} | {line.Line}");
+            }
         }
 
         break;
