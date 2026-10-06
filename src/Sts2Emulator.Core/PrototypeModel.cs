@@ -48,6 +48,12 @@ public enum PrototypeEffectTarget
     AllEnemies
 }
 
+public enum PrototypeCardCostKind
+{
+    Fixed,
+    X
+}
+
 public enum PrototypeTurnStage
 {
     EnemyTurnStart,
@@ -76,6 +82,30 @@ public sealed record PrototypeCardSelectionSpec(
     int MaxSelections,
     PrototypeCardSelectionResolutionKind Resolution);
 
+public sealed record PrototypeCardCostSpec(
+    PrototypeCardCostKind Kind,
+    int Amount = 0)
+{
+    public static implicit operator PrototypeCardCostSpec(int fixedCost) =>
+        new(PrototypeCardCostKind.Fixed, fixedCost);
+
+    public bool IsPlayable(int availableEnergy) =>
+        Kind switch
+        {
+            PrototypeCardCostKind.Fixed => Amount <= availableEnergy,
+            PrototypeCardCostKind.X => true,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+    public int ResolveEnergySpent(int availableEnergy) =>
+        Kind switch
+        {
+            PrototypeCardCostKind.Fixed => Amount,
+            PrototypeCardCostKind.X => availableEnergy,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+}
+
 public sealed record PrototypeCombatEffectSpec(
     PrototypeCombatEffectKind Kind,
     int Amount,
@@ -85,9 +115,19 @@ public sealed record PrototypeCombatEffectSpec(
     string? CardId = null,
     PrototypeEffectTarget Target = PrototypeEffectTarget.ActionTargetEnemy,
     int Repetitions = 1,
-    int RepetitionUpgradeDelta = 0)
+    int RepetitionUpgradeDelta = 0,
+    int AmountPerEnergySpent = 0,
+    int RepetitionsPerEnergySpent = 0)
 {
-    public int AmountAtUpgrade(int upgradeLevel) => Amount + (UpgradeDelta * upgradeLevel);
+    public int AmountAt(int upgradeLevel, int energySpent) =>
+        Amount
+        + (UpgradeDelta * upgradeLevel)
+        + (AmountPerEnergySpent * energySpent);
+
+    public int RepetitionsAt(int upgradeLevel, int energySpent) =>
+        Repetitions
+        + (RepetitionUpgradeDelta * upgradeLevel)
+        + (RepetitionsPerEnergySpent * energySpent);
 }
 
 public sealed record PrototypeQueuedOperation(
@@ -106,7 +146,7 @@ public sealed record PrototypeRunEffectSpec(
 public sealed record PrototypeCardDefinition(
     string Id,
     string Name,
-    int Cost,
+    PrototypeCardCostSpec Cost,
     PrototypeCardTarget Target,
     PrototypeCombatEffectSpec[] Effects,
     bool ExhaustOnUse = false);
