@@ -15,17 +15,61 @@ public static class PrototypeContent
         BaseEnergy: 3,
         HandSize: 5,
         RestHealPercent: 30,
-        RoomPool:
+        RestTrainMaxHp: 4,
+        MapFloorRules:
         [
-            PrototypeRoomType.Combat,
-            PrototypeRoomType.Combat,
-            PrototypeRoomType.Combat,
-            PrototypeRoomType.Combat,
-            PrototypeRoomType.Event,
-            PrototypeRoomType.Event,
-            PrototypeRoomType.Shop,
-            PrototypeRoomType.Rest,
-            PrototypeRoomType.Elite
+            new(
+                MinFloor: 1,
+                MaxFloor: 1,
+                RoomPool:
+                [
+                    PrototypeRoomType.Combat
+                ]),
+            new(
+                MinFloor: 2,
+                MaxFloor: 2,
+                RoomPool:
+                [
+                    PrototypeRoomType.Combat,
+                    PrototypeRoomType.Combat,
+                    PrototypeRoomType.Event,
+                    PrototypeRoomType.Shop
+                ]),
+            new(
+                MinFloor: 3,
+                MaxFloor: 3,
+                RoomPool:
+                [
+                    PrototypeRoomType.Combat,
+                    PrototypeRoomType.Combat,
+                    PrototypeRoomType.Event,
+                    PrototypeRoomType.Elite
+                ]),
+            new(
+                MinFloor: 4,
+                MaxFloor: 4,
+                RoomPool:
+                [
+                    PrototypeRoomType.Combat,
+                    PrototypeRoomType.Event,
+                    PrototypeRoomType.Shop,
+                    PrototypeRoomType.Rest,
+                    PrototypeRoomType.Elite
+                ]),
+            new(
+                MinFloor: 5,
+                MaxFloor: 5,
+                RoomPool:
+                [
+                    PrototypeRoomType.Rest
+                ]),
+            new(
+                MinFloor: 6,
+                MaxFloor: 6,
+                RoomPool:
+                [
+                    PrototypeRoomType.Boss
+                ])
         ],
         EndTurnPipeline:
         [
@@ -163,6 +207,100 @@ public static class PrototypeContent
                         Target: PrototypeEffectTarget.AllEnemies,
                         Repetitions: 2)
                 ]),
+            new PrototypeCardDefinition(
+                "proto.silent.deadly_poison",
+                "Deadly Poison",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        5,
+                        2,
+                        StatusId: "proto.status.poison")
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.quick_slash",
+                "Quick Slash",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.DamageEnemy, 8, 3),
+                    new(PrototypeCombatEffectKind.DrawCards, 1)
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.dagger_throw",
+                "Dagger Throw",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.DamageEnemy, 9, 3),
+                    new(PrototypeCombatEffectKind.DrawCards, 1),
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            1,
+                            1,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.cloak_and_dagger",
+                "Cloak and Dagger",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 6, 3),
+                    new(
+                        PrototypeCombatEffectKind.CreateCardsInHand,
+                        1,
+                        1,
+                        CardId: "proto.silent.shiv")
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.deflect",
+                "Deflect",
+                0,
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.GainPlayerBlock, 4, 3)]),
+            new PrototypeCardDefinition(
+                "proto.silent.sucker_punch",
+                "Sucker Punch",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.DamageEnemy, 7, 3),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        1,
+                        1,
+                        StatusId: "proto.status.weak")
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.dash",
+                "Dash",
+                2,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.DamageEnemy, 10, 3),
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 10, 3)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon),
+            new PrototypeCardDefinition(
+                "proto.silent.leg_sweep",
+                "Leg Sweep",
+                2,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 11, 3),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        2,
+                        1,
+                        StatusId: "proto.status.weak")
+                ],
+                Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
                 "proto.silent.skewer",
                 "Skewer",
