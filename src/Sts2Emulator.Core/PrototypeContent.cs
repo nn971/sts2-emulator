@@ -556,6 +556,22 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Rare,
                 Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
+                "proto.silent.master_planner",
+                "Master Planner",
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.Fixed,
+                    2,
+                    -1),
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.master_planner")
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Power),
+            new PrototypeCardDefinition(
                 "proto.silent.prepared",
                 "Prepared",
                 0,
@@ -1374,6 +1390,25 @@ public static class PrototypeContent
                                 0,
                                 AmountPerPowerStack: 1)
                         ])
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.master_planner",
+                "Master Planner",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ModifyEventSourceCardKeyword,
+                                0,
+                                EventSourceCardKeyword: new(
+                                    PrototypeCardKeyword.Sly,
+                                    Expiry:
+                                        PrototypeCardKeywordOverrideExpiry.None))
+                        ],
+                        RequiredSourceCardType: PrototypeCardType.Skill)
                 ]),
             new PrototypePowerDefinition(
                 "proto.power.infinite_blades",
