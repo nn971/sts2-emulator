@@ -1045,7 +1045,19 @@ public sealed partial class PrototypeGameEngine
                             * count),
                     targetEnemyId,
                     effect.StatusId,
-                    effect.Selection,
+                    effect.Selection is null
+                        ? null
+                        : effect.Selection with
+                        {
+                            MinSelections =
+                                effect.Selection.MinSelections
+                                + (effect.Selection.SelectionsPerPowerStack
+                                    * powerStacks),
+                            MaxSelections =
+                                effect.Selection.MaxSelections
+                                + (effect.Selection.SelectionsPerPowerStack
+                                    * powerStacks)
+                        },
                     effect.CardId,
                     effect.PowerId,
                     effect.GeneratedCardUpgradeLevel
