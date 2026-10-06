@@ -79,6 +79,36 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.DoesNotContain("rng", observationJson, StringComparison.OrdinalIgnoreCase);
     }
 
+
+    [Fact]
+    public void ExpandReturnsIndependentSuccessorsForEveryLegalAction()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var state = environment.Reset("ai-expand-test");
+
+        var frame = environment.Observe(state);
+        var expansions = environment.Expand(state);
+
+        Assert.Equal(frame.LegalActions.Length, expansions.Length);
+        Assert.Equal(
+            frame.LegalActions.Select(action => action.ActionId).Order(StringComparer.Ordinal),
+            expansions.Select(item => item.Action.ActionId).Order(StringComparer.Ordinal));
+
+        Assert.All(
+            expansions,
+            expansion =>
+            {
+                Assert.NotEqual(
+                    CanonicalJson.Sha256(state),
+                    expansion.CanonicalStateHash);
+                Assert.Equal(
+                    expansion.CanonicalStateHash,
+                    CanonicalJson.Sha256(expansion.State));
+            });
+
+        Assert.Equal(0, state.DecisionIndex);
+    }
+
     [Fact]
     public void ForkProducesIndependentSearchBranch()
     {
