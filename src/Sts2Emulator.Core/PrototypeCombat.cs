@@ -2,6 +2,14 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
+    private sealed record PrototypeEventSubscriber(
+        long ApplicationOrder,
+        PrototypeCombatEffectSpec[] Effects,
+        int PowerStacks,
+        int? RelicStateIndex = null,
+        int? RelicTriggerIndex = null,
+        int EveryNth = 1);
+
     private static RunState StartCombat(RunState state, PrototypeRoomType roomType)
     {
         var world = RequireWorld(state);
@@ -17,7 +25,19 @@ public sealed partial class PrototypeGameEngine
         var encounter = encounters[
             PrototypeRng.NextInt(state.Rng, "combat", encounters.Length)];
 
-        var nextPowerApplicationOrder = 1L;
+        var combatRelics = state.Player.Relics
+            .Select((relic, index) =>
+            {
+                var definition = PrototypeContent.Relic(relic.RelicId);
+                return new CombatRelicState(
+                    PersistentIndex: index,
+                    RelicId: relic.RelicId,
+                    ApplicationOrder: index + 1L,
+                    TriggerCounts: new int[(definition.Triggers ?? Array.Empty<PrototypeRelicTriggerSpec>()).Length]);
+            })
+            .ToArray();
+
+        var nextPowerApplicationOrder = combatRelics.Length + 1L;
         var enemies = encounter.EnemyIds
             .Select((enemyId, index) =>
             {
@@ -72,7 +92,8 @@ public sealed partial class PrototypeGameEngine
             NextCardInstanceId: nextCombatCardId,
             Cards: combatCards,
             PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
-            NextPowerApplicationOrder: nextPowerApplicationOrder);
+            NextPowerApplicationOrder: nextPowerApplicationOrder,
+            Relics: combatRelics);
 
         combat = DrawCards(
             combat,
@@ -908,6 +929,30 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static (CombatState Combat, int Count) IncrementRelicTriggerCounter(
+        CombatState combat,
+        int relicStateIndex,
+        int triggerIndex)
+    {
+        var relics = combat.RelicStates.Select(relic => relic.Fork()).ToArray();
+        if (relicStateIndex < 0 || relicStateIndex >= relics.Length)
+        {
+            throw new InvalidOperationException("Relic trigger references a missing combat relic.");
+        }
+
+        var relic = relics[relicStateIndex];
+        if (triggerIndex < 0 || triggerIndex >= relic.TriggerCounts.Length)
+        {
+            throw new InvalidOperationException("Relic trigger counter index is invalid.");
+        }
+
+        var counts = (int[])relic.TriggerCounts.Clone();
+        counts[triggerIndex]++;
+        relics[relicStateIndex] = relic with { TriggerCounts = counts };
+
+        return (combat with { Relics = relics }, counts[triggerIndex]);
+    }
+
     private static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
         PlayerState player,
         CombatState combat,
@@ -920,10 +965,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Prototype combat event chain exceeded the safety depth limit.");
         }
-        var subscribers = new List<(
-            PrototypePowerInstanceState Power,
-            PrototypePowerTriggerSpec Trigger,
-            int? OwnerEnemyId)>();
+        var subscribers = new List<PrototypeEventSubscriber>();
 
         foreach (var power in combat.PlayerPowers)
         {
@@ -933,7 +975,10 @@ public sealed partial class PrototypeGameEngine
                     .Where(trigger =>
                         trigger.EventKind == combatEvent.Kind
                         && !trigger.RequiresOwnerTarget)
-                    .Select(trigger => (power, trigger, (int?)null)));
+                    .Select(trigger => new PrototypeEventSubscriber(
+                        power.ApplicationOrder,
+                        trigger.Effects,
+                        power.Stacks)));
         }
 
         foreach (var enemy in combat.Enemies)
@@ -950,14 +995,58 @@ public sealed partial class PrototypeGameEngine
                             && (enemy.Hp > 0
                                 || (trigger.RequiresOwnerTarget
                                     && combatEvent.TargetEnemyId == enemy.InstanceId)))
-                        .Select(trigger => (power, trigger, (int?)enemy.InstanceId)));
+                        .Select(trigger => new PrototypeEventSubscriber(
+                            power.ApplicationOrder,
+                            trigger.Effects,
+                            power.Stacks)));
             }
         }
 
-        foreach (var subscriber in subscribers.OrderBy(item => item.Power.ApplicationOrder))
+        for (var relicIndex = 0; relicIndex < combat.RelicStates.Length; relicIndex++)
         {
+            var relic = combat.RelicStates[relicIndex];
+            var definition = PrototypeContent.Relic(relic.RelicId);
+            var triggers = definition.Triggers ?? Array.Empty<PrototypeRelicTriggerSpec>();
+            for (var triggerIndex = 0; triggerIndex < triggers.Length; triggerIndex++)
+            {
+                var trigger = triggers[triggerIndex];
+                if (trigger.EventKind != combatEvent.Kind)
+                {
+                    continue;
+                }
+
+                subscribers.Add(new PrototypeEventSubscriber(
+                    relic.ApplicationOrder,
+                    trigger.Effects,
+                    PowerStacks: 0,
+                    RelicStateIndex: relicIndex,
+                    RelicTriggerIndex: triggerIndex,
+                    EveryNth: trigger.EveryNth));
+            }
+        }
+
+        foreach (var subscriber in subscribers.OrderBy(item => item.ApplicationOrder))
+        {
+            if (subscriber.RelicStateIndex is not null)
+            {
+                if (subscriber.RelicTriggerIndex is null || subscriber.EveryNth <= 0)
+                {
+                    throw new InvalidOperationException("Relic trigger counter metadata is invalid.");
+                }
+
+                var incremented = IncrementRelicTriggerCounter(
+                    combat,
+                    subscriber.RelicStateIndex.Value,
+                    subscriber.RelicTriggerIndex.Value);
+                combat = incremented.Combat;
+                if (incremented.Count % subscriber.EveryNth != 0)
+                {
+                    continue;
+                }
+            }
+
             var operations = new Queue<PrototypeQueuedOperation>();
-            foreach (var effect in subscriber.Trigger.Effects)
+            foreach (var effect in subscriber.Effects)
             {
                 EnqueueEffectOperations(
                     operations,
@@ -966,7 +1055,7 @@ public sealed partial class PrototypeGameEngine
                     energySpent: 0,
                     actionTargetEnemyId: combatEvent.TargetEnemyId,
                     combat: combat,
-                    powerStacks: subscriber.Power.Stacks);
+                    powerStacks: subscriber.PowerStacks);
             }
 
             var resolved = ResolveOperations(
