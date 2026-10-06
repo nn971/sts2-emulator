@@ -373,6 +373,72 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void InfiniteBladesAndSuppressMatchPinnedV01110()
+    {
+        var infiniteBlades = PrototypeContent.Card(
+            "proto.silent.infinite_blades");
+        Assert.Equal(1, infiniteBlades.Cost.Amount);
+        Assert.Equal(PrototypeCardType.Power, infiniteBlades.Type);
+        Assert.Equal(
+            PrototypeCardRarity.Uncommon,
+            infiniteBlades.Rarity);
+        Assert.False(infiniteBlades.Innate);
+        Assert.True(infiniteBlades.InnateOnUpgrade);
+
+        var infiniteEffect = Assert.Single(
+            infiniteBlades.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyPlayerPower,
+            infiniteEffect.Kind);
+        Assert.Equal(
+            "proto.power.infinite_blades",
+            infiniteEffect.PowerId);
+
+        var infinitePower = PrototypeContent.Power(
+            "proto.power.infinite_blades");
+        var trigger = Assert.Single(infinitePower.Triggers);
+        Assert.Equal(
+            PrototypeCombatEventKind.BeforeHandDraw,
+            trigger.EventKind);
+        var shiv = Assert.Single(trigger.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.CreateCardsInHand,
+            shiv.Kind);
+        Assert.Equal("proto.silent.shiv", shiv.CardId);
+        Assert.Equal(1, shiv.AmountPerPowerStack);
+
+        var suppress = PrototypeContent.Card(
+            "proto.silent.suppress");
+        Assert.Equal(0, suppress.Cost.Amount);
+        Assert.Equal(PrototypeCardType.Attack, suppress.Type);
+        Assert.Equal(
+            PrototypeCardRarity.Ancient,
+            suppress.Rarity);
+        Assert.True(suppress.Innate);
+
+        var damage = Assert.Single(
+            suppress.Effects,
+            effect =>
+                effect.Kind
+                == PrototypeCombatEffectKind.DamageEnemy);
+        Assert.Equal(11, damage.Amount);
+        Assert.Equal(6, damage.UpgradeDelta);
+
+        var weak = Assert.Single(
+            suppress.Effects,
+            effect =>
+                effect.Kind
+                == PrototypeCombatEffectKind.ApplyEnemyStatus);
+        Assert.Equal("proto.status.weak", weak.StatusId);
+        Assert.Equal(3, weak.Amount);
+        Assert.Equal(2, weak.UpgradeDelta);
+
+        Assert.DoesNotContain(
+            "proto.silent.suppress",
+            PrototypeContent.RewardCardPool);
+    }
+
+    [Fact]
     public void AnticipateMatchesPinnedV01110TemporaryDexterity()
     {
         var anticipate = PrototypeContent.Card("proto.silent.anticipate");
