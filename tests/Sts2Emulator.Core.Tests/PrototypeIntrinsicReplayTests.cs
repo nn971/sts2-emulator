@@ -59,6 +59,26 @@ public sealed class PrototypeIntrinsicReplayTests
     }
 
     [Fact]
+    public void ReplayStopsAfterTheLastEnemyDies()
+    {
+        var strike = Card(1, "proto.silent.strike") with
+        {
+            ReplayCount = 2
+        };
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(
+            energy: 3,
+            hand: [strike],
+            enemyHp: 5);
+
+        state = PlayCard(engine, state, strike.InstanceId, enemyId: 1);
+
+        var combat = state.World?.Combat;
+        Assert.Null(combat);
+        Assert.Equal(RunPhase.Reward, state.Phase);
+    }
+
+    [Fact]
     public void ReplayAndBurstAddTheirExtraExecutions()
     {
         var defend = Card(1, "proto.silent.defend") with
@@ -91,13 +111,21 @@ public sealed class PrototypeIntrinsicReplayTests
     private static RunState PlayCard(
         PrototypeGameEngine engine,
         RunState state,
-        long cardInstanceId)
+        long cardInstanceId,
+        int? enemyId = null)
     {
         var action = engine.GetLegalActions(state)
             .Single(item =>
-                item.Kind == "play_card"
-                && item.ReadPayload<PlayCardPayload>()
-                    .CardInstanceId == cardInstanceId);
+            {
+                if (item.Kind != "play_card")
+                {
+                    return false;
+                }
+
+                var payload = item.ReadPayload<PlayCardPayload>();
+                return payload.CardInstanceId == cardInstanceId
+                    && payload.TargetEnemyId == enemyId;
+            });
         return engine.Step(state, action).State;
     }
 
@@ -128,7 +156,8 @@ public sealed class PrototypeIntrinsicReplayTests
     private static RunState CreateState(
         int energy,
         CombatCardInstance[] hand,
-        PrototypePowerInstanceState[]? powers = null)
+        PrototypePowerInstanceState[]? powers = null,
+        int enemyHp = 999)
     {
         powers ??= [];
         var cards = hand;
@@ -159,7 +188,7 @@ public sealed class PrototypeIntrinsicReplayTests
                 new EnemyCombatState(
                     1,
                     "proto.enemy.crawler",
-                    999,
+                    enemyHp,
                     0,
                     0,
                     new Dictionary<string, int>(
