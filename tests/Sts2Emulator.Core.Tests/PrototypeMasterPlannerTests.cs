@@ -62,11 +62,12 @@ public sealed class PrototypeMasterPlannerTests
             combat.PlayerPowers,
             item => item.PowerId == "proto.power.master_planner");
 
-        // The newly-created power is excluded from the completion event of
-        // the card that created it.
-        Assert.Null(combat.Cards.Single(
-            card => card.InstanceId == masterPlanner.InstanceId)
-            .KeywordOverrides);
+        // Power cards leave combat after resolving. Master Planner's
+        // CardPlayed trigger is Skill-only, so its own play cannot be a
+        // mutation target.
+        Assert.DoesNotContain(
+            combat.Cards,
+            card => card.InstanceId == masterPlanner.InstanceId);
 
         state = PlayCard(engine, state, strike.InstanceId);
         combat = state.World!.Combat!;
