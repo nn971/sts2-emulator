@@ -444,6 +444,12 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
+        combat = combat with { IsPlayerTurn = false };
+        state = state with
+        {
+            World = world with { Combat = combat }
+        };
+
         foreach (var automaticStep in PrototypeContent.Rules.EndTurnPipeline)
         {
             state = ResolveAutomaticStep(state, automaticStep);
@@ -480,6 +486,12 @@ public sealed partial class PrototypeGameEngine
                 if (automaticStep.EventKind is null)
                 {
                     throw new InvalidOperationException("Combat-event pipeline step is missing an event kind.");
+                }
+
+                if (automaticStep.EventKind
+                    == PrototypeCombatEventKind.PlayerTurnStarted)
+                {
+                    combat = combat with { IsPlayerTurn = true };
                 }
 
                 var dispatched = DispatchCombatEvent(
@@ -1468,6 +1480,8 @@ public sealed partial class PrototypeGameEngine
                         trigger.EventKind == combatEvent.Kind
                         && (!trigger.ExcludeHandDraw
                             || !combatEvent.FromHandDraw)
+                        && (!trigger.RequiresPlayerTurn
+                            || combat.IsPlayerTurn)
                         && !trigger.RequiresOwnerTarget
                         && (combatEvent.PowerApplicationOrderCeiling is null
                             || power.ApplicationOrder
@@ -1490,6 +1504,8 @@ public sealed partial class PrototypeGameEngine
                             trigger.EventKind == combatEvent.Kind
                             && (!trigger.ExcludeHandDraw
                                 || !combatEvent.FromHandDraw)
+                            && (!trigger.RequiresPlayerTurn
+                                || combat.IsPlayerTurn)
                             && (combatEvent.PowerApplicationOrderCeiling is null
                                 || power.ApplicationOrder
                                     <= combatEvent.PowerApplicationOrderCeiling.Value)
