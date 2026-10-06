@@ -9,12 +9,12 @@ Implemented on the current prototype branch:
 - typed whole-run world state;
 - restrictive Silent ruleset/content catalog;
 - deterministic prototype RNG with named streams;
-- generated floor-by-floor map choices;
+- persistent floor-constrained act DAGs with stable future routing;
 - normal, elite and boss combats;
 - card play, draw/discard/shuffle, block, simple statuses and enemy turns;
 - potions and relics;
 - combat rewards and persistent deck growth;
-- shops, events and rest sites;
+- rarity-aware shops, weighted events, and heal/upgrade/max-HP rest sites;
 - three-act transition flow;
 - terminal victory/death;
 - suspendable combat card-selection prompts with resumable effect continuations;
@@ -29,8 +29,10 @@ Implemented on the current prototype branch:
 - prototype rarity-aware card rewards;
 - weighted event eligibility/history;
 - rarity-aware shops with one-use card removal;
-- expanded potion/relic pools and act-specific later encounters/bosses;
-- CLI whole-run smoke driver;
+- expanded Silent card/potion/relic pools and act-specific normal/elite/boss encounters;
+- player-facing `prototype-ai-v0` observation/action adapter with stable action IDs and sibling expansion;
+- machine-readable capability manifest;
+- CLI whole-run smoke and deterministic multi-run sweep drivers;
 - deterministic whole-run smoke tests;
 - trace/diff and benchmark scaffolding.
 
@@ -39,16 +41,15 @@ See `docs/PROTOTYPE_SCOPE.md`.
 
 Still to do:
 
-- compile/CI hardening of the prototype branch;
-- broaden the semantic primitive set and content coverage;
-- richer map topology and encounter generation;
-- card-selection/discard/exhaust/temporary-card prompts;
-- powers/relic triggers and general trigger scheduling;
-- native STS2 data import;
+- integrate the prototype AI adapter from the parent `sts2-ai` project;
+- continue Silent/content breadth only where it creates strategic variety;
+- richer map topology/pool-history rules if AI experiments show value;
+- pin and inventory a reference STS2 build;
+- native STS2 data translation/import;
 - native RNG/timing parity;
 - reference bridge and differential testing;
-- performance work after representative AI workloads exist;
-- production language binding.
+- performance work driven by representative AI/search workloads;
+- production cross-language binding and compatibility negotiation.
 
 Search, strategic databases, and AI learning remain outside this repository and belong in the
 future parent project.
