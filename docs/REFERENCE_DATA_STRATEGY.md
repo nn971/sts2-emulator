@@ -312,6 +312,17 @@ tools/reference_source/decompile.fish \
     "$HOME/Games/sts2-oracles/2026-10-06/game"
 ```
 
+For the current Silent-combat fidelity questions, the one-shot helper performs the decompilation if
+needed and writes contextual source matches for Sly, discard/card-play handling, turn-bound
+keywords, selection state and RNG surfaces:
+
+```fish
+tools/reference_source/audit_combat_source.fish \
+    "$HOME/Games/sts2-oracles/2026-10-06/game"
+```
+
+The generated `data/extracted/v0.111.0/source-audit.txt` is local/gitignored.
+
 This is much cheaper than rebuilding a mod and restarting the game for every question.
 
 ## Recommended fidelity workflow
