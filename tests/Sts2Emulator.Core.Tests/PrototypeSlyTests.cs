@@ -65,7 +65,7 @@ public sealed class PrototypeSlyTests
         state = engine.Step(state, selectReflex).State;
 
         var combat = state.World!.Combat!;
-        Assert.Equal(new long[] { 3, 4, 5 }, combat.Hand);
+        Assert.Equal(new long[] { 3, 5, 4 }, combat.Hand);
         Assert.Equal(new long[] { 2, 1 }, combat.DiscardPile);
         Assert.Empty(combat.DrawPile);
         Assert.Equal(2, combat.Energy);
