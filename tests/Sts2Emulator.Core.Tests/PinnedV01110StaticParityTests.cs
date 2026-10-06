@@ -610,6 +610,30 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void ToolsOfTheTradeMatchesPinnedV01110TurnStartPolicy()
+    {
+        var tools = PrototypeContent.Card(
+            "proto.silent.tools_of_the_trade");
+
+        Assert.Equal(PrototypeCardType.Power, tools.Type);
+        Assert.Equal(PrototypeCardRarity.Rare, tools.Rarity);
+        Assert.Equal(1, tools.Cost.Amount);
+        Assert.Equal(-1, tools.Cost.UpgradeDelta);
+
+        var apply = Assert.Single(tools.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyPlayerPower,
+            apply.Kind);
+        Assert.Equal("proto.power.tools_of_the_trade", apply.PowerId);
+        Assert.Equal(1, apply.Amount);
+
+        var power = PrototypeContent.Power(
+            "proto.power.tools_of_the_trade");
+        Assert.Equal(1, power.HandDrawBonusPerStack);
+        Assert.Equal(1, power.DiscardAfterPlayerTurnStartPerStack);
+    }
+
+    [Fact]
     public void BurstMatchesPinnedV01110PlayCountSemantics()
     {
         var burst = PrototypeContent.Card("proto.silent.burst");
