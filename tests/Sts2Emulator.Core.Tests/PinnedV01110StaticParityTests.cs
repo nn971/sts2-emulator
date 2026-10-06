@@ -287,6 +287,39 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void RandomTargetSilentCardsMatchPinnedV01110Scalars()
+    {
+        var bouncingFlask = PrototypeContent.Card(
+            "proto.silent.bouncing_flask");
+        Assert.Equal(PrototypeCardType.Skill, bouncingFlask.Type);
+        Assert.Equal(2, bouncingFlask.Cost.Amount);
+        Assert.Equal(PrototypeCardRarity.Uncommon, bouncingFlask.Rarity);
+
+        var poison = Assert.Single(bouncingFlask.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyEnemyStatus,
+            poison.Kind);
+        Assert.Equal("proto.status.poison", poison.StatusId);
+        Assert.Equal(3, poison.Amount);
+        Assert.Equal(3, poison.Repetitions);
+        Assert.Equal(1, poison.RepetitionUpgradeDelta);
+        Assert.Equal(PrototypeEffectTarget.RandomEnemy, poison.Target);
+
+        var serpentForm = PrototypeContent.Card("proto.silent.serpent_form");
+        Assert.Equal(PrototypeCardType.Power, serpentForm.Type);
+        Assert.Equal(3, serpentForm.Cost.Amount);
+        Assert.Equal(PrototypeCardRarity.Rare, serpentForm.Rarity);
+
+        var apply = Assert.Single(serpentForm.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyPlayerPower,
+            apply.Kind);
+        Assert.Equal("proto.power.serpent_form", apply.PowerId);
+        Assert.Equal(4, apply.Amount);
+        Assert.Equal(2, apply.UpgradeDelta);
+    }
+
+    [Fact]
     public void CorrectedSilentCardsMatchPinnedV01110BaseAndUpgradeScalars()
     {
         var bladeDance = PrototypeContent.Card("proto.silent.blade_dance");
