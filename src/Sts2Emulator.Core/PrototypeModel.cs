@@ -53,7 +53,8 @@ public enum PrototypeCombatEffectKind
     ApplyEnemyPower,
     DamagePlayer,
     GainEnergy,
-    MultiplyEnemyStatus
+    MultiplyEnemyStatus,
+    GainPlayerBlockAndApplyPowerFromActualGain
 }
 
 public enum PrototypeCardZone
@@ -336,7 +337,13 @@ public sealed record PrototypePowerDefinition(
     PrototypePowerTriggerSpec[] Triggers,
     int AttackRetaliationPerStack = 0,
     bool AllowNegative = false,
-    bool RemoveAtPlayerTurnEnd = false);
+    bool RemoveAtPlayerTurnEnd = false,
+    int BlockAfterClearPerStack = 0,
+    int EnergyAfterResetPerStack = 0,
+    int HandDrawBonusPerStack = 0,
+    bool RemoveAfterBlockClear = false,
+    bool RemoveAfterEnergyReset = false,
+    bool RemoveAfterHandDraw = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
