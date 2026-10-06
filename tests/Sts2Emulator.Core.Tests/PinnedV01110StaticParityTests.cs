@@ -106,6 +106,33 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void AssassinateMatchesPinnedV01110AttackScalars()
+    {
+        var assassinate = PrototypeContent.Card("proto.silent.assassinate");
+
+        Assert.Equal(PrototypeCardType.Attack, assassinate.Type);
+        Assert.Equal(0, assassinate.Cost.Amount);
+        Assert.Equal(PrototypeCardTarget.Enemy, assassinate.Target);
+        Assert.True(assassinate.ExhaustOnUse);
+        Assert.True(assassinate.Innate);
+        Assert.Equal(PrototypeCardRarity.Rare, assassinate.Rarity);
+
+        var damage = Assert.Single(
+            assassinate.Effects,
+            effect => effect.Kind == PrototypeCombatEffectKind.DamageEnemy);
+        Assert.Equal(10, damage.Amount);
+        Assert.Equal(3, damage.UpgradeDelta);
+
+        var vulnerable = Assert.Single(
+            assassinate.Effects,
+            effect =>
+                effect.Kind == PrototypeCombatEffectKind.ApplyEnemyStatus
+                && effect.StatusId == "proto.status.vulnerable");
+        Assert.Equal(1, vulnerable.Amount);
+        Assert.Equal(1, vulnerable.UpgradeDelta);
+    }
+
+    [Fact]
     public void AbrasiveMatchesPinnedV01110PowerScalars()
     {
         var abrasive = PrototypeContent.Card("proto.silent.abrasive");
