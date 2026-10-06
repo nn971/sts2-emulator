@@ -5,7 +5,7 @@ public sealed partial class PrototypeGameEngine
     private static IReadOnlyList<GameAction> GetMapActions(RunState state)
     {
         var world = RequireWorld(state);
-        return world.Map.Options
+        return world.Map.AvailableNodes()
             .Select(node => GameAction.Create(
                 "choose_map_node",
                 new ChooseMapNodePayload(node.NodeId)))
@@ -17,7 +17,7 @@ public sealed partial class PrototypeGameEngine
         RequireKind(action, "choose_map_node");
         var payload = action.ReadPayload<ChooseMapNodePayload>();
         var world = RequireWorld(state);
-        var node = world.Map.Options.FirstOrDefault(
+        var node = world.Map.AvailableNodes().FirstOrDefault(
             option => StringComparer.Ordinal.Equals(option.NodeId, payload.NodeId))
             ?? throw new InvalidOperationException($"Unknown map node '{payload.NodeId}'.");
 
@@ -25,7 +25,7 @@ public sealed partial class PrototypeGameEngine
         {
             Floor = node.Floor,
             ActiveRoom = node.RoomType,
-            Map = new MapState(Array.Empty<MapNodeState>()),
+            Map = world.Map with { CurrentNodeId = node.NodeId },
             Combat = null,
             Reward = null,
             Shop = null,
@@ -45,53 +45,66 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static MapState GenerateMapOptions(RunWorldState world, RngBundle rng)
+    private static MapState GenerateActMap(int act, RngBundle rng)
     {
         var rules = PrototypeContent.Rules;
-        var nextFloor = world.Floor + 1;
-        if (nextFloor > rules.FloorsPerAct)
-        {
-            return new MapState(Array.Empty<MapNodeState>());
-        }
+        var layers = new List<MapNodeState[]>();
 
-        if (nextFloor == rules.FloorsPerAct)
+        for (var floor = 1; floor <= rules.FloorsPerAct; floor++)
         {
-            return new MapState(
-            [
-                new MapNodeState(
-                    $"{world.Act}:{nextFloor}:boss",
-                    world.Act,
-                    nextFloor,
-                    PrototypeRoomType.Boss)
-            ]);
-        }
-
-        var selected = new List<PrototypeRoomType>(2);
-        var attempts = 0;
-        while (selected.Count < 2 && attempts++ < 32)
-        {
-            var room = rules.RoomPool[
-                PrototypeRng.NextInt(rng, "map", rules.RoomPool.Length)];
-
-            if (!selected.Contains(room))
+            var width = floor switch
             {
-                selected.Add(room);
+                var value when value == rules.FloorsPerAct => 1,
+                1 => 2,
+                var value when value == rules.FloorsPerAct - 1 => 2,
+                _ => 3
+            };
+
+            var nodes = new MapNodeState[width];
+            for (var index = 0; index < width; index++)
+            {
+                var room = floor == rules.FloorsPerAct
+                    ? PrototypeRoomType.Boss
+                    : rules.RoomPool[
+                        PrototypeRng.NextInt(rng, "map", rules.RoomPool.Length)];
+
+                nodes[index] = new MapNodeState(
+                    NodeId: $"{act}:{floor}:{index}:{room}",
+                    Act: act,
+                    Floor: floor,
+                    RoomType: room,
+                    NextNodeIds: Array.Empty<string>());
+            }
+
+            layers.Add(nodes);
+        }
+
+        for (var layerIndex = 0; layerIndex < layers.Count - 1; layerIndex++)
+        {
+            var current = layers[layerIndex];
+            var next = layers[layerIndex + 1];
+
+            for (var nodeIndex = 0; nodeIndex < current.Length; nodeIndex++)
+            {
+                var targets = next.Length == 1
+                    ? new[] { next[0].NodeId }
+                    : new[]
+                    {
+                        next[nodeIndex % next.Length].NodeId,
+                        next[(nodeIndex + 1) % next.Length].NodeId
+                    }
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray();
+
+                current[nodeIndex] = current[nodeIndex] with { NextNodeIds = targets };
             }
         }
 
-        if (selected.Count == 0)
-        {
-            selected.Add(PrototypeRoomType.Combat);
-        }
-
+        var allNodes = layers.SelectMany(layer => layer).ToArray();
         return new MapState(
-            selected
-                .Select((room, index) => new MapNodeState(
-                    $"{world.Act}:{nextFloor}:{index}:{room}",
-                    world.Act,
-                    nextFloor,
-                    room))
-                .ToArray());
+            Nodes: allNodes,
+            CurrentNodeId: null,
+            EntryNodeIds: layers[0].Select(node => node.NodeId).ToArray());
     }
 
     private static RunState StartEvent(RunState state)
@@ -621,7 +634,12 @@ public sealed partial class PrototypeGameEngine
             Shop = null,
             Event = null
         };
-        world = world with { Map = GenerateMapOptions(world, state.Rng) };
+
+        if (world.Map.AvailableNodes().Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Completed non-boss room has no reachable next map node.");
+        }
 
         return state with
         {
