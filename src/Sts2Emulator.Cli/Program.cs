@@ -9,6 +9,7 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
     Console.WriteLine("  prototype-run [seed]   Drive the restrictive Silent prototype to terminal state");
+    Console.WriteLine("  prototype-sweep [n]    Run a deterministic smoke policy over many seeds");
     return;
 }
 
@@ -79,6 +80,95 @@ switch (args[0])
         Console.WriteLine($"HP: {state.Player.Hp}/{state.Player.MaxHp}");
         Console.WriteLine($"Deck: {state.Player.Deck.Length} cards");
         Console.WriteLine($"Phases seen: {string.Join(", ", phases.OrderBy(phase => phase))}");
+        break;
+    }
+
+    case "prototype-sweep":
+    {
+        var runCount = 100;
+        if (args.Length >= 2
+            && (!int.TryParse(args[1], out runCount) || runCount <= 0))
+        {
+            throw new ArgumentException("prototype-sweep count must be a positive integer.");
+        }
+
+        var outcomes = new Dictionary<string, int>(StringComparer.Ordinal);
+        var encounterCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var eventCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var terminalActs = new Dictionary<int, int>();
+        long totalDecisions = 0;
+        var maxDecisions = 0L;
+        var totalDeckSize = 0L;
+        var totalMaxHp = 0L;
+
+        for (var runIndex = 0; runIndex < runCount; runIndex++)
+        {
+            var seed = $"sweep-{runIndex}";
+            var engine = new PrototypeGameEngine();
+            var state = PrototypeGameFactory.Create(seed);
+
+            for (var step = 0; step < 5_000 && state.Phase != RunPhase.Terminal; step++)
+            {
+                var legal = engine.GetLegalActions(state);
+                if (legal.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Prototype sweep stuck on seed {seed} in {state.Phase}.");
+                }
+
+                state = engine.Step(state, ChoosePrototypeAction(state, legal)).State;
+                PrototypeStateInvariants.Validate(state);
+            }
+
+            if (state.Phase != RunPhase.Terminal)
+            {
+                throw new InvalidOperationException(
+                    $"Prototype sweep seed {seed} exceeded 5,000 decisions.");
+            }
+
+            var world = state.World
+                ?? throw new InvalidOperationException("Terminal prototype run has no world state.");
+            var outcome = world.TerminalOutcome ?? "unknown";
+            outcomes[outcome] = outcomes.GetValueOrDefault(outcome) + 1;
+            terminalActs[world.Act] = terminalActs.GetValueOrDefault(world.Act) + 1;
+
+            foreach (var encounterId in world.EncounterIds)
+            {
+                encounterCounts[encounterId] = encounterCounts.GetValueOrDefault(encounterId) + 1;
+            }
+
+            foreach (var eventId in world.EventIds)
+            {
+                eventCounts[eventId] = eventCounts.GetValueOrDefault(eventId) + 1;
+            }
+
+            totalDecisions += state.DecisionIndex;
+            maxDecisions = Math.Max(maxDecisions, state.DecisionIndex);
+            totalDeckSize += state.Player.Deck.Length;
+            totalMaxHp += state.Player.MaxHp;
+        }
+
+        Console.WriteLine($"Runs: {runCount}");
+        Console.WriteLine(
+            $"Outcomes: {string.Join(", ", outcomes.OrderBy(item => item.Key).Select(item => $"{item.Key}={item.Value}"))}");
+        Console.WriteLine($"Average decisions: {(double)totalDecisions / runCount:F1}");
+        Console.WriteLine($"Max decisions: {maxDecisions}");
+        Console.WriteLine($"Average terminal deck size: {(double)totalDeckSize / runCount:F1}");
+        Console.WriteLine($"Average terminal max HP: {(double)totalMaxHp / runCount:F1}");
+        Console.WriteLine(
+            $"Terminal acts: {string.Join(", ", terminalActs.OrderBy(item => item.Key).Select(item => $"{item.Key}={item.Value}"))}");
+        Console.WriteLine("Encounter counts:");
+        foreach (var item in encounterCounts.OrderByDescending(item => item.Value).ThenBy(item => item.Key))
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        Console.WriteLine("Event counts:");
+        foreach (var item in eventCounts.OrderByDescending(item => item.Value).ThenBy(item => item.Key))
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
         break;
     }
 
