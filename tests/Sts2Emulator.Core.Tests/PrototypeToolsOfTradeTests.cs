@@ -90,6 +90,100 @@ public sealed class PrototypeToolsOfTradeTests
         Assert.Contains(chosenId, combat.DiscardPile);
     }
 
+    [Fact]
+    public void StackedToolsRequestsOneDiscardPerStack()
+    {
+        var state = CreateState(
+            hand: [],
+            drawPile:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend"),
+                Card(3, "proto.silent.strike"),
+                Card(4, "proto.silent.defend"),
+                Card(5, "proto.silent.strike"),
+                Card(6, "proto.silent.defend"),
+                Card(7, "proto.silent.strike")
+            ],
+            powers:
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.tools_of_the_trade",
+                    2,
+                    1)
+            ]);
+
+        var engine = new PrototypeGameEngine();
+        state = engine.Step(state, GameAction.Empty("end_turn")).State;
+
+        var combat = state.World!.Combat!;
+        var pending = Assert.IsType<PendingCombatChoiceState>(
+            combat.PendingChoice);
+        Assert.Equal(7, combat.Hand.Length);
+        Assert.Equal(2, pending.Selection.MinSelections);
+        Assert.Equal(2, pending.Selection.MaxSelections);
+
+        var choice = engine.GetLegalActions(state).First();
+        Assert.Equal(
+            2,
+            choice.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.Length);
+
+        state = engine.Step(state, choice).State;
+        combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Equal(5, combat.Hand.Length);
+        Assert.Equal(2, combat.DiscardPile.Length);
+    }
+
+    [Fact]
+    public void HookChoiceResumesLaterEventSubscribersInApplicationOrder()
+    {
+        var state = CreateState(
+            hand: [],
+            drawPile:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend"),
+                Card(3, "proto.silent.strike"),
+                Card(4, "proto.silent.defend"),
+                Card(5, "proto.silent.strike"),
+                Card(6, "proto.silent.defend")
+            ],
+            powers:
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.tools_of_the_trade",
+                    1,
+                    1),
+                new PrototypePowerInstanceState(
+                    "proto.power.noxious_fumes",
+                    2,
+                    2)
+            ]);
+
+        var engine = new PrototypeGameEngine();
+        state = engine.Step(state, GameAction.Empty("end_turn")).State;
+
+        var combat = state.World!.Combat!;
+        Assert.NotNull(combat.PendingChoice);
+        Assert.Equal(
+            0,
+            Assert.Single(combat.Enemies)
+                .Statuses.GetValueOrDefault("proto.status.poison"));
+
+        var choice = engine.GetLegalActions(state).First();
+        state = engine.Step(state, choice).State;
+
+        combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Equal(
+            2,
+            Assert.Single(combat.Enemies)
+                .Statuses.GetValueOrDefault("proto.status.poison"));
+        Assert.True(combat.IsPlayerTurn);
+    }
+
     private static RunState PlayCard(
         PrototypeGameEngine engine,
         RunState state,
@@ -116,8 +210,10 @@ public sealed class PrototypeToolsOfTradeTests
 
     private static RunState CreateState(
         CombatCardInstance[] hand,
-        CombatCardInstance[] drawPile)
+        CombatCardInstance[] drawPile,
+        PrototypePowerInstanceState[]? powers = null)
     {
+        powers ??= [];
         var empty = PrototypeJson.EmptyObject();
         var cards = hand.Concat(drawPile).ToArray();
 
@@ -153,8 +249,10 @@ public sealed class PrototypeToolsOfTradeTests
             ],
             cards.Max(card => card.InstanceId) + 1,
             cards,
-            [],
-            1);
+            powers,
+            powers.Length == 0
+                ? 1
+                : powers.Max(power => power.ApplicationOrder) + 1);
 
         return new RunState(
             "prototype-unbound",
