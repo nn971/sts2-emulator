@@ -17,18 +17,32 @@ public sealed partial class PrototypeGameEngine
         var encounter = encounters[
             PrototypeRng.NextInt(state.Rng, "combat", encounters.Length)];
 
+        var nextPowerApplicationOrder = 1L;
         var enemies = encounter.EnemyIds
             .Select((enemyId, index) =>
             {
                 var definition = PrototypeContent.Enemy(enemyId);
                 var hp = definition.MaxHp + ((world.Act - 1) * definition.HpPerAct);
+                var powers = (definition.StartingPowers ?? Array.Empty<PrototypeStartingPowerSpec>())
+                    .Select(power =>
+                    {
+                        _ = PrototypeContent.Power(power.PowerId);
+                        return new PrototypePowerInstanceState(
+                            power.PowerId,
+                            power.Stacks,
+                            nextPowerApplicationOrder++);
+                    })
+                    .Where(power => power.Stacks > 0)
+                    .ToArray();
+
                 return new EnemyCombatState(
                     InstanceId: index + 1,
                     EnemyId: enemyId,
                     Hp: hp,
                     Block: 0,
                     MoveIndex: 0,
-                    Statuses: new Dictionary<string, int>(StringComparer.Ordinal));
+                    Statuses: new Dictionary<string, int>(StringComparer.Ordinal),
+                    Powers: powers);
             })
             .ToArray();
 
@@ -58,7 +72,7 @@ public sealed partial class PrototypeGameEngine
             NextCardInstanceId: nextCombatCardId,
             Cards: combatCards,
             PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
-            NextPowerApplicationOrder: 1);
+            NextPowerApplicationOrder: nextPowerApplicationOrder);
 
         combat = DrawCards(
             combat,
@@ -699,6 +713,38 @@ public sealed partial class PrototypeGameEngine
                     combat = ApplyPlayerPower(combat, operation.PowerId, operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.ApplyEnemyPower:
+                    if (operation.PowerId is null || operation.TargetEnemyId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Apply-enemy-power operation requires a power ID and enemy target.");
+                    }
+
+                    combat = ApplyEnemyPower(
+                        combat,
+                        operation.TargetEnemyId.Value,
+                        operation.PowerId,
+                        operation.Amount);
+                    break;
+
+                case PrototypeCombatEffectKind.DamagePlayer:
+                {
+                    var absorbed = Math.Min(
+                        combat.PlayerBlock,
+                        Math.Max(0, operation.Amount));
+                    combat = combat with
+                    {
+                        PlayerBlock = combat.PlayerBlock - absorbed
+                    };
+                    player = player with
+                    {
+                        Hp = Math.Max(
+                            0,
+                            player.Hp - Math.Max(0, operation.Amount - absorbed))
+                    };
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.CreateCardsInHand:
                 {
                     if (operation.CardId is null)
@@ -804,6 +850,64 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static CombatState ApplyEnemyPower(
+        CombatState combat,
+        int enemyId,
+        string powerId,
+        int stacks)
+    {
+        _ = PrototypeContent.Power(powerId);
+        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
+        var enemyIndex = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
+        if (enemyIndex < 0)
+        {
+            throw new InvalidOperationException($"Enemy {enemyId} is missing.");
+        }
+
+        var enemy = enemies[enemyIndex];
+        if (enemy.Hp <= 0)
+        {
+            return combat;
+        }
+
+        var powers = enemy.PowerStates.ToList();
+        var powerIndex = powers.FindIndex(power =>
+            StringComparer.Ordinal.Equals(power.PowerId, powerId));
+
+        if (powerIndex >= 0)
+        {
+            var nextStacks = powers[powerIndex].Stacks + stacks;
+            if (nextStacks <= 0)
+            {
+                powers.RemoveAt(powerIndex);
+            }
+            else
+            {
+                powers[powerIndex] = powers[powerIndex] with { Stacks = nextStacks };
+            }
+
+            enemies[enemyIndex] = enemy with { Powers = powers.ToArray() };
+            return combat with { Enemies = enemies };
+        }
+
+        if (stacks <= 0)
+        {
+            return combat;
+        }
+
+        powers.Add(new PrototypePowerInstanceState(
+            powerId,
+            stacks,
+            combat.NextPowerApplicationOrder));
+        enemies[enemyIndex] = enemy with { Powers = powers.ToArray() };
+
+        return combat with
+        {
+            Enemies = enemies,
+            NextPowerApplicationOrder = combat.NextPowerApplicationOrder + 1
+        };
+    }
+
     private static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
         PlayerState player,
         CombatState combat,
@@ -816,18 +920,38 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Prototype combat event chain exceeded the safety depth limit.");
         }
-        var subscribers = combat.PlayerPowers
-            .OrderBy(power => power.ApplicationOrder)
-            .SelectMany(power =>
+        var subscribers = new List<(
+            PrototypePowerInstanceState Power,
+            PrototypePowerTriggerSpec Trigger,
+            int? OwnerEnemyId)>();
+
+        foreach (var power in combat.PlayerPowers)
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            subscribers.AddRange(
+                definition.Triggers
+                    .Where(trigger =>
+                        trigger.EventKind == combatEvent.Kind
+                        && !trigger.RequiresOwnerTarget)
+                    .Select(trigger => (power, trigger, (int?)null)));
+        }
+
+        foreach (var enemy in combat.Enemies.Where(enemy => enemy.Hp > 0))
+        {
+            foreach (var power in enemy.PowerStates)
             {
                 var definition = PrototypeContent.Power(power.PowerId);
-                return definition.Triggers
-                    .Where(trigger => trigger.EventKind == combatEvent.Kind)
-                    .Select(trigger => (Power: power, Trigger: trigger));
-            })
-            .ToArray();
+                subscribers.AddRange(
+                    definition.Triggers
+                        .Where(trigger =>
+                            trigger.EventKind == combatEvent.Kind
+                            && (!trigger.RequiresOwnerTarget
+                                || combatEvent.TargetEnemyId == enemy.InstanceId))
+                        .Select(trigger => (power, trigger, (int?)enemy.InstanceId)));
+            }
+        }
 
-        foreach (var subscriber in subscribers)
+        foreach (var subscriber in subscribers.OrderBy(item => item.Power.ApplicationOrder))
         {
             var operations = new Queue<PrototypeQueuedOperation>();
             foreach (var effect in subscriber.Trigger.Effects)
