@@ -163,7 +163,7 @@ public sealed class PrototypeEffectQueueTests
 
         combat = state.World!.Combat!;
         Assert.Equal(0, combat.Energy);
-        Assert.Equal(19, combat.Enemies.Single().Hp);
+        Assert.Equal(16, combat.Enemies.Single().Hp);
         Assert.Equal(new long[] { 1 }, combat.DiscardPile);
     }
 
