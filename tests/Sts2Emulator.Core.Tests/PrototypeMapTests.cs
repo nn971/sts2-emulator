@@ -32,6 +32,16 @@ public sealed class PrototypeMapTests
 
         foreach (var floorGroup in map.Nodes.GroupBy(node => node.Floor))
         {
+            var rule = Assert.Single(
+                PrototypeContent.Rules.MapFloorRules.Where(item =>
+                    floorGroup.Key >= item.MinFloor
+                    && floorGroup.Key <= item.MaxFloor));
+
+            if (rule.AllowDuplicateSpecialRooms)
+            {
+                continue;
+            }
+
             var duplicateSpecials = floorGroup
                 .Where(node => node.RoomType != PrototypeRoomType.Combat)
                 .GroupBy(node => node.RoomType)
