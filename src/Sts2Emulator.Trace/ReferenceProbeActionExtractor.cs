@@ -405,7 +405,7 @@ public static class ReferenceProbeActionExtractor
         for (var removed = 0; removed < before.Length; removed++)
         {
             var matches = true;
-            for (var beforeIndex = 0, afterIndex = 0;
+            for (int beforeIndex = 0, afterIndex = 0;
                  beforeIndex < before.Length;
                  beforeIndex++)
             {
