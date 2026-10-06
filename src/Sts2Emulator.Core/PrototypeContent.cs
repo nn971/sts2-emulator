@@ -425,6 +425,74 @@ public static class PrototypeContent
                         StatusId: "proto.status.poison")
                 ],
                 ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Uncommon),
+            new PrototypeCardDefinition(
+                "proto.silent.escape_plan",
+                "Escape Plan",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.DrawCards, 1),
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 3, 2)
+                ]),
+            new PrototypeCardDefinition(
+                "proto.silent.piercing_wail",
+                "Piercing Wail",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        2,
+                        1,
+                        StatusId: "proto.status.weak",
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Uncommon),
+            new PrototypeCardDefinition(
+                "proto.silent.crippling_cloud",
+                "Crippling Cloud",
+                2,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        4,
+                        3,
+                        StatusId: "proto.status.poison",
+                        Target: PrototypeEffectTarget.AllEnemies),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        2,
+                        0,
+                        StatusId: "proto.status.weak",
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Uncommon),
+            new PrototypeCardDefinition(
+                "proto.silent.die_die_die",
+                "Die Die Die",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        13,
+                        4,
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Rare),
+            new PrototypeCardDefinition(
+                "proto.silent.predator",
+                "Predator",
+                2,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.DamageEnemy, 15, 5)
+                ],
                 Rarity: PrototypeCardRarity.Uncommon)
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
