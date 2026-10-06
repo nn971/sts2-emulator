@@ -744,7 +744,9 @@ public sealed partial class PrototypeGameEngine
                     {
                         AttacksPlayedThisTurn = 0,
                         SkillsPlayedThisTurn = 0,
-                        CardsDiscardedThisTurn = 0
+                        CardsDiscardedThisTurn = 0,
+                        PlayedCardTagsThisTurn =
+                            Array.Empty<string>()
                     }
                 };
                 break;
@@ -2100,12 +2102,32 @@ public sealed partial class PrototypeGameEngine
             _ => throw new ArgumentOutOfRangeException(nameof(keyword))
         };
 
+        var definition = PrototypeContent.Card(card.CardId);
+        var tags = definition.Tags ?? Array.Empty<string>();
+        var grantedByPower = combat.PlayerPowers.Any(power =>
+        {
+            if (power.Stacks <= 0)
+            {
+                return false;
+            }
+
+            var powerDefinition = PrototypeContent.Power(
+                power.PowerId);
+            return powerDefinition.GrantedCardKeyword == keyword
+                && powerDefinition
+                    .GrantedCardKeywordRequiredCardTag is
+                    { } requiredTag
+                && tags.Contains(
+                    requiredTag,
+                    StringComparer.Ordinal);
+        });
+
         var matching = card.KeywordOverrides?
             .Where(item => item.Keyword == keyword)
             .ToArray();
         return matching is { Length: > 0 }
             ? matching[^1].Enabled
-            : baseValue;
+            : baseValue || grantedByPower;
     }
 
     private static CombatState ApplyCardKeywordOverride(
@@ -2212,7 +2234,9 @@ public sealed partial class PrototypeGameEngine
                     return combat;
                 }
 
-                var type = PrototypeContent.Card(combatEvent.CardId).Type;
+                var cardDefinition =
+                    PrototypeContent.Card(combatEvent.CardId);
+                var type = cardDefinition.Type;
                 counters = type switch
                 {
                     PrototypeCardType.Attack => counters with
@@ -2227,6 +2251,20 @@ public sealed partial class PrototypeGameEngine
                     },
                     _ => counters
                 };
+
+                var tags = cardDefinition.Tags
+                    ?? Array.Empty<string>();
+                if (tags.Length > 0)
+                {
+                    counters = counters with
+                    {
+                        PlayedCardTagsThisTurn =
+                            counters.PlayedTags
+                                .Concat(tags)
+                                .ToArray()
+                    };
+                }
+
                 break;
 
             case PrototypeCombatEventKind.CardDrawn:
@@ -2324,7 +2362,32 @@ public sealed partial class PrototypeGameEngine
                 * power.Stacks;
         });
 
-        var modified = damage + additive;
+        var firstTaggedPlayBonus = combat.PlayerPowers.Sum(
+            power =>
+            {
+                var definition = PrototypeContent.Power(
+                    power.PowerId);
+                if (power.Stacks <= 0
+                    || definition
+                        .FirstAttackDamageBonusPerStack == 0
+                    || definition
+                        .FirstAttackDamageBonusRequiredCardTag is
+                        not { } requiredTag
+                    || !tags.Contains(
+                        requiredTag,
+                        StringComparer.Ordinal)
+                    || combat.CounterState.PlaysWithTag(
+                        requiredTag) > 0)
+                {
+                    return 0;
+                }
+
+                return definition.FirstAttackDamageBonusPerStack
+                    * power.Stacks;
+            });
+
+        var modified =
+            damage + additive + firstTaggedPlayBonus;
         var conditionalBonus = combat.PlayerPowers.Sum(power =>
         {
             var definition = PrototypeContent.Power(power.PowerId);
