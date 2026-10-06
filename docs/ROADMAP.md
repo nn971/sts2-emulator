@@ -1,97 +1,100 @@
 # Emulator roadmap
 
-This roadmap ends at a mature emulator and consumer interface. AI/search/training milestones live in the future parent project.
+The emulator should become useful for whole-run AI experimentation early, then converge toward
+native fidelity and high throughput.
 
 ## Milestone 0 — scaffold
 
-- [x] emulator charter and fidelity contract
-- [x] deterministic engine interfaces
-- [x] generic explicit RNG-state container
+- [x] emulator charter and repository boundary
+- [x] deterministic engine interface
+- [x] explicit RNG-state container
 - [x] canonical JSON/hash bootstrap
-- [x] JSONL trace envelope
-- [x] first-divergence trace diff tool
-- [x] unit-test and microbenchmark scaffolding
+- [x] trace/diff scaffolding
+- [x] unit-test and benchmark scaffolding
 - [x] CI scaffold
-- [x] documented parent/subrepo boundary
 
-## Milestone 1A — native reference capture
+## Milestone 1 — restrictive Silent whole-run MVP
 
-- [ ] pin one STS2 build as the first reference target
-- [ ] identify mod-loader/instrumentation route
-- [ ] enumerate top-level run phases and decision boundaries
-- [ ] capture canonical run state from live game
-- [ ] capture legal actions
-- [ ] inventory complete continuation-relevant RNG streams
-- [ ] capture reproducible RNG stream state/fingerprints
-- [ ] emit versioned JSONL traces
-- [ ] record a small hand-verified trace corpus
+- [x] typed persistent run/world state
+- [x] deterministic prototype ruleset and RNG
+- [x] map choices and room entry
+- [x] normal/elite/boss combat
+- [x] card rewards and deck growth
+- [x] potions and relics
+- [x] shops
+- [x] events
+- [x] rest sites and upgrades
+- [x] act transitions
+- [x] victory/death terminal states
+- [x] CLI whole-run smoke driver
+- [x] deterministic whole-run smoke tests
+- [ ] harden CI and edge-case validation
 
-## Milestone 1B — deterministic whole-run kernel
+## Milestone 2 — expressive mechanics kernel
 
-- [ ] initialize/load a canonical run state
-- [ ] implement versioned RNG codecs/streams
-- [ ] map generation and routing
-- [ ] room/encounter generation
-- [ ] rewards/card choices
-- [ ] shops
-- [ ] rest sites
-- [ ] events
-- [ ] potions/relic acquisition and persistent state
-- [ ] act transitions
-- [ ] explicit unsupported-mechanic failures
+- [ ] card-selection prompts
+- [ ] discard/exhaust/generated cards
+- [ ] variable/X costs
+- [ ] multi-target effects
+- [ ] general player/enemy power model
+- [ ] generic trigger registration and scheduling
+- [ ] richer enemy intent/move model
+- [ ] combat-local mutable card/relic/potion state
+- [ ] explicit temporary entities and lifetime rules
 
-## Milestone 1C — high-fidelity combat
+Hook/timing ordering must remain ruleset-driven or otherwise replaceable; avoid card-specific
+central dispatch branches.
 
-Study/reuse/adapt ideas from existing combat prediction infrastructure instead of casually rewriting combat.
+## Milestone 3 — broader Silent + richer run generation
 
-- [ ] canonical combat snapshot
-- [ ] fork-safe card/pile/creature/power state
-- [ ] native-order trigger semantics
-- [ ] enemy AI
-- [ ] potion/relic combat interactions
-- [ ] cross-turn histories/counters
-- [ ] combat RNG parity
-- [ ] native-vs-emulator closed-loop tests
+- [ ] graph-shaped maps
+- [ ] act/floor/history-sensitive encounter pools
+- [ ] rarity-aware card rewards
+- [ ] richer shops/events/rest choices
+- [ ] substantially larger Silent card pool
+- [ ] larger potion/relic pool
+- [ ] larger enemy/elite/boss pool
+- [ ] enough variety for meaningful strategic AI experiments
 
-## Milestone 1D — parity at scale
+## Milestone 4 — native-data and fidelity convergence
 
-- [ ] replay runner
+- [ ] pin a reference STS2 build
+- [ ] native reference bridge
+- [ ] real content-data translation/import where appropriate
+- [ ] native RNG stream inventory/codecs
+- [ ] native timing/trigger semantics
 - [ ] legal-action parity
-- [ ] first-divergence reports
-- [ ] random-legal-action live traces
-- [ ] targeted rare-mechanic traces
+- [ ] decision-boundary state parity
 - [ ] minimized regression traces
-- [ ] nightly fuzz/parity jobs
-- [ ] 1,000-run milestone corpus with no unexplained divergence
+- [ ] large version-pinned parity corpus
 
-## Milestone 1E — practical speed
+## Milestone 5 — practical speed
 
-- [ ] representative benchmark suite
+- [ ] representative AI/search benchmark suite
 - [ ] profile state copy/fork
-- [ ] structural sharing/copy-on-write where measurements justify it
-- [ ] efficient exact-state/transposition hashes
-- [ ] reduce allocations and GC pressure
-- [ ] parallel batch API
-- [ ] establish memory-per-branch budgets
-- [ ] evaluate NativeAOT and interop overhead
-- [ ] publish reproducible performance report
+- [ ] compact state layouts where justified
+- [ ] structural sharing/copy-on-write where justified
+- [ ] efficient transposition hashes
+- [ ] allocation/GC reduction
+- [ ] parallel/batch API
+- [ ] memory-per-branch budgets
+- [ ] NativeAOT/interoperability evaluation
 
-## Milestone 1F — stable consumer release
+## Milestone 6 — stable consumer release
 
 - [ ] versioned public engine API
-- [ ] versioned canonical state/action schemas
-- [ ] stable native or managed batch interface
-- [ ] Python binding suitable for research workloads
-- [ ] compatibility/version-negotiation rules
-- [ ] deterministic save/load snapshots
-- [ ] benchmarked parent-project integration example
-- [ ] release checklist documenting supported mechanics and known parity gaps
+- [ ] versioned state/action schemas
+- [ ] deterministic save/load
+- [ ] Python binding
+- [ ] compatibility/version negotiation
+- [ ] supported-mechanics manifest
+- [ ] reproducible fidelity/performance report
 
-## Post-Milestone 1 maintenance
+## Maintenance
 
-- track new STS2 game builds;
-- characterize semantic diffs between builds;
-- update native fixtures before changing emulator behavior;
-- maintain backward-readable trace formats when practical;
+- track new STS2 builds;
+- keep prototype assumptions clearly separated from verified semantics;
+- characterize semantic diffs between game builds;
+- retain minimized parity regressions;
 - preserve benchmark history;
-- keep public bindings stable or explicitly versioned.
+- version public bindings deliberately.
