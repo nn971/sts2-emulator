@@ -137,10 +137,14 @@ public sealed partial class PrototypeGameEngine
 
         var openingHandTarget =
             PrototypeContent.Rules.HandSize + FirstTurnDrawBonus(state.Player);
-        combat = DrawCards(
+        var openingDraw = DrawCards(
+            state.Player,
             combat,
             Math.Max(0, openingHandTarget - combat.Hand.Length),
-            state.Rng);
+            state.Rng,
+            fromHandDraw: true);
+        state = state with { Player = openingDraw.Player };
+        combat = openingDraw.Combat;
 
         world = world with
         {
@@ -581,8 +585,17 @@ public sealed partial class PrototypeGameEngine
                 break;
 
             case PrototypeAutomaticStepKind.DrawPlayerHand:
-                combat = DrawCards(combat, PrototypeContent.Rules.HandSize, state.Rng);
+            {
+                var drawn = DrawCards(
+                    player,
+                    combat,
+                    PrototypeContent.Rules.HandSize,
+                    state.Rng,
+                    fromHandDraw: true);
+                player = drawn.Player;
+                combat = drawn.Combat;
                 break;
+            }
 
             default:
                 throw new ArgumentOutOfRangeException();
@@ -965,8 +978,18 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 case PrototypeCombatEffectKind.DrawCards:
-                    combat = DrawCards(combat, operation.Amount, rng);
+                {
+                    var drawn = DrawCards(
+                        player,
+                        combat,
+                        operation.Amount,
+                        rng,
+                        fromHandDraw: false,
+                        eventDepth: eventDepth + 1);
+                    player = drawn.Player;
+                    combat = drawn.Combat;
                     break;
+                }
 
                 case PrototypeCombatEffectKind.ApplyEnemyStatus:
                     if (targetEnemyId is null || operation.StatusId is null)
@@ -1196,6 +1219,14 @@ public sealed partial class PrototypeGameEngine
                             counters.SkillsPlayedThisTurn + 1
                     },
                     _ => counters
+                };
+                break;
+
+            case PrototypeCombatEventKind.CardDrawn:
+                counters = counters with
+                {
+                    CardsDrawnThisCombat =
+                        counters.CardsDrawnThisCombat + 1
                 };
                 break;
 
@@ -1543,6 +1574,18 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "Automatic combat-event triggers that request player choices are not supported yet.");
             }
+        }
+
+        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
+        {
+            combat = combat with
+            {
+                PlayerPowers = combat.PlayerPowers
+                    .Where(power =>
+                        !PrototypeContent.Power(power.PowerId)
+                            .RemoveAtPlayerTurnEnd)
+                    .ToArray()
+            };
         }
 
         return (player, combat);
@@ -1987,15 +2030,26 @@ public sealed partial class PrototypeGameEngine
         return combat with { Enemies = enemies };
     }
 
-    private static CombatState DrawCards(CombatState combat, int count, RngBundle rng)
+    private static (PlayerState Player, CombatState Combat) DrawCards(
+        PlayerState player,
+        CombatState combat,
+        int count,
+        RngBundle rng,
+        bool fromHandDraw,
+        int eventDepth = 0)
     {
-        var hand = combat.Hand.ToList();
-        var draw = combat.DrawPile.ToList();
-        var discard = combat.DiscardPile.ToList();
-        var drawnCount = 0;
+        const int maxHandSize = 10;
 
         for (var drawNumber = 0; drawNumber < count; drawNumber++)
         {
+            if (combat.Hand.Length >= maxHandSize)
+            {
+                break;
+            }
+
+            var draw = combat.DrawPile.ToList();
+            var discard = combat.DiscardPile.ToList();
+
             if (draw.Count == 0)
             {
                 if (discard.Count == 0)
@@ -2010,22 +2064,32 @@ public sealed partial class PrototypeGameEngine
             }
 
             var index = draw.Count - 1;
-            hand.Add(draw[index]);
+            var cardInstanceId = draw[index];
             draw.RemoveAt(index);
-            drawnCount++;
+
+            combat = combat with
+            {
+                Hand = combat.Hand.Append(cardInstanceId).ToArray(),
+                DrawPile = draw.ToArray(),
+                DiscardPile = discard.ToArray()
+            };
+
+            var card = RequireCombatCard(combat, cardInstanceId);
+            var dispatched = DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardDrawn,
+                    SourceCardInstanceId: cardInstanceId,
+                    CardId: card.CardId,
+                    FromHandDraw: fromHandDraw),
+                rng,
+                eventDepth);
+            player = dispatched.Player;
+            combat = dispatched.Combat;
         }
 
-        return combat with
-        {
-            Hand = hand.ToArray(),
-            DrawPile = draw.ToArray(),
-            DiscardPile = discard.ToArray(),
-            Counters = combat.CounterState with
-            {
-                CardsDrawnThisCombat =
-                    combat.CounterState.CardsDrawnThisCombat + drawnCount
-            }
-        };
+        return (player, combat);
     }
 
     private static void ValidateTarget(
