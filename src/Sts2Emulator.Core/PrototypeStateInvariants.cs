@@ -59,6 +59,11 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Next card instance ID does not exceed all live card IDs.");
         }
 
+        if (world.Map.Nodes.Length > 0)
+        {
+            ValidateMap(world);
+        }
+
         ValidatePhaseState(state, world);
 
         if (world.Combat is not null)
@@ -132,6 +137,90 @@ public static class PrototypeStateInvariants
 
             default:
                 throw new InvalidOperationException($"Unexpected initialized prototype phase {state.Phase}.");
+        }
+    }
+
+    private static void ValidateMap(RunWorldState world)
+    {
+        var map = world.Map;
+        var nodesById = map.Nodes.ToDictionary(node => node.NodeId, StringComparer.Ordinal);
+        if (nodesById.Count != map.Nodes.Length)
+        {
+            throw new InvalidOperationException("Map node IDs are not unique.");
+        }
+
+        if (map.EntryNodeIds is null || map.EntryNodeIds.Length == 0)
+        {
+            throw new InvalidOperationException("Non-empty map has no entry nodes.");
+        }
+
+        if (map.EntryNodeIds.Length != map.EntryNodeIds.Distinct(StringComparer.Ordinal).Count())
+        {
+            throw new InvalidOperationException("Map entry nodes contain duplicates.");
+        }
+
+        foreach (var entryId in map.EntryNodeIds)
+        {
+            if (!nodesById.TryGetValue(entryId, out var entry) || entry.Floor != 1)
+            {
+                throw new InvalidOperationException("Map entry must reference a floor-one node.");
+            }
+        }
+
+        foreach (var node in map.Nodes)
+        {
+            if (node.Act != world.Act)
+            {
+                throw new InvalidOperationException("Map node belongs to a different act.");
+            }
+
+            if (node.Floor < 1 || node.Floor > PrototypeContent.Rules.FloorsPerAct)
+            {
+                throw new InvalidOperationException("Map node has an invalid floor.");
+            }
+
+            foreach (var nextId in node.NextNodeIds ?? Array.Empty<string>())
+            {
+                if (!nodesById.TryGetValue(nextId, out var next))
+                {
+                    throw new InvalidOperationException($"Map edge targets missing node '{nextId}'.");
+                }
+
+                if (next.Floor != node.Floor + 1)
+                {
+                    throw new InvalidOperationException("Map edge must advance exactly one floor.");
+                }
+            }
+        }
+
+        var bosses = map.Nodes
+            .Where(node => node.RoomType == PrototypeRoomType.Boss)
+            .ToArray();
+        if (bosses.Length != 1
+            || bosses[0].Floor != PrototypeContent.Rules.FloorsPerAct
+            || (bosses[0].NextNodeIds?.Length ?? 0) != 0)
+        {
+            throw new InvalidOperationException("Prototype act map must end in exactly one boss node.");
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+            {
+                throw new InvalidOperationException("Unentered act map must be at floor zero.");
+            }
+        }
+        else
+        {
+            if (!nodesById.TryGetValue(map.CurrentNodeId, out var current))
+            {
+                throw new InvalidOperationException("Map current node is missing from the graph.");
+            }
+
+            if (current.Floor != world.Floor)
+            {
+                throw new InvalidOperationException("World floor disagrees with current map node.");
+            }
         }
     }
 
