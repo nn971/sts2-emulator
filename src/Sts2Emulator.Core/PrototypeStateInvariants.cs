@@ -169,6 +169,10 @@ public static class PrototypeStateInvariants
             .ToArray();
 
         if (persistentCombatCards.Length != persistentIds.Count
+            || persistentCombatCards
+                .Select(card => card.PersistentCardInstanceId!.Value)
+                .Distinct()
+                .Count() != persistentIds.Count
             || persistentCombatCards.Any(card =>
                 card.PersistentCardInstanceId is null
                 || !persistentIds.Contains(card.PersistentCardInstanceId.Value)))
@@ -180,6 +184,45 @@ public static class PrototypeStateInvariants
         if (combat.Cards.Any(card => card.IsTemporary != (card.PersistentCardInstanceId is null)))
         {
             throw new InvalidOperationException("Combat temporary-card provenance is inconsistent.");
+        }
+
+        foreach (var card in persistentCombatCards)
+        {
+            var persistent = player.Deck.Single(item =>
+                item.InstanceId == card.PersistentCardInstanceId!.Value);
+            if (!StringComparer.Ordinal.Equals(card.CardId, persistent.CardId)
+                || card.UpgradeLevel != persistent.UpgradeLevel)
+            {
+                throw new InvalidOperationException(
+                    "Combat card no longer matches its persistent origin.");
+            }
+        }
+
+        if (combat.PlayerPowers.Any(power => power.Stacks <= 0))
+        {
+            throw new InvalidOperationException("Player power stacks must stay positive.");
+        }
+
+        if (combat.PlayerPowers.Select(power => power.PowerId).Distinct().Count()
+            != combat.PlayerPowers.Length)
+        {
+            throw new InvalidOperationException("Player power IDs must be unique after stacking.");
+        }
+
+        if (combat.PlayerPowers.Select(power => power.ApplicationOrder).Distinct().Count()
+            != combat.PlayerPowers.Length)
+        {
+            throw new InvalidOperationException("Player power application order must be unique.");
+        }
+
+        foreach (var power in combat.PlayerPowers)
+        {
+            _ = PrototypeContent.Power(power.PowerId);
+            if (power.ApplicationOrder <= 0
+                || power.ApplicationOrder >= combat.NextPowerApplicationOrder)
+            {
+                throw new InvalidOperationException("Player power application order is invalid.");
+            }
         }
 
         var zones = combat.Hand
@@ -195,7 +238,7 @@ public static class PrototypeStateInvariants
 
         if (represented.Any(cardId => !known.Contains(cardId)))
         {
-            throw new InvalidOperationException("Combat zone contains a card outside the persistent deck.");
+            throw new InvalidOperationException("Combat zone contains an unknown combat card instance.");
         }
 
         if (represented.Length != represented.Distinct().Count())
@@ -205,7 +248,7 @@ public static class PrototypeStateInvariants
 
         if (represented.Length != known.Count)
         {
-            throw new InvalidOperationException("Persistent deck is not fully represented by combat state.");
+            throw new InvalidOperationException("Combat cards are not fully represented by zones/continuations.");
         }
 
         if (combat.PendingChoice is not null)
