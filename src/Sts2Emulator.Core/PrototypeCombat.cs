@@ -950,12 +950,8 @@ public sealed partial class PrototypeGameEngine
                         : new PrototypeSelectedCardPowerAction(
                             effect.SelectedCardPower.PowerId,
                             effect.SelectedCardPower.AmountAt(upgradeLevel)),
-                    SelectedCardKeyword: effect.SelectedCardKeyword is null
-                        ? null
-                        : new PrototypeSelectedCardKeywordAction(
-                            effect.SelectedCardKeyword.Keyword,
-                            effect.SelectedCardKeyword.Enabled,
-                            effect.SelectedCardKeyword.Expiry),
+                    SelectedCardKeyword: effect.SelectedCardKeyword,
+                    DrawnCardKeyword: effect.DrawnCardKeyword,
                     PowerCardPayload: powerCardPayload?.Fork()));
             }
         }
@@ -1156,6 +1152,17 @@ public sealed partial class PrototypeGameEngine
                         eventDepth: eventDepth + 1);
                     player = drawn.Player;
                     combat = drawn.Combat;
+                    if (operation.DrawnCardKeyword is not null)
+                    {
+                        foreach (var cardInstanceId in drawn.DrawnCardInstanceIds)
+                        {
+                            combat = ApplyCardKeywordOverride(
+                                combat,
+                                cardInstanceId,
+                                operation.DrawnCardKeyword);
+                        }
+                    }
+
                     break;
                 }
 
@@ -1852,10 +1859,10 @@ public sealed partial class PrototypeGameEngine
             : baseValue;
     }
 
-    private static CombatState ApplySelectedCardKeywordOverride(
+    private static CombatState ApplyCardKeywordOverride(
         CombatState combat,
         long cardInstanceId,
-        PrototypeSelectedCardKeywordAction action)
+        PrototypeCardKeywordOverrideSpec action)
     {
         var cards = combat.Cards
             .Select(card =>
@@ -2630,7 +2637,7 @@ public sealed partial class PrototypeGameEngine
         {
             foreach (var cardInstanceId in selected)
             {
-                combat = ApplySelectedCardKeywordOverride(
+                combat = ApplyCardKeywordOverride(
                     combat,
                     cardInstanceId,
                     pending.SelectedCardKeyword);
@@ -3026,7 +3033,12 @@ public sealed partial class PrototypeGameEngine
         return combat with { Enemies = enemies };
     }
 
-    private static (PlayerState Player, CombatState Combat) DrawCards(
+    private sealed record PrototypeDrawCardsResult(
+        PlayerState Player,
+        CombatState Combat,
+        long[] DrawnCardInstanceIds);
+
+    private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
         CombatState combat,
         int count,
@@ -3035,6 +3047,7 @@ public sealed partial class PrototypeGameEngine
         int eventDepth = 0)
     {
         const int maxHandSize = 10;
+        var drawnCardInstanceIds = new List<long>();
 
         for (var drawNumber = 0; drawNumber < count; drawNumber++)
         {
@@ -3077,6 +3090,7 @@ public sealed partial class PrototypeGameEngine
                 DrawPile = draw.ToArray(),
                 DiscardPile = discard.ToArray()
             };
+            drawnCardInstanceIds.Add(cardInstanceId);
 
             var card = RequireCombatCard(combat, cardInstanceId);
             var dispatched = DispatchCombatEvent(
@@ -3093,7 +3107,10 @@ public sealed partial class PrototypeGameEngine
             combat = dispatched.Combat;
         }
 
-        return (player, combat);
+        return new PrototypeDrawCardsResult(
+            player,
+            combat,
+            drawnCardInstanceIds.ToArray());
     }
 
     private static void ValidateTarget(
