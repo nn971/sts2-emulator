@@ -853,6 +853,44 @@ public sealed partial class PrototypeGameEngine
                         throw new InvalidOperationException("Damage operation requires an enemy target.");
                     }
 
+                    if (operation.IsPoweredAttack && player.Hp <= 0)
+                    {
+                        break;
+                    }
+
+                    if (operation.IsPoweredAttack)
+                    {
+                        var enemyBeforeHit = combat.Enemies.SingleOrDefault(
+                            enemy => enemy.InstanceId == targetEnemyId.Value)
+                            ?? throw new InvalidOperationException(
+                                $"Enemy {targetEnemyId.Value} is missing.");
+
+                        if (enemyBeforeHit.Hp > 0)
+                        {
+                            var retaliation = EnemyAttackRetaliation(
+                                combat,
+                                targetEnemyId.Value);
+                            if (retaliation > 0)
+                            {
+                                var absorbed = Math.Min(
+                                    combat.PlayerBlock,
+                                    retaliation);
+                                combat = combat with
+                                {
+                                    PlayerBlock = combat.PlayerBlock - absorbed
+                                };
+                                player = player with
+                                {
+                                    Hp = Math.Max(
+                                        0,
+                                        player.Hp - Math.Max(
+                                            0,
+                                            retaliation - absorbed))
+                                };
+                            }
+                        }
+                    }
+
                     var damageAmount = operation.IsPoweredAttack
                         ? ModifyIncomingAttackDamage(
                             combat,
@@ -899,15 +937,18 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeCombatEffectKind.GainPlayerBlock:
+                {
+                    var modifiedAmount = operation.Amount
+                        + (operation.SourceKind == PrototypeEffectSourceKind.Card
+                            ? PlayerBlockBonus(combat)
+                            : 0);
                     combat = combat with
                     {
                         PlayerBlock = combat.PlayerBlock
-                            + operation.Amount
-                            + (operation.SourceKind == PrototypeEffectSourceKind.Card
-                                ? PlayerBlockBonus(combat)
-                                : 0)
+                            + Math.Max(0, modifiedAmount)
                     };
                     break;
+                }
 
                 case PrototypeCombatEffectKind.DrawCards:
                     combat = DrawCards(combat, operation.Amount, rng);
@@ -1209,12 +1250,25 @@ public sealed partial class PrototypeGameEngine
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).AttackRetaliationPerStack * power.Stacks);
 
+    private static int EnemyAttackRetaliation(
+        CombatState combat,
+        int enemyId)
+    {
+        var enemy = combat.Enemies.SingleOrDefault(item =>
+            item.InstanceId == enemyId)
+            ?? throw new InvalidOperationException($"Enemy {enemyId} is missing.");
+
+        return enemy.PowerStates.Sum(power =>
+            PrototypeContent.Power(power.PowerId).AttackRetaliationPerStack
+            * power.Stacks);
+    }
+
     private static CombatState ApplyPlayerPower(
         CombatState combat,
         string powerId,
         int stacks)
     {
-        _ = PrototypeContent.Power(powerId);
+        var definition = PrototypeContent.Power(powerId);
         var powers = combat.PlayerPowers.ToList();
         var index = powers.FindIndex(power =>
             StringComparer.Ordinal.Equals(power.PowerId, powerId));
@@ -1222,7 +1276,8 @@ public sealed partial class PrototypeGameEngine
         if (index >= 0)
         {
             var nextStacks = powers[index].Stacks + stacks;
-            if (nextStacks <= 0)
+            if (nextStacks == 0
+                || (!definition.AllowNegative && nextStacks < 0))
             {
                 powers.RemoveAt(index);
             }
@@ -1234,7 +1289,7 @@ public sealed partial class PrototypeGameEngine
             return combat with { PlayerPowers = powers.ToArray() };
         }
 
-        if (stacks <= 0)
+        if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
         {
             return combat;
         }
@@ -1257,7 +1312,7 @@ public sealed partial class PrototypeGameEngine
         string powerId,
         int stacks)
     {
-        _ = PrototypeContent.Power(powerId);
+        var definition = PrototypeContent.Power(powerId);
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var enemyIndex = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
         if (enemyIndex < 0)
@@ -1278,7 +1333,8 @@ public sealed partial class PrototypeGameEngine
         if (powerIndex >= 0)
         {
             var nextStacks = powers[powerIndex].Stacks + stacks;
-            if (nextStacks <= 0)
+            if (nextStacks == 0
+                || (!definition.AllowNegative && nextStacks < 0))
             {
                 powers.RemoveAt(powerIndex);
             }
@@ -1291,7 +1347,7 @@ public sealed partial class PrototypeGameEngine
             return combat with { Enemies = enemies };
         }
 
-        if (stacks <= 0)
+        if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
         {
             return combat;
         }
