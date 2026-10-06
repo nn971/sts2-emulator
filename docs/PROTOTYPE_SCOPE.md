@@ -184,3 +184,19 @@ The whole-run generator now uses more game-shaped data:
 - reward rarity weights change by act.
 
 These are development generation rules rather than reconstructed STS2 probabilities.
+
+
+## Richer run-generation state
+
+Prototype run generation now also includes:
+
+- weighted event definitions with act eligibility;
+- once-per-run event history and immediate-repeat avoidance when alternatives exist;
+- rarity-aware shop card generation and rarity-sensitive prices;
+- variable potion/relic shop prices;
+- a one-use shop card-removal service represented as semantic per-card actions;
+- expanded potion/relic pools;
+- a later-act elite and distinct Act 1/2/3 boss encounter definitions.
+
+These remain deliberately small development pools. Their purpose is to make routing, spending,
+deck-thinning, and reward decisions materially different before native content import begins.
