@@ -81,6 +81,62 @@ public sealed class PrototypeKeywordTests
     }
 
     [Fact]
+    public void UpgradedSpeedsterStartsInnate()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("speedster-innate-upgrade");
+
+        state = engine.Step(
+            state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+
+        var empty = PrototypeJson.EmptyObject();
+        var world = state.World!;
+        var persistentId = world.NextCardInstanceId;
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck
+                    .Append(new CardInstance(
+                        persistentId,
+                        "proto.silent.speedster",
+                        1,
+                        empty))
+                    .ToArray()
+            },
+            World = world with
+            {
+                NextCardInstanceId = persistentId + 1,
+                Map = new MapState(
+                    [
+                        new MapNodeState(
+                            "speedster-combat",
+                            1,
+                            1,
+                            PrototypeRoomType.Combat)
+                    ],
+                    EntryNodeIds: ["speedster-combat"])
+            }
+        };
+
+        state = engine.Step(
+            state,
+            GameAction.Create(
+                "choose_map_node",
+                new ChooseMapNodePayload("speedster-combat"))).State;
+
+        var combat = state.World!.Combat!;
+        var speedster = Assert.Single(
+            combat.Cards,
+            card => card.CardId == "proto.silent.speedster");
+
+        Assert.Equal(1, speedster.UpgradeLevel);
+        Assert.Contains(speedster.InstanceId, combat.Hand);
+        Assert.True(PrototypeContent.Card(speedster.CardId).InnateOnUpgrade);
+    }
+
+    [Fact]
     public void RetainKeepsCardInHandAcrossEndTurn()
     {
         var state = CreateCombatState(
