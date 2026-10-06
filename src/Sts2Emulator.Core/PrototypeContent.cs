@@ -533,6 +533,54 @@ public static class PrototypeContent
                 ],
                 Rarity: PrototypeCardRarity.Uncommon),
             new PrototypeCardDefinition(
+                "proto.silent.memento_mori",
+                "Memento Mori",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        9,
+                        2,
+                        CountKind: PrototypeCombatCountKind.CardsDiscardedThisTurn,
+                        AmountPerCount: 4,
+                        AmountPerCountUpgradeDelta: 1)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
+                "proto.silent.murder",
+                "Murder",
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.Fixed,
+                    3,
+                    UpgradeDelta: -1),
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        1,
+                        CountKind: PrototypeCombatCountKind.CardsDrawnThisCombat,
+                        AmountPerCount: 1)
+                ],
+                Rarity: PrototypeCardRarity.Rare,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
+                "proto.silent.precise_cut",
+                "Precise Cut",
+                0,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        13,
+                        3,
+                        CountKind: PrototypeCombatCountKind.OtherCardsInHand,
+                        AmountPerCount: -2)
+                ],
+                Rarity: PrototypeCardRarity.Uncommon,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
                 "proto.silent.finisher",
                 "Finisher",
                 1,
