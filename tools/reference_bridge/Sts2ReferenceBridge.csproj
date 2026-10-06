@@ -4,6 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>13.0</LangVersion>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <AssemblyName>Sts2ReferenceBridge</AssemblyName>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
