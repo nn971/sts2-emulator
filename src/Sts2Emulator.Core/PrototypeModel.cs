@@ -125,6 +125,7 @@ public enum PrototypeCombatEventKind
 {
     PlayerTurnStarted,
     PlayerTurnEnded,
+    BeforeHandDraw,
     CardPlayed,
     CardDrawn,
     CardDiscarded,
