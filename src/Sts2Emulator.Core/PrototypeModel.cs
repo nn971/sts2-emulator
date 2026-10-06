@@ -99,7 +99,8 @@ public sealed record PrototypeCombatCardSnapshot(
     JsonElement State,
     int CombatEnergyCostDelta = 0,
     PrototypeTemporaryCardCost? TemporaryEnergyCost = null,
-    PrototypeCardKeywordOverride[]? KeywordOverrides = null)
+    PrototypeCardKeywordOverride[]? KeywordOverrides = null,
+    int ReplayCount = 0)
 {
     public PrototypeCombatCardSnapshot Fork() => this with
     {
@@ -625,7 +626,8 @@ public sealed record CombatCardInstance(
     JsonElement State,
     int CombatEnergyCostDelta = 0,
     PrototypeTemporaryCardCost? TemporaryEnergyCost = null,
-    PrototypeCardKeywordOverride[]? KeywordOverrides = null)
+    PrototypeCardKeywordOverride[]? KeywordOverrides = null,
+    int ReplayCount = 0)
 {
     public CombatCardInstance Fork() => this with
     {
