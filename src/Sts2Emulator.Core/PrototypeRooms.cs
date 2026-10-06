@@ -562,11 +562,10 @@ public sealed partial class PrototypeGameEngine
             _ => 20 + (world.Act * 5)
         };
 
-        var cardOptions = PickDistinct(
-            PrototypeContent.RewardCardPool,
+        var cardOptions = PickRewardCards(
+            world.Act,
             3,
-            state.Rng,
-            "reward");
+            state.Rng);
 
         var potion = PrototypeRng.NextBool(state.Rng, "reward", 1, 2)
             ? PrototypeContent.PotionPool[
@@ -646,6 +645,55 @@ public sealed partial class PrototypeGameEngine
             World = world,
             Phase = RunPhase.MapChoice
         };
+    }
+
+    private static string[] PickRewardCards(
+        int act,
+        int count,
+        RngBundle rng)
+    {
+        var available = PrototypeContent.RewardCardPool.ToList();
+        var selected = new List<string>(Math.Min(count, available.Count));
+
+        while (selected.Count < count && available.Count > 0)
+        {
+            var rarityWeights = PrototypeContent.RewardRarityWeights(act)
+                .Where(item =>
+                    item.Weight > 0
+                    && available.Any(cardId =>
+                        PrototypeContent.Card(cardId).Rarity == item.Rarity))
+                .ToArray();
+
+            if (rarityWeights.Length == 0)
+            {
+                break;
+            }
+
+            var totalWeight = rarityWeights.Sum(item => item.Weight);
+            var roll = PrototypeRng.NextInt(rng, "reward", totalWeight);
+            var rarity = rarityWeights[^1].Rarity;
+            foreach (var item in rarityWeights)
+            {
+                if (roll < item.Weight)
+                {
+                    rarity = item.Rarity;
+                    break;
+                }
+
+                roll -= item.Weight;
+            }
+
+            var candidates = available
+                .Where(cardId => PrototypeContent.Card(cardId).Rarity == rarity)
+                .ToArray();
+            var selectedId = candidates[
+                PrototypeRng.NextInt(rng, "reward", candidates.Length)];
+
+            selected.Add(selectedId);
+            available.Remove(selectedId);
+        }
+
+        return selected.ToArray();
     }
 
     private static string[] PickDistinct(
