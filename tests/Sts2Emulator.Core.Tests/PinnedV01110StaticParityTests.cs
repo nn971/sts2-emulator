@@ -106,6 +106,31 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void AbrasiveMatchesPinnedV01110PowerScalars()
+    {
+        var abrasive = PrototypeContent.Card("proto.silent.abrasive");
+
+        Assert.True(abrasive.Sly);
+        Assert.Equal(3, abrasive.Cost.Amount);
+        Assert.Equal(PrototypeCardTarget.None, abrasive.Target);
+        Assert.Equal(PrototypeCardRarity.Rare, abrasive.Rarity);
+
+        var dexterity = Assert.Single(
+            abrasive.Effects,
+            effect => effect.PowerId == "proto.power.dexterity");
+        Assert.Equal(PrototypeCombatEffectKind.ApplyPlayerPower, dexterity.Kind);
+        Assert.Equal(1, dexterity.Amount);
+        Assert.Equal(0, dexterity.UpgradeDelta);
+
+        var thorns = Assert.Single(
+            abrasive.Effects,
+            effect => effect.PowerId == "proto.power.thorns");
+        Assert.Equal(PrototypeCombatEffectKind.ApplyPlayerPower, thorns.Kind);
+        Assert.Equal(4, thorns.Amount);
+        Assert.Equal(2, thorns.UpgradeDelta);
+    }
+
+    [Fact]
     public void RicochetMatchesPinnedV01110RandomTargetScalars()
     {
         var ricochet = PrototypeContent.Card("proto.silent.ricochet");
