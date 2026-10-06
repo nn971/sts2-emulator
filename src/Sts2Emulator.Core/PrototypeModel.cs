@@ -66,6 +66,15 @@ public enum PrototypeEffectTarget
     RandomEnemy
 }
 
+public enum PrototypeEffectSourceKind
+{
+    System,
+    Card,
+    Potion,
+    Power,
+    Relic
+}
+
 public enum PrototypeCardCostKind
 {
     Fixed,
@@ -198,7 +207,8 @@ public sealed record PrototypeQueuedOperation(
     string? CardId = null,
     string? PowerId = null,
     int GeneratedCardUpgradeLevel = 0,
-    PrototypeEffectTarget TargetMode = PrototypeEffectTarget.ActionTargetEnemy);
+    PrototypeEffectTarget TargetMode = PrototypeEffectTarget.ActionTargetEnemy,
+    PrototypeEffectSourceKind SourceKind = PrototypeEffectSourceKind.System);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -248,7 +258,8 @@ public sealed record PrototypePowerDefinition(
     string Id,
     string Name,
     int BlockBonusPerStack,
-    PrototypePowerTriggerSpec[] Triggers);
+    PrototypePowerTriggerSpec[] Triggers,
+    int AttackRetaliationPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
