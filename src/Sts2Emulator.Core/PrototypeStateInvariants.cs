@@ -670,8 +670,11 @@ public static class PrototypeStateInvariants
             .ToArray();
 
         var suspendedSources = new List<long>();
-        if (combat.PendingChoice?.SourceCardInstanceId is
-            { } pendingSource)
+        if (combat.PendingChoice is
+                {
+                    SourceCardInstanceId: { } pendingSource,
+                    SourceCardAlreadyMoved: false
+                })
         {
             suspendedSources.Add(pendingSource);
         }
@@ -681,8 +684,9 @@ public static class PrototypeStateInvariants
              continuation is not null;
              continuation = continuation.Parent)
         {
-            if (continuation.SourceCardInstanceId is
-                { } continuationSource)
+            if (!continuation.SourceCardAlreadyMoved
+                && continuation.SourceCardInstanceId is
+                    { } continuationSource)
             {
                 suspendedSources.Add(continuationSource);
             }
