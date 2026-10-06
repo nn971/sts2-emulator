@@ -442,7 +442,9 @@ public static class PrototypeContent
                             new(PrototypeRunEffectKind.LoseHp, 6),
                             new(PrototypeRunEffectKind.GainGold, 45)
                         ])
-                ]),
+                ],
+                Weight: 4,
+                OncePerRun: false),
             new PrototypeEventDefinition(
                 "proto.event.cache",
                 "Abandoned Cache",
@@ -455,7 +457,26 @@ public static class PrototypeContent
                         "technique",
                         "Study the notes",
                         [new(PrototypeRunEffectKind.AddCard, CardId: "proto.silent.backflip")])
-                ])
+                ],
+                Weight: 3),
+            new PrototypeEventDefinition(
+                "proto.event.laboratory",
+                "Toxic Laboratory",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "sample",
+                        "Take the sample",
+                        [
+                            new(PrototypeRunEffectKind.LoseHp, 8),
+                            new(PrototypeRunEffectKind.AddCard, CardId: "proto.silent.poisoned_stab")
+                        ]),
+                    new PrototypeEventChoiceDefinition(
+                        "supplies",
+                        "Take the supplies",
+                        [new(PrototypeRunEffectKind.GainGold, 75)])
+                ],
+                MinAct: 2,
+                Weight: 2)
         }.ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
     public static PrototypeEncounterDefinition[] Encounters { get; } =
@@ -533,6 +554,23 @@ public static class PrototypeContent
                 (PrototypeCardRarity.Rare, 5)
             ],
             2 =>
+            [
+                (PrototypeCardRarity.Common, 55),
+                (PrototypeCardRarity.Uncommon, 35),
+                (PrototypeCardRarity.Rare, 10)
+            ],
+            _ =>
+            [
+                (PrototypeCardRarity.Common, 45),
+                (PrototypeCardRarity.Uncommon, 35),
+                (PrototypeCardRarity.Rare, 20)
+            ]
+        };
+
+    public static (PrototypeCardRarity Rarity, int Weight)[] ShopRarityWeights(int act) =>
+        act switch
+        {
+            <= 1 =>
             [
                 (PrototypeCardRarity.Common, 55),
                 (PrototypeCardRarity.Uncommon, 35),
