@@ -294,6 +294,7 @@ public sealed record PrototypeCardDefinition(
     bool ExhaustOnUse = false,
     PrototypeCardRarity Rarity = PrototypeCardRarity.Common,
     bool Innate = false,
+    bool InnateOnUpgrade = false,
     bool Retain = false,
     bool Sly = false,
     bool Ethereal = false,
