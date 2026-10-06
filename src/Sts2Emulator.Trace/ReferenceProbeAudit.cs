@@ -19,7 +19,8 @@ public sealed record ReferenceProbeRngShape(
 public sealed record ReferenceProbeTypeCatalog(
     string RuntimeType,
     string[] Properties,
-    string[] Fields);
+    string[] Fields,
+    string[] Events);
 
 public sealed record ReferenceProbeAudit(
     int BoundaryCount,
@@ -244,7 +245,8 @@ public static class ReferenceProbeAuditor
         catalogs[runtimeType] = new ReferenceProbeTypeCatalog(
             runtimeType,
             ReadMemberNames(root, "properties"),
-            ReadMemberNames(root, "fields"));
+            ReadMemberNames(root, "fields"),
+            ReadMemberNames(root, "events"));
     }
 
     private static string[] ReadMemberNames(
@@ -269,11 +271,19 @@ public static class ReferenceProbeAuditor
 
     private static string RuntimeTypeOf(JsonElement element)
     {
-        if (element.ValueKind == JsonValueKind.Object
-            && element.TryGetProperty("type", out var type)
-            && type.ValueKind == JsonValueKind.String)
+        if (element.ValueKind == JsonValueKind.Object)
         {
-            return type.GetString() ?? "<null>";
+            if (element.TryGetProperty("runtime_type", out var runtimeType)
+                && runtimeType.ValueKind == JsonValueKind.String)
+            {
+                return runtimeType.GetString() ?? "<null>";
+            }
+
+            if (element.TryGetProperty("type", out var type)
+                && type.ValueKind == JsonValueKind.String)
+            {
+                return type.GetString() ?? "<null>";
+            }
         }
 
         return $"<{element.ValueKind}>";
