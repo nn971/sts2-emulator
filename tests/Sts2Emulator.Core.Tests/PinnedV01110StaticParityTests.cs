@@ -373,6 +373,33 @@ public sealed class PinnedV01110StaticParityTests
     }
 
     [Fact]
+    public void AnticipateMatchesPinnedV01110TemporaryDexterity()
+    {
+        var anticipate = PrototypeContent.Card("proto.silent.anticipate");
+
+        Assert.Equal(0, anticipate.Cost.Amount);
+        Assert.Equal(PrototypeCardTarget.None, anticipate.Target);
+        Assert.Equal(PrototypeCardType.Skill, anticipate.Type);
+        Assert.Equal(PrototypeCardRarity.Common, anticipate.Rarity);
+
+        var effect = Assert.Single(anticipate.Effects);
+        Assert.Equal(
+            PrototypeCombatEffectKind.ApplyPlayerPower,
+            effect.Kind);
+        Assert.Equal(2, effect.Amount);
+        Assert.Equal(2, effect.UpgradeDelta);
+        Assert.Equal(
+            "proto.power.temporary_dexterity",
+            effect.PowerId);
+
+        var power = PrototypeContent.Power(
+            "proto.power.temporary_dexterity");
+        Assert.Equal(1, power.BlockBonusPerStack);
+        Assert.True(power.AllowNegative);
+        Assert.True(power.RemoveAtPlayerTurnEnd);
+    }
+
+    [Fact]
     public void PounceMatchesPinnedV01110OneShotSkillCostSemantics()
     {
         var pounce = PrototypeContent.Card("proto.silent.pounce");
