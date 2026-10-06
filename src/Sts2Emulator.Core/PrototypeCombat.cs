@@ -88,7 +88,7 @@ public sealed partial class PrototypeGameEngine
         {
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
-            if (definition.Cost > combat.Energy)
+            if (!definition.Cost.IsPlayable(combat.Energy))
             {
                 continue;
             }
@@ -172,16 +172,17 @@ public sealed partial class PrototypeGameEngine
 
         var card = RequireCombatCard(combat, payload.CardInstanceId);
         var definition = PrototypeContent.Card(card.CardId);
-        if (definition.Cost > combat.Energy)
+        if (!definition.Cost.IsPlayable(combat.Energy))
         {
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is unaffordable.");
         }
 
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
+        var energySpent = definition.Cost.ResolveEnergySpent(combat.Energy);
 
         combat = combat with
         {
-            Energy = combat.Energy - definition.Cost,
+            Energy = combat.Energy - energySpent,
             Hand = combat.Hand.Where(id => id != payload.CardInstanceId).ToArray()
         };
 
@@ -192,6 +193,7 @@ public sealed partial class PrototypeGameEngine
                 operations,
                 effect,
                 card.UpgradeLevel,
+                energySpent,
                 payload.TargetEnemyId,
                 combat);
         }
@@ -242,6 +244,7 @@ public sealed partial class PrototypeGameEngine
             EnqueueEffectOperations(
                 operations,
                 effect,
+                0,
                 0,
                 payload.TargetEnemyId,
                 combat);
@@ -441,11 +444,11 @@ public sealed partial class PrototypeGameEngine
         Queue<PrototypeQueuedOperation> operations,
         PrototypeCombatEffectSpec effect,
         int upgradeLevel,
+        int energySpent,
         int? actionTargetEnemyId,
         CombatState combat)
     {
-        var repetitions = effect.Repetitions
-            + (effect.RepetitionUpgradeDelta * upgradeLevel);
+        var repetitions = effect.RepetitionsAt(upgradeLevel, energySpent);
         if (repetitions <= 0)
         {
             return;
@@ -472,7 +475,7 @@ public sealed partial class PrototypeGameEngine
             {
                 operations.Enqueue(new PrototypeQueuedOperation(
                     effect.Kind,
-                    effect.AmountAtUpgrade(upgradeLevel),
+                    effect.AmountAt(upgradeLevel, energySpent),
                     targetEnemyId,
                     effect.StatusId,
                     effect.Selection,
