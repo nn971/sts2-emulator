@@ -25,7 +25,8 @@ public enum PrototypeCombatEffectKind
     DrawCards,
     ApplyEnemyStatus,
     ChooseCards,
-    CreateCardsInHand
+    CreateCardsInHand,
+    ApplyPlayerPower
 }
 
 public enum PrototypeCardZone
@@ -61,6 +62,21 @@ public enum PrototypeTurnStage
     EnemyTurnEnd,
     PlayerTurnStart
 }
+
+public enum PrototypeAutomaticStepKind
+{
+    DispatchEnemyStatusStage,
+    ResolveEnemyActions,
+    AdvanceTurn,
+    ResetPlayerBlock,
+    RefreshPlayerEnergy,
+    DispatchPlayerPowerStage,
+    DrawPlayerHand
+}
+
+public sealed record PrototypeAutomaticStep(
+    PrototypeAutomaticStepKind Kind,
+    PrototypeTurnStage? Stage = null);
 
 public enum PrototypeStatusTriggerKind
 {
@@ -117,7 +133,10 @@ public sealed record PrototypeCombatEffectSpec(
     int Repetitions = 1,
     int RepetitionUpgradeDelta = 0,
     int AmountPerEnergySpent = 0,
-    int RepetitionsPerEnergySpent = 0)
+    int RepetitionsPerEnergySpent = 0,
+    string? PowerId = null,
+    int AmountPerPowerStack = 0,
+    int RepetitionsPerPowerStack = 0)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -136,7 +155,8 @@ public sealed record PrototypeQueuedOperation(
     int? TargetEnemyId = null,
     string? StatusId = null,
     PrototypeCardSelectionSpec? Selection = null,
-    string? CardId = null);
+    string? CardId = null,
+    string? PowerId = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -162,6 +182,21 @@ public sealed record PrototypeRelicDefinition(
     string Name,
     int FirstTurnDrawBonus = 0,
     int EnergyPerTurnBonus = 0);
+
+public sealed record PrototypePowerTriggerSpec(
+    PrototypeTurnStage Stage,
+    PrototypeCombatEffectSpec[] Effects);
+
+public sealed record PrototypePlayerPowerDefinition(
+    string Id,
+    string Name,
+    int BlockBonusPerStack,
+    PrototypePowerTriggerSpec[] Triggers);
+
+public sealed record PrototypePowerInstanceState(
+    string PowerId,
+    int Stacks,
+    long ApplicationOrder);
 
 public sealed record PrototypeEnemyMoveDefinition(
     string Id,
@@ -211,7 +246,7 @@ public sealed record PrototypeRuleset(
     int HandSize,
     int RestHealPercent,
     PrototypeRoomType[] RoomPool,
-    PrototypeTurnStage[] EnemyTurnSequence);
+    PrototypeAutomaticStep[] EndTurnPipeline);
 
 public sealed record MapNodeState(
     string NodeId,
@@ -275,6 +310,8 @@ public sealed record CombatState(
     EnemyCombatState[] Enemies,
     long NextCardInstanceId,
     CombatCardInstance[] Cards,
+    PrototypePowerInstanceState[] PlayerPowers,
+    long NextPowerApplicationOrder,
     PendingCombatChoiceState? PendingChoice = null)
 {
     public CombatState Fork() => this with
@@ -285,6 +322,7 @@ public sealed record CombatState(
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
+        PlayerPowers = (PrototypePowerInstanceState[])PlayerPowers.Clone(),
         PendingChoice = PendingChoice?.Fork()
     };
 }
