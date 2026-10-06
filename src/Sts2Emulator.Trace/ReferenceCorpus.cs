@@ -267,6 +267,7 @@ public static partial class ReferenceMechanicsGapAnalyzer
             "dynamic_cost_skills_played",
             "next_skill_free",
             "next_skill_replay",
+            "replay",
             "combat_card_cost_mutation",
             "hand_cards_free_this_turn",
             "no_additional_draw",
