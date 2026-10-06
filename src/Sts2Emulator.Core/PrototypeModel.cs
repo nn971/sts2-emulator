@@ -291,7 +291,11 @@ public sealed record PrototypeEventChoiceDefinition(
 public sealed record PrototypeEventDefinition(
     string Id,
     string Name,
-    PrototypeEventChoiceDefinition[] Choices);
+    PrototypeEventChoiceDefinition[] Choices,
+    int MinAct = 1,
+    int MaxAct = int.MaxValue,
+    int Weight = 1,
+    bool OncePerRun = true);
 
 public sealed record PrototypeRuleset(
     string Id,
@@ -490,7 +494,9 @@ public sealed record ShopOffer(
 public sealed record ShopState(
     ShopOffer[] CardOffers,
     ShopOffer? PotionOffer,
-    ShopOffer? RelicOffer)
+    ShopOffer? RelicOffer,
+    int RemovalPrice = 75,
+    bool RemovalUsed = false)
 {
     public ShopState Fork() => this with
     {
@@ -515,7 +521,8 @@ public sealed record RunWorldState(
     ShopState? Shop,
     EventState? Event,
     string? TerminalOutcome,
-    string[]? EncounterHistory = null)
+    string[]? EncounterHistory = null,
+    string[]? EventHistory = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -526,11 +533,17 @@ public sealed record RunWorldState(
         Event = Event is null ? null : Event with { },
         EncounterHistory = EncounterHistory is null
             ? null
-            : (string[])EncounterHistory.Clone()
+            : (string[])EncounterHistory.Clone(),
+        EventHistory = EventHistory is null
+            ? null
+            : (string[])EventHistory.Clone()
     };
 
     public string[] EncounterIds =>
         EncounterHistory ?? Array.Empty<string>();
+
+    public string[] EventIds =>
+        EventHistory ?? Array.Empty<string>();
 }
 
 public sealed record ChooseMapNodePayload(string NodeId);
@@ -540,6 +553,7 @@ public sealed record ChooseCardPayload(int Index);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
 public sealed record UpgradeCardPayload(long CardInstanceId);
+public sealed record RemoveCardPayload(long CardInstanceId);
 public sealed record SelectCardsPayload(long[] CardInstanceIds);
 
 public static class PrototypeJson
