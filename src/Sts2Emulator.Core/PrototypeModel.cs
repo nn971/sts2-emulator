@@ -92,6 +92,15 @@ public enum PrototypeCombatPredicateKind
     TargetHasStatus
 }
 
+public enum PrototypeCombatCountKind
+{
+    SkillsInHand,
+    AttacksPlayedThisTurn,
+    CardsDiscardedThisTurn,
+    CardsDrawnThisCombat,
+    OtherCardsInHand
+}
+
 public sealed record PrototypeCombatPredicateSpec(
     PrototypeCombatPredicateKind Kind,
     string? StatusId = null);
@@ -207,7 +216,10 @@ public sealed record PrototypeCombatEffectSpec(
     int RepetitionsPerPowerStack = 0,
     int GeneratedCardUpgradeLevel = 0,
     int GeneratedCardUpgradePerSourceUpgrade = 0,
-    PrototypeCombatPredicateSpec? Condition = null)
+    PrototypeCombatPredicateSpec? Condition = null,
+    PrototypeCombatCountKind? CountKind = null,
+    int AmountPerCount = 0,
+    int RepetitionsPerCount = 0)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -496,6 +508,12 @@ public sealed record PendingCombatChoiceState(
     };
 }
 
+public sealed record PrototypeCombatCounters(
+    int AttacksPlayedThisTurn = 0,
+    int SkillsPlayedThisTurn = 0,
+    int CardsDiscardedThisTurn = 0,
+    int CardsDrawnThisCombat = 0);
+
 public sealed record CombatState(
     int Turn,
     int Energy,
@@ -511,7 +529,8 @@ public sealed record CombatState(
     long NextPowerApplicationOrder,
     CombatRelicState[]? Relics = null,
     CombatPotionState[]? Potions = null,
-    PendingCombatChoiceState? PendingChoice = null)
+    PendingCombatChoiceState? PendingChoice = null,
+    PrototypeCombatCounters? Counters = null)
 {
     public CombatState Fork() => this with
     {
@@ -528,7 +547,8 @@ public sealed record CombatState(
         Potions = Potions is null
             ? null
             : Potions.Select(potion => potion.Fork()).ToArray(),
-        PendingChoice = PendingChoice?.Fork()
+        PendingChoice = PendingChoice?.Fork(),
+        Counters = Counters is null ? null : Counters with { }
     };
 
     public CombatRelicState[] RelicStates =>
@@ -536,6 +556,9 @@ public sealed record CombatState(
 
     public CombatPotionState[] PotionStates =>
         Potions ?? Array.Empty<CombatPotionState>();
+
+    public PrototypeCombatCounters CounterState =>
+        Counters ?? new PrototypeCombatCounters();
 }
 
 public sealed record RewardState(
