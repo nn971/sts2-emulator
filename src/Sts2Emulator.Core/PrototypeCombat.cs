@@ -1574,7 +1574,8 @@ public sealed partial class PrototypeGameEngine
                         SourceCardAlreadyMoved:
                             sourceCardAlreadyMoved
                             || (sourceCardInstanceId is not null
-                                && moveSourceCardOnCompletion));
+                                && moveSourceCardOnCompletion
+                                && !removeSourceCardOnCompletion));
                 combat = AttachOuterChoiceContinuation(
                     combat,
                     outerContinuation);
