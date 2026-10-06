@@ -179,31 +179,51 @@ public sealed record PrototypeCardSelectionSpec(
 public sealed record PrototypeCardCostSpec(
     PrototypeCardCostKind Kind,
     int Amount = 0,
-    int UpgradeDelta = 0)
+    int UpgradeDelta = 0,
+    PrototypeCombatCountKind? ReductionCountKind = null,
+    int ReductionPerCount = 0,
+    int MinimumAmount = 0)
 {
     public static implicit operator PrototypeCardCostSpec(int fixedCost) =>
         new(PrototypeCardCostKind.Fixed, fixedCost);
 
-    public int AmountAt(int upgradeLevel) =>
-        Amount + (UpgradeDelta * upgradeLevel);
+    public int AmountAt(
+        int upgradeLevel,
+        int reductionCount = 0)
+    {
+        var baseAmount = Amount + (UpgradeDelta * upgradeLevel);
+        if (Kind != PrototypeCardCostKind.Fixed
+            || ReductionCountKind is null
+            || ReductionPerCount <= 0)
+        {
+            return baseAmount;
+        }
+
+        return Math.Max(
+            MinimumAmount,
+            baseAmount - (ReductionPerCount * Math.Max(0, reductionCount)));
+    }
 
     public bool IsPlayable(
         int availableEnergy,
-        int upgradeLevel = 0) =>
+        int upgradeLevel = 0,
+        int reductionCount = 0) =>
         Kind switch
         {
             PrototypeCardCostKind.Fixed =>
-                AmountAt(upgradeLevel) <= availableEnergy,
+                AmountAt(upgradeLevel, reductionCount) <= availableEnergy,
             PrototypeCardCostKind.X => true,
             _ => throw new ArgumentOutOfRangeException()
         };
 
     public int ResolveEnergySpent(
         int availableEnergy,
-        int upgradeLevel = 0) =>
+        int upgradeLevel = 0,
+        int reductionCount = 0) =>
         Kind switch
         {
-            PrototypeCardCostKind.Fixed => AmountAt(upgradeLevel),
+            PrototypeCardCostKind.Fixed =>
+                AmountAt(upgradeLevel, reductionCount),
             PrototypeCardCostKind.X => availableEnergy,
             _ => throw new ArgumentOutOfRangeException()
         };
