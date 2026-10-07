@@ -959,6 +959,20 @@ public sealed partial class PrototypeGameEngine
                             enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
                             break;
 
+                        case PrototypeEnemyEffectKind.ApplyPlayerPower:
+                            if (effect.PowerId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Enemy apply-power effect is missing a power ID.");
+                            }
+
+                            combat = ApplyPlayerPower(
+                                combat,
+                                effect.PowerId,
+                                amount,
+                                sourceEnemyInstanceId: enemy.InstanceId);
+                            break;
+
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
@@ -982,13 +996,17 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
+        combat = combat with
+        {
+            PlayerBlock = block,
+            Enemies = enemies
+        };
+        combat = CleanupSourceBoundPowersForDefeatedEnemies(
+            combat);
+
         return (
             player with { Hp = hp },
-            combat with
-            {
-                PlayerBlock = block,
-                Enemies = enemies
-            });
+            combat);
     }
 
     private static void EnqueueEffectOperations(
@@ -1198,6 +1216,12 @@ public sealed partial class PrototypeGameEngine
                         targetEnemyId.Value,
                         damageAmount);
                     combat = damageResult.Combat;
+                    if (damageResult.Defeated)
+                    {
+                        combat =
+                            CleanupSourceBoundPowersForDefeatedEnemies(
+                                combat);
+                    }
 
                     if (damageResult.DamageDealt > 0)
                     {
@@ -1646,6 +1670,9 @@ public sealed partial class PrototypeGameEngine
                 EnchantmentTriggeredThisCombat:
                     snapshot.EnchantmentTriggeredThisCombat,
                 Affliction: snapshot.Affliction);
+            instance = ApplyActiveSourceBoundAfflictionToCard(
+                combat,
+                instance);
 
             var addToHand = combat.Hand.Length < maxHandSize;
             combat = combat with
@@ -2496,9 +2523,17 @@ public sealed partial class PrototypeGameEngine
     private static CombatState ApplyPlayerPower(
         CombatState combat,
         string powerId,
-        int stacks)
+        int stacks,
+        int? sourceEnemyInstanceId = null)
     {
         var definition = PrototypeContent.Power(powerId);
+        if (definition.SourceBoundToEnemy
+            && sourceEnemyInstanceId is null)
+        {
+            throw new InvalidOperationException(
+                $"Source-bound power '{powerId}' requires an enemy source.");
+        }
+
         if (definition.IsInstanced)
         {
             if (definition.RequiresCardPayload)
@@ -2507,16 +2542,26 @@ public sealed partial class PrototypeGameEngine
                     $"Instanced power '{powerId}' requires a card payload.");
             }
 
-            return AddPlayerPowerInstance(combat, powerId, stacks, null);
+            return AddPlayerPowerInstance(
+                combat,
+                powerId,
+                stacks,
+                null,
+                sourceEnemyInstanceId);
         }
 
         var powers = combat.PlayerPowers.ToList();
         var index = powers.FindIndex(power =>
-            StringComparer.Ordinal.Equals(power.PowerId, powerId));
+            StringComparer.Ordinal.Equals(power.PowerId, powerId)
+            && (!definition.SourceBoundToEnemy
+                || power.SourceEnemyInstanceId
+                    == sourceEnemyInstanceId));
 
         if (index >= 0)
         {
-            var nextStacks = powers[index].Stacks + stacks;
+            var nextStacks = definition.DoesNotStack
+                ? Math.Max(powers[index].Stacks, stacks)
+                : powers[index].Stacks + stacks;
             if (nextStacks == 0
                 || (!definition.AllowNegative && nextStacks < 0))
             {
@@ -2527,7 +2572,13 @@ public sealed partial class PrototypeGameEngine
                 powers[index] = powers[index] with { Stacks = nextStacks };
             }
 
-            return combat with { PlayerPowers = powers.ToArray() };
+            combat = combat with
+            {
+                PlayerPowers = powers.ToArray()
+            };
+            return ApplySourceBoundCardAffliction(
+                combat,
+                powers[index]);
         }
 
         if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
@@ -2535,16 +2586,22 @@ public sealed partial class PrototypeGameEngine
             return combat;
         }
 
-        powers.Add(new PrototypePowerInstanceState(
+        var instance = new PrototypePowerInstanceState(
             powerId,
             stacks,
-            combat.NextPowerApplicationOrder));
+            combat.NextPowerApplicationOrder,
+            SourceEnemyInstanceId: sourceEnemyInstanceId);
+        powers.Add(instance);
 
-        return combat with
+        combat = combat with
         {
             PlayerPowers = powers.ToArray(),
-            NextPowerApplicationOrder = combat.NextPowerApplicationOrder + 1
+            NextPowerApplicationOrder =
+                combat.NextPowerApplicationOrder + 1
         };
+        return ApplySourceBoundCardAffliction(
+            combat,
+            instance);
     }
 
     private static CombatState ApplyPlayerPowerWithSelectedCard(
@@ -2590,7 +2647,8 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         string powerId,
         int stacks,
-        PrototypeCombatCardSnapshot? cardPayload)
+        PrototypeCombatCardSnapshot? cardPayload,
+        int? sourceEnemyInstanceId = null)
     {
         var definition = PrototypeContent.Power(powerId);
         if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
@@ -2604,15 +2662,189 @@ public sealed partial class PrototypeGameEngine
                 $"Power '{powerId}' card-payload requirement is not satisfied.");
         }
 
-        return combat with
+        if (definition.SourceBoundToEnemy
+            && sourceEnemyInstanceId is null)
+        {
+            throw new InvalidOperationException(
+                $"Source-bound power '{powerId}' requires an enemy source.");
+        }
+
+        combat = combat with
         {
             PlayerPowers = combat.PlayerPowers.Append(
                 new PrototypePowerInstanceState(
                     powerId,
                     stacks,
                     combat.NextPowerApplicationOrder,
-                    cardPayload?.Fork())).ToArray(),
-            NextPowerApplicationOrder = combat.NextPowerApplicationOrder + 1
+                    cardPayload?.Fork(),
+                    sourceEnemyInstanceId)).ToArray(),
+            NextPowerApplicationOrder =
+                combat.NextPowerApplicationOrder + 1
+        };
+
+        var added = combat.PlayerPowers[^1];
+        return ApplySourceBoundCardAffliction(
+            combat,
+            added);
+    }
+
+    private static CombatState ApplySourceBoundCardAffliction(
+        CombatState combat,
+        PrototypePowerInstanceState power)
+    {
+        var definition = PrototypeContent.Power(power.PowerId);
+        if (definition.SourceBoundCardAffliction is not
+                { } afflictionKind)
+        {
+            return combat;
+        }
+
+        if (power.SourceEnemyInstanceId is not { } sourceEnemyId)
+        {
+            throw new InvalidOperationException(
+                $"Affliction source power '{power.PowerId}' is missing its enemy source.");
+        }
+
+        var source = combat.Enemies.FirstOrDefault(enemy =>
+            enemy.InstanceId == sourceEnemyId);
+        if (source is null || source.Hp <= 0)
+        {
+            return combat;
+        }
+
+        return combat with
+        {
+            Cards = combat.Cards
+                .Select(card =>
+                {
+                    if (card.Affliction is not null
+                        && definition.SkipCardsWithExistingAffliction)
+                    {
+                        return card;
+                    }
+
+                    return card with
+                    {
+                        Affliction = new PrototypeCardAffliction(
+                            afflictionKind,
+                            SourceEnemyInstanceId: sourceEnemyId)
+                    };
+                })
+                .ToArray()
+        };
+    }
+
+    private static CombatCardInstance
+        ApplyActiveSourceBoundAfflictionToCard(
+            CombatState combat,
+            CombatCardInstance card)
+    {
+        foreach (var power in combat.PlayerPowers
+                     .OrderBy(item => item.ApplicationOrder))
+        {
+            var definition = PrototypeContent.Power(
+                power.PowerId);
+            if (definition.SourceBoundCardAffliction is not
+                    { } afflictionKind
+                || power.SourceEnemyInstanceId is not
+                    { } sourceEnemyId)
+            {
+                continue;
+            }
+
+            var source = combat.Enemies.FirstOrDefault(enemy =>
+                enemy.InstanceId == sourceEnemyId);
+            if (source is null || source.Hp <= 0)
+            {
+                continue;
+            }
+
+            if (card.Affliction is not null
+                && definition.SkipCardsWithExistingAffliction)
+            {
+                continue;
+            }
+
+            return card with
+            {
+                Affliction = new PrototypeCardAffliction(
+                    afflictionKind,
+                    SourceEnemyInstanceId: sourceEnemyId)
+            };
+        }
+
+        return card;
+    }
+
+    private static CombatState
+        CleanupSourceBoundPowersForDefeatedEnemies(
+            CombatState combat)
+    {
+        var defeatedEnemyIds = combat.Enemies
+            .Where(enemy => enemy.Hp <= 0)
+            .Select(enemy => enemy.InstanceId)
+            .ToHashSet();
+        if (defeatedEnemyIds.Count == 0)
+        {
+            return combat;
+        }
+
+        var removed = combat.PlayerPowers
+            .Where(power =>
+                power.SourceEnemyInstanceId is { } sourceEnemyId
+                && defeatedEnemyIds.Contains(sourceEnemyId)
+                && PrototypeContent.Power(power.PowerId)
+                    .SourceBoundToEnemy)
+            .ToArray();
+        if (removed.Length == 0)
+        {
+            return combat;
+        }
+
+        var clearAfflictions = removed
+            .Select(power =>
+            {
+                var definition = PrototypeContent.Power(
+                    power.PowerId);
+                return (
+                    SourceEnemyId:
+                        power.SourceEnemyInstanceId!.Value,
+                    Kind:
+                        definition.SourceBoundCardAffliction,
+                    Clear:
+                        definition.ClearSourceAfflictionWhenRemoved);
+            })
+            .Where(item =>
+                item.Clear && item.Kind is not null)
+            .Select(item => (
+                item.SourceEnemyId,
+                Kind: item.Kind!.Value))
+            .ToHashSet();
+
+        var removedOrders = removed
+            .Select(power => power.ApplicationOrder)
+            .ToHashSet();
+
+        return combat with
+        {
+            PlayerPowers = combat.PlayerPowers
+                .Where(power =>
+                    !removedOrders.Contains(
+                        power.ApplicationOrder))
+                .ToArray(),
+            Cards = combat.Cards
+                .Select(card =>
+                    card.Affliction is
+                        {
+                            SourceEnemyInstanceId:
+                                { } sourceEnemyId
+                        } affliction
+                    && clearAfflictions.Contains((
+                        sourceEnemyId,
+                        affliction.Kind))
+                        ? card with { Affliction = null }
+                        : card)
+                .ToArray()
         };
     }
 
