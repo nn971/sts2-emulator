@@ -1869,6 +1869,48 @@ public static class PrototypeContent
                     new(8, 4)
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.seapunk",
+                "Seapunk",
+                46,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "sea_kick",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                11,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "spinning_kick",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                2,
+                                Repetitions: 4)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "bubble_burp",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                7),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                1,
+                                PowerId: "proto.power.strength")
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 3)
+                ],
+                MinHp: 44),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.crawler",
                 "Crawler",
                 24,
