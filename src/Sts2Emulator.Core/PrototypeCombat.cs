@@ -1256,6 +1256,13 @@ public sealed partial class PrototypeGameEngine
                                     / statusDefinition.OutgoingDamageDenominator;
                             }
 
+                            if (effect.IsAttack)
+                            {
+                                damage = ModifyIncomingPlayerAttackDamage(
+                                    combat,
+                                    damage);
+                            }
+
                             var absorbed = Math.Min(block, Math.Max(0, damage));
                             block -= absorbed;
                             hp = Math.Max(0, hp - Math.Max(0, damage - absorbed));
@@ -1606,10 +1613,12 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.GainPlayerBlock:
                 {
-                    var modifiedAmount = operation.Amount
-                        + (operation.SourceKind == PrototypeEffectSourceKind.Card
-                            ? PlayerBlockBonus(combat)
-                            : 0);
+                    var modifiedAmount =
+                        operation.SourceKind == PrototypeEffectSourceKind.Card
+                            ? ModifyPlayerCardBlock(
+                                combat,
+                                operation.Amount)
+                            : operation.Amount;
                     combat = combat with
                     {
                         PlayerBlock = combat.PlayerBlock
@@ -1633,11 +1642,14 @@ public sealed partial class PrototypeGameEngine
                                 0,
                                 enemy.Statuses.GetValueOrDefault(
                                     operation.StatusId)));
-                    var modifiedAmount = operation.Amount
-                        + statusTotal
-                        + (operation.SourceKind == PrototypeEffectSourceKind.Card
-                            ? PlayerBlockBonus(combat)
-                            : 0);
+                    var baseAmount =
+                        operation.Amount + statusTotal;
+                    var modifiedAmount =
+                        operation.SourceKind == PrototypeEffectSourceKind.Card
+                            ? ModifyPlayerCardBlock(
+                                combat,
+                                baseAmount)
+                            : baseAmount;
                     combat = combat with
                     {
                         PlayerBlock = combat.PlayerBlock
@@ -1654,10 +1666,12 @@ public sealed partial class PrototypeGameEngine
                             "Block-and-delay operation is missing a power ID.");
                     }
 
-                    var modifiedAmount = operation.Amount
-                        + (operation.SourceKind == PrototypeEffectSourceKind.Card
-                            ? PlayerBlockBonus(combat)
-                            : 0);
+                    var modifiedAmount =
+                        operation.SourceKind == PrototypeEffectSourceKind.Card
+                            ? ModifyPlayerCardBlock(
+                                combat,
+                                operation.Amount)
+                            : operation.Amount;
                     var actualGain = Math.Max(0, modifiedAmount);
                     combat = combat with
                     {
@@ -2273,6 +2287,71 @@ public sealed partial class PrototypeGameEngine
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
 
+    private static int ModifyPlayerCardBlock(
+        CombatState combat,
+        int amount)
+    {
+        var modified = amount + PlayerBlockBonus(combat);
+        foreach (var power in combat.PlayerPowers.Where(power => power.Stacks > 0))
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.PlayerCardBlockDenominator <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Power '{definition.Id}' has invalid player-card-block denominator.");
+            }
+
+            modified = (modified * definition.PlayerCardBlockNumerator)
+                / definition.PlayerCardBlockDenominator;
+        }
+
+        return modified;
+    }
+
+    private static int ModifyPlayerOutgoingAttackDamage(
+        CombatState combat,
+        int damage)
+    {
+        var modified = damage;
+        foreach (var power in combat.PlayerPowers.Where(power => power.Stacks > 0))
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.PlayerAttackDamageDenominator <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Power '{definition.Id}' has invalid player-attack denominator.");
+            }
+
+            modified = (modified * definition.PlayerAttackDamageNumerator)
+                / definition.PlayerAttackDamageDenominator;
+        }
+
+        return modified;
+    }
+
+    private static int ModifyIncomingPlayerAttackDamage(
+        CombatState combat,
+        int damage)
+    {
+        var modified = damage;
+        foreach (var power in combat.PlayerPowers.Where(power => power.Stacks > 0))
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.PlayerIncomingAttackDamageDenominator <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Power '{definition.Id}' has invalid incoming-player-attack denominator.");
+            }
+
+            modified =
+                (modified
+                 * definition.PlayerIncomingAttackDamageNumerator)
+                / definition.PlayerIncomingAttackDamageDenominator;
+        }
+
+        return modified;
+    }
+
     private static bool IsCardFreeByPower(
         CombatState combat,
         PrototypeCardDefinition card) =>
@@ -2832,7 +2911,15 @@ public sealed partial class PrototypeGameEngine
                 / definition.AttackDamageBonusTargetDenominator;
         });
 
-        return modified + conditionalBonus;
+        modified += conditionalBonus;
+        if (sourceDefinition.Type != PrototypeCardType.Attack)
+        {
+            return modified;
+        }
+
+        return ModifyPlayerOutgoingAttackDamage(
+            combat,
+            modified);
     }
 
     private static int ModifyIncomingAttackDamage(
@@ -3693,6 +3780,9 @@ public sealed partial class PrototypeGameEngine
                             .RemoveAtPlayerTurnEnd)
                     .ToArray()
             };
+            combat = DecrementPlayerPowers(
+                combat,
+                definition => definition.DecrementAtPlayerTurnEnd);
         }
 
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnStarted)
@@ -3799,6 +3889,9 @@ public sealed partial class PrototypeGameEngine
                             .RemoveAtPlayerTurnEnd)
                     .ToArray()
             };
+            combat = DecrementPlayerPowers(
+                combat,
+                definition => definition.DecrementAtPlayerTurnEnd);
         }
 
         if (continuation.CombatEvent.Kind
