@@ -24,6 +24,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Audit history/state/RNG shapes for parity work");
     Console.WriteLine("  reference-probe-actions <probe.jsonl>");
     Console.WriteLine("                          Extract evidence-backed native action envelopes");
+    Console.WriteLine("  reference-knight-gang-audit <probe.jsonl> [--json]");
+    Console.WriteLine("                          Extract Knight Gang moves/state/RNG evidence");
     Console.WriteLine("  reference-corpus-summary <eng-dir>");
     Console.WriteLine("                          Summarize a local version-pinned reference corpus");
     Console.WriteLine("  reference-corpus-get <eng-dir> <kind> <id-or-name>");
@@ -205,6 +207,87 @@ switch (args[0])
             {
                 Console.WriteLine($"  diagnostic: {diagnostic}");
             }
+        }
+
+        break;
+    }
+
+    case "reference-knight-gang-audit":
+    {
+        if (args.Length is < 2 or > 3
+            || (args.Length == 3
+                && !StringComparer.Ordinal.Equals(args[2], "--json")))
+        {
+            throw new ArgumentException(
+                "reference-knight-gang-audit requires <probe.jsonl> and optionally --json.");
+        }
+
+        var audit =
+            Sts2Emulator.Trace.ReferenceKnightGangProbeAnalyzer.Analyze(
+                args[1]);
+
+        if (args.Length == 3)
+        {
+            Console.WriteLine(CanonicalJson.Serialize(audit));
+            break;
+        }
+
+        Console.WriteLine($"Schema: {audit.Schema ?? "-"}");
+        Console.WriteLine(
+            $"Build fingerprint: {audit.BuildFingerprint ?? "-"}");
+        Console.WriteLine(
+            $"Knight Gang: combats={audit.MatchingCombatCount}, checkpoints={audit.MatchingCheckpointCount}");
+
+        foreach (var combat in audit.Combats)
+        {
+            Console.WriteLine(
+                $"Combat {combat.CombatIndex}: seq={combat.FirstSequence}-{combat.LastSequence}, " +
+                $"A={combat.Ascension?.ToString() ?? "-"}, checkpoints={combat.CheckpointCount}");
+            Console.WriteLine(
+                $"  evidence: moves={combat.CheckpointsWithMoveEvidence}, " +
+                $"intents={combat.CheckpointsWithIntentEvidence}, " +
+                $"monster_ai_rng={combat.CheckpointsWithMonsterAiRng}");
+            Console.WriteLine(
+                $"  enemies: {string.Join(", ", combat.NativeEnemyIdentities)}");
+
+            foreach (var mismatch in combat.StaticMismatches)
+            {
+                Console.WriteLine($"  static mismatch: {mismatch}");
+            }
+
+            foreach (var checkpoint in combat.Checkpoints)
+            {
+                Console.WriteLine(
+                    $"  [{checkpoint.Sequence}] {checkpoint.Boundary} " +
+                    $"round={checkpoint.RoundNumber?.ToString() ?? "-"} " +
+                    $"side={checkpoint.CurrentSide ?? "-"} " +
+                    $"player={checkpoint.PlayerHp?.ToString() ?? "-"}/" +
+                    $"{checkpoint.PlayerMaxHp?.ToString() ?? "-"} " +
+                    $"block={checkpoint.PlayerBlock?.ToString() ?? "-"} " +
+                    $"cards={checkpoint.Cards.HandCount}/" +
+                    $"{checkpoint.Cards.DrawCount}/" +
+                    $"{checkpoint.Cards.DiscardCount}/" +
+                    $"{checkpoint.Cards.ExhaustCount}/" +
+                    $"{checkpoint.Cards.PlayCount} " +
+                    $"upgraded={checkpoint.Cards.UpgradedCardCount} " +
+                    $"hexed={checkpoint.Cards.HexedCardCount}");
+
+                foreach (var enemy in checkpoint.Enemies)
+                {
+                    Console.WriteLine(
+                        $"    {enemy.Role ?? "?"} id={enemy.NativeIdentity ?? "-"} " +
+                        $"hp={enemy.CurrentHp?.ToString() ?? "-"}/" +
+                        $"{enemy.MaxHp?.ToString() ?? "-"} " +
+                        $"block={enemy.Block?.ToString() ?? "-"} " +
+                        $"move={enemy.CurrentMove ?? enemy.LastMove ?? "-"} " +
+                        $"next={enemy.NextMove ?? "-"} intent={enemy.Intent ?? "-"}");
+                }
+            }
+        }
+
+        foreach (var diagnostic in audit.Diagnostics)
+        {
+            Console.WriteLine($"Diagnostic: {diagnostic}");
         }
 
         break;
