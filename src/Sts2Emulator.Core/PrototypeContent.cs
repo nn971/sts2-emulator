@@ -3114,6 +3114,65 @@ public static class PrototypeContent
             MaxFloor: 4,
             Weight: 3),
         new(
+            "proto.encounter.slimes_weak",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.leaf_slime_s",
+                "proto.enemy.twig_slime_s",
+                "proto.enemy.leaf_slime_m",
+                "proto.enemy.twig_slime_m"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            SelectionGroups:
+            [
+                new PrototypeEncounterSelectionGroup(
+                    [
+                        "proto.enemy.leaf_slime_s",
+                        "proto.enemy.twig_slime_s"
+                    ],
+                    [0, 2],
+                    ChooseDistinct: true),
+                new PrototypeEncounterSelectionGroup(
+                    [
+                        "proto.enemy.leaf_slime_m",
+                        "proto.enemy.twig_slime_m"
+                    ],
+                    [1])
+            ]),
+        new(
+            "proto.encounter.slimes_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.twig_slime_m",
+                "proto.enemy.leaf_slime_m",
+                "proto.enemy.leaf_slime_s",
+                "proto.enemy.twig_slime_s"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.twig_slime_m",
+                    0),
+                new(
+                    "proto.enemy.leaf_slime_m",
+                    1)
+            ],
+            SelectionGroups:
+            [
+                new PrototypeEncounterSelectionGroup(
+                    [
+                        "proto.enemy.leaf_slime_s",
+                        "proto.enemy.twig_slime_s"
+                    ],
+                    [2, 3],
+                    ChooseDistinct: true)
+            ]),
+        new(
             "proto.encounter.elite",
             PrototypeRoomType.Elite,
             ["proto.enemy.elite"],
@@ -3277,6 +3336,15 @@ public static class PrototypeContent
         Enemies.TryGetValue(id, out var value)
             ? value
             : throw new KeyNotFoundException($"Unknown prototype enemy '{id}'.");
+
+    public static PrototypeEncounterDefinition Encounter(
+        string id) =>
+        Encounters.FirstOrDefault(encounter =>
+            StringComparer.Ordinal.Equals(
+                encounter.Id,
+                id))
+        ?? throw new KeyNotFoundException(
+            $"Unknown prototype encounter '{id}'.");
 
     public static PrototypeStatusDefinition Status(string id) =>
         Statuses.TryGetValue(id, out var value)
