@@ -262,6 +262,16 @@ public static class PrototypeStateInvariants
                     "Overgrowth elite encounter pool contains a foreign encounter.");
             }
         }
+
+        if (pool.Region == PrototypeActOneRegion.Overgrowth
+            && (pool.BossEncounterId is null
+                || !PrototypeContent.OvergrowthBossEncounterPool.Contains(
+                    pool.BossEncounterId,
+                    StringComparer.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                "Overgrowth run has an invalid selected boss encounter.");
+        }
     }
 
     private static void ValidateEventHistory(RunWorldState world)
