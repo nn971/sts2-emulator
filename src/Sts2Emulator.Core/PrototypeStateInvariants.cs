@@ -876,10 +876,14 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Next event-subscriber application order is not fresh.");
         }
 
-        var zones = combat.Hand
-            .Concat(combat.DrawPile)
-            .Concat(combat.DiscardPile)
-            .Concat(combat.ExhaustPile)
+        var zoneLocations = combat.Hand
+            .Select(id => (Id: id, Location: "Hand"))
+            .Concat(combat.DrawPile.Select(id => (Id: id, Location: "DrawPile")))
+            .Concat(combat.DiscardPile.Select(id => (Id: id, Location: "DiscardPile")))
+            .Concat(combat.ExhaustPile.Select(id => (Id: id, Location: "ExhaustPile")))
+            .ToList();
+        var zones = zoneLocations
+            .Select(item => item.Id)
             .ToArray();
 
         var suspendedSources = new List<long>();
@@ -916,7 +920,19 @@ public static class PrototypeStateInvariants
 
         if (represented.Length != represented.Distinct().Count())
         {
-            throw new InvalidOperationException("A card instance occurs in multiple combat zones/continuations.");
+            var suspendedLocations = suspendedSources
+                .Select((id, index) =>
+                    (Id: id, Location: $"SuspendedSource[{index}]"));
+            var locations = zoneLocations
+                .Concat(suspendedLocations)
+                .GroupBy(item => item.Id)
+                .Where(group => group.Count() > 1)
+                .Select(group =>
+                    $"{group.Key} ({string.Join(", ", group.Select(item => item.Location))})")
+                .ToArray();
+            throw new InvalidOperationException(
+                "A card instance occurs in multiple combat zones/continuations: "
+                + string.Join("; ", locations));
         }
 
         if (represented.Length != known.Count)
