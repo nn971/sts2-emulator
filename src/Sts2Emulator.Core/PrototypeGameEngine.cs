@@ -476,6 +476,21 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             PrototypeContent.Relic(relic.RelicId)
                 .PreventPotionAcquisition);
 
+    private static bool CanRestHeal(PlayerState player) =>
+        !player.Relics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .PreventRestHealing);
+
+    private static bool CanRestUpgrade(PlayerState player) =>
+        !player.Relics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .PreventRestUpgrade);
+
+    private static bool HideEnemyIntents(PlayerState player) =>
+        player.Relics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .HideEnemyIntents);
+
     private static int ApplyShopPriceModifiers(
         PlayerState player,
         int basePrice)
