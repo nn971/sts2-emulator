@@ -1222,7 +1222,9 @@ public sealed record CombatState(
     PendingCombatChoiceState? PendingChoice = null,
     PrototypeCombatCounters? Counters = null,
     bool IsPlayerTurn = true,
-    PrototypeAutomaticPipelineContinuationState? AutomaticPipelineContinuation = null)
+    PrototypeAutomaticPipelineContinuationState? AutomaticPipelineContinuation = null,
+    int Act = 1,
+    int Ascension = 0)
 {
     public CombatState Fork() => this with
     {
