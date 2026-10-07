@@ -6,7 +6,6 @@ public sealed class PrototypeSilentCardCatalogTests
 {
     private static readonly string[] CatalogOnlyNames =
     [
-        "Accelerant",
         "Blade of Ink",
         "Blade Symphony",
         "Concoct",
@@ -15,8 +14,6 @@ public sealed class PrototypeSilentCardCatalogTests
         "Fan of Knives",
         "Flanking",
         "Knife Trap",
-        "Malaise",
-        "Shadow Step",
         "Shadowmeld",
         "Sneaky",
         "The Hunt",

@@ -591,7 +591,10 @@ public sealed record PrototypePowerDefinition(
     int EnemyAttackDamageBonusPerStack = 0,
     int EnemyStrengthGainAtTurnEndPerStack = 0,
     int EnemyIncomingAttackDamagePercentPerCardPlayed = 0,
-    bool RemoveAtEnemyTurnEnd = false);
+    bool RemoveAtEnemyTurnEnd = false,
+    bool NegativeApplicationIsDebuff = false,
+    string? ExtraEnemyStatusTriggerStatusId = null,
+    int ExtraEnemyStatusTriggersPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

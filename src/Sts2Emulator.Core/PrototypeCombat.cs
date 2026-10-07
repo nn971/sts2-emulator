@@ -1353,20 +1353,50 @@ public sealed partial class PrototypeGameEngine
 
                 if (definition.TriggerStage == stage)
                 {
-                    if (definition.TriggerKind == PrototypeStatusTriggerKind.DamageSelfByStacks)
+                    if (definition.TriggerKind
+                        == PrototypeStatusTriggerKind
+                            .DamageSelfByStacks)
                     {
-                        var hpLoss = ModifyEnemyHpLoss(
-                            enemy,
-                            stacks);
-                        enemy = hpLoss.Enemy with
+                        var triggerCount =
+                            ResolveEnemyStatusTriggerCount(
+                                combat,
+                                pair.Key,
+                                stacks);
+                        for (var trigger = 0;
+                             trigger < triggerCount;
+                             trigger++)
                         {
-                            Hp = Math.Max(
-                                0,
-                                hpLoss.Enemy.Hp - hpLoss.HpLoss)
-                        };
-                    }
+                            if (enemy.Hp <= 0
+                                || stacks <= 0)
+                            {
+                                break;
+                            }
 
-                    stacks -= definition.DecayOnTrigger;
+                            var hpLoss =
+                                ModifyEnemyHpLoss(
+                                    enemy,
+                                    stacks);
+                            enemy = hpLoss.Enemy with
+                            {
+                                Hp = Math.Max(
+                                    0,
+                                    hpLoss.Enemy.Hp
+                                    - hpLoss.HpLoss)
+                            };
+
+                            if (enemy.Hp > 0)
+                            {
+                                stacks -=
+                                    definition
+                                        .DecayOnTrigger;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        stacks -=
+                            definition.DecayOnTrigger;
+                    }
                 }
 
                 if (definition.DecayStage == stage)
@@ -2768,7 +2798,7 @@ public sealed partial class PrototypeGameEngine
                             "Trigger-enemy-status operation requires a target and status ID.");
                     }
 
-                    combat = TriggerEnemyStatusOnce(
+                    combat = TriggerEnemyStatus(
                         combat,
                         targetEnemyId.Value,
                         operation.StatusId,
@@ -4723,7 +4753,11 @@ public sealed partial class PrototypeGameEngine
             return (combat, enemy);
         }
 
-        if (definition.IsDebuff && stacks > 0)
+        var isDebuffApplication =
+            (definition.IsDebuff && stacks > 0)
+            || (definition.NegativeApplicationIsDebuff
+                && stacks < 0);
+        if (isDebuffApplication)
         {
             var blocked =
                 TryBlockIncomingEnemyDebuff(enemy);
@@ -5870,6 +5904,75 @@ public sealed partial class PrototypeGameEngine
                 .ToArray()
         };
         return combat with { Enemies = enemies };
+    }
+
+    private static int ResolveEnemyStatusTriggerCount(
+        CombatState combat,
+        string statusId,
+        int stacks)
+    {
+        var extraTriggers =
+            combat.PlayerPowers.Sum(power =>
+            {
+                var definition =
+                    PrototypeContent.Power(
+                        power.PowerId);
+                return power.Stacks > 0
+                    && StringComparer.Ordinal.Equals(
+                        definition
+                            .ExtraEnemyStatusTriggerStatusId,
+                        statusId)
+                        ? definition
+                            .ExtraEnemyStatusTriggersPerStack
+                          * power.Stacks
+                        : 0;
+            });
+
+        return Math.Min(
+            Math.Max(0, stacks),
+            1 + Math.Max(0, extraTriggers));
+    }
+
+    private static CombatState TriggerEnemyStatus(
+        CombatState combat,
+        int enemyId,
+        string statusId,
+        RngBundle rng)
+    {
+        var enemy = combat.Enemies.SingleOrDefault(
+            item => item.InstanceId == enemyId)
+            ?? throw new InvalidOperationException(
+                $"Enemy {enemyId} is missing.");
+        var stacks =
+            enemy.Statuses.GetValueOrDefault(statusId);
+        var triggerCount =
+            ResolveEnemyStatusTriggerCount(
+                combat,
+                statusId,
+                stacks);
+
+        for (var trigger = 0;
+             trigger < triggerCount;
+             trigger++)
+        {
+            enemy = combat.Enemies.Single(
+                item =>
+                    item.InstanceId == enemyId);
+            if (enemy.Hp <= 0
+                || enemy.Statuses.GetValueOrDefault(
+                    statusId) <= 0)
+            {
+                break;
+            }
+
+            combat = TriggerEnemyStatusOnce(
+                combat,
+                enemyId,
+                statusId,
+                rng);
+        }
+
+        return combat;
     }
 
     private static CombatState TriggerEnemyStatusOnce(

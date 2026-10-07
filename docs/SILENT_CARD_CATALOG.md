@@ -18,7 +18,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | # | Card | Engine support | Native constraint |
 |---:|---|---|---|
 | 1 | Abrasive | implemented |  |
-| 2 | Accelerant | catalog-only |  |
+| 2 | Accelerant | implemented |  |
 | 3 | Accuracy | implemented |  |
 | 4 | Acrobatics | implemented |  |
 | 5 | Adrenaline | implemented |  |
@@ -67,7 +67,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 48 | Knife Trap | catalog-only |  |
 | 49 | Leading Strike | implemented |  |
 | 50 | Leg Sweep | implemented |  |
-| 51 | Malaise | catalog-only |  |
+| 51 | Malaise | implemented |  |
 | 52 | Master Planner | implemented |  |
 | 53 | Memento Mori | implemented |  |
 | 54 | Mirage | implemented |  |
@@ -87,7 +87,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 68 | Reflex | implemented |  |
 | 69 | Ricochet | implemented |  |
 | 70 | Serpent Form | implemented |  |
-| 71 | Shadow Step | catalog-only |  |
+| 71 | Shadow Step | implemented |  |
 | 72 | Shadowmeld | catalog-only |  |
 | 73 | Skewer | implemented |  |
 | 74 | Slice | implemented |  |
@@ -111,9 +111,8 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 
 ## Catalog-only implementation queue
 
-The 16 source-backed catalog-only cards are:
+The 13 source-backed catalog-only cards are:
 
-- Accelerant
 - Blade of Ink
 - Blade Symphony (multiplayer-only)
 - Concoct (multiplayer-only)
@@ -122,8 +121,6 @@ The 16 source-backed catalog-only cards are:
 - Fan of Knives
 - Flanking (multiplayer-only)
 - Knife Trap
-- Malaise
-- Shadow Step
 - Shadowmeld
 - Sneaky (multiplayer-only)
 - The Hunt

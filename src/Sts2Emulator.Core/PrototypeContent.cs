@@ -1287,10 +1287,15 @@ public static class PrototypeContent
                 "Accelerant",
                 1,
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        1,
+                        PowerId: "proto.power.accelerant")
+                ],
                 Rarity: PrototypeCardRarity.Uncommon,
-                Type: PrototypeCardType.Power,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.blade_of_ink",
                 "Blade of Ink",
@@ -1419,13 +1424,26 @@ public static class PrototypeContent
             new PrototypeCardDefinition(
                 "proto.silent.malaise",
                 "Malaise",
-                new PrototypeCardCostSpec(PrototypeCardCostKind.X),
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.X),
                 PrototypeCardTarget.Enemy,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyPower,
+                        0,
+                        -1,
+                        PowerId: "proto.power.strength",
+                        AmountPerEnergySpent: -1),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        0,
+                        1,
+                        StatusId: "proto.status.weak",
+                        AmountPerEnergySpent: 1)
+                ],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.outbreak",
                 "Outbreak",
@@ -1454,10 +1472,17 @@ public static class PrototypeContent
                     1,
                     -1),
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.DiscardHand,
+                        0),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.shadow_step")
+                ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.shadowmeld",
                 "Shadowmeld",
@@ -1810,6 +1835,15 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AllowNegative: true),
             new PrototypePowerDefinition(
+                "proto.power.accelerant",
+                "Accelerant",
+                BlockBonusPerStack: 0,
+                Triggers:
+                    Array.Empty<PrototypePowerTriggerSpec>(),
+                ExtraEnemyStatusTriggerStatusId:
+                    "proto.status.poison",
+                ExtraEnemyStatusTriggersPerStack: 1),
+            new PrototypePowerDefinition(
                 "proto.power.accuracy",
                 "Accuracy",
                 BlockBonusPerStack: 0,
@@ -1918,6 +1952,31 @@ public static class PrototypeContent
                 ],
                 IsInstanced: true,
                 RequiresCardPayload: true),
+            new PrototypePowerDefinition(
+                "proto.power.shadow_step",
+                "Shadow Step",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyPlayerPower,
+                                0,
+                                PowerId: "proto.power.double_damage",
+                                AmountPerPowerStack: 1)
+                        ],
+                        RemoveSourcePowerAfterTrigger: true)
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.double_damage",
+                "Double Damage",
+                BlockBonusPerStack: 0,
+                Triggers:
+                    Array.Empty<PrototypePowerTriggerSpec>(),
+                DecrementAtPlayerTurnEnd: true,
+                PlayerAttackDamageNumerator: 2),
             new PrototypePowerDefinition(
                 "proto.power.no_draw",
                 "No Draw",
@@ -2244,6 +2303,8 @@ public static class PrototypeContent
                 "Strength",
                 BlockBonusPerStack: 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                AllowNegative: true,
+                NegativeApplicationIsDebuff: true,
                 EnemyAttackDamageBonusPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.thorns",
