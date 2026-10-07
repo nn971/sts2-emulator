@@ -25,6 +25,12 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
                 .Order(StringComparer.Ordinal),
             pool.RemainingWeakEncounterIds
                 .Order(StringComparer.Ordinal));
+        Assert.Equal(
+            PrototypeContent.OvergrowthNormalEncounterPool
+                .Order(StringComparer.Ordinal),
+            Assert.IsType<string[]>(
+                    pool.RemainingNormalEncounterIds)
+                .Order(StringComparer.Ordinal));
 
         PrototypeStateInvariants.Validate(state);
     }
@@ -110,7 +116,7 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
     }
 
     [Fact]
-    public void FourthOrdinaryCombatLeavesWeakPoolUntouched()
+    public void FourthOrdinaryCombatStartsNormalBagWithoutTouchingWeakPool()
     {
         var engine = new PrototypeGameEngine();
         var state = StartRun(
@@ -139,11 +145,22 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
             floor: 4);
 
         var after = state.World!.ActOneEncounterPool!;
-        Assert.Equal(3, after.OrdinaryCombatsStarted);
+        Assert.Equal(4, after.OrdinaryCombatsStarted);
         Assert.Equal(remainingBefore, after.RemainingWeakEncounterIds);
         Assert.DoesNotContain(
             state.World.EncounterIds[^1],
             PrototypeContent.OvergrowthWeakEncounterPool);
+        Assert.Contains(
+            state.World.EncounterIds[^1],
+            PrototypeContent.OvergrowthNormalEncounterPool);
+        Assert.Equal(
+            PrototypeContent.OvergrowthNormalEncounterPool.Length - 1,
+            Assert.IsType<string[]>(
+                    after.RemainingNormalEncounterIds)
+                .Length);
+        Assert.DoesNotContain(
+            state.World.EncounterIds[^1],
+            after.RemainingNormalEncounterIds!);
     }
 
     [Fact]
@@ -178,6 +195,73 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
             3,
             branch.World.ActOneEncounterPool
                 .RemainingWeakEncounterIds.Length);
+        Assert.Equal(
+            PrototypeContent.OvergrowthNormalEncounterPool.Length,
+            original.World.ActOneEncounterPool
+                .RemainingNormalEncounterIds!.Length);
+        Assert.Equal(
+            PrototypeContent.OvergrowthNormalEncounterPool.Length,
+            branch.World.ActOneEncounterPool
+                .RemainingNormalEncounterIds!.Length);
+        Assert.NotSame(
+            original.World.ActOneEncounterPool
+                .RemainingNormalEncounterIds,
+            branch.World.ActOneEncounterPool
+                .RemainingNormalEncounterIds);
+    }
+
+    [Fact]
+    public void NormalBagDrawsWithoutReplacement()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = StartRun(
+            "overgrowth-normal-bag",
+            engine);
+
+        for (var combatIndex = 0;
+             combatIndex < 3;
+             combatIndex++)
+        {
+            state = StartRoom(
+                engine,
+                state,
+                PrototypeRoomType.Combat,
+                floor: combatIndex + 1);
+        }
+
+        var selected = new List<string>();
+        for (var normalIndex = 0;
+             normalIndex < 5;
+             normalIndex++)
+        {
+            state = StartRoom(
+                engine,
+                state,
+                PrototypeRoomType.Combat,
+                floor: normalIndex + 4);
+            selected.Add(state.World!.EncounterIds[^1]);
+
+            var pool = state.World.ActOneEncounterPool!;
+            Assert.Equal(
+                4 + normalIndex,
+                pool.OrdinaryCombatsStarted);
+            Assert.Equal(
+                PrototypeContent.OvergrowthNormalEncounterPool.Length
+                    - normalIndex - 1,
+                pool.RemainingNormalEncounterIds!.Length);
+            Assert.DoesNotContain(
+                selected[^1],
+                pool.RemainingNormalEncounterIds);
+        }
+
+        Assert.Equal(
+            selected.Count,
+            selected.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(
+            selected,
+            id => Assert.Contains(
+                id,
+                PrototypeContent.OvergrowthNormalEncounterPool));
     }
 
     private static RunState StartRun(
