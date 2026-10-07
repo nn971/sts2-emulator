@@ -248,10 +248,10 @@ public sealed class PrototypeSilentCardBatchOneTests
         Assert.Equal(100, enemy.Hp);
         Assert.Equal(12, enemy.Block);
         Assert.Single(
-            enemy.PowerStates.Where(
-                power =>
-                    power.PowerId
-                        == "proto.power.strangle"));
+            enemy.PowerStates,
+            power =>
+                power.PowerId
+                    == "proto.power.strangle");
 
         state = Play(
             engine,
