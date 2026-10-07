@@ -26,6 +26,7 @@ It does **not** change emulator truth. `RunState` remains the complete continuat
 `PrototypeAiObservation` intentionally exposes information a strategic player can use:
 
 - phase, act, floor, HP/max HP, gold;
+- Act 1 region and the preselected Act 1 boss encounter, because both are player-visible strategic information;
 - persistent deck, relics, and occupied potion slots;
 - the complete generated map graph and current node;
 - visible combat hand/discard/exhaust contents;
