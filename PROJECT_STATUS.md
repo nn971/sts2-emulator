@@ -196,7 +196,15 @@ play.
 
 `ReferenceProbeActionExtractor` now emits evidence-backed observed action envelopes without
 promoting gaps to parity claims. Probe v2 adds event catalogs plus richer card/potion/player state to
-discover the native choice surface. Enemy snapshots now also catalog creature/model layouts and
-opportunistically project current/next move, intent, move index and move history when the pinned
-runtime exposes those properties. This prepares the next live capture for Knight Gang intent/RNG
-differential work. See `docs/reference-builds/v0.111.0-capture-002.md`.
+discover the native choice surface. Enemy snapshots now also catalog creature/model layouts and opportunistically project
+current/next move, intent, move index and move history when the pinned runtime exposes those
+properties. Probe v3 additionally projects card Affliction/modifier/Upgrade state for Hex/Dampen
+work.
+
+`reference-knight-gang-audit` now extracts matching native combats into normalized checkpoints
+covering enemy state, card-pile mutation, typed CombatHistory evidence, and monster-AI RNG
+fingerprints. It compares only explicitly observed native fields and reports missing move/intent/RNG
+surfaces as instrumentation gaps. The next stronger fidelity step now requires one live pinned
+Knight Gang capture; do not broaden static mechanics merely to avoid that oracle check. See
+`docs/reference-builds/v0.111.0-capture-003-prep.md` and
+`docs/reference-builds/v0.111.0-knight-gang-differential.md`.
