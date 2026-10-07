@@ -4,7 +4,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 {
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
-        return state.Phase switch
+        var phaseActions = state.Phase switch
         {
             RunPhase.RunStart => [GameAction.Empty("start_run")],
             RunPhase.MapChoice => GetMapActions(state),
@@ -17,6 +17,17 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             RunPhase.Terminal => Array.Empty<GameAction>(),
             _ => Array.Empty<GameAction>()
         };
+
+        if (state.Phase is RunPhase.RunStart
+            or RunPhase.Combat
+            or RunPhase.Terminal)
+        {
+            return phaseActions;
+        }
+
+        return phaseActions
+            .Concat(GetAnyTimePotionActions(state))
+            .ToArray();
     }
 
     public TransitionResult Step(RunState state, GameAction action)
@@ -24,7 +35,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var fork = state.Fork();
         fork = fork with { DecisionIndex = fork.DecisionIndex + 1 };
 
-        var next = state.Phase switch
+        var next =
+            StringComparer.Ordinal.Equals(
+                action.Kind,
+                "use_potion")
+            && state.Phase != RunPhase.Combat
+                ? UsePotionOutsideCombat(
+                    fork,
+                    action.ReadPayload<UsePotionPayload>())
+                : state.Phase switch
         {
             RunPhase.RunStart => StartRun(fork, action),
             RunPhase.MapChoice => StepMap(fork, action),
@@ -39,6 +58,187 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         };
 
         return new TransitionResult(next, Array.Empty<string>());
+    }
+
+    private static IReadOnlyList<GameAction>
+        GetAnyTimePotionActions(RunState state) =>
+        state.Player.PotionSlots
+            .Select((potion, slot) =>
+                new { Potion = potion, Slot = slot })
+            .Where(item =>
+                item.Potion is not null
+                && PrototypeContent.Potion(
+                    item.Potion.PotionId)
+                    .UsableOutsideCombat)
+            .Select(item =>
+                GameAction.Create(
+                    "use_potion",
+                    new UsePotionPayload(
+                        item.Slot,
+                        null)))
+            .ToArray();
+
+    private static RunState UsePotionOutsideCombat(
+        RunState state,
+        UsePotionPayload payload)
+    {
+        if (payload.TargetEnemyId is not null)
+        {
+            throw new InvalidOperationException(
+                "Out-of-combat potions cannot target an enemy.");
+        }
+
+        if (payload.Slot < 0
+            || payload.Slot
+                >= state.Player.PotionSlots.Length)
+        {
+            throw new InvalidOperationException(
+                $"Potion slot {payload.Slot} is invalid.");
+        }
+
+        var potion =
+            state.Player.PotionSlots[payload.Slot]
+            ?? throw new InvalidOperationException(
+                $"Potion slot {payload.Slot} is empty.");
+        var definition =
+            PrototypeContent.Potion(potion.PotionId);
+        if (!definition.UsableOutsideCombat)
+        {
+            throw new InvalidOperationException(
+                $"Potion '{definition.Name}' is combat-only.");
+        }
+
+        var player = ConsumePotionSlot(
+            state.Player,
+            payload.Slot);
+        player = ApplyPotionRunEffects(
+            player,
+            definition,
+            state.Rng);
+
+        return state with { Player = player };
+    }
+
+    private static PlayerState ConsumePotionSlot(
+        PlayerState player,
+        int slot)
+    {
+        var slots =
+            (PotionInstance?[])player.PotionSlots.Clone();
+        slots[slot] = null;
+        return player with { PotionSlots = slots };
+    }
+
+    private static PlayerState ApplyPotionRunEffects(
+        PlayerState player,
+        PrototypePotionDefinition definition,
+        RngBundle rng)
+    {
+        foreach (var effect in
+                 definition.RunEffects
+                 ?? Array.Empty<PrototypeRunEffectSpec>())
+        {
+            switch (effect.Kind)
+            {
+                case PrototypeRunEffectKind.Heal:
+                    player = player with
+                    {
+                        Hp = Math.Min(
+                            player.MaxHp,
+                            player.Hp + effect.Amount)
+                    };
+                    break;
+
+                case PrototypeRunEffectKind.HealPercentMaxHp:
+                {
+                    var amount = Math.Max(
+                        0,
+                        (player.MaxHp
+                            * effect.Amount) / 100);
+                    player = player with
+                    {
+                        Hp = Math.Min(
+                            player.MaxHp,
+                            player.Hp + amount)
+                    };
+                    break;
+                }
+
+                case PrototypeRunEffectKind.GainMaxHp:
+                {
+                    var amount = Math.Max(
+                        0,
+                        effect.Amount);
+                    player = player with
+                    {
+                        MaxHp = player.MaxHp + amount,
+                        Hp = player.Hp + amount
+                    };
+                    break;
+                }
+
+                case PrototypeRunEffectKind.FillPotionSlots:
+                {
+                    var slots =
+                        (PotionInstance?[])
+                        player.PotionSlots.Clone();
+                    for (var index = 0;
+                         index < slots.Length;
+                         index++)
+                    {
+                        if (slots[index] is not null)
+                        {
+                            continue;
+                        }
+
+                        var potionId =
+                            PrototypeContent.PotionPool[
+                                PrototypeRng.NextInt(
+                                    rng,
+                                    "reward",
+                                    PrototypeContent
+                                        .PotionPool.Length)];
+                        slots[index] =
+                            new PotionInstance(
+                                potionId,
+                                PrototypeJson
+                                    .EmptyObject());
+                    }
+
+                    player = player with
+                    {
+                        PotionSlots = slots
+                    };
+                    break;
+                }
+
+                case PrototypeRunEffectKind.LoseHp:
+                    player = player with
+                    {
+                        Hp = Math.Max(
+                            0,
+                            player.Hp - effect.Amount)
+                    };
+                    break;
+
+                case PrototypeRunEffectKind.GainGold:
+                    player = player with
+                    {
+                        Gold =
+                            player.Gold + effect.Amount
+                    };
+                    break;
+
+                case PrototypeRunEffectKind.AddCard:
+                    throw new NotSupportedException(
+                        "Potion run effects do not currently create persistent cards.");
+
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        return player;
     }
 
     private static RunState StartRun(RunState state, GameAction action)
