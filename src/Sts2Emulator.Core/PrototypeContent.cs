@@ -1705,6 +1705,13 @@ public static class PrototypeContent
                 EnemyHpLossCapPerTrigger: 1,
                 ConsumeOnEnemyHpLoss: true),
             new PrototypePowerDefinition(
+                "proto.power.slow",
+                "Slow",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                DoesNotStack: true,
+                EnemyIncomingAttackDamagePercentPerCardPlayed: 10),
+            new PrototypePowerDefinition(
                 "proto.power.territorial",
                 "Territorial",
                 BlockBonusPerStack: 0,
@@ -2155,6 +2162,44 @@ public static class PrototypeContent
                                     Value: "right")
                             ])
                     ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.bygone_effigy",
+                "Bygone Effigy",
+                127,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "sleep",
+                        []),
+                    new PrototypeEnemyMoveDefinition(
+                        "wake",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                10,
+                                PowerId: "proto.power.strength")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "slashes",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                13,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ])
+                ],
+                StartingPowers:
+                [
+                    new("proto.power.slow", 1)
+                ],
+                MoveLoopStartIndex: 2,
+                HpAscensionDeltas:
+                [
+                    new(8, 5)
+                ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.byrdonis",
                 "Byrdonis",
@@ -4062,6 +4107,19 @@ public static class PrototypeContent
                     "proto.enemy.inklet",
                     2,
                     "right")
+            ]),
+        new(
+            "proto.encounter.bygone_effigy_elite",
+            PrototypeRoomType.Elite,
+            ["proto.enemy.bygone_effigy"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.bygone_effigy",
+                    0)
             ]),
         new(
             "proto.encounter.byrdonis_elite",
