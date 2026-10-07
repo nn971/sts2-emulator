@@ -578,7 +578,13 @@ public sealed record PrototypeRelicDefinition(
     PrototypeRelicTriggerSpec[]? Triggers = null,
     PrototypeRelicRunTriggerSpec[]? RunTriggers = null,
     PrototypeCardType? UpgradeAddedCardType = null,
-    bool PreserveUnusedEnergy = false);
+    bool PreserveUnusedEnergy = false,
+    int RewardCardChoiceBonus = 0,
+    int ExtraNormalCombatCardRewardGroups = 0,
+    int ShopPriceNumerator = 1,
+    int ShopPriceDenominator = 1,
+    int? ShopRemovalPriceOverride = null,
+    bool PreventPotionAcquisition = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1389,6 +1395,23 @@ public sealed record RewardState(
     string[][]? ExtraCardOptions = null,
     int ExtraCardRewardsResolved = 0)
 {
+    public string[] CurrentCardOptions
+    {
+        get
+        {
+            if (!CardResolved)
+            {
+                return CardOptions;
+            }
+
+            var extra = ExtraCardOptions
+                ?? Array.Empty<string[]>();
+            return ExtraCardRewardsResolved < extra.Length
+                ? extra[ExtraCardRewardsResolved]
+                : Array.Empty<string>();
+        }
+    }
+
     public RewardState Fork() => this with
     {
         CardOptions = (string[])CardOptions.Clone(),
@@ -1404,14 +1427,22 @@ public sealed record ShopOffer(
     int OfferId,
     string ItemId,
     int Price,
-    bool Sold);
+    bool Sold,
+    int? BasePrice = null)
+{
+    public int UndiscountedPrice => BasePrice ?? Price;
+}
 
 public sealed record ShopState(
     ShopOffer[] CardOffers,
     ShopOffer? PotionOffer,
     ShopOffer? RelicOffer,
     int RemovalPrice = 75,
-    bool RemovalUsed = false)
+    bool RemovalUsed = false,
+    int? BaseRemovalPrice = null)
+{
+    public int UndiscountedRemovalPrice =>
+        BaseRemovalPrice ?? RemovalPrice;
 {
     public ShopState Fork() => this with
     {
