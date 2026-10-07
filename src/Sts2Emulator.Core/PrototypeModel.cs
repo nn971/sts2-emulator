@@ -1443,7 +1443,7 @@ public sealed record ShopState(
 {
     public int UndiscountedRemovalPrice =>
         BaseRemovalPrice ?? RemovalPrice;
-{
+
     public ShopState Fork() => this with
     {
         CardOffers = (ShopOffer[])CardOffers.Clone(),
