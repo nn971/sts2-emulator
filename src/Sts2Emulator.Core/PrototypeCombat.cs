@@ -7,22 +7,36 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         PrototypeEncounterDefinition encounter;
 
-        var overgrowthWeak = TryPickOvergrowthWeakEncounter(
-            state,
-            world,
-            roomType);
-        if (overgrowthWeak is not null)
+        var overgrowthElite =
+            TryPickOvergrowthEliteEncounter(
+                state,
+                world,
+                roomType);
+        if (overgrowthElite is not null)
         {
-            encounter = overgrowthWeak.Value.Encounter;
-            world = overgrowthWeak.Value.World;
+            encounter = overgrowthElite.Value.Encounter;
+            world = overgrowthElite.Value.World;
         }
         else
         {
-            var overgrowthNormal =
-                TryPickOvergrowthNormalEncounter(
+            var overgrowthWeak =
+                TryPickOvergrowthWeakEncounter(
                     state,
                     world,
                     roomType);
+            if (overgrowthWeak is not null)
+            {
+                encounter =
+                    overgrowthWeak.Value.Encounter;
+                world = overgrowthWeak.Value.World;
+            }
+            else
+            {
+                var overgrowthNormal =
+                    TryPickOvergrowthNormalEncounter(
+                        state,
+                        world,
+                        roomType);
             if (overgrowthNormal is not null)
             {
                 encounter =
@@ -63,9 +77,10 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
-                encounter = PickWeightedEncounter(
-                    encounters,
-                    state.Rng);
+                    encounter = PickWeightedEncounter(
+                        encounters,
+                        state.Rng);
+                }
             }
         }
 
@@ -198,6 +213,82 @@ public sealed partial class PrototypeGameEngine
             World = world,
             Phase = RunPhase.Combat
         };
+    }
+
+    private static (
+        PrototypeEncounterDefinition Encounter,
+        RunWorldState World)?
+        TryPickOvergrowthEliteEncounter(
+            RunState state,
+            RunWorldState world,
+            PrototypeRoomType roomType)
+    {
+        if (roomType != PrototypeRoomType.Elite
+            || world.Act != 1
+            || world.ActOneRegion
+                != PrototypeActOneRegion.Overgrowth)
+        {
+            return null;
+        }
+
+        var pool = world.ActOneEncounterPool;
+        if (pool is null
+            || pool.Region
+                != PrototypeActOneRegion.Overgrowth)
+        {
+            return null;
+        }
+
+        var remaining =
+            pool.RemainingEliteEncounterIds
+            ?? (string[])PrototypeContent
+                .OvergrowthEliteEncounterPool
+                .Clone();
+        if (remaining.Length == 0)
+        {
+            remaining = (string[])PrototypeContent
+                .OvergrowthEliteEncounterPool
+                .Clone();
+        }
+
+        var previous = world.EncounterIds.LastOrDefault();
+        var eligible = previous is null
+            ? remaining
+            : remaining
+                .Where(id =>
+                    !StringComparer.Ordinal.Equals(
+                        id,
+                        previous))
+                .ToArray();
+        if (eligible.Length == 0)
+        {
+            eligible = remaining;
+        }
+
+        var selectedId = eligible[
+            PrototypeRng.NextInt(
+                state.Rng,
+                "combat",
+                eligible.Length)];
+        var encounter = PrototypeContent.Encounter(
+            selectedId);
+        var nextRemaining = remaining
+            .Where(id =>
+                !StringComparer.Ordinal.Equals(
+                    id,
+                    selectedId))
+            .ToArray();
+
+        return (
+            encounter,
+            world with
+            {
+                ActOneEncounterPool = pool with
+                {
+                    RemainingEliteEncounterIds =
+                        nextRemaining
+                }
+            });
     }
 
     private static (
