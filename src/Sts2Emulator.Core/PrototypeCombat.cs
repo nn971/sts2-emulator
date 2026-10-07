@@ -2369,7 +2369,14 @@ public sealed partial class PrototypeGameEngine
                     GeneratedCardEnchantment:
                         effect.GeneratedCardEnchantment is null
                             ? null
-                            : effect.GeneratedCardEnchantment with { }));
+                            : effect.GeneratedCardEnchantment with { },
+                    AutoPlaySourceZone:
+                        effect.AutoPlaySourceZone,
+                    RequiredCardTag:
+                        effect.RequiredCardTag,
+                    UpgradeAutoPlayedCardsBeforePlay:
+                        effect.UpgradeAutoPlayedCardsOnSourceUpgrade
+                        && upgradeLevel > 0));
             }
         }
     }
@@ -3091,6 +3098,119 @@ public sealed partial class PrototypeGameEngine
                         combat,
                         snapshot,
                         operation.Amount);
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.AutoPlayTaggedCardsFromZone:
+                {
+                    if (operation.AutoPlaySourceZone is null
+                        || operation.RequiredCardTag is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Tagged autoplay requires a source zone and card tag.");
+                    }
+
+                    var sourceZone = operation.AutoPlaySourceZone.Value;
+                    var autoPlayIds = GetZone(combat, sourceZone)
+                        .Where(instanceId =>
+                        {
+                            var candidate = RequireCombatCard(
+                                combat,
+                                instanceId);
+                            var candidateDefinition =
+                                PrototypeContent.Card(candidate.CardId);
+                            return (candidateDefinition.Tags
+                                    ?? Array.Empty<string>())
+                                .Contains(
+                                    operation.RequiredCardTag,
+                                    StringComparer.Ordinal);
+                        })
+                        .ToArray();
+
+                    foreach (var autoPlayId in autoPlayIds)
+                    {
+                        var autoPlayCard = RequireCombatCard(
+                            combat,
+                            autoPlayId);
+                        if (operation.UpgradeAutoPlayedCardsBeforePlay
+                            && autoPlayCard.UpgradeLevel <= 0)
+                        {
+                            combat = combat with
+                            {
+                                Cards = combat.Cards
+                                    .Select(item =>
+                                        item.InstanceId == autoPlayId
+                                            ? item with
+                                            {
+                                                UpgradeLevel = 1
+                                            }
+                                            : item)
+                                    .ToArray()
+                            };
+                            autoPlayCard = RequireCombatCard(
+                                combat,
+                                autoPlayId);
+                        }
+
+                        var autoPlayDefinition =
+                            PrototypeContent.Card(
+                                autoPlayCard.CardId);
+                        if (!autoPlayDefinition.MechanicsImplemented
+                            || autoPlayDefinition.Unplayable)
+                        {
+                            throw new NotSupportedException(
+                                $"Tagged autoplay cannot play '{autoPlayDefinition.Name}'.");
+                        }
+
+                        combat = SetZone(
+                            combat,
+                            sourceZone,
+                            GetZone(combat, sourceZone)
+                                .Where(id => id != autoPlayId)
+                                .ToArray());
+
+                        var autoPlayCount =
+                            ResolveCardPlayCountAndConsumeModifiers(
+                                combat,
+                                autoPlayCard,
+                                autoPlayDefinition.Type);
+                        combat = autoPlayCount.Combat;
+
+                        var autoPlayDestination =
+                            CardExhaustsOnUse(
+                                autoPlayDefinition,
+                                autoPlayCard.UpgradeLevel)
+                                ? PrototypeCardZone.ExhaustPile
+                                : PrototypeCardZone.DiscardPile;
+                        var autoPlaySeries =
+                            new PrototypeCardPlaySeriesState(
+                                SourceCardInstanceId: autoPlayId,
+                                SourceCardDestination:
+                                    autoPlayDestination,
+                                TargetEnemyId: targetEnemyId,
+                                EnergySpent: 0,
+                                PlayCount:
+                                    autoPlayCount.PlayCount,
+                                NextPlayIndex: 0,
+                                RemoveSourceCardOnCompletion:
+                                    autoPlayDefinition.Type
+                                        == PrototypeCardType.Power);
+
+                        var autoPlayed = ResolveCardPlaySeries(
+                            player,
+                            combat,
+                            rng,
+                            autoPlaySeries);
+                        player = autoPlayed.Player;
+                        combat = autoPlayed.Combat;
+
+                        if (combat.PendingChoice is not null)
+                        {
+                            throw new NotSupportedException(
+                                "Tagged autoplay does not yet preserve an outer effect queue across a nested player choice.");
+                        }
+                    }
+
                     break;
                 }
 

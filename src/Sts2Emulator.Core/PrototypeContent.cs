@@ -1438,10 +1438,16 @@ public static class PrototypeContent
                 "Knife Trap",
                 2,
                 PrototypeCardTarget.Enemy,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.AutoPlayTaggedCardsFromZone,
+                        0,
+                        AutoPlaySourceZone: PrototypeCardZone.ExhaustPile,
+                        RequiredCardTag: "Shiv",
+                        UpgradeAutoPlayedCardsOnSourceUpgrade: true)
+                ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.malaise",
                 "Malaise",

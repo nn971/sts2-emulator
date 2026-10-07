@@ -65,7 +65,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 45 | Haze | implemented |  |
 | 46 | Hidden Daggers | implemented |  |
 | 47 | Infinite Blades | implemented |  |
-| 48 | Knife Trap | catalog-only |  |
+| 48 | Knife Trap | implemented |  |
 | 49 | Leading Strike | implemented |  |
 | 50 | Leg Sweep | implemented |  |
 | 51 | Malaise | implemented |  |
@@ -114,7 +114,6 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 
 The active **single-player** implementation backlog is now only:
 
-- Knife Trap
 - The Hunt
 
 The following five native Silent cards remain catalogued for version completeness but are
@@ -127,9 +126,10 @@ The following five native Silent cards remain catalogued for version completenes
 - Sneaky
 
 Future Silent card work should therefore ignore multiplayer-only behavior entirely unless the
-project scope is explicitly changed. Blade of Ink now exercises generated-card enchantment creation and Inky's post-card-effect Weak
-hook. The useful remaining single-player engine concepts are exhaust-pile Shiv autoplay
-(Knife Trap) and Fatal reward modification (The Hunt).
+project scope is explicitly changed. Blade of Ink exercises generated-card enchantment creation and Inky's post-card-effect Weak hook.
+Knife Trap now exercises tagged autoplay directly from Exhaust, including upgrade-before-autoplay
+and reuse of the ordinary card-play/replay/event path. The remaining single-player engine concept
+is Fatal reward modification (The Hunt).
 
 ## Compatibility definitions outside the pinned pool
 

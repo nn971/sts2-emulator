@@ -396,3 +396,19 @@ Knives promotes Shiv to all-enemy targeting.
 
 The active single-player Silent card backlog is now Knife Trap and The Hunt. Multiplayer-only
 cards remain intentionally out of scope.
+
+
+### Silent backlog pass: Knife Trap
+
+Knife Trap is now source-backed as a generic tagged-card autoplay operation. It snapshots matching
+cards from Exhaust, removes each from that zone, optionally upgrades it when Knife Trap is upgraded,
+and resolves it through the ordinary card-play series before returning it to its normal result pile.
+This preserves normal attack modifiers, Replay/enchantment execution, CardPlayed events, and
+Fan-of-Knives target promotion rather than substituting direct damage.
+
+The tagged-autoplay primitive deliberately fails fast if a nested autoplay opens a player-choice
+suspension, because preserving the outer effect queue across that nested continuation is a separate
+continuation-boundary feature. Native Knife Trap only selects Shiv-tagged cards, so current
+single-player content does not require that extension.
+
+The active single-player Silent card backlog is now only The Hunt.

@@ -85,6 +85,7 @@ public enum PrototypeCombatEffectKind
     ChooseCards,
     CreateCardsInHand,
     CreateCardsInHandFromPowerCardPayload,
+    AutoPlayTaggedCardsFromZone,
     ApplyPlayerPower,
     ApplyEnemyPower,
     DamagePlayer,
@@ -441,7 +442,10 @@ public sealed record PrototypeCombatEffectSpec(
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
     PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null,
     PrototypeCardKeywordOverrideSpec? EventSourceCardKeyword = null,
-    PrototypeCardEnchantment? GeneratedCardEnchantment = null)
+    PrototypeCardEnchantment? GeneratedCardEnchantment = null,
+    PrototypeCardZone? AutoPlaySourceZone = null,
+    string? RequiredCardTag = null,
+    bool UpgradeAutoPlayedCardsOnSourceUpgrade = false)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -472,7 +476,10 @@ public sealed record PrototypeQueuedOperation(
     PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null,
     PrototypeCardKeywordOverrideSpec? EventSourceCardKeyword = null,
     PrototypeCombatCardSnapshot? PowerCardPayload = null,
-    PrototypeCardEnchantment? GeneratedCardEnchantment = null);
+    PrototypeCardEnchantment? GeneratedCardEnchantment = null,
+    PrototypeCardZone? AutoPlaySourceZone = null,
+    string? RequiredCardTag = null,
+    bool UpgradeAutoPlayedCardsBeforePlay = false);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,

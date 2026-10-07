@@ -10,7 +10,6 @@ public sealed class PrototypeSilentCardCatalogTests
         "Concoct",
         "Fade",
         "Flanking",
-        "Knife Trap",
         "Sneaky",
         "The Hunt"
     ];
