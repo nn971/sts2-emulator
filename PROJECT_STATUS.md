@@ -539,3 +539,21 @@ Tough Bandages gains 3 Block for each actual discard, Tingsha deals 3 damage to 
 enemy for each actual discard, and Hovering Kite gains 1 Energy on only the first actual discard
 each player turn. Ordinary end-of-turn hand cleanup remains separate from CardDiscarded and does
 not trigger these relics.
+
+
+## Mechanics-expansion pass: run economy relics
+
+Reward and shop generation now consult generic relic capabilities rather than item-ID branches.
+Relics can add card choices to every card-reward group, add extra card-reward groups after ordinary
+combats, multiply shop prices, override the undiscounted card-removal price, and prevent acquisition
+of new potions. Shop offers retain their undiscounted prices so a pricing relic purchased inside a
+shop can immediately reprice every remaining offer without compounding an already-discounted value.
+
+Question Card adds one card to each reward choice; Prayer Wheel adds one extra ordinary-combat card
+reward; Membership Card halves shop prices; Smiling Mask sets the pre-discount removal service to
+50 gold; and Sozu reuses the existing energy-per-turn bonus while preventing reward/shop/generated
+potion acquisition. Existing potions remain usable.
+
+The AI reward observation now projects the currently active card-reward group and the number of
+extra reward groups remaining, fixing the previous stale-first-group view when The Hunt or Prayer
+Wheel creates sequential reward choices.
