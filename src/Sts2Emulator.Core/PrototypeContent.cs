@@ -3687,6 +3687,62 @@ public static class PrototypeContent
                     0)
             ]),
         new(
+            "proto.encounter.slithering_strangler_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.slithering_strangler",
+                "proto.enemy.snapping_jaxfruit",
+                "proto.enemy.leaf_slime_m",
+                "proto.enemy.twig_slime_m",
+                "proto.enemy.leaf_slime_s",
+                "proto.enemy.twig_slime_s"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            FormationVariants:
+            [
+                new PrototypeEncounterFormationVariant(
+                    Formation:
+                    [
+                        new(
+                            "proto.enemy.slithering_strangler",
+                            0),
+                        new(
+                            "proto.enemy.snapping_jaxfruit",
+                            1)
+                    ]),
+                new PrototypeEncounterFormationVariant(
+                    Formation:
+                    [
+                        new(
+                            "proto.enemy.slithering_strangler",
+                            0)
+                    ],
+                    SelectionGroups:
+                    [
+                        new PrototypeEncounterSelectionGroup(
+                            [
+                                "proto.enemy.leaf_slime_m",
+                                "proto.enemy.twig_slime_m"
+                            ],
+                            [1])
+                    ]),
+                new PrototypeEncounterFormationVariant(
+                    Formation:
+                    [
+                        new(
+                            "proto.enemy.slithering_strangler",
+                            0),
+                        new(
+                            "proto.enemy.leaf_slime_s",
+                            1),
+                        new(
+                            "proto.enemy.twig_slime_s",
+                            2)
+                    ])
+            ]),
+        new(
             "proto.encounter.vine_shambler_normal",
             PrototypeRoomType.Combat,
             ["proto.enemy.vine_shambler"],
