@@ -94,7 +94,8 @@ public sealed partial class PrototypeGameEngine
                     Block: 0,
                     MoveIndex: 0,
                     Statuses: new Dictionary<string, int>(StringComparer.Ordinal),
-                    Powers: powers);
+                    Powers: powers,
+                    FormationPosition: index);
             })
             .ToArray();
 
@@ -912,6 +913,7 @@ public sealed partial class PrototypeGameEngine
         SelectEnemyMove(
             PrototypeEnemyDefinition definition,
             EnemyCombatState enemy,
+            IReadOnlyList<EnemyCombatState> formation,
             RngBundle rng)
     {
         if (definition.Moves.Length == 0)
@@ -1018,6 +1020,7 @@ public sealed partial class PrototypeGameEngine
                 return SelectEnemyStateMachineMove(
                     definition,
                     enemy,
+                    formation,
                     rng);
 
             default:
@@ -1032,6 +1035,7 @@ public sealed partial class PrototypeGameEngine
         SelectEnemyStateMachineMove(
             PrototypeEnemyDefinition definition,
             EnemyCombatState enemy,
+            IReadOnlyList<EnemyCombatState> formation,
             RngBundle rng)
     {
         var ai = definition.Ai
@@ -1123,6 +1127,37 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeEnemyAiStateKind.Conditional:
+                {
+                    var branches =
+                        state.ConditionalBranches
+                        ?? Array.Empty<
+                            PrototypeEnemyAiConditionalBranch>();
+                    var selected = branches.FirstOrDefault(
+                        branch => EnemyAiConditionMatches(
+                            enemy,
+                            formation,
+                            branch.Condition));
+                    if (selected is null)
+                    {
+                        throw new InvalidOperationException(
+                            $"Enemy '{definition.Id}' AI conditional state '{state.Id}' has no matching branch.");
+                    }
+
+                    if (!states.TryGetValue(
+                            selected.TargetStateId,
+                            out var target)
+                        || target.Kind
+                            != PrototypeEnemyAiStateKind.Move)
+                    {
+                        throw new InvalidOperationException(
+                            $"Enemy '{definition.Id}' AI conditional branch targets invalid move state '{selected.TargetStateId}'.");
+                    }
+
+                    stateId = selected.TargetStateId;
+                    break;
+                }
+
                 default:
                     throw new ArgumentOutOfRangeException(
                         nameof(state.Kind));
@@ -1131,6 +1166,34 @@ public sealed partial class PrototypeGameEngine
 
         throw new InvalidOperationException(
             $"Enemy '{definition.Id}' AI exceeded the state-resolution depth limit.");
+    }
+
+    private static bool EnemyAiConditionMatches(
+        EnemyCombatState enemy,
+        IReadOnlyList<EnemyCombatState> formation,
+        PrototypeEnemyAiConditionKind condition)
+    {
+        var living = formation
+            .Where(item => item.Hp > 0)
+            .OrderBy(item => item.FormationPosition)
+            .ThenBy(item => item.InstanceId)
+            .ToArray();
+        var isAlone = living.Length == 1
+            && living[0].InstanceId == enemy.InstanceId;
+        var isFront = living.Length > 0
+            && living[0].InstanceId == enemy.InstanceId;
+
+        return condition switch
+        {
+            PrototypeEnemyAiConditionKind.IsAlone =>
+                isAlone,
+            PrototypeEnemyAiConditionKind.IsFront =>
+                isFront,
+            PrototypeEnemyAiConditionKind.IsNotFront =>
+                !isFront,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(condition))
+        };
     }
 
     private static bool IsEnemyAiBranchLegal(
@@ -1212,6 +1275,7 @@ public sealed partial class PrototypeGameEngine
             var selection = SelectEnemyMove(
                 definition,
                 enemy,
+                enemies,
                 rng);
             var move = selection.Move;
 
