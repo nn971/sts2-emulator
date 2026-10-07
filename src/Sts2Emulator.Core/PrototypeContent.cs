@@ -2123,13 +2123,6 @@ public static class PrototypeContent
                 PlayerAttackDamageBonusPerStack: 1,
                 RemoveAtPlayerTurnEnd: true),
             new PrototypePowerDefinition(
-                "proto.power.temporary_dexterity",
-                "Temporary Dexterity",
-                BlockBonusPerStack: 1,
-                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
-                AllowNegative: true,
-                RemoveAtPlayerTurnEnd: true),
-            new PrototypePowerDefinition(
                 "proto.power.duplication",
                 "Duplication",
                 BlockBonusPerStack: 0,
