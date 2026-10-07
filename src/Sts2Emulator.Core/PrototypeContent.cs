@@ -1718,6 +1718,12 @@ public static class PrototypeContent
                 EnemyHpLossCapPerTrigger: 1,
                 ConsumeOnEnemyHpLoss: true),
             new PrototypePowerDefinition(
+                "proto.power.infested",
+                "Infested",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                DoesNotStack: true),
+            new PrototypePowerDefinition(
                 "proto.power.slow",
                 "Slow",
                 BlockBonusPerStack: 0,
@@ -2175,6 +2181,136 @@ public static class PrototypeContent
                                     Value: "right")
                             ])
                     ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.wriggler",
+                "Wriggler",
+                21,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "nasty_bite",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                6,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "wriggle",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.AddCardsToDiscard,
+                                1,
+                                CardId: "proto.status.infection"),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength")
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 17,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "init",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "bite_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "wriggle_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "wriggle_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "bite_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "init",
+                            PrototypeEnemyAiStateKind.Conditional,
+                            ConditionalBranches:
+                            [
+                                new(
+                                    "bite_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    "bite"),
+                                new(
+                                    "wriggle_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    "wriggle")
+                            ])
+                    ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.phrog_parasite",
+                "Phrog Parasite",
+                64,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "infect",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.AddCardsToDiscard,
+                                3,
+                                CardId: "proto.status.infection")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "lash",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                4,
+                                Repetitions: 4,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                StartingPowers:
+                [
+                    new("proto.power.infested", 1)
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 4)
+                ],
+                MinHp: 61,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 5)
+                ],
+                DeathSummons:
+                [
+                    new(
+                        "proto.enemy.wriggler",
+                        0,
+                        "bite"),
+                    new(
+                        "proto.enemy.wriggler",
+                        1,
+                        "wriggle"),
+                    new(
+                        "proto.enemy.wriggler",
+                        2,
+                        "bite"),
+                    new(
+                        "proto.enemy.wriggler",
+                        3,
+                        "wriggle")
+                ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.bygone_effigy",
                 "Bygone Effigy",
@@ -4120,6 +4256,19 @@ public static class PrototypeContent
                     "proto.enemy.inklet",
                     2,
                     "right")
+            ]),
+        new(
+            "proto.encounter.phrog_parasite_elite",
+            PrototypeRoomType.Elite,
+            ["proto.enemy.phrog_parasite", "proto.enemy.wriggler"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.phrog_parasite",
+                    0)
             ]),
         new(
             "proto.encounter.bygone_effigy_elite",
