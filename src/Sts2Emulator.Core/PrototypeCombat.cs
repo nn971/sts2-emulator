@@ -5852,7 +5852,9 @@ public sealed partial class PrototypeGameEngine
                     SourceKind: PrototypeEffectSourceKind.Relic,
                     RelicStateIndex: relicIndex,
                     RelicTriggerIndex: triggerIndex,
-                    EveryNth: trigger.EveryNth));
+                    EveryNth: trigger.EveryNth,
+                    MaxTriggersPerCounterWindow:
+                        trigger.MaxTriggersPerCounterWindow));
             }
         }
 
@@ -5877,6 +5879,13 @@ public sealed partial class PrototypeGameEngine
                     subscriber.RelicStateIndex.Value,
                     subscriber.RelicTriggerIndex.Value);
                 combat = incremented.Combat;
+                if (subscriber.MaxTriggersPerCounterWindow is
+                        { } maxTriggers
+                    && incremented.Count > maxTriggers)
+                {
+                    continue;
+                }
+
                 if (incremented.Count % subscriber.EveryNth != 0)
                 {
                     continue;
@@ -5992,6 +6001,13 @@ public sealed partial class PrototypeGameEngine
                     subscriber.RelicStateIndex.Value,
                     subscriber.RelicTriggerIndex.Value);
                 combat = incremented.Combat;
+                if (subscriber.MaxTriggersPerCounterWindow is
+                        { } maxTriggers
+                    && incremented.Count > maxTriggers)
+                {
+                    continue;
+                }
+
                 if (incremented.Count % subscriber.EveryNth != 0)
                 {
                     continue;
