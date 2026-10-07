@@ -76,7 +76,9 @@ public sealed record PrototypeAiShop(
     ShopOffer? PotionOffer,
     ShopOffer? RelicOffer,
     int RemovalPrice,
-    bool RemovalUsed);
+    bool RemovalUsed,
+    ShopOffer[]? PotionOffers = null,
+    ShopOffer[]? RelicOffers = null);
 
 public sealed record PrototypeAiObservation(
     string RulesetId,
@@ -335,7 +337,13 @@ public sealed class PrototypeAiEnvironment
                     world.Shop.PotionOffer is null ? null : world.Shop.PotionOffer with { },
                     world.Shop.RelicOffer is null ? null : world.Shop.RelicOffer with { },
                     world.Shop.RemovalPrice,
-                    world.Shop.RemovalUsed),
+                    world.Shop.RemovalUsed,
+                    world.Shop.PotionOffers
+                        .Select(offer => offer with { })
+                        .ToArray(),
+                    world.Shop.RelicOffers
+                        .Select(offer => offer with { })
+                        .ToArray()),
             EventId: world?.Event?.EventId,
             TerminalOutcome: world?.TerminalOutcome);
     }
