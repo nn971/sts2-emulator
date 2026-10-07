@@ -114,7 +114,9 @@ public sealed class PrototypeShrinkerBeetleTests
         combat = state.World!.Combat!;
         Assert.Equal(
             0,
-            Assert.Single(combat.Enemies).Hp);
+            combat.Enemies
+                .Single(enemy => enemy.InstanceId == 1)
+                .Hp);
         Assert.DoesNotContain(
             combat.PlayerPowers,
             power => power.PowerId == "proto.power.shrink");
@@ -193,21 +195,41 @@ public sealed class PrototypeShrinkerBeetleTests
             Turn: 1,
             Energy: 3,
             PlayerBlock: 0,
-            Hand: withStrike ? [1] : [],
-            DrawPile: [],
+            Hand: [],
+            DrawPile: withStrike ? [1] : [],
             DiscardPile: [],
             ExhaustPile: [],
-            Enemies:
-            [
-                new EnemyCombatState(
-                    1,
-                    "proto.enemy.shrinker_beetle",
-                    beetleHp,
-                    0,
-                    0,
-                    new Dictionary<string, int>(
-                        StringComparer.Ordinal))
-            ],
+            Enemies: withStrike
+                ? [
+                    new EnemyCombatState(
+                        1,
+                        "proto.enemy.shrinker_beetle",
+                        beetleHp,
+                        0,
+                        0,
+                        new Dictionary<string, int>(
+                            StringComparer.Ordinal),
+                        FormationPosition: 0),
+                    new EnemyCombatState(
+                        2,
+                        "proto.enemy.twig_slime_s",
+                        11,
+                        0,
+                        0,
+                        new Dictionary<string, int>(
+                            StringComparer.Ordinal),
+                        FormationPosition: 1)
+                  ]
+                : [
+                    new EnemyCombatState(
+                        1,
+                        "proto.enemy.shrinker_beetle",
+                        beetleHp,
+                        0,
+                        0,
+                        new Dictionary<string, int>(
+                            StringComparer.Ordinal))
+                  ],
             NextCardInstanceId: withStrike ? 2 : 1,
             Cards: cards,
             PlayerPowers: [],
