@@ -175,7 +175,7 @@ public sealed class PrototypePunchConstructTests
             "prototype-0.1",
             "punch-construct-test",
             "punch-construct-test",
-            ascension,
+            0,
             RunPhase.Combat,
             player,
             PrototypeRng.CreateBundle(
@@ -193,7 +193,8 @@ public sealed class PrototypePunchConstructTests
                 null,
                 null,
                 null,
-                null));
+                null),
+            Ascension: ascension);
     }
 
     private static RunState EndTurn(
