@@ -2218,6 +2218,102 @@ public static class PrototypeContent
                         1)
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.nibbit",
+                "Nibbit",
+                46,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "butt",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                12,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "slice",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                6,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                5,
+                                AscensionDeltas:
+                                [
+                                    new(8, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "hiss",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength",
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 2)
+                ],
+                MinHp: 42,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 2)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "init",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "butt",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "slice"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "slice",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "hiss"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "hiss",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "butt"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "init",
+                            PrototypeEnemyAiStateKind.Conditional,
+                            ConditionalBranches:
+                            [
+                                new(
+                                    "butt",
+                                    PrototypeEnemyAiConditionKind
+                                        .IsAlone),
+                                new(
+                                    "hiss",
+                                    PrototypeEnemyAiConditionKind
+                                        .IsNotFront),
+                                new(
+                                    "slice",
+                                    PrototypeEnemyAiConditionKind
+                                        .IsFront)
+                            ])
+                    ])),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.toadpole",
                 "Toadpole",
                 25,
