@@ -355,9 +355,15 @@ public sealed class PrototypeHexLifecycleTests
                 combat.ExhaustPile);
 
             // Ordinary Defend is no longer Ethereal once Hex is gone.
+            // The next-turn draw may already have moved it out of Discard.
+            Assert.DoesNotContain(
+                defend.InstanceId,
+                combat.ExhaustPile);
             Assert.Contains(
                 defend.InstanceId,
-                combat.DiscardPile);
+                combat.Hand
+                    .Concat(combat.DrawPile)
+                    .Concat(combat.DiscardPile));
         });
     }
 
