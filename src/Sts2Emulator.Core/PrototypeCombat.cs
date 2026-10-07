@@ -1117,7 +1117,9 @@ public sealed partial class PrototypeGameEngine
                             effect.SelectedCardPower.PowerId,
                             effect.SelectedCardPower.AmountAt(upgradeLevel),
                             effect.SelectedCardPower
-                                .ClearAfflictionFromPayload),
+                                .ClearAfflictionFromPayload,
+                            effect.SelectedCardPower
+                                .RestoreSuppressedUpgradesInPayload),
                     SelectedCardKeyword: effect.SelectedCardKeyword,
                     DrawnCardKeyword: effect.DrawnCardKeyword,
                     EventSourceCardKeyword: effect.EventSourceCardKeyword,
@@ -1692,7 +1694,9 @@ public sealed partial class PrototypeGameEngine
                 Enchantment: snapshot.Enchantment,
                 EnchantmentTriggeredThisCombat:
                     snapshot.EnchantmentTriggeredThisCombat,
-                Affliction: snapshot.Affliction);
+                Affliction: snapshot.Affliction,
+                SuppressedUpgradeLevels:
+                    snapshot.SuppressedUpgradeLevels);
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat,
                 instance);
@@ -2664,7 +2668,7 @@ public sealed partial class PrototypeGameEngine
             };
             return updatedPower is null
                 ? combat
-                : ApplySourceBoundCardAffliction(
+                : ApplySourceBoundCardEffects(
                     combat,
                     updatedPower);
         }
@@ -2687,7 +2691,7 @@ public sealed partial class PrototypeGameEngine
             NextPowerApplicationOrder =
                 combat.NextPowerApplicationOrder + 1
         };
-        return ApplySourceBoundCardAffliction(
+        return ApplySourceBoundCardEffects(
             combat,
             instance);
     }
@@ -2706,7 +2710,10 @@ public sealed partial class PrototypeGameEngine
 
         var snapshot = new PrototypeCombatCardSnapshot(
             selectedCard.CardId,
-            selectedCard.UpgradeLevel,
+            action.RestoreSuppressedUpgradesInPayload
+                ? selectedCard.UpgradeLevel
+                    + selectedCard.SuppressedUpgradeLevels
+                : selectedCard.UpgradeLevel,
             selectedCard.State.Clone(),
             selectedCard.CombatEnergyCostDelta,
             selectedCard.TemporaryEnergyCost is null
@@ -2722,7 +2729,10 @@ public sealed partial class PrototypeGameEngine
             selectedCard.EnchantmentTriggeredThisCombat,
             action.ClearAfflictionFromPayload
                 ? null
-                : selectedCard.Affliction);
+                : selectedCard.Affliction,
+            action.RestoreSuppressedUpgradesInPayload
+                ? 0
+                : selectedCard.SuppressedUpgradeLevels);
 
         return AddPlayerPowerInstance(
             combat,
@@ -2771,9 +2781,66 @@ public sealed partial class PrototypeGameEngine
         };
 
         var added = combat.PlayerPowers[^1];
-        return ApplySourceBoundCardAffliction(
+        return ApplySourceBoundCardEffects(
             combat,
             added);
+    }
+
+    private static CombatState ApplySourceBoundCardEffects(
+        CombatState combat,
+        PrototypePowerInstanceState power)
+    {
+        combat = ApplySourceBoundCardAffliction(
+            combat,
+            power);
+        return ApplySourceBoundCardDowngrade(
+            combat,
+            power);
+    }
+
+    private static CombatState ApplySourceBoundCardDowngrade(
+        CombatState combat,
+        PrototypePowerInstanceState power)
+    {
+        var definition = PrototypeContent.Power(power.PowerId);
+        if (!definition.DowngradeExistingCardsOnApply)
+        {
+            return combat;
+        }
+
+        if (power.SourceEnemyInstanceId is not { } sourceEnemyId)
+        {
+            throw new InvalidOperationException(
+                $"Downgrade source power '{power.PowerId}' is missing its enemy source.");
+        }
+
+        var source = combat.Enemies.FirstOrDefault(enemy =>
+            enemy.InstanceId == sourceEnemyId);
+        if (source is null || source.Hp <= 0)
+        {
+            return combat;
+        }
+
+        return combat with
+        {
+            Cards = combat.Cards
+                .Select(card =>
+                {
+                    if (card.UpgradeLevel <= 0)
+                    {
+                        return card;
+                    }
+
+                    return card with
+                    {
+                        SuppressedUpgradeLevels =
+                            card.SuppressedUpgradeLevels
+                            + card.UpgradeLevel,
+                        UpgradeLevel = 0
+                    };
+                })
+                .ToArray()
+        };
     }
 
     private static CombatState ApplySourceBoundCardAffliction(
@@ -2912,26 +2979,66 @@ public sealed partial class PrototypeGameEngine
         var removedOrders = removed
             .Select(power => power.ApplicationOrder)
             .ToHashSet();
+        var remainingPowers = combat.PlayerPowers
+            .Where(power =>
+                !removedOrders.Contains(
+                    power.ApplicationOrder))
+            .ToArray();
+
+        var restoreDowngradePowerIds = removed
+            .Select(power => power.PowerId)
+            .Distinct(StringComparer.Ordinal)
+            .Where(powerId =>
+            {
+                var definition = PrototypeContent.Power(powerId);
+                return definition
+                        .RestoreDowngradedCardsWhenLastSourceRemoved
+                    && !remainingPowers.Any(power =>
+                        StringComparer.Ordinal.Equals(
+                            power.PowerId,
+                            powerId));
+            })
+            .ToHashSet(StringComparer.Ordinal);
+
+        var shouldRestoreSuppressedUpgrades =
+            restoreDowngradePowerIds.Count > 0;
 
         return combat with
         {
-            PlayerPowers = combat.PlayerPowers
-                .Where(power =>
-                    !removedOrders.Contains(
-                        power.ApplicationOrder))
-                .ToArray(),
+            PlayerPowers = remainingPowers,
             Cards = combat.Cards
                 .Select(card =>
-                    card.Affliction is
+                {
+                    var next = card;
+                    if (card.Affliction is
+                            {
+                                SourceEnemyInstanceId:
+                                    { } sourceEnemyId
+                            } affliction
+                        && clearAfflictions.Contains((
+                            sourceEnemyId,
+                            affliction.Kind)))
+                    {
+                        next = next with
                         {
-                            SourceEnemyInstanceId:
-                                { } sourceEnemyId
-                        } affliction
-                    && clearAfflictions.Contains((
-                        sourceEnemyId,
-                        affliction.Kind))
-                        ? card with { Affliction = null }
-                        : card)
+                            Affliction = null
+                        };
+                    }
+
+                    if (shouldRestoreSuppressedUpgrades
+                        && next.SuppressedUpgradeLevels > 0)
+                    {
+                        next = next with
+                        {
+                            UpgradeLevel =
+                                next.UpgradeLevel
+                                + next.SuppressedUpgradeLevels,
+                            SuppressedUpgradeLevels = 0
+                        };
+                    }
+
+                    return next;
+                })
                 .ToArray()
         };
     }
