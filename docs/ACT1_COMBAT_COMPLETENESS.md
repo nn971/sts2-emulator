@@ -60,7 +60,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | yes | yes | yes | no |
 | Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | yes | yes | pending | no |
-| Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | yes | pending | pending | no |
+| Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | yes | yes | yes | no |
 | Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | yes | no |
