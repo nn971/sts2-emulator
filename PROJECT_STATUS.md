@@ -510,3 +510,19 @@ The relic pool now also includes Bronze Scales, Oddly Smooth Stone, Bag of Marbl
 Mercury Hourglass, Orichalcum, Horn Cleat, and Captain's Wheel. They exercise combat-start power and
 status application, enemy-defeat draw/energy, player-turn-start area damage, zero-block end-turn
 block, and exact-turn block triggers.
+
+
+## Mechanics-expansion pass: typed relic counters and energy policies
+
+Relic CardPlayed triggers can now filter by source card type and optionally reset their cadence
+counter at each player turn. Combat counters also preserve the previous turn's Attack count, and
+relics may opt into retaining unused energy across the normal energy refresh boundary.
+
+Kunai and Shuriken use per-turn every-three-Attack counters; Ice Cream preserves unused energy; Art
+of War grants energy on turns following a no-Attack turn. Ornamental Fan and Letter Opener now use
+the same typed per-turn counter machinery, while Nunchaku counts Attacks with its longer cadence.
+
+Choice-opening potions now keep PotionUsed inside the same effect continuation. The potion is
+consumed before its effect resolves, generated-card/retrieval choices may suspend safely, and
+PotionUsed relic hooks fire only after that choice completes. This removes a sweep-only crash that
+appeared once generated-choice potions entered the ordinary potion pool.
