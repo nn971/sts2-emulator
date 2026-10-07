@@ -196,4 +196,7 @@ play.
 
 `ReferenceProbeActionExtractor` now emits evidence-backed observed action envelopes without
 promoting gaps to parity claims. Probe v2 adds event catalogs plus richer card/potion/player state to
-discover the native choice surface. See `docs/reference-builds/v0.111.0-capture-002.md`.
+discover the native choice surface. Enemy snapshots now also catalog creature/model layouts and
+opportunistically project current/next move, intent, move index and move history when the pinned
+runtime exposes those properties. This prepares the next live capture for Knight Gang intent/RNG
+differential work. See `docs/reference-builds/v0.111.0-capture-002.md`.
