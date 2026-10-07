@@ -3178,6 +3178,22 @@ public static class PrototypeContent
         "proto.encounter.shrinker_beetle_weak"
     ];
 
+    public static string[] OvergrowthNormalEncounterPool { get; } =
+    [
+        "proto.encounter.cubex_construct_normal",
+        "proto.encounter.flyconid_normal",
+        "proto.encounter.fogmog_normal",
+        "proto.encounter.inklets_normal",
+        "proto.encounter.mawler_normal",
+        "proto.encounter.nibbits_normal",
+        "proto.encounter.overgrowth_crawlers",
+        "proto.encounter.ruby_raiders_normal",
+        "proto.encounter.slimes_normal",
+        "proto.encounter.slithering_strangler_normal",
+        "proto.encounter.snapping_jaxfruit_normal",
+        "proto.encounter.vine_shambler_normal"
+    ];
+
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
         new(
@@ -3234,6 +3250,30 @@ public static class PrototypeContent
             MinFloor: 2,
             MaxFloor: 4,
             Weight: 3),
+        new(
+            "proto.encounter.ruby_raiders_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.assassin_ruby_raider",
+                "proto.enemy.axe_ruby_raider",
+                "proto.enemy.brute_ruby_raider",
+                "proto.enemy.crossbow_ruby_raider",
+                "proto.enemy.tracker_ruby_raider"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            FormationPolicy:
+                PrototypeEncounterFormationPolicy.ChooseDistinct,
+            EnemyPool:
+            [
+                "proto.enemy.assassin_ruby_raider",
+                "proto.enemy.axe_ruby_raider",
+                "proto.enemy.brute_ruby_raider",
+                "proto.enemy.crossbow_ruby_raider",
+                "proto.enemy.tracker_ruby_raider"
+            ],
+            EnemyCount: 3),
         new(
             "proto.encounter.mawler_normal",
             PrototypeRoomType.Combat,
