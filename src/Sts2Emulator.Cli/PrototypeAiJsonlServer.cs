@@ -307,6 +307,62 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "batch_rollout_step_frame":
+                    {
+                        var policyId = RequiredString(request, "policy_id");
+                        if (!StringComparer.Ordinal.Equals(policyId, FairPolicyId))
+                        {
+                            throw new NotSupportedException(
+                                $"Prototype JSONL bridge supports only information policy '{FairPolicyId}'.");
+                        }
+
+                        if (!request.TryGetProperty("items", out var itemsElement)
+                            || itemsElement.ValueKind != JsonValueKind.Array)
+                        {
+                            throw new InvalidOperationException(
+                                "Request field 'items' must be an array.");
+                        }
+
+                        var frames = itemsElement.EnumerateArray()
+                            .Select(item =>
+                            {
+                                if (item.ValueKind != JsonValueKind.Object)
+                                {
+                                    throw new InvalidOperationException(
+                                        "Every batch_rollout_step_frame item must be an object.");
+                                }
+
+                                var parentHandle = RequiredString(item, "state_handle");
+                                var actionId = RequiredString(item, "action_id");
+                                var state = states.TryGetValue(parentHandle, out var found)
+                                    ? found
+                                    : throw new InvalidOperationException(
+                                        $"Unknown state handle '{parentHandle}'.");
+
+                                var stepped = environment.RolloutStepFrame(state, actionId);
+                                var childHandle = Store(stepped.State);
+                                return new
+                                {
+                                    parent = parentHandle,
+                                    child = childHandle,
+                                    terminal = stepped.State.Phase == RunPhase.Terminal,
+                                    policyId,
+                                    schemaId = PrototypeAiEnvironment.SchemaId,
+                                    payloadJson = CanonicalJson.Serialize(stepped.Observation),
+                                    legalActions = stepped.LegalActions.Select(ActionWire).ToArray()
+                                };
+                            })
+                            .ToArray();
+
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            frames
+                        });
+                        break;
+                    }
+
                     case "batch_observe":
                     {
                         var policyId = RequiredString(request, "policy_id");
