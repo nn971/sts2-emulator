@@ -80,7 +80,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Reward: null,
             Shop: null,
             Event: null,
-            TerminalOutcome: null);
+            TerminalOutcome: null,
+            ActOneRegion: PrototypeActOneRegion.Overgrowth,
+            ActOneEncounterPool: new PrototypeActOneEncounterPoolState(
+                PrototypeActOneRegion.Overgrowth,
+                OrdinaryCombatsStarted: 0,
+                RemainingWeakEncounterIds:
+                    (string[])PrototypeContent
+                        .OvergrowthWeakEncounterPool
+                        .Clone()));
 
         world = world with { Map = GenerateActMap(world.Act, rng) };
 
