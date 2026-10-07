@@ -108,7 +108,9 @@ public sealed class PrototypeShrinkerBeetleTests
             .Single(action =>
                 action.Kind == "play_card"
                 && action.ReadPayload<PlayCardPayload>()
-                    .CardInstanceId == 1);
+                    .CardInstanceId == 1
+                && action.ReadPayload<PlayCardPayload>()
+                    .TargetEnemyId == 1);
         state = engine.Step(state, strike).State;
 
         combat = state.World!.Combat!;
