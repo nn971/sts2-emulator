@@ -652,9 +652,14 @@ public sealed partial class PrototypeGameEngine
         if (!reward.PotionResolved)
         {
             var actions = new List<GameAction>();
-            if (Array.IndexOf(state.Player.PotionSlots, null) >= 0)
+            if (CanAcquirePotion(state.Player)
+                && Array.IndexOf(
+                    state.Player.PotionSlots,
+                    null) >= 0)
             {
-                actions.Add(GameAction.Empty("take_reward_potion"));
+                actions.Add(
+                    GameAction.Empty(
+                        "take_reward_potion"));
             }
 
             actions.Add(GameAction.Empty("skip_reward_potion"));
