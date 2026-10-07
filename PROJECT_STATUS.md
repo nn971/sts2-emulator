@@ -604,3 +604,12 @@ Generated shops now expose five typed card offers (two Attacks, two Skills, and 
 ShopState keeps the original primary potion/relic fields for compatibility with older handcrafted states while exposing unified PotionOffers and RelicOffers collections over the primary and additional offers. All purchase logic, sold-state updates, Membership Card-style repricing, potion replacement, invariants, forking, and AI observation operate on the unified collections, so secondary offers are mechanically equivalent to primary offers.
 
 The AI shop observation now exposes the complete potion and relic offer arrays in addition to the compatibility fields. Regression coverage verifies the typed 5-card layout, distinct multi-offer inventory, secondary potion purchases, buying Membership Card from a secondary relic slot and repricing every remaining offer, and exclusion of already-owned relics from generated shop stock.
+
+
+## Mechanics-expansion pass: strategic event deck choices
+
+Events can now suspend after a branch is chosen and expose a sequential persistent-deck choice. The event continuation records the chosen option, choice kind, remaining selection count, and eligible persistent card instance IDs canonically in EventState; it survives forks, is validated against the event definition and live deck, and is projected into the AI observation. Supported event deck operations are remove, upgrade, and transform, with optional upgrading of transformed results.
+
+Event branch costs are applied exactly once before the deck-choice continuation begins. Gold loss is now a first-class run effect, and event legality suppresses branches the player cannot afford, branches whose HP cost would be lethal, and paid deck-shaping branches with no eligible card. Multi-card choices remain sequential rather than enumerating subsets, keeping the action surface approximately linear in deck size.
+
+Two prototype strategic events exercise the capability. Forgotten Altar offers 50-gold card removal, 7-HP card upgrading, or a small gold exit. Warped Mirror offers a 9-HP two-card transform, a 35-gold transform-and-upgrade, or no effect. Regression coverage verifies single-payment semantics, AI visibility, legality filtering, persistent instance-ID preservation, sequential two-card transformation, and upgraded transform results.
