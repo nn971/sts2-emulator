@@ -29,3 +29,5 @@ echo "Enabled natural Silent / Overgrowth Act 1 corpus mode:"
 echo "  $mod_dir/overgrowth-silent-act1.mode"
 echo
 echo "Copy the staged Sts2ReferenceBridge folder into the instrumented game's mods directory."
+echo "Then fully exit and relaunch STS2. Before starting a run, verify that a new"
+echo "overgrowth-silent-act1-*.jsonl file already exists under reference_traces/."
