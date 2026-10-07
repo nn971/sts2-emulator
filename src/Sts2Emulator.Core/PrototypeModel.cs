@@ -558,7 +558,8 @@ public enum PrototypeEnemyEffectKind
     DamagePlayer,
     GainBlock,
     ApplyPlayerPower,
-    ApplyEnemyPower
+    ApplyEnemyPower,
+    AddCardsToDiscard
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -573,7 +574,8 @@ public sealed record PrototypeEnemyEffectSpec(
     string? PowerId = null,
     PrototypeAscensionDelta[]? AscensionDeltas = null,
     bool IsAttack = true,
-    PrototypeAscensionDelta[]? RepetitionAscensionDeltas = null)
+    PrototypeAscensionDelta[]? RepetitionAscensionDeltas = null,
+    string? CardId = null)
 {
     public int AmountAt(
         int act,
