@@ -2298,6 +2298,49 @@ public static class PrototypeContent
                 "Ice Cream",
                 PreserveUnusedEnergy: true),
             new PrototypeRelicDefinition(
+                "proto.relic.tough_bandages",
+                "Tough Bandages",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardDiscarded,
+                        [
+                            new(
+                                PrototypeCombatEffectKind.GainPlayerBlock,
+                                3)
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.tingsha",
+                "Tingsha",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardDiscarded,
+                        [
+                            new(
+                                PrototypeCombatEffectKind.DamageEnemy,
+                                3,
+                                Target:
+                                    PrototypeEffectTarget.RandomEnemy)
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.hovering_kite",
+                "Hovering Kite",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardDiscarded,
+                        [
+                            new(
+                                PrototypeCombatEffectKind.GainEnergy,
+                                1)
+                        ],
+                        ResetCounterEachTurn: true,
+                        MaxTriggersPerCounterWindow: 1)
+                ]),
+            new PrototypeRelicDefinition(
                 "proto.relic.art_of_war",
                 "Art of War",
                 Triggers:
