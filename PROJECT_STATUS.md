@@ -1,6 +1,6 @@
 # Project status
 
-**Stage:** Overgrowth Act 1 combat fidelity on the whole-run prototype skeleton.
+**Stage:** Natural-run Overgrowth oracle pass, then parent AI prototype integration.
 
 Implemented on the current prototype branch:
 
@@ -41,7 +41,11 @@ See `docs/PROTOTYPE_SCOPE.md`.
 
 Still to do:
 
-- integrate the prototype AI adapter from the parent `sts2-ai` project;
+- collect and analyze a compact corpus of ordinary Silent A0 Act 1 Overgrowth runs with the passive
+  reference bridge;
+- fix only clear, decision-relevant Overgrowth fidelity divergences found by that corpus;
+- integrate the prototype AI adapter from the parent `sts2-ai` project immediately after that
+  oracle pass;
 - replace prototype content/generation from the pinned structured reference corpus;
 - translate exact Silent mechanics from structured data plus decompiled source;
 - native RNG/timing parity;
