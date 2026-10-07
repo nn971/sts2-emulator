@@ -269,6 +269,9 @@ A branch reconciliation found additional Overgrowth work already present: Axe, B
 Flyconid is now source-backed with its weighted initial choice (Frail Spores 2/3, Smash 1/3), weighted no-repeat main loop (Vulnerable Spores 3/6, Frail Spores 2/6, Smash 1/6), A8 HP and A9 damage scaling. This also promotes both Shroom and Slime and Overgrowth Flora to source-backed normal formations, bringing Overgrowth normal model+formation coverage to eight of twelve encounters. See
 `docs/reference-builds/v0.111.0-mechanics-gap-035.md`.
 
+Inklet is now source-backed with the reusable Slippery HP-loss modifier: the next positive enemy HP loss is capped to 1 and consumes one stack, while fully blocked hits do not consume it. Three-Inklet formation slots drive the native outer-Jab / middle-Whirlwind opener, followed by Jab alternating with an equal Piercing Gaze / Whirlwind choice. This promotes Inklets Normal and leaves three unresolved Overgrowth normal encounters. See
+`docs/reference-builds/v0.111.0-mechanics-gap-036.md`.
+
 Encounter construction now supports independent random slot groups with optional distinct selection.
 The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
 reference encounters: weak uses two different small slimes around one random medium slime; normal
