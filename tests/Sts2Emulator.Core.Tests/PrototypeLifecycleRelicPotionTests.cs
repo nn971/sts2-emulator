@@ -26,7 +26,7 @@ public sealed class PrototypeLifecycleRelicPotionTests
                     new RelicInstance("proto.relic.blood_vial", empty)
                 ]
             },
-            World = state.World! with
+            World = (state.World!) with
             {
                 Map = new MapState(
                     [
