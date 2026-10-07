@@ -112,8 +112,8 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `KIN_FOLLOWER` — Kin Follower | Boss | 58–59 | 62–63 | cycle | not started |
 | `KIN_PRIEST` — Kin Priest | Boss | 190 | 199 | cycle | not started |
 | `LAGAVULIN_MATRIARCH` — Lagavulin Matriarch | Boss | 222 | 233 | conditional | not started |
-| `LEAF_SLIME_M` — Leaf Slime (M) | Normal | 32–35 | 33–36 | cycle | not started |
-| `LEAF_SLIME_S` — Leaf Slime (S) | Normal | 11–15 | 12–16 | random | not started |
+| `LEAF_SLIME_M` — Leaf Slime (M) | Normal | 32–35 | 33–36 | cycle | implemented + focused tests |
+| `LEAF_SLIME_S` — Leaf Slime (S) | Normal | 11–15 | 12–16 | random | implemented + focused tests |
 | `LIVING_FOG` — Living Fog | Normal | 80 | 82 | cycle | not started |
 | `MAWLER` — Mawler | Normal | 72 | 76 | random | implemented + focused tests |
 | `NIBBIT` — Nibbit | Normal | 42–46 | 44–48 | conditional | not started |
