@@ -2341,6 +2341,28 @@ public static class PrototypeContent
                         MaxTriggersPerCounterWindow: 1)
                 ]),
             new PrototypeRelicDefinition(
+                "proto.relic.question_card",
+                "Question Card",
+                RewardCardChoiceBonus: 1),
+            new PrototypeRelicDefinition(
+                "proto.relic.prayer_wheel",
+                "Prayer Wheel",
+                ExtraNormalCombatCardRewardGroups: 1),
+            new PrototypeRelicDefinition(
+                "proto.relic.membership_card",
+                "Membership Card",
+                ShopPriceNumerator: 1,
+                ShopPriceDenominator: 2),
+            new PrototypeRelicDefinition(
+                "proto.relic.smiling_mask",
+                "Smiling Mask",
+                ShopRemovalPriceOverride: 50),
+            new PrototypeRelicDefinition(
+                "proto.relic.sozu",
+                "Sozu",
+                EnergyPerTurnBonus: 1,
+                PreventPotionAcquisition: true),
+            new PrototypeRelicDefinition(
                 "proto.relic.art_of_war",
                 "Art of War",
                 Triggers:
@@ -6046,6 +6068,14 @@ public static class PrototypeContent
         "proto.relic.kunai",
         "proto.relic.shuriken",
         "proto.relic.ice_cream",
+        "proto.relic.tough_bandages",
+        "proto.relic.tingsha",
+        "proto.relic.hovering_kite",
+        "proto.relic.question_card",
+        "proto.relic.prayer_wheel",
+        "proto.relic.membership_card",
+        "proto.relic.smiling_mask",
+        "proto.relic.sozu",
         "proto.relic.art_of_war"
     ];
 
