@@ -77,6 +77,7 @@ public sealed record PrototypeAiObservation(
     int? Act,
     int? Floor,
     PrototypeActOneRegion? ActOneRegion,
+    string? ActOneBossEncounterId,
     int Hp,
     int MaxHp,
     int Gold,
@@ -198,6 +199,8 @@ public sealed class PrototypeAiEnvironment
             Act: world?.Act,
             Floor: world?.Floor,
             ActOneRegion: world?.ActOneRegion,
+            ActOneBossEncounterId:
+                world?.ActOneEncounterPool?.BossEncounterId,
             Hp: state.Player.Hp,
             MaxHp: state.Player.MaxHp,
             Gold: state.Player.Gold,
