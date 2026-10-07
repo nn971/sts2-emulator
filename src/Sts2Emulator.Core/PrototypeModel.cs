@@ -572,7 +572,8 @@ public sealed record PrototypeEnemyEffectSpec(
     int Repetitions = 1,
     string? PowerId = null,
     PrototypeAscensionDelta[]? AscensionDeltas = null,
-    bool IsAttack = true)
+    bool IsAttack = true,
+    PrototypeAscensionDelta[]? RepetitionAscensionDeltas = null)
 {
     public int AmountAt(
         int act,
@@ -580,6 +581,14 @@ public sealed record PrototypeEnemyEffectSpec(
         Amount
         + ((act - 1) * AmountPerAct)
         + (AscensionDeltas
+            ?? Array.Empty<PrototypeAscensionDelta>())
+            .Where(delta =>
+                ascension >= delta.MinAscension)
+            .Sum(delta => delta.Delta);
+
+    public int RepetitionsAt(int ascension) =>
+        Repetitions
+        + (RepetitionAscensionDeltas
             ?? Array.Empty<PrototypeAscensionDelta>())
             .Where(delta =>
                 ascension >= delta.MinAscension)
