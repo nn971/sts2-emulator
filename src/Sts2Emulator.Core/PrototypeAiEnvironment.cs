@@ -104,6 +104,11 @@ public sealed record PrototypeAiExpansion(
     RunState State,
     string CanonicalStateHash);
 
+public sealed record PrototypeAiStepFrame(
+    PrototypeAiAction Action,
+    RunState State,
+    PrototypeAiFrame Frame);
+
 /// <summary>
 /// Stateless adapter for search/learning consumers. The canonical RunState remains the source of
 /// truth; this layer exposes a player-facing observation plus stable semantic action IDs.
@@ -161,6 +166,30 @@ public sealed class PrototypeAiEnvironment
 
     public TransitionResult Step(RunState state, string actionId)
     {
+        var resolved = ResolveAction(state, actionId);
+        return _engine.Step(state, resolved.Action);
+    }
+
+    public PrototypeAiStepFrame StepFrame(RunState state, string actionId)
+    {
+        var resolved = ResolveAction(state, actionId);
+        var next = _engine.Step(state, resolved.Action).State;
+        return new PrototypeAiStepFrame(
+            resolved.View,
+            next,
+            Observe(next));
+    }
+
+    public static string StableActionId(GameAction action)
+    {
+        var payloadHash = CanonicalJson.Sha256(action.Payload);
+        return $"{action.Kind}:{payloadHash}";
+    }
+
+    private (GameAction Action, PrototypeAiAction View) ResolveAction(
+        RunState state,
+        string actionId)
+    {
         var candidates = _engine.GetLegalActions(state)
             .Select(action => (Action: action, View: CreateAction(action)))
             .Where(item => StringComparer.Ordinal.Equals(item.View.ActionId, actionId))
@@ -168,18 +197,12 @@ public sealed class PrototypeAiEnvironment
 
         return candidates.Length switch
         {
-            1 => _engine.Step(state, candidates[0].Action),
+            1 => candidates[0],
             0 => throw new InvalidOperationException(
                 $"Action ID '{actionId}' is not legal in the current state."),
             _ => throw new InvalidOperationException(
                 $"Action ID '{actionId}' is ambiguous in the current state.")
         };
-    }
-
-    public static string StableActionId(GameAction action)
-    {
-        var payloadHash = CanonicalJson.Sha256(action.Payload);
-        return $"{action.Kind}:{payloadHash}";
     }
 
     private static PrototypeAiAction CreateAction(GameAction action) =>
