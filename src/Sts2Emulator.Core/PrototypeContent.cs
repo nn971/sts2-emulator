@@ -75,6 +75,8 @@ public static class PrototypeContent
         EndTurnPipeline:
         [
             new(
+                PrototypeAutomaticStepKind.ResolvePlayerEndTurnHandEffects),
+            new(
                 PrototypeAutomaticStepKind.DispatchCombatEvent,
                 EventKind: PrototypeCombatEventKind.PlayerTurnEnded),
             new(PrototypeAutomaticStepKind.DiscardPlayerHand),
@@ -94,6 +96,17 @@ public static class PrototypeContent
     public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
         new[]
         {
+            new PrototypeCardDefinition(
+                "proto.status.infection",
+                "Infection",
+                0,
+                PrototypeCardTarget.None,
+                [],
+                Rarity: PrototypeCardRarity.Status,
+                Unplayable: true,
+                RewardEligible: false,
+                Type: PrototypeCardType.Status,
+                EndTurnDamageIfInHand: 3),
             new PrototypeCardDefinition(
                 "proto.status.slimed",
                 "Slimed",
