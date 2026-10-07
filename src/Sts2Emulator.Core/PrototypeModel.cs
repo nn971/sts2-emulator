@@ -530,7 +530,8 @@ public sealed record PrototypePowerDefinition(
     bool SkipCardsWithExistingAffliction = false,
     bool ClearSourceAfflictionWhenRemoved = false,
     bool DowngradeExistingCardsOnApply = false,
-    bool RestoreDowngradedCardsWhenLastSourceRemoved = false);
+    bool RestoreDowngradedCardsWhenLastSourceRemoved = false,
+    int EnemyAttackDamageBonusPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -549,7 +550,8 @@ public enum PrototypeEnemyEffectKind
 {
     DamagePlayer,
     GainBlock,
-    ApplyPlayerPower
+    ApplyPlayerPower,
+    ApplyEnemyPower
 }
 
 public sealed record PrototypeEnemyEffectSpec(
@@ -559,9 +561,16 @@ public sealed record PrototypeEnemyEffectSpec(
     int Repetitions = 1,
     string? PowerId = null);
 
+public enum PrototypeEnemyMovePolicy
+{
+    SequentialLoop,
+    UniformRandomAfterOpener
+}
+
 public sealed record PrototypeEnemyMoveDefinition(
     string Id,
-    PrototypeEnemyEffectSpec[] Effects);
+    PrototypeEnemyEffectSpec[] Effects,
+    int MaxConsecutiveUses = 0);
 
 public sealed record PrototypeStartingPowerSpec(
     string PowerId,
@@ -574,7 +583,10 @@ public sealed record PrototypeEnemyDefinition(
     int HpPerAct,
     PrototypeEnemyMoveDefinition[] Moves,
     PrototypeStartingPowerSpec[]? StartingPowers = null,
-    int MoveLoopStartIndex = 0);
+    int MoveLoopStartIndex = 0,
+    PrototypeEnemyMovePolicy MovePolicy =
+        PrototypeEnemyMovePolicy.SequentialLoop,
+    int OpeningMoveIndex = 0);
 
 public sealed record PrototypeEncounterDefinition(
     string Id,
@@ -690,7 +702,9 @@ public sealed record EnemyCombatState(
     int Block,
     int MoveIndex,
     Dictionary<string, int> Statuses,
-    PrototypePowerInstanceState[]? Powers = null)
+    PrototypePowerInstanceState[]? Powers = null,
+    string? LastMoveId = null,
+    int ConsecutiveMoveUses = 0)
 {
     public EnemyCombatState Fork() => this with
     {
