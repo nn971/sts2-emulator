@@ -48,8 +48,8 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Boss | `CEREMONIAL_BEAST_BOSS` | `CEREMONIAL_BEAST` | no | pending | pending | no |
 | Overgrowth | Boss | `THE_KIN_BOSS` | `KIN_FOLLOWER`, `KIN_PRIEST` | no | pending | pending | no |
 | Overgrowth | Boss | `VANTOM_BOSS` | `VANTOM` | no | pending | pending | no |
-| Overgrowth | Elite | `BYGONE_EFFIGY_ELITE` | `BYGONE_EFFIGY` | no | pending | pending | no |
-| Overgrowth | Elite | `BYRDONIS_ELITE` | `BYRDONIS` | no | pending | pending | no |
+| Overgrowth | Elite | `BYGONE_EFFIGY_ELITE` | `BYGONE_EFFIGY` | yes | yes | pending | no |
+| Overgrowth | Elite | `BYRDONIS_ELITE` | `BYRDONIS` | yes | yes | pending | no |
 | Overgrowth | Elite | `PHROG_PARASITE_ELITE` | `PHROG_PARASITE`, `WRIGGLER` | no | pending | pending | no |
 | Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | yes | yes | yes | no |
 | Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | yes | yes | yes | no |
@@ -100,8 +100,8 @@ claimed. All twelve Overgrowth normal encounters now participate in the typed no
 | `ASSASSIN_RUBY_RAIDER` — Assassin Raider | Normal | 18–23 | 19–24 | cycle | implemented + focused tests |
 | `AXE_RUBY_RAIDER` — Axe Raider | Normal | 20–22 | 21–23 | cycle | implemented + focused tests |
 | `BRUTE_RUBY_RAIDER` — Brute Raider | Normal | 30–33 | 31–34 | cycle | implemented + focused tests |
-| `BYGONE_EFFIGY` — Bygone Effigy | Elite | 127 | 132 | cycle | not started |
-| `BYRDONIS` — Byrdonis | Elite | 81–84 | 90–90 | cycle | not started |
+| `BYGONE_EFFIGY` — Bygone Effigy | Elite | 127 | 132 | cycle | implemented + focused tests |
+| `BYRDONIS` — Byrdonis | Elite | 81–84 | 90–90 | cycle | implemented + focused tests |
 | `CALCIFIED_CULTIST` — Calcified Cultist | Normal | 38–41 | 39–42 | cycle | not started |
 | `CEREMONIAL_BEAST` — Ceremonial Beast | Boss | 252 | 262 | cycle | not started |
 | `CORPSE_SLUG` — Corpse Slug | Normal | 25–27 | 27–29 | cycle | not started |
