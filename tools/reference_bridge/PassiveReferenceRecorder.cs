@@ -25,6 +25,10 @@ internal static class PassiveReferenceRecorder
     private static object? _combatManager;
     private static long _sequence;
     private static int _initialized;
+    private static int _combatIndex;
+    private static string? _corpusMode;
+    private static bool _emitTypeCatalogs = true;
+    private static readonly string SessionId = Guid.NewGuid().ToString("N");
 
     public static void Initialize()
     {
@@ -43,6 +47,13 @@ internal static class PassiveReferenceRecorder
 
             var build = VerifyPinnedBuild(gameDirectory, dataDirectory);
 
+            _corpusMode = Environment
+                .GetEnvironmentVariable("STS2_REFERENCE_CORPUS_MODE")
+                ?.Trim();
+            _emitTypeCatalogs = !StringComparer.OrdinalIgnoreCase.Equals(
+                _corpusMode,
+                "overgrowth-silent-act1");
+
             var traceDirectory =
                 Environment.GetEnvironmentVariable("STS2_REFERENCE_TRACE_DIR");
             if (string.IsNullOrWhiteSpace(traceDirectory))
@@ -51,9 +62,14 @@ internal static class PassiveReferenceRecorder
             }
 
             Directory.CreateDirectory(traceDirectory);
+            var filePrefix = StringComparer.OrdinalIgnoreCase.Equals(
+                    _corpusMode,
+                    "overgrowth-silent-act1")
+                ? "overgrowth-silent-act1"
+                : "probe";
             var outputPath = Path.Combine(
                 traceDirectory,
-                $"probe-{DateTime.UtcNow:yyyyMMdd-HHmmss}-" +
+                $"{filePrefix}-{DateTime.UtcNow:yyyyMMdd-HHmmss}-" +
                 $"{BridgeWorkspace.ExpectedBuildFingerprint[..12]}.jsonl");
 
             _writer = new StreamWriter(
@@ -71,6 +87,9 @@ internal static class PassiveReferenceRecorder
             {
                 ["type"] = "session",
                 ["schema"] = BridgeWorkspace.ProbeSchema,
+                ["session_id"] = SessionId,
+                ["corpus_mode"] = _corpusMode,
+                ["type_catalogs_enabled"] = _emitTypeCatalogs,
                 ["captured_at_utc"] = DateTimeOffset.UtcNow,
                 ["expected_game_version"] = BridgeWorkspace.ExpectedGameVersion,
                 ["expected_game_commit"] = BridgeWorkspace.ExpectedGameCommit,
@@ -389,6 +408,13 @@ internal static class PassiveReferenceRecorder
     {
         try
         {
+            if (StringComparer.Ordinal.Equals(
+                    boundary,
+                    "combat_manager.CombatSetUp"))
+            {
+                Interlocked.Increment(ref _combatIndex);
+            }
+
             var state = CaptureState();
             var stateJson = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
             var stateHash = Convert.ToHexStringLower(SHA256.HashData(stateJson));
@@ -410,6 +436,8 @@ internal static class PassiveReferenceRecorder
             {
                 ["type"] = "boundary",
                 ["schema"] = BridgeWorkspace.ProbeSchema,
+                ["session_id"] = SessionId,
+                ["recorder_combat_index"] = Volatile.Read(ref _combatIndex),
                 ["sequence"] = Interlocked.Increment(ref _sequence),
                 ["captured_at_utc"] = DateTimeOffset.UtcNow,
                 ["boundary"] = boundary,
@@ -433,7 +461,15 @@ internal static class PassiveReferenceRecorder
 
     private static Dictionary<string, object?> CaptureState()
     {
-        var result = new Dictionary<string, object?>(StringComparer.Ordinal);
+        var result = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["recorder"] = new Dictionary<string, object?>
+            {
+                ["session_id"] = SessionId,
+                ["combat_index"] = Volatile.Read(ref _combatIndex),
+                ["corpus_mode"] = _corpusMode
+            }
+        };
         var manager = _combatManager;
         if (manager is null)
         {
@@ -480,7 +516,18 @@ internal static class PassiveReferenceRecorder
         {
             result["run"] = ReadNamed(
                 runState,
+                "Id",
+                "RunId",
+                "Seed",
+                "RunSeed",
                 "CurrentAct",
+                "CurrentActId",
+                "Act",
+                "ActId",
+                "Region",
+                "CurrentRegion",
+                "CurrentRegionId",
+                "ActOneRegion",
                 "CurrentRoom",
                 "CurrentMapPoint",
                 "Floor",
@@ -926,6 +973,11 @@ internal static class PassiveReferenceRecorder
 
     private static void WriteTypeCatalogOnce(Type type)
     {
+        if (!_emitTypeCatalogs)
+        {
+            return;
+        }
+
         var typeName = type.FullName ?? type.Name;
         lock (Gate)
         {
