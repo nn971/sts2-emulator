@@ -606,18 +606,46 @@ public sealed record PrototypeEnemyDefinition(
     int OpeningMoveIndex = 0,
     PrototypeAscensionDelta[]? HpAscensionDeltas = null,
     int[]? OpeningMoveIndices = null,
-    int RandomMovePoolStartIndex = 0)
+    int RandomMovePoolStartIndex = 0,
+    int? MinHp = null,
+    PrototypeAscensionDelta[]? MinHpAscensionDeltas = null)
 {
+    public (int Min, int Max) HpRangeAt(
+        int act,
+        int ascension)
+    {
+        var max = MaxHp
+            + ((act - 1) * HpPerAct)
+            + (HpAscensionDeltas
+                ?? Array.Empty<PrototypeAscensionDelta>())
+                .Where(delta =>
+                    ascension >= delta.MinAscension)
+                .Sum(delta => delta.Delta);
+
+        var minDeltas =
+            MinHpAscensionDeltas
+            ?? HpAscensionDeltas
+            ?? Array.Empty<PrototypeAscensionDelta>();
+        var min = (MinHp ?? MaxHp)
+            + ((act - 1) * HpPerAct)
+            + minDeltas
+                .Where(delta =>
+                    ascension >= delta.MinAscension)
+                .Sum(delta => delta.Delta);
+
+        if (min > max)
+        {
+            throw new InvalidOperationException(
+                $"Enemy '{Id}' has invalid HP range {min}-{max}.");
+        }
+
+        return (min, max);
+    }
+
     public int HpAt(
         int act,
         int ascension) =>
-        MaxHp
-        + ((act - 1) * HpPerAct)
-        + (HpAscensionDeltas
-            ?? Array.Empty<PrototypeAscensionDelta>())
-            .Where(delta =>
-                ascension >= delta.MinAscension)
-            .Sum(delta => delta.Delta);
+        HpRangeAt(act, ascension).Max;
 }
 
 public sealed record PrototypeEncounterDefinition(
