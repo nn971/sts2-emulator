@@ -4711,35 +4711,101 @@ public sealed partial class PrototypeGameEngine
         string statusId,
         int amount)
     {
-        _ = PrototypeContent.Status(statusId);
-        var found = false;
-
+        var statusDefinition =
+            PrototypeContent.Status(statusId);
         var enemies = combat.Enemies
-            .Select(enemy =>
-            {
-                if (enemy.InstanceId != enemyId)
-                {
-                    return enemy;
-                }
-
-                found = true;
-                if (enemy.Hp <= 0)
-                {
-                    return enemy;
-                }
-
-                var statuses = new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal);
-                statuses[statusId] = statuses.GetValueOrDefault(statusId) + amount;
-                return enemy with { Statuses = statuses };
-            })
+            .Select(enemy => enemy.Fork())
             .ToArray();
-
-        if (!found)
+        var index = Array.FindIndex(
+            enemies,
+            enemy => enemy.InstanceId == enemyId);
+        if (index < 0)
         {
-            throw new InvalidOperationException($"Enemy {enemyId} is missing.");
+            throw new InvalidOperationException(
+                $"Enemy {enemyId} is missing.");
         }
 
+        var enemy = enemies[index];
+        if (enemy.Hp <= 0)
+        {
+            return combat;
+        }
+
+        if (amount > 0 && statusDefinition.IsDebuff)
+        {
+            var blocked =
+                TryBlockIncomingEnemyDebuff(enemy);
+            enemy = blocked.Enemy;
+            if (blocked.Blocked)
+            {
+                enemies[index] = enemy;
+                return combat with { Enemies = enemies };
+            }
+        }
+
+        var statuses = new Dictionary<string, int>(
+            enemy.Statuses,
+            StringComparer.Ordinal);
+        statuses[statusId] =
+            statuses.GetValueOrDefault(statusId)
+            + amount;
+        enemies[index] = enemy with
+        {
+            Statuses = statuses
+        };
         return combat with { Enemies = enemies };
+    }
+
+    private sealed record PrototypeEnemyDebuffBlockResult(
+        EnemyCombatState Enemy,
+        bool Blocked);
+
+    private static PrototypeEnemyDebuffBlockResult
+        TryBlockIncomingEnemyDebuff(
+            EnemyCombatState enemy)
+    {
+        var candidate = enemy.PowerStates
+            .Where(power =>
+                power.Stacks > 0
+                && PrototypeContent.Power(
+                    power.PowerId)
+                    .BlocksNextDebuff)
+            .OrderBy(power => power.ApplicationOrder)
+            .FirstOrDefault();
+        if (candidate is null)
+        {
+            return new PrototypeEnemyDebuffBlockResult(
+                enemy,
+                false);
+        }
+
+        var powers = enemy.PowerStates
+            .Select(power => power.Fork())
+            .ToList();
+        var index = powers.FindIndex(power =>
+            power.ApplicationOrder
+                == candidate.ApplicationOrder);
+        if (index < 0)
+        {
+            throw new InvalidOperationException(
+                "Enemy debuff-blocking power disappeared before consumption.");
+        }
+
+        if (powers[index].Stacks <= 1)
+        {
+            powers.RemoveAt(index);
+        }
+        else
+        {
+            powers[index] = powers[index] with
+            {
+                Stacks = powers[index].Stacks - 1
+            };
+        }
+
+        return new PrototypeEnemyDebuffBlockResult(
+            enemy with { Powers = powers.ToArray() },
+            true);
     }
 
     private sealed record PrototypeDrawCardsResult(
