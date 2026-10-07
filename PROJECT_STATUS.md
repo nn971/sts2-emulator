@@ -482,3 +482,19 @@ turn-scoped power.
 The expanded potion pool now includes Blessing of the Forge, Speed Potion, Vulnerable Potion,
 Liquid Bronze, Ghost in a Jar, Fruit Juice, Blood Potion, and Entropic Brew. These intentionally
 favor broad strategic semantics over exact native RNG/timing parity.
+
+
+## Mechanics-expansion pass: run-event and card-add relics
+
+The run layer now has generic relic triggers for relic acquisition, entering a shop, and adding a
+card to the persistent deck. Run effects share the same typed heal, full-heal, max-HP, gold, and
+other player-state mutation substrate used by any-time potions.
+
+Old Coin, Mango, Lee's Waffle, Meal Ticket, Lucky Fysh, and Darkstone Periapt now exercise these
+hooks. Card addition is centralized, so reward, shop, and event additions compose with the same relic
+logic.
+
+Relics can also transform a card while it is entering the deck by card type. Molten Egg, Toxic Egg,
+and Frozen Egg use that generic modifier to upgrade newly added Attacks, Skills, and Powers
+respectively. Reward-option presentation is still simplified; the strategically relevant persistent
+card is upgraded on acquisition.
