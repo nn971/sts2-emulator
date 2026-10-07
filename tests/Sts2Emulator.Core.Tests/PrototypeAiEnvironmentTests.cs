@@ -79,6 +79,27 @@ public sealed class PrototypeAiEnvironmentTests
     }
 
     [Fact]
+    public void StepFrameReturnsTheSelectedActionAndNextPlayerFrame()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var state = environment.Reset("ai-step-frame-test");
+        var selected = Assert.Single(environment.Observe(state).LegalActions);
+
+        var stepped = environment.StepFrame(state, selected.ActionId);
+
+        Assert.Equal(selected.ActionId, stepped.Action.ActionId);
+        Assert.Equal(
+            CanonicalJson.Sha256(stepped.State),
+            stepped.Frame.CanonicalStateHash);
+        Assert.Equal(
+            environment.Observe(stepped.State).ObservationHash,
+            stepped.Frame.ObservationHash);
+        Assert.Equal(
+            environment.Observe(stepped.State).LegalActions.Length,
+            stepped.Frame.LegalActions.Length);
+    }
+
+    [Fact]
     public void ObservationExposesMapAndVisibleCombatWithoutRngOrDrawOrder()
     {
         var environment = new PrototypeAiEnvironment();
