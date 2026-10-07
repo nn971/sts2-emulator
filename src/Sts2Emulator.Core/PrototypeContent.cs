@@ -233,7 +233,7 @@ public static class PrototypeContent
                 "Shiv",
                 0,
                 PrototypeCardTarget.Enemy,
-                [new(PrototypeCombatEffectKind.DamageEnemy, 4)],
+                [new(PrototypeCombatEffectKind.DamageEnemy, 4, 2)],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Token,
                 RewardEligible: false,
