@@ -941,6 +941,62 @@ switch (args[0])
         break;
 }
 
+static GameAction AssertSingleAuditAction(
+    IReadOnlyList<GameAction> legal,
+    string boundary)
+{
+    if (legal.Count != 1)
+    {
+        throw new InvalidOperationException(
+            $"Overgrowth audit expected exactly one legal action at {boundary}, found {legal.Count}.");
+    }
+
+    return legal[0];
+}
+
+static RunState StartPrototypeAuditRoom(
+    PrototypeGameEngine engine,
+    RunState state,
+    PrototypeRoomType roomType,
+    int floor)
+{
+    var world = state.World
+        ?? throw new InvalidOperationException(
+            "Overgrowth audit state has no world.");
+
+    var node = new MapNodeState(
+        $"overgrowth-audit:{floor}:{roomType}:{state.DecisionIndex}",
+        Act: 1,
+        Floor: floor,
+        RoomType: roomType,
+        NextNodeIds: []);
+
+    state = state with
+    {
+        Phase = RunPhase.MapChoice,
+        World = world with
+        {
+            Act = 1,
+            Floor = Math.Max(0, floor - 1),
+            ActiveRoom = null,
+            Map = new MapState(
+                [node],
+                CurrentNodeId: null,
+                EntryNodeIds: [node.NodeId]),
+            Combat = null,
+            Reward = null,
+            Shop = null,
+            Event = null
+        }
+    };
+
+    return engine.Step(
+        state,
+        AssertSingleAuditAction(
+            engine.GetLegalActions(state),
+            $"{roomType} floor {floor}")).State;
+}
+
 static GameAction ChoosePrototypeAction(
     RunState state,
     IReadOnlyList<GameAction> legal)
