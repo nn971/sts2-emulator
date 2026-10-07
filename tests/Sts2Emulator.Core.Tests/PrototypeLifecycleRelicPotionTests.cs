@@ -19,7 +19,7 @@ public sealed class PrototypeLifecycleRelicPotionTests
             Player = state.Player with
             {
                 Hp = 50,
-                Relics:
+                Relics =
                 [
                     new RelicInstance("proto.relic.anchor", empty),
                     new RelicInstance("proto.relic.vajra", empty),
