@@ -14,11 +14,9 @@ public sealed class PrototypeSilentCardCatalogTests
         "Fan of Knives",
         "Flanking",
         "Knife Trap",
-        "Shadowmeld",
         "Sneaky",
         "The Hunt",
-        "Well-Laid Plans",
-        "Wraith Form"
+        "Well-Laid Plans"
     ];
 
     private static readonly string[] MultiplayerOnlyNames =

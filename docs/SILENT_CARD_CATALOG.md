@@ -88,7 +88,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 69 | Ricochet | implemented |  |
 | 70 | Serpent Form | implemented |  |
 | 71 | Shadow Step | implemented |  |
-| 72 | Shadowmeld | catalog-only |  |
+| 72 | Shadowmeld | implemented |  |
 | 73 | Skewer | implemented |  |
 | 74 | Slice | implemented |  |
 | 75 | Snakebite | implemented |  |
@@ -107,11 +107,11 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 88 | Untouchable | implemented |  |
 | 89 | Up My Sleeve | implemented |  |
 | 90 | Well-Laid Plans | catalog-only |  |
-| 91 | Wraith Form | catalog-only |  |
+| 91 | Wraith Form | implemented |  |
 
 ## Catalog-only implementation queue
 
-The 13 source-backed catalog-only cards are:
+The 11 source-backed catalog-only cards are:
 
 - Blade of Ink
 - Blade Symphony (multiplayer-only)
@@ -121,11 +121,9 @@ The 13 source-backed catalog-only cards are:
 - Fan of Knives
 - Flanking (multiplayer-only)
 - Knife Trap
-- Shadowmeld
 - Sneaky (multiplayer-only)
 - The Hunt
 - Well-Laid Plans
-- Wraith Form
 
 A useful implementation order is to start with cards expressible through existing generic
 primitives (for example Strangle, Outbreak, Calculated Gamble), then add mechanics that create

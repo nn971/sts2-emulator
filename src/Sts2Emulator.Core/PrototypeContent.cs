@@ -1491,10 +1491,14 @@ public static class PrototypeContent
                     1,
                     -1),
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.shadowmeld")
+                ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.sneaky",
                 "Sneaky",
@@ -1571,10 +1575,19 @@ public static class PrototypeContent
                 "Wraith Form",
                 3,
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        1,
+                        PowerId: "proto.power.intangible"),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.wraith_form")
+                ],
                 Rarity: PrototypeCardRarity.Ancient,
-                Type: PrototypeCardType.Power,
-                MechanicsImplemented: false)
+                Type: PrototypeCardType.Power)
         }.ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -1833,7 +1846,8 @@ public static class PrototypeContent
                 "Dexterity",
                 BlockBonusPerStack: 1,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
-                AllowNegative: true),
+                AllowNegative: true,
+                NegativeApplicationIsDebuff: true),
             new PrototypePowerDefinition(
                 "proto.power.accelerant",
                 "Accelerant",
@@ -1952,6 +1966,39 @@ public static class PrototypeContent
                 ],
                 IsInstanced: true,
                 RequiresCardPayload: true),
+            new PrototypePowerDefinition(
+                "proto.power.shadowmeld",
+                "Shadowmeld",
+                BlockBonusPerStack: 0,
+                Triggers:
+                    Array.Empty<PrototypePowerTriggerSpec>(),
+                RemoveAtPlayerTurnEnd: true,
+                PlayerBlockGainNumeratorPerStack: 2),
+            new PrototypePowerDefinition(
+                "proto.power.intangible",
+                "Intangible",
+                BlockBonusPerStack: 0,
+                Triggers:
+                    Array.Empty<PrototypePowerTriggerSpec>(),
+                PlayerIncomingDamageCap: 1,
+                DecrementAtEnemyTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.wraith_form",
+                "Wraith Form",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyPlayerPower,
+                                0,
+                                PowerId: "proto.power.dexterity",
+                                AmountPerPowerStack: -1)
+                        ])
+                ],
+                IsDebuff: true),
             new PrototypePowerDefinition(
                 "proto.power.shadow_step",
                 "Shadow Step",

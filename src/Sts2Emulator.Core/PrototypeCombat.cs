@@ -1071,9 +1071,12 @@ public sealed partial class PrototypeGameEngine
                     var definition =
                         PrototypeContent.Card(card.CardId);
                     var damage =
-                        Math.Max(
-                            0,
-                            definition.EndTurnDamageIfInHand);
+                        ApplyPlayerIncomingDamageCap(
+                            combat,
+                            Math.Max(
+                                0,
+                                definition
+                                    .EndTurnDamageIfInHand));
                     if (damage <= 0)
                     {
                         continue;
@@ -1196,6 +1199,16 @@ public sealed partial class PrototypeGameEngine
                 combat = ResolveEnemyStatusStage(
                     combat,
                     automaticStep.Stage.Value);
+                if (automaticStep.Stage.Value
+                    == PrototypeTurnStage.EnemyTurnEnd)
+                {
+                    combat = DecrementPlayerPowers(
+                        combat,
+                        definition =>
+                            definition
+                                .DecrementAtEnemyTurnEnd);
+                }
+
                 combat = ResolveEnemyDeathSummons(
                     combat,
                     state.Rng,
@@ -1902,14 +1915,17 @@ public sealed partial class PrototypeGameEngine
                                     / statusDefinition.OutgoingDamageDenominator;
                             }
 
-                            if (effect.IsAttack)
-                            {
-                                damage = ModifyIncomingPlayerAttackDamage(
+                            damage = effect.IsAttack
+                                ? ModifyIncomingPlayerAttackDamage(
+                                    combat,
+                                    damage)
+                                : ApplyPlayerIncomingDamageCap(
                                     combat,
                                     damage);
-                            }
 
-                            var absorbed = Math.Min(block, Math.Max(0, damage));
+                            var absorbed = Math.Min(
+                                block,
+                                Math.Max(0, damage));
                             block -= absorbed;
                             hp = Math.Max(0, hp - Math.Max(0, damage - absorbed));
                             break;
@@ -2526,11 +2542,11 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeCombatEffectKind.GainPlayerBlock:
                 {
                     var modifiedAmount =
-                        operation.SourceKind == PrototypeEffectSourceKind.Card
-                            ? ModifyPlayerCardBlock(
-                                combat,
-                                operation.Amount)
-                            : operation.Amount;
+                        ModifyPlayerBlockGain(
+                            combat,
+                            operation.Amount,
+                            operation.SourceKind
+                                == PrototypeEffectSourceKind.Card);
                     combat = combat with
                     {
                         PlayerBlock = combat.PlayerBlock
@@ -2557,11 +2573,11 @@ public sealed partial class PrototypeGameEngine
                     var baseAmount =
                         operation.Amount + statusTotal;
                     var modifiedAmount =
-                        operation.SourceKind == PrototypeEffectSourceKind.Card
-                            ? ModifyPlayerCardBlock(
-                                combat,
-                                baseAmount)
-                            : baseAmount;
+                        ModifyPlayerBlockGain(
+                            combat,
+                            baseAmount,
+                            operation.SourceKind
+                                == PrototypeEffectSourceKind.Card);
                     combat = combat with
                     {
                         PlayerBlock = combat.PlayerBlock
@@ -2579,11 +2595,11 @@ public sealed partial class PrototypeGameEngine
                     }
 
                     var modifiedAmount =
-                        operation.SourceKind == PrototypeEffectSourceKind.Card
-                            ? ModifyPlayerCardBlock(
-                                combat,
-                                operation.Amount)
-                            : operation.Amount;
+                        ModifyPlayerBlockGain(
+                            combat,
+                            operation.Amount,
+                            operation.SourceKind
+                                == PrototypeEffectSourceKind.Card);
                     var actualGain = Math.Max(0, modifiedAmount);
                     combat = combat with
                     {
@@ -2830,18 +2846,29 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.DamagePlayer:
                 {
+                    var incoming =
+                        ApplyPlayerIncomingDamageCap(
+                            combat,
+                            Math.Max(
+                                0,
+                                operation.Amount));
                     var absorbed = Math.Min(
                         combat.PlayerBlock,
-                        Math.Max(0, operation.Amount));
+                        incoming);
                     combat = combat with
                     {
-                        PlayerBlock = combat.PlayerBlock - absorbed
+                        PlayerBlock =
+                            combat.PlayerBlock
+                            - absorbed
                     };
                     player = player with
                     {
                         Hp = Math.Max(
                             0,
-                            player.Hp - Math.Max(0, operation.Amount - absorbed))
+                            player.Hp
+                            - Math.Max(
+                                0,
+                                incoming - absorbed))
                     };
                     break;
                 }
@@ -3421,6 +3448,47 @@ public sealed partial class PrototypeGameEngine
         combat.PlayerPowers.Sum(power =>
             PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
 
+    private static int ModifyPlayerBlockGain(
+        CombatState combat,
+        int amount,
+        bool fromCard)
+    {
+        var modified = fromCard
+            ? ModifyPlayerCardBlock(
+                combat,
+                amount)
+            : amount;
+
+        foreach (var power in combat.PlayerPowers
+                     .Where(power => power.Stacks > 0))
+        {
+            var definition =
+                PrototypeContent.Power(
+                    power.PowerId);
+            if (definition
+                    .PlayerBlockGainDenominatorPerStack
+                <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Power '{definition.Id}' has invalid all-block denominator.");
+            }
+
+            for (var stack = 0;
+                 stack < power.Stacks;
+                 stack++)
+            {
+                modified =
+                    (modified
+                     * definition
+                         .PlayerBlockGainNumeratorPerStack)
+                    / definition
+                        .PlayerBlockGainDenominatorPerStack;
+            }
+        }
+
+        return modified;
+    }
+
     private static int ModifyPlayerCardBlock(
         CombatState combat,
         int amount)
@@ -3463,6 +3531,23 @@ public sealed partial class PrototypeGameEngine
         return modified;
     }
 
+    private static int ApplyPlayerIncomingDamageCap(
+        CombatState combat,
+        int amount)
+    {
+        var caps = combat.PlayerPowers
+            .Where(power => power.Stacks > 0)
+            .Select(power =>
+                PrototypeContent.Power(power.PowerId)
+                    .PlayerIncomingDamageCap)
+            .Where(cap => cap > 0)
+            .ToArray();
+
+        return caps.Length == 0
+            ? amount
+            : Math.Min(amount, caps.Min());
+    }
+
     private static int ModifyIncomingPlayerAttackDamage(
         CombatState combat,
         int damage)
@@ -3483,7 +3568,9 @@ public sealed partial class PrototypeGameEngine
                 / definition.PlayerIncomingAttackDamageDenominator;
         }
 
-        return modified;
+        return ApplyPlayerIncomingDamageCap(
+            combat,
+            modified);
     }
 
     private static bool IsCardFreeByPower(
@@ -4213,7 +4300,11 @@ public sealed partial class PrototypeGameEngine
                 ? sourceEnemyInstanceId
                 : null;
 
-        if (definition.IsDebuff && stacks > 0)
+        var isDebuffApplication =
+            (definition.IsDebuff && stacks > 0)
+            || (definition.NegativeApplicationIsDebuff
+                && stacks < 0);
+        if (isDebuffApplication)
         {
             var blocked = TryBlockIncomingPlayerDebuff(combat);
             combat = blocked.Combat;
