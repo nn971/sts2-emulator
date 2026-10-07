@@ -65,9 +65,16 @@ public sealed partial class PrototypeGameEngine
             .Select((enemyId, index) =>
             {
                 var definition = PrototypeContent.Enemy(enemyId);
-                var hp = definition.HpAt(
+                var hpRange = definition.HpRangeAt(
                     world.Act,
                     state.Ascension);
+                var hp = hpRange.Min == hpRange.Max
+                    ? hpRange.Min
+                    : hpRange.Min
+                        + PrototypeRng.NextInt(
+                            state.Rng,
+                            "combat",
+                            hpRange.Max - hpRange.Min + 1);
                 var powers = (definition.StartingPowers ?? Array.Empty<PrototypeStartingPowerSpec>())
                     .Select(power =>
                     {
