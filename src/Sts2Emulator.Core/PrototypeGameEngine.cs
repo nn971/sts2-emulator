@@ -194,6 +194,11 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
                 case PrototypeRunEffectKind.FillPotionSlots:
                 {
+                    if (!CanAcquirePotion(player))
+                    {
+                        break;
+                    }
+
                     if (rng is null)
                     {
                         throw new InvalidOperationException(
@@ -450,6 +455,108 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     private static int FirstTurnDrawBonus(PlayerState player) =>
         player.Relics.Sum(relic => PrototypeContent.Relic(relic.RelicId).FirstTurnDrawBonus);
+
+    private static int RewardCardChoiceCount(PlayerState player) =>
+        Math.Max(
+            0,
+            3 + player.Relics.Sum(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .RewardCardChoiceBonus));
+
+    private static int ExtraNormalCombatCardRewardGroups(
+        PlayerState player) =>
+        Math.Max(
+            0,
+            player.Relics.Sum(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .ExtraNormalCombatCardRewardGroups));
+
+    private static bool CanAcquirePotion(PlayerState player) =>
+        !player.Relics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .PreventPotionAcquisition);
+
+    private static int ApplyShopPriceModifiers(
+        PlayerState player,
+        int basePrice)
+    {
+        long numerator = Math.Max(0, basePrice);
+        long denominator = 1;
+
+        foreach (var relic in player.Relics)
+        {
+            var definition =
+                PrototypeContent.Relic(relic.RelicId);
+            if (definition.ShopPriceNumerator < 0
+                || definition.ShopPriceDenominator <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Relic '{definition.Id}' has an invalid shop-price multiplier.");
+            }
+
+            numerator *= definition.ShopPriceNumerator;
+            denominator *= definition.ShopPriceDenominator;
+        }
+
+        return (int)Math.Max(
+            0,
+            numerator / denominator);
+    }
+
+    private static int ShopRemovalPrice(
+        PlayerState player,
+        int basePrice)
+    {
+        var overridePrices = player.Relics
+            .Select(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .ShopRemovalPriceOverride)
+            .Where(price => price is not null)
+            .Select(price => price!.Value)
+            .ToArray();
+        var undiscounted = overridePrices.Length == 0
+            ? basePrice
+            : overridePrices.Min();
+        return ApplyShopPriceModifiers(
+            player,
+            undiscounted);
+    }
+
+    private static ShopState RepriceShop(
+        ShopState shop,
+        PlayerState player)
+    {
+        ShopOffer Reprice(ShopOffer offer)
+        {
+            var basePrice = offer.UndiscountedPrice;
+            return offer with
+            {
+                Price = ApplyShopPriceModifiers(
+                    player,
+                    basePrice),
+                BasePrice = basePrice
+            };
+        }
+
+        var baseRemovalPrice =
+            shop.UndiscountedRemovalPrice;
+        return shop with
+        {
+            CardOffers = shop.CardOffers
+                .Select(Reprice)
+                .ToArray(),
+            PotionOffer = shop.PotionOffer is null
+                ? null
+                : Reprice(shop.PotionOffer),
+            RelicOffer = shop.RelicOffer is null
+                ? null
+                : Reprice(shop.RelicOffer),
+            RemovalPrice = ShopRemovalPrice(
+                player,
+                baseRemovalPrice),
+            BaseRemovalPrice = baseRemovalPrice
+        };
+    }
 
     private static PlayerState AppendCard(PlayerState player, long instanceId, string cardId)
     {
