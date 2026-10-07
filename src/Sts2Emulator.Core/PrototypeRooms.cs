@@ -640,6 +640,17 @@ public sealed partial class PrototypeGameEngine
         var reward = RequireWorld(state).Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
 
+        if (reward.PendingDeckChoice is { } deckChoice)
+        {
+            return deckChoice.CandidateCardInstanceIds
+                .Select(cardInstanceId =>
+                    GameAction.Create(
+                        "choose_relic_deck_card",
+                        new ChooseDeckCardPayload(
+                            cardInstanceId)))
+                .ToArray();
+        }
+
         if (!reward.CardResolved)
         {
             var actions = reward.CardOptions
@@ -714,7 +725,80 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
 
-        if (!reward.CardResolved)
+        if (reward.PendingDeckChoice is { } deckChoice)
+        {
+            RequireKind(
+                action,
+                "choose_relic_deck_card");
+            var payload =
+                action.ReadPayload<ChooseDeckCardPayload>();
+            if (!deckChoice.CandidateCardInstanceIds
+                    .Contains(payload.CardInstanceId))
+            {
+                throw new InvalidOperationException(
+                    $"Card instance {payload.CardInstanceId} is not eligible for the relic deck choice.");
+            }
+
+            var selectedCard =
+                player.Deck.FirstOrDefault(card =>
+                    card.InstanceId
+                        == payload.CardInstanceId)
+                ?? throw new InvalidOperationException(
+                    $"Card instance {payload.CardInstanceId} is missing.");
+
+            if (PrototypeContent.Card(
+                    selectedCard.CardId).Eternal)
+            {
+                throw new InvalidOperationException(
+                    $"Eternal card {payload.CardInstanceId} cannot be changed by this relic.");
+            }
+
+            player = deckChoice.Kind switch
+            {
+                PrototypePersistentDeckChoiceKind.Remove =>
+                    player with
+                    {
+                        Deck = player.Deck
+                            .Where(card =>
+                                card.InstanceId
+                                    != payload.CardInstanceId)
+                            .ToArray()
+                    },
+                PrototypePersistentDeckChoiceKind.Transform =>
+                    TransformPersistentDeckCard(
+                        player,
+                        payload.CardInstanceId,
+                        deckChoice.UpgradeTransformedCards,
+                        state.Rng),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+            var remainingCandidates =
+                deckChoice.CandidateCardInstanceIds
+                    .Where(id =>
+                        id != payload.CardInstanceId)
+                    .Where(id =>
+                        player.Deck.Any(card =>
+                            card.InstanceId == id))
+                    .ToArray();
+            var remainingSelections =
+                deckChoice.RemainingSelections - 1;
+            reward = reward with
+            {
+                PendingDeckChoice =
+                    remainingSelections > 0
+                    && remainingCandidates.Length > 0
+                        ? deckChoice with
+                        {
+                            RemainingSelections =
+                                remainingSelections,
+                            CandidateCardInstanceIds =
+                                remainingCandidates
+                        }
+                        : null
+            };
+        }
+        else if (!reward.CardResolved)
         {
             if (StringComparer.Ordinal.Equals(action.Kind, "take_reward_card"))
             {
@@ -838,7 +922,15 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId,
                 rng: state.Rng);
-            reward = reward with { RelicResolved = true };
+            var deckChoice =
+                CreateRelicDeckChoice(
+                    player,
+                    relicId);
+            reward = reward with
+            {
+                RelicResolved = true,
+                PendingDeckChoice = deckChoice
+            };
         }
         else
         {
@@ -1128,6 +1220,78 @@ public sealed partial class PrototypeGameEngine
         }
 
         return selected.ToArray();
+    }
+
+    private static PrototypePendingDeckChoiceState?
+        CreateRelicDeckChoice(
+            PlayerState player,
+            string relicId)
+    {
+        var spec =
+            PrototypeContent.Relic(relicId)
+                .AcquisitionDeckChoice;
+        if (spec is null || spec.Selections <= 0)
+        {
+            return null;
+        }
+
+        var candidates = player.Deck
+            .Where(card =>
+                !PrototypeContent.Card(card.CardId)
+                    .Eternal)
+            .Select(card => card.InstanceId)
+            .ToArray();
+        var selections =
+            Math.Min(spec.Selections, candidates.Length);
+        return selections <= 0
+            ? null
+            : new PrototypePendingDeckChoiceState(
+                relicId,
+                spec.Kind,
+                selections,
+                candidates,
+                spec.UpgradeTransformedCards);
+    }
+
+    private static PlayerState TransformPersistentDeckCard(
+        PlayerState player,
+        long cardInstanceId,
+        bool upgradeResult,
+        RngBundle rng)
+    {
+        var original = player.Deck
+            .Single(card =>
+                card.InstanceId == cardInstanceId);
+        var pool = PrototypeContent.RewardCardPool
+            .Where(cardId =>
+                !StringComparer.Ordinal.Equals(
+                    cardId,
+                    original.CardId))
+            .ToArray();
+        if (pool.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "No prototype card is available for transformation.");
+        }
+
+        var transformedCardId =
+            pool[PrototypeRng.NextInt(
+                rng,
+                "reward",
+                pool.Length)];
+        return player with
+        {
+            Deck = player.Deck
+                .Select(card =>
+                    card.InstanceId != cardInstanceId
+                        ? card
+                        : new CardInstance(
+                            card.InstanceId,
+                            transformedCardId,
+                            upgradeResult ? 1 : 0,
+                            PrototypeJson.EmptyObject()))
+                .ToArray()
+        };
     }
 
     private static string[] PickDistinct(
