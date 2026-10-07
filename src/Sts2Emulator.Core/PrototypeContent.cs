@@ -1976,7 +1976,10 @@ public static class PrototypeContent
                         [new PrototypeCombatEffectSpec(
                             PrototypeCombatEffectKind.GainPlayerBlock,
                             4)],
-                        EveryNth: 3)
+                        EveryNth: 3,
+                        RequiredSourceCardType:
+                            PrototypeCardType.Attack,
+                        ResetCounterEachTurn: true)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.nunchaku",
@@ -1988,7 +1991,9 @@ public static class PrototypeContent
                         [new PrototypeCombatEffectSpec(
                             PrototypeCombatEffectKind.GainEnergy,
                             1)],
-                        EveryNth: 4)
+                        EveryNth: 10,
+                        RequiredSourceCardType:
+                            PrototypeCardType.Attack)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.letter_opener",
@@ -2003,7 +2008,10 @@ public static class PrototypeContent
                                 5,
                                 Target: PrototypeEffectTarget.AllEnemies)
                         ],
-                        EveryNth: 3)
+                        EveryNth: 3,
+                        RequiredSourceCardType:
+                            PrototypeCardType.Skill,
+                        ResetCounterEachTurn: true)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.happy_flower",
@@ -2252,6 +2260,55 @@ public static class PrototypeContent
                             PrototypeCombatEffectKind.GainPlayerBlock,
                             18)],
                         TurnEquals: 3)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.kunai",
+                "Kunai",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [new(
+                            PrototypeCombatEffectKind.ApplyPlayerPower,
+                            1,
+                            PowerId: "proto.power.dexterity")],
+                        EveryNth: 3,
+                        RequiredSourceCardType:
+                            PrototypeCardType.Attack,
+                        ResetCounterEachTurn: true)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.shuriken",
+                "Shuriken",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [new(
+                            PrototypeCombatEffectKind.ApplyPlayerPower,
+                            1,
+                            PowerId: "proto.power.strength")],
+                        EveryNth: 3,
+                        RequiredSourceCardType:
+                            PrototypeCardType.Attack,
+                        ResetCounterEachTurn: true)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.ice_cream",
+                "Ice Cream",
+                PreserveUnusedEnergy: true),
+            new PrototypeRelicDefinition(
+                "proto.relic.art_of_war",
+                "Art of War",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [new(
+                            PrototypeCombatEffectKind.GainEnergy,
+                            1)],
+                        MinTurn: 2,
+                        MaxAttacksPlayedLastTurn: 0)
                 ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
@@ -5942,7 +5999,11 @@ public static class PrototypeContent
         "proto.relic.mercury_hourglass",
         "proto.relic.orichalcum",
         "proto.relic.horn_cleat",
-        "proto.relic.captains_wheel"
+        "proto.relic.captains_wheel",
+        "proto.relic.kunai",
+        "proto.relic.shuriken",
+        "proto.relic.ice_cream",
+        "proto.relic.art_of_war"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>
