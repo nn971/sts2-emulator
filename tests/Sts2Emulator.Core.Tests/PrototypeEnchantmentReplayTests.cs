@@ -5,6 +5,52 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class PrototypeEnchantmentReplayTests
 {
     [Fact]
+    public void CombatCreationCarriesPersistentEnchantmentAndResetsCombatUse()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create(
+            "enchantment-combat-start-test");
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state).Single()).State;
+
+        var persistent = state.Player.Deck[0] with
+        {
+            Enchantment = new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.Glam)
+        };
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck
+                    .Select(card =>
+                        card.InstanceId == persistent.InstanceId
+                            ? persistent
+                            : card)
+                    .ToArray()
+            }
+        };
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state).First()).State;
+
+        var combat = state.World!.Combat!;
+        var combatCard = combat.Cards.Single(
+            card => card.PersistentCardInstanceId
+                == persistent.InstanceId);
+
+        Assert.NotNull(combatCard.Enchantment);
+        Assert.Equal(
+            PrototypeCardEnchantmentKind.Glam,
+            combatCard.Enchantment!.Kind);
+        Assert.False(
+            combatCard.EnchantmentTriggeredThisCombat);
+    }
+
+    [Fact]
     public void SpiralAddsOneWholeCardReplay()
     {
         var defend = Card(
