@@ -3339,23 +3339,34 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         Func<PrototypePowerDefinition, bool> predicate)
     {
-        var decremented = combat.PlayerPowers
-            .Select(power =>
-            {
-                if (!predicate(PrototypeContent.Power(power.PowerId)))
-                {
-                    return power;
-                }
+        var powers = new List<PrototypePowerInstanceState>();
+        var removed = new List<PrototypePowerInstanceState>();
 
-                return power with { Stacks = power.Stacks - 1 };
-            })
-            .ToArray();
-        var powers = decremented
-            .Where(power => power.Stacks > 0)
-            .ToArray();
-        var removed = decremented
-            .Where(power => power.Stacks <= 0)
-            .ToArray();
+        foreach (var power in combat.PlayerPowers)
+        {
+            var definition =
+                PrototypeContent.Power(power.PowerId);
+            if (!predicate(definition))
+            {
+                powers.Add(power);
+                continue;
+            }
+
+            var next = power with
+            {
+                Stacks = power.Stacks - 1
+            };
+            if (next.Stacks == 0
+                || (next.Stacks < 0
+                    && !definition.AllowNegative))
+            {
+                removed.Add(next);
+            }
+            else
+            {
+                powers.Add(next);
+            }
+        }
 
         var clearKinds = removed
             .Select(power =>
