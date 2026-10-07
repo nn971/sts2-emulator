@@ -99,6 +99,12 @@ This produces the same passive bridge mod plus an `overgrowth-silent-act1.mode` 
 capture mode survives a normal Steam launch. Copy the staged `Sts2ReferenceBridge` folder into the
 instrumented game's `mods/` directory as usual.
 
+After copying or replacing the mod, **fully exit and relaunch STS2**. The recorder is initialized
+only when the mod loader starts. Before beginning the first run, verify that a fresh
+`overgrowth-silent-act1-*.jsonl` file already exists under `reference_traces/`; the file is
+created at recorder startup, before the first combat. If no fresh file exists, do not start the
+oracle run yet.
+
 Then play normal **Silent** runs through **Act 1 Overgrowth** and stop after the Act 1 boss (or
 after a defeat). Do not enable Loadout or other gameplay mods for this corpus.
 
