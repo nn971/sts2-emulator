@@ -727,6 +727,12 @@ public sealed record PrototypeEncounterEnemySpec(
     int FormationPosition,
     string? SlotName = null);
 
+public sealed record PrototypeEncounterSelectionGroup(
+    string[] EnemyPool,
+    int[] FormationPositions,
+    bool ChooseDistinct = false,
+    string[]? SlotNames = null);
+
 public sealed record PrototypeEncounterDefinition(
     string Id,
     PrototypeRoomType RoomType,
@@ -740,16 +746,19 @@ public sealed record PrototypeEncounterDefinition(
     PrototypeEncounterFormationPolicy FormationPolicy =
         PrototypeEncounterFormationPolicy.Fixed,
     string[]? EnemyPool = null,
-    int EnemyCount = 0)
+    int EnemyCount = 0,
+    PrototypeEncounterSelectionGroup[]? SelectionGroups = null)
 {
     public PrototypeEncounterEnemySpec[] FixedEnemySpecs =>
         Formation
-        ?? EnemyIds
-            .Select((enemyId, index) =>
-                new PrototypeEncounterEnemySpec(
-                    enemyId,
-                    index))
-            .ToArray();
+        ?? (SelectionGroups is { Length: > 0 }
+            ? Array.Empty<PrototypeEncounterEnemySpec>()
+            : EnemyIds
+                .Select((enemyId, index) =>
+                    new PrototypeEncounterEnemySpec(
+                        enemyId,
+                        index))
+                .ToArray());
 }
 
 public sealed record PrototypeStatusDefinition(
