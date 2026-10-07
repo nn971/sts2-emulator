@@ -196,7 +196,9 @@ The source-backed Act 1 monster-model set currently includes:
 - Assassin Raider;
 - Snapping Jaxfruit;
 - Mawler;
-- Toadpole.
+- Toadpole;
+- Leaf Slime (S);
+- Leaf Slime (M).
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -221,6 +223,13 @@ Formation-sensitive enemy AI is now represented explicitly as well. Enemy combat
 formation position; conditional AI states can test alone/front/not-front over living enemies.
 Toadpole is the first production user, with source-backed front/back openers and its fixed follow-up
 cycle. See `docs/reference-builds/v0.111.0-mechanics-gap-025.md`.
+
+Enemy moves can now create combat-local status cards directly in the discard pile. The shared
+insertion path preserves combat-card identity and active source-bound Afflictions such as Hex.
+`Slimed` is defined with its pinned 1-energy Draw-1/Exhaust semantics. Leaf Slime (S) uses its
+source-shaped random Tackle/Goop policy with no immediate repeats, while Leaf Slime (M) uses its
+Sticky Shot / Clump Shot alternation. See
+`docs/reference-builds/v0.111.0-mechanics-gap-026.md`.
 
 ## First live native capture
 
