@@ -890,7 +890,8 @@ public static class PrototypeContent
                         SelectedCardPower: new(
                             "proto.power.nightmare",
                             3,
-                            ClearAfflictionFromPayload: true))
+                            ClearAfflictionFromPayload: true,
+                            RestoreSuppressedUpgradesInPayload: true))
                 ],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Rare,
@@ -1661,6 +1662,16 @@ public static class PrototypeContent
                 BlockBonusPerStack: 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 BlocksNextDebuff: true),
+            new PrototypePowerDefinition(
+                "proto.power.dampen",
+                "Dampen",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                SourceBoundToEnemy: true,
+                DoesNotStack: true,
+                IsDebuff: true,
+                DowngradeExistingCardsOnApply: true,
+                RestoreDowngradedCardsWhenLastSourceRemoved: true),
             new PrototypePowerDefinition(
                 "proto.power.hex",
                 "Hex",
