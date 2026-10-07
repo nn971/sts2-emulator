@@ -132,11 +132,19 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     private static PlayerState ApplyPotionRunEffects(
         PlayerState player,
         PrototypePotionDefinition definition,
-        RngBundle rng)
+        RngBundle rng) =>
+        ApplyPlayerRunEffects(
+            player,
+            definition.RunEffects
+                ?? Array.Empty<PrototypeRunEffectSpec>(),
+            rng);
+
+    private static PlayerState ApplyPlayerRunEffects(
+        PlayerState player,
+        IEnumerable<PrototypeRunEffectSpec> effects,
+        RngBundle? rng = null)
     {
-        foreach (var effect in
-                 definition.RunEffects
-                 ?? Array.Empty<PrototypeRunEffectSpec>())
+        foreach (var effect in effects)
         {
             switch (effect.Kind)
             {
@@ -146,6 +154,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         Hp = Math.Min(
                             player.MaxHp,
                             player.Hp + effect.Amount)
+                    };
+                    break;
+
+                case PrototypeRunEffectKind.HealToFull:
+                    player = player with
+                    {
+                        Hp = player.MaxHp
                     };
                     break;
 
@@ -179,6 +194,12 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
                 case PrototypeRunEffectKind.FillPotionSlots:
                 {
+                    if (rng is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Filling potion slots requires an RNG bundle.");
+                    }
+
                     var slots =
                         (PotionInstance?[])
                         player.PotionSlots.Clone();
@@ -231,10 +252,59 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
                 case PrototypeRunEffectKind.AddCard:
                     throw new NotSupportedException(
-                        "Potion run effects do not currently create persistent cards.");
+                        "Generic run effects do not currently create persistent cards directly.");
 
                 default:
                     throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        return player;
+    }
+
+    private static PlayerState ApplyRelicRunEvent(
+        PlayerState player,
+        PrototypeRunEventKind eventKind,
+        CardInstance? addedCard = null,
+        string? acquiredRelicId = null,
+        RngBundle? rng = null)
+    {
+        foreach (var relic in player.Relics)
+        {
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && !StringComparer.Ordinal.Equals(
+                    relic.RelicId,
+                    acquiredRelicId))
+            {
+                continue;
+            }
+
+            var definition =
+                PrototypeContent.Relic(relic.RelicId);
+            foreach (var trigger in
+                     definition.RunTriggers
+                     ?? Array.Empty<PrototypeRelicRunTriggerSpec>())
+            {
+                if (trigger.EventKind != eventKind)
+                {
+                    continue;
+                }
+
+                if (trigger.RequiredCardType is not null)
+                {
+                    if (addedCard is null
+                        || PrototypeContent.Card(
+                            addedCard.CardId).Type
+                            != trigger.RequiredCardType.Value)
+                    {
+                        continue;
+                    }
+                }
+
+                player = ApplyPlayerRunEffects(
+                    player,
+                    trigger.Effects,
+                    rng);
             }
         }
 
@@ -383,14 +453,20 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     private static PlayerState AppendCard(PlayerState player, long instanceId, string cardId)
     {
-        var deck = player.Deck.Append(
-            new CardInstance(
-                instanceId,
-                cardId,
-                0,
-                PrototypeJson.EmptyObject())).ToArray();
+        var card = new CardInstance(
+            instanceId,
+            cardId,
+            0,
+            PrototypeJson.EmptyObject());
+        player = player with
+        {
+            Deck = player.Deck.Append(card).ToArray()
+        };
 
-        return player with { Deck = deck };
+        return ApplyRelicRunEvent(
+            player,
+            PrototypeRunEventKind.CardAdded,
+            addedCard: card);
     }
 
     private static RunState EndRun(RunState state, string outcome)
