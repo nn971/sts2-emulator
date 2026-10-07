@@ -568,7 +568,8 @@ public sealed record PrototypePowerDefinition(
     int EnemyHpLossCapPerTrigger = 0,
     bool ConsumeOnEnemyHpLoss = false,
     int EnemyAttackDamageBonusPerStack = 0,
-    int EnemyStrengthGainAtTurnEndPerStack = 0);
+    int EnemyStrengthGainAtTurnEndPerStack = 0,
+    int EnemyIncomingAttackDamagePercentPerCardPlayed = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -1171,6 +1172,7 @@ public sealed record PendingCombatChoiceState(
 }
 
 public sealed record PrototypeCombatCounters(
+    int CardsPlayedThisTurn = 0,
     int AttacksPlayedThisTurn = 0,
     int SkillsPlayedThisTurn = 0,
     int CardsDiscardedThisTurn = 0,
