@@ -88,6 +88,10 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 RemainingWeakEncounterIds:
                     (string[])PrototypeContent
                         .OvergrowthWeakEncounterPool
+                        .Clone(),
+                RemainingNormalEncounterIds:
+                    (string[])PrototypeContent
+                        .OvergrowthNormalEncounterPool
                         .Clone()));
 
         world = world with { Map = GenerateActMap(world.Act, rng) };
