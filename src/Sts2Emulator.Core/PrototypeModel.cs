@@ -698,7 +698,17 @@ public sealed record PrototypeEnemyMoveDefinition(
 
 public sealed record PrototypeStartingPowerSpec(
     string PowerId,
-    int Stacks);
+    int Stacks,
+    PrototypeAscensionDelta[]? AscensionDeltas = null)
+{
+    public int StacksAt(int ascension) =>
+        Stacks
+        + (AscensionDeltas
+            ?? Array.Empty<PrototypeAscensionDelta>())
+            .Where(delta =>
+                ascension >= delta.MinAscension)
+            .Sum(delta => delta.Delta);
+}
 
 public sealed record PrototypeEnemyDeathSummonSpec(
     string EnemyId,
