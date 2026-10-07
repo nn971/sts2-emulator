@@ -2325,17 +2325,20 @@ public static class PrototypeContent
         {
             new PrototypeStatusDefinition(
                 "proto.status.poison",
+                IsDebuff: true,
                 TriggerStage: PrototypeTurnStage.EnemyTurnStart,
                 TriggerKind: PrototypeStatusTriggerKind.DamageSelfByStacks,
                 DecayOnTrigger: 1),
             new PrototypeStatusDefinition(
                 "proto.status.weak",
+                IsDebuff: true,
                 DecayStage: PrototypeTurnStage.EnemyTurnEnd,
                 DecayAtStage: 1,
                 OutgoingDamageNumerator: 3,
                 OutgoingDamageDenominator: 4),
             new PrototypeStatusDefinition(
                 "proto.status.vulnerable",
+                IsDebuff: true,
                 DecayStage: PrototypeTurnStage.EnemyTurnEnd,
                 DecayAtStage: 1,
                 IncomingAttackDamageNumerator: 3,
