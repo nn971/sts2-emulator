@@ -266,6 +266,9 @@ Overgrowth encounter selection now has typed, forkable Act-1 region state. New w
 A branch reconciliation found additional Overgrowth work already present: Axe, Brute, Crossbow, and Tracker Ruby Raiders plus Cubex Construct all have source-backed definitions and focused tests. Together with Assassin Raider this makes the Ruby Raider monster family model-complete. Mawler Normal and Cubex Construct Normal now have weight-0 source-backed singleton formations, and Ruby Raiders is represented as three distinct choices from its five-raider pool. The twelve-entry Overgrowth normal encounter inventory is now explicit, but activation still waits for the remaining normal encounters. See
 `docs/reference-builds/v0.111.0-mechanics-gap-034.md`.
 
+Flyconid is now source-backed with its weighted initial choice (Frail Spores 2/3, Smash 1/3), weighted no-repeat main loop (Vulnerable Spores 3/6, Frail Spores 2/6, Smash 1/6), A8 HP and A9 damage scaling. This also promotes both Shroom and Slime and Overgrowth Flora to source-backed normal formations, bringing Overgrowth normal model+formation coverage to eight of twelve encounters. See
+`docs/reference-builds/v0.111.0-mechanics-gap-035.md`.
+
 Encounter construction now supports independent random slot groups with optional distinct selection.
 The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
 reference encounters: weak uses two different small slimes around one random medium slime; normal
