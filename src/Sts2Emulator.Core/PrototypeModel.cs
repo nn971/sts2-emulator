@@ -101,7 +101,9 @@ public sealed record PrototypeCombatCardSnapshot(
     int CombatEnergyCostDelta = 0,
     PrototypeTemporaryCardCost? TemporaryEnergyCost = null,
     PrototypeCardKeywordOverride[]? KeywordOverrides = null,
-    int ReplayCount = 0)
+    int ReplayCount = 0,
+    PrototypeCardEnchantment? Enchantment = null,
+    bool EnchantmentTriggeredThisCombat = false)
 {
     public PrototypeCombatCardSnapshot Fork() => this with
     {
@@ -677,7 +679,9 @@ public sealed record CombatCardInstance(
     int CombatEnergyCostDelta = 0,
     PrototypeTemporaryCardCost? TemporaryEnergyCost = null,
     PrototypeCardKeywordOverride[]? KeywordOverrides = null,
-    int ReplayCount = 0)
+    int ReplayCount = 0,
+    PrototypeCardEnchantment? Enchantment = null,
+    bool EnchantmentTriggeredThisCombat = false)
 {
     public CombatCardInstance Fork() => this with
     {
