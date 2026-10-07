@@ -271,11 +271,17 @@ public sealed class PrototypeExpandedShopTests
                 PrototypeContent.RulesetId,
                 PrototypeContent.CharacterId,
                 1,
-                0,
+                1,
                 1,
                 null,
                 new MapState(
                     [
+                        new MapNodeState(
+                            "entry",
+                            1,
+                            1,
+                            PrototypeRoomType.Combat,
+                            ["shop"]),
                         new MapNodeState(
                             "shop",
                             1,
@@ -283,7 +289,8 @@ public sealed class PrototypeExpandedShopTests
                             PrototypeRoomType.Shop,
                             [])
                     ],
-                    EntryNodeIds: ["shop"]),
+                    CurrentNodeId: "entry",
+                    EntryNodeIds: ["entry"]),
                 null,
                 null,
                 null,
