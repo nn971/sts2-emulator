@@ -2365,7 +2365,11 @@ public sealed partial class PrototypeGameEngine
                     SelectedCardKeyword: effect.SelectedCardKeyword,
                     DrawnCardKeyword: effect.DrawnCardKeyword,
                     EventSourceCardKeyword: effect.EventSourceCardKeyword,
-                    PowerCardPayload: powerCardPayload?.Fork()));
+                    PowerCardPayload: powerCardPayload?.Fork(),
+                    GeneratedCardEnchantment:
+                        effect.GeneratedCardEnchantment is null
+                            ? null
+                            : effect.GeneratedCardEnchantment with { }));
             }
         }
     }
@@ -3071,7 +3075,9 @@ public sealed partial class PrototypeGameEngine
                         new PrototypeCombatCardSnapshot(
                             operation.CardId,
                             operation.GeneratedCardUpgradeLevel,
-                            PrototypeJson.EmptyObject()),
+                            PrototypeJson.EmptyObject(),
+                            Enchantment:
+                                operation.GeneratedCardEnchantment),
                         operation.Amount);
                     break;
                 }
@@ -3406,6 +3412,13 @@ public sealed partial class PrototypeGameEngine
                     definition.Type == PrototypeCardType.Attack);
         }
 
+        EnqueueCardEnchantmentOperations(
+            operations,
+            card,
+            definition,
+            series.TargetEnemyId,
+            combat);
+
         var nextSeries = series with
         {
             NextPlayIndex = series.NextPlayIndex + 1
@@ -3722,6 +3735,39 @@ public sealed partial class PrototypeGameEngine
         return ApplyPlayerIncomingDamageCap(
             combat,
             modified);
+    }
+
+    private static void EnqueueCardEnchantmentOperations(
+        Queue<PrototypeQueuedOperation> operations,
+        CombatCardInstance card,
+        PrototypeCardDefinition definition,
+        int? actionTargetEnemyId,
+        CombatState combat)
+    {
+        if (card.Enchantment is not
+            {
+                Kind: PrototypeCardEnchantmentKind.Inky
+            } inky
+            || inky.Amount <= 0)
+        {
+            return;
+        }
+
+        var target = ShouldCardTargetAllEnemies(combat, definition)
+            ? PrototypeEffectTarget.AllEnemies
+            : PrototypeEffectTarget.ActionTargetEnemy;
+        EnqueueEffectOperations(
+            operations,
+            new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.ApplyEnemyStatus,
+                inky.Amount,
+                StatusId: "proto.status.weak",
+                Target: target),
+            upgradeLevel: 0,
+            energySpent: 0,
+            actionTargetEnemyId,
+            combat,
+            sourceKind: PrototypeEffectSourceKind.Card);
     }
 
     private static PrototypeCardTarget EffectiveCardTarget(

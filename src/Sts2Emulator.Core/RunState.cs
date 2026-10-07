@@ -5,7 +5,8 @@ namespace Sts2Emulator.Core;
 public enum PrototypeCardEnchantmentKind
 {
     Spiral,
-    Glam
+    Glam,
+    Inky
 }
 
 public sealed record PrototypeCardEnchantment(

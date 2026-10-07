@@ -1301,10 +1301,18 @@ public static class PrototypeContent
                 "Blade of Ink",
                 1,
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.CreateCardsInHand,
+                        2,
+                        1,
+                        CardId: "proto.silent.shiv",
+                        GeneratedCardEnchantment:
+                            new PrototypeCardEnchantment(
+                                PrototypeCardEnchantmentKind.Inky))
+                ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.blade_symphony",
                 "Blade Symphony",

@@ -440,7 +440,8 @@ public sealed record PrototypeCombatEffectSpec(
     PrototypeSelectedCardPowerSpec? SelectedCardPower = null,
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
     PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null,
-    PrototypeCardKeywordOverrideSpec? EventSourceCardKeyword = null)
+    PrototypeCardKeywordOverrideSpec? EventSourceCardKeyword = null,
+    PrototypeCardEnchantment? GeneratedCardEnchantment = null)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -470,7 +471,8 @@ public sealed record PrototypeQueuedOperation(
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
     PrototypeCardKeywordOverrideSpec? DrawnCardKeyword = null,
     PrototypeCardKeywordOverrideSpec? EventSourceCardKeyword = null,
-    PrototypeCombatCardSnapshot? PowerCardPayload = null);
+    PrototypeCombatCardSnapshot? PowerCardPayload = null,
+    PrototypeCardEnchantment? GeneratedCardEnchantment = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,

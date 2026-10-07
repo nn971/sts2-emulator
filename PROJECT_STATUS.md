@@ -384,3 +384,15 @@ Source-backed mechanics now include Echoing Slash's kill-propagating all-enemy a
 Fan of Knives' persistent Shiv all-enemy targeting plus 4 (5) generated Shivs, and
 Well-Laid Plans' end-turn whole-hand preservation with Ethereal still resolving first.
 These mechanics use generic power capabilities rather than card-ID branches.
+
+
+### Silent backlog pass: Blade of Ink
+
+Blade of Ink is now source-backed: it creates 2 (3 upgraded) Shivs carrying the Inky enchantment.
+Generated-card effects can attach a typed enchantment payload, and the generic card-play series
+runs Inky after the card's own effect body on every play/replay, matching the native CardModel
+ordering. Inky applies 1 Weak to the actual target set, including all living enemies when Fan of
+Knives promotes Shiv to all-enemy targeting.
+
+The active single-player Silent card backlog is now Knife Trap and The Hunt. Multiplayer-only
+cards remain intentionally out of scope.

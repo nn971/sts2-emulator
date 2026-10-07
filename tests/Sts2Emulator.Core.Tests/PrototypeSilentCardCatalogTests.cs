@@ -6,7 +6,6 @@ public sealed class PrototypeSilentCardCatalogTests
 {
     private static readonly string[] CatalogOnlyNames =
     [
-        "Blade of Ink",
         "Blade Symphony",
         "Concoct",
         "Fade",
