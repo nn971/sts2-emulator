@@ -31,6 +31,12 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
             Assert.IsType<string[]>(
                     pool.RemainingNormalEncounterIds)
                 .Order(StringComparer.Ordinal));
+        Assert.Equal(
+            PrototypeContent.OvergrowthEliteEncounterPool
+                .Order(StringComparer.Ordinal),
+            Assert.IsType<string[]>(
+                    pool.RemainingEliteEncounterIds)
+                .Order(StringComparer.Ordinal));
 
         PrototypeStateInvariants.Validate(state);
     }
@@ -90,7 +96,7 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
     }
 
     [Fact]
-    public void EliteDoesNotConsumeWeakEncounterQueue()
+    public void EliteDoesNotConsumeOrdinaryEncounterQueues()
     {
         var engine = new PrototypeGameEngine();
         var state = StartRun(
@@ -111,8 +117,69 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
             pool.RemainingWeakEncounterIds
                 .Order(StringComparer.Ordinal));
         Assert.Equal(
-            "proto.encounter.elite",
-            state.World.EncounterIds[^1]);
+            PrototypeContent.OvergrowthNormalEncounterPool
+                .Order(StringComparer.Ordinal),
+            pool.RemainingNormalEncounterIds!
+                .Order(StringComparer.Ordinal));
+        Assert.Contains(
+            state.World.EncounterIds[^1],
+            PrototypeContent.OvergrowthEliteEncounterPool);
+        Assert.Equal(
+            PrototypeContent.OvergrowthEliteEncounterPool.Length - 1,
+            pool.RemainingEliteEncounterIds!.Length);
+    }
+
+    [Fact]
+    public void FirstThreeElitesAreDistinctAndFourthCannotRepeatThird()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = StartRun(
+            "overgrowth-elite-bag",
+            engine);
+
+        var selected = new List<string>();
+        for (var eliteIndex = 0;
+             eliteIndex < 3;
+             eliteIndex++)
+        {
+            state = StartRoom(
+                engine,
+                state,
+                PrototypeRoomType.Elite,
+                floor: eliteIndex + 3);
+            selected.Add(state.World!.EncounterIds[^1]);
+
+            var pool = state.World.ActOneEncounterPool!;
+            Assert.Equal(
+                2 - eliteIndex,
+                pool.RemainingEliteEncounterIds!.Length);
+        }
+
+        Assert.Equal(
+            3,
+            selected.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(
+            selected,
+            id => Assert.Contains(
+                id,
+                PrototypeContent.OvergrowthEliteEncounterPool));
+
+        var third = selected[^1];
+        state = StartRoom(
+            engine,
+            state,
+            PrototypeRoomType.Elite,
+            floor: 6);
+        var fourth = state.World!.EncounterIds[^1];
+
+        Assert.NotEqual(third, fourth);
+        Assert.Contains(
+            fourth,
+            PrototypeContent.OvergrowthEliteEncounterPool);
+        Assert.Equal(
+            2,
+            state.World.ActOneEncounterPool!
+                .RemainingEliteEncounterIds!.Length);
     }
 
     [Fact]
@@ -208,6 +275,19 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
                 .RemainingNormalEncounterIds,
             branch.World.ActOneEncounterPool
                 .RemainingNormalEncounterIds);
+        Assert.Equal(
+            PrototypeContent.OvergrowthEliteEncounterPool.Length,
+            original.World.ActOneEncounterPool
+                .RemainingEliteEncounterIds!.Length);
+        Assert.Equal(
+            PrototypeContent.OvergrowthEliteEncounterPool.Length,
+            branch.World.ActOneEncounterPool
+                .RemainingEliteEncounterIds!.Length);
+        Assert.NotSame(
+            original.World.ActOneEncounterPool
+                .RemainingEliteEncounterIds,
+            branch.World.ActOneEncounterPool
+                .RemainingEliteEncounterIds);
     }
 
     [Fact]
