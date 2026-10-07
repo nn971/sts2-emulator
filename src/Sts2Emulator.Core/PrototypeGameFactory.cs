@@ -2,8 +2,15 @@ namespace Sts2Emulator.Core;
 
 public static class PrototypeGameFactory
 {
-    public static RunState Create(string seed)
+    public static RunState Create(
+        string seed,
+        int ascension = 0)
     {
+        if (ascension < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(ascension));
+        }
         var empty = PrototypeJson.EmptyObject();
         return new RunState(
             GameBuild: "prototype-unbound",
@@ -21,6 +28,7 @@ public static class PrototypeGameFactory
                 PotionSlots: Array.Empty<PotionInstance?>()),
             Rng: RngBundle.Empty,
             ExtensionState: empty,
-            World: null);
+            World: null,
+            Ascension: ascension);
     }
 }
