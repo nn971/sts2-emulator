@@ -3,7 +3,7 @@ namespace Sts2ReferenceBridge;
 internal static class BridgeWorkspace
 {
     public const string TraceSchema = "0.2";
-    public const string ProbeSchema = "sts2-reference-probe-v2";
+    public const string ProbeSchema = "sts2-reference-probe-v3";
 
     // User-audited oracle build:
     // STS2 v0.111.0, commit 41cef1ea.
