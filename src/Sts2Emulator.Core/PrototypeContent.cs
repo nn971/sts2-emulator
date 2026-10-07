@@ -5394,6 +5394,80 @@ public static class PrototypeContent
                 MinAct: 2,
                 Weight: 2),
             new PrototypeEventDefinition(
+                "proto.event.forgotten_altar",
+                "Forgotten Altar",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "purge",
+                        "Pay 50 gold to purge a card",
+                        [
+                            new(
+                                PrototypeRunEffectKind.LoseGold,
+                                50)
+                        ],
+                        DeckChoice:
+                            new PrototypeEventDeckChoiceSpec(
+                                PrototypePersistentDeckChoiceKind.Remove,
+                                1)),
+                    new PrototypeEventChoiceDefinition(
+                        "refine",
+                        "Lose 7 HP to upgrade a card",
+                        [
+                            new(
+                                PrototypeRunEffectKind.LoseHp,
+                                7)
+                        ],
+                        DeckChoice:
+                            new PrototypeEventDeckChoiceSpec(
+                                PrototypePersistentDeckChoiceKind.Upgrade,
+                                1)),
+                    new PrototypeEventChoiceDefinition(
+                        "leave",
+                        "Leave with the loose coins",
+                        [
+                            new(
+                                PrototypeRunEffectKind.GainGold,
+                                20)
+                        ])
+                ],
+                Weight: 2),
+            new PrototypeEventDefinition(
+                "proto.event.warped_mirror",
+                "Warped Mirror",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "reshape",
+                        "Lose 9 HP to transform two cards",
+                        [
+                            new(
+                                PrototypeRunEffectKind.LoseHp,
+                                9)
+                        ],
+                        DeckChoice:
+                            new PrototypeEventDeckChoiceSpec(
+                                PrototypePersistentDeckChoiceKind.Transform,
+                                2)),
+                    new PrototypeEventChoiceDefinition(
+                        "polish",
+                        "Pay 35 gold to transform and upgrade one card",
+                        [
+                            new(
+                                PrototypeRunEffectKind.LoseGold,
+                                35)
+                        ],
+                        DeckChoice:
+                            new PrototypeEventDeckChoiceSpec(
+                                PrototypePersistentDeckChoiceKind.Transform,
+                                1,
+                                UpgradeTransformedCards: true)),
+                    new PrototypeEventChoiceDefinition(
+                        "ignore",
+                        "Ignore the mirror",
+                        [])
+                ],
+                MinAct: 2,
+                Weight: 2),
+            new PrototypeEventDefinition(
                 "proto.event.gambling_den",
                 "Gambling Den",
                 [
