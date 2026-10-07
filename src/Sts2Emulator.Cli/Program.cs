@@ -12,6 +12,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Drive the restrictive Silent prototype to terminal state");
     Console.WriteLine("  prototype-sweep [n] [ascension]");
     Console.WriteLine("                          Run a deterministic smoke policy over many seeds");
+    Console.WriteLine("  prototype-overgrowth-audit [n] [ascension]");
+    Console.WriteLine("                          Audit seeded Overgrowth encounter/boss coverage");
     Console.WriteLine("  prototype-manifest     Print the machine-readable prototype capability manifest");
     Console.WriteLine("  prototype-ai-jsonl     Run the long-lived prototype AI JSONL bridge on stdin/stdout");
     Console.WriteLine("  reference-preflight <game-dir> [data-dir]");
@@ -578,6 +580,161 @@ switch (args[0])
         Console.WriteLine($"HP: {state.Player.Hp}/{state.Player.MaxHp}");
         Console.WriteLine($"Deck: {state.Player.Deck.Length} cards");
         Console.WriteLine($"Phases seen: {string.Join(", ", phases.OrderBy(phase => phase))}");
+        break;
+    }
+
+    case "prototype-overgrowth-audit":
+    {
+        var runCount = 100;
+        if (args.Length >= 2
+            && (!int.TryParse(args[1], out runCount)
+                || runCount <= 0))
+        {
+            throw new ArgumentException(
+                "prototype-overgrowth-audit count must be a positive integer.");
+        }
+
+        var ascension = 0;
+        if (args.Length >= 3
+            && (!int.TryParse(args[2], out ascension)
+                || ascension < 0))
+        {
+            throw new ArgumentException(
+                "prototype-overgrowth-audit ascension must be a non-negative integer.");
+        }
+
+        var overgrowthEncounterIds =
+            PrototypeContent.OvergrowthWeakEncounterPool
+                .Concat(PrototypeContent.OvergrowthNormalEncounterPool)
+                .Concat(PrototypeContent.OvergrowthEliteEncounterPool)
+                .Concat(PrototypeContent.OvergrowthBossEncounterPool)
+                .ToHashSet(StringComparer.Ordinal);
+        var encounterCounts =
+            overgrowthEncounterIds.ToDictionary(
+                id => id,
+                _ => 0,
+                StringComparer.Ordinal);
+        var bossCounts =
+            PrototypeContent.OvergrowthBossEncounterPool
+                .ToDictionary(
+                    id => id,
+                    _ => 0,
+                    StringComparer.Ordinal);
+        var runsLeavingActOne = 0;
+        var weakSequenceViolations = 0;
+
+        for (var runIndex = 0;
+             runIndex < runCount;
+             runIndex++)
+        {
+            var seed = $"overgrowth-audit-{runIndex}";
+            var engine = new PrototypeGameEngine();
+            var state = PrototypeGameFactory.Create(
+                seed,
+                ascension);
+            string? selectedBoss = null;
+
+            for (var step = 0;
+                 step < 5_000
+                 && state.Phase != RunPhase.Terminal;
+                 step++)
+            {
+                var legal = engine.GetLegalActions(state);
+                if (legal.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Overgrowth audit stuck on seed {seed} in {state.Phase}.");
+                }
+
+                state = engine.Step(
+                    state,
+                    ChoosePrototypeAction(state, legal)).State;
+                PrototypeStateInvariants.Validate(state);
+
+                selectedBoss ??=
+                    state.World?.ActOneEncounterPool
+                        ?.BossEncounterId;
+            }
+
+            if (state.Phase != RunPhase.Terminal)
+            {
+                throw new InvalidOperationException(
+                    $"Overgrowth audit seed {seed} exceeded 5,000 decisions.");
+            }
+
+            if (selectedBoss is null)
+            {
+                throw new InvalidOperationException(
+                    $"Overgrowth audit seed {seed} never selected an Act 1 boss.");
+            }
+
+            bossCounts[selectedBoss] =
+                bossCounts.GetValueOrDefault(selectedBoss) + 1;
+
+            var world = state.World
+                ?? throw new InvalidOperationException(
+                    "Terminal prototype run has no world state.");
+            if (world.Act > 1)
+            {
+                runsLeavingActOne++;
+            }
+
+            foreach (var encounterId in world.EncounterIds)
+            {
+                if (encounterCounts.ContainsKey(encounterId))
+                {
+                    encounterCounts[encounterId]++;
+                }
+            }
+
+            var weakSeen = world.EncounterIds
+                .Where(id =>
+                    PrototypeContent.OvergrowthWeakEncounterPool
+                        .Contains(id, StringComparer.Ordinal))
+                .Take(3)
+                .ToArray();
+            if (weakSeen.Length != weakSeen
+                    .Distinct(StringComparer.Ordinal)
+                    .Count())
+            {
+                weakSequenceViolations++;
+            }
+        }
+
+        var covered = encounterCounts
+            .Count(item => item.Value > 0);
+        var missing = encounterCounts
+            .Where(item => item.Value == 0)
+            .Select(item => item.Key)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Console.WriteLine($"Runs: {runCount}");
+        Console.WriteLine($"Ascension: {ascension}");
+        Console.WriteLine(
+            $"Overgrowth encounter coverage: {covered}/{overgrowthEncounterIds.Count}");
+        Console.WriteLine(
+            $"Runs leaving Act 1: {runsLeavingActOne}/{runCount}");
+        Console.WriteLine(
+            $"Weak no-replacement violations: {weakSequenceViolations}");
+        Console.WriteLine("Boss selections:");
+        foreach (var item in bossCounts.OrderBy(item => item.Key))
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        Console.WriteLine("Encounter counts:");
+        foreach (var item in encounterCounts
+                     .OrderByDescending(item => item.Value)
+                     .ThenBy(item => item.Key))
+        {
+            Console.WriteLine($"  {item.Key}: {item.Value}");
+        }
+
+        Console.WriteLine(
+            missing.Length == 0
+                ? "Missing encounters: none"
+                : $"Missing encounters: {string.Join(", ", missing)}");
         break;
     }
 
