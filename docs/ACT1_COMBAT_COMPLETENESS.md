@@ -28,9 +28,10 @@ An encounter is not complete merely because all of its monster classes exist. Co
 - source-shaped move/random AI state graphs with weighted branches and typed repeat rules;
 - per-move consecutive-use limits plus total move-use accounting;
 - enemy self-powers and flat Strength attack scaling;
+- timed player Vulnerable / Weak / Frail with attack/card-Block multipliers;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
-- first source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, and **Snapping Jaxfruit** (isolated models; encounter pools not yet promoted).
+- first source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, and **Mawler** (isolated models; encounter pools not yet promoted).
 
 ## Encounter coverage
 
@@ -114,7 +115,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `LEAF_SLIME_M` — Leaf Slime (M) | Normal | 32–35 | 33–36 | cycle | not started |
 | `LEAF_SLIME_S` — Leaf Slime (S) | Normal | 11–15 | 12–16 | random | not started |
 | `LIVING_FOG` — Living Fog | Normal | 80 | 82 | cycle | not started |
-| `MAWLER` — Mawler | Normal | 72 | 76 | random | not started |
+| `MAWLER` — Mawler | Normal | 72 | 76 | random | implemented + focused tests |
 | `NIBBIT` — Nibbit | Normal | 42–46 | 44–48 | conditional | not started |
 | `PHANTASMAL_GARDENER` — Phantasmal Gardener | Elite | 26–31 | 27–32 | conditional | not started |
 | `PHROG_PARASITE` — Phrog Parasite | Elite | 61–64 | 66–68 | random | not started |
