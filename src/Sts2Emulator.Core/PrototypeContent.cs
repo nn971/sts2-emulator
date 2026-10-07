@@ -95,6 +95,20 @@ public static class PrototypeContent
         new[]
         {
             new PrototypeCardDefinition(
+                "proto.status.slimed",
+                "Slimed",
+                1,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DrawCards,
+                        1)
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Status,
+                RewardEligible: false,
+                Type: PrototypeCardType.Status),
+            new PrototypeCardDefinition(
                 "proto.silent.strike",
                 "Strike",
                 1,
@@ -2581,6 +2595,100 @@ public static class PrototypeContent
                                         .IsFront)
                             ])
                     ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.leaf_slime_s",
+                "Leaf Slime (S)",
+                15,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "tackle",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                3,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "goop",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.AddCardsToDiscard,
+                                1,
+                                CardId: "proto.status.slimed")
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 11,
+                Ai: new PrototypeEnemyAiDefinition(
+                    "rand",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "tackle_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "goop_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "rand",
+                            PrototypeEnemyAiStateKind.Random,
+                            Branches:
+                            [
+                                new(
+                                    "tackle_move",
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat),
+                                new(
+                                    "goop_move",
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat)
+                            ])
+                    ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.leaf_slime_m",
+                "Leaf Slime (M)",
+                35,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "sticky_shot",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.AddCardsToDiscard,
+                                2,
+                                CardId: "proto.status.slimed")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "clump_shot",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                8,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 32),
             new PrototypeEnemyDefinition(
                 "proto.enemy.twig_slime_s",
                 "Twig Slime (S)",
