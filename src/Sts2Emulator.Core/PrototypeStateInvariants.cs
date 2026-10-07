@@ -331,8 +331,12 @@ public static class PrototypeStateInvariants
 
         var offerIds = shop.CardOffers
             .Select(offer => offer.OfferId)
-            .Concat(shop.PotionOffer is null ? [] : [shop.PotionOffer.OfferId])
-            .Concat(shop.RelicOffer is null ? [] : [shop.RelicOffer.OfferId])
+            .Concat(
+                shop.PotionOffers.Select(
+                    offer => offer.OfferId))
+            .Concat(
+                shop.RelicOffers.Select(
+                    offer => offer.OfferId))
             .ToArray();
 
         if (offerIds.Length != offerIds.Distinct().Count())
@@ -352,19 +356,45 @@ public static class PrototypeStateInvariants
             }
         }
 
-        if (shop.PotionOffer is { } potion)
+        if (shop.PotionOffers
+            .Select(offer => offer.ItemId)
+            .Distinct(StringComparer.Ordinal)
+            .Count()
+            != shop.PotionOffers.Length)
         {
-            if (potion.Price <= 0 || !PrototypeContent.Potions.ContainsKey(potion.ItemId))
+            throw new InvalidOperationException(
+                "Shop contains duplicate potion offers.");
+        }
+
+        foreach (var potion in shop.PotionOffers)
+        {
+            if (potion.Price <= 0
+                || !PrototypeContent.Potions.ContainsKey(
+                    potion.ItemId))
             {
-                throw new InvalidOperationException("Shop contains an invalid potion offer.");
+                throw new InvalidOperationException(
+                    "Shop contains an invalid potion offer.");
             }
         }
 
-        if (shop.RelicOffer is { } relic)
+        if (shop.RelicOffers
+            .Select(offer => offer.ItemId)
+            .Distinct(StringComparer.Ordinal)
+            .Count()
+            != shop.RelicOffers.Length)
         {
-            if (relic.Price <= 0 || !PrototypeContent.Relics.ContainsKey(relic.ItemId))
+            throw new InvalidOperationException(
+                "Shop contains duplicate relic offers.");
+        }
+
+        foreach (var relic in shop.RelicOffers)
+        {
+            if (relic.Price <= 0
+                || !PrototypeContent.Relics.ContainsKey(
+                    relic.ItemId))
             {
-                throw new InvalidOperationException("Shop contains an invalid relic offer.");
+                throw new InvalidOperationException(
+                    "Shop contains an invalid relic offer.");
             }
         }
     }
