@@ -1357,8 +1357,7 @@ public static class PrototypeContent
                     new(
                         PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill,
                         10,
-                        3,
-                        Target: PrototypeEffectTarget.AllEnemies)
+                        3)
                 ],
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Attack),
