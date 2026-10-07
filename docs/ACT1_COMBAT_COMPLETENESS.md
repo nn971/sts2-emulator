@@ -55,7 +55,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | yes | yes | pending | no |
 | Overgrowth | Monster | `FOGMOG_NORMAL` | `EYE_WITH_TEETH`, `FOGMOG` | no | pending | pending | no |
 | Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | yes | yes | yes | no |
-| Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | no | pending | pending | no |
+| Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | yes | yes | pending | no |
 | Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | yes | yes | pending | no |
 | Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | yes | yes | yes | no |
@@ -118,7 +118,7 @@ formations but still await the normal-pool translation.
 | `GAS_BOMB` — Gas Bomb | Normal | 7 | 8 | cycle | not started |
 | `GREMLIN_MERC` — Gremlin Merc | Normal | 47–49 | 51–53 | cycle | not started |
 | `HAUNTED_SHIP` — Haunted Ship | Normal | 63 | 67 | cycle | not started |
-| `INKLET` — Inklet | Normal | 11–17 | 12–18 | random | not started |
+| `INKLET` — Inklet | Normal | 11–17 | 12–18 | random | implemented + focused tests |
 | `KIN_FOLLOWER` — Kin Follower | Boss | 58–59 | 62–63 | cycle | not started |
 | `KIN_PRIEST` — Kin Priest | Boss | 190 | 199 | cycle | not started |
 | `LAGAVULIN_MATRIARCH` — Lagavulin Matriarch | Boss | 222 | 233 | conditional | not started |
