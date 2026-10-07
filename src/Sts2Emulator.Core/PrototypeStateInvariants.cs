@@ -139,8 +139,13 @@ public static class PrototypeStateInvariants
             case RunPhase.Event:
                 if (world.Event is null)
                 {
-                    throw new InvalidOperationException("Event phase has no event state.");
+                    throw new InvalidOperationException(
+                        "Event phase has no event state.");
                 }
+
+                ValidateEvent(
+                    state.Player,
+                    world.Event);
                 break;
 
             case RunPhase.Rest:
@@ -318,6 +323,102 @@ public static class PrototypeStateInvariants
             {
                 throw new InvalidOperationException(
                     "Active event disagrees with the latest event-history entry.");
+            }
+        }
+    }
+
+    private static void ValidateEvent(
+        PlayerState player,
+        EventState eventState)
+    {
+        var definition =
+            PrototypeContent.Event(
+                eventState.EventId);
+
+        if (eventState.ChosenChoiceId is null)
+        {
+            if (eventState.PendingDeckChoice is not null)
+            {
+                throw new InvalidOperationException(
+                    "Pending event deck choice has no chosen event option.");
+            }
+
+            return;
+        }
+
+        var choice = definition.Choices
+            .FirstOrDefault(item =>
+                StringComparer.Ordinal.Equals(
+                    item.Id,
+                    eventState.ChosenChoiceId))
+            ?? throw new InvalidOperationException(
+                "Event state references an unknown chosen option.");
+
+        var pending =
+            eventState.PendingDeckChoice;
+        if (pending is null)
+        {
+            throw new InvalidOperationException(
+                "Resolved event choice should not remain in Event phase without a pending deck choice.");
+        }
+
+        var spec = choice.DeckChoice
+            ?? throw new InvalidOperationException(
+                "Pending event deck choice source option has no deck-choice specification.");
+        if (!StringComparer.Ordinal.Equals(
+                pending.ChoiceId,
+                choice.Id)
+            || pending.Kind != spec.Kind
+            || pending.UpgradeTransformedCards
+                != spec.UpgradeTransformedCards)
+        {
+            throw new InvalidOperationException(
+                "Pending event deck choice disagrees with its source option.");
+        }
+
+        if (pending.RemainingSelections <= 0
+            || pending.CandidateCardInstanceIds.Length
+                < pending.RemainingSelections)
+        {
+            throw new InvalidOperationException(
+                "Pending event deck choice has an invalid selection count.");
+        }
+
+        if (pending.CandidateCardInstanceIds.Length
+            != pending.CandidateCardInstanceIds
+                .Distinct()
+                .Count())
+        {
+            throw new InvalidOperationException(
+                "Pending event deck choice contains duplicate card instances.");
+        }
+
+        foreach (var cardInstanceId in
+                 pending.CandidateCardInstanceIds)
+        {
+            var card = player.Deck
+                .FirstOrDefault(item =>
+                    item.InstanceId
+                        == cardInstanceId)
+                ?? throw new InvalidOperationException(
+                    $"Pending event deck choice references missing card {cardInstanceId}.");
+
+            if (pending.Kind is
+                    PrototypePersistentDeckChoiceKind.Remove
+                    or PrototypePersistentDeckChoiceKind.Transform
+                && PrototypeContent.Card(card.CardId)
+                    .Eternal)
+            {
+                throw new InvalidOperationException(
+                    "Pending event deck choice includes an Eternal card.");
+            }
+
+            if (pending.Kind
+                    == PrototypePersistentDeckChoiceKind.Upgrade
+                && card.UpgradeLevel != 0)
+            {
+                throw new InvalidOperationException(
+                    "Pending event upgrade choice includes an already-upgraded card.");
             }
         }
     }
