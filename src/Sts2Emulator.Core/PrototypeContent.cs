@@ -1722,7 +1722,11 @@ public static class PrototypeContent
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.DamagePlayer,
                                 9,
-                                Repetitions: 2)
+                                Repetitions: 2,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
                         ],
                         MaxConsecutiveUses: 2),
                     new PrototypeEnemyMoveDefinition(
@@ -1730,13 +1734,21 @@ public static class PrototypeContent
                         [
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.DamagePlayer,
-                                15)
+                                15,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
                         ],
                         MaxConsecutiveUses: 2)
                 ],
                 MovePolicy:
                     PrototypeEnemyMovePolicy.UniformRandomAfterOpener,
-                OpeningMoveIndex: 2),
+                OpeningMoveIndex: 2,
+                HpAscensionDeltas:
+                [
+                    new(8, 7)
+                ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.magi_knight",
                 "Magi Knight",
@@ -1748,10 +1760,18 @@ public static class PrototypeContent
                         [
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.DamagePlayer,
-                                6),
+                                6,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.GainBlock,
-                                5)
+                                5,
+                                AscensionDeltas:
+                                [
+                                    new(8, 4)
+                                ])
                         ]),
                     new PrototypeEnemyMoveDefinition(
                         "dampen",
@@ -1766,24 +1786,40 @@ public static class PrototypeContent
                         [
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.DamagePlayer,
-                                10)
+                                10,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
                         ]),
                     new PrototypeEnemyMoveDefinition(
                         "prep",
                         [
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.GainBlock,
-                                5)
+                                5,
+                                AscensionDeltas:
+                                [
+                                    new(8, 4)
+                                ])
                         ]),
                     new PrototypeEnemyMoveDefinition(
                         "magic_bomb",
                         [
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.DamagePlayer,
-                                35)
+                                35,
+                                AscensionDeltas:
+                                [
+                                    new(9, 5)
+                                ])
                         ])
                 ],
-                MoveLoopStartIndex: 2),
+                MoveLoopStartIndex: 2,
+                HpAscensionDeltas:
+                [
+                    new(8, 7)
+                ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.spectral_knight",
                 "Spectral Knight",
@@ -1803,7 +1839,11 @@ public static class PrototypeContent
                         [
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.DamagePlayer,
-                                15)
+                                15,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
                         ]),
                     new PrototypeEnemyMoveDefinition(
                         "soul_flame",
@@ -1811,10 +1851,18 @@ public static class PrototypeContent
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.DamagePlayer,
                                 3,
-                                Repetitions: 3)
+                                Repetitions: 3,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
                         ])
                 ],
-                MoveLoopStartIndex: 1),
+                MoveLoopStartIndex: 1,
+                HpAscensionDeltas:
+                [
+                    new(8, 4)
+                ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.crawler",
                 "Crawler",
