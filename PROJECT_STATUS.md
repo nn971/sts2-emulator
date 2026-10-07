@@ -204,7 +204,12 @@ The source-backed Act 1 monster-model set currently includes:
 - Twig Slime (M);
 - Nibbit;
 - Fuzzy Wurm Crawler;
-- Shrinker Beetle.
+- Shrinker Beetle;
+- Axe Raider;
+- Brute Raider;
+- Crossbow Raider;
+- Tracker Raider;
+- Cubex Construct.
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -257,6 +262,9 @@ Shrinker Beetle now adds the source-bound Shrink lifecycle: a non-stacking playe
 
 Overgrowth encounter selection now has typed, forkable Act-1 region state. New whole runs default to Overgrowth; the first three ordinary combats consume three distinct encounters from the native four-entry weak pool while elites and other room types leave that queue untouched. The selected region is exposed to the AI observation, while exact native encounter RNG parity remains separate. See
 `docs/reference-builds/v0.111.0-mechanics-gap-033.md`.
+
+A branch reconciliation found additional Overgrowth work already present: Axe, Brute, Crossbow, and Tracker Ruby Raiders plus Cubex Construct all have source-backed definitions and focused tests. Together with Assassin Raider this makes the Ruby Raider monster family model-complete. Mawler Normal and Cubex Construct Normal now also have weight-0 source-backed singleton formations; Ruby Raiders still await exact formation/slot construction. See
+`docs/reference-builds/v0.111.0-mechanics-gap-034.md`.
 
 Encounter construction now supports independent random slot groups with optional distinct selection.
 The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
