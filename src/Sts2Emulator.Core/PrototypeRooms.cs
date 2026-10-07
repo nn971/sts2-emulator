@@ -533,18 +533,27 @@ public sealed partial class PrototypeGameEngine
 
     private static IReadOnlyList<GameAction> GetRestActions(RunState state)
     {
-        var actions = new List<GameAction> { GameAction.Empty("rest_heal") };
+        var actions = new List<GameAction>();
+        if (CanRestHeal(state.Player))
+        {
+            actions.Add(GameAction.Empty("rest_heal"));
+        }
+
         if (PrototypeContent.Rules.RestTrainMaxHp > 0)
         {
             actions.Add(GameAction.Empty("rest_train"));
         }
 
-        actions.AddRange(
-            state.Player.Deck
-                .Where(card => card.UpgradeLevel == 0)
-                .Select(card => GameAction.Create(
-                    "rest_upgrade",
-                    new UpgradeCardPayload(card.InstanceId))));
+        if (CanRestUpgrade(state.Player))
+        {
+            actions.AddRange(
+                state.Player.Deck
+                    .Where(card => card.UpgradeLevel == 0)
+                    .Select(card => GameAction.Create(
+                        "rest_upgrade",
+                        new UpgradeCardPayload(card.InstanceId))));
+        }
+
         return actions;
     }
 
@@ -552,6 +561,12 @@ public sealed partial class PrototypeGameEngine
     {
         if (StringComparer.Ordinal.Equals(action.Kind, "rest_heal"))
         {
+            if (!CanRestHeal(state.Player))
+            {
+                throw new InvalidOperationException(
+                    "A relic prevents resting to heal.");
+            }
+
             var amount = Math.Max(
                 1,
                 (state.Player.MaxHp * PrototypeContent.Rules.RestHealPercent) / 100);
@@ -585,6 +600,12 @@ public sealed partial class PrototypeGameEngine
         }
 
         RequireKind(action, "rest_upgrade");
+        if (!CanRestUpgrade(state.Player))
+        {
+            throw new InvalidOperationException(
+                "A relic prevents upgrading cards at rest sites.");
+        }
+
         var payload = action.ReadPayload<UpgradeCardPayload>();
         var found = false;
         var deck = state.Player.Deck
@@ -668,7 +689,18 @@ public sealed partial class PrototypeGameEngine
 
         if (!reward.RelicResolved)
         {
-            return [GameAction.Empty("take_reward_relic")];
+            var options = reward.CurrentRelicOptions;
+            if (options.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "Unresolved relic reward has no options.");
+            }
+
+            return options
+                .Select((_, index) => GameAction.Create(
+                    "take_reward_relic",
+                    new ChooseRelicPayload(index)))
+                .ToArray();
         }
 
         return [GameAction.Empty("leave_reward")];
@@ -776,20 +808,35 @@ public sealed partial class PrototypeGameEngine
         else if (!reward.RelicResolved)
         {
             RequireKind(action, "take_reward_relic");
-            if (reward.RelicOption is null)
+            var options = reward.CurrentRelicOptions;
+            if (options.Length == 0)
             {
-                throw new InvalidOperationException("Reward has no relic.");
+                throw new InvalidOperationException(
+                    "Reward has no relic options.");
             }
 
+            var payload =
+                action.ReadPayload<ChooseRelicPayload>();
+            if (payload.Index < 0
+                || payload.Index >= options.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Reward relic index {payload.Index} is invalid.");
+            }
+
+            var relicId = options[payload.Index];
             player = player with
             {
                 Relics = player.Relics.Append(
-                    new RelicInstance(reward.RelicOption, PrototypeJson.EmptyObject())).ToArray()
+                    new RelicInstance(
+                        relicId,
+                        PrototypeJson.EmptyObject()))
+                    .ToArray()
             };
             player = ApplyRelicRunEvent(
                 player,
                 PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: reward.RelicOption,
+                acquiredRelicId: relicId,
                 rng: state.Rng);
             reward = reward with { RelicResolved = true };
         }
@@ -873,10 +920,27 @@ public sealed partial class PrototypeGameEngine
                     PrototypeContent.PotionPool.Length)]
             : null;
 
-        var relic = room is PrototypeRoomType.Elite or PrototypeRoomType.Boss
+        var relic = room == PrototypeRoomType.Elite
             ? PrototypeContent.RelicPool[
-                PrototypeRng.NextInt(state.Rng, "reward", PrototypeContent.RelicPool.Length)]
+                PrototypeRng.NextInt(
+                    state.Rng,
+                    "reward",
+                    PrototypeContent.RelicPool.Length)]
             : null;
+        var relicOptions =
+            room == PrototypeRoomType.Boss
+                ? PickDistinct(
+                    PrototypeContent.BossRelicPool
+                        .Where(id =>
+                            !state.Player.Relics.Any(relic =>
+                                StringComparer.Ordinal.Equals(
+                                    relic.RelicId,
+                                    id)))
+                        .ToArray(),
+                    3,
+                    state.Rng,
+                    "reward")
+                : null;
 
         var reward = new RewardState(
             SourceRoom: room.ToString(),
@@ -885,9 +949,13 @@ public sealed partial class PrototypeGameEngine
             RelicOption: relic,
             CardResolved: false,
             PotionResolved: potion is null,
-            RelicResolved: relic is null,
+            RelicResolved:
+                relic is null
+                && (relicOptions is null
+                    || relicOptions.Length == 0),
             EndsAct: room == PrototypeRoomType.Boss,
-            ExtraCardOptions: extraCardOptions);
+            ExtraCardOptions: extraCardOptions,
+            RelicOptions: relicOptions);
 
         world = world with
         {
