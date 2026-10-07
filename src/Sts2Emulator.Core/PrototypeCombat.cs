@@ -18,7 +18,20 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-            var encounters = PrototypeContent.Encounters
+            var overgrowthNormal =
+                TryPickOvergrowthNormalEncounter(
+                    state,
+                    world,
+                    roomType);
+            if (overgrowthNormal is not null)
+            {
+                encounter =
+                    overgrowthNormal.Value.Encounter;
+                world = overgrowthNormal.Value.World;
+            }
+            else
+            {
+                var encounters = PrototypeContent.Encounters
                 .Where(candidate =>
                     candidate.RoomType == roomType
                     && world.Act >= candidate.MinAct
@@ -50,9 +63,10 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
-            encounter = PickWeightedEncounter(
-                encounters,
-                state.Rng);
+                encounter = PickWeightedEncounter(
+                    encounters,
+                    state.Rng);
+            }
         }
 
         var combatRelics = state.Player.Relics
@@ -240,6 +254,154 @@ public sealed partial class PrototypeGameEngine
             {
                 ActOneEncounterPool = nextPool
             });
+    }
+
+    private static (
+        PrototypeEncounterDefinition Encounter,
+        RunWorldState World)?
+        TryPickOvergrowthNormalEncounter(
+            RunState state,
+            RunWorldState world,
+            PrototypeRoomType roomType)
+    {
+        if (roomType != PrototypeRoomType.Combat
+            || world.Act != 1
+            || world.ActOneRegion
+                != PrototypeActOneRegion.Overgrowth)
+        {
+            return null;
+        }
+
+        var pool = world.ActOneEncounterPool;
+        if (pool is null
+            || pool.Region
+                != PrototypeActOneRegion.Overgrowth
+            || pool.OrdinaryCombatsStarted < 3)
+        {
+            return null;
+        }
+
+        var remaining =
+            pool.RemainingNormalEncounterIds
+            ?? (string[])PrototypeContent
+                .OvergrowthNormalEncounterPool
+                .Clone();
+        if (remaining.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Overgrowth normal encounter bag is exhausted.");
+        }
+
+        var previous = world.EncounterIds.LastOrDefault();
+        var eligible = previous is null
+            ? remaining
+            : remaining
+                .Where(candidate =>
+                    CanFollowOvergrowthEncounter(
+                        previous,
+                        candidate))
+                .ToArray();
+        if (eligible.Length == 0)
+        {
+            eligible = remaining;
+        }
+
+        var selectedId = eligible[
+            PrototypeRng.NextInt(
+                state.Rng,
+                "combat",
+                eligible.Length)];
+        var encounter = PrototypeContent.Encounter(
+            selectedId);
+        var nextRemaining = remaining
+            .Where(id =>
+                !StringComparer.Ordinal.Equals(
+                    id,
+                    selectedId))
+            .ToArray();
+
+        return (
+            encounter,
+            world with
+            {
+                ActOneEncounterPool = pool with
+                {
+                    OrdinaryCombatsStarted =
+                        pool.OrdinaryCombatsStarted + 1,
+                    RemainingNormalEncounterIds =
+                        nextRemaining
+                }
+            });
+    }
+
+    private static bool CanFollowOvergrowthEncounter(
+        string previous,
+        string candidate)
+    {
+        static bool IsEither(
+            string value,
+            string first,
+            string second) =>
+            StringComparer.Ordinal.Equals(
+                value,
+                first)
+            || StringComparer.Ordinal.Equals(
+                value,
+                second);
+
+        if (IsEither(
+                previous,
+                "proto.encounter.fuzzy_wurm_crawler_weak",
+                "proto.encounter.overgrowth_crawlers")
+            && IsEither(
+                candidate,
+                "proto.encounter.fuzzy_wurm_crawler_weak",
+                "proto.encounter.overgrowth_crawlers"))
+        {
+            return false;
+        }
+
+        if (IsEither(
+                previous,
+                "proto.encounter.shrinker_beetle_weak",
+                "proto.encounter.overgrowth_crawlers")
+            && IsEither(
+                candidate,
+                "proto.encounter.shrinker_beetle_weak",
+                "proto.encounter.overgrowth_crawlers"))
+        {
+            return false;
+        }
+
+        var slimeFamily = new[]
+        {
+            "proto.encounter.slimes_weak",
+            "proto.encounter.flyconid_normal",
+            "proto.encounter.slimes_normal"
+        };
+        if (slimeFamily.Contains(
+                previous,
+                StringComparer.Ordinal)
+            && slimeFamily.Contains(
+                candidate,
+                StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        if (IsEither(
+                previous,
+                "proto.encounter.flyconid_normal",
+                "proto.encounter.snapping_jaxfruit_normal")
+            && IsEither(
+                candidate,
+                "proto.encounter.flyconid_normal",
+                "proto.encounter.snapping_jaxfruit_normal"))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static PrototypeEncounterDefinition PickWeightedEncounter(
