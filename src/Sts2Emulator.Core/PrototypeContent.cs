@@ -2085,6 +2085,64 @@ public static class PrototypeContent
                                 PowerId:
                                     "proto.power.temporary_strength")
                         ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.old_coin",
+                "Old Coin",
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.RelicAcquired,
+                        [new(PrototypeRunEffectKind.GainGold, 300)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.mango",
+                "Mango",
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.RelicAcquired,
+                        [new(PrototypeRunEffectKind.GainMaxHp, 14)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.lees_waffle",
+                "Lee's Waffle",
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.RelicAcquired,
+                        [
+                            new(PrototypeRunEffectKind.GainMaxHp, 7),
+                            new(PrototypeRunEffectKind.HealToFull)
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.meal_ticket",
+                "Meal Ticket",
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.ShopEntered,
+                        [new(PrototypeRunEffectKind.Heal, 15)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.lucky_fysh",
+                "Lucky Fysh",
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.CardAdded,
+                        [new(PrototypeRunEffectKind.GainGold, 15)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.darkstone_periapt",
+                "Darkstone Periapt",
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.CardAdded,
+                        [new(PrototypeRunEffectKind.GainMaxHp, 6)],
+                        RequiredCardType: PrototypeCardType.Curse)
                 ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
@@ -5758,7 +5816,13 @@ public static class PrototypeContent
         "proto.relic.vajra",
         "proto.relic.blood_vial",
         "proto.relic.meat_on_the_bone",
-        "proto.relic.reptile_trinket"
+        "proto.relic.reptile_trinket",
+        "proto.relic.old_coin",
+        "proto.relic.mango",
+        "proto.relic.lees_waffle",
+        "proto.relic.meal_ticket",
+        "proto.relic.lucky_fysh",
+        "proto.relic.darkstone_periapt"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>
