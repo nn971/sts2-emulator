@@ -195,7 +195,7 @@ public sealed class PrototypeSilentBacklogThirdBatchTests
         var persistent = cards
             .Select(card =>
                 new CardInstance(
-                    card.PersistentCardId ?? card.InstanceId,
+                    card.PersistentCardInstanceId ?? card.InstanceId,
                     card.CardId,
                     card.UpgradeLevel,
                     PrototypeJson.EmptyObject()))

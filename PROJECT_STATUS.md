@@ -341,7 +341,7 @@ See `docs/reference-builds/v0.111.0-knight-gang-differential.md`.
 ## Silent card catalog milestone
 
 The pinned v0.111.0 native `SilentCardPool` is represented explicitly as **91 unique cards**.
-Eighty currently map to implemented prototype mechanics; the remaining 11 have source-backed
+Eighty-three currently map to implemented prototype mechanics; the remaining 8 have source-backed
 cost/type/rarity/keyword metadata and are gated with `MechanicsImplemented = false` so they cannot
 silently behave as no-op cards. The five multiplayer-only Silent cards are typed separately and
 excluded from single-player rewards.
