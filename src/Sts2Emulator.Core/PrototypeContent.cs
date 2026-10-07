@@ -1844,7 +1844,8 @@ public static class PrototypeContent
                                 [
                                     new(9, 2)
                                 ])
-                        ]),
+                        ],
+                        MaxConsecutiveUses: 2),
                     new PrototypeEnemyMoveDefinition(
                         "soul_flame",
                         [
@@ -1856,9 +1857,13 @@ public static class PrototypeContent
                                 [
                                     new(9, 1)
                                 ])
-                        ])
+                        ],
+                        MaxConsecutiveUses: 1)
                 ],
-                MoveLoopStartIndex: 1,
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.UniformRandomAfterOpener,
+                OpeningMoveIndices: [0, 1],
+                RandomMovePoolStartIndex: 1,
                 HpAscensionDeltas:
                 [
                     new(8, 4)
