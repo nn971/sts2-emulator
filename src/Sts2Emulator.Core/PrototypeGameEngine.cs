@@ -255,6 +255,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     };
                     break;
 
+                case PrototypeRunEffectKind.LoseGold:
+                    player = player with
+                    {
+                        Gold = Math.Max(
+                            0,
+                            player.Gold - effect.Amount)
+                    };
+                    break;
+
                 case PrototypeRunEffectKind.AddCard:
                     throw new NotSupportedException(
                         "Generic run effects do not currently create persistent cards directly.");
