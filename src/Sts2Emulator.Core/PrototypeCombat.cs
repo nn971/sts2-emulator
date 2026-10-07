@@ -1682,10 +1682,45 @@ public sealed partial class PrototypeGameEngine
             .OrderBy(power => power.ApplicationOrder)
             .ToArray();
 
+        var enchantmentReplay = card.Enchantment switch
+        {
+            {
+                Kind: PrototypeCardEnchantmentKind.Spiral
+            } enchantment =>
+                Math.Max(0, enchantment.Amount),
+            {
+                Kind: PrototypeCardEnchantmentKind.Glam
+            } enchantment
+                when !card.EnchantmentTriggeredThisCombat =>
+                Math.Max(0, enchantment.Amount),
+            _ => 0
+        };
+
         var playCount = 1
             + Math.Max(0, card.ReplayCount)
+            + enchantmentReplay
             + modifiers.Sum(power =>
                 PrototypeContent.Power(power.PowerId).AdditionalPlayCount);
+
+        if (card.Enchantment is
+                {
+                    Kind: PrototypeCardEnchantmentKind.Glam
+                }
+            && enchantmentReplay > 0)
+        {
+            combat = combat with
+            {
+                Cards = combat.Cards
+                    .Select(item =>
+                        item.InstanceId == card.InstanceId
+                            ? item with
+                            {
+                                EnchantmentTriggeredThisCombat = true
+                            }
+                            : item)
+                    .ToArray()
+            };
+        }
 
         if (modifiers.Length == 0)
         {
