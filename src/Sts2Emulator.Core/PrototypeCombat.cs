@@ -915,7 +915,28 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var move = definition.Moves[enemy.MoveIndex % definition.Moves.Length];
+            if (definition.MoveLoopStartIndex < 0
+                || definition.MoveLoopStartIndex
+                    >= definition.Moves.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Enemy '{definition.Id}' has invalid move-loop start index {definition.MoveLoopStartIndex}.");
+            }
+
+            var moveIndex = enemy.MoveIndex;
+            if (moveIndex >= definition.Moves.Length)
+            {
+                var loopLength =
+                    definition.Moves.Length
+                    - definition.MoveLoopStartIndex;
+                moveIndex =
+                    definition.MoveLoopStartIndex
+                    + ((moveIndex
+                        - definition.MoveLoopStartIndex)
+                       % loopLength);
+            }
+
+            var move = definition.Moves[moveIndex];
 
             foreach (var effect in move.Effects)
             {
