@@ -1292,7 +1292,9 @@ public sealed partial class PrototypeGameEngine
                 var amount = effect.AmountAt(
                     act,
                     ascension);
-                for (var repetition = 0; repetition < effect.Repetitions; repetition++)
+                var repetitions =
+                    effect.RepetitionsAt(ascension);
+                for (var repetition = 0; repetition < repetitions; repetition++)
                 {
                     switch (effect.Kind)
                     {
