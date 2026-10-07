@@ -25,13 +25,13 @@ An encounter is not complete merely because all of its monster classes exist. Co
 ## Current foundation
 
 - generic fixed-prefix → constrained-random move policy (used by Spectral Knight and reusable in Act 1);
-- source-shaped move/random AI state graphs with weighted branches and typed repeat rules;
+- source-shaped move/random/conditional AI state graphs with weighted branches, typed repeat rules, and formation predicates;
 - per-move consecutive-use limits plus total move-use accounting;
 - enemy self-powers and flat Strength attack scaling;
 - timed player Vulnerable / Weak / Frail with attack/card-Block multipliers;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
-- first source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, and **Mawler** (isolated models; encounter pools not yet promoted).
+- first source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, and **Toadpole** (isolated models; encounter pools not yet promoted).
 
 ## Encounter coverage
 
@@ -130,7 +130,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `SNEAKY_GREMLIN` — Sneaky Gremlin | Normal | 10–14 | 11–15 | cycle | not started |
 | `SOUL_FYSH` — Soul Fysh | Boss | 211 | 221 | cycle | not started |
 | `TERROR_EEL` — Terror Eel | Elite | 140 | 150 | cycle | not started |
-| `TOADPOLE` — Toadpole | Normal | 21–25 | 22–26 | conditional | not started |
+| `TOADPOLE` — Toadpole | Normal | 21–25 | 22–26 | conditional | implemented + focused tests |
 | `TRACKER_RUBY_RAIDER` — Tracker Raider | Normal | 21–25 | 22–26 | cycle | not started |
 | `TWIG_SLIME_M` — Twig Slime (M) | Normal | 26–28 | 27–29 | random | not started |
 | `TWIG_SLIME_S` — Twig Slime (S) | Normal | 7–11 | 8–12 | cycle | implemented + focused tests |
