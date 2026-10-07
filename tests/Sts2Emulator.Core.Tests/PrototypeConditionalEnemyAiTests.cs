@@ -63,6 +63,136 @@ public sealed class PrototypeConditionalEnemyAiTests
         });
     }
 
+    [Fact]
+    public void ConditionalStateCanMatchExactSlotName()
+    {
+        var enemies = Assert.IsType<
+            Dictionary<
+                string,
+                PrototypeEnemyDefinition>>(
+            PrototypeContent.Enemies);
+        const string slotEnemyId =
+            "proto.test.slot_conditional_enemy_ai";
+        enemies.Add(
+            slotEnemyId,
+            new PrototypeEnemyDefinition(
+                slotEnemyId,
+                "Slot Conditional Fixture",
+                100,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "slot_one",
+                        []),
+                    new PrototypeEnemyMoveDefinition(
+                        "slot_two",
+                        [])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                Ai: new PrototypeEnemyAiDefinition(
+                    "init",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "slot_one",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0),
+                        new PrototypeEnemyAiStateDefinition(
+                            "slot_two",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1),
+                        new PrototypeEnemyAiStateDefinition(
+                            "init",
+                            PrototypeEnemyAiStateKind.Conditional,
+                            ConditionalBranches:
+                            [
+                                new(
+                                    "slot_one",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    "wriggler1"),
+                                new(
+                                    "slot_two",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    "wriggler2")
+                            ])
+                    ])));
+
+        try
+        {
+            var player = new PlayerState(
+                100,
+                100,
+                0,
+                [],
+                [],
+                new PotionInstance?[
+                    PrototypeContent.Rules.PotionSlots]);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(
+                        1,
+                        slotEnemyId,
+                        100,
+                        0,
+                        0,
+                        new Dictionary<string, int>(
+                            StringComparer.Ordinal),
+                        SlotName: "wriggler2")
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1);
+            var state = new RunState(
+                "prototype-unbound",
+                "prototype-0.1",
+                "slot-condition-test",
+                "slot-condition-test",
+                0,
+                RunPhase.Combat,
+                player,
+                PrototypeRng.CreateBundle(
+                    "slot-condition-test"),
+                PrototypeJson.EmptyObject(),
+                new RunWorldState(
+                    PrototypeContent.RulesetId,
+                    PrototypeContent.CharacterId,
+                    1,
+                    1,
+                    5000,
+                    PrototypeRoomType.Combat,
+                    new MapState([]),
+                    combat,
+                    null,
+                    null,
+                    null,
+                    null));
+            var engine = new PrototypeGameEngine();
+
+            state = EndTurn(engine, state);
+
+            Assert.Equal(
+                "slot_two",
+                Assert.Single(
+                    state.World!.Combat!.Enemies)
+                    .LastMoveId);
+        }
+        finally
+        {
+            enemies.Remove(slotEnemyId);
+        }
+    }
+
     private static void WithDefinition(Action action)
     {
         var enemies = Assert.IsType<
