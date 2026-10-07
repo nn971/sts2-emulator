@@ -120,7 +120,8 @@ public sealed record PrototypeCombatCardSnapshot(
     int ReplayCount = 0,
     PrototypeCardEnchantment? Enchantment = null,
     bool EnchantmentTriggeredThisCombat = false,
-    PrototypeCardAffliction? Affliction = null)
+    PrototypeCardAffliction? Affliction = null,
+    int SuppressedUpgradeLevels = 0)
 {
     public PrototypeCombatCardSnapshot Fork() => this with
     {
@@ -305,7 +306,8 @@ public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
     int Amount,
     int UpgradeDelta = 0,
-    bool ClearAfflictionFromPayload = false)
+    bool ClearAfflictionFromPayload = false,
+    bool RestoreSuppressedUpgradesInPayload = false)
 {
     public int AmountAt(int upgradeLevel) =>
         Amount + (UpgradeDelta * upgradeLevel);
@@ -314,7 +316,8 @@ public sealed record PrototypeSelectedCardPowerSpec(
 public sealed record PrototypeSelectedCardPowerAction(
     string PowerId,
     int Amount,
-    bool ClearAfflictionFromPayload = false);
+    bool ClearAfflictionFromPayload = false,
+    bool RestoreSuppressedUpgradesInPayload = false);
 
 public sealed record PrototypeCardKeywordOverrideSpec(
     PrototypeCardKeyword Keyword,
@@ -525,7 +528,9 @@ public sealed record PrototypePowerDefinition(
     bool BlocksNextDebuff = false,
     PrototypeCardAfflictionKind? SourceBoundCardAffliction = null,
     bool SkipCardsWithExistingAffliction = false,
-    bool ClearSourceAfflictionWhenRemoved = false);
+    bool ClearSourceAfflictionWhenRemoved = false,
+    bool DowngradeExistingCardsOnApply = false,
+    bool RestoreDowngradedCardsWhenLastSourceRemoved = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -712,7 +717,8 @@ public sealed record CombatCardInstance(
     int ReplayCount = 0,
     PrototypeCardEnchantment? Enchantment = null,
     bool EnchantmentTriggeredThisCombat = false,
-    PrototypeCardAffliction? Affliction = null)
+    PrototypeCardAffliction? Affliction = null,
+    int SuppressedUpgradeLevels = 0)
 {
     public CombatCardInstance Fork() => this with
     {
