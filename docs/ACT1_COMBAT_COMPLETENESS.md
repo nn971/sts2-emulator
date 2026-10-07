@@ -31,7 +31,7 @@ An encounter is not complete merely because all of its monster classes exist. Co
 - timed player Vulnerable / Weak / Frail with attack/card-Block multipliers;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
-- source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, **Toadpole**, **Leaf Slime (S)**, **Leaf Slime (M)**, and **Twig Slime (M)** (isolated models; encounter pools not yet promoted).
+- source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, **Toadpole**, **Leaf Slime (S)**, **Leaf Slime (M)**, **Twig Slime (M)**, and **Nibbit** (isolated models; encounter pools not yet promoted).
 
 ## Encounter coverage
 
@@ -51,8 +51,8 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | no | pending | pending | no |
 | Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | no | pending | pending | no |
 | Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | no | pending | pending | no |
-| Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | no | pending | pending | no |
-| Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | no | pending | pending | no |
+| Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | pending | no |
+| Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | yes | yes | pending | no |
 | Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | no | pending | pending | no |
 | Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | no | pending | pending | no |
 | Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | no | pending | pending | no |
@@ -116,7 +116,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `LEAF_SLIME_S` — Leaf Slime (S) | Normal | 11–15 | 12–16 | random | implemented + focused tests |
 | `LIVING_FOG` — Living Fog | Normal | 80 | 82 | cycle | not started |
 | `MAWLER` — Mawler | Normal | 72 | 76 | random | implemented + focused tests |
-| `NIBBIT` — Nibbit | Normal | 42–46 | 44–48 | conditional | not started |
+| `NIBBIT` — Nibbit | Normal | 42–46 | 44–48 | conditional | implemented + focused tests |
 | `PHANTASMAL_GARDENER` — Phantasmal Gardener | Elite | 26–31 | 27–32 | conditional | not started |
 | `PHROG_PARASITE` — Phrog Parasite | Elite | 61–64 | 66–68 | random | not started |
 | `PUNCH_CONSTRUCT` — Punch Construct | Normal | 55 | 60 | cycle | not started |
