@@ -4,6 +4,12 @@ public static class PrototypeStateInvariants
 {
     public static void Validate(RunState state)
     {
+        if (state.Ascension < 0)
+        {
+            throw new InvalidOperationException(
+                $"Ascension is negative: {state.Ascension}.");
+        }
+
         if (state.Phase == RunPhase.RunStart)
         {
             if (state.World is not null)
