@@ -906,10 +906,13 @@ public sealed partial class PrototypeGameEngine
             combat);
     }
 
-    private static PrototypeEnemyMoveDefinition SelectEnemyMove(
-        PrototypeEnemyDefinition definition,
-        EnemyCombatState enemy,
-        RngBundle rng)
+    private static (
+        PrototypeEnemyMoveDefinition Move,
+        string? NextAiStateId)
+        SelectEnemyMove(
+            PrototypeEnemyDefinition definition,
+            EnemyCombatState enemy,
+            RngBundle rng)
     {
         if (definition.Moves.Length == 0)
         {
@@ -942,7 +945,9 @@ public sealed partial class PrototypeGameEngine
                            % loopLength);
                 }
 
-                return definition.Moves[moveIndex];
+                return (
+                    definition.Moves[moveIndex],
+                    enemy.AiStateId);
             }
 
             case PrototypeEnemyMovePolicy.UniformRandomAfterOpener:
@@ -970,8 +975,10 @@ public sealed partial class PrototypeGameEngine
 
                 if (enemy.MoveIndex < openingMoves.Length)
                 {
-                    return definition.Moves[
-                        openingMoves[enemy.MoveIndex]];
+                    return (
+                        definition.Moves[
+                            openingMoves[enemy.MoveIndex]],
+                        enemy.AiStateId);
                 }
 
                 if (definition.RandomMovePoolStartIndex < 0
@@ -998,17 +1005,183 @@ public sealed partial class PrototypeGameEngine
                         $"Enemy '{definition.Id}' has no legal random moves.");
                 }
 
-                return candidates[
-                    PrototypeRng.NextInt(
-                        rng,
-                        "combat",
-                        candidates.Length)];
+                return (
+                    candidates[
+                        PrototypeRng.NextInt(
+                            rng,
+                            "combat",
+                            candidates.Length)],
+                    enemy.AiStateId);
             }
+
+            case PrototypeEnemyMovePolicy.StateMachine:
+                return SelectEnemyStateMachineMove(
+                    definition,
+                    enemy,
+                    rng);
 
             default:
                 throw new ArgumentOutOfRangeException(
                     nameof(definition.MovePolicy));
         }
+    }
+
+    private static (
+        PrototypeEnemyMoveDefinition Move,
+        string? NextAiStateId)
+        SelectEnemyStateMachineMove(
+            PrototypeEnemyDefinition definition,
+            EnemyCombatState enemy,
+            RngBundle rng)
+    {
+        var ai = definition.Ai
+            ?? throw new InvalidOperationException(
+                $"Enemy '{definition.Id}' uses StateMachine policy without an AI definition.");
+        if (ai.States.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"Enemy '{definition.Id}' has an empty AI state machine.");
+        }
+
+        var states = ai.States.ToDictionary(
+            state => state.Id,
+            StringComparer.Ordinal);
+        var stateId = enemy.AiStateId
+            ?? ai.InitialStateId;
+
+        for (var depth = 0; depth < 32; depth++)
+        {
+            if (!states.TryGetValue(
+                    stateId,
+                    out var state))
+            {
+                throw new InvalidOperationException(
+                    $"Enemy '{definition.Id}' AI references missing state '{stateId}'.");
+            }
+
+            switch (state.Kind)
+            {
+                case PrototypeEnemyAiStateKind.Move:
+                {
+                    if (state.MoveIndex is null
+                        || state.MoveIndex.Value < 0
+                        || state.MoveIndex.Value
+                            >= definition.Moves.Length)
+                    {
+                        throw new InvalidOperationException(
+                            $"Enemy '{definition.Id}' AI move state '{state.Id}' has invalid move index.");
+                    }
+
+                    return (
+                        definition.Moves[
+                            state.MoveIndex.Value],
+                        state.NextStateId);
+                }
+
+                case PrototypeEnemyAiStateKind.Random:
+                {
+                    var branches =
+                        state.Branches
+                        ?? Array.Empty<
+                            PrototypeEnemyAiBranch>();
+                    var legal = branches
+                        .Where(branch =>
+                            branch.Weight > 0
+                            && IsEnemyAiBranchLegal(
+                                definition,
+                                enemy,
+                                states,
+                                branch))
+                        .ToArray();
+                    if (legal.Length == 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Enemy '{definition.Id}' AI random state '{state.Id}' has no legal branches.");
+                    }
+
+                    var totalWeight =
+                        legal.Sum(branch =>
+                            branch.Weight);
+                    var roll = PrototypeRng.NextInt(
+                        rng,
+                        "combat",
+                        totalWeight);
+                    var selected = legal[^1];
+                    foreach (var branch in legal)
+                    {
+                        if (roll < branch.Weight)
+                        {
+                            selected = branch;
+                            break;
+                        }
+
+                        roll -= branch.Weight;
+                    }
+
+                    stateId =
+                        selected.TargetStateId;
+                    break;
+                }
+
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(state.Kind));
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Enemy '{definition.Id}' AI exceeded the state-resolution depth limit.");
+    }
+
+    private static bool IsEnemyAiBranchLegal(
+        PrototypeEnemyDefinition definition,
+        EnemyCombatState enemy,
+        IReadOnlyDictionary<
+            string,
+            PrototypeEnemyAiStateDefinition> states,
+        PrototypeEnemyAiBranch branch)
+    {
+        if (!states.TryGetValue(
+                branch.TargetStateId,
+                out var target)
+            || target.Kind
+                != PrototypeEnemyAiStateKind.Move
+            || target.MoveIndex is null
+            || target.MoveIndex.Value < 0
+            || target.MoveIndex.Value
+                >= definition.Moves.Length)
+        {
+            throw new InvalidOperationException(
+                $"Enemy '{definition.Id}' AI branch targets invalid move state '{branch.TargetStateId}'.");
+        }
+
+        var move = definition.Moves[
+            target.MoveIndex.Value];
+
+        return branch.RepeatRule switch
+        {
+            PrototypeEnemyAiRepeatRule
+                .CanRepeatForever => true,
+            PrototypeEnemyAiRepeatRule
+                .CannotRepeat =>
+                !StringComparer.Ordinal.Equals(
+                    enemy.LastMoveId,
+                    move.Id),
+            PrototypeEnemyAiRepeatRule
+                .CanRepeatXTimes =>
+                branch.MaxTimes > 0
+                && (!StringComparer.Ordinal.Equals(
+                        enemy.LastMoveId,
+                        move.Id)
+                    || enemy.ConsecutiveMoveUses
+                        < branch.MaxTimes),
+            PrototypeEnemyAiRepeatRule
+                .UseOnlyOnce =>
+                (enemy.MoveUseCounts?.GetValueOrDefault(
+                    move.Id) ?? 0) == 0,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(branch.RepeatRule))
+        };
     }
 
     private static (PlayerState Player, CombatState Combat) ResolveEnemyActions(
@@ -1036,10 +1209,11 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var move = SelectEnemyMove(
+            var selection = SelectEnemyMove(
                 definition,
                 enemy,
                 rng);
+            var move = selection.Move;
 
             foreach (var effect in move.Effects)
             {
@@ -1144,11 +1318,24 @@ public sealed partial class PrototypeGameEngine
                     move.Id)
                     ? enemy.ConsecutiveMoveUses + 1
                     : 1;
+            var moveUseCounts =
+                enemy.MoveUseCounts is null
+                    ? new Dictionary<string, int>(
+                        StringComparer.Ordinal)
+                    : new Dictionary<string, int>(
+                        enemy.MoveUseCounts,
+                        StringComparer.Ordinal);
+            moveUseCounts[move.Id] =
+                moveUseCounts.GetValueOrDefault(
+                    move.Id) + 1;
+
             enemies[index] = enemy with
             {
                 MoveIndex = enemy.MoveIndex + 1,
                 LastMoveId = move.Id,
-                ConsecutiveMoveUses = consecutiveUses
+                ConsecutiveMoveUses = consecutiveUses,
+                AiStateId = selection.NextAiStateId,
+                MoveUseCounts = moveUseCounts
             };
             if (hp <= 0)
             {
