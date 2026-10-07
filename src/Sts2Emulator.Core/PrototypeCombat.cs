@@ -110,6 +110,17 @@ public sealed partial class PrototypeGameEngine
         var nextPowerApplicationOrder = combatRelics.Length + 1L;
         var enemySpecs = encounter.ResolveEnemySpecs(
             state.Rng);
+        var instanceIdByFormationPosition =
+            enemySpecs
+                .Select((enemySpec, index) =>
+                    new
+                    {
+                        enemySpec.FormationPosition,
+                        InstanceId = index + 1
+                    })
+                .ToDictionary(
+                    item => item.FormationPosition,
+                    item => item.InstanceId);
         var enemies = enemySpecs
             .Select((enemySpec, index) =>
             {
@@ -147,7 +158,13 @@ public sealed partial class PrototypeGameEngine
                     Powers: powers,
                     FormationPosition:
                         enemySpec.FormationPosition,
-                    SlotName: enemySpec.SlotName);
+                    SlotName: enemySpec.SlotName,
+                    LeaderEnemyInstanceId:
+                        enemySpec.LeaderFormationPosition is
+                            { } leaderFormationPosition
+                            ? instanceIdByFormationPosition[
+                                leaderFormationPosition]
+                            : null);
             })
             .ToArray();
 
