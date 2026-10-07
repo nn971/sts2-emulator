@@ -928,7 +928,11 @@ public static class PrototypeStateInvariants
                 .GroupBy(item => item.Id)
                 .Where(group => group.Count() > 1)
                 .Select(group =>
-                    $"{group.Key} ({string.Join(", ", group.Select(item => item.Location))})")
+                {
+                    var card = combat.Cards.Single(item =>
+                        item.InstanceId == group.Key);
+                    return $"{group.Key}:{card.CardId} ({string.Join(", ", group.Select(item => item.Location))})";
+                })
                 .ToArray();
             throw new InvalidOperationException(
                 "A card instance occurs in multiple combat zones/continuations: "
