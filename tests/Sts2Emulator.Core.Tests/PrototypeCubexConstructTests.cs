@@ -192,7 +192,7 @@ public sealed class PrototypeCubexConstructTests
             "prototype-0.1",
             "cubex-construct-test",
             "cubex-construct-test",
-            ascension,
+            0,
             RunPhase.Combat,
             player,
             PrototypeRng.CreateBundle(
@@ -210,7 +210,8 @@ public sealed class PrototypeCubexConstructTests
                 null,
                 null,
                 null,
-                null));
+                null),
+            Ascension: ascension);
     }
 
     private static RunState EndTurn(
