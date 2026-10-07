@@ -79,7 +79,12 @@ internal static class PrototypeAiJsonlServer
                     case "reset":
                     {
                         var seed = RequiredString(request, "seed");
-                        var state = environment.Reset(seed);
+                        var ascension =
+                            OptionalInt(request, "ascension")
+                            ?? 0;
+                        var state = environment.Reset(
+                            seed,
+                            ascension);
                         var handle = Store(state);
                         Write(new
                         {
@@ -466,6 +471,28 @@ internal static class PrototypeAiJsonlServer
 
         return value.GetString()
             ?? throw new InvalidOperationException($"Request field '{name}' is null.");
+    }
+
+    private static int? OptionalInt(
+        JsonElement request,
+        string name)
+    {
+        if (!request.TryGetProperty(name, out var value)
+            || value.ValueKind is
+                JsonValueKind.Null
+                or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        if (value.ValueKind != JsonValueKind.Number
+            || !value.TryGetInt32(out var result))
+        {
+            throw new InvalidOperationException(
+                $"Request field '{name}' must be an integer.");
+        }
+
+        return result;
     }
 
     private static string? OptionalString(JsonElement request, string name)
