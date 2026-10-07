@@ -88,6 +88,13 @@ public sealed class ReferenceKnightGangProbeAnalyzerTests
             Assert.Equal(1, first.Cards.UpgradedCardCount);
             Assert.Equal(1, first.Cards.HexedCardCount);
             Assert.Equal(1, first.Cards.AfflictedCardCount);
+            Assert.EndsWith(
+                ".MonsterMoveEntry",
+                first.HistoryRuntimeType,
+                StringComparison.Ordinal);
+            Assert.Equal(15, first.HistoryAmount);
+            Assert.Equal(1, first.HistorySourceCombatId);
+            Assert.Equal(99, first.HistoryTargetCombatId);
             Assert.NotNull(
                 first.MonsterAiRngFingerprint);
             Assert.NotEmpty(
@@ -182,6 +189,20 @@ public sealed class ReferenceKnightGangProbeAnalyzerTests
             sequence,
             boundary,
             state_hash = $"hash-{sequence}",
+            history_entry = new
+            {
+                runtime_type =
+                    "MegaCrit.Sts2.Core.Combat.History.Entries.MonsterMoveEntry",
+                amount = 15,
+                source = new
+                {
+                    combat_id = 1
+                },
+                target = new
+                {
+                    combat_id = 99
+                }
+            },
             state = new
             {
                 combat = new
