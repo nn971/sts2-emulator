@@ -213,7 +213,9 @@ The source-backed Act 1 monster-model set currently includes:
 - Flyconid;
 - Inklet;
 - Vine Shambler;
-- Slithering Strangler.
+- Slithering Strangler;
+- Fogmog;
+- Eye With Teeth.
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -276,8 +278,14 @@ Flyconid is now source-backed with its weighted initial choice (Frail Spores 2/3
 Inklet is now source-backed with the reusable Slippery HP-loss modifier: the next positive enemy HP loss is capped to 1 and consumes one stack, while fully blocked hits do not consume it. Three-Inklet formation slots drive the native outer-Jab / middle-Whirlwind opener, followed by Jab alternating with an equal Piercing Gaze / Whirlwind choice. This promotes Inklets Normal and leaves three unresolved Overgrowth normal encounters. See
 `docs/reference-builds/v0.111.0-mechanics-gap-036.md`.
 
-Vine Shambler and Slithering Strangler are now source-backed. Tangled reuses typed Entangled card afflictions to tax Attacks by +1 energy for exactly the next player turn, including generated Attacks, and countdown removal now clears afflictions generically. Constrict is a cumulative source-bound debuff that deals its stack count at PlayerTurnEnded and disappears when the Strangler dies. Encounter construction now also supports alternate formation variants, representing Strangler + Jaxfruit, Strangler + a random medium slime, or Strangler + both small slimes. This leaves Fogmog as the sole unresolved Overgrowth normal encounter. See
+Vine Shambler and Slithering Strangler are now source-backed. Tangled reuses typed Entangled card afflictions to tax Attacks by +1 energy for exactly the next player turn, including generated Attacks, and countdown removal now clears afflictions generically. Constrict is a cumulative source-bound debuff that deals its stack count at PlayerTurnEnded and disappears when the Strangler dies. Encounter construction now also supports alternate formation variants, representing Strangler + Jaxfruit, Strangler + a random medium slime, or Strangler + both small slimes. This left Fogmog as the sole unresolved Overgrowth normal encounter. See
 `docs/reference-builds/v0.111.0-mechanics-gap-037.md`.
+
+Fogmog now closes the normal-monster layer. Enemy actions can summon combat-local enemies with starting powers and leader/minion ownership; Eye With Teeth uses this generic path, skips its summon turn, revives at its next enemy-action opportunity after defeat while Fogmog lives, and is removed with its leader. Fogmog's source-shaped summon/Thwack/Headbutt graph and Eye's 3-Dazed Distract are covered by focused tests. See
+`docs/reference-builds/v0.111.0-mechanics-gap-038.md`.
+
+The Overgrowth ordinary-combat selector now uses the full native-shape two-stage bags: three distinct weak fights first, then the twelve normal encounters without replacement. Known cross-pool and normal-pool adjacency exclusions are enforced before each draw, both bags are fork-safe run state, and invariants validate membership/count consistency. This completes the Overgrowth ordinary-combat layer at semantic fidelity. See
+`docs/reference-builds/v0.111.0-mechanics-gap-039.md`.
 
 Encounter construction now supports independent random slot groups with optional distinct selection.
 The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
