@@ -566,6 +566,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             RelicOffer = shop.RelicOffer is null
                 ? null
                 : Reprice(shop.RelicOffer),
+            AdditionalPotionOffers =
+                shop.AdditionalPotionOffers is null
+                    ? null
+                    : shop.AdditionalPotionOffers
+                        .Select(Reprice)
+                        .ToArray(),
+            AdditionalRelicOffers =
+                shop.AdditionalRelicOffers is null
+                    ? null
+                    : shop.AdditionalRelicOffers
+                        .Select(Reprice)
+                        .ToArray(),
             RemovalPrice = ShopRemovalPrice(
                 player,
                 baseRemovalPrice),
