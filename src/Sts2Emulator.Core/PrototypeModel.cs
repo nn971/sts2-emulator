@@ -557,7 +557,11 @@ public sealed record PrototypeRelicTriggerSpec(
     int? MaxPlayerHpPercent = null,
     int? MinPlayerHpPercent = null,
     int? TurnEquals = null,
-    bool RequiresZeroPlayerBlock = false);
+    int? MinTurn = null,
+    bool RequiresZeroPlayerBlock = false,
+    PrototypeCardType? RequiredSourceCardType = null,
+    bool ResetCounterEachTurn = false,
+    int? MaxAttacksPlayedLastTurn = null);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
@@ -571,7 +575,8 @@ public sealed record PrototypeRelicDefinition(
     int EnergyPerTurnBonus = 0,
     PrototypeRelicTriggerSpec[]? Triggers = null,
     PrototypeRelicRunTriggerSpec[]? RunTriggers = null,
-    PrototypeCardType? UpgradeAddedCardType = null);
+    PrototypeCardType? UpgradeAddedCardType = null,
+    bool PreserveUnusedEnergy = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1285,6 +1290,7 @@ public sealed record PendingCombatChoiceState(
 public sealed record PrototypeCombatCounters(
     int CardsPlayedThisTurn = 0,
     int AttacksPlayedThisTurn = 0,
+    int AttacksPlayedLastTurn = 0,
     int SkillsPlayedThisTurn = 0,
     int CardsDiscardedThisTurn = 0,
     int CardsDrawnThisCombat = 0,
