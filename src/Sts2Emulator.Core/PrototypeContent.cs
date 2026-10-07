@@ -2218,6 +2218,71 @@ public static class PrototypeContent
                         1)
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.axe_ruby_raider",
+                "Axe Raider",
+                22,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "swing_1",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                5,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                5,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "swing_2",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                5,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                5,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "big_swing",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                12,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.SequentialLoop,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 20,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 1)
+                ]),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.brute_ruby_raider",
                 "Brute Raider",
                 33,
