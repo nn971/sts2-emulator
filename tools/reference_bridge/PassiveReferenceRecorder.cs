@@ -555,7 +555,9 @@ internal static class PassiveReferenceRecorder
 
     private static Dictionary<string, object?> SummarizeCreature(object creature)
     {
-        return ReadNamed(
+        WriteTypeCatalogOnce(creature.GetType());
+
+        var result = ReadNamed(
             creature,
             "CombatId",
             "CurrentHp",
@@ -563,7 +565,35 @@ internal static class PassiveReferenceRecorder
             "Block",
             "IsDead",
             "Model",
-            "Powers");
+            "Powers",
+            "CurrentMove",
+            "NextMove",
+            "Move",
+            "Intent",
+            "CurrentIntent",
+            "MoveIndex",
+            "LastMove",
+            "MoveHistory");
+
+        var model = GetProperty(creature, "Model");
+        if (model is not null)
+        {
+            WriteTypeCatalogOnce(model.GetType());
+            result["model_detail"] = ReadNamed(
+                model,
+                "Id",
+                "Name",
+                "CurrentMove",
+                "NextMove",
+                "Move",
+                "Intent",
+                "CurrentIntent",
+                "MoveIndex",
+                "LastMove",
+                "MoveHistory");
+        }
+
+        return result;
     }
 
     private static object? CaptureRngSet(object? rngSet)
