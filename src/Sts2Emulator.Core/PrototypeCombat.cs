@@ -61,7 +61,7 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
 
         var nextPowerApplicationOrder = combatRelics.Length + 1L;
-        var enemies = encounter.EnemySpecs
+        var enemies = encounter.FixedEnemySpecs
             .Select((enemySpec, index) =>
             {
                 var definition = PrototypeContent.Enemy(
