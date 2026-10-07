@@ -1074,7 +1074,9 @@ public sealed partial class PrototypeGameEngine
                         ? null
                         : new PrototypeSelectedCardPowerAction(
                             effect.SelectedCardPower.PowerId,
-                            effect.SelectedCardPower.AmountAt(upgradeLevel)),
+                            effect.SelectedCardPower.AmountAt(upgradeLevel),
+                            effect.SelectedCardPower
+                                .ClearAfflictionFromPayload),
                     SelectedCardKeyword: effect.SelectedCardKeyword,
                     DrawnCardKeyword: effect.DrawnCardKeyword,
                     EventSourceCardKeyword: effect.EventSourceCardKeyword,
@@ -1642,7 +1644,8 @@ public sealed partial class PrototypeGameEngine
                 ReplayCount: snapshot.ReplayCount,
                 Enchantment: snapshot.Enchantment,
                 EnchantmentTriggeredThisCombat:
-                    snapshot.EnchantmentTriggeredThisCombat);
+                    snapshot.EnchantmentTriggeredThisCombat,
+                Affliction: snapshot.Affliction);
 
             var addToHand = combat.Hand.Length < maxHandSize;
             combat = combat with
@@ -2143,6 +2146,10 @@ public sealed partial class PrototypeGameEngine
 
         var definition = PrototypeContent.Card(card.CardId);
         var tags = definition.Tags ?? Array.Empty<string>();
+        var grantedByAffliction =
+            keyword == PrototypeCardKeyword.Ethereal
+            && card.Affliction?.Kind
+                == PrototypeCardAfflictionKind.Hexed;
         var grantedByPower = combat.PlayerPowers.Any(power =>
         {
             if (power.Stacks <= 0)
@@ -2166,7 +2173,7 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
         return matching is { Length: > 0 }
             ? matching[^1].Enabled
-            : baseValue || grantedByPower;
+            : baseValue || grantedByAffliction || grantedByPower;
     }
 
     private static CombatState ApplyCardKeywordOverride(
@@ -2567,7 +2574,10 @@ public sealed partial class PrototypeGameEngine
                     .ToArray(),
             selectedCard.ReplayCount,
             selectedCard.Enchantment,
-            selectedCard.EnchantmentTriggeredThisCombat);
+            selectedCard.EnchantmentTriggeredThisCombat,
+            action.ClearAfflictionFromPayload
+                ? null
+                : selectedCard.Affliction);
 
         return AddPlayerPowerInstance(
             combat,
