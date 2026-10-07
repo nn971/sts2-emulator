@@ -714,6 +714,12 @@ public sealed record PrototypeEnemyDefinition(
         HpRangeAt(act, ascension).Max;
 }
 
+public enum PrototypeEncounterFormationPolicy
+{
+    Fixed,
+    ChooseDistinct
+}
+
 public sealed record PrototypeEncounterEnemySpec(
     string EnemyId,
     int FormationPosition,
@@ -728,9 +734,13 @@ public sealed record PrototypeEncounterDefinition(
     int MinFloor = 1,
     int MaxFloor = int.MaxValue,
     int Weight = 1,
-    PrototypeEncounterEnemySpec[]? Formation = null)
+    PrototypeEncounterEnemySpec[]? Formation = null,
+    PrototypeEncounterFormationPolicy FormationPolicy =
+        PrototypeEncounterFormationPolicy.Fixed,
+    string[]? EnemyPool = null,
+    int EnemyCount = 0)
 {
-    public PrototypeEncounterEnemySpec[] EnemySpecs =>
+    public PrototypeEncounterEnemySpec[] FixedEnemySpecs =>
         Formation
         ?? EnemyIds
             .Select((enemyId, index) =>
