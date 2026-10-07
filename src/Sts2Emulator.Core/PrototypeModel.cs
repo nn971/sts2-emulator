@@ -566,7 +566,8 @@ public sealed record PrototypeEnemyDefinition(
     int MaxHp,
     int HpPerAct,
     PrototypeEnemyMoveDefinition[] Moves,
-    PrototypeStartingPowerSpec[]? StartingPowers = null);
+    PrototypeStartingPowerSpec[]? StartingPowers = null,
+    int MoveLoopStartIndex = 0);
 
 public sealed record PrototypeEncounterDefinition(
     string Id,
