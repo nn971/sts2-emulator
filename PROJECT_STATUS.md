@@ -79,7 +79,7 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through seventeen gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through twenty gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
 play-series replay for Burst (including repeated nested choices), Tools of the Trade's
@@ -153,10 +153,20 @@ active until the last caster dies; final cleanup adds the stored levels back on 
 gained during suppression. Nightmare materializes suppressed Upgrade into its stored payload so its
 next-turn copies are upgraded and unsuppressed, matching the native Magi Knight interaction.
 
-Spectral Knight and Dampen are still intentionally absent from the reachable Knight Gang encounter.
-A faithful encounter still needs Magi Knight's remaining move/debuff timing, Flail Knight's random
-move policy/repeat restrictions, and native ascension scaling. See
-`docs/reference-builds/v0.111.0-mechanics-gap-017.md`.
+Magi Knight is now source-backed at A0 with its fixed sequence: Power Shield, Dampen, then the
+Ram/Prep/Magic Bomb loop. Magic Bomb is represented as its native 35-damage attack rather than a
+speculative delayed debuff.
+
+Enemy move policy now also supports a fixed opener followed by uniformly random legal choices with
+per-move consecutive-use limits. Flail Knight uses this generic policy: opener Ram, then uniform
+War Chant/Flail/Ram choices after excluding illegal repeats. War Chant applies a generic enemy
+Strength power, and enemy attack damage reads flat bonuses from enemy powers.
+
+With Magi, Spectral, and Flail present, `proto.encounter.knight_gang` is now a reachable Act 3
+elite. A combined five-turn regression exercises Hex, Dampen, Flail RNG/Strength, Magi block, and
+the first Magic Bomb together. This is the prototype's first complete source-backed **A0 native
+encounter**. Native Ascension 8/9 HP/damage scaling remains outside the typed run model and is the
+next fidelity frontier. See `docs/reference-builds/v0.111.0-mechanics-gap-020.md`.
 
 
 ## First live native capture
