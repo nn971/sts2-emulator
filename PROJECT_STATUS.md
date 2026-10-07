@@ -595,3 +595,12 @@ Potion rewards and shop purchases now remain strategically available when every 
 When an empty slot exists, the action surface stays compact: rewards expose the ordinary take action and shops expose the ordinary buy action, with no dominated replacement alternatives. Sozu suppresses both ordinary acquisition and replacement. The AI layer needs no special continuation state because the existing potion observation identifies slot contents and the generic semantic action payload identifies the replaced slot.
 
 A generic discard-potion action is intentionally not exposed in every run phase yet. For the current strategic surface, direct replacement captures the meaningful full-belt decision without adding dominated discard branches to every state.
+
+
+## Mechanics-expansion pass: expanded strategic shops
+
+Generated shops now expose five typed card offers (two Attacks, two Skills, and one Power), three distinct potion offers, three distinct relic offers, and the existing removal service. Potion and relic offer IDs occupy stable ranges, and generated relic offers exclude relics already owned by the player.
+
+ShopState keeps the original primary potion/relic fields for compatibility with older handcrafted states while exposing unified PotionOffers and RelicOffers collections over the primary and additional offers. All purchase logic, sold-state updates, Membership Card-style repricing, potion replacement, invariants, forking, and AI observation operate on the unified collections, so secondary offers are mechanically equivalent to primary offers.
+
+The AI shop observation now exposes the complete potion and relic offer arrays in addition to the compatibility fields. Regression coverage verifies the typed 5-card layout, distinct multi-offer inventory, secondary potion purchases, buying Membership Card from a secondary relic slot and repricing every remaining offer, and exclusion of already-owned relics from generated shop stock.
