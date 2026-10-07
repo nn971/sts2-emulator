@@ -3114,6 +3114,38 @@ public static class PrototypeContent
             MaxFloor: 4,
             Weight: 3),
         new(
+            "proto.encounter.nibbits_weak",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.nibbit"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.nibbit",
+                    0)
+            ]),
+        new(
+            "proto.encounter.nibbits_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.nibbit",
+                "proto.enemy.nibbit"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.nibbit",
+                    0),
+                new(
+                    "proto.enemy.nibbit",
+                    1)
+            ]),
+        new(
             "proto.encounter.slimes_weak",
             PrototypeRoomType.Combat,
             [
