@@ -13,8 +13,7 @@ public sealed class PrototypeSilentCardCatalogTests
         "Flanking",
         "Knife Trap",
         "Sneaky",
-        "The Hunt",
-        "Well-Laid Plans"
+        "The Hunt"
     ];
 
     private static readonly string[] MultiplayerOnlyNames =
