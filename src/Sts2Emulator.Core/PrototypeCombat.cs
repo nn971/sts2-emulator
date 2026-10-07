@@ -5,37 +5,55 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartCombat(RunState state, PrototypeRoomType roomType)
     {
         var world = RequireWorld(state);
-        var encounters = PrototypeContent.Encounters
-            .Where(encounter =>
-                encounter.RoomType == roomType
-                && world.Act >= encounter.MinAct
-                && world.Act <= encounter.MaxAct
-                && world.Floor >= encounter.MinFloor
-                && world.Floor <= encounter.MaxFloor
-                && encounter.Weight > 0)
-            .ToArray();
+        PrototypeEncounterDefinition encounter;
 
-        if (encounters.Length == 0)
+        var overgrowthWeak = TryPickOvergrowthWeakEncounter(
+            state,
+            world,
+            roomType);
+        if (overgrowthWeak is not null)
         {
-            throw new InvalidOperationException(
-                $"No prototype encounter is eligible for {roomType} " +
-                $"at act {world.Act}, floor {world.Floor}.");
+            encounter = overgrowthWeak.Value.Encounter;
+            world = overgrowthWeak.Value.World;
         }
-
-        var previousEncounter = world.EncounterIds.LastOrDefault();
-        if (previousEncounter is not null && encounters.Length > 1)
+        else
         {
-            var withoutImmediateRepeat = encounters
-                .Where(encounter =>
-                    !StringComparer.Ordinal.Equals(encounter.Id, previousEncounter))
+            var encounters = PrototypeContent.Encounters
+                .Where(candidate =>
+                    candidate.RoomType == roomType
+                    && world.Act >= candidate.MinAct
+                    && world.Act <= candidate.MaxAct
+                    && world.Floor >= candidate.MinFloor
+                    && world.Floor <= candidate.MaxFloor
+                    && candidate.Weight > 0)
                 .ToArray();
-            if (withoutImmediateRepeat.Length > 0)
-            {
-                encounters = withoutImmediateRepeat;
-            }
-        }
 
-        var encounter = PickWeightedEncounter(encounters, state.Rng);
+            if (encounters.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No prototype encounter is eligible for {roomType} " +
+                    $"at act {world.Act}, floor {world.Floor}.");
+            }
+
+            var previousEncounter = world.EncounterIds.LastOrDefault();
+            if (previousEncounter is not null && encounters.Length > 1)
+            {
+                var withoutImmediateRepeat = encounters
+                    .Where(candidate =>
+                        !StringComparer.Ordinal.Equals(
+                            candidate.Id,
+                            previousEncounter))
+                    .ToArray();
+                if (withoutImmediateRepeat.Length > 0)
+                {
+                    encounters = withoutImmediateRepeat;
+                }
+            }
+
+            encounter = PickWeightedEncounter(
+                encounters,
+                state.Rng);
+        }
 
         var combatRelics = state.Player.Relics
             .Select((relic, index) =>
@@ -164,6 +182,64 @@ public sealed partial class PrototypeGameEngine
             World = world,
             Phase = RunPhase.Combat
         };
+    }
+
+    private static (
+        PrototypeEncounterDefinition Encounter,
+        RunWorldState World)?
+        TryPickOvergrowthWeakEncounter(
+            RunState state,
+            RunWorldState world,
+            PrototypeRoomType roomType)
+    {
+        if (roomType != PrototypeRoomType.Combat
+            || world.Act != 1
+            || world.ActOneRegion
+                != PrototypeActOneRegion.Overgrowth)
+        {
+            return null;
+        }
+
+        var pool = world.ActOneEncounterPool;
+        if (pool is null
+            || pool.Region
+                != PrototypeActOneRegion.Overgrowth
+            || pool.OrdinaryCombatsStarted >= 3)
+        {
+            return null;
+        }
+
+        if (pool.RemainingWeakEncounterIds.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Overgrowth weak encounter pool exhausted before three ordinary combats.");
+        }
+
+        var selectedIndex = PrototypeRng.NextInt(
+            state.Rng,
+            "combat",
+            pool.RemainingWeakEncounterIds.Length);
+        var selectedId =
+            pool.RemainingWeakEncounterIds[selectedIndex];
+        var encounter = PrototypeContent.Encounter(
+            selectedId);
+
+        var remaining = pool.RemainingWeakEncounterIds
+            .Where((_, index) => index != selectedIndex)
+            .ToArray();
+        var nextPool = pool with
+        {
+            OrdinaryCombatsStarted =
+                pool.OrdinaryCombatsStarted + 1,
+            RemainingWeakEncounterIds = remaining
+        };
+
+        return (
+            encounter,
+            world with
+            {
+                ActOneEncounterPool = nextPool
+            });
     }
 
     private static PrototypeEncounterDefinition PickWeightedEncounter(
