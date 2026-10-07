@@ -151,6 +151,104 @@ public sealed class PrototypeHexLifecycleTests
     }
 
     [Fact]
+    public void NightmareCopiesAreReHexedOnArrivalWhileSourceLives()
+    {
+        WithHexSourceDefinition(() =>
+        {
+            var nightmare = Card(
+                1,
+                "proto.silent.nightmare") with
+            {
+                Affliction = new PrototypeCardAffliction(
+                    PrototypeCardAfflictionKind.Hexed,
+                    SourceEnemyInstanceId: 1)
+            };
+            var selected = Card(
+                2,
+                "proto.silent.defend") with
+            {
+                Affliction = new PrototypeCardAffliction(
+                    PrototypeCardAfflictionKind.Hexed,
+                    SourceEnemyInstanceId: 1)
+            };
+            var drawPile = Enumerable.Range(3, 5)
+                .Select(id =>
+                    Card(id, "proto.silent.strike") with
+                    {
+                        Affliction =
+                            new PrototypeCardAffliction(
+                                PrototypeCardAfflictionKind.Hexed,
+                                SourceEnemyInstanceId: 1)
+                    })
+                .ToArray();
+
+            var engine = new PrototypeGameEngine();
+            var state = CreateState(
+                hand: [nightmare, selected],
+                drawPile: drawPile,
+                discardPile: [],
+                exhaustPile: [],
+                enemies:
+                [
+                    Enemy(
+                        1,
+                        HexSourceEnemyId,
+                        hp: 10)
+                ],
+                powers:
+                [
+                    new PrototypePowerInstanceState(
+                        "proto.power.hex",
+                        2,
+                        1,
+                        SourceEnemyInstanceId: 1)
+                ]);
+
+            state = PlayCard(
+                engine,
+                state,
+                nightmare.InstanceId);
+            state = SelectOnly(
+                engine,
+                state,
+                selected.InstanceId);
+
+            var payload = Assert.Single(
+                state.World!.Combat!.PlayerPowers,
+                power => power.PowerId
+                    == "proto.power.nightmare")
+                .CardPayload!;
+            Assert.Null(payload.Affliction);
+
+            state = EndTurn(engine, state);
+
+            var combat = state.World!.Combat!;
+            var generated = combat.Cards
+                .Where(card =>
+                    card.IsTemporary
+                    && card.CardId
+                        == "proto.silent.defend")
+                .ToArray();
+
+            Assert.Equal(3, generated.Length);
+            Assert.All(
+                generated,
+                card =>
+                {
+                    var affliction = Assert.IsType<
+                        PrototypeCardAffliction>(
+                        card.Affliction);
+                    Assert.Equal(
+                        PrototypeCardAfflictionKind.Hexed,
+                        affliction.Kind);
+                    Assert.Equal(
+                        1,
+                        affliction.SourceEnemyInstanceId);
+                });
+        });
+    }
+
+    [Fact]
     public void KillingHexSourceClearsOnlyItsHexedAfflictions()
     {
         WithHexSourceDefinition(() =>
@@ -339,6 +437,20 @@ public sealed class PrototypeHexLifecycleTests
         return engine.Step(state, action).State;
     }
 
+    private static RunState SelectOnly(
+        PrototypeGameEngine engine,
+        RunState state,
+        long cardInstanceId)
+    {
+        var action = engine.GetLegalActions(state)
+            .Single(item =>
+                item.Kind == "select_cards"
+                && item.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.SequenceEqual(
+                        [cardInstanceId]));
+        return engine.Step(state, action).State;
+    }
+
     private static RunState PlayCard(
         PrototypeGameEngine engine,
         RunState state,
@@ -392,8 +504,10 @@ public sealed class PrototypeHexLifecycleTests
         CombatCardInstance[] drawPile,
         CombatCardInstance[] discardPile,
         CombatCardInstance[] exhaustPile,
-        EnemyCombatState[] enemies)
+        EnemyCombatState[] enemies,
+        PrototypePowerInstanceState[]? powers = null)
     {
+        powers ??= [];
         var cards = hand
             .Concat(drawPile)
             .Concat(discardPile)
@@ -433,8 +547,12 @@ public sealed class PrototypeHexLifecycleTests
                     : cards.Max(
                         card => card.InstanceId) + 1,
             Cards: cards,
-            PlayerPowers: [],
-            NextPowerApplicationOrder: 1);
+            PlayerPowers: powers,
+            NextPowerApplicationOrder:
+                powers.Length == 0
+                    ? 1
+                    : powers.Max(
+                        power => power.ApplicationOrder) + 1);
 
         return new RunState(
             "prototype-unbound",
