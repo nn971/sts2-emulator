@@ -79,7 +79,7 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through twenty-three gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through twenty-four gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
 play-series replay for Burst (including repeated nested choices), Tools of the Trade's
@@ -189,12 +189,13 @@ inclusive HP range when a monster has one, while fixed-HP definitions remain unc
 the native value domain without claiming that the prototype combat RNG already matches the native
 HP RNG stream/call order.
 
-The first source-backed Act 1 monster-model batch is:
+The source-backed Act 1 monster-model set currently includes:
 
 - Seapunk;
 - Twig Slime (S);
 - Assassin Raider;
-- Snapping Jaxfruit.
+- Snapping Jaxfruit;
+- Mawler.
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -207,6 +208,13 @@ transitions; random branches support typed repeat policies and runtime move-use 
 uninstantiated in production content until its pinned v0.111 off-by-one semantics are confirmed.
 See `docs/reference-builds/v0.111.0-mechanics-gap-022.md` and
 `docs/reference-builds/v0.111.0-mechanics-gap-023.md`.
+
+Player Vulnerable, Weak, and Frail are now reusable timed powers. Their owner-turn countdown is
+integrated into both normal and suspended event dispatch, and the shared value pipeline applies the
+native 3/2 incoming-Attack, 3/4 outgoing-Attack, and 3/4 card-Block multipliers. Mawler is the first
+production Act 1 user of the state graph: fixed Claw opener, then constrained random Rip and Tear /
+Roar / Claw with Roar usable once. See
+`docs/reference-builds/v0.111.0-mechanics-gap-024.md`.
 
 ## First live native capture
 
