@@ -41,7 +41,7 @@ switch-to-enemy, combat victory, and combat end.
 capture validated the v1 history/player/RNG additions. The current bridge emits
 **`sts2-reference-probe-v4`**.
 
-Relative to those earlier probes, v3 remains passive and additive. It also:
+Relative to those earlier probes, v4 remains passive and additive. It also:
 
 - catalogs enemy Creature/Model runtime layouts;
 - opportunistically projects current/next move, intent, move index, last move and move history;
@@ -79,7 +79,7 @@ cp -r artifacts/reference_bridge_mod/Sts2ReferenceBridge \
     "/path/to/instrumented/game/mods/"
 ```
 
-Then launch the instrumented copy with mods enabled and play the target combat. The v3 probe should appear
+Then launch the instrumented copy with mods enabled and play the target combat. The v4 probe should appear
 under:
 
 ```text
