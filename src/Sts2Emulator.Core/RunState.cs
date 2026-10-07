@@ -58,7 +58,8 @@ public sealed record RunState(
     PlayerState Player,
     RngBundle Rng,
     JsonElement ExtensionState,
-    RunWorldState? World = null)
+    RunWorldState? World = null,
+    int Ascension = 0)
 {
     public RunState Fork() => this with
     {
