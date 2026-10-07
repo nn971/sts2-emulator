@@ -198,7 +198,8 @@ The source-backed Act 1 monster-model set currently includes:
 - Mawler;
 - Toadpole;
 - Leaf Slime (S);
-- Leaf Slime (M).
+- Leaf Slime (M);
+- Twig Slime (M).
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -207,10 +208,13 @@ source/oracle evidence supports them.
 The enemy-AI kernel now also has a source-shaped state graph for Act 1 monsters whose native logic
 cannot be flattened into one random pool. Move states and weighted random states carry explicit
 transitions; random branches support typed repeat policies and runtime move-use accounting.
-`CannotRepeat` and `UseOnlyOnce` are covered by focused kernel tests. `CanRepeatXTimes` remains
-uninstantiated in production content until its pinned v0.111 off-by-one semantics are confirmed.
-See `docs/reference-builds/v0.111.0-mechanics-gap-022.md` and
-`docs/reference-builds/v0.111.0-mechanics-gap-023.md`.
+`CannotRepeat`, `UseOnlyOnce`, and `CanRepeatXTimes` are now all production-backed. The pinned
+source interpretation is that `CanRepeatXTimes(n)` allows at most `n` consecutive executions of
+that move. Twig Slime (M) is the first Act 1 production user: Sticky Shot opener, then random Pokey
+Pounce / Sticky Shot with Pounce capped at two consecutive uses and Sticky Shot unable to repeat.
+See `docs/reference-builds/v0.111.0-mechanics-gap-022.md`,
+`docs/reference-builds/v0.111.0-mechanics-gap-023.md`, and
+`docs/reference-builds/v0.111.0-mechanics-gap-028.md`.
 
 Player Vulnerable, Weak, and Frail are now reusable timed powers. Their owner-turn countdown is
 integrated into both normal and suspended event dispatch, and the shared value pipeline applies the
