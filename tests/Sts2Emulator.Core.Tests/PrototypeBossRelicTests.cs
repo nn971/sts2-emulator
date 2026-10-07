@@ -72,8 +72,20 @@ public sealed class PrototypeBossRelicTests
             reward.CurrentRelicOptions,
             frame.Observation.Reward!.RelicOptions);
 
-        var selected = reward.CurrentRelicOptions[1];
-        state = engine.Step(state, actions[1]).State;
+        var selectedIndex = Array.FindIndex(
+            reward.CurrentRelicOptions,
+            relicId =>
+                PrototypeContent.Relic(relicId)
+                    .AcquisitionDeckChoice is null);
+        Assert.True(selectedIndex >= 0);
+        var selected =
+            reward.CurrentRelicOptions[selectedIndex];
+        var selectedAction = actions.Single(action =>
+            action.ReadPayload<ChooseRelicPayload>()
+                .Index == selectedIndex);
+        state = engine.Step(
+            state,
+            selectedAction).State;
         Assert.Contains(
             state.Player.Relics,
             relic => relic.RelicId == selected);
@@ -187,10 +199,19 @@ public sealed class PrototypeBossRelicTests
     }
 
     [Fact]
-    public void FirstBossRelicSetAllGrantsOneEnergyPerTurn()
+    public void EnergyBossRelicsGrantOneEnergyPerTurn()
     {
+        var energyRelics = new[]
+        {
+            "proto.relic.sozu",
+            "proto.relic.coffee_dripper",
+            "proto.relic.fusion_hammer",
+            "proto.relic.velvet_choker",
+            "proto.relic.runic_dome"
+        };
+
         Assert.All(
-            PrototypeContent.BossRelicPool,
+            energyRelics,
             relicId => Assert.Equal(
                 1,
                 PrototypeContent.Relic(relicId)
