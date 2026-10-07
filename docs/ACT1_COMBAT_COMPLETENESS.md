@@ -48,9 +48,9 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Boss | `CEREMONIAL_BEAST_BOSS` | `CEREMONIAL_BEAST` | no | pending | pending | no |
 | Overgrowth | Boss | `THE_KIN_BOSS` | `KIN_FOLLOWER`, `KIN_PRIEST` | no | pending | pending | no |
 | Overgrowth | Boss | `VANTOM_BOSS` | `VANTOM` | no | pending | pending | no |
-| Overgrowth | Elite | `BYGONE_EFFIGY_ELITE` | `BYGONE_EFFIGY` | yes | yes | pending | no |
-| Overgrowth | Elite | `BYRDONIS_ELITE` | `BYRDONIS` | yes | yes | pending | no |
-| Overgrowth | Elite | `PHROG_PARASITE_ELITE` | `PHROG_PARASITE`, `WRIGGLER` | no | pending | pending | no |
+| Overgrowth | Elite | `BYGONE_EFFIGY_ELITE` | `BYGONE_EFFIGY` | yes | yes | yes | no |
+| Overgrowth | Elite | `BYRDONIS_ELITE` | `BYRDONIS` | yes | yes | yes | no |
+| Overgrowth | Elite | `PHROG_PARASITE_ELITE` | `PHROG_PARASITE`, `WRIGGLER` | yes | yes | yes | no |
 | Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | yes | yes | yes | no |
 | Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | yes | yes | yes | no |
 | Overgrowth | Monster | `FOGMOG_NORMAL` | `EYE_WITH_TEETH`, `FOGMOG` | yes | yes | yes | no |
@@ -127,7 +127,7 @@ claimed. All twelve Overgrowth normal encounters now participate in the typed no
 | `MAWLER` — Mawler | Normal | 72 | 76 | random | implemented + focused tests |
 | `NIBBIT` — Nibbit | Normal | 42–46 | 44–48 | conditional | implemented + focused tests |
 | `PHANTASMAL_GARDENER` — Phantasmal Gardener | Elite | 26–31 | 27–32 | conditional | not started |
-| `PHROG_PARASITE` — Phrog Parasite | Elite | 61–64 | 66–68 | random | not started |
+| `PHROG_PARASITE` — Phrog Parasite | Elite | 61–64 | 66–68 | cycle | implemented + focused tests |
 | `PUNCH_CONSTRUCT` — Punch Construct | Normal | 55 | 60 | cycle | not started |
 | `SEAPUNK` — Seapunk | Normal | 44–46 | 47–49 | cycle | implemented + focused tests |
 | `SEWER_CLAM` — Sewer Clam | Normal | 56 | 58 | cycle | not started |
@@ -147,7 +147,7 @@ claimed. All twelve Overgrowth normal encounters now participate in the typed no
 | `VANTOM` — Vantom | Boss | 173 | 183 | cycle | not started |
 | `VINE_SHAMBLER` — Vine Shambler | Normal | 61 | 64 | cycle | implemented + focused tests |
 | `WATERFALL_GIANT` — Waterfall Giant | Boss | 240 | 250 | cycle | not started |
-| `WRIGGLER` — Wriggler | Elite | 17–21 | 18–22 | conditional | not started |
+| `WRIGGLER` — Wriggler | Elite | 17–21 | 18–22 | conditional | implemented + focused tests |
 
 ## Implementation order
 
