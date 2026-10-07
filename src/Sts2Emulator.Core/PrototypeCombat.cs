@@ -2564,6 +2564,7 @@ public sealed partial class PrototypeGameEngine
             var nextStacks = definition.DoesNotStack
                 ? Math.Max(powers[index].Stacks, stacks)
                 : powers[index].Stacks + stacks;
+            PrototypePowerInstanceState? updatedPower = null;
             if (nextStacks == 0
                 || (!definition.AllowNegative && nextStacks < 0))
             {
@@ -2571,18 +2572,22 @@ public sealed partial class PrototypeGameEngine
             }
             else
             {
-                powers[index] = powers[index] with { Stacks = nextStacks };
+                powers[index] = powers[index] with
+                {
+                    Stacks = nextStacks
+                };
+                updatedPower = powers[index];
             }
 
             combat = combat with
             {
                 PlayerPowers = powers.ToArray()
             };
-            return index < powers.Count
-                ? ApplySourceBoundCardAffliction(
+            return updatedPower is null
+                ? combat
+                : ApplySourceBoundCardAffliction(
                     combat,
-                    powers[index])
-                : combat;
+                    updatedPower);
         }
 
         if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
