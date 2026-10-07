@@ -441,3 +441,15 @@ The content pool now includes Anchor, Vajra, Blood Vial, Meat on the Bone, Stren
 Regen Potion. Regen is represented as a decrementing player power that heals on PlayerTurnStarted.
 Combat victory is centralized through a victory-event dispatch before reward creation so future
 post-combat relics can share the same path.
+
+
+## Mechanics-expansion pass: potion-use interactions and next-card duplication
+
+The combat event layer now exposes PotionUsed after the consumed potion has been removed from both
+persistent and combat-local potion slots. Relics can subscribe to this event like any other combat
+event.
+
+Power-based play-count modifiers now support an any-card-type replay mode. Duplicator uses that
+primitive to replay the next card once and consume one stack; Flex Potion and Reptile Trinket use a
+shared temporary-Strength power that contributes to Attack damage and is removed at player turn end.
+Reptile Trinket grants 3 temporary Strength whenever a potion is used in combat.

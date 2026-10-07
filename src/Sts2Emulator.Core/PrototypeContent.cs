@@ -1813,6 +1813,26 @@ public static class PrototypeContent
                         PrototypeCombatEffectKind.ApplyPlayerPower,
                         5,
                         PowerId: "proto.power.regen")
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.duplicator",
+                "Duplicator",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.duplication")
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.flex",
+                "Flex Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        5,
+                        PowerId: "proto.power.temporary_strength")
                 ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
@@ -1949,6 +1969,21 @@ public static class PrototypeContent
                                 12)
                         ],
                         MaxPlayerHpPercent: 50)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.reptile_trinket",
+                "Reptile Trinket",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.PotionUsed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyPlayerPower,
+                                3,
+                                PowerId:
+                                    "proto.power.temporary_strength")
+                        ])
                 ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
@@ -1978,6 +2013,23 @@ public static class PrototypeContent
                         ])
                 ],
                 DecrementAfterPlayerTurnStart: true),
+            new PrototypePowerDefinition(
+                "proto.power.temporary_strength",
+                "Temporary Strength",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                AllowNegative: true,
+                PlayerAttackDamageBonusPerStack: 1,
+                RemoveAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.duplication",
+                "Duplication",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                ReplayAnyCardType: true,
+                AdditionalPlayCount: 1,
+                ConsumeOnMatchingPlayCountModification: true,
+                RemoveAtPlayerTurnEnd: true),
             new PrototypePowerDefinition(
                 "proto.power.accelerant",
                 "Accelerant",
@@ -5604,7 +5656,8 @@ public static class PrototypeContent
         "proto.relic.anchor",
         "proto.relic.vajra",
         "proto.relic.blood_vial",
-        "proto.relic.meat_on_the_bone"
+        "proto.relic.meat_on_the_bone",
+        "proto.relic.reptile_trinket"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>

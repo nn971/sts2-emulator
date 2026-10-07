@@ -864,10 +864,21 @@ public sealed partial class PrototypeGameEngine
                 .Where(item => item.Slot != payload.Slot)
                 .ToArray()
         };
+        var playerAfterPotion =
+            resolved.Player with { PotionSlots = slots };
+
+        var potionUsed = DispatchCombatEvent(
+            playerAfterPotion,
+            combatAfterPotion,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PotionUsed),
+            state.Rng);
+        playerAfterPotion = potionUsed.Player;
+        combatAfterPotion = potionUsed.Combat;
 
         state = state with
         {
-            Player = resolved.Player with { PotionSlots = slots },
+            Player = playerAfterPotion,
             World = world with { Combat = combatAfterPotion }
         };
 
@@ -3495,7 +3506,8 @@ public sealed partial class PrototypeGameEngine
             {
                 var definition = PrototypeContent.Power(power.PowerId);
                 return power.Stacks > 0
-                    && definition.ReplayCardType == cardType
+                    && (definition.ReplayAnyCardType
+                        || definition.ReplayCardType == cardType)
                     && definition.AdditionalPlayCount > 0;
             })
             .OrderBy(power => power.ApplicationOrder)

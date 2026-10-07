@@ -242,6 +242,7 @@ public enum PrototypeCombatEventKind
 {
     CombatStarted,
     CombatWon,
+    PotionUsed,
     PlayerTurnStarted,
     PlayerTurnEnded,
     BeforeHandDraw,
@@ -581,6 +582,7 @@ public sealed record PrototypePowerDefinition(
     string? FirstAttackDamageBonusRequiredCardTag = null,
     int FirstAttackDamageBonusPerStack = 0,
     PrototypeCardType? ReplayCardType = null,
+    bool ReplayAnyCardType = false,
     int AdditionalPlayCount = 0,
     bool ConsumeOnMatchingPlayCountModification = false,
     bool IsInstanced = false,
