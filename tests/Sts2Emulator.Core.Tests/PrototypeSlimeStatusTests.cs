@@ -102,7 +102,10 @@ public sealed class PrototypeSlimeStatusTests
 
         state = EndTurn(engine, state);
 
-        Assert.Equal(4, state.World!.Combat!.DiscardPile.Length);
+        Assert.Equal(
+            4,
+            state.World!.Combat!.Cards.Count(
+                card => card.CardId == "proto.status.slimed"));
         Assert.Equal(
             "sticky_shot",
             Assert.Single(
