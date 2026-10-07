@@ -2072,6 +2072,59 @@ public static class PrototypeContent
                             ])
                     ])),
             new PrototypeEnemyDefinition(
+                "proto.enemy.punch_construct",
+                "Punch Construct",
+                55,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "ready",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                10)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "fast_punch",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                5,
+                                Repetitions: 2,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                1,
+                                PowerId: "proto.power.frail")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "strong_punch",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                14,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.SequentialLoop,
+                HpAscensionDeltas:
+                [
+                    new(8, 5)
+                ],
+                StartingPowers:
+                [
+                    new PrototypeStartingPowerSpec(
+                        "proto.power.artifact",
+                        1)
+                ]),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.toadpole",
                 "Toadpole",
                 25,
