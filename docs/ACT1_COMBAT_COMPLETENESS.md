@@ -31,7 +31,7 @@ An encounter is not complete merely because all of its monster classes exist. Co
 - timed player Vulnerable / Weak / Frail with attack/card-Block multipliers;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
-- first source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, and **Toadpole** (isolated models; encounter pools not yet promoted).
+- source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, **Toadpole**, **Leaf Slime (S)**, and **Leaf Slime (M)** (isolated models; encounter pools not yet promoted).
 
 ## Encounter coverage
 
