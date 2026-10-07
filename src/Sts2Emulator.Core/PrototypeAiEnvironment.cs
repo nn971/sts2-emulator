@@ -54,6 +54,12 @@ public sealed record PrototypeAiMapNode(
     PrototypeRoomType RoomType,
     string[] NextNodeIds);
 
+public sealed record PrototypeAiDeckChoice(
+    string SourceRelicId,
+    PrototypePersistentDeckChoiceKind Kind,
+    int RemainingSelections,
+    long[] CandidateCardInstanceIds);
+
 public sealed record PrototypeAiReward(
     string[] CardOptions,
     string? PotionOption,
@@ -62,7 +68,8 @@ public sealed record PrototypeAiReward(
     bool PotionResolved,
     bool RelicResolved,
     int ExtraCardRewardGroupsRemaining = 0,
-    string[]? RelicOptions = null);
+    string[]? RelicOptions = null,
+    PrototypeAiDeckChoice? PendingDeckChoice = null);
 
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
@@ -312,7 +319,15 @@ public sealed class PrototypeAiEnvironment
                         0,
                         (world.Reward.ExtraCardOptions?.Length ?? 0)
                         - world.Reward.ExtraCardRewardsResolved),
-                    (string[])world.Reward.CurrentRelicOptions.Clone()),
+                    (string[])world.Reward.CurrentRelicOptions.Clone(),
+                    world.Reward.PendingDeckChoice is null
+                        ? null
+                        : new PrototypeAiDeckChoice(
+                            world.Reward.PendingDeckChoice.SourceRelicId,
+                            world.Reward.PendingDeckChoice.Kind,
+                            world.Reward.PendingDeckChoice.RemainingSelections,
+                            (long[])world.Reward.PendingDeckChoice
+                                .CandidateCardInstanceIds.Clone())),
             Shop: world?.Shop is null
                 ? null
                 : new PrototypeAiShop(
