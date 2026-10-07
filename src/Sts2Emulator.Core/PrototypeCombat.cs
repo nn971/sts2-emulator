@@ -1775,6 +1775,22 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
+            var turnEndStrength =
+                enemy.PowerStates.Sum(power =>
+                    PrototypeContent.Power(power.PowerId)
+                        .EnemyStrengthGainAtTurnEndPerStack
+                    * power.Stacks);
+            if (turnEndStrength != 0)
+            {
+                var strengthened = ApplyEnemyPowerToState(
+                    combat,
+                    enemy,
+                    "proto.power.strength",
+                    turnEndStrength);
+                combat = strengthened.Combat;
+                enemy = strengthened.Enemy;
+            }
+
             var consecutiveUses =
                 StringComparer.Ordinal.Equals(
                     enemy.LastMoveId,
