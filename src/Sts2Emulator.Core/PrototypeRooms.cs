@@ -274,37 +274,61 @@ public sealed partial class PrototypeGameEngine
             state.Rng);
 
         var offers = cardIds
-            .Select((cardId, index) => new ShopOffer(
-                index + 1,
-                cardId,
-                ShopCardPrice(cardId, state.Rng),
-                false))
+            .Select((cardId, index) =>
+            {
+                var basePrice =
+                    ShopCardPrice(cardId, state.Rng);
+                return new ShopOffer(
+                    index + 1,
+                    cardId,
+                    basePrice,
+                    false,
+                    BasePrice: basePrice);
+            })
             .ToArray();
 
         var potionId = PrototypeContent.PotionPool[
             PrototypeRng.NextInt(state.Rng, "shop", PrototypeContent.PotionPool.Length)];
         var relicId = PrototypeContent.RelicPool[
             PrototypeRng.NextInt(state.Rng, "shop", PrototypeContent.RelicPool.Length)];
+        var potionBasePrice =
+            40 + PrototypeRng.NextInt(
+                state.Rng,
+                "shop",
+                21);
+        var relicBasePrice =
+            100 + PrototypeRng.NextInt(
+                state.Rng,
+                "shop",
+                41);
+        var removalBasePrice =
+            75 + ((world.Act - 1) * 15);
 
         var shop = new ShopState(
             offers,
             new ShopOffer(
                 100,
                 potionId,
-                40 + PrototypeRng.NextInt(state.Rng, "shop", 21),
-                false),
+                potionBasePrice,
+                false,
+                BasePrice: potionBasePrice),
             new ShopOffer(
                 200,
                 relicId,
-                100 + PrototypeRng.NextInt(state.Rng, "shop", 41),
-                false),
-            RemovalPrice: 75 + ((world.Act - 1) * 15));
+                relicBasePrice,
+                false,
+                BasePrice: relicBasePrice),
+            RemovalPrice: removalBasePrice,
+            BaseRemovalPrice: removalBasePrice);
 
-        world = world with { Shop = shop };
         var player = ApplyRelicRunEvent(
             state.Player,
             PrototypeRunEventKind.ShopEntered,
             rng: state.Rng);
+        shop = RepriceShop(
+            shop,
+            player);
+        world = world with { Shop = shop };
 
         return state with
         {
@@ -328,6 +352,7 @@ public sealed partial class PrototypeGameEngine
 
         if (shop.PotionOffer is { Sold: false } potion
             && potion.Price <= state.Player.Gold
+            && CanAcquirePotion(state.Player)
             && Array.IndexOf(state.Player.PotionSlots, null) >= 0)
         {
             actions.Add(GameAction.Create("buy_potion", new BuyOfferPayload(potion.OfferId)));
@@ -424,6 +449,12 @@ public sealed partial class PrototypeGameEngine
             }
 
             EnsurePurchasable(player, offer);
+            if (!CanAcquirePotion(player))
+            {
+                throw new InvalidOperationException(
+                    "Player cannot acquire potions.");
+            }
+
             var slot = Array.IndexOf(player.PotionSlots, null);
             if (slot < 0)
             {
@@ -461,7 +492,13 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: offer.ItemId,
                 rng: state.Rng);
-            shop = shop with { RelicOffer = offer with { Sold = true } };
+            shop = shop with
+            {
+                RelicOffer = offer with { Sold = true }
+            };
+            shop = RepriceShop(
+                shop,
+                player);
         }
         else
         {
@@ -708,6 +745,12 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException("Reward has no potion.");
                 }
 
+                if (!CanAcquirePotion(player))
+                {
+                    throw new InvalidOperationException(
+                        "Player cannot acquire potions.");
+                }
+
                 var slot = Array.IndexOf(player.PotionSlots, null);
                 if (slot < 0)
                 {
@@ -789,22 +832,40 @@ public sealed partial class PrototypeGameEngine
             _ => 20 + (world.Act * 5)
         };
 
+        var cardChoiceCount =
+            RewardCardChoiceCount(state.Player);
         var cardOptions = PickRewardCards(
             world.Act,
-            3,
+            cardChoiceCount,
             state.Rng);
+        var extraCardRewardGroups =
+            Math.Max(
+                0,
+                combat.ExtraCardRewardsEarned)
+            + (room == PrototypeRoomType.Combat
+                ? ExtraNormalCombatCardRewardGroups(
+                    state.Player)
+                : 0);
         var extraCardOptions = Enumerable.Range(
                 0,
-                Math.Max(0, combat.ExtraCardRewardsEarned))
+                extraCardRewardGroups)
             .Select(_ => PickRewardCards(
                 world.Act,
-                3,
+                cardChoiceCount,
                 state.Rng))
             .ToArray();
 
-        var potion = PrototypeRng.NextBool(state.Rng, "reward", 1, 2)
+        var potion = CanAcquirePotion(state.Player)
+            && PrototypeRng.NextBool(
+                state.Rng,
+                "reward",
+                1,
+                2)
             ? PrototypeContent.PotionPool[
-                PrototypeRng.NextInt(state.Rng, "reward", PrototypeContent.PotionPool.Length)]
+                PrototypeRng.NextInt(
+                    state.Rng,
+                    "reward",
+                    PrototypeContent.PotionPool.Length)]
             : null;
 
         var relic = room is PrototypeRoomType.Elite or PrototypeRoomType.Boss
