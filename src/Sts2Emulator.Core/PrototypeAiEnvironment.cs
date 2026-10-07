@@ -61,7 +61,8 @@ public sealed record PrototypeAiReward(
     bool CardResolved,
     bool PotionResolved,
     bool RelicResolved,
-    int ExtraCardRewardGroupsRemaining = 0);
+    int ExtraCardRewardGroupsRemaining = 0,
+    string[]? RelicOptions = null);
 
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
@@ -292,7 +293,12 @@ public sealed class PrototypeAiEnvironment
             CurrentMapNodeId: world?.Map.CurrentNodeId,
             Combat: world?.Combat is null
                 ? null
-                : CreateCombatObservation(world.Combat),
+                : CreateCombatObservation(
+                    world.Combat,
+                    state.Player.Relics.Any(relic =>
+                        PrototypeContent.Relic(
+                            relic.RelicId)
+                            .HideEnemyIntents)),
             Reward: world?.Reward is null
                 ? null
                 : new PrototypeAiReward(
@@ -305,7 +311,8 @@ public sealed class PrototypeAiEnvironment
                     Math.Max(
                         0,
                         (world.Reward.ExtraCardOptions?.Length ?? 0)
-                        - world.Reward.ExtraCardRewardsResolved)),
+                        - world.Reward.ExtraCardRewardsResolved),
+                    (string[])world.Reward.CurrentRelicOptions.Clone()),
             Shop: world?.Shop is null
                 ? null
                 : new PrototypeAiShop(
@@ -318,7 +325,9 @@ public sealed class PrototypeAiEnvironment
             TerminalOutcome: world?.TerminalOutcome);
     }
 
-    private static PrototypeAiCombat CreateCombatObservation(CombatState combat)
+    private static PrototypeAiCombat CreateCombatObservation(
+        CombatState combat,
+        bool hideEnemyIntents)
     {
         var byId = combat.Cards.ToDictionary(card => card.InstanceId);
 
@@ -348,9 +357,13 @@ public sealed class PrototypeAiEnvironment
             Enemies: combat.Enemies.Select(enemy =>
             {
                 var definition = PrototypeContent.Enemy(enemy.EnemyId);
-                var moveId = definition.Moves.Length == 0
-                    ? null
-                    : definition.Moves[enemy.MoveIndex % definition.Moves.Length].Id;
+                var moveId =
+                    hideEnemyIntents
+                    || definition.Moves.Length == 0
+                        ? null
+                        : definition.Moves[
+                            enemy.MoveIndex
+                            % definition.Moves.Length].Id;
 
                 return new PrototypeAiEnemy(
                     enemy.InstanceId,
