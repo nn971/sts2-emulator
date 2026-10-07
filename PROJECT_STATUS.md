@@ -235,6 +235,19 @@ source-shaped random Tackle/Goop policy with no immediate repeats, while Leaf Sl
 Sticky Shot / Clump Shot alternation. See
 `docs/reference-builds/v0.111.0-mechanics-gap-027.md`.
 
+Twig Slime (M) now closes the four-model slime family. The enemy-AI repeat kernel's
+`CanRepeatXTimes(n)` rule is source-pinned as "at most n consecutive uses"; Twig M opens with one
+Slimed, then randomly chooses Pokey Pounce or Sticky Shot with Pounce capped at two consecutive
+uses and Sticky Shot unable to repeat. See
+`docs/reference-builds/v0.111.0-mechanics-gap-028.md`.
+
+Encounter construction now supports independent random slot groups with optional distinct selection.
+The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
+reference encounters: weak uses two different small slimes around one random medium slime; normal
+uses fixed Twig M + Leaf M followed by the two small slimes in random order. This promotes formation
+fidelity while leaving native weak/normal pool selection explicitly pending. See
+`docs/reference-builds/v0.111.0-mechanics-gap-029.md`.
+
 ## First live native capture
 
 The v0 passive recorder has now been validated in-game on two Ascension-0 Silent combats against
