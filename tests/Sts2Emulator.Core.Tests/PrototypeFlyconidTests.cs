@@ -87,11 +87,13 @@ public sealed class PrototypeFlyconidTests
         var random = Assert.Single(
             ai.States,
             state => state.Id == "rand");
+        var randomBranches = Assert.IsType<
+            PrototypeEnemyAiBranch[]>(random.Branches);
         Assert.Equal(
             [3, 2, 1],
-            random.Branches!.Select(branch => branch.Weight));
+            randomBranches.Select(branch => branch.Weight));
         Assert.All(
-            random.Branches,
+            randomBranches,
             branch => Assert.Equal(
                 PrototypeEnemyAiRepeatRule.CannotRepeat,
                 branch.RepeatRule));
