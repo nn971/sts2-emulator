@@ -175,6 +175,71 @@ public sealed class PrototypeGeneratedChoicePotionTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void PotionUsedTriggerWaitsUntilGeneratedChoiceResolves()
+    {
+        var state = CreateState(
+            "proto.potion.attack",
+            cards: [Card(1, "proto.silent.defend")],
+            hand: [1]);
+        var empty = PrototypeJson.EmptyObject();
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics =
+                [
+                    new RelicInstance(
+                        "proto.relic.reptile_trinket",
+                        empty)
+                ]
+            },
+            World = state.World! with
+            {
+                Combat = state.World!.Combat! with
+                {
+                    Relics =
+                    [
+                        new CombatRelicState(
+                            0,
+                            "proto.relic.reptile_trinket",
+                            1,
+                            [0])
+                    ],
+                    NextPowerApplicationOrder = 2
+                }
+            }
+        };
+        var engine = new PrototypeGameEngine();
+
+        state = UsePotion(engine, state);
+
+        Assert.NotNull(state.World!.Combat!.PendingChoice);
+        Assert.Null(state.Player.PotionSlots[0]);
+        Assert.DoesNotContain(
+            state.World.Combat.PlayerPowers,
+            power =>
+                power.PowerId
+                    == "proto.power.temporary_strength");
+
+        var choose = engine.GetLegalActions(state)
+            .First(action =>
+                action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.Length == 1);
+        state = engine.Step(state, choose).State;
+
+        Assert.Null(state.World!.Combat!.PendingChoice);
+        Assert.Equal(
+            3,
+            Assert.Single(
+                state.World.Combat.PlayerPowers,
+                power =>
+                    power.PowerId
+                        == "proto.power.temporary_strength")
+                .Stacks);
+        PrototypeStateInvariants.Validate(state);
+    }
+
     private static RunState UsePotion(
         PrototypeGameEngine engine,
         RunState state)
