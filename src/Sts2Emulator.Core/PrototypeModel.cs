@@ -82,7 +82,8 @@ public enum PrototypeCardAfflictionKind
 
 public sealed record PrototypeCardAffliction(
     PrototypeCardAfflictionKind Kind,
-    int Amount = 1);
+    int Amount = 1,
+    int? SourceEnemyInstanceId = null);
 
 [Flags]
 public enum PrototypeCardKeywordOverrideExpiry
@@ -517,13 +518,19 @@ public sealed record PrototypePowerDefinition(
     int AdditionalPlayCount = 0,
     bool ConsumeOnMatchingPlayCountModification = false,
     bool IsInstanced = false,
-    bool RequiresCardPayload = false);
+    bool RequiresCardPayload = false,
+    bool SourceBoundToEnemy = false,
+    bool DoesNotStack = false,
+    PrototypeCardAfflictionKind? SourceBoundCardAffliction = null,
+    bool SkipCardsWithExistingAffliction = false,
+    bool ClearSourceAfflictionWhenRemoved = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
     int Stacks,
     long ApplicationOrder,
-    PrototypeCombatCardSnapshot? CardPayload = null)
+    PrototypeCombatCardSnapshot? CardPayload = null,
+    int? SourceEnemyInstanceId = null)
 {
     public PrototypePowerInstanceState Fork() => this with
     {
@@ -534,14 +541,16 @@ public sealed record PrototypePowerInstanceState(
 public enum PrototypeEnemyEffectKind
 {
     DamagePlayer,
-    GainBlock
+    GainBlock,
+    ApplyPlayerPower
 }
 
 public sealed record PrototypeEnemyEffectSpec(
     PrototypeEnemyEffectKind Kind,
     int Amount,
     int AmountPerAct = 0,
-    int Repetitions = 1);
+    int Repetitions = 1,
+    string? PowerId = null);
 
 public sealed record PrototypeEnemyMoveDefinition(
     string Id,
