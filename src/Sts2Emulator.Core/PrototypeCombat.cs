@@ -835,17 +835,9 @@ public sealed partial class PrototypeGameEngine
         var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
-            var effectiveEffect =
-                ShouldCardTargetAllEnemies(combat, definition)
-                && effect.Kind == PrototypeCombatEffectKind.DamageEnemy
-                    ? effect with
-                    {
-                        Target = PrototypeEffectTarget.AllEnemies
-                    }
-                    : effect;
             EnqueueEffectOperations(
                 operations,
-                effectiveEffect,
+                effect,
                 0,
                 0,
                 payload.TargetEnemyId,
@@ -2586,28 +2578,28 @@ public sealed partial class PrototypeGameEngine
                                 }
                             }
 
-                            var damageAmount = operation.Amount;
+                            var echoDamageAmount = operation.Amount;
                             if (operation.IsPoweredAttack)
                             {
-                                damageAmount = ModifyPlayerAttackDamage(
+                                echoDamageAmount = ModifyPlayerAttackDamage(
                                     combat,
                                     sourceCardInstanceId,
                                     enemyId,
-                                    damageAmount);
-                                damageAmount = ModifyIncomingAttackDamage(
+                                    echoDamageAmount);
+                                echoDamageAmount = ModifyIncomingAttackDamage(
                                     combat,
                                     enemyId,
-                                    damageAmount,
+                                    echoDamageAmount,
                                     includeCurrentCard:
                                         sourceCardInstanceId is not null);
                             }
 
-                            var damageResult = DamageEnemy(
+                            var echoDamageResult = DamageEnemy(
                                 combat,
                                 enemyId,
-                                damageAmount);
-                            combat = damageResult.Combat;
-                            if (damageResult.Defeated)
+                                echoDamageAmount);
+                            combat = echoDamageResult.Combat;
+                            if (echoDamageResult.Defeated)
                             {
                                 pendingRounds++;
                                 combat =
@@ -2615,7 +2607,7 @@ public sealed partial class PrototypeGameEngine
                                         combat);
                             }
 
-                            if (damageResult.DamageDealt > 0)
+                            if (echoDamageResult.DamageDealt > 0)
                             {
                                 var damaged = DispatchCombatEvent(
                                     player,
@@ -2623,14 +2615,14 @@ public sealed partial class PrototypeGameEngine
                                     new PrototypeCombatEvent(
                                         PrototypeCombatEventKind.EnemyDamaged,
                                         TargetEnemyId: enemyId,
-                                        Amount: damageResult.DamageDealt),
+                                        Amount: echoDamageResult.DamageDealt),
                                     rng,
                                     eventDepth + 1);
                                 player = damaged.Player;
                                 combat = damaged.Combat;
                             }
 
-                            if (damageResult.Defeated)
+                            if (echoDamageResult.Defeated)
                             {
                                 var defeated = DispatchCombatEvent(
                                     player,
@@ -2638,7 +2630,7 @@ public sealed partial class PrototypeGameEngine
                                     new PrototypeCombatEvent(
                                         PrototypeCombatEventKind.EnemyDefeated,
                                         TargetEnemyId: enemyId,
-                                        Amount: damageResult.DamageDealt),
+                                        Amount: echoDamageResult.DamageDealt),
                                     rng,
                                     eventDepth + 1);
                                 player = defeated.Player;
@@ -3394,9 +3386,17 @@ public sealed partial class PrototypeGameEngine
         var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
+            var effectiveEffect =
+                ShouldCardTargetAllEnemies(combat, definition)
+                && effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                    ? effect with
+                    {
+                        Target = PrototypeEffectTarget.AllEnemies
+                    }
+                    : effect;
             EnqueueEffectOperations(
                 operations,
-                effect,
+                effectiveEffect,
                 card.UpgradeLevel,
                 series.EnergySpent,
                 series.TargetEnemyId,
