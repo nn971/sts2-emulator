@@ -109,6 +109,12 @@ public sealed record PrototypeAiStepFrame(
     RunState State,
     PrototypeAiFrame Frame);
 
+public sealed record PrototypeAiRolloutFrame(
+    PrototypeAiAction Action,
+    RunState State,
+    PrototypeAiObservation Observation,
+    PrototypeAiAction[] LegalActions);
+
 /// <summary>
 /// Stateless adapter for search/learning consumers. The canonical RunState remains the source of
 /// truth; this layer exposes a player-facing observation plus stable semantic action IDs.
@@ -178,6 +184,28 @@ public sealed class PrototypeAiEnvironment
             resolved.View,
             next,
             Observe(next));
+    }
+
+    public PrototypeAiRolloutFrame RolloutStepFrame(RunState state, string actionId)
+    {
+        var resolved = ResolveAction(state, actionId);
+        var next = _engine.Step(state, resolved.Action).State;
+        var observation = CreateObservation(next);
+        var legalActions = _engine.GetLegalActions(next)
+            .Select(CreateAction)
+            .ToArray();
+
+        if (legalActions.Select(action => action.ActionId).Distinct(StringComparer.Ordinal).Count()
+            != legalActions.Length)
+        {
+            throw new InvalidOperationException("AI action IDs are not unique in the next state.");
+        }
+
+        return new PrototypeAiRolloutFrame(
+            resolved.View,
+            next,
+            observation,
+            legalActions);
     }
 
     public static string StableActionId(GameAction action)
