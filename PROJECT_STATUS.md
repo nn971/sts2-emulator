@@ -79,7 +79,7 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through sixteen gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through seventeen gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
 play-series replay for Burst (including repeated nested choices), Tools of the Trade's
@@ -146,10 +146,17 @@ debuffs, while Artifact-like powers consume one stack to block the next incoming
 source ownership or card mutation is created. Spectral Knight's opening Hex is now blocked this way,
 and ordinary positive player powers leave Artifact untouched.
 
-Spectral Knight is still intentionally absent from the reachable encounter pool. Knight Gang needs
-Flail/Magi mechanics and native ascension scaling before that would be an honest whole-encounter
-fidelity claim. Magi Knight's Dampen is the next useful source-bound whole-card-state case. See
-`docs/reference-builds/v0.111.0-mechanics-gap-016.md`.
+Dampen is now the second source-bound whole-card-state lifecycle. When it lands, currently upgraded
+combat cards are downgraded to level 0 while their suppressed Upgrade levels are stored. Cards
+generated afterward are not retroactively downgraded. Multiple Dampen casters keep suppression
+active until the last caster dies; final cleanup adds the stored levels back on top of any upgrades
+gained during suppression. Nightmare materializes suppressed Upgrade into its stored payload so its
+next-turn copies are upgraded and unsuppressed, matching the native Magi Knight interaction.
+
+Spectral Knight and Dampen are still intentionally absent from the reachable Knight Gang encounter.
+A faithful encounter still needs Magi Knight's remaining move/debuff timing, Flail Knight's random
+move policy/repeat restrictions, and native ascension scaling. See
+`docs/reference-builds/v0.111.0-mechanics-gap-017.md`.
 
 
 ## First live native capture
