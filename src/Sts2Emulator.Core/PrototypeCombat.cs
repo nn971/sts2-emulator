@@ -1377,6 +1377,19 @@ public sealed partial class PrototypeGameEngine
                             enemy = selfPower.Enemy;
                             break;
 
+                        case PrototypeEnemyEffectKind.AddCardsToDiscard:
+                            if (effect.CardId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Enemy add-card effect is missing a card ID.");
+                            }
+
+                            combat = AddGeneratedCardsToDiscard(
+                                combat,
+                                effect.CardId,
+                                amount);
+                            break;
+
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
@@ -2074,6 +2087,38 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    private static CombatState AddGeneratedCardsToDiscard(
+        CombatState combat,
+        string cardId,
+        int count)
+    {
+        _ = PrototypeContent.Card(cardId);
+        for (var index = 0; index < Math.Max(0, count); index++)
+        {
+            var instance = new CombatCardInstance(
+                InstanceId: combat.NextCardInstanceId,
+                PersistentCardInstanceId: null,
+                CardId: cardId,
+                UpgradeLevel: 0,
+                IsTemporary: true,
+                State: PrototypeJson.EmptyObject());
+            instance = ApplyActiveSourceBoundAfflictionToCard(
+                combat,
+                instance);
+
+            combat = combat with
+            {
+                NextCardInstanceId = combat.NextCardInstanceId + 1,
+                Cards = combat.Cards.Append(instance).ToArray(),
+                DiscardPile = combat.DiscardPile
+                    .Append(instance.InstanceId)
+                    .ToArray()
+            };
+        }
+
+        return combat;
     }
 
     private static CombatState AddGeneratedCardCopies(
