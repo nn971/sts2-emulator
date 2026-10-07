@@ -22,7 +22,8 @@ public sealed record PrototypeActOneEncounterPoolState(
     PrototypeActOneRegion Region,
     int OrdinaryCombatsStarted,
     string[] RemainingWeakEncounterIds,
-    string[]? RemainingNormalEncounterIds = null)
+    string[]? RemainingNormalEncounterIds = null,
+    string[]? RemainingEliteEncounterIds = null)
 {
     public PrototypeActOneEncounterPoolState Fork() => this with
     {
@@ -31,7 +32,11 @@ public sealed record PrototypeActOneEncounterPoolState(
         RemainingNormalEncounterIds =
             RemainingNormalEncounterIds is null
                 ? null
-                : (string[])RemainingNormalEncounterIds.Clone()
+                : (string[])RemainingNormalEncounterIds.Clone(),
+        RemainingEliteEncounterIds =
+            RemainingEliteEncounterIds is null
+                ? null
+                : (string[])RemainingEliteEncounterIds.Clone()
     };
 }
 
