@@ -70,6 +70,7 @@ public static class PrototypeStateInvariants
             ValidateMap(world);
         }
 
+        ValidateActOneEncounterPool(world);
         ValidateEncounterHistory(world);
         ValidateEventHistory(world);
         ValidatePhaseState(state, world);
@@ -149,6 +150,57 @@ public static class PrototypeStateInvariants
 
             default:
                 throw new InvalidOperationException($"Unexpected initialized prototype phase {state.Phase}.");
+        }
+    }
+
+    private static void ValidateActOneEncounterPool(
+        RunWorldState world)
+    {
+        var pool = world.ActOneEncounterPool;
+        if (pool is null)
+        {
+            return;
+        }
+
+        if (world.ActOneRegion is { } region
+            && region != pool.Region)
+        {
+            throw new InvalidOperationException(
+                "Act 1 encounter pool region disagrees with the run region.");
+        }
+
+        if (pool.OrdinaryCombatsStarted < 0
+            || pool.OrdinaryCombatsStarted > 3)
+        {
+            throw new InvalidOperationException(
+                $"Invalid Act 1 ordinary-combat counter {pool.OrdinaryCombatsStarted}.");
+        }
+
+        if (pool.RemainingWeakEncounterIds.Length
+            != PrototypeContent.OvergrowthWeakEncounterPool.Length
+                - pool.OrdinaryCombatsStarted)
+        {
+            throw new InvalidOperationException(
+                "Act 1 weak encounter pool size disagrees with its combat counter.");
+        }
+
+        if (pool.RemainingWeakEncounterIds
+                .Distinct(StringComparer.Ordinal)
+                .Count()
+            != pool.RemainingWeakEncounterIds.Length)
+        {
+            throw new InvalidOperationException(
+                "Act 1 weak encounter pool contains duplicate encounter IDs.");
+        }
+
+        if (pool.Region == PrototypeActOneRegion.Overgrowth
+            && pool.RemainingWeakEncounterIds.Any(id =>
+                !PrototypeContent.OvergrowthWeakEncounterPool.Contains(
+                    id,
+                    StringComparer.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                "Overgrowth weak encounter pool contains a foreign encounter.");
         }
     }
 
