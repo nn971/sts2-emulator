@@ -279,7 +279,7 @@ public sealed class PrototypeExpandedShopTests
                         new MapNodeState(
                             "shop",
                             1,
-                            1,
+                            2,
                             PrototypeRoomType.Shop,
                             [])
                     ],
