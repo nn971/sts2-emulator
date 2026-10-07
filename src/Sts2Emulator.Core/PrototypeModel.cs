@@ -1050,6 +1050,7 @@ public sealed record EnemyCombatState(
     string? SlotName = null,
     int? LeaderEnemyInstanceId = null,
     bool SkipNextEnemyAction = false,
+    int EnemyActionSkipsRemaining = 0,
     bool DeathEffectsResolved = false)
 {
     public EnemyCombatState Fork() => this with
