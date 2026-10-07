@@ -783,7 +783,8 @@ public enum PrototypeEncounterFormationPolicy
 public sealed record PrototypeEncounterEnemySpec(
     string EnemyId,
     int FormationPosition,
-    string? SlotName = null);
+    string? SlotName = null,
+    int? LeaderFormationPosition = null);
 
 public sealed record PrototypeEncounterSelectionGroup(
     string[] EnemyPool,
