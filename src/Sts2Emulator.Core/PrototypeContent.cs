@@ -3235,6 +3235,32 @@ public static class PrototypeContent
             MaxFloor: 4,
             Weight: 3),
         new(
+            "proto.encounter.mawler_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.mawler"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.mawler",
+                    0)
+            ]),
+        new(
+            "proto.encounter.cubex_construct_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.cubex_construct"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.cubex_construct",
+                    0)
+            ]),
+        new(
             "proto.encounter.shrinker_beetle_weak",
             PrototypeRoomType.Combat,
             ["proto.enemy.shrinker_beetle"],
