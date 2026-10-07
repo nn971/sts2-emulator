@@ -557,3 +557,23 @@ potion acquisition. Existing potions remain usable.
 The AI reward observation now projects the currently active card-reward group and the number of
 extra reward groups remaining, fixing the previous stale-first-group view when The Hunt or Prayer
 Wheel creates sequential reward choices.
+
+
+## Mechanics-expansion pass: boss relic choices and strategic downsides
+
+Boss combat rewards now expose a genuine three-option relic decision. The reward model carries an
+indexed relic-option set, legal actions select a specific option, the AI observation exposes the
+same option set, and reward invariants reject duplicate or unknown relic choices. Elite rewards keep
+their existing single-relic structure. Owned boss relics are excluded from future boss-relic rolls.
+
+The first boss-relic pool is deliberately mechanics-diverse: Sozu, Coffee Dripper, Fusion Hammer,
+Velvet Choker, and Runic Dome. All grant +1 Energy per turn through the existing generic energy
+capability. Their downsides are represented as reusable relic capabilities: blocking potion
+acquisition, blocking rest-site healing, blocking rest-site card upgrades, limiting cards played per
+turn, and hiding enemy intents from the AI/player-facing observation while leaving the canonical
+combat state intact.
+
+Rest-site legal actions now honor healing and upgrade restrictions. Card-play limits compose across
+powers and relics by taking the tightest positive cap. Runic Dome affects information projection
+rather than enemy AI state, preserving deterministic simulation while changing the information
+available to a decision policy.
