@@ -8,8 +8,10 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("Commands:");
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
-    Console.WriteLine("  prototype-run [seed]   Drive the restrictive Silent prototype to terminal state");
-    Console.WriteLine("  prototype-sweep [n]    Run a deterministic smoke policy over many seeds");
+    Console.WriteLine("  prototype-run [seed] [ascension]");
+    Console.WriteLine("                          Drive the restrictive Silent prototype to terminal state");
+    Console.WriteLine("  prototype-sweep [n] [ascension]");
+    Console.WriteLine("                          Run a deterministic smoke policy over many seeds");
     Console.WriteLine("  prototype-manifest     Print the machine-readable prototype capability manifest");
     Console.WriteLine("  prototype-ai-jsonl     Run the long-lived prototype AI JSONL bridge on stdin/stdout");
     Console.WriteLine("  reference-preflight <game-dir> [data-dir]");
@@ -442,8 +444,19 @@ switch (args[0])
     case "prototype-run":
     {
         var seed = args.Length >= 2 ? args[1] : "demo";
+        var ascension = 0;
+        if (args.Length >= 3
+            && (!int.TryParse(args[2], out ascension)
+                || ascension < 0))
+        {
+            throw new ArgumentException(
+                "prototype-run ascension must be a non-negative integer.");
+        }
+
         var engine = new PrototypeGameEngine();
-        var state = PrototypeGameFactory.Create(seed);
+        var state = PrototypeGameFactory.Create(
+            seed,
+            ascension);
         var phases = new HashSet<RunPhase> { state.Phase };
 
         for (var step = 0; step < 5_000 && state.Phase != RunPhase.Terminal; step++)
@@ -466,6 +479,7 @@ switch (args[0])
         }
 
         Console.WriteLine($"Seed: {seed}");
+        Console.WriteLine($"Ascension: {state.Ascension}");
         Console.WriteLine($"Outcome: {state.World?.TerminalOutcome}");
         Console.WriteLine($"Decisions: {state.DecisionIndex}");
         Console.WriteLine($"Act/Floor: {state.World?.Act}/{state.World?.Floor}");
@@ -484,6 +498,15 @@ switch (args[0])
             throw new ArgumentException("prototype-sweep count must be a positive integer.");
         }
 
+        var ascension = 0;
+        if (args.Length >= 3
+            && (!int.TryParse(args[2], out ascension)
+                || ascension < 0))
+        {
+            throw new ArgumentException(
+                "prototype-sweep ascension must be a non-negative integer.");
+        }
+
         var outcomes = new Dictionary<string, int>(StringComparer.Ordinal);
         var encounterCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var eventCounts = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -499,7 +522,9 @@ switch (args[0])
         {
             var seed = $"sweep-{runIndex}";
             var engine = new PrototypeGameEngine();
-            var state = PrototypeGameFactory.Create(seed);
+            var state = PrototypeGameFactory.Create(
+                seed,
+                ascension);
 
             for (var step = 0; step < 5_000 && state.Phase != RunPhase.Terminal; step++)
             {
