@@ -1721,6 +1721,24 @@ public static class PrototypeContent
                 PlayerCardBlockNumerator: 3,
                 PlayerCardBlockDenominator: 4),
             new PrototypePowerDefinition(
+                "proto.power.ringing",
+                "Ringing",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                DoesNotStack: true,
+                IsDebuff: true,
+                DecrementAtPlayerTurnEnd: true,
+                MaxCardsPlayablePerTurn: 1),
+            new PrototypePowerDefinition(
+                "proto.power.plow",
+                "Plow",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                DoesNotStack: true,
+                TriggerOwnerAtHpAtOrBelowStacks: true,
+                ClearOwnerStrengthOnHpThresholdTrigger: true,
+                OwnerAiStateOnHpThresholdTrigger: "stun_move"),
+            new PrototypePowerDefinition(
                 "proto.power.slippery",
                 "Slippery",
                 BlockBonusPerStack: 0,
@@ -2190,6 +2208,121 @@ public static class PrototypeContent
                                         .SlotNameEquals,
                                     Value: "right")
                             ])
+                    ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.ceremonial_beast",
+                "Ceremonial Beast",
+                252,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "stamp",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                150,
+                                PowerId: "proto.power.plow",
+                                AscensionDeltas:
+                                [
+                                    new(9, 10)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "plow",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                18,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "stun",
+                        []),
+                    new PrototypeEnemyMoveDefinition(
+                        "beast_cry",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                1,
+                                PowerId: "proto.power.ringing")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "stomp",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                15,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "crush",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                17,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                3,
+                                PowerId: "proto.power.strength",
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 10)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "stamp_move",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "stamp_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "plow_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "plow_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "plow_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "stun_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "beast_cry_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "beast_cry_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 3,
+                            NextStateId: "stomp_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "stomp_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 4,
+                            NextStateId: "crush_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "crush_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 5,
+                            NextStateId: "beast_cry_move")
                     ])),
             new PrototypeEnemyDefinition(
                 "proto.enemy.kin_follower",
@@ -4486,6 +4619,19 @@ public static class PrototypeContent
                     "proto.enemy.inklet",
                     2,
                     "right")
+            ]),
+        new(
+            "proto.encounter.ceremonial_beast_boss",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.ceremonial_beast"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.ceremonial_beast",
+                    0)
             ]),
         new(
             "proto.encounter.the_kin_boss",
