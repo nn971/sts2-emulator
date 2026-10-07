@@ -21,12 +21,17 @@ public enum PrototypeActOneRegion
 public sealed record PrototypeActOneEncounterPoolState(
     PrototypeActOneRegion Region,
     int OrdinaryCombatsStarted,
-    string[] RemainingWeakEncounterIds)
+    string[] RemainingWeakEncounterIds,
+    string[]? RemainingNormalEncounterIds = null)
 {
     public PrototypeActOneEncounterPoolState Fork() => this with
     {
         RemainingWeakEncounterIds =
-            (string[])RemainingWeakEncounterIds.Clone()
+            (string[])RemainingWeakEncounterIds.Clone(),
+        RemainingNormalEncounterIds =
+            RemainingNormalEncounterIds is null
+                ? null
+                : (string[])RemainingNormalEncounterIds.Clone()
     };
 }
 
