@@ -1985,6 +1985,113 @@ public static class PrototypeContent
                 ],
                 MinHp: 18),
             new PrototypeEnemyDefinition(
+                "proto.enemy.flyconid",
+                "Flyconid",
+                49,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "vulnerable_spores",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                2,
+                                PowerId: "proto.power.vulnerable")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "frail_spores",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                8,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                2,
+                                PowerId: "proto.power.frail")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "smash",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                11,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 4)
+                ],
+                MinHp: 47,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 4)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "initial",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "vulnerable_spores_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "frail_spores_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "smash_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "initial",
+                            PrototypeEnemyAiStateKind.Random,
+                            Branches:
+                            [
+                                new(
+                                    "frail_spores_move",
+                                    Weight: 2),
+                                new(
+                                    "smash_move",
+                                    Weight: 1)
+                            ]),
+                        new PrototypeEnemyAiStateDefinition(
+                            "rand",
+                            PrototypeEnemyAiStateKind.Random,
+                            Branches:
+                            [
+                                new(
+                                    "vulnerable_spores_move",
+                                    Weight: 3,
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat),
+                                new(
+                                    "frail_spores_move",
+                                    Weight: 2,
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat),
+                                new(
+                                    "smash_move",
+                                    Weight: 1,
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat)
+                            ])
+                    ])),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.snapping_jaxfruit",
                 "Snapping Jaxfruit",
                 33,
@@ -3404,6 +3511,51 @@ public static class PrototypeContent
                         "proto.enemy.twig_slime_m"
                     ],
                     [1])
+            ]),
+        new(
+            "proto.encounter.flyconid_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.leaf_slime_m",
+                "proto.enemy.twig_slime_m",
+                "proto.enemy.flyconid"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.flyconid",
+                    1)
+            ],
+            SelectionGroups:
+            [
+                new PrototypeEncounterSelectionGroup(
+                    [
+                        "proto.enemy.leaf_slime_m",
+                        "proto.enemy.twig_slime_m"
+                    ],
+                    [0])
+            ]),
+        new(
+            "proto.encounter.snapping_jaxfruit_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.snapping_jaxfruit",
+                "proto.enemy.flyconid"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.snapping_jaxfruit",
+                    0),
+                new(
+                    "proto.enemy.flyconid",
+                    1)
             ]),
         new(
             "proto.encounter.slimes_normal",
