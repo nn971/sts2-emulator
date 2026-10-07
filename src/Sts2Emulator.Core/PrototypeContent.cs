@@ -2298,6 +2298,14 @@ public static class PrototypeContent
                                 [
                                     new(9, 1)
                                 ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "roar",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                3,
+                                PowerId: "proto.power.strength")
                         ])
                 ],
                 MovePolicy:
