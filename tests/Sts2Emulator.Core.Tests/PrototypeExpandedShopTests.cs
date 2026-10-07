@@ -287,6 +287,30 @@ public sealed class PrototypeExpandedShopTests
                             1,
                             2,
                             PrototypeRoomType.Shop,
+                            ["floor3"]),
+                        new MapNodeState(
+                            "floor3",
+                            1,
+                            3,
+                            PrototypeRoomType.Combat,
+                            ["floor4"]),
+                        new MapNodeState(
+                            "floor4",
+                            1,
+                            4,
+                            PrototypeRoomType.Combat,
+                            ["rest"]),
+                        new MapNodeState(
+                            "rest",
+                            1,
+                            5,
+                            PrototypeRoomType.Rest,
+                            ["boss"]),
+                        new MapNodeState(
+                            "boss",
+                            1,
+                            6,
+                            PrototypeRoomType.Boss,
                             [])
                     ],
                     CurrentNodeId: "entry",
