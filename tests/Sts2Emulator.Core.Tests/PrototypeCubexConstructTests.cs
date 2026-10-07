@@ -65,6 +65,22 @@ public sealed class PrototypeCubexConstructTests
     }
 
     [Fact]
+    public void ReferenceNormalEncounterIsSingletonCubex()
+    {
+        var encounter = PrototypeContent.Encounter(
+            "proto.encounter.cubex_construct_normal");
+        var spec = Assert.Single(
+            encounter.ResolveEnemySpecs(
+                PrototypeRng.CreateBundle(
+                    "cubex-normal-formation")));
+
+        Assert.Equal(
+            "proto.enemy.cubex_construct",
+            spec.EnemyId);
+        Assert.Equal(0, spec.FormationPosition);
+    }
+
+    [Fact]
     public void ChargeOccursOnceThenRepeaterRepeaterExpelLoops()
     {
         var engine = new PrototypeGameEngine();
