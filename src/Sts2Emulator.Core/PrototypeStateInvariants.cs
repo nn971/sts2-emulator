@@ -331,12 +331,21 @@ public static class PrototypeStateInvariants
         var encounter = PrototypeContent.Encounters.Single(item =>
             StringComparer.Ordinal.Equals(item.Id, encounterId));
 
+        var promotedOvergrowthWeak =
+            world.Act == 1
+            && world.ActOneRegion
+                == PrototypeActOneRegion.Overgrowth
+            && PrototypeContent.OvergrowthWeakEncounterPool.Contains(
+                encounter.Id,
+                StringComparer.Ordinal);
+
         if (encounter.RoomType != world.ActiveRoom
             || world.Act < encounter.MinAct
             || world.Act > encounter.MaxAct
             || world.Floor < encounter.MinFloor
             || world.Floor > encounter.MaxFloor
-            || encounter.Weight <= 0)
+            || (encounter.Weight <= 0
+                && !promotedOvergrowthWeak))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");
