@@ -1888,7 +1888,53 @@ public static class PrototypeContent
                                     .EndOfTurn
                                 | PrototypeTemporaryCardCostExpiry
                                     .WhenPlayed))
-                ])
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.blessing_of_the_forge",
+                "Blessing of the Forge",
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.UpgradeHandCards, 0)]),
+            new PrototypePotionDefinition(
+                "proto.potion.speed",
+                "Speed Potion",
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.ApplyPlayerPower, 5, PowerId: "proto.power.temporary_dexterity")]),
+            new PrototypePotionDefinition(
+                "proto.potion.vulnerable",
+                "Vulnerable Potion",
+                PrototypeCardTarget.Enemy,
+                [new(PrototypeCombatEffectKind.ApplyEnemyStatus, 3, StatusId: "proto.status.vulnerable")]),
+            new PrototypePotionDefinition(
+                "proto.potion.liquid_bronze",
+                "Liquid Bronze",
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.ApplyPlayerPower, 3, PowerId: "proto.power.thorns")]),
+            new PrototypePotionDefinition(
+                "proto.potion.ghost_in_a_jar",
+                "Ghost in a Jar",
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1, PowerId: "proto.power.intangible")]),
+            new PrototypePotionDefinition(
+                "proto.potion.fruit_juice",
+                "Fruit Juice",
+                PrototypeCardTarget.None,
+                [],
+                UsableOutsideCombat: true,
+                RunEffects: [new(PrototypeRunEffectKind.GainMaxHp, 5)]),
+            new PrototypePotionDefinition(
+                "proto.potion.blood",
+                "Blood Potion",
+                PrototypeCardTarget.None,
+                [],
+                UsableOutsideCombat: true,
+                RunEffects: [new(PrototypeRunEffectKind.HealPercentMaxHp, 20)]),
+            new PrototypePotionDefinition(
+                "proto.potion.entropic_brew",
+                "Entropic Brew",
+                PrototypeCardTarget.None,
+                [],
+                UsableOutsideCombat: true,
+                RunEffects: [new(PrototypeRunEffectKind.FillPotionSlots)])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
@@ -2075,6 +2121,13 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AllowNegative: true,
                 PlayerAttackDamageBonusPerStack: 1,
+                RemoveAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.temporary_dexterity",
+                "Temporary Dexterity",
+                BlockBonusPerStack: 1,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                AllowNegative: true,
                 RemoveAtPlayerTurnEnd: true),
             new PrototypePowerDefinition(
                 "proto.power.duplication",
