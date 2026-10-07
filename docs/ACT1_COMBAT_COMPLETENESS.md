@@ -29,7 +29,7 @@ An encounter is not complete merely because all of its monster classes exist. Co
 - enemy self-powers and flat Strength attack scaling;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
-- first source-backed Act 1 models: **Seapunk** and **Twig Slime (S)** (isolated models; encounter pools not yet promoted).
+- first source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, and **Snapping Jaxfruit** (isolated models; encounter pools not yet promoted).
 
 ## Encounter coverage
 
@@ -80,13 +80,13 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Underdocks | Monster weak | `TOADPOLES_WEAK` | `TOADPOLE` | no | pending | pending | no |
 | Underdocks | Monster | `TWO_TAILED_RATS_NORMAL` | `TWO_TAILED_RAT` | no | pending | pending | no |
 
-\* `SEAPUNK_WEAK` has its only monster model implemented, but the encounter itself is deliberately not in the live selector until pool/formation translation is source-backed. Twig Slime (S) is implemented as a reusable model, but every encounter containing it still depends on additional slime/formation mechanics.
+\* `SEAPUNK_WEAK` has its only monster model implemented, but the encounter itself is deliberately not in the live selector until pool/formation translation is source-backed. Twig Slime (S), Assassin Raider, and Snapping Jaxfruit are implemented as reusable models, but their native encounters still depend on additional formation/pool or companion-enemy mechanics.
 
 ## Monster-model coverage
 
 | Monster | Type | HP A0 | HP asc. | Pattern | Status |
 |---|---|---:|---:|---|---|
-| `ASSASSIN_RUBY_RAIDER` — Assassin Raider | Normal | 18–23 | 19–24 | cycle | not started |
+| `ASSASSIN_RUBY_RAIDER` — Assassin Raider | Normal | 18–23 | 19–24 | cycle | implemented + focused tests |
 | `AXE_RUBY_RAIDER` — Axe Raider | Normal | 20–22 | 21–23 | cycle | not started |
 | `BRUTE_RUBY_RAIDER` — Brute Raider | Normal | 30–33 | 31–34 | cycle | not started |
 | `BYGONE_EFFIGY` — Bygone Effigy | Elite | 127 | 132 | cycle | not started |
@@ -124,7 +124,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `SKULKING_COLONY` — Skulking Colony | Elite | 75 | 80 | cycle | not started |
 | `SLITHERING_STRANGLER` — Slithering Strangler | Normal | 53–55 | 54–56 | random | not started |
 | `SLUDGE_SPINNER` — Sludge Spinner | Normal | 37–39 | 41–42 | random | not started |
-| `SNAPPING_JAXFRUIT` — Snapping Jaxfruit | Normal | 31–33 | 34–36 | cycle | not started |
+| `SNAPPING_JAXFRUIT` — Snapping Jaxfruit | Normal | 31–33 | 34–36 | cycle | implemented + focused tests |
 | `SNEAKY_GREMLIN` — Sneaky Gremlin | Normal | 10–14 | 11–15 | cycle | not started |
 | `SOUL_FYSH` — Soul Fysh | Boss | 211 | 221 | cycle | not started |
 | `TERROR_EEL` — Terror Eel | Elite | 140 | 150 | cycle | not started |
