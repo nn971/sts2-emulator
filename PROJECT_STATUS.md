@@ -332,3 +332,25 @@ encounter construction. The capture confirmed the important A9+ numeric values a
 Spectral Knight move-policy bug corrected in pass 022. Exact encounter-wrapper initialization and
 native monster-AI RNG parity remain unresolved; neither blocks the new Act 1 enemy-model milestone.
 See `docs/reference-builds/v0.111.0-knight-gang-differential.md`.
+
+
+## Overgrowth fidelity-audit baseline
+
+Overgrowth is now the active Act 1 target; Underdocks is deferred.
+
+All 22 Overgrowth combat encounters have source-backed mechanics/composition plus typed weak, normal,
+elite, and boss selection state at the current semantic-fidelity target. The next phase is no longer
+broad content implementation but seeded/native differential auditing.
+
+The AI observation now exposes the preselected Act 1 boss encounter alongside the Act 1 region.
+The developer CLI also provides `prototype-overgrowth-audit [n] [ascension]`, which drives the
+deterministic smoke policy over many seeds and reports:
+
+- coverage across the 22 Overgrowth combat encounters;
+- boss-selection frequencies;
+- how many runs leave Act 1;
+- weak-pool no-replacement violations;
+- missing encounters under the sampled policy.
+
+This is a structural audit and does not claim native RNG parity. See
+`docs/reference-builds/v0.111.0-mechanics-gap-043.md`.
