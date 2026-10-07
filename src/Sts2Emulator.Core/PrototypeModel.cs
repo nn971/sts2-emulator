@@ -341,6 +341,7 @@ public enum PrototypeRunEffectKind
     GainMaxHp,
     LoseHp,
     GainGold,
+    LoseGold,
     AddCard,
     FillPotionSlots
 }
@@ -573,6 +574,7 @@ public sealed record PrototypeRelicRunTriggerSpec(
 public enum PrototypePersistentDeckChoiceKind
 {
     Remove,
+    Upgrade,
     Transform
 }
 
@@ -1070,10 +1072,16 @@ public sealed record PrototypeStatusDefinition(
     int IncomingAttackDamageNumerator = 1,
     int IncomingAttackDamageDenominator = 1);
 
+public sealed record PrototypeEventDeckChoiceSpec(
+    PrototypePersistentDeckChoiceKind Kind,
+    int Selections,
+    bool UpgradeTransformedCards = false);
+
 public sealed record PrototypeEventChoiceDefinition(
     string Id,
     string Label,
-    PrototypeRunEffectSpec[] Effects);
+    PrototypeRunEffectSpec[] Effects,
+    PrototypeEventDeckChoiceSpec? DeckChoice = null);
 
 public sealed record PrototypeEventDefinition(
     string Id,
@@ -1523,7 +1531,31 @@ public sealed record ShopState(
     };
 }
 
-public sealed record EventState(string EventId);
+public sealed record PrototypePendingEventDeckChoiceState(
+    string ChoiceId,
+    PrototypePersistentDeckChoiceKind Kind,
+    int RemainingSelections,
+    long[] CandidateCardInstanceIds,
+    bool UpgradeTransformedCards = false)
+{
+    public PrototypePendingEventDeckChoiceState Fork() => this with
+    {
+        CandidateCardInstanceIds =
+            (long[])CandidateCardInstanceIds.Clone()
+    };
+}
+
+public sealed record EventState(
+    string EventId,
+    string? ChosenChoiceId = null,
+    PrototypePendingEventDeckChoiceState? PendingDeckChoice = null)
+{
+    public EventState Fork() => this with
+    {
+        PendingDeckChoice =
+            PendingDeckChoice?.Fork()
+    };
+}
 
 public sealed record RunWorldState(
     string RulesetId,
@@ -1549,7 +1581,7 @@ public sealed record RunWorldState(
         Combat = Combat?.Fork(),
         Reward = Reward?.Fork(),
         Shop = Shop?.Fork(),
-        Event = Event is null ? null : Event with { },
+        Event = Event?.Fork(),
         EncounterHistory = EncounterHistory is null
             ? null
             : (string[])EncounterHistory.Clone(),
@@ -1576,6 +1608,7 @@ public sealed record ReplaceRewardPotionPayload(int Slot);
 public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
+public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
 public sealed record UpgradeCardPayload(long CardInstanceId);
 public sealed record RemoveCardPayload(long CardInstanceId);
 public sealed record SelectCardsPayload(long[] CardInstanceIds);
