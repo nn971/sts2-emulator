@@ -85,6 +85,20 @@ public sealed class PrototypeMawlerTests
     }
 
     [Fact]
+    public void ReferenceNormalEncounterIsSingletonMawler()
+    {
+        var encounter = PrototypeContent.Encounter(
+            "proto.encounter.mawler_normal");
+        var spec = Assert.Single(
+            encounter.ResolveEnemySpecs(
+                PrototypeRng.CreateBundle(
+                    "mawler-normal-formation")));
+
+        Assert.Equal("proto.enemy.mawler", spec.EnemyId);
+        Assert.Equal(0, spec.FormationPosition);
+    }
+
+    [Fact]
     public void ForcedRoarAppliesVulnerableAndThenRandomAttacksRespectIt()
     {
         var engine = new PrototypeGameEngine();
