@@ -608,7 +608,8 @@ public static class PrototypeStateInvariants
             var persistent = player.Deck.Single(item =>
                 item.InstanceId == card.PersistentCardInstanceId!.Value);
             if (!StringComparer.Ordinal.Equals(card.CardId, persistent.CardId)
-                || card.UpgradeLevel != persistent.UpgradeLevel)
+                || card.UpgradeLevel != persistent.UpgradeLevel
+                || card.Enchantment != persistent.Enchantment)
             {
                 throw new InvalidOperationException(
                     "Combat card no longer matches its persistent origin.");
@@ -628,6 +629,62 @@ public static class PrototypeStateInvariants
         }
 
         ValidatePowerOwner("player", combat.PlayerPowers);
+
+        foreach (var power in combat.PlayerPowers)
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.SourceBoundToEnemy)
+            {
+                if (power.SourceEnemyInstanceId is not
+                    { } sourceEnemyId)
+                {
+                    throw new InvalidOperationException(
+                        "Source-bound player power is missing its enemy source.");
+                }
+
+                var source = combat.Enemies.FirstOrDefault(enemy =>
+                    enemy.InstanceId == sourceEnemyId);
+                if (source is null || source.Hp <= 0)
+                {
+                    throw new InvalidOperationException(
+                        "Source-bound player power references a missing or defeated enemy.");
+                }
+            }
+            else if (power.SourceEnemyInstanceId is not null)
+            {
+                throw new InvalidOperationException(
+                    "Non-source-bound player power carries an enemy source.");
+            }
+        }
+
+        foreach (var card in combat.Cards)
+        {
+            if (card.Affliction?.SourceEnemyInstanceId is not
+                { } sourceEnemyId)
+            {
+                continue;
+            }
+
+            var hasMatchingSourcePower =
+                combat.PlayerPowers.Any(power =>
+                {
+                    if (power.SourceEnemyInstanceId
+                            != sourceEnemyId)
+                    {
+                        return false;
+                    }
+
+                    var definition =
+                        PrototypeContent.Power(power.PowerId);
+                    return definition.SourceBoundCardAffliction
+                        == card.Affliction.Kind;
+                });
+            if (!hasMatchingSourcePower)
+            {
+                throw new InvalidOperationException(
+                    "Source-owned card Affliction has no matching active power.");
+            }
+        }
 
         foreach (var enemy in combat.Enemies)
         {
