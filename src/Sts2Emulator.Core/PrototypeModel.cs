@@ -521,6 +521,8 @@ public sealed record PrototypePowerDefinition(
     bool RequiresCardPayload = false,
     bool SourceBoundToEnemy = false,
     bool DoesNotStack = false,
+    bool IsDebuff = false,
+    bool BlocksNextDebuff = false,
     PrototypeCardAfflictionKind? SourceBoundCardAffliction = null,
     bool SkipCardsWithExistingAffliction = false,
     bool ClearSourceAfflictionWhenRemoved = false);
