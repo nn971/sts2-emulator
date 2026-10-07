@@ -99,6 +99,75 @@ public sealed class PrototypeSlitheringStranglerTests
     }
 
     [Fact]
+    public void StranglerAndFriendVariantsAreAllReachable()
+    {
+        var seenJaxfruit = false;
+        var seenLeafMedium = false;
+        var seenTwigMedium = false;
+        var seenSmallPair = false;
+
+        for (var seed = 0; seed < 128; seed++)
+        {
+            var specs = PrototypeContent.Encounter(
+                    "proto.encounter.slithering_strangler_normal")
+                .ResolveEnemySpecs(
+                    PrototypeRng.CreateBundle(
+                        $"strangler-variant-{seed}"));
+
+            Assert.Equal(
+                "proto.enemy.slithering_strangler",
+                specs[0].EnemyId);
+
+            var companions = specs
+                .Skip(1)
+                .Select(spec => spec.EnemyId)
+                .ToArray();
+
+            if (companions.SequenceEqual(
+                    ["proto.enemy.snapping_jaxfruit"]))
+            {
+                seenJaxfruit = true;
+            }
+            else if (companions.SequenceEqual(
+                         ["proto.enemy.leaf_slime_m"]))
+            {
+                seenLeafMedium = true;
+            }
+            else if (companions.SequenceEqual(
+                         ["proto.enemy.twig_slime_m"]))
+            {
+                seenTwigMedium = true;
+            }
+            else if (companions.SequenceEqual(
+                         [
+                             "proto.enemy.leaf_slime_s",
+                             "proto.enemy.twig_slime_s"
+                         ]))
+            {
+                seenSmallPair = true;
+            }
+            else
+            {
+                throw new Xunit.Sdk.XunitException(
+                    $"Unexpected Strangler companion composition: {string.Join(",", companions)}");
+            }
+
+            if (seenJaxfruit
+                && seenLeafMedium
+                && seenTwigMedium
+                && seenSmallPair)
+            {
+                break;
+            }
+        }
+
+        Assert.True(seenJaxfruit);
+        Assert.True(seenLeafMedium);
+        Assert.True(seenTwigMedium);
+        Assert.True(seenSmallPair);
+    }
+
+    [Fact]
     public void KillingSourceClearsConstrictWhileCombatContinues()
     {
         var strike = new CombatCardInstance(
