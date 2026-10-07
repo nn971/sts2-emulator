@@ -2192,6 +2192,152 @@ public static class PrototypeContent
                             ])
                     ])),
             new PrototypeEnemyDefinition(
+                "proto.enemy.kin_follower",
+                "Kin Follower",
+                59,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "quick_slash",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                5)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "boomerang",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                2,
+                                Repetitions: 2)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "power_dance",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength",
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                StartingPowers:
+                [
+                    new("proto.power.minion", 1)
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 4)
+                ],
+                MinHp: 58,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 4)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "init",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "quick_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "boomerang_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "boomerang_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "dance_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "dance_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "quick_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "init",
+                            PrototypeEnemyAiStateKind.Conditional,
+                            ConditionalBranches:
+                            [
+                                new(
+                                    "quick_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    "quick"),
+                                new(
+                                    "dance_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    "dance")
+                            ])
+                    ]),
+                IsMinion: true),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.kin_priest",
+                "Kin Priest",
+                190,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "orb_of_frailty",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                8,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                1,
+                                PowerId: "proto.power.frail")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "orb_of_weakness",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                8,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                1,
+                                PowerId: "proto.power.weak")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "soul_beam",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                3,
+                                Repetitions: 3)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "dark_ritual",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength",
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 9)
+                ]),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.vantom",
                 "Vantom",
                 173,
@@ -4340,6 +4486,32 @@ public static class PrototypeContent
                     "proto.enemy.inklet",
                     2,
                     "right")
+            ]),
+        new(
+            "proto.encounter.the_kin_boss",
+            PrototypeRoomType.Boss,
+            [
+                "proto.enemy.kin_follower",
+                "proto.enemy.kin_priest"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new PrototypeEncounterEnemySpec(
+                    "proto.enemy.kin_follower",
+                    0,
+                    SlotName: "quick",
+                    LeaderFormationPosition: 1),
+                new PrototypeEncounterEnemySpec(
+                    "proto.enemy.kin_priest",
+                    1),
+                new PrototypeEncounterEnemySpec(
+                    "proto.enemy.kin_follower",
+                    2,
+                    SlotName: "dance",
+                    LeaderFormationPosition: 1)
             ]),
         new(
             "proto.encounter.vantom_boss",
