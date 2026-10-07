@@ -855,17 +855,31 @@ public sealed partial class PrototypeGameEngine
         }
 
         var resolved = ResolveOperations(state.Player, combat, operations, state.Rng);
-        var slots = (PotionInstance?[])resolved.Player.PotionSlots.Clone();
-        slots[payload.Slot] = null;
+        var playerAfterPotion =
+            ConsumePotionSlot(
+                resolved.Player,
+                payload.Slot);
+        playerAfterPotion =
+            ApplyPotionRunEffects(
+                playerAfterPotion,
+                definition,
+                state.Rng);
 
         var combatAfterPotion = resolved.Combat with
         {
-            Potions = resolved.Combat.PotionStates
-                .Where(item => item.Slot != payload.Slot)
+            Potions = playerAfterPotion.PotionSlots
+                .Select((item, slot) =>
+                    item is null
+                        ? null
+                        : new CombatPotionState(
+                            slot,
+                            item.PotionId,
+                            item.PersistentState
+                                .Clone()))
+                .Where(item => item is not null)
+                .Select(item => item!)
                 .ToArray()
         };
-        var playerAfterPotion =
-            resolved.Player with { PotionSlots = slots };
 
         var potionUsed = DispatchCombatEvent(
             playerAfterPotion,
@@ -3140,6 +3154,39 @@ public sealed partial class PrototypeGameEngine
                             player.Hp + Math.Max(
                                 0,
                                 operation.Amount))
+                    };
+                    break;
+
+                case PrototypeCombatEffectKind.UpgradeHandCards:
+                    combat = combat with
+                    {
+                        Cards = combat.Cards
+                            .Select(card =>
+                            {
+                                if (!combat.Hand.Contains(
+                                        card.InstanceId)
+                                    || card.UpgradeLevel > 0)
+                                {
+                                    return card;
+                                }
+
+                                var definition =
+                                    PrototypeContent.Card(
+                                        card.CardId);
+                                if (definition.Type is
+                                    PrototypeCardType.Status
+                                    or PrototypeCardType.Curse)
+                                {
+                                    return card;
+                                }
+
+                                return card with
+                                {
+                                    UpgradeLevel =
+                                        card.UpgradeLevel + 1
+                                };
+                            })
+                            .ToArray()
                     };
                     break;
 
