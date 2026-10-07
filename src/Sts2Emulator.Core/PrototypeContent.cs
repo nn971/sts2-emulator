@@ -1361,7 +1361,7 @@ public static class PrototypeContent
                         Target: PrototypeEffectTarget.AllEnemies)
                 ],
                 Rarity: PrototypeCardRarity.Uncommon,
-                Type: PrototypeCardType.Attack)
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.expose",
                 "Expose",
@@ -1412,7 +1412,7 @@ public static class PrototypeContent
                         CardId: "proto.silent.shiv")
                 ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Power)
+                Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.flanking",
                 "Flanking",
@@ -1587,7 +1587,7 @@ public static class PrototypeContent
                         PowerId: "proto.power.well_laid_plans")
                 ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Power)
+                Type: PrototypeCardType.Power),
             new PrototypeCardDefinition(
                 "proto.silent.wraith_form",
                 "Wraith Form",
