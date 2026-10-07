@@ -39,7 +39,7 @@ switch-to-enemy, combat victory, and combat end.
 
 `sts2-reference-probe-v0` was live-validated on two Silent A0 combats, and the later action-boundary
 capture validated the v1 history/player/RNG additions. The current bridge emits
-**`sts2-reference-probe-v3`**.
+**`sts2-reference-probe-v4`**.
 
 Relative to those earlier probes, v3 remains passive and additive. It also:
 
@@ -85,6 +85,41 @@ under:
 ```text
 <instrumented-game>/reference_traces/
 ```
+
+## Natural Silent / Overgrowth corpus mode
+
+For broad Act 1 oracle checking, prefer ordinary unmodified gameplay over synthetic encounters.
+Set the corpus mode before launching the instrumented copy:
+
+```fish
+set -x STS2_REFERENCE_CORPUS_MODE overgrowth-silent-act1
+```
+
+Then play normal **Silent** runs through **Act 1 Overgrowth** and stop after the Act 1 boss (or
+after a defeat). Do not enable Loadout or other gameplay mods for this corpus.
+
+Corpus mode keeps the passive CombatManager/CombatHistory subscriptions and full combat snapshots,
+but suppresses one-time runtime type catalogs. This makes multi-run logs substantially smaller while
+preserving the combat state, native history entries, and RNG snapshots needed for differential
+analysis. It also adds a stable session id and a session-local combat index to every boundary.
+
+The recorder does not force the character, region, path, Ascension, card choices, or combat actions.
+Those remain ordinary player choices. The mode label is provenance metadata rather than a gameplay
+filter. The analyzer should reject or segregate captures whose observed character/act/region fall
+outside the requested corpus.
+
+A single game launch may contain several runs. The output file is named like:
+
+```text
+reference_traces/overgrowth-silent-act1-YYYYMMDD-HHMMSS-3bb5598a35f7.jsonl
+```
+
+For the first corpus, A0 is preferred. Play naturally rather than stalling to expose mechanics; the
+goal is representative vanilla evidence. Several runs are enough for the first audit. Any remaining
+high-risk mechanic can be targeted later only if the natural corpus leaves an important ambiguity.
+
+Keep `STS2_REFERENCE_VERBOSE` unset for this pass. Verbose state-tracker capture is reserved for
+diagnosing a divergence found by the compact corpus.
 
 ## Knight Gang capture
 
