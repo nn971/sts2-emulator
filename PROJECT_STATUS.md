@@ -200,7 +200,8 @@ The source-backed Act 1 monster-model set currently includes:
 - Leaf Slime (S);
 - Leaf Slime (M);
 - Twig Slime (M);
-- Nibbit.
+- Nibbit;
+- Fuzzy Wurm Crawler.
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -244,6 +245,9 @@ uses and Sticky Shot unable to repeat. See
 
 Nibbit now uses the formation-aware conditional AI directly: alone -> Butt, front -> Slice, rear -> Hiss, then the fixed Butt/Slice/Hiss cycle. Its A8 HP/Block and A9 damage/Strength deltas are typed, and weight-0 reference definitions cover both the solo weak and paired normal formations. See
 `docs/reference-builds/v0.111.0-mechanics-gap-030.md`.
+
+Fuzzy Wurm Crawler is now source-backed with the native Acid Goop / Inhale / Acid Goop three-state cycle. Its asymmetric A8 HP range (58–59), A9 Acid Goop increase, persistent +7 Strength from Inhale, and singleton weak formation are all covered by focused regressions. See
+`docs/reference-builds/v0.111.0-mechanics-gap-031.md`.
 
 Encounter construction now supports independent random slot groups with optional distinct selection.
 The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
