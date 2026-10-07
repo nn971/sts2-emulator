@@ -240,6 +240,16 @@ public static class PrototypeContent
                 Type: PrototypeCardType.Attack,
                 Tags: ["Shiv"]),
             new PrototypeCardDefinition(
+                "proto.status.wound",
+                "Wound",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Rarity: PrototypeCardRarity.Status,
+                Unplayable: true,
+                RewardEligible: false,
+                Type: PrototypeCardType.Status),
+            new PrototypeCardDefinition(
                 "proto.status.dazed",
                 "Dazed",
                 -1,
@@ -2181,6 +2191,73 @@ public static class PrototypeContent
                                     Value: "right")
                             ])
                     ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.vantom",
+                "Vantom",
+                173,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "ink_blot",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                7,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "inky_lance",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                6,
+                                Repetitions: 2,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "dismember",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                26,
+                                AscensionDeltas:
+                                [
+                                    new(9, 4)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.AddCardsToDiscard,
+                                3,
+                                CardId: "proto.status.wound")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "prepare",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength")
+                        ])
+                ],
+                StartingPowers:
+                [
+                    new(
+                        "proto.power.slippery",
+                        8,
+                        AscensionDeltas:
+                        [
+                            new(8, 1)
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 10)
+                ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.wriggler",
                 "Wriggler",
@@ -4263,6 +4340,19 @@ public static class PrototypeContent
                     "proto.enemy.inklet",
                     2,
                     "right")
+            ]),
+        new(
+            "proto.encounter.vantom_boss",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.vantom"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.vantom",
+                    0)
             ]),
         new(
             "proto.encounter.phrog_parasite_elite",
