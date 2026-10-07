@@ -1001,6 +1001,7 @@ public sealed partial class PrototypeGameEngine
                     Turn = combat.Turn + 1,
                     Counters = combat.CounterState with
                     {
+                        CardsPlayedThisTurn = 0,
                         AttacksPlayedThisTurn = 0,
                         SkillsPlayedThisTurn = 0,
                         CardsDiscardedThisTurn = 0,
@@ -2036,7 +2037,9 @@ public sealed partial class PrototypeGameEngine
                         damageAmount = ModifyIncomingAttackDamage(
                             combat,
                             targetEnemyId.Value,
-                            damageAmount);
+                            damageAmount,
+                            includeCurrentCard:
+                                sourceCardInstanceId is not null);
                     }
 
                     var damageResult = DamageEnemy(
@@ -3333,6 +3336,12 @@ public sealed partial class PrototypeGameEngine
                     return combat;
                 }
 
+                counters = counters with
+                {
+                    CardsPlayedThisTurn =
+                        counters.CardsPlayedThisTurn + 1
+                };
+
                 var cardDefinition =
                     PrototypeContent.Card(combatEvent.CardId);
                 var type = cardDefinition.Type;
@@ -3521,7 +3530,8 @@ public sealed partial class PrototypeGameEngine
     private static int ModifyIncomingAttackDamage(
         CombatState combat,
         int enemyId,
-        int damage)
+        int damage,
+        bool includeCurrentCard = false)
     {
         var enemy = combat.Enemies.SingleOrDefault(item => item.InstanceId == enemyId)
             ?? throw new InvalidOperationException($"Enemy {enemyId} is missing.");
@@ -3532,6 +3542,20 @@ public sealed partial class PrototypeGameEngine
             var definition = PrototypeContent.Status(status.Key);
             modified = (modified * definition.IncomingAttackDamageNumerator)
                 / definition.IncomingAttackDamageDenominator;
+        }
+
+        var cardsPlayed = combat.CounterState.CardsPlayedThisTurn
+            + (includeCurrentCard ? 1 : 0);
+        var percentBonus = enemy.PowerStates.Sum(power =>
+            PrototypeContent.Power(power.PowerId)
+                .EnemyIncomingAttackDamagePercentPerCardPlayed
+            * power.Stacks
+            * cardsPlayed);
+        if (percentBonus != 0)
+        {
+            modified =
+                (modified * (100 + percentBonus))
+                / 100;
         }
 
         return modified;
