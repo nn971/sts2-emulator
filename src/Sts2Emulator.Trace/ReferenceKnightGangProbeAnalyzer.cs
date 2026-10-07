@@ -40,6 +40,10 @@ public sealed record ReferenceKnightGangCheckpoint(
     int? PlayerBlock,
     ReferenceKnightGangEnemySnapshot[] Enemies,
     ReferenceKnightGangCardSnapshot Cards,
+    string? HistoryRuntimeType,
+    long? HistoryAmount,
+    long? HistorySourceCombatId,
+    long? HistoryTargetCombatId,
     string? MonsterAiRngFingerprint,
     string[] MonsterAiRngEvidence);
 
@@ -126,7 +130,15 @@ public static class ReferenceKnightGangProbeAnalyzer
                     combats.Add(current);
                 }
 
-                current.Add(BuildCheckpoint(sequence, boundary, state));
+                var historyEntry =
+                    root.TryGetProperty("history_entry", out var history)
+                        ? history.Clone()
+                        : default;
+                current.Add(BuildCheckpoint(
+                    sequence,
+                    boundary,
+                    state,
+                    historyEntry));
 
                 if (boundary.EndsWith(".CombatEnded", StringComparison.Ordinal)
                     || boundary.EndsWith(".CombatWon", StringComparison.Ordinal))
@@ -254,7 +266,8 @@ public static class ReferenceKnightGangProbeAnalyzer
     private static ReferenceKnightGangCheckpoint BuildCheckpoint(
         long sequence,
         string boundary,
-        JsonElement state)
+        JsonElement state,
+        JsonElement historyEntry)
     {
         var combat = GetObject(state, "combat");
         var run = GetObject(state, "run");
@@ -296,6 +309,14 @@ public static class ReferenceKnightGangProbeAnalyzer
             GetInt32(creature, "block"),
             enemies,
             BuildCardSnapshot(player),
+            RuntimeTypeOf(historyEntry),
+            GetInt64(historyEntry, "amount"),
+            GetInt64(
+                GetObject(historyEntry, "source"),
+                "combat_id"),
+            GetInt64(
+                GetObject(historyEntry, "target"),
+                "combat_id"),
             rngFingerprint,
             rngEvidence.ToArray());
     }
@@ -347,6 +368,18 @@ public static class ReferenceKnightGangProbeAnalyzer
             all.Count(card =>
                 HasNonNullProperty(card, "affliction")
                 || ContainsToken(card, "affliction")));
+    }
+
+    private static string? RuntimeTypeOf(
+        JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return GetString(element, "runtime_type")
+            ?? GetString(element, "type");
     }
 
     private static bool LooksLikeKnightGang(JsonElement state)
