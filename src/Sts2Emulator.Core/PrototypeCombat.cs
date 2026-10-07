@@ -887,7 +887,9 @@ public sealed partial class PrototypeGameEngine
             enemies[enemyIndex] = enemy with { Statuses = statuses };
         }
 
-        return combat with { Enemies = enemies };
+        combat = combat with { Enemies = enemies };
+        return CleanupSourceBoundPowersForDefeatedEnemies(
+            combat);
     }
 
     private static (PlayerState Player, CombatState Combat) ResolveEnemyActions(
@@ -2576,9 +2578,11 @@ public sealed partial class PrototypeGameEngine
             {
                 PlayerPowers = powers.ToArray()
             };
-            return ApplySourceBoundCardAffliction(
-                combat,
-                powers[index]);
+            return index < powers.Count
+                ? ApplySourceBoundCardAffliction(
+                    combat,
+                    powers[index])
+                : combat;
         }
 
         if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
