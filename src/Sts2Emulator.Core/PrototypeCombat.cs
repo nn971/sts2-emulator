@@ -854,10 +854,9 @@ public sealed partial class PrototypeGameEngine
                 sourceKind: PrototypeEffectSourceKind.Potion);
         }
 
-        var resolved = ResolveOperations(state.Player, combat, operations, state.Rng);
         var playerAfterPotion =
             ConsumePotionSlot(
-                resolved.Player,
+                state.Player,
                 payload.Slot);
         playerAfterPotion =
             ApplyPotionRunEffects(
@@ -865,7 +864,7 @@ public sealed partial class PrototypeGameEngine
                 definition,
                 state.Rng);
 
-        var combatAfterPotion = resolved.Combat with
+        var combatAfterPotion = combat with
         {
             Potions = playerAfterPotion.PotionSlots
                 .Select((item, slot) =>
@@ -881,20 +880,29 @@ public sealed partial class PrototypeGameEngine
                 .ToArray()
         };
 
-        var potionUsed = DispatchCombatEvent(
+        var resolved = ResolveOperations(
             playerAfterPotion,
             combatAfterPotion,
-            new PrototypeCombatEvent(
-                PrototypeCombatEventKind.PotionUsed),
-            state.Rng);
-        playerAfterPotion = potionUsed.Player;
-        combatAfterPotion = potionUsed.Combat;
+            operations,
+            state.Rng,
+            completionEvents:
+            [
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PotionUsed)
+            ]);
+        playerAfterPotion = resolved.Player;
+        combatAfterPotion = resolved.Combat;
 
         state = state with
         {
             Player = playerAfterPotion,
             World = world with { Combat = combatAfterPotion }
         };
+
+        if (combatAfterPotion.PendingChoice is not null)
+        {
+            return state;
+        }
 
         return AllEnemiesDefeated(combatAfterPotion)
             ? EnterCombatReward(state)
