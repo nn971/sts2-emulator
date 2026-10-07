@@ -25,7 +25,8 @@ An encounter is not complete merely because all of its monster classes exist. Co
 ## Current foundation
 
 - generic fixed-prefix → constrained-random move policy (used by Spectral Knight and reusable in Act 1);
-- per-move consecutive-use limits;
+- source-shaped move/random AI state graphs with weighted branches and typed repeat rules;
+- per-move consecutive-use limits plus total move-use accounting;
 - enemy self-powers and flat Strength attack scaling;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
@@ -143,7 +144,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 Work by reusable mechanic dependency rather than encounter list order:
 
 1. **Simple deterministic enemies** — fixed cycles/always-one-move enemies using damage, Block, Strength and already-supported debuffs. These validate HP ranges and basic Ascension scaling cheaply.
-2. **Constrained random enemies** — translate native random branches and repeat rules; use oracle traces selectively to validate call/order behavior without claiming RNG codec parity.
+2. **Constrained random enemies** — use the typed source-shaped AI graph for native weighted branches and repeat rules; confirm any ambiguous native API semantics before production use, and use oracle traces selectively without claiming RNG codec parity.
 3. **Formation/slot-dependent enemies** — Nibbits, Toadpoles, slime groups, Ruby Raiders and other encounters whose opening state depends on slot/composition.
 4. **Summon/lifecycle enemies** — rats, parasites/wrigglers, fog/gas-bomb style interactions, and any enemy whose semantics need spawn/despawn/death hooks.
 5. **Elites**, then **bosses** — only after their shared primitives exist; boss-specific phase transitions should not be generalized prematurely.
