@@ -89,14 +89,21 @@ under:
 ## Natural Silent / Overgrowth corpus mode
 
 For broad Act 1 oracle checking, prefer ordinary unmodified gameplay over synthetic encounters.
-Set the corpus mode before launching the instrumented copy:
+Stage the dedicated corpus variant:
 
 ```fish
-set -x STS2_REFERENCE_CORPUS_MODE overgrowth-silent-act1
+fish tools/reference_bridge/stage_overgrowth_corpus.fish "/path/to/clean/oracle/game"
 ```
+
+This produces the same passive bridge mod plus an `overgrowth-silent-act1.mode` marker, so the
+capture mode survives a normal Steam launch. Copy the staged `Sts2ReferenceBridge` folder into the
+instrumented game's `mods/` directory as usual.
 
 Then play normal **Silent** runs through **Act 1 Overgrowth** and stop after the Act 1 boss (or
 after a defeat). Do not enable Loadout or other gameplay mods for this corpus.
+
+The environment variable `STS2_REFERENCE_CORPUS_MODE=overgrowth-silent-act1` remains available as
+an override for development launches, but it is not required for the staged corpus mod.
 
 Corpus mode keeps the passive CombatManager/CombatHistory subscriptions and full combat snapshots,
 but suppresses one-time runtime type catalogs. This makes multi-run logs substantially smaller while
