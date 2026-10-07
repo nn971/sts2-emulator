@@ -1656,12 +1656,19 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypePowerDefinition(
+                "proto.power.artifact",
+                "Artifact",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                BlocksNextDebuff: true),
+            new PrototypePowerDefinition(
                 "proto.power.hex",
                 "Hex",
                 BlockBonusPerStack: 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 SourceBoundToEnemy: true,
                 DoesNotStack: true,
+                IsDebuff: true,
                 SourceBoundCardAffliction:
                     PrototypeCardAfflictionKind.Hexed,
                 SkipCardsWithExistingAffliction: true,
