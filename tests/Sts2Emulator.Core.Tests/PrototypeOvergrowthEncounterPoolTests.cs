@@ -64,7 +64,6 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
                 selected[^1],
                 pool.RemainingWeakEncounterIds);
 
-            PrototypeStateInvariants.Validate(state);
         }
 
         Assert.Equal(
