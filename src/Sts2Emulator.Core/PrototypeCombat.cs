@@ -97,7 +97,8 @@ public sealed partial class PrototypeGameEngine
                 CardId: card.CardId,
                 UpgradeLevel: card.UpgradeLevel,
                 IsTemporary: false,
-                State: card.PersistentState.Clone()))
+                State: card.PersistentState.Clone(),
+                Enchantment: card.Enchantment))
             .ToArray();
 
         var innateCards = combatCards
@@ -1638,7 +1639,10 @@ public sealed partial class PrototypeGameEngine
                     : snapshot.KeywordOverrides
                         .Select(item => item with { })
                         .ToArray(),
-                ReplayCount: snapshot.ReplayCount);
+                ReplayCount: snapshot.ReplayCount,
+                Enchantment: snapshot.Enchantment,
+                EnchantmentTriggeredThisCombat:
+                    snapshot.EnchantmentTriggeredThisCombat);
 
             var addToHand = combat.Hand.Length < maxHandSize;
             combat = combat with
@@ -2526,7 +2530,9 @@ public sealed partial class PrototypeGameEngine
                 : selectedCard.KeywordOverrides
                     .Select(item => item with { })
                     .ToArray(),
-            selectedCard.ReplayCount);
+            selectedCard.ReplayCount,
+            selectedCard.Enchantment,
+            selectedCard.EnchantmentTriggeredThisCombat);
 
         return AddPlayerPowerInstance(
             combat,
