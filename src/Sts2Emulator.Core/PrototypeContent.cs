@@ -1705,6 +1705,23 @@ public static class PrototypeContent
                 EnemyHpLossCapPerTrigger: 1,
                 ConsumeOnEnemyHpLoss: true),
             new PrototypePowerDefinition(
+                "proto.power.constrict",
+                "Constrict",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnEnded,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamagePlayer,
+                                0,
+                                AmountPerPowerStack: 1)
+                        ])
+                ],
+                SourceBoundToEnemy: true,
+                IsDebuff: true),
+            new PrototypePowerDefinition(
                 "proto.power.shrink",
                 "Shrink",
                 BlockBonusPerStack: 0,
@@ -2659,6 +2676,84 @@ public static class PrototypeContent
                 [
                     new(8, 1)
                 ]),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.slithering_strangler",
+                "Slithering Strangler",
+                55,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "constrict",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                3,
+                                PowerId: "proto.power.constrict")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "thwack",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                7,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                5)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "lash",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                12,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 53,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "constrict_move",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "constrict_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "rand_attack"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "thwack_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "constrict_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "lash_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "constrict_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "rand_attack",
+                            PrototypeEnemyAiStateKind.Random,
+                            Branches:
+                            [
+                                new("thwack_move"),
+                                new("lash_move")
+                            ])
+                    ])),
             new PrototypeEnemyDefinition(
                 "proto.enemy.shrinker_beetle",
                 "Shrinker Beetle",
