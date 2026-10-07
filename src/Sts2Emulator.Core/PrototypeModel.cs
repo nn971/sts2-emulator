@@ -12,6 +12,24 @@ public enum PrototypeRoomType
     Boss
 }
 
+public enum PrototypeActOneRegion
+{
+    Overgrowth,
+    Underdocks
+}
+
+public sealed record PrototypeActOneEncounterPoolState(
+    PrototypeActOneRegion Region,
+    int OrdinaryCombatsStarted,
+    string[] RemainingWeakEncounterIds)
+{
+    public PrototypeActOneEncounterPoolState Fork() => this with
+    {
+        RemainingWeakEncounterIds =
+            (string[])RemainingWeakEncounterIds.Clone()
+    };
+}
+
 public enum PrototypeCardRarity
 {
     Basic,
@@ -1240,7 +1258,9 @@ public sealed record RunWorldState(
     EventState? Event,
     string? TerminalOutcome,
     string[]? EncounterHistory = null,
-    string[]? EventHistory = null)
+    string[]? EventHistory = null,
+    PrototypeActOneRegion? ActOneRegion = null,
+    PrototypeActOneEncounterPoolState? ActOneEncounterPool = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -1254,7 +1274,8 @@ public sealed record RunWorldState(
             : (string[])EncounterHistory.Clone(),
         EventHistory = EventHistory is null
             ? null
-            : (string[])EventHistory.Clone()
+            : (string[])EventHistory.Clone(),
+        ActOneEncounterPool = ActOneEncounterPool?.Fork()
     };
 
     public string[] EncounterIds =>
