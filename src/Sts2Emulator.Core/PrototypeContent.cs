@@ -2218,6 +2218,35 @@ public static class PrototypeContent
                         1)
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.brute_ruby_raider",
+                "Brute Raider",
+                33,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "beat",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                7,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.SequentialLoop,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 30,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 1)
+                ]),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.nibbit",
                 "Nibbit",
                 46,
