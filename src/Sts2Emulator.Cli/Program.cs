@@ -663,8 +663,7 @@ switch (args[0])
                 state = StartPrototypeAuditRoom(
                     engine,
                     state,
-                    PrototypeRoomType.Combat,
-                    floor: index + 1);
+                    PrototypeRoomType.Combat);
                 var id = state.World!.EncounterIds[^1];
                 weak.Add(id);
                 encounterCounts[id]++;
@@ -689,8 +688,7 @@ switch (args[0])
                 state = StartPrototypeAuditRoom(
                     engine,
                     state,
-                    PrototypeRoomType.Combat,
-                    floor: index + 4);
+                    PrototypeRoomType.Combat);
                 var id = state.World!.EncounterIds[^1];
                 normal.Add(id);
                 encounterCounts[id]++;
@@ -715,8 +713,7 @@ switch (args[0])
                 state = StartPrototypeAuditRoom(
                     engine,
                     state,
-                    PrototypeRoomType.Elite,
-                    floor: index + 5);
+                    PrototypeRoomType.Elite);
                 var id = state.World!.EncounterIds[^1];
                 elites.Add(id);
                 encounterCounts[id]++;
@@ -735,8 +732,7 @@ switch (args[0])
             state = StartPrototypeAuditRoom(
                 engine,
                 state,
-                PrototypeRoomType.Boss,
-                floor: 17);
+                PrototypeRoomType.Boss);
             var bossEncounter = state.World!.EncounterIds[^1];
             if (!StringComparer.Ordinal.Equals(
                     bossEncounter,
@@ -957,19 +953,119 @@ static GameAction AssertSingleAuditAction(
 static RunState StartPrototypeAuditRoom(
     PrototypeGameEngine engine,
     RunState state,
-    PrototypeRoomType roomType,
-    int floor)
+    PrototypeRoomType roomType)
 {
     var world = state.World
         ?? throw new InvalidOperationException(
             "Overgrowth audit state has no world.");
 
-    var node = new MapNodeState(
-        $"overgrowth-audit:{floor}:{roomType}:{state.DecisionIndex}",
+    var targetFloor = roomType switch
+    {
+        PrototypeRoomType.Combat => 2,
+        PrototypeRoomType.Elite => 3,
+        PrototypeRoomType.Boss =>
+            PrototypeContent.Rules.FloorsPerAct,
+        _ => throw new InvalidOperationException(
+            $"Overgrowth audit does not support room type {roomType}.")
+    };
+
+    var targetRule = PrototypeContent.Rules.MapFloorRules
+        .Single(rule =>
+            targetFloor >= rule.MinFloor
+            && targetFloor <= rule.MaxFloor);
+    if (!targetRule.RoomPool.Contains(roomType))
+    {
+        throw new InvalidOperationException(
+            $"Overgrowth audit chose illegal {roomType} floor {targetFloor}.");
+    }
+
+    var entryId =
+        $"overgrowth-audit:entry:{state.DecisionIndex}";
+    var targetId =
+        $"overgrowth-audit:target:{roomType}:{state.DecisionIndex}";
+    var bossId =
+        $"overgrowth-audit:boss:{state.DecisionIndex}";
+
+    var entry = new MapNodeState(
+        entryId,
         Act: 1,
-        Floor: floor,
-        RoomType: roomType,
+        Floor: 1,
+        RoomType: PrototypeRoomType.Combat,
         NextNodeIds: []);
+
+    MapNodeState[] nodes;
+    string currentNodeId;
+    int currentFloor;
+
+    if (targetFloor == 2)
+    {
+        entry = entry with
+        {
+            NextNodeIds = [targetId]
+        };
+        var target = new MapNodeState(
+            targetId,
+            Act: 1,
+            Floor: targetFloor,
+            RoomType: roomType,
+            NextNodeIds: []);
+
+        var boss = new MapNodeState(
+            bossId,
+            Act: 1,
+            Floor: PrototypeContent.Rules.FloorsPerAct,
+            RoomType: PrototypeRoomType.Boss,
+            NextNodeIds: []);
+
+        nodes = [entry, target, boss];
+        currentNodeId = entryId;
+        currentFloor = 1;
+    }
+    else
+    {
+        var previousFloor = targetFloor - 1;
+        var previousRule =
+            PrototypeContent.Rules.MapFloorRules.Single(
+                rule =>
+                    previousFloor >= rule.MinFloor
+                    && previousFloor <= rule.MaxFloor);
+        var previousRoomType =
+            previousRule.RoomPool[0];
+        var previousId =
+            $"overgrowth-audit:previous:{state.DecisionIndex}";
+
+        var previous = new MapNodeState(
+            previousId,
+            Act: 1,
+            Floor: previousFloor,
+            RoomType: previousRoomType,
+            NextNodeIds: [targetId]);
+        var target = new MapNodeState(
+            targetId,
+            Act: 1,
+            Floor: targetFloor,
+            RoomType: roomType,
+            NextNodeIds: []);
+
+        if (targetFloor
+            == PrototypeContent.Rules.FloorsPerAct)
+        {
+            nodes = [entry, previous, target];
+        }
+        else
+        {
+            var boss = new MapNodeState(
+                bossId,
+                Act: 1,
+                Floor: PrototypeContent.Rules.FloorsPerAct,
+                RoomType: PrototypeRoomType.Boss,
+                NextNodeIds: []);
+            nodes = [entry, previous, target, boss];
+        }
+
+        currentNodeId = previousId;
+        currentFloor = previousFloor;
+    }
 
     state = state with
     {
@@ -977,12 +1073,12 @@ static RunState StartPrototypeAuditRoom(
         World = world with
         {
             Act = 1,
-            Floor = Math.Max(0, floor - 1),
+            Floor = currentFloor,
             ActiveRoom = null,
             Map = new MapState(
-                [node],
-                CurrentNodeId: null,
-                EntryNodeIds: [node.NodeId]),
+                nodes,
+                CurrentNodeId: currentNodeId,
+                EntryNodeIds: [entryId]),
             Combat = null,
             Reward = null,
             Shop = null,
@@ -994,7 +1090,7 @@ static RunState StartPrototypeAuditRoom(
         state,
         AssertSingleAuditAction(
             engine.GetLegalActions(state),
-            $"{roomType} floor {floor}")).State;
+            $"{roomType} selector audit")).State;
 }
 
 static GameAction ChoosePrototypeAction(
