@@ -92,6 +92,37 @@ public sealed class PrototypeNibbitTests
     }
 
     [Fact]
+    public void ReferenceEncounterFormationsMatchSoloAndPairedNibbits()
+    {
+        var weak = PrototypeContent.Encounter(
+            "proto.encounter.nibbits_weak");
+        var normal = PrototypeContent.Encounter(
+            "proto.encounter.nibbits_normal");
+
+        var rng = PrototypeRng.CreateBundle(
+            "nibbit-formation-test");
+
+        var weakSpecs = weak.ResolveEnemySpecs(rng);
+        var weakEnemy = Assert.Single(weakSpecs);
+        Assert.Equal("proto.enemy.nibbit", weakEnemy.EnemyId);
+        Assert.Equal(0, weakEnemy.FormationPosition);
+
+        var normalSpecs = normal.ResolveEnemySpecs(rng);
+        Assert.Collection(
+            normalSpecs,
+            front =>
+            {
+                Assert.Equal("proto.enemy.nibbit", front.EnemyId);
+                Assert.Equal(0, front.FormationPosition);
+            },
+            back =>
+            {
+                Assert.Equal("proto.enemy.nibbit", back.EnemyId);
+                Assert.Equal(1, back.FormationPosition);
+            });
+    }
+
+    [Fact]
     public void LoneNibbitStartsButtThenSliceThenHiss()
     {
         var engine = new PrototypeGameEngine();
