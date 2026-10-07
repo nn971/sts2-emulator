@@ -3600,6 +3600,11 @@ public sealed partial class PrototypeGameEngine
                 $"Source-bound power '{powerId}' requires an enemy source.");
         }
 
+        sourceEnemyInstanceId =
+            definition.SourceBoundToEnemy
+                ? sourceEnemyInstanceId
+                : null;
+
         if (definition.IsDebuff && stacks > 0)
         {
             var blocked = TryBlockIncomingPlayerDebuff(combat);
