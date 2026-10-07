@@ -251,7 +251,12 @@ public sealed partial class PrototypeGameEngine
                 .Clone();
         }
 
-        var previous = world.EncounterIds.LastOrDefault();
+        var previous = world.EncounterIds
+            .Reverse()
+            .FirstOrDefault(id =>
+                PrototypeContent.OvergrowthEliteEncounterPool.Contains(
+                    id,
+                    StringComparer.Ordinal));
         var eligible = previous is null
             ? remaining
             : remaining
