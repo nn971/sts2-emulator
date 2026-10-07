@@ -201,7 +201,8 @@ The source-backed Act 1 monster-model set currently includes:
 - Leaf Slime (M);
 - Twig Slime (M);
 - Nibbit;
-- Fuzzy Wurm Crawler.
+- Fuzzy Wurm Crawler;
+- Shrinker Beetle.
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -248,6 +249,9 @@ Nibbit now uses the formation-aware conditional AI directly: alone -> Butt, fron
 
 Fuzzy Wurm Crawler is now source-backed with the native Acid Goop / Inhale / Acid Goop three-state cycle. Its asymmetric A8 HP range (58–59), A9 Acid Goop increase, persistent +7 Strength from Inhale, and singleton weak formation are all covered by focused regressions. See
 `docs/reference-builds/v0.111.0-mechanics-gap-031.md`.
+
+Shrinker Beetle now adds the source-bound Shrink lifecycle: a non-stacking player debuff that multiplies Attack damage by 7/10 and is removed when its source Beetle dies. The Beetle's Shrinker opener and alternating Chomp/Stomp loop, A8 HP, A9 damage, singleton weak formation, and Fuzzy+Beetle normal formation are covered by focused tests. See
+`docs/reference-builds/v0.111.0-mechanics-gap-032.md`.
 
 Encounter construction now supports independent random slot groups with optional distinct selection.
 The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
