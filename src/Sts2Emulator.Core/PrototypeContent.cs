@@ -1911,6 +1911,29 @@ public static class PrototypeContent
                 ],
                 MinHp: 44),
             new PrototypeEnemyDefinition(
+                "proto.enemy.twig_slime_s",
+                "Twig Slime (S)",
+                11,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "tackle",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                4,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 7),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.crawler",
                 "Crawler",
                 24,
