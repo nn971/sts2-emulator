@@ -1705,6 +1705,13 @@ public static class PrototypeContent
                 EnemyHpLossCapPerTrigger: 1,
                 ConsumeOnEnemyHpLoss: true),
             new PrototypePowerDefinition(
+                "proto.power.territorial",
+                "Territorial",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                DoesNotStack: true,
+                EnemyStrengthGainAtTurnEndPerStack: 1),
+            new PrototypePowerDefinition(
                 "proto.power.illusion",
                 "Illusion",
                 BlockBonusPerStack: 0,
@@ -2148,6 +2155,49 @@ public static class PrototypeContent
                                     Value: "right")
                             ])
                     ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.byrdonis",
+                "Byrdonis",
+                84,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "swoop",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                17,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "peck",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                3,
+                                Repetitions: 3,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                StartingPowers:
+                [
+                    new("proto.power.territorial", 1)
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 6)
+                ],
+                MinHp: 81,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 9)
+                ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.eye_with_teeth",
                 "Eye With Teeth",
@@ -4012,6 +4062,19 @@ public static class PrototypeContent
                     "proto.enemy.inklet",
                     2,
                     "right")
+            ]),
+        new(
+            "proto.encounter.byrdonis_elite",
+            PrototypeRoomType.Elite,
+            ["proto.enemy.byrdonis"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.byrdonis",
+                    0)
             ]),
         new(
             "proto.encounter.fogmog_normal",
