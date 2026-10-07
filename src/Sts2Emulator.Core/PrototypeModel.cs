@@ -733,6 +733,7 @@ public sealed record PrototypeEncounterDefinition(
 
 public sealed record PrototypeStatusDefinition(
     string Id,
+    bool IsDebuff = false,
     PrototypeTurnStage? TriggerStage = null,
     PrototypeStatusTriggerKind TriggerKind = PrototypeStatusTriggerKind.None,
     int DecayOnTrigger = 0,
