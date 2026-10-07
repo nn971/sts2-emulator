@@ -79,7 +79,7 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through fourteen gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through fifteen gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
 play-series replay for Burst (including repeated nested choices), Tools of the Trade's
@@ -130,11 +130,19 @@ selected original retains its Affliction, while the stored payload and generated
 cleared. Hexed is the first Affliction with active semantics and contributes Ethereal through the
 ordinary effective-keyword query.
 
-This does not yet model the full Affliction lifecycle. In particular, source powers/enemies that
-apply Afflictions, re-affliction rules, and source-dependent cleanup such as Hexed disappearing when
-its source Hex no longer applies still need native encounter-driven work. Add those incrementally
-with their pinned encounters rather than treating the typed identity catalog as semantic coverage.
-See `docs/reference-builds/v0.111.0-mechanics-gap-014.md`.
+The first real Affliction source lifecycle is now implemented through Spectral Knight's Hex.
+Player powers can be source-bound to an enemy and apply an Affliction across all eligible combat
+cards. Hex is non-stacking, applies Hexed to every currently un-afflicted card in every pile, marks
+generated cards while its source remains alive, and clears only its own source-tagged Hexed state
+when that source dies. Nightmare still clears Affliction from its stored payload, but copies created
+while Hex remains active are correctly re-Hexed on arrival.
+
+Enemy move definitions now support a non-repeating opener prefix followed by a repeating suffix.
+This makes the production Spectral Knight definition exact at prototype A0 values: Hex once, then
+alternate Soul Slash and Soul Flame. Spectral Knight is intentionally not yet placed in the
+reachable encounter pool; Knight Gang still needs Flail/Magi mechanics, Artifact/debuff blocking,
+and native ascension scaling before that would be an honest fidelity claim. See
+`docs/reference-builds/v0.111.0-mechanics-gap-015.md`.
 
 
 ## First live native capture
