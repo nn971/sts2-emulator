@@ -51,22 +51,22 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Elite | `BYGONE_EFFIGY_ELITE` | `BYGONE_EFFIGY` | no | pending | pending | no |
 | Overgrowth | Elite | `BYRDONIS_ELITE` | `BYRDONIS` | no | pending | pending | no |
 | Overgrowth | Elite | `PHROG_PARASITE_ELITE` | `PHROG_PARASITE`, `WRIGGLER` | no | pending | pending | no |
-| Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | yes | yes | pending | no |
-| Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | yes | yes | pending | no |
-| Overgrowth | Monster | `FOGMOG_NORMAL` | `EYE_WITH_TEETH`, `FOGMOG` | no | pending | pending | no |
+| Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | yes | yes | yes | no |
+| Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | yes | yes | yes | no |
+| Overgrowth | Monster | `FOGMOG_NORMAL` | `EYE_WITH_TEETH`, `FOGMOG` | yes | yes | yes | no |
 | Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | yes | yes | yes | no |
-| Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | yes | yes | pending | no |
-| Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | yes | yes | pending | no |
-| Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | pending | no |
+| Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | yes | yes | yes | no |
+| Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | yes | yes | yes | no |
+| Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | yes | no |
 | Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | yes | yes | yes | no |
-| Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | yes | yes | pending | no |
-| Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | yes | yes | pending | no |
+| Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | yes | yes | yes | no |
+| Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | yes | yes | yes | no |
 | Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | yes | yes | yes | no |
-| Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
+| Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | yes | no |
 | Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | yes | no |
-| Overgrowth | Monster | `SLITHERING_STRANGLER_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `SLITHERING_STRANGLER`, `SNAPPING_JAXFRUIT`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
-| Overgrowth | Monster | `SNAPPING_JAXFRUIT_NORMAL` | `FLYCONID`, `SNAPPING_JAXFRUIT` | yes | yes | pending | no |
-| Overgrowth | Monster | `VINE_SHAMBLER_NORMAL` | `VINE_SHAMBLER` | yes | yes | pending | no |
+| Overgrowth | Monster | `SLITHERING_STRANGLER_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `SLITHERING_STRANGLER`, `SNAPPING_JAXFRUIT`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | yes | no |
+| Overgrowth | Monster | `SNAPPING_JAXFRUIT_NORMAL` | `FLYCONID`, `SNAPPING_JAXFRUIT` | yes | yes | yes | no |
+| Overgrowth | Monster | `VINE_SHAMBLER_NORMAL` | `VINE_SHAMBLER` | yes | yes | yes | no |
 | Underdocks | Boss | `LAGAVULIN_MATRIARCH_BOSS` | `LAGAVULIN_MATRIARCH` | no | pending | pending | no |
 | Underdocks | Boss | `SOUL_FYSH_BOSS` | `SOUL_FYSH` | no | pending | pending | no |
 | Underdocks | Boss | `WATERFALL_GIANT_BOSS` | `WATERFALL_GIANT` | no | pending | pending | no |
@@ -91,8 +91,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 \* Underdocks rows are retained as deferred inventory. The four Overgrowth weak encounters now
 participate in a typed native-shape queue: the first three ordinary combats select three distinct
 encounters uniformly from the four-entry weak pool. Exact native RNG codec/call-order parity is not
-claimed. `SLIMES_NORMAL`, `NIBBITS_NORMAL`, and `OVERGROWTH_CRAWLERS` have source-backed
-formations but still await the normal-pool translation.
+claimed. All twelve Overgrowth normal encounters now participate in the typed no-replacement normal bag after the three-combat weak phase. Known native adjacency exclusions are enforced before selection. Exact native RNG codec/call-order parity remains separate.
 
 ## Monster-model coverage
 
@@ -109,10 +108,10 @@ formations but still await the normal-pool translation.
 | `CROSSBOW_RUBY_RAIDER` — Crossbow Raider | Normal | 18–21 | 19–22 | cycle | implemented + focused tests |
 | `CUBEX_CONSTRUCT` — Cubex Construct | Normal | 65 | 70 | cycle | implemented + focused tests |
 | `DAMP_CULTIST` — Damp Cultist | Normal | 51–53 | 52–54 | cycle | not started |
-| `EYE_WITH_TEETH` — Eye with Teeth | Normal | 6 | — | cycle | not started |
+| `EYE_WITH_TEETH` — Eye with Teeth | Normal | 6 | — | cycle | implemented + focused tests |
 | `FAT_GREMLIN` — Fat Gremlin | Normal | 13–17 | 14–18 | cycle | not started |
 | `FLYCONID` — Flyconid | Normal | 47–49 | 51–53 | random | implemented + focused tests |
-| `FOGMOG` — Fogmog | Normal | 74 | 78 | random | not started |
+| `FOGMOG` — Fogmog | Normal | 74 | 78 | random | implemented + focused tests |
 | `FOSSIL_STALKER` — Fossil Stalker | Normal | 51–53 | 54–56 | random | not started |
 | `FUZZY_WURM_CRAWLER` — Fuzzy Wurm Crawler | Normal | 55–57 | 58–59 | cycle | implemented + focused tests |
 | `GAS_BOMB` — Gas Bomb | Normal | 7 | 8 | cycle | not started |
