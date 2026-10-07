@@ -574,6 +574,10 @@ public sealed record PrototypePowerDefinition(
     int PlayerCardBlockDenominator = 1,
     int EnemyHpLossCapPerTrigger = 0,
     bool ConsumeOnEnemyHpLoss = false,
+    int MaxCardsPlayablePerTurn = 0,
+    bool TriggerOwnerAtHpAtOrBelowStacks = false,
+    bool ClearOwnerStrengthOnHpThresholdTrigger = false,
+    string? OwnerAiStateOnHpThresholdTrigger = null,
     int EnemyAttackDamageBonusPerStack = 0,
     int EnemyStrengthGainAtTurnEndPerStack = 0,
     int EnemyIncomingAttackDamagePercentPerCardPlayed = 0);
