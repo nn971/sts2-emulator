@@ -335,12 +335,20 @@ public enum PrototypeStatusTriggerKind
 public enum PrototypeRunEffectKind
 {
     Heal,
+    HealToFull,
     HealPercentMaxHp,
     GainMaxHp,
     LoseHp,
     GainGold,
     AddCard,
     FillPotionSlots
+}
+
+public enum PrototypeRunEventKind
+{
+    RelicAcquired,
+    ShopEntered,
+    CardAdded
 }
 
 public sealed record PrototypeCardSelectionSpec(
@@ -549,12 +557,18 @@ public sealed record PrototypeRelicTriggerSpec(
     int? MaxPlayerHpPercent = null,
     int? MinPlayerHpPercent = null);
 
+public sealed record PrototypeRelicRunTriggerSpec(
+    PrototypeRunEventKind EventKind,
+    PrototypeRunEffectSpec[] Effects,
+    PrototypeCardType? RequiredCardType = null);
+
 public sealed record PrototypeRelicDefinition(
     string Id,
     string Name,
     int FirstTurnDrawBonus = 0,
     int EnergyPerTurnBonus = 0,
-    PrototypeRelicTriggerSpec[]? Triggers = null);
+    PrototypeRelicTriggerSpec[]? Triggers = null,
+    PrototypeRelicRunTriggerSpec[]? RunTriggers = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
