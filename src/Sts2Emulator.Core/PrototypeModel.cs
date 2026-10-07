@@ -90,6 +90,7 @@ public enum PrototypeCombatEffectKind
     ApplyPlayerPower,
     ApplyEnemyPower,
     HealPlayer,
+    UpgradeHandCards,
     DamagePlayer,
     GainEnergy,
     MultiplyEnemyStatus,
@@ -334,9 +335,12 @@ public enum PrototypeStatusTriggerKind
 public enum PrototypeRunEffectKind
 {
     Heal,
+    HealPercentMaxHp,
+    GainMaxHp,
     LoseHp,
     GainGold,
-    AddCard
+    AddCard,
+    FillPotionSlots
 }
 
 public sealed record PrototypeCardSelectionSpec(
@@ -534,7 +538,9 @@ public sealed record PrototypePotionDefinition(
     string Id,
     string Name,
     PrototypeCardTarget Target,
-    PrototypeCombatEffectSpec[] Effects);
+    PrototypeCombatEffectSpec[] Effects,
+    bool UsableOutsideCombat = false,
+    PrototypeRunEffectSpec[]? RunEffects = null);
 
 public sealed record PrototypeRelicTriggerSpec(
     PrototypeCombatEventKind EventKind,
