@@ -37,17 +37,23 @@ An encounter is not complete merely because all of its monster classes exist. Co
 - source-backed Overgrowth models currently promoted in this ledger include **Twig Slime (S)**,
   **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, **Leaf Slime (S)**, **Leaf Slime (M)**,
   **Twig Slime (M)**, **Nibbit**, **Fuzzy Wurm Crawler**, and **Shrinker Beetle**;
-- typed Act-1 region state plus a forkable Overgrowth weak-encounter queue.
+- typed Act-1 region state plus forkable Overgrowth weak, normal, elite, and preselected boss encounter state;
+- generic ascension-scaled starting enemy powers, encounter-leader relationships for static minions,
+  HP-threshold-triggered enemy powers, and per-turn player card-play caps;
+- Overgrowth boss mechanics now cover Vantom's Slippery/Wounds, The Kin's leader/minion lifecycle,
+  and Ceremonial Beast's Plow -> Stun -> Ringing phase transition.
 
 ## Encounter coverage
 
 Legend: `model` = all listed enemy models implemented; `formation` = exact multiplicity/slots/composition; `pool` = native encounter-selection semantics; `oracle` = live differential evidence.
 
+\* Boss selection uses the emulator's **full-unlock run assumption**: one of the three Overgrowth bosses is chosen at act start and stored in forkable run state so the boss is knowable before the room. Account/meta-progression rules such as the first-ever-run Vantom guarantee are intentionally outside this run-state claim.
+
 | Region | Room | Encounter | Native monsters | Model | Formation | Pool | Oracle |
 |---|---|---|---|---|---|---|---|
-| Overgrowth | Boss | `CEREMONIAL_BEAST_BOSS` | `CEREMONIAL_BEAST` | no | pending | pending | no |
-| Overgrowth | Boss | `THE_KIN_BOSS` | `KIN_FOLLOWER`, `KIN_PRIEST` | no | pending | pending | no |
-| Overgrowth | Boss | `VANTOM_BOSS` | `VANTOM` | no | pending | pending | no |
+| Overgrowth | Boss | `CEREMONIAL_BEAST_BOSS` | `CEREMONIAL_BEAST` | yes | yes | yes* | no |
+| Overgrowth | Boss | `THE_KIN_BOSS` | `KIN_FOLLOWER`, `KIN_PRIEST` | yes | yes | yes* | no |
+| Overgrowth | Boss | `VANTOM_BOSS` | `VANTOM` | yes | yes | yes* | no |
 | Overgrowth | Elite | `BYGONE_EFFIGY_ELITE` | `BYGONE_EFFIGY` | yes | yes | yes | no |
 | Overgrowth | Elite | `BYRDONIS_ELITE` | `BYRDONIS` | yes | yes | yes | no |
 | Overgrowth | Elite | `PHROG_PARASITE_ELITE` | `PHROG_PARASITE`, `WRIGGLER` | yes | yes | yes | no |
@@ -103,7 +109,7 @@ claimed. All twelve Overgrowth normal encounters now participate in the typed no
 | `BYGONE_EFFIGY` — Bygone Effigy | Elite | 127 | 132 | cycle | implemented + focused tests |
 | `BYRDONIS` — Byrdonis | Elite | 81–84 | 90–90 | cycle | implemented + focused tests |
 | `CALCIFIED_CULTIST` — Calcified Cultist | Normal | 38–41 | 39–42 | cycle | not started |
-| `CEREMONIAL_BEAST` — Ceremonial Beast | Boss | 252 | 262 | cycle | not started |
+| `CEREMONIAL_BEAST` — Ceremonial Beast | Boss | 252 | 262 | phased | implemented + focused tests |
 | `CORPSE_SLUG` — Corpse Slug | Normal | 25–27 | 27–29 | cycle | not started |
 | `CROSSBOW_RUBY_RAIDER` — Crossbow Raider | Normal | 18–21 | 19–22 | cycle | implemented + focused tests |
 | `CUBEX_CONSTRUCT` — Cubex Construct | Normal | 65 | 70 | cycle | implemented + focused tests |
@@ -118,8 +124,8 @@ claimed. All twelve Overgrowth normal encounters now participate in the typed no
 | `GREMLIN_MERC` — Gremlin Merc | Normal | 47–49 | 51–53 | cycle | not started |
 | `HAUNTED_SHIP` — Haunted Ship | Normal | 63 | 67 | cycle | not started |
 | `INKLET` — Inklet | Normal | 11–17 | 12–18 | random | implemented + focused tests |
-| `KIN_FOLLOWER` — Kin Follower | Boss | 58–59 | 62–63 | cycle | not started |
-| `KIN_PRIEST` — Kin Priest | Boss | 190 | 199 | cycle | not started |
+| `KIN_FOLLOWER` — Kin Follower | Boss | 58–59 | 62–63 | conditional/cycle | implemented + focused tests |
+| `KIN_PRIEST` — Kin Priest | Boss | 190 | 199 | cycle | implemented + focused tests |
 | `LAGAVULIN_MATRIARCH` — Lagavulin Matriarch | Boss | 222 | 233 | conditional | not started |
 | `LEAF_SLIME_M` — Leaf Slime (M) | Normal | 32–35 | 33–36 | cycle | implemented + focused tests |
 | `LEAF_SLIME_S` — Leaf Slime (S) | Normal | 11–15 | 12–16 | random | implemented + focused tests |
@@ -144,7 +150,7 @@ claimed. All twelve Overgrowth normal encounters now participate in the typed no
 | `TWIG_SLIME_M` — Twig Slime (M) | Normal | 26–28 | 27–29 | random | implemented + focused tests |
 | `TWIG_SLIME_S` — Twig Slime (S) | Normal | 7–11 | 8–12 | cycle | implemented + focused tests |
 | `TWO_TAILED_RAT` — Two-Tailed Rat | Normal | 17–21 | 18–22 | random | not started |
-| `VANTOM` — Vantom | Boss | 173 | 183 | cycle | not started |
+| `VANTOM` — Vantom | Boss | 173 | 183 | cycle | implemented + focused tests |
 | `VINE_SHAMBLER` — Vine Shambler | Normal | 61 | 64 | cycle | implemented + focused tests |
 | `WATERFALL_GIANT` — Waterfall Giant | Boss | 240 | 250 | cycle | not started |
 | `WRIGGLER` — Wriggler | Elite | 17–21 | 18–22 | conditional | implemented + focused tests |
