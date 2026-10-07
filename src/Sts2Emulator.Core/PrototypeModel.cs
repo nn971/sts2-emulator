@@ -583,7 +583,8 @@ public enum PrototypeEnemyEffectKind
     GainBlock,
     ApplyPlayerPower,
     ApplyEnemyPower,
-    AddCardsToDiscard
+    AddCardsToDiscard,
+    SummonEnemy
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -599,7 +600,8 @@ public sealed record PrototypeEnemyEffectSpec(
     PrototypeAscensionDelta[]? AscensionDeltas = null,
     bool IsAttack = true,
     PrototypeAscensionDelta[]? RepetitionAscensionDeltas = null,
-    string? CardId = null)
+    string? CardId = null,
+    string? EnemyId = null)
 {
     public int AmountAt(
         int act,
@@ -700,7 +702,9 @@ public sealed record PrototypeEnemyDefinition(
     int RandomMovePoolStartIndex = 0,
     int? MinHp = null,
     PrototypeAscensionDelta[]? MinHpAscensionDeltas = null,
-    PrototypeEnemyAiDefinition? Ai = null)
+    PrototypeEnemyAiDefinition? Ai = null,
+    bool IsMinion = false,
+    bool RevivesOnEnemyTurn = false)
 {
     public (int Min, int Max) HpRangeAt(
         int act,
@@ -1023,7 +1027,9 @@ public sealed record EnemyCombatState(
     string? AiStateId = null,
     Dictionary<string, int>? MoveUseCounts = null,
     int FormationPosition = 0,
-    string? SlotName = null)
+    string? SlotName = null,
+    int? LeaderEnemyInstanceId = null,
+    bool SkipNextEnemyAction = false)
 {
     public EnemyCombatState Fork() => this with
     {
