@@ -556,6 +556,8 @@ public sealed record PrototypePowerDefinition(
     int PlayerIncomingAttackDamageDenominator = 1,
     int PlayerCardBlockNumerator = 1,
     int PlayerCardBlockDenominator = 1,
+    int EnemyHpLossCapPerTrigger = 0,
+    bool ConsumeOnEnemyHpLoss = false,
     int EnemyAttackDamageBonusPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
