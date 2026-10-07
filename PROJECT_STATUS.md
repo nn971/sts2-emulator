@@ -586,3 +586,12 @@ Relic acquisition can now suspend a reward on a generic persistent-deck choice. 
 Empty Cage uses this capability to remove two chosen non-Eternal cards. Astrolabe uses the same capability to transform three chosen cards into deterministic random reward-pool cards and upgrades the transformed results. Transformations preserve persistent card instance IDs while replacing card identity/state, which keeps action/history references stable for search consumers. If the deck has fewer eligible cards than a relic requests, the choice automatically contracts to the eligible deck size.
 
 The boss relic pool now contains both modifier-style relics and acquisition-choice relics. Existing boss reward tests deliberately choose a non-choice relic when testing the act-transition path, while dedicated tests cover the multi-step Empty Cage and Astrolabe continuations.
+
+
+## Mechanics-expansion pass: potion inventory replacement
+
+Potion rewards and shop purchases now remain strategically available when every potion slot is occupied. Instead of making the new potion unavailable, the engine exposes one replacement action per occupied slot. Reward replacement is free; shop replacement charges the offer price and marks the potion offer sold. The selected old potion is discarded atomically as the new potion enters that slot.
+
+When an empty slot exists, the action surface stays compact: rewards expose the ordinary take action and shops expose the ordinary buy action, with no dominated replacement alternatives. Sozu suppresses both ordinary acquisition and replacement. The AI layer needs no special continuation state because the existing potion observation identifies slot contents and the generic semantic action payload identifies the replaced slot.
+
+A generic discard-potion action is intentionally not exposed in every run phase yet. For the current strategic surface, direct replacement captures the meaningful full-belt decision without adding dominated discard branches to every state.
