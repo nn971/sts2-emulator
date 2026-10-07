@@ -2482,14 +2482,58 @@ public sealed partial class PrototypeGameEngine
 
     private static CombatState RemovePlayerPowers(
         CombatState combat,
-        Func<PrototypePowerDefinition, bool> predicate) =>
-        combat with
+        Func<PrototypePowerDefinition, bool> predicate)
+    {
+        var removed = combat.PlayerPowers
+            .Where(power =>
+                predicate(
+                    PrototypeContent.Power(power.PowerId)))
+            .ToArray();
+        if (removed.Length == 0)
         {
-            PlayerPowers = combat.PlayerPowers
-                .Where(power =>
-                    !predicate(PrototypeContent.Power(power.PowerId)))
-                .ToArray()
+            return combat;
+        }
+
+        var removedOrders = removed
+            .Select(power => power.ApplicationOrder)
+            .ToHashSet();
+        var remaining = combat.PlayerPowers
+            .Where(power =>
+                !removedOrders.Contains(
+                    power.ApplicationOrder))
+            .ToArray();
+
+        var clearKinds = removed
+            .Select(power =>
+                PrototypeContent.Power(power.PowerId))
+            .Where(definition =>
+                definition.ClearAppliedCardAfflictionWhenRemoved
+                && definition.AppliedCardAffliction is not null)
+            .Select(definition =>
+                definition.AppliedCardAffliction!.Value)
+            .Where(kind =>
+                !remaining.Any(power =>
+                    PrototypeContent.Power(power.PowerId)
+                        .AppliedCardAffliction == kind))
+            .ToHashSet();
+
+        return combat with
+        {
+            PlayerPowers = remaining,
+            Cards = clearKinds.Count == 0
+                ? combat.Cards
+                : combat.Cards
+                    .Select(card =>
+                        card.Affliction is
+                            {
+                                SourceEnemyInstanceId: null
+                            } affliction
+                        && clearKinds.Contains(affliction.Kind)
+                            ? card with { Affliction = null }
+                            : card)
+                    .ToArray()
         };
+    }
 
     private static int PlayerBlockBonus(CombatState combat) =>
         combat.PlayerPowers.Sum(power =>
@@ -2655,20 +2699,34 @@ public sealed partial class PrototypeGameEngine
         CombatCardInstance card,
         PrototypeCardDefinition definition)
     {
-        if (card.TemporaryEnergyCost is not null)
-        {
-            return Math.Max(0, card.TemporaryEnergyCost.Cost);
-        }
+        var baseCost = card.TemporaryEnergyCost is not null
+            ? card.TemporaryEnergyCost.Cost
+            : definition.Cost.AmountAt(
+                card.UpgradeLevel,
+                ResolveCardCostReductionCount(
+                    definition.Cost,
+                    combat))
+              + card.CombatEnergyCostDelta;
 
-        var baseCost = definition.Cost.AmountAt(
-            card.UpgradeLevel,
-            ResolveCardCostReductionCount(
-                definition.Cost,
-                combat));
+        var afflictionSurcharge = card.Affliction is not
+                { } affliction
+            ? 0
+            : combat.PlayerPowers.Sum(power =>
+            {
+                var powerDefinition =
+                    PrototypeContent.Power(power.PowerId);
+                return power.Stacks > 0
+                    && powerDefinition.AppliedCardAffliction
+                        == affliction.Kind
+                        ? powerDefinition
+                            .AfflictedCardEnergyCostPerStack
+                          * power.Stacks
+                        : 0;
+            });
 
         return Math.Max(
             0,
-            baseCost + card.CombatEnergyCostDelta);
+            baseCost + afflictionSurcharge);
     }
 
     private static CombatState SetHandCardsTemporaryEnergyCost(
@@ -3412,6 +3470,9 @@ public sealed partial class PrototypeGameEngine
         combat = ApplySourceBoundCardAffliction(
             combat,
             power);
+        combat = ApplyPowerCardAffliction(
+            combat,
+            power);
         return ApplySourceBoundCardDowngrade(
             combat,
             power);
@@ -3456,6 +3517,48 @@ public sealed partial class PrototypeGameEngine
                             card.SuppressedUpgradeLevels
                             + card.UpgradeLevel,
                         UpgradeLevel = 0
+                    };
+                })
+                .ToArray()
+        };
+    }
+
+    private static CombatState ApplyPowerCardAffliction(
+        CombatState combat,
+        PrototypePowerInstanceState power)
+    {
+        var definition = PrototypeContent.Power(power.PowerId);
+        if (definition.AppliedCardAffliction is not
+                { } afflictionKind)
+        {
+            return combat;
+        }
+
+        return combat with
+        {
+            Cards = combat.Cards
+                .Select(card =>
+                {
+                    if (definition
+                            .AppliedCardAfflictionRequiredCardType
+                            is { } requiredType
+                        && PrototypeContent.Card(card.CardId).Type
+                            != requiredType)
+                    {
+                        return card;
+                    }
+
+                    if (card.Affliction is not null
+                        && definition.SkipCardsWithExistingAffliction)
+                    {
+                        return card;
+                    }
+
+                    return card with
+                    {
+                        Affliction =
+                            new PrototypeCardAffliction(
+                                afflictionKind)
                     };
                 })
                 .ToArray()
@@ -3518,33 +3621,54 @@ public sealed partial class PrototypeGameEngine
         {
             var definition = PrototypeContent.Power(
                 power.PowerId);
-            if (definition.SourceBoundCardAffliction is not
-                    { } afflictionKind
-                || power.SourceEnemyInstanceId is not
+            if (definition.SourceBoundCardAffliction is
+                    { } sourceAfflictionKind
+                && power.SourceEnemyInstanceId is
                     { } sourceEnemyId)
             {
-                continue;
+                var source = combat.Enemies.FirstOrDefault(enemy =>
+                    enemy.InstanceId == sourceEnemyId);
+                if (source is not null && source.Hp > 0)
+                {
+                    if (card.Affliction is not null
+                        && definition.SkipCardsWithExistingAffliction)
+                    {
+                        continue;
+                    }
+
+                    return card with
+                    {
+                        Affliction = new PrototypeCardAffliction(
+                            sourceAfflictionKind,
+                            SourceEnemyInstanceId: sourceEnemyId)
+                    };
+                }
             }
 
-            var source = combat.Enemies.FirstOrDefault(enemy =>
-                enemy.InstanceId == sourceEnemyId);
-            if (source is null || source.Hp <= 0)
+            if (definition.AppliedCardAffliction is
+                    { } appliedAfflictionKind)
             {
-                continue;
-            }
+                if (definition
+                        .AppliedCardAfflictionRequiredCardType
+                        is { } requiredType
+                    && PrototypeContent.Card(card.CardId).Type
+                        != requiredType)
+                {
+                    continue;
+                }
 
-            if (card.Affliction is not null
-                && definition.SkipCardsWithExistingAffliction)
-            {
-                continue;
-            }
+                if (card.Affliction is not null
+                    && definition.SkipCardsWithExistingAffliction)
+                {
+                    continue;
+                }
 
-            return card with
-            {
-                Affliction = new PrototypeCardAffliction(
-                    afflictionKind,
-                    SourceEnemyInstanceId: sourceEnemyId)
-            };
+                return card with
+                {
+                    Affliction = new PrototypeCardAffliction(
+                        appliedAfflictionKind)
+                };
+            }
         }
 
         return card;
