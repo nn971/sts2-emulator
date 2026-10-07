@@ -1698,6 +1698,13 @@ public static class PrototypeContent
                 PlayerCardBlockNumerator: 3,
                 PlayerCardBlockDenominator: 4),
             new PrototypePowerDefinition(
+                "proto.power.slippery",
+                "Slippery",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                EnemyHpLossCapPerTrigger: 1,
+                ConsumeOnEnemyHpLoss: true),
+            new PrototypePowerDefinition(
                 "proto.power.shrink",
                 "Shrink",
                 BlockBonusPerStack: 0,
@@ -1984,6 +1991,120 @@ public static class PrototypeContent
                     new(8, 1)
                 ],
                 MinHp: 18),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.inklet",
+                "Inklet",
+                17,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "jab",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                3,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "whirlwind",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                2,
+                                Repetitions: 3,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "piercing_gaze",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                10,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 11,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                StartingPowers:
+                [
+                    new PrototypeStartingPowerSpec(
+                        "proto.power.slippery",
+                        1)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "init",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "jab_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "whirlwind_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "jab_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "piercing_gaze_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "jab_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "rand",
+                            PrototypeEnemyAiStateKind.Random,
+                            Branches:
+                            [
+                                new(
+                                    "piercing_gaze_move",
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat),
+                                new(
+                                    "whirlwind_move",
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat)
+                            ]),
+                        new PrototypeEnemyAiStateDefinition(
+                            "init",
+                            PrototypeEnemyAiStateKind.Conditional,
+                            ConditionalBranches:
+                            [
+                                new(
+                                    "whirlwind_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    Value: "middle"),
+                                new(
+                                    "jab_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    Value: "left"),
+                                new(
+                                    "jab_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    Value: "right")
+                            ])
+                    ])),
             new PrototypeEnemyDefinition(
                 "proto.enemy.flyconid",
                 "Flyconid",
@@ -3511,6 +3632,32 @@ public static class PrototypeContent
                         "proto.enemy.twig_slime_m"
                     ],
                     [1])
+            ]),
+        new(
+            "proto.encounter.inklets_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.inklet",
+                "proto.enemy.inklet",
+                "proto.enemy.inklet"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.inklet",
+                    0,
+                    "left"),
+                new(
+                    "proto.enemy.inklet",
+                    1,
+                    "middle"),
+                new(
+                    "proto.enemy.inklet",
+                    2,
+                    "right")
             ]),
         new(
             "proto.encounter.flyconid_normal",
