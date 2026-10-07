@@ -1113,7 +1113,12 @@ public sealed partial class PrototypeGameEngine
                     automaticStep.Stage.Value);
                 combat = ResolveEnemyDeathSummons(
                     combat,
-                    state.Rng);
+                    state.Rng,
+                    enemyActionSkips:
+                        automaticStep.Stage.Value
+                            == PrototypeTurnStage.EnemyTurnStart
+                            ? 2
+                            : 1);
                 break;
 
             case PrototypeAutomaticStepKind.ResetEnemyBlock:
@@ -1691,6 +1696,17 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (enemy.EnemyActionSkipsRemaining > 0)
+            {
+                enemies[index] = enemy with
+                {
+                    EnemyActionSkipsRemaining =
+                        enemy.EnemyActionSkipsRemaining - 1,
+                    SkipNextEnemyAction = false
+                };
+                continue;
+            }
+
             if (enemy.SkipNextEnemyAction)
             {
                 enemies[index] = enemy with
@@ -1984,7 +2000,8 @@ public sealed partial class PrototypeGameEngine
 
     private static CombatState ResolveEnemyDeathSummons(
         CombatState combat,
-        RngBundle rng)
+        RngBundle rng,
+        int enemyActionSkips = 1)
     {
         var enemies = combat.Enemies
             .Select(enemy => enemy.Fork())
@@ -2076,7 +2093,8 @@ public sealed partial class PrototypeGameEngine
                         FormationPosition:
                             summon.FormationPosition,
                         SlotName: summon.SlotName,
-                        SkipNextEnemyAction: true));
+                        EnemyActionSkipsRemaining:
+                            Math.Max(0, enemyActionSkips)));
             }
         }
 
