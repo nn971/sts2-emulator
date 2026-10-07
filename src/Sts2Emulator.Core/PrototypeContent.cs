@@ -2283,6 +2283,42 @@ public static class PrototypeContent
                     new(8, 1)
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.crossbow_ruby_raider",
+                "Crossbow Raider",
+                21,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "reload",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                3)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "fire",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                14,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.SequentialLoop,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 18,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 1)
+                ]),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.brute_ruby_raider",
                 "Brute Raider",
                 33,
