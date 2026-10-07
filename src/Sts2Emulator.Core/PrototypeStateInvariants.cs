@@ -169,16 +169,23 @@ public static class PrototypeStateInvariants
                 "Act 1 encounter pool region disagrees with the run region.");
         }
 
+        var maxTrackedOrdinaryCombats =
+            3 + PrototypeContent
+                .OvergrowthNormalEncounterPool.Length;
         if (pool.OrdinaryCombatsStarted < 0
-            || pool.OrdinaryCombatsStarted > 3)
+            || pool.OrdinaryCombatsStarted
+                > maxTrackedOrdinaryCombats)
         {
             throw new InvalidOperationException(
                 $"Invalid Act 1 ordinary-combat counter {pool.OrdinaryCombatsStarted}.");
         }
 
+        var weakCombatsStarted = Math.Min(
+            3,
+            pool.OrdinaryCombatsStarted);
         if (pool.RemainingWeakEncounterIds.Length
             != PrototypeContent.OvergrowthWeakEncounterPool.Length
-                - pool.OrdinaryCombatsStarted)
+                - weakCombatsStarted)
         {
             throw new InvalidOperationException(
                 "Act 1 weak encounter pool size disagrees with its combat counter.");
@@ -201,6 +208,39 @@ public static class PrototypeStateInvariants
         {
             throw new InvalidOperationException(
                 "Overgrowth weak encounter pool contains a foreign encounter.");
+        }
+
+        if (pool.RemainingNormalEncounterIds is { } normal)
+        {
+            if (normal.Distinct(StringComparer.Ordinal).Count()
+                != normal.Length)
+            {
+                throw new InvalidOperationException(
+                    "Act 1 normal encounter pool contains duplicate encounter IDs.");
+            }
+
+            if (pool.Region == PrototypeActOneRegion.Overgrowth
+                && normal.Any(id =>
+                    !PrototypeContent.OvergrowthNormalEncounterPool.Contains(
+                        id,
+                        StringComparer.Ordinal)))
+            {
+                throw new InvalidOperationException(
+                    "Overgrowth normal encounter pool contains a foreign encounter.");
+            }
+
+            var normalCombatsStarted = Math.Max(
+                0,
+                pool.OrdinaryCombatsStarted - 3);
+            var expectedNormalRemaining =
+                PrototypeContent
+                    .OvergrowthNormalEncounterPool.Length
+                - normalCombatsStarted;
+            if (normal.Length != expectedNormalRemaining)
+            {
+                throw new InvalidOperationException(
+                    "Act 1 normal encounter pool size disagrees with its combat counter.");
+            }
         }
     }
 
@@ -331,13 +371,16 @@ public static class PrototypeStateInvariants
         var encounter = PrototypeContent.Encounters.Single(item =>
             StringComparer.Ordinal.Equals(item.Id, encounterId));
 
-        var promotedOvergrowthWeak =
+        var promotedOvergrowthEncounter =
             world.Act == 1
             && world.ActOneRegion
                 == PrototypeActOneRegion.Overgrowth
-            && PrototypeContent.OvergrowthWeakEncounterPool.Contains(
-                encounter.Id,
-                StringComparer.Ordinal);
+            && (PrototypeContent.OvergrowthWeakEncounterPool.Contains(
+                    encounter.Id,
+                    StringComparer.Ordinal)
+                || PrototypeContent.OvergrowthNormalEncounterPool.Contains(
+                    encounter.Id,
+                    StringComparer.Ordinal));
 
         if (encounter.RoomType != world.ActiveRoom
             || world.Act < encounter.MinAct
@@ -345,7 +388,7 @@ public static class PrototypeStateInvariants
             || world.Floor < encounter.MinFloor
             || world.Floor > encounter.MaxFloor
             || (encounter.Weight <= 0
-                && !promotedOvergrowthWeak))
+                && !promotedOvergrowthEncounter))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");
