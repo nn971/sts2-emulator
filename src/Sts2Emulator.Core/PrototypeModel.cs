@@ -581,8 +581,41 @@ public sealed record PrototypeEnemyEffectSpec(
 public enum PrototypeEnemyMovePolicy
 {
     SequentialLoop,
-    UniformRandomAfterOpener
+    UniformRandomAfterOpener,
+    StateMachine
 }
+
+public enum PrototypeEnemyAiStateKind
+{
+    Move,
+    Random
+}
+
+public enum PrototypeEnemyAiRepeatRule
+{
+    CanRepeatForever,
+    CannotRepeat,
+    CanRepeatXTimes,
+    UseOnlyOnce
+}
+
+public sealed record PrototypeEnemyAiBranch(
+    string TargetStateId,
+    int Weight = 1,
+    PrototypeEnemyAiRepeatRule RepeatRule =
+        PrototypeEnemyAiRepeatRule.CanRepeatForever,
+    int MaxTimes = 0);
+
+public sealed record PrototypeEnemyAiStateDefinition(
+    string Id,
+    PrototypeEnemyAiStateKind Kind,
+    int? MoveIndex = null,
+    string? NextStateId = null,
+    PrototypeEnemyAiBranch[]? Branches = null);
+
+public sealed record PrototypeEnemyAiDefinition(
+    string InitialStateId,
+    PrototypeEnemyAiStateDefinition[] States);
 
 public sealed record PrototypeEnemyMoveDefinition(
     string Id,
@@ -608,7 +641,8 @@ public sealed record PrototypeEnemyDefinition(
     int[]? OpeningMoveIndices = null,
     int RandomMovePoolStartIndex = 0,
     int? MinHp = null,
-    PrototypeAscensionDelta[]? MinHpAscensionDeltas = null)
+    PrototypeAscensionDelta[]? MinHpAscensionDeltas = null,
+    PrototypeEnemyAiDefinition? Ai = null)
 {
     public (int Min, int Max) HpRangeAt(
         int act,
@@ -764,14 +798,21 @@ public sealed record EnemyCombatState(
     Dictionary<string, int> Statuses,
     PrototypePowerInstanceState[]? Powers = null,
     string? LastMoveId = null,
-    int ConsecutiveMoveUses = 0)
+    int ConsecutiveMoveUses = 0,
+    string? AiStateId = null,
+    Dictionary<string, int>? MoveUseCounts = null)
 {
     public EnemyCombatState Fork() => this with
     {
         Statuses = new Dictionary<string, int>(Statuses, StringComparer.Ordinal),
         Powers = Powers is null
             ? null
-            : Powers.Select(power => power.Fork()).ToArray()
+            : Powers.Select(power => power.Fork()).ToArray(),
+        MoveUseCounts = MoveUseCounts is null
+            ? null
+            : new Dictionary<string, int>(
+                MoveUseCounts,
+                StringComparer.Ordinal)
     };
 
     public PrototypePowerInstanceState[] PowerStates =>
