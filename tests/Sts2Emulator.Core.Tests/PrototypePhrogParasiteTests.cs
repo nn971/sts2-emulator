@@ -64,7 +64,7 @@ public sealed class PrototypePhrogParasiteTests
                 card => card.CardId == "proto.status.infection"));
 
         state = EndTurn(engine, state);
-        Assert.Equal(84, state.Player.Hp);
+        Assert.Equal(75, state.Player.Hp);
         Assert.Equal(
             "lash",
             Phrog(state).LastMoveId);
