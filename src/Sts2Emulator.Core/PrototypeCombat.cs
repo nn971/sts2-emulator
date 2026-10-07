@@ -731,7 +731,11 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.ResolveEnemyActions:
             {
-                var result = ResolveEnemyActions(player, combat, world.Act);
+                var result = ResolveEnemyActions(
+                    player,
+                    combat,
+                    world.Act,
+                    state.Rng);
                 player = result.Player;
                 combat = result.Combat;
                 break;
@@ -892,10 +896,94 @@ public sealed partial class PrototypeGameEngine
             combat);
     }
 
+    private static PrototypeEnemyMoveDefinition SelectEnemyMove(
+        PrototypeEnemyDefinition definition,
+        EnemyCombatState enemy,
+        RngBundle rng)
+    {
+        if (definition.Moves.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"Enemy '{definition.Id}' has no moves.");
+        }
+
+        switch (definition.MovePolicy)
+        {
+            case PrototypeEnemyMovePolicy.SequentialLoop:
+            {
+                if (definition.MoveLoopStartIndex < 0
+                    || definition.MoveLoopStartIndex
+                        >= definition.Moves.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"Enemy '{definition.Id}' has invalid move-loop start index {definition.MoveLoopStartIndex}.");
+                }
+
+                var moveIndex = enemy.MoveIndex;
+                if (moveIndex >= definition.Moves.Length)
+                {
+                    var loopLength =
+                        definition.Moves.Length
+                        - definition.MoveLoopStartIndex;
+                    moveIndex =
+                        definition.MoveLoopStartIndex
+                        + ((moveIndex
+                            - definition.MoveLoopStartIndex)
+                           % loopLength);
+                }
+
+                return definition.Moves[moveIndex];
+            }
+
+            case PrototypeEnemyMovePolicy.UniformRandomAfterOpener:
+            {
+                if (definition.OpeningMoveIndex < 0
+                    || definition.OpeningMoveIndex
+                        >= definition.Moves.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"Enemy '{definition.Id}' has invalid opening move index {definition.OpeningMoveIndex}.");
+                }
+
+                if (enemy.MoveIndex == 0)
+                {
+                    return definition.Moves[
+                        definition.OpeningMoveIndex];
+                }
+
+                var candidates = definition.Moves
+                    .Where(move =>
+                        move.MaxConsecutiveUses <= 0
+                        || !StringComparer.Ordinal.Equals(
+                            enemy.LastMoveId,
+                            move.Id)
+                        || enemy.ConsecutiveMoveUses
+                            < move.MaxConsecutiveUses)
+                    .ToArray();
+                if (candidates.Length == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Enemy '{definition.Id}' has no legal random moves.");
+                }
+
+                return candidates[
+                    PrototypeRng.NextInt(
+                        rng,
+                        "combat",
+                        candidates.Length)];
+            }
+
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(definition.MovePolicy));
+        }
+    }
+
     private static (PlayerState Player, CombatState Combat) ResolveEnemyActions(
         PlayerState player,
         CombatState combat,
-        int act)
+        int act,
+        RngBundle rng)
     {
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var block = combat.PlayerBlock;
@@ -915,28 +1003,10 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            if (definition.MoveLoopStartIndex < 0
-                || definition.MoveLoopStartIndex
-                    >= definition.Moves.Length)
-            {
-                throw new InvalidOperationException(
-                    $"Enemy '{definition.Id}' has invalid move-loop start index {definition.MoveLoopStartIndex}.");
-            }
-
-            var moveIndex = enemy.MoveIndex;
-            if (moveIndex >= definition.Moves.Length)
-            {
-                var loopLength =
-                    definition.Moves.Length
-                    - definition.MoveLoopStartIndex;
-                moveIndex =
-                    definition.MoveLoopStartIndex
-                    + ((moveIndex
-                        - definition.MoveLoopStartIndex)
-                       % loopLength);
-            }
-
-            var move = definition.Moves[moveIndex];
+            var move = SelectEnemyMove(
+                definition,
+                enemy,
+                rng);
 
             foreach (var effect in move.Effects)
             {
@@ -964,7 +1034,12 @@ public sealed partial class PrototypeGameEngine
                                 };
                             }
 
-                            var damage = amount;
+                            var damage = amount
+                                + enemy.PowerStates.Sum(power =>
+                                    PrototypeContent.Power(
+                                        power.PowerId)
+                                        .EnemyAttackDamageBonusPerStack
+                                    * power.Stacks);
                             foreach (var status in enemy.Statuses)
                             {
                                 var statusDefinition = PrototypeContent.Status(status.Key);
@@ -996,6 +1071,22 @@ public sealed partial class PrototypeGameEngine
                                 sourceEnemyInstanceId: enemy.InstanceId);
                             break;
 
+                        case PrototypeEnemyEffectKind.ApplyEnemyPower:
+                            if (effect.PowerId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Enemy self-power effect is missing a power ID.");
+                            }
+
+                            var selfPower = ApplyEnemyPowerToState(
+                                combat,
+                                enemy,
+                                effect.PowerId,
+                                amount);
+                            combat = selfPower.Combat;
+                            enemy = selfPower.Enemy;
+                            break;
+
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
@@ -1012,7 +1103,18 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
-            enemies[index] = enemy with { MoveIndex = enemy.MoveIndex + 1 };
+            var consecutiveUses =
+                StringComparer.Ordinal.Equals(
+                    enemy.LastMoveId,
+                    move.Id)
+                    ? enemy.ConsecutiveMoveUses + 1
+                    : 1;
+            enemies[index] = enemy with
+            {
+                MoveIndex = enemy.MoveIndex + 1,
+                LastMoveId = move.Id,
+                ConsecutiveMoveUses = consecutiveUses
+            };
             if (hp <= 0)
             {
                 break;
@@ -3043,71 +3145,105 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static CombatState ApplyEnemyPower(
-        CombatState combat,
-        int enemyId,
-        string powerId,
-        int stacks)
+    private static (
+        CombatState Combat,
+        EnemyCombatState Enemy)
+        ApplyEnemyPowerToState(
+            CombatState combat,
+            EnemyCombatState enemy,
+            string powerId,
+            int stacks)
     {
         var definition = PrototypeContent.Power(powerId);
-        if (definition.IsInstanced && definition.RequiresCardPayload)
+        if (definition.IsInstanced
+            && definition.RequiresCardPayload)
         {
             throw new InvalidOperationException(
                 $"Enemy power '{powerId}' requires a card payload.");
         }
 
-        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
-        var enemyIndex = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
-        if (enemyIndex < 0)
-        {
-            throw new InvalidOperationException($"Enemy {enemyId} is missing.");
-        }
-
-        var enemy = enemies[enemyIndex];
         if (enemy.Hp <= 0)
         {
-            return combat;
+            return (combat, enemy);
         }
 
         var powers = enemy.PowerStates.ToList();
         var powerIndex = definition.IsInstanced
             ? -1
             : powers.FindIndex(power =>
-                StringComparer.Ordinal.Equals(power.PowerId, powerId));
+                StringComparer.Ordinal.Equals(
+                    power.PowerId,
+                    powerId));
 
         if (powerIndex >= 0)
         {
-            var nextStacks = powers[powerIndex].Stacks + stacks;
+            var nextStacks =
+                powers[powerIndex].Stacks + stacks;
             if (nextStacks == 0
-                || (!definition.AllowNegative && nextStacks < 0))
+                || (!definition.AllowNegative
+                    && nextStacks < 0))
             {
                 powers.RemoveAt(powerIndex);
             }
             else
             {
-                powers[powerIndex] = powers[powerIndex] with { Stacks = nextStacks };
+                powers[powerIndex] =
+                    powers[powerIndex] with
+                    {
+                        Stacks = nextStacks
+                    };
             }
 
-            enemies[enemyIndex] = enemy with { Powers = powers.ToArray() };
-            return combat with { Enemies = enemies };
+            return (
+                combat,
+                enemy with { Powers = powers.ToArray() });
         }
 
-        if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
+        if (stacks == 0
+            || (!definition.AllowNegative && stacks < 0))
         {
-            return combat;
+            return (combat, enemy);
         }
 
         powers.Add(new PrototypePowerInstanceState(
             powerId,
             stacks,
             combat.NextPowerApplicationOrder));
-        enemies[enemyIndex] = enemy with { Powers = powers.ToArray() };
 
-        return combat with
+        return (
+            combat with
+            {
+                NextPowerApplicationOrder =
+                    combat.NextPowerApplicationOrder + 1
+            },
+            enemy with { Powers = powers.ToArray() });
+    }
+
+    private static CombatState ApplyEnemyPower(
+        CombatState combat,
+        int enemyId,
+        string powerId,
+        int stacks)
+    {
+        var enemies = combat.Enemies
+            .Select(enemy => enemy.Fork())
+            .ToArray();
+        var enemyIndex = Array.FindIndex(
+            enemies,
+            enemy => enemy.InstanceId == enemyId);
+        if (enemyIndex < 0)
         {
-            Enemies = enemies,
-            NextPowerApplicationOrder = combat.NextPowerApplicationOrder + 1
-        };
+            throw new InvalidOperationException(
+                $"Enemy {enemyId} is missing.");
+        }
+
+        var result = ApplyEnemyPowerToState(
+            combat,
+            enemies[enemyIndex],
+            powerId,
+            stacks);
+        enemies[enemyIndex] = result.Enemy;
+        return result.Combat with { Enemies = enemies };
     }
 
     private static (CombatState Combat, int Count) IncrementRelicTriggerCounter(
