@@ -413,6 +413,9 @@ public static class PrototypeStateInvariants
                     StringComparer.Ordinal)
                 || PrototypeContent.OvergrowthEliteEncounterPool.Contains(
                     encounter.Id,
+                    StringComparer.Ordinal)
+                || PrototypeContent.OvergrowthBossEncounterPool.Contains(
+                    encounter.Id,
                     StringComparer.Ordinal));
 
         if (encounter.RoomType != world.ActiveRoom
