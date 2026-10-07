@@ -1656,6 +1656,17 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypePowerDefinition(
+                "proto.power.hex",
+                "Hex",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                SourceBoundToEnemy: true,
+                DoesNotStack: true,
+                SourceBoundCardAffliction:
+                    PrototypeCardAfflictionKind.Hexed,
+                SkipCardsWithExistingAffliction: true,
+                ClearSourceAfflictionWhenRemoved: true),
+            new PrototypePowerDefinition(
                 "proto.power.thorns",
                 "Thorns",
                 BlockBonusPerStack: 0,
