@@ -498,3 +498,15 @@ Relics can also transform a card while it is entering the deck by card type. Mol
 and Frozen Egg use that generic modifier to upgrade newly added Attacks, Skills, and Powers
 respectively. Reward-option presentation is still simplified; the strategically relevant persistent
 card is upgraded on acquisition.
+
+
+## Mechanics-expansion pass: conditional combat relics
+
+Combat relic triggers now support reusable turn-number and zero-block conditions in addition to the
+existing event, cadence, and HP-threshold filters. This keeps timing/condition logic in the trigger
+model instead of item-ID branches.
+
+The relic pool now also includes Bronze Scales, Oddly Smooth Stone, Bag of Marbles, Gremlin Horn,
+Mercury Hourglass, Orichalcum, Horn Cleat, and Captain's Wheel. They exercise combat-start power and
+status application, enemy-defeat draw/energy, player-turn-start area damage, zero-block end-turn
+block, and exact-turn block triggers.
