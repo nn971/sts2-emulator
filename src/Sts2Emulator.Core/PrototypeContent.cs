@@ -2171,6 +2171,18 @@ public static class PrototypeContent
             MaxAct: 3,
             Weight: 1),
         new(
+            "proto.encounter.knight_gang",
+            PrototypeRoomType.Elite,
+            [
+                "proto.enemy.flail_knight",
+                "proto.enemy.spectral_knight",
+                "proto.enemy.magi_knight"
+            ],
+            MinAct: 3,
+            MaxAct: 3,
+            Weight: 1),
+
+        new(
             "proto.encounter.boss",
             PrototypeRoomType.Boss,
             ["proto.enemy.boss"],
