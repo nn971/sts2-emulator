@@ -25,7 +25,7 @@ public sealed class PrototypeGenerationTests
     }
 
     [Fact]
-    public void ActOneFloorOneCombatUsesOnlyItsEligibleEncounter()
+    public void ActOneFloorOneCombatUsesOvergrowthWeakPool()
     {
         var engine = new PrototypeGameEngine();
         RunState? combatState = null;
@@ -61,9 +61,9 @@ public sealed class PrototypeGenerationTests
 
         Assert.NotNull(combatState);
         PrototypeStateInvariants.Validate(combatState!);
-        Assert.Equal(
-            "proto.encounter.crawler",
-            Assert.Single(combatState!.World!.EncounterIds));
+        Assert.Contains(
+            Assert.Single(combatState!.World!.EncounterIds),
+            PrototypeContent.OvergrowthWeakEncounterPool);
     }
     [Theory]
     [InlineData(1, "proto.enemy.boss")]
