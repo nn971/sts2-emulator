@@ -2072,6 +2072,99 @@ public static class PrototypeContent
                             ])
                     ])),
             new PrototypeEnemyDefinition(
+                "proto.enemy.cubex_construct",
+                "Cubex Construct",
+                65,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "charge_up",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "repeater_blast",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                7,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "repeater_blast_2",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                7,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "expel",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                5,
+                                Repetitions: 2,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 5)
+                ],
+                StartingPowers:
+                [
+                    new PrototypeStartingPowerSpec(
+                        "proto.power.artifact",
+                        1)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "charge_up",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "charge_up",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "repeater_blast"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "repeater_blast",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "repeater_blast_2"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "repeater_blast_2",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "expel"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "expel",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 3,
+                            NextStateId: "repeater_blast")
+                    ])),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.punch_construct",
                 "Punch Construct",
                 55,
