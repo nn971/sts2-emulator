@@ -43,7 +43,8 @@ public sealed class ReferenceKnightGangProbeAnalyzerTests
 
             File.WriteAllLines(
                 path,
-                records.Select(JsonSerializer.Serialize));
+                records.Select(record =>
+                    JsonSerializer.Serialize(record)));
 
             var audit =
                 ReferenceKnightGangProbeAnalyzer.Analyze(path);
@@ -76,6 +77,8 @@ public sealed class ReferenceKnightGangProbeAnalyzerTests
                 ["flail", "magi", "spectral"],
                 combat.Checkpoints[0].Enemies
                     .Select(enemy => enemy.Role)
+                    .Where(role => role is not null)
+                    .Select(role => role!)
                     .Order(StringComparer.Ordinal)
                     .ToArray());
 
