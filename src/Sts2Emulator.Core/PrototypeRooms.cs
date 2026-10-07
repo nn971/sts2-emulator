@@ -196,54 +196,227 @@ public sealed partial class PrototypeGameEngine
     private static IReadOnlyList<GameAction> GetEventActions(RunState state)
     {
         var eventState = RequireWorld(state).Event
-            ?? throw new InvalidOperationException("Event phase has no event state.");
-        var definition = PrototypeContent.Event(eventState.EventId);
+            ?? throw new InvalidOperationException(
+                "Event phase has no event state.");
+
+        if (eventState.PendingDeckChoice is { } pending)
+        {
+            return pending.CandidateCardInstanceIds
+                .Select(cardInstanceId =>
+                    GameAction.Create(
+                        "choose_event_deck_card",
+                        new ChooseEventDeckCardPayload(
+                            cardInstanceId)))
+                .ToArray();
+        }
+
+        var definition =
+            PrototypeContent.Event(
+                eventState.EventId);
 
         return definition.Choices
+            .Where(choice =>
+                CanTakeEventChoice(
+                    state.Player,
+                    choice))
             .Select(choice => GameAction.Create(
                 "event_choice",
                 new EventChoicePayload(choice.Id)))
             .ToArray();
     }
 
-    private static RunState StepEvent(RunState state, GameAction action)
+    private static RunState StepEvent(
+        RunState state,
+        GameAction action)
     {
-        RequireKind(action, "event_choice");
-        var payload = action.ReadPayload<EventChoicePayload>();
         var world = RequireWorld(state);
         var eventState = world.Event
-            ?? throw new InvalidOperationException("Event phase has no event state.");
-        var definition = PrototypeContent.Event(eventState.EventId);
-        var choice = definition.Choices.FirstOrDefault(
-            item => StringComparer.Ordinal.Equals(item.Id, payload.ChoiceId))
-            ?? throw new InvalidOperationException($"Unknown event choice '{payload.ChoiceId}'.");
-
+            ?? throw new InvalidOperationException(
+                "Event phase has no event state.");
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
+
+        if (eventState.PendingDeckChoice is { } pending)
+        {
+            RequireKind(
+                action,
+                "choose_event_deck_card");
+            var payload =
+                action.ReadPayload<
+                    ChooseEventDeckCardPayload>();
+            if (!pending.CandidateCardInstanceIds
+                    .Contains(payload.CardInstanceId))
+            {
+                throw new InvalidOperationException(
+                    $"Card instance {payload.CardInstanceId} is not eligible for the event deck choice.");
+            }
+
+            player = ResolveEventDeckChoice(
+                player,
+                pending,
+                payload.CardInstanceId,
+                state.Rng);
+
+            var remainingCandidates =
+                pending.CandidateCardInstanceIds
+                    .Where(id =>
+                        id != payload.CardInstanceId)
+                    .Where(id =>
+                        player.Deck.Any(card =>
+                            card.InstanceId == id))
+                    .ToArray();
+            var remainingSelections =
+                pending.RemainingSelections - 1;
+
+            if (remainingSelections > 0
+                && remainingCandidates.Length > 0)
+            {
+                eventState = eventState with
+                {
+                    PendingDeckChoice = pending with
+                    {
+                        RemainingSelections =
+                            Math.Min(
+                                remainingSelections,
+                                remainingCandidates.Length),
+                        CandidateCardInstanceIds =
+                            remainingCandidates
+                    }
+                };
+
+                return state with
+                {
+                    Player = player,
+                    World = world with
+                    {
+                        Event = eventState
+                    }
+                };
+            }
+
+            state = state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Event = eventState with
+                    {
+                        PendingDeckChoice = null
+                    }
+                }
+            };
+            return CompleteRoomToMap(state);
+        }
+
+        RequireKind(action, "event_choice");
+        var choicePayload =
+            action.ReadPayload<EventChoicePayload>();
+        var definition =
+            PrototypeContent.Event(
+                eventState.EventId);
+        var choice = definition.Choices.FirstOrDefault(
+            item => StringComparer.Ordinal.Equals(
+                item.Id,
+                choicePayload.ChoiceId))
+            ?? throw new InvalidOperationException(
+                $"Unknown event choice '{choicePayload.ChoiceId}'.");
+
+        if (!CanTakeEventChoice(player, choice))
+        {
+            throw new InvalidOperationException(
+                $"Event choice '{choice.Id}' cannot currently be taken.");
+        }
 
         foreach (var effect in choice.Effects)
         {
             switch (effect.Kind)
             {
                 case PrototypeRunEffectKind.Heal:
-                    player = player with { Hp = Math.Min(player.MaxHp, player.Hp + effect.Amount) };
+                    player = player with
+                    {
+                        Hp = Math.Min(
+                            player.MaxHp,
+                            player.Hp + effect.Amount)
+                    };
                     break;
 
+                case PrototypeRunEffectKind.HealToFull:
+                    player = player with
+                    {
+                        Hp = player.MaxHp
+                    };
+                    break;
+
+                case PrototypeRunEffectKind.HealPercentMaxHp:
+                {
+                    var amount = Math.Max(
+                        0,
+                        player.MaxHp * effect.Amount / 100);
+                    player = player with
+                    {
+                        Hp = Math.Min(
+                            player.MaxHp,
+                            player.Hp + amount)
+                    };
+                    break;
+                }
+
+                case PrototypeRunEffectKind.GainMaxHp:
+                {
+                    var amount = Math.Max(
+                        0,
+                        effect.Amount);
+                    player = player with
+                    {
+                        MaxHp = player.MaxHp + amount,
+                        Hp = player.Hp + amount
+                    };
+                    break;
+                }
+
                 case PrototypeRunEffectKind.LoseHp:
-                    player = player with { Hp = Math.Max(0, player.Hp - effect.Amount) };
+                    player = player with
+                    {
+                        Hp = Math.Max(
+                            0,
+                            player.Hp - effect.Amount)
+                    };
                     break;
 
                 case PrototypeRunEffectKind.GainGold:
-                    player = player with { Gold = player.Gold + effect.Amount };
+                    player = player with
+                    {
+                        Gold =
+                            player.Gold + effect.Amount
+                    };
+                    break;
+
+                case PrototypeRunEffectKind.LoseGold:
+                    player = player with
+                    {
+                        Gold =
+                            player.Gold - effect.Amount
+                    };
                     break;
 
                 case PrototypeRunEffectKind.AddCard:
                     if (effect.CardId is null)
                     {
-                        throw new InvalidOperationException("Add-card event effect is missing a card ID.");
+                        throw new InvalidOperationException(
+                            "Add-card event effect is missing a card ID.");
                     }
 
-                    player = AppendCard(player, nextId++, effect.CardId);
+                    player = AppendCard(
+                        player,
+                        nextId++,
+                        effect.CardId);
+                    break;
+
+                case PrototypeRunEffectKind.FillPotionSlots:
+                    player =
+                        FillEmptyPotionSlots(
+                            player,
+                            state.Rng);
                     break;
 
                 default:
@@ -251,18 +424,187 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
+        var pendingChoice =
+            CreateEventDeckChoice(
+                player,
+                choice);
+
         state = state with
         {
             Player = player,
-            World = world with { NextCardInstanceId = nextId }
+            World = world with
+            {
+                NextCardInstanceId = nextId,
+                Event = eventState with
+                {
+                    ChosenChoiceId = choice.Id,
+                    PendingDeckChoice =
+                        pendingChoice
+                }
+            }
         };
 
         if (player.Hp <= 0)
         {
-            return EndRun(state, "defeat");
+            return EndRun(
+                state,
+                "defeat");
         }
 
-        return CompleteRoomToMap(state);
+        return pendingChoice is null
+            ? CompleteRoomToMap(state)
+            : state;
+    }
+
+    private static bool CanTakeEventChoice(
+        PlayerState player,
+        PrototypeEventChoiceDefinition choice)
+    {
+        var goldCost = choice.Effects
+            .Where(effect =>
+                effect.Kind
+                    == PrototypeRunEffectKind.LoseGold)
+            .Sum(effect =>
+                Math.Max(0, effect.Amount));
+        if (goldCost > player.Gold)
+        {
+            return false;
+        }
+
+        var hpCost = choice.Effects
+            .Where(effect =>
+                effect.Kind
+                    == PrototypeRunEffectKind.LoseHp)
+            .Sum(effect =>
+                Math.Max(0, effect.Amount));
+        return hpCost < player.Hp;
+    }
+
+    private static PrototypePendingEventDeckChoiceState?
+        CreateEventDeckChoice(
+            PlayerState player,
+            PrototypeEventChoiceDefinition choice)
+    {
+        var spec = choice.DeckChoice;
+        if (spec is null
+            || spec.Selections <= 0)
+        {
+            return null;
+        }
+
+        var candidates = player.Deck
+            .Where(card =>
+                spec.Kind switch
+                {
+                    PrototypePersistentDeckChoiceKind.Remove =>
+                        !PrototypeContent.Card(
+                            card.CardId).Eternal,
+                    PrototypePersistentDeckChoiceKind.Upgrade =>
+                        card.UpgradeLevel == 0,
+                    PrototypePersistentDeckChoiceKind.Transform =>
+                        !PrototypeContent.Card(
+                            card.CardId).Eternal,
+                    _ => false
+                })
+            .Select(card =>
+                card.InstanceId)
+            .ToArray();
+        var selections = Math.Min(
+            spec.Selections,
+            candidates.Length);
+        return selections <= 0
+            ? null
+            : new PrototypePendingEventDeckChoiceState(
+                choice.Id,
+                spec.Kind,
+                selections,
+                candidates,
+                spec.UpgradeTransformedCards);
+    }
+
+    private static PlayerState ResolveEventDeckChoice(
+        PlayerState player,
+        PrototypePendingEventDeckChoiceState pending,
+        long cardInstanceId,
+        RngBundle rng)
+    {
+        var selected = player.Deck.Single(
+            card => card.InstanceId
+                == cardInstanceId);
+
+        return pending.Kind switch
+        {
+            PrototypePersistentDeckChoiceKind.Remove =>
+                player with
+                {
+                    Deck = player.Deck
+                        .Where(card =>
+                            card.InstanceId
+                                != cardInstanceId)
+                        .ToArray()
+                },
+            PrototypePersistentDeckChoiceKind.Upgrade =>
+                player with
+                {
+                    Deck = player.Deck
+                        .Select(card =>
+                            card.InstanceId
+                                == cardInstanceId
+                                ? card with
+                                {
+                                    UpgradeLevel =
+                                        card.UpgradeLevel + 1
+                                }
+                                : card)
+                        .ToArray()
+                },
+            PrototypePersistentDeckChoiceKind.Transform =>
+                TransformPersistentDeckCard(
+                    player,
+                    selected.InstanceId,
+                    pending.UpgradeTransformedCards,
+                    rng),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    private static PlayerState FillEmptyPotionSlots(
+        PlayerState player,
+        RngBundle rng)
+    {
+        if (!CanAcquirePotion(player))
+        {
+            return player;
+        }
+
+        var slots =
+            (PotionInstance?[])
+            player.PotionSlots.Clone();
+        for (var index = 0;
+             index < slots.Length;
+             index++)
+        {
+            if (slots[index] is not null)
+            {
+                continue;
+            }
+
+            var potionId =
+                PrototypeContent.PotionPool[
+                    PrototypeRng.NextInt(
+                        rng,
+                        "event",
+                        PrototypeContent.PotionPool.Length)];
+            slots[index] =
+                new PotionInstance(
+                    potionId,
+                    PrototypeJson.EmptyObject());
+        }
+
+        return player with
+        {
+            PotionSlots = slots
+        };
     }
 
     private static RunState StartShop(RunState state)
