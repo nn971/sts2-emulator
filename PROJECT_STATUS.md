@@ -209,7 +209,11 @@ The source-backed Act 1 monster-model set currently includes:
 - Brute Raider;
 - Crossbow Raider;
 - Tracker Raider;
-- Cubex Construct.
+- Cubex Construct;
+- Flyconid;
+- Inklet;
+- Vine Shambler;
+- Slithering Strangler.
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -271,6 +275,9 @@ Flyconid is now source-backed with its weighted initial choice (Frail Spores 2/3
 
 Inklet is now source-backed with the reusable Slippery HP-loss modifier: the next positive enemy HP loss is capped to 1 and consumes one stack, while fully blocked hits do not consume it. Three-Inklet formation slots drive the native outer-Jab / middle-Whirlwind opener, followed by Jab alternating with an equal Piercing Gaze / Whirlwind choice. This promotes Inklets Normal and leaves three unresolved Overgrowth normal encounters. See
 `docs/reference-builds/v0.111.0-mechanics-gap-036.md`.
+
+Vine Shambler and Slithering Strangler are now source-backed. Tangled reuses typed Entangled card afflictions to tax Attacks by +1 energy for exactly the next player turn, including generated Attacks, and countdown removal now clears afflictions generically. Constrict is a cumulative source-bound debuff that deals its stack count at PlayerTurnEnded and disappears when the Strangler dies. Encounter construction now also supports alternate formation variants, representing Strangler + Jaxfruit, Strangler + a random medium slime, or Strangler + both small slimes. This leaves Fogmog as the sole unresolved Overgrowth normal encounter. See
+`docs/reference-builds/v0.111.0-mechanics-gap-037.md`.
 
 Encounter construction now supports independent random slot groups with optional distinct selection.
 The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
