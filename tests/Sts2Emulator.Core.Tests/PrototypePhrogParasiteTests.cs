@@ -89,6 +89,10 @@ public sealed class PrototypePhrogParasiteTests
         var infection2 = Card(
             2,
             "proto.status.infection");
+        var filler = Enumerable.Range(3, 5)
+            .Select(id =>
+                Card(id, "proto.silent.strike"))
+            .ToArray();
         var engine = new PrototypeGameEngine();
         var state = CreateState(
             enemies:
@@ -102,14 +106,20 @@ public sealed class PrototypePhrogParasiteTests
                     new Dictionary<string, int>(
                         StringComparer.Ordinal))
             ],
-            cards: [infection1, infection2],
+            cards: new[] { infection1, infection2 }
+                .Concat(filler)
+                .ToArray(),
             hand: [1, 2],
+            drawPile: filler
+                .Select(card => card.InstanceId)
+                .ToArray(),
             playerBlock: 4);
 
         state = EndTurn(engine, state);
 
         Assert.Equal(98, state.Player.Hp);
-        Assert.Empty(state.World!.Combat!.Hand);
+        Assert.DoesNotContain(1, state.World!.Combat!.Hand);
+        Assert.DoesNotContain(2, state.World.Combat.Hand);
         Assert.Contains(1, state.World.Combat.DiscardPile);
         Assert.Contains(2, state.World.Combat.DiscardPile);
     }
