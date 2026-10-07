@@ -1657,6 +1657,33 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypePowerDefinition(
+                "proto.power.vulnerable",
+                "Vulnerable",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                DecrementAtPlayerTurnEnd: true,
+                PlayerIncomingAttackDamageNumerator: 3,
+                PlayerIncomingAttackDamageDenominator: 2),
+            new PrototypePowerDefinition(
+                "proto.power.weak",
+                "Weak",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                DecrementAtPlayerTurnEnd: true,
+                PlayerAttackDamageNumerator: 3,
+                PlayerAttackDamageDenominator: 4),
+            new PrototypePowerDefinition(
+                "proto.power.frail",
+                "Frail",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                DecrementAtPlayerTurnEnd: true,
+                PlayerCardBlockNumerator: 3,
+                PlayerCardBlockDenominator: 4),
+            new PrototypePowerDefinition(
                 "proto.power.artifact",
                 "Artifact",
                 BlockBonusPerStack: 0,
@@ -1960,6 +1987,90 @@ public static class PrototypeContent
                     new(8, 3)
                 ],
                 MinHp: 31),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.mawler",
+                "Mawler",
+                72,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "rip_and_tear",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                14,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "roar",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                3,
+                                PowerId: "proto.power.vulnerable")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "claw",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                4,
+                                Repetitions: 2,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 4)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "claw_move",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "rip_and_tear_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "roar_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "claw_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "rand",
+                            PrototypeEnemyAiStateKind.Random,
+                            Branches:
+                            [
+                                new(
+                                    "rip_and_tear_move",
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat),
+                                new(
+                                    "roar_move",
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .UseOnlyOnce),
+                                new(
+                                    "claw_move",
+                                    RepeatRule:
+                                        PrototypeEnemyAiRepeatRule
+                                            .CannotRepeat)
+                            ])
+                    ])),
             new PrototypeEnemyDefinition(
                 "proto.enemy.twig_slime_s",
                 "Twig Slime (S)",
