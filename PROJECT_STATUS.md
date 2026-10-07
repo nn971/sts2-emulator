@@ -577,3 +577,12 @@ Rest-site legal actions now honor healing and upgrade restrictions. Card-play li
 powers and relics by taking the tightest positive cap. Runic Dome affects information projection
 rather than enemy AI state, preserving deterministic simulation while changing the information
 available to a decision policy.
+
+
+## Mechanics-expansion pass: acquisition-time deck choices
+
+Relic acquisition can now suspend a reward on a generic persistent-deck choice. The continuation is stored canonically in RewardState, exposes one action per eligible persistent card, survives forking, is validated against the owned source relic and live deck, and is projected into the AI observation. Choices are sequential rather than enumerating all card subsets, so selecting three cards from a twenty-card deck exposes roughly twenty actions at each step instead of 1,140 three-card combinations.
+
+Empty Cage uses this capability to remove two chosen non-Eternal cards. Astrolabe uses the same capability to transform three chosen cards into deterministic random reward-pool cards and upgrades the transformed results. Transformations preserve persistent card instance IDs while replacing card identity/state, which keeps action/history references stable for search consumers. If the deck has fewer eligible cards than a relic requests, the choice automatically contracts to the eligible deck size.
+
+The boss relic pool now contains both modifier-style relics and acquisition-choice relics. Existing boss reward tests deliberately choose a non-choice relic when testing the act-transition path, while dedicated tests cover the multi-step Empty Cage and Astrolabe continuations.
