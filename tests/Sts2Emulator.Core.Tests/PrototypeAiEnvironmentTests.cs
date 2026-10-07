@@ -27,6 +27,23 @@ public sealed class PrototypeAiEnvironmentTests
     }
 
     [Fact]
+    public void ResetCarriesTypedAscension()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var state = environment.Reset(
+            "ai-ascension-test",
+            ascension: 9);
+
+        Assert.Equal(9, state.Ascension);
+
+        var fork = environment.Fork(state);
+        Assert.Equal(9, fork.Ascension);
+        Assert.Equal(
+            CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(fork));
+    }
+
+    [Fact]
     public void StepByStableActionMatchesCanonicalEngine()
     {
         var environment = new PrototypeAiEnvironment();
