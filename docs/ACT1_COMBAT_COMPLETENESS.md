@@ -56,8 +56,8 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | no | pending | pending | no |
 | Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | no | pending | pending | no |
 | Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | no | pending | pending | no |
-| Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | no | pending | pending | no |
-| Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | no | pending | pending | no |
+| Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
+| Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
 | Overgrowth | Monster | `SLITHERING_STRANGLER_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `SLITHERING_STRANGLER`, `SNAPPING_JAXFRUIT`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | no | pending | pending | no |
 | Overgrowth | Monster | `SNAPPING_JAXFRUIT_NORMAL` | `FLYCONID`, `SNAPPING_JAXFRUIT` | no | pending | pending | no |
 | Overgrowth | Monster | `VINE_SHAMBLER_NORMAL` | `VINE_SHAMBLER` | no | pending | pending | no |
@@ -82,7 +82,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Underdocks | Monster weak | `TOADPOLES_WEAK` | `TOADPOLE` | no | pending | pending | no |
 | Underdocks | Monster | `TWO_TAILED_RATS_NORMAL` | `TWO_TAILED_RAT` | no | pending | pending | no |
 
-\* `SEAPUNK_WEAK` has its only monster model implemented, but the encounter itself is deliberately not in the live selector until pool/formation translation is source-backed. Twig Slime (S), Assassin Raider, and Snapping Jaxfruit are implemented as reusable models, but their native encounters still depend on additional formation/pool or companion-enemy mechanics.
+\* `SEAPUNK_WEAK` has its only monster model implemented, but the encounter itself is deliberately not in the live selector until pool/formation translation is source-backed. `SLIMES_WEAK` and `SLIMES_NORMAL` now have source-backed formation constructors represented as weight-0 reference encounters, so they exercise exact composition without changing the live prototype pool. Their native weak/normal pool-selection semantics remain pending. Assassin Raider and Snapping Jaxfruit are implemented as reusable models, but their native encounters still depend on additional formation/pool or companion-enemy mechanics.
 
 ## Monster-model coverage
 
