@@ -88,9 +88,10 @@ stable state/action semantics, and measured simulation performance.
 
 This is the active fidelity milestone.
 
-The target is both native first-act regions, **Overgrowth** and **Underdocks**, comprising 42 pinned
-combat encounters and 51 distinct monster models. Track monster mechanics, formation/slot semantics,
-encounter-pool semantics, Ascension scaling, and oracle coverage independently.
+The active target is **Overgrowth**. Underdocks is the second Act 1 region variant, but is deferred
+until Overgrowth is complete. The shared ledger still inventories both regions; current implementation
+and oracle work should only advance Overgrowth rows. Track monster mechanics, formation/slot
+semantics, encounter-pool semantics, Ascension scaling, and oracle coverage independently.
 
 Completed reusable Act 1 foundations include:
 
@@ -101,15 +102,15 @@ Completed reusable Act 1 foundations include:
 - player Vulnerable / Weak / Frail with owner-turn duration and multiplicative combat modifiers;
 - source-backed Seapunk, Twig Slime (S), Assassin Raider, Snapping Jaxfruit, and Mawler.
 
-Continue by mechanic dependency rather than encounter order:
+Continue by Overgrowth dependency rather than raw encounter order:
 
-1. conditional/slot-aware AI needed by Nibbit and Toadpole;
-2. exact `CanRepeatXTimes` semantics before a production user depends on it;
-3. summon/despawn/death primitives;
-4. status-card creation and other shared Act 1 effects;
-5. elites and bosses after their reusable mechanics exist;
-6. native encounter formations and pools after participating monster models are trustworthy;
-7. representative A0/A10 native differentials, then an Act 1 deterministic sweep.
+1. complete the Overgrowth **normal** encounter pool, promoting already-implemented formations first;
+2. finish the remaining normal Overgrowth monster families, introducing summon/death primitives only
+   when a concrete encounter requires them;
+3. translate Overgrowth elite formations/pool, then its three bosses;
+4. run representative A0/A10 native differentials across deterministic, random, conditional,
+   source-bound-debuff, elite, and boss mechanics;
+5. finish with an Overgrowth-only deterministic sweep before reopening Underdocks.
 
 Static sources come first: use the commit/blob-pinned Spire Codex corpus and the locally decompiled
 pinned `sts2.dll`; use live Loadout-assisted oracle captures for runtime ordering, conditional
