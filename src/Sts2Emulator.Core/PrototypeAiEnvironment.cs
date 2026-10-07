@@ -112,7 +112,12 @@ public sealed class PrototypeAiEnvironment
 
     private readonly PrototypeGameEngine _engine = new();
 
-    public RunState Reset(string seed) => PrototypeGameFactory.Create(seed);
+    public RunState Reset(
+        string seed,
+        int ascension = 0) =>
+        PrototypeGameFactory.Create(
+            seed,
+            ascension);
 
     public RunState Fork(RunState state) => state.Fork();
 
