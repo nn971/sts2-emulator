@@ -52,7 +52,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Elite | `BYRDONIS_ELITE` | `BYRDONIS` | no | pending | pending | no |
 | Overgrowth | Elite | `PHROG_PARASITE_ELITE` | `PHROG_PARASITE`, `WRIGGLER` | no | pending | pending | no |
 | Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | yes | yes | pending | no |
-| Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | no | pending | pending | no |
+| Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | yes | yes | pending | no |
 | Overgrowth | Monster | `FOGMOG_NORMAL` | `EYE_WITH_TEETH`, `FOGMOG` | no | pending | pending | no |
 | Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | yes | yes | yes | no |
 | Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | no | pending | pending | no |
@@ -65,7 +65,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | yes | no |
 | Overgrowth | Monster | `SLITHERING_STRANGLER_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `SLITHERING_STRANGLER`, `SNAPPING_JAXFRUIT`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | no | pending | pending | no |
-| Overgrowth | Monster | `SNAPPING_JAXFRUIT_NORMAL` | `FLYCONID`, `SNAPPING_JAXFRUIT` | no | pending | pending | no |
+| Overgrowth | Monster | `SNAPPING_JAXFRUIT_NORMAL` | `FLYCONID`, `SNAPPING_JAXFRUIT` | yes | yes | pending | no |
 | Overgrowth | Monster | `VINE_SHAMBLER_NORMAL` | `VINE_SHAMBLER` | no | pending | pending | no |
 | Underdocks | Boss | `LAGAVULIN_MATRIARCH_BOSS` | `LAGAVULIN_MATRIARCH` | no | pending | pending | no |
 | Underdocks | Boss | `SOUL_FYSH_BOSS` | `SOUL_FYSH` | no | pending | pending | no |
@@ -111,7 +111,7 @@ formations but still await the normal-pool translation.
 | `DAMP_CULTIST` — Damp Cultist | Normal | 51–53 | 52–54 | cycle | not started |
 | `EYE_WITH_TEETH` — Eye with Teeth | Normal | 6 | — | cycle | not started |
 | `FAT_GREMLIN` — Fat Gremlin | Normal | 13–17 | 14–18 | cycle | not started |
-| `FLYCONID` — Flyconid | Normal | 47–49 | 51–53 | random | not started |
+| `FLYCONID` — Flyconid | Normal | 47–49 | 51–53 | random | implemented + focused tests |
 | `FOGMOG` — Fogmog | Normal | 74 | 78 | random | not started |
 | `FOSSIL_STALKER` — Fossil Stalker | Normal | 51–53 | 54–56 | random | not started |
 | `FUZZY_WURM_CRAWLER` — Fuzzy Wurm Crawler | Normal | 55–57 | 58–59 | cycle | implemented + focused tests |
