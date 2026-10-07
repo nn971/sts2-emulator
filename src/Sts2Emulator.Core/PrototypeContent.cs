@@ -3951,6 +3951,13 @@ public static class PrototypeContent
         "proto.encounter.vine_shambler_normal"
     ];
 
+    public static string[] OvergrowthEliteEncounterPool { get; } =
+    [
+        "proto.encounter.bygone_effigy_elite",
+        "proto.encounter.byrdonis_elite",
+        "proto.encounter.phrog_parasite_elite"
+    ];
+
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
         new(
