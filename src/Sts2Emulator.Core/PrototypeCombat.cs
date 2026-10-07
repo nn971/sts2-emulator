@@ -883,6 +883,51 @@ public sealed partial class PrototypeGameEngine
 
         switch (automaticStep.Kind)
         {
+            case PrototypeAutomaticStepKind.ResolvePlayerEndTurnHandEffects:
+            {
+                foreach (var instanceId in combat.Hand)
+                {
+                    var card = RequireCombatCard(
+                        combat,
+                        instanceId);
+                    var definition =
+                        PrototypeContent.Card(card.CardId);
+                    var damage =
+                        Math.Max(
+                            0,
+                            definition.EndTurnDamageIfInHand);
+                    if (damage <= 0)
+                    {
+                        continue;
+                    }
+
+                    var absorbed = Math.Min(
+                        combat.PlayerBlock,
+                        damage);
+                    combat = combat with
+                    {
+                        PlayerBlock =
+                            combat.PlayerBlock - absorbed
+                    };
+                    player = player with
+                    {
+                        Hp = Math.Max(
+                            0,
+                            player.Hp
+                            - Math.Max(
+                                0,
+                                damage - absorbed))
+                    };
+
+                    if (player.Hp <= 0)
+                    {
+                        break;
+                    }
+                }
+
+                break;
+            }
+
             case PrototypeAutomaticStepKind.DispatchCombatEvent:
                 if (automaticStep.EventKind is null)
                 {
