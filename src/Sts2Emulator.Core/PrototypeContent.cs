@@ -1705,6 +1705,18 @@ public static class PrototypeContent
                 EnemyHpLossCapPerTrigger: 1,
                 ConsumeOnEnemyHpLoss: true),
             new PrototypePowerDefinition(
+                "proto.power.illusion",
+                "Illusion",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                DoesNotStack: true),
+            new PrototypePowerDefinition(
+                "proto.power.minion",
+                "Minion",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                DoesNotStack: true),
+            new PrototypePowerDefinition(
                 "proto.power.tangled",
                 "Tangled",
                 BlockBonusPerStack: 0,
@@ -2134,6 +2146,121 @@ public static class PrototypeContent
                                     PrototypeEnemyAiConditionKind
                                         .SlotNameEquals,
                                     Value: "right")
+                            ])
+                    ])),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.eye_with_teeth",
+                "Eye With Teeth",
+                6,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "distract",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.AddCardsToDiscard,
+                                3,
+                                CardId: "proto.status.dazed")
+                        ])
+                ],
+                StartingPowers:
+                [
+                    new("proto.power.illusion", 1),
+                    new("proto.power.minion", 1)
+                ],
+                IsMinion: true,
+                RevivesOnEnemyTurn: true),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.fogmog",
+                "Fogmog",
+                74,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "illusory_spores",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.SummonEnemy,
+                                1,
+                                EnemyId: "proto.enemy.eye_with_teeth")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "thwack",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                8,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                1,
+                                PowerId: "proto.power.strength")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "headbutt",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                14,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 4)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "summon_move",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "summon_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "forced_thwack"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "forced_thwack",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "random_thwack",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "forced_headbutt"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "forced_headbutt",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "post_headbutt_thwack"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "random_headbutt",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "post_headbutt_thwack"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "post_headbutt_thwack",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "rand"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "rand",
+                            PrototypeEnemyAiStateKind.Random,
+                            Branches:
+                            [
+                                new(
+                                    "random_thwack",
+                                    Weight: 2),
+                                new(
+                                    "random_headbutt",
+                                    Weight: 3)
                             ])
                     ])),
             new PrototypeEnemyDefinition(
@@ -3885,6 +4012,19 @@ public static class PrototypeContent
                     "proto.enemy.inklet",
                     2,
                     "right")
+            ]),
+        new(
+            "proto.encounter.fogmog_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.fogmog", "proto.enemy.eye_with_teeth"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.fogmog",
+                    0)
             ]),
         new(
             "proto.encounter.flyconid_normal",
