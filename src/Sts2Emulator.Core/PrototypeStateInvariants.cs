@@ -537,9 +537,17 @@ public static class PrototypeStateInvariants
         string owner,
         PrototypePowerInstanceState[] powers)
     {
-        if (powers.Any(power => power.Stacks <= 0))
+        foreach (var power in powers)
         {
-            throw new InvalidOperationException($"{owner} power stacks must stay positive.");
+            var definition = PrototypeContent.Power(
+                power.PowerId);
+            if (power.Stacks == 0
+                || (power.Stacks < 0
+                    && !definition.AllowNegative))
+            {
+                throw new InvalidOperationException(
+                    $"{owner} power '{power.PowerId}' has invalid stacks {power.Stacks}.");
+            }
         }
 
         foreach (var group in powers.GroupBy(
