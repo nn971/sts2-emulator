@@ -2363,6 +2363,26 @@ public static class PrototypeContent
                 EnergyPerTurnBonus: 1,
                 PreventPotionAcquisition: true),
             new PrototypeRelicDefinition(
+                "proto.relic.coffee_dripper",
+                "Coffee Dripper",
+                EnergyPerTurnBonus: 1,
+                PreventRestHealing: true),
+            new PrototypeRelicDefinition(
+                "proto.relic.fusion_hammer",
+                "Fusion Hammer",
+                EnergyPerTurnBonus: 1,
+                PreventRestUpgrade: true),
+            new PrototypeRelicDefinition(
+                "proto.relic.velvet_choker",
+                "Velvet Choker",
+                EnergyPerTurnBonus: 1,
+                MaxCardsPlayablePerTurn: 6),
+            new PrototypeRelicDefinition(
+                "proto.relic.runic_dome",
+                "Runic Dome",
+                EnergyPerTurnBonus: 1,
+                HideEnemyIntents: true),
+            new PrototypeRelicDefinition(
                 "proto.relic.art_of_war",
                 "Art of War",
                 Triggers:
@@ -6075,8 +6095,16 @@ public static class PrototypeContent
         "proto.relic.prayer_wheel",
         "proto.relic.membership_card",
         "proto.relic.smiling_mask",
-        "proto.relic.sozu",
         "proto.relic.art_of_war"
+    ];
+
+    public static string[] BossRelicPool { get; } =
+    [
+        "proto.relic.sozu",
+        "proto.relic.coffee_dripper",
+        "proto.relic.fusion_hammer",
+        "proto.relic.velvet_choker",
+        "proto.relic.runic_dome"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>
