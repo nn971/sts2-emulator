@@ -604,7 +604,8 @@ public enum PrototypeEnemyAiConditionKind
 {
     IsAlone,
     IsFront,
-    IsNotFront
+    IsNotFront,
+    SlotNameEquals
 }
 
 public enum PrototypeEnemyAiRepeatRule
@@ -624,7 +625,8 @@ public sealed record PrototypeEnemyAiBranch(
 
 public sealed record PrototypeEnemyAiConditionalBranch(
     string TargetStateId,
-    PrototypeEnemyAiConditionKind Condition);
+    PrototypeEnemyAiConditionKind Condition,
+    string? Value = null);
 
 public sealed record PrototypeEnemyAiStateDefinition(
     string Id,
@@ -703,6 +705,11 @@ public sealed record PrototypeEnemyDefinition(
         HpRangeAt(act, ascension).Max;
 }
 
+public sealed record PrototypeEncounterEnemySpec(
+    string EnemyId,
+    int FormationPosition,
+    string? SlotName = null);
+
 public sealed record PrototypeEncounterDefinition(
     string Id,
     PrototypeRoomType RoomType,
@@ -711,7 +718,18 @@ public sealed record PrototypeEncounterDefinition(
     int MaxAct = int.MaxValue,
     int MinFloor = 1,
     int MaxFloor = int.MaxValue,
-    int Weight = 1);
+    int Weight = 1,
+    PrototypeEncounterEnemySpec[]? Formation = null)
+{
+    public PrototypeEncounterEnemySpec[] EnemySpecs =>
+        Formation
+        ?? EnemyIds
+            .Select((enemyId, index) =>
+                new PrototypeEncounterEnemySpec(
+                    enemyId,
+                    index))
+            .ToArray();
+}
 
 public sealed record PrototypeStatusDefinition(
     string Id,
@@ -822,7 +840,8 @@ public sealed record EnemyCombatState(
     int ConsecutiveMoveUses = 0,
     string? AiStateId = null,
     Dictionary<string, int>? MoveUseCounts = null,
-    int FormationPosition = 0)
+    int FormationPosition = 0,
+    string? SlotName = null)
 {
     public EnemyCombatState Fork() => this with
     {
