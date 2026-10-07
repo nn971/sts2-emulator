@@ -53,9 +53,9 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | no | pending | pending | no |
 | Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | yes | yes | pending | no |
-| Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | no | pending | pending | no |
+| Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | yes | yes | pending | no |
 | Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | no | pending | pending | no |
-| Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | no | pending | pending | no |
+| Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | yes | yes | pending | no |
 | Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
 | Overgrowth | Monster | `SLITHERING_STRANGLER_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `SLITHERING_STRANGLER`, `SNAPPING_JAXFRUIT`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | no | pending | pending | no |
@@ -122,7 +122,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `PUNCH_CONSTRUCT` — Punch Construct | Normal | 55 | 60 | cycle | not started |
 | `SEAPUNK` — Seapunk | Normal | 44–46 | 47–49 | cycle | implemented + focused tests |
 | `SEWER_CLAM` — Sewer Clam | Normal | 56 | 58 | cycle | not started |
-| `SHRINKER_BEETLE` — Shrinker Beetle | Normal | 38–40 | 40–42 | cycle | not started |
+| `SHRINKER_BEETLE` — Shrinker Beetle | Normal | 38–40 | 40–42 | cycle | implemented + focused tests |
 | `SKULKING_COLONY` — Skulking Colony | Elite | 75 | 80 | cycle | not started |
 | `SLITHERING_STRANGLER` — Slithering Strangler | Normal | 53–55 | 54–56 | random | not started |
 | `SLUDGE_SPINNER` — Sludge Spinner | Normal | 37–39 | 41–42 | random | not started |
