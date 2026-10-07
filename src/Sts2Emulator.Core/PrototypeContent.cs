@@ -1678,6 +1678,37 @@ public static class PrototypeContent
         new[]
         {
             new PrototypeEnemyDefinition(
+                "proto.enemy.spectral_knight",
+                "Spectral Knight",
+                93,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "hex",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                2,
+                                PowerId: "proto.power.hex")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "soul_slash",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                15)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "soul_flame",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                3,
+                                Repetitions: 3)
+                        ])
+                ],
+                MoveLoopStartIndex: 1),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.crawler",
                 "Crawler",
                 24,
