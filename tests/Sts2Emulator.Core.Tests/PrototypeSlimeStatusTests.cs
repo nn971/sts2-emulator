@@ -155,12 +155,25 @@ public sealed class PrototypeSlimeStatusTests
             [],
             new PotionInstance?[
                 PrototypeContent.Rules.PotionSlots]);
+        var fillerCards = Enumerable.Range(1, 5)
+            .Select(instanceId =>
+                new CombatCardInstance(
+                    instanceId,
+                    1000 + instanceId,
+                    "proto.silent.strike",
+                    0,
+                    false,
+                    PrototypeJson.EmptyObject()))
+            .ToArray();
+
         var combat = new CombatState(
             Turn: 1,
             Energy: 3,
             PlayerBlock: 0,
             Hand: [],
-            DrawPile: [],
+            DrawPile: fillerCards
+                .Select(card => card.InstanceId)
+                .ToArray(),
             DiscardPile: [],
             ExhaustPile: [],
             Enemies:
@@ -178,8 +191,8 @@ public sealed class PrototypeSlimeStatusTests
                         new Dictionary<string, int>(
                             StringComparer.Ordinal))
             ],
-            NextCardInstanceId: 1,
-            Cards: [],
+            NextCardInstanceId: 6,
+            Cards: fillerCards,
             PlayerPowers: [],
             NextPowerApplicationOrder: 1);
 
