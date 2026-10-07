@@ -37,10 +37,20 @@ The first recorder is passive:
 Default recorded boundaries currently include combat setup/start, turn start/end, player end-turn,
 switch-to-enemy, combat victory, and combat end.
 
-`sts2-reference-probe-v0` has now been live-validated on two Silent A0 combats. The current bridge
-emits **`sts2-reference-probe-v1`**, adding passive `CombatHistory.Changed` records, player-creature
-discovery, field-level native RNG serialization, and one-time runtime type catalogs. It is still a
-probe rather than parity-complete `reference-trace-v0.2` until those additions are live-validated.
+`sts2-reference-probe-v0` was live-validated on two Silent A0 combats, and the later action-boundary
+capture validated the v1 history/player/RNG additions. The current bridge emits
+**`sts2-reference-probe-v3`**.
+
+Relative to those earlier probes, v3 remains passive and additive. It also:
+
+- catalogs enemy Creature/Model runtime layouts;
+- opportunistically projects current/next move, intent, move index, last move and move history;
+- enriches compact card projection with Affliction, Enchantment/modifier and additional Upgrade
+  fields when the pinned runtime exposes them.
+
+These fields are aimed at Knight Gang differential validation. Missing reflective properties are
+simply absent from the JSON rather than inferred. The stream remains a probe rather than a
+parity-complete `reference-trace-v0.2`.
 
 ## Preserve the clean oracle
 
@@ -69,12 +79,39 @@ cp -r artifacts/reference_bridge_mod/Sts2ReferenceBridge \
     "/path/to/instrumented/game/mods/"
 ```
 
-Then launch the instrumented copy with mods enabled and play one ordinary Silent combat. The v1 probe should appear
+Then launch the instrumented copy with mods enabled and play the target combat. The v3 probe should appear
 under:
 
 ```text
 <instrumented-game>/reference_traces/
 ```
+
+## Knight Gang capture
+
+For the current fidelity milestone, capture a **Knight Gang** combat from the pinned v0.111.0
+instrumented copy. A0 is useful; A9 is even better because it simultaneously checks the typed
+Ascension breakpoints.
+
+Prefer verbose capture for this diagnostic run:
+
+```fish
+set -x STS2_REFERENCE_VERBOSE 1
+```
+
+After the fight, run:
+
+```fish
+dotnet run --project src/Sts2Emulator.Cli -- \
+    reference-knight-gang-audit "/path/to/probe.jsonl"
+
+dotnet run --project src/Sts2Emulator.Cli -- \
+    reference-knight-gang-audit "/path/to/probe.jsonl" --json \
+    > knight-gang-audit.json
+```
+
+The audit does not fill missing native fields from emulator expectations. It reports observed enemy
+HP/Block/powers/move/intent evidence, card Upgrade/Affliction evidence, and monster-AI RNG
+fingerprints when present, plus static HP mismatches against the emulator at the captured Ascension.
 
 ## Verbose state-change capture
 
