@@ -301,9 +301,14 @@ public sealed partial class PrototypeGameEngine
             RemovalPrice: 75 + ((world.Act - 1) * 15));
 
         world = world with { Shop = shop };
+        var player = ApplyRelicRunEvent(
+            state.Player,
+            PrototypeRunEventKind.ShopEntered,
+            rng: state.Rng);
 
         return state with
         {
+            Player = player,
             World = world,
             Phase = RunPhase.Shop
         };
@@ -451,6 +456,11 @@ public sealed partial class PrototypeGameEngine
                 Relics = player.Relics.Append(
                     new RelicInstance(offer.ItemId, PrototypeJson.EmptyObject())).ToArray()
             };
+            player = ApplyRelicRunEvent(
+                player,
+                PrototypeRunEventKind.RelicAcquired,
+                acquiredRelicId: offer.ItemId,
+                rng: state.Rng);
             shop = shop with { RelicOffer = offer with { Sold = true } };
         }
         else
@@ -728,6 +738,11 @@ public sealed partial class PrototypeGameEngine
                 Relics = player.Relics.Append(
                     new RelicInstance(reward.RelicOption, PrototypeJson.EmptyObject())).ToArray()
             };
+            player = ApplyRelicRunEvent(
+                player,
+                PrototypeRunEventKind.RelicAcquired,
+                acquiredRelicId: reward.RelicOption,
+                rng: state.Rng);
             reward = reward with { RelicResolved = true };
         }
         else
