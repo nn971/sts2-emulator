@@ -889,7 +889,8 @@ public static class PrototypeContent
                             PrototypeCardSelectionResolutionKind.Preserve),
                         SelectedCardPower: new(
                             "proto.power.nightmare",
-                            3))
+                            3,
+                            ClearAfflictionFromPayload: true))
                 ],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Rare,
