@@ -17,15 +17,31 @@ public sealed class PrototypeBruteRaiderTests
             PrototypeEnemyMovePolicy.SequentialLoop,
             enemy.MovePolicy);
 
-        var beat = Assert.Single(enemy.Moves);
-        Assert.Equal("beat", beat.Id);
-        var damage = Assert.Single(beat.Effects);
-        Assert.Equal(7, damage.AmountAt(1, 8));
-        Assert.Equal(8, damage.AmountAt(1, 9));
+        Assert.Collection(
+            enemy.Moves,
+            beat =>
+            {
+                Assert.Equal("beat", beat.Id);
+                var damage = Assert.Single(beat.Effects);
+                Assert.Equal(7, damage.AmountAt(1, 8));
+                Assert.Equal(8, damage.AmountAt(1, 9));
+            },
+            roar =>
+            {
+                Assert.Equal("roar", roar.Id);
+                var strength = Assert.Single(roar.Effects);
+                Assert.Equal(
+                    PrototypeEnemyEffectKind.ApplyEnemyPower,
+                    strength.Kind);
+                Assert.Equal(
+                    "proto.power.strength",
+                    strength.PowerId);
+                Assert.Equal(3, strength.Amount);
+            });
     }
 
     [Fact]
-    public void BeatRepeatsEveryTurnAndScalesAtA9()
+    public void AlternatesBeatAndRoarAndStrengthAffectsLaterBeat()
     {
         var engine = new PrototypeGameEngine();
         var state = CreateState(ascension: 9);
@@ -39,7 +55,20 @@ public sealed class PrototypeBruteRaiderTests
                 .LastMoveId);
 
         state = EndTurn(engine, state);
-        Assert.Equal(84, state.Player.Hp);
+        Assert.Equal(92, state.Player.Hp);
+        var enemy = Assert.Single(
+            state.World!.Combat!.Enemies);
+        Assert.Equal("roar", enemy.LastMoveId);
+        Assert.Equal(
+            3,
+            Assert.Single(
+                enemy.PowerStates,
+                power => power.PowerId
+                    == "proto.power.strength")
+                .Stacks);
+
+        state = EndTurn(engine, state);
+        Assert.Equal(81, state.Player.Hp);
         Assert.Equal(
             "beat",
             Assert.Single(
