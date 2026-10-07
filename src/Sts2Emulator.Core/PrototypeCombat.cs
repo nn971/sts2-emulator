@@ -1319,6 +1319,8 @@ public sealed partial class PrototypeGameEngine
                     Counters = combat.CounterState with
                     {
                         CardsPlayedThisTurn = 0,
+                        AttacksPlayedLastTurn =
+                            combat.CounterState.AttacksPlayedThisTurn,
                         AttacksPlayedThisTurn = 0,
                         SkillsPlayedThisTurn = 0,
                         CardsDiscardedThisTurn = 0,
@@ -1358,7 +1360,16 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.RefreshPlayerEnergy:
             {
-                combat = combat with { Energy = EnergyPerTurn(player) };
+                var preserveUnusedEnergy =
+                    player.Relics.Any(relic =>
+                        PrototypeContent.Relic(relic.RelicId)
+                            .PreserveUnusedEnergy);
+                combat = combat with
+                {
+                    Energy = preserveUnusedEnergy
+                        ? combat.Energy + EnergyPerTurn(player)
+                        : EnergyPerTurn(player)
+                };
                 var delayedEnergy = combat.PlayerPowers.Sum(power =>
                     PrototypeContent.Power(power.PowerId)
                         .EnergyAfterResetPerStack * power.Stacks);
@@ -5605,6 +5616,18 @@ public sealed partial class PrototypeGameEngine
             return false;
         }
 
+        if (trigger.MinTurn is { } minTurn
+            && combat.Turn < minTurn)
+        {
+            return false;
+        }
+
+        if (trigger.MaxAttacksPlayedLastTurn is { } maxAttacks
+            && combat.CounterState.AttacksPlayedLastTurn > maxAttacks)
+        {
+            return false;
+        }
+
         if (trigger.RequiresZeroPlayerBlock
             && combat.PlayerBlock != 0)
         {
@@ -5631,6 +5654,48 @@ public sealed partial class PrototypeGameEngine
         }
 
         return true;
+    }
+
+    private static CombatState ResetPerTurnRelicCounters(
+        CombatState combat)
+    {
+        var relics = combat.RelicStates
+            .Select(relic => relic.Fork())
+            .ToArray();
+
+        for (var relicIndex = 0;
+             relicIndex < relics.Length;
+             relicIndex++)
+        {
+            var definition =
+                PrototypeContent.Relic(
+                    relics[relicIndex].RelicId);
+            var triggers =
+                definition.Triggers
+                ?? Array.Empty<PrototypeRelicTriggerSpec>();
+            var counts =
+                (int[])relics[relicIndex]
+                    .TriggerCounts.Clone();
+
+            for (var triggerIndex = 0;
+                 triggerIndex < triggers.Length;
+                 triggerIndex++)
+            {
+                if (triggers[triggerIndex]
+                    .ResetCounterEachTurn)
+                {
+                    counts[triggerIndex] = 0;
+                }
+            }
+
+            relics[relicIndex] =
+                relics[relicIndex] with
+                {
+                    TriggerCounts = counts
+                };
+        }
+
+        return combat with { Relics = relics };
     }
 
     private static (CombatState Combat, int Count) IncrementRelicTriggerCounter(
@@ -5669,6 +5734,12 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException(
                 "Prototype combat event chain exceeded the safety depth limit.");
+        }
+
+        if (combatEvent.Kind
+            == PrototypeCombatEventKind.PlayerTurnStarted)
+        {
+            combat = ResetPerTurnRelicCounters(combat);
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
@@ -5753,6 +5824,11 @@ public sealed partial class PrototypeGameEngine
             {
                 var trigger = triggers[triggerIndex];
                 if (trigger.EventKind != combatEvent.Kind
+                    || (trigger.RequiredSourceCardType is not null
+                        && (combatEvent.CardId is null
+                            || PrototypeContent.Card(
+                                combatEvent.CardId).Type
+                                != trigger.RequiredSourceCardType.Value))
                     || !RelicTriggerMatchesPlayer(
                         trigger,
                         player,
