@@ -137,6 +137,75 @@ public sealed class PrototypeNightmareTests
     }
 
     [Fact]
+    public void NightmareCopiesPreserveConsumedGlamState()
+    {
+        var nightmare = Card(
+            1,
+            "proto.silent.nightmare");
+        var selected = Card(
+            2,
+            "proto.silent.defend") with
+        {
+            Enchantment = new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.Glam),
+            EnchantmentTriggeredThisCombat = true
+        };
+        var drawPile = Enumerable.Range(3, 5)
+            .Select(id => Card(id, "proto.silent.strike"))
+            .ToArray();
+
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(
+            energy: 3,
+            hand: [nightmare, selected],
+            drawPile: drawPile);
+
+        state = PlayCard(
+            engine,
+            state,
+            nightmare.InstanceId);
+        state = SelectOnly(
+            engine,
+            state,
+            selected.InstanceId);
+
+        var payload = Assert.Single(
+            state.World!.Combat!.PlayerPowers,
+            item => item.PowerId
+                == "proto.power.nightmare")
+            .CardPayload!;
+
+        Assert.Equal(
+            PrototypeCardEnchantmentKind.Glam,
+            payload.Enchantment!.Kind);
+        Assert.True(
+            payload.EnchantmentTriggeredThisCombat);
+
+        state = EndTurn(engine, state);
+
+        var combat = state.World!.Combat!;
+        var generated = combat.Hand
+            .Select(instanceId => combat.Cards.Single(
+                card => card.InstanceId == instanceId))
+            .Where(card =>
+                card.IsTemporary
+                && card.CardId == selected.CardId)
+            .ToArray();
+
+        Assert.Equal(3, generated.Length);
+        Assert.All(
+            generated,
+            card =>
+            {
+                Assert.Equal(
+                    PrototypeCardEnchantmentKind.Glam,
+                    card.Enchantment!.Kind);
+                Assert.True(
+                    card.EnchantmentTriggeredThisCombat);
+            });
+    }
+
+    [Fact]
     public void BurstNightmareKeepsIndependentInstancedPayloads()
     {
         var nightmare = Card(1, "proto.silent.nightmare");
