@@ -1793,7 +1793,27 @@ public static class PrototypeContent
                 "proto.potion.energy",
                 "Energy Potion",
                 PrototypeCardTarget.None,
-                [new(PrototypeCombatEffectKind.GainEnergy, 2)])
+                [new(PrototypeCombatEffectKind.GainEnergy, 2)]),
+            new PrototypePotionDefinition(
+                "proto.potion.strength",
+                "Strength Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        PowerId: "proto.power.strength")
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.regen",
+                "Regen Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        5,
+                        PowerId: "proto.power.regen")
+                ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
@@ -1875,6 +1895,60 @@ public static class PrototypeContent
                             PrototypeCombatEffectKind.GainEnergy,
                             1)],
                         EveryNth: 3)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.anchor",
+                "Anchor",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.GainPlayerBlock,
+                                10)
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.vajra",
+                "Vajra",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyPlayerPower,
+                                1,
+                                PowerId: "proto.power.strength")
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.blood_vial",
+                "Blood Vial",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.HealPlayer,
+                                2)
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.meat_on_the_bone",
+                "Meat on the Bone",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatWon,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.HealPlayer,
+                                12)
+                        ],
+                        MaxPlayerHpPercent: 50)
                 ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
@@ -1888,6 +1962,22 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AllowNegative: true,
                 NegativeApplicationIsDebuff: true),
+            new PrototypePowerDefinition(
+                "proto.power.regen",
+                "Regen",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.HealPlayer,
+                                0,
+                                AmountPerPowerStack: 1)
+                        ])
+                ],
+                DecrementAfterPlayerTurnStart: true),
             new PrototypePowerDefinition(
                 "proto.power.accelerant",
                 "Accelerant",
@@ -2393,6 +2483,7 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AllowNegative: true,
                 NegativeApplicationIsDebuff: true,
+                PlayerAttackDamageBonusPerStack: 1,
                 EnemyAttackDamageBonusPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.thorns",
@@ -5509,7 +5600,11 @@ public static class PrototypeContent
         "proto.relic.ornamental_fan",
         "proto.relic.nunchaku",
         "proto.relic.letter_opener",
-        "proto.relic.happy_flower"
+        "proto.relic.happy_flower",
+        "proto.relic.anchor",
+        "proto.relic.vajra",
+        "proto.relic.blood_vial",
+        "proto.relic.meat_on_the_bone"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>

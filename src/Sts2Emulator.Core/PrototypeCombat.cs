@@ -230,6 +230,15 @@ public sealed partial class PrototypeGameEngine
         state = state with { Player = openingDraw.Player };
         combat = openingDraw.Combat;
 
+        var combatStarted = DispatchCombatEvent(
+            state.Player,
+            combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.CombatStarted),
+            state.Rng);
+        state = state with { Player = combatStarted.Player };
+        combat = combatStarted.Combat;
+
         world = world with
         {
             Combat = combat,
@@ -803,7 +812,7 @@ public sealed partial class PrototypeGameEngine
         };
 
         return AllEnemiesDefeated(combat)
-            ? EnterReward(state)
+            ? EnterCombatReward(state)
             : state;
     }
 
@@ -863,8 +872,34 @@ public sealed partial class PrototypeGameEngine
         };
 
         return AllEnemiesDefeated(combatAfterPotion)
-            ? EnterReward(state)
+            ? EnterCombatReward(state)
             : state;
+    }
+
+    private static RunState EnterCombatReward(
+        RunState state)
+    {
+        var world = RequireWorld(state);
+        var combat = world.Combat
+            ?? throw new InvalidOperationException(
+                "Combat victory has no combat state.");
+
+        var won = DispatchCombatEvent(
+            state.Player,
+            combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.CombatWon),
+            state.Rng);
+        state = state with
+        {
+            Player = won.Player,
+            World = world with
+            {
+                Combat = won.Combat
+            }
+        };
+
+        return EnterReward(state);
     }
 
     private static RunState EndPlayerTurn(RunState state)
@@ -959,7 +994,7 @@ public sealed partial class PrototypeGameEngine
                     "Combat unexpectedly disappeared.");
             if (AllEnemiesDefeated(currentCombat))
             {
-                return EnterReward(state);
+                return EnterCombatReward(state);
             }
         }
 
@@ -3024,6 +3059,17 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.HealPlayer:
+                    player = player with
+                    {
+                        Hp = Math.Min(
+                            player.MaxHp,
+                            player.Hp + Math.Max(
+                                0,
+                                operation.Amount))
+                    };
+                    break;
+
                 case PrototypeCombatEffectKind.DamagePlayer:
                 {
                     var incoming =
@@ -4509,17 +4555,23 @@ public sealed partial class PrototypeGameEngine
         {
             var definition = PrototypeContent.Power(
                 power.PowerId);
-            if (definition.AttackDamageBonusPerStack == 0
-                || definition.AttackDamageBonusRequiredCardTag is null
-                || !tags.Contains(
-                    definition.AttackDamageBonusRequiredCardTag,
+            var generic =
+                definition.PlayerAttackDamageBonusPerStack
+                * power.Stacks;
+            var tagged = 0;
+            if (definition.AttackDamageBonusPerStack != 0
+                && definition.AttackDamageBonusRequiredCardTag is
+                    { } requiredTag
+                && tags.Contains(
+                    requiredTag,
                     StringComparer.Ordinal))
             {
-                return 0;
+                tagged =
+                    definition.AttackDamageBonusPerStack
+                    * power.Stacks;
             }
 
-            return definition.AttackDamageBonusPerStack
-                * power.Stacks;
+            return generic + tagged;
         });
 
         var firstTaggedPlayBonus = combat.PlayerPowers.Sum(
@@ -5335,6 +5387,32 @@ public sealed partial class PrototypeGameEngine
         return result.Combat with { Enemies = enemies };
     }
 
+    private static bool RelicTriggerMatchesPlayer(
+        PrototypeRelicTriggerSpec trigger,
+        PlayerState player)
+    {
+        if (player.MaxHp <= 0)
+        {
+            return trigger.MaxPlayerHpPercent is null
+                && trigger.MinPlayerHpPercent is null;
+        }
+
+        var hpTimesHundred = player.Hp * 100;
+        if (trigger.MaxPlayerHpPercent is { } maxPercent
+            && hpTimesHundred > player.MaxHp * maxPercent)
+        {
+            return false;
+        }
+
+        if (trigger.MinPlayerHpPercent is { } minPercent
+            && hpTimesHundred < player.MaxHp * minPercent)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     private static (CombatState Combat, int Count) IncrementRelicTriggerCounter(
         CombatState combat,
         int relicStateIndex,
@@ -5454,7 +5532,10 @@ public sealed partial class PrototypeGameEngine
             for (var triggerIndex = 0; triggerIndex < triggers.Length; triggerIndex++)
             {
                 var trigger = triggers[triggerIndex];
-                if (trigger.EventKind != combatEvent.Kind)
+                if (trigger.EventKind != combatEvent.Kind
+                    || !RelicTriggerMatchesPlayer(
+                        trigger,
+                        player))
                 {
                     continue;
                 }
@@ -5934,7 +6015,7 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 "Combat unexpectedly disappeared.");
         return AllEnemiesDefeated(currentCombat)
-            ? EnterReward(state)
+            ? EnterCombatReward(state)
             : state;
     }
 

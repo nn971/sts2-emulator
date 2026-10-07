@@ -88,6 +88,7 @@ public enum PrototypeCombatEffectKind
     AutoPlayTaggedCardsFromZone,
     ApplyPlayerPower,
     ApplyEnemyPower,
+    HealPlayer,
     DamagePlayer,
     GainEnergy,
     MultiplyEnemyStatus,
@@ -239,6 +240,8 @@ public enum PrototypeTurnStage
 
 public enum PrototypeCombatEventKind
 {
+    CombatStarted,
+    CombatWon,
     PlayerTurnStarted,
     PlayerTurnEnded,
     BeforeHandDraw,
@@ -527,7 +530,9 @@ public sealed record PrototypePotionDefinition(
 public sealed record PrototypeRelicTriggerSpec(
     PrototypeCombatEventKind EventKind,
     PrototypeCombatEffectSpec[] Effects,
-    int EveryNth = 1);
+    int EveryNth = 1,
+    int? MaxPlayerHpPercent = null,
+    int? MinPlayerHpPercent = null);
 
 public sealed record PrototypeRelicDefinition(
     string Id,
@@ -567,6 +572,7 @@ public sealed record PrototypePowerDefinition(
     bool DecrementAfterPlayerTurnStart = false,
     string? AttackDamageBonusRequiredCardTag = null,
     int AttackDamageBonusPerStack = 0,
+    int PlayerAttackDamageBonusPerStack = 0,
     string? AttackDamageBonusRequiredTargetStatus = null,
     int AttackDamageBonusTargetNumeratorPerStack = 0,
     int AttackDamageBonusTargetDenominator = 1,

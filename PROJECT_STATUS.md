@@ -428,3 +428,16 @@ structure is represented.
 
 All pinned v0.111.0 **single-player** Silent cards now have mechanics implemented. The five
 multiplayer-only Silent cards remain catalog metadata only and are intentionally out of scope.
+
+
+## Mechanics-expansion pass: combat lifecycle relics and potions
+
+Fidelity is deliberately not the blocker for this phase. The engine now has explicit CombatStarted
+and CombatWon events, a generic HealPlayer combat effect, HP-threshold relic triggers, and generic
+player Strength as an additive Attack modifier. These are reusable mechanics rather than item-ID
+branches.
+
+The content pool now includes Anchor, Vajra, Blood Vial, Meat on the Bone, Strength Potion, and
+Regen Potion. Regen is represented as a decrementing player power that heals on PlayerTurnStarted.
+Combat victory is centralized through a victory-event dispatch before reward creation so future
+post-combat relics can share the same path.
