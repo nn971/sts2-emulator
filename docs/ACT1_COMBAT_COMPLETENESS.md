@@ -51,16 +51,16 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Elite | `BYGONE_EFFIGY_ELITE` | `BYGONE_EFFIGY` | no | pending | pending | no |
 | Overgrowth | Elite | `BYRDONIS_ELITE` | `BYRDONIS` | no | pending | pending | no |
 | Overgrowth | Elite | `PHROG_PARASITE_ELITE` | `PHROG_PARASITE`, `WRIGGLER` | no | pending | pending | no |
-| Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | no | pending | pending | no |
+| Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | yes | yes | pending | no |
 | Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | no | pending | pending | no |
 | Overgrowth | Monster | `FOGMOG_NORMAL` | `EYE_WITH_TEETH`, `FOGMOG` | no | pending | pending | no |
 | Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | yes | yes | yes | no |
 | Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | no | pending | pending | no |
-| Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | no | pending | pending | no |
+| Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | yes | yes | pending | no |
 | Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | yes | yes | yes | no |
 | Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | yes | yes | pending | no |
-| Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | no | pending | pending | no |
+| Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | yes | pending | pending | no |
 | Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | yes | yes | yes | no |
 | Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | yes | no |
@@ -99,15 +99,15 @@ formations but still await the normal-pool translation.
 | Monster | Type | HP A0 | HP asc. | Pattern | Status |
 |---|---|---:|---:|---|---|
 | `ASSASSIN_RUBY_RAIDER` — Assassin Raider | Normal | 18–23 | 19–24 | cycle | implemented + focused tests |
-| `AXE_RUBY_RAIDER` — Axe Raider | Normal | 20–22 | 21–23 | cycle | not started |
-| `BRUTE_RUBY_RAIDER` — Brute Raider | Normal | 30–33 | 31–34 | cycle | not started |
+| `AXE_RUBY_RAIDER` — Axe Raider | Normal | 20–22 | 21–23 | cycle | implemented + focused tests |
+| `BRUTE_RUBY_RAIDER` — Brute Raider | Normal | 30–33 | 31–34 | cycle | implemented + focused tests |
 | `BYGONE_EFFIGY` — Bygone Effigy | Elite | 127 | 132 | cycle | not started |
 | `BYRDONIS` — Byrdonis | Elite | 81–84 | 90–90 | cycle | not started |
 | `CALCIFIED_CULTIST` — Calcified Cultist | Normal | 38–41 | 39–42 | cycle | not started |
 | `CEREMONIAL_BEAST` — Ceremonial Beast | Boss | 252 | 262 | cycle | not started |
 | `CORPSE_SLUG` — Corpse Slug | Normal | 25–27 | 27–29 | cycle | not started |
-| `CROSSBOW_RUBY_RAIDER` — Crossbow Raider | Normal | 18–21 | 19–22 | cycle | not started |
-| `CUBEX_CONSTRUCT` — Cubex Construct | Normal | 65 | 70 | cycle | not started |
+| `CROSSBOW_RUBY_RAIDER` — Crossbow Raider | Normal | 18–21 | 19–22 | cycle | implemented + focused tests |
+| `CUBEX_CONSTRUCT` — Cubex Construct | Normal | 65 | 70 | cycle | implemented + focused tests |
 | `DAMP_CULTIST` — Damp Cultist | Normal | 51–53 | 52–54 | cycle | not started |
 | `EYE_WITH_TEETH` — Eye with Teeth | Normal | 6 | — | cycle | not started |
 | `FAT_GREMLIN` — Fat Gremlin | Normal | 13–17 | 14–18 | cycle | not started |
@@ -141,7 +141,7 @@ formations but still await the normal-pool translation.
 | `SOUL_FYSH` — Soul Fysh | Boss | 211 | 221 | cycle | not started |
 | `TERROR_EEL` — Terror Eel | Elite | 140 | 150 | cycle | not started |
 | `TOADPOLE` — Toadpole | Normal | 21–25 | 22–26 | conditional | implemented + focused tests |
-| `TRACKER_RUBY_RAIDER` — Tracker Raider | Normal | 21–25 | 22–26 | cycle | not started |
+| `TRACKER_RUBY_RAIDER` — Tracker Raider | Normal | 21–25 | 22–26 | cycle | implemented + focused tests |
 | `TWIG_SLIME_M` — Twig Slime (M) | Normal | 26–28 | 27–29 | random | implemented + focused tests |
 | `TWIG_SLIME_S` — Twig Slime (S) | Normal | 7–11 | 8–12 | cycle | implemented + focused tests |
 | `TWO_TAILED_RAT` — Two-Tailed Rat | Normal | 17–21 | 18–22 | random | not started |
