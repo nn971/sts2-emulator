@@ -50,6 +50,19 @@ internal static class PassiveReferenceRecorder
             _corpusMode = Environment
                 .GetEnvironmentVariable("STS2_REFERENCE_CORPUS_MODE")
                 ?.Trim();
+            if (string.IsNullOrWhiteSpace(_corpusMode))
+            {
+                var bridgeDirectory = Path.GetDirectoryName(
+                    typeof(PassiveReferenceRecorder).Assembly.Location);
+                if (bridgeDirectory is not null
+                    && File.Exists(Path.Combine(
+                        bridgeDirectory,
+                        "overgrowth-silent-act1.mode")))
+                {
+                    _corpusMode = "overgrowth-silent-act1";
+                }
+            }
+
             _emitTypeCatalogs = !StringComparer.OrdinalIgnoreCase.Equals(
                 _corpusMode,
                 "overgrowth-silent-act1");
