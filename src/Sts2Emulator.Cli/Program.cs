@@ -272,6 +272,15 @@ switch (args[0])
                     $"upgraded={checkpoint.Cards.UpgradedCardCount} " +
                     $"hexed={checkpoint.Cards.HexedCardCount}");
 
+                if (checkpoint.HistoryRuntimeType is not null)
+                {
+                    Console.WriteLine(
+                        $"    history={checkpoint.HistoryRuntimeType} " +
+                        $"amount={checkpoint.HistoryAmount?.ToString() ?? "-"} " +
+                        $"source={checkpoint.HistorySourceCombatId?.ToString() ?? "-"} " +
+                        $"target={checkpoint.HistoryTargetCombatId?.ToString() ?? "-"}");
+                }
+
                 foreach (var enemy in checkpoint.Enemies)
                 {
                     Console.WriteLine(
