@@ -122,7 +122,9 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException("Reward phase has no reward state.");
                 }
 
-                ValidateReward(world.Reward);
+                ValidateReward(
+                    state.Player,
+                    world.Reward);
                 break;
 
             case RunPhase.Shop:
@@ -431,7 +433,9 @@ public static class PrototypeStateInvariants
         }
     }
 
-    private static void ValidateReward(RewardState reward)
+    private static void ValidateReward(
+        PlayerState player,
+        RewardState reward)
     {
         if (reward.CardOptions.Length != reward.CardOptions.Distinct(StringComparer.Ordinal).Count())
         {
@@ -476,6 +480,77 @@ public static class PrototypeStateInvariants
         {
             throw new InvalidOperationException(
                 "Unresolved relic reward has no relic options.");
+        }
+
+        if (reward.PendingDeckChoice is { } deckChoice)
+        {
+            if (!reward.RelicResolved)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice requires the relic reward itself to be resolved.");
+            }
+
+            if (deckChoice.RemainingSelections <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice has no remaining selections.");
+            }
+
+            if (deckChoice.CandidateCardInstanceIds.Length
+                < deckChoice.RemainingSelections)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice has too few candidates.");
+            }
+
+            if (deckChoice.CandidateCardInstanceIds.Length
+                != deckChoice.CandidateCardInstanceIds
+                    .Distinct()
+                    .Count())
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice contains duplicate card instances.");
+            }
+
+            if (!player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(
+                        relic.RelicId,
+                        deckChoice.SourceRelicId)))
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice source relic is not owned.");
+            }
+
+            var sourceDefinition =
+                PrototypeContent.Relic(
+                    deckChoice.SourceRelicId);
+            var sourceSpec =
+                sourceDefinition.AcquisitionDeckChoice
+                ?? throw new InvalidOperationException(
+                    "Pending relic deck choice source has no acquisition deck-choice capability.");
+            if (sourceSpec.Kind != deckChoice.Kind
+                || sourceSpec.UpgradeTransformedCards
+                    != deckChoice.UpgradeTransformedCards)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice disagrees with its source relic.");
+            }
+
+            foreach (var cardInstanceId in
+                     deckChoice.CandidateCardInstanceIds)
+            {
+                var card = player.Deck
+                    .FirstOrDefault(item =>
+                        item.InstanceId == cardInstanceId)
+                    ?? throw new InvalidOperationException(
+                        $"Pending relic deck choice references missing card {cardInstanceId}.");
+                if (PrototypeContent.Card(card.CardId)
+                    .Eternal)
+                {
+                    throw new InvalidOperationException(
+                        "Pending relic deck choice includes an Eternal card.");
+                }
+            }
         }
     }
 
