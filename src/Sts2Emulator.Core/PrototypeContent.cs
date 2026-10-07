@@ -1833,6 +1833,61 @@ public static class PrototypeContent
                         PrototypeCombatEffectKind.ApplyPlayerPower,
                         5,
                         PowerId: "proto.power.temporary_strength")
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.attack",
+                "Attack Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseGeneratedCards,
+                        3,
+                        GeneratedChoiceCardType:
+                            PrototypeCardType.Attack)
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.skill",
+                "Skill Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseGeneratedCards,
+                        3,
+                        GeneratedChoiceCardType:
+                            PrototypeCardType.Skill)
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.power",
+                "Power Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseGeneratedCards,
+                        3,
+                        GeneratedChoiceCardType:
+                            PrototypeCardType.Power)
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.liquid_memories",
+                "Liquid Memories",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.DiscardPile,
+                            1,
+                            1,
+                            PrototypeCardSelectionResolutionKind
+                                .MoveToHand),
+                        SelectedCardTemporaryCost:
+                            new PrototypeTemporaryCardCost(
+                                0,
+                                PrototypeTemporaryCardCostExpiry
+                                    .EndOfTurn
+                                | PrototypeTemporaryCardCostExpiry
+                                    .WhenPlayed))
                 ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 

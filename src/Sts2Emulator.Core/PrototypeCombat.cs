@@ -2428,7 +2428,13 @@ public sealed partial class PrototypeGameEngine
                     PlayerPowerOnFatalId:
                         effect.PlayerPowerOnFatalId,
                     PlayerPowerOnFatalAmount:
-                        effect.PlayerPowerOnFatalAmount));
+                        effect.PlayerPowerOnFatalAmount,
+                    GeneratedChoiceCardType:
+                        effect.GeneratedChoiceCardType,
+                    SelectedCardTemporaryCost:
+                        effect.SelectedCardTemporaryCost is null
+                            ? null
+                            : effect.SelectedCardTemporaryCost with { }));
             }
         }
     }
@@ -2951,6 +2957,57 @@ public sealed partial class PrototypeGameEngine
                         resumeCardPlaySeries: false);
                 }
 
+                case PrototypeCombatEffectKind.ChooseGeneratedCards:
+                {
+                    if (operation.GeneratedChoiceCardType is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Generated-card choice requires a card type.");
+                    }
+
+                    var generated = AddGeneratedChoiceCards(
+                        combat,
+                        operation.GeneratedChoiceCardType.Value,
+                        operation.Amount,
+                        rng);
+                    combat = generated.Combat;
+                    if (generated.CardInstanceIds.Length == 0)
+                    {
+                        break;
+                    }
+
+                    combat = combat with
+                    {
+                        PendingChoice = new PendingCombatChoiceState(
+                            ChoiceId: "select_cards",
+                            SourceCardInstanceId: sourceCardInstanceId,
+                            SourceCardDestination: sourceCardDestination,
+                            Selection: new PrototypeCardSelectionSpec(
+                                PrototypeCardZone.ChoicePool,
+                                0,
+                                1,
+                                PrototypeCardSelectionResolutionKind
+                                    .MoveToHand,
+                                RemoveUnselectedFromSource: true),
+                            CandidateCardInstanceIds:
+                                (long[])generated.CardInstanceIds.Clone(),
+                            Continuation: operations.ToArray(),
+                            CompletionEvents: completionEvents is null
+                                ? Array.Empty<PrototypeCombatEvent>()
+                                : (PrototypeCombatEvent[])completionEvents.Clone(),
+                            CardPlaySeries: cardPlaySeries,
+                            MoveSourceCardOnCompletion:
+                                moveSourceCardOnCompletion,
+                            RemoveSourceCardOnCompletion:
+                                removeSourceCardOnCompletion,
+                            SourceCardAlreadyMoved:
+                                sourceCardAlreadyMoved,
+                            EventDispatchContinuation:
+                                eventDispatchContinuation?.Fork())
+                    };
+                    return (player, combat);
+                }
+
                 case PrototypeCombatEffectKind.ChooseCards:
                 {
                     var selection = operation.Selection
@@ -3000,6 +3057,10 @@ public sealed partial class PrototypeGameEngine
                                 operation.SelectedCardPower,
                             SelectedCardKeyword:
                                 operation.SelectedCardKeyword,
+                            SelectedCardTemporaryCost:
+                                operation.SelectedCardTemporaryCost is null
+                                    ? null
+                                    : operation.SelectedCardTemporaryCost with { },
                             EventDispatchContinuation:
                                 eventDispatchContinuation?.Fork())
                     };
@@ -3436,6 +3497,74 @@ public sealed partial class PrototypeGameEngine
         }
 
         return combat;
+    }
+
+    private sealed record PrototypeGeneratedChoiceResult(
+        CombatState Combat,
+        long[] CardInstanceIds);
+
+    private static PrototypeGeneratedChoiceResult AddGeneratedChoiceCards(
+        CombatState combat,
+        PrototypeCardType cardType,
+        int count,
+        RngBundle rng)
+    {
+        var candidates = PrototypeContent.RewardCardPool
+            .Where(cardId =>
+            {
+                var definition = PrototypeContent.Card(cardId);
+                return definition.Type == cardType
+                    && definition.CanBeGeneratedInCombat
+                    && definition.MechanicsImplemented
+                    && !definition.MultiplayerOnly;
+            })
+            .ToArray();
+        if (candidates.Length == 0 || count <= 0)
+        {
+            return new PrototypeGeneratedChoiceResult(
+                combat,
+                Array.Empty<long>());
+        }
+
+        PrototypeRng.Shuffle(rng, "combat", candidates);
+        var selectedIds = candidates
+            .Take(Math.Min(count, candidates.Length))
+            .ToArray();
+        var generatedIds = new List<long>(
+            selectedIds.Length);
+        foreach (var cardId in selectedIds)
+        {
+            var instance = new CombatCardInstance(
+                InstanceId: combat.NextCardInstanceId,
+                PersistentCardInstanceId: null,
+                CardId: cardId,
+                UpgradeLevel: 0,
+                IsTemporary: true,
+                State: PrototypeJson.EmptyObject(),
+                TemporaryEnergyCost:
+                    new PrototypeTemporaryCardCost(
+                        0,
+                        PrototypeTemporaryCardCostExpiry.EndOfTurn
+                        | PrototypeTemporaryCardCostExpiry.WhenPlayed));
+            instance = ApplyActiveSourceBoundAfflictionToCard(
+                combat,
+                instance);
+
+            generatedIds.Add(instance.InstanceId);
+            combat = combat with
+            {
+                NextCardInstanceId =
+                    combat.NextCardInstanceId + 1,
+                Cards = combat.Cards.Append(instance).ToArray(),
+                ChoicePool = combat.ChoiceCardIds
+                    .Append(instance.InstanceId)
+                    .ToArray()
+            };
+        }
+
+        return new PrototypeGeneratedChoiceResult(
+            combat,
+            generatedIds.ToArray());
     }
 
     private static CombatState AddGeneratedCardCopies(
@@ -4169,6 +4298,24 @@ public sealed partial class PrototypeGameEngine
             0,
             baseCost + afflictionSurcharge);
     }
+
+    private static CombatState SetCardTemporaryEnergyCost(
+        CombatState combat,
+        long cardInstanceId,
+        PrototypeTemporaryCardCost temporaryCost) =>
+        combat with
+        {
+            Cards = combat.Cards
+                .Select(card =>
+                    card.InstanceId == cardInstanceId
+                        ? card with
+                        {
+                            TemporaryEnergyCost =
+                                temporaryCost with { }
+                        }
+                        : card)
+                .ToArray()
+        };
 
     private static CombatState SetHandCardsTemporaryEnergyCost(
         CombatState combat,
@@ -5915,6 +6062,17 @@ public sealed partial class PrototypeGameEngine
         combat = ApplyCardSelection(combat, pending.Selection, selected);
         combat = combat with { PendingChoice = null };
 
+        if (pending.SelectedCardTemporaryCost is not null)
+        {
+            foreach (var cardInstanceId in selected)
+            {
+                combat = SetCardTemporaryEnergyCost(
+                    combat,
+                    cardInstanceId,
+                    pending.SelectedCardTemporaryCost);
+            }
+        }
+
         if (pending.SelectedCardPower is not null)
         {
             if (selected.Length != 1)
@@ -6315,36 +6473,74 @@ public sealed partial class PrototypeGameEngine
 
         if (selected.Any(cardId => !source.Contains(cardId)))
         {
-            throw new InvalidOperationException("Selected card is no longer in the requested source zone.");
+            throw new InvalidOperationException(
+                "Selected card is no longer in the requested source zone.");
         }
 
-        if (selection.Resolution == PrototypeCardSelectionResolutionKind.Preserve)
+        if (selection.Resolution
+                == PrototypeCardSelectionResolutionKind.Preserve
+            && !selection.RemoveUnselectedFromSource)
         {
             return combat;
         }
 
         var destinationZone = selection.Resolution switch
         {
-            PrototypeCardSelectionResolutionKind.MoveToDiscard => PrototypeCardZone.DiscardPile,
-            PrototypeCardSelectionResolutionKind.MoveToExhaust => PrototypeCardZone.ExhaustPile,
+            PrototypeCardSelectionResolutionKind.Preserve =>
+                (PrototypeCardZone?)null,
+            PrototypeCardSelectionResolutionKind.MoveToHand =>
+                PrototypeCardZone.Hand,
+            PrototypeCardSelectionResolutionKind.MoveToDiscard =>
+                PrototypeCardZone.DiscardPile,
+            PrototypeCardSelectionResolutionKind.MoveToExhaust =>
+                PrototypeCardZone.ExhaustPile,
             _ => throw new ArgumentOutOfRangeException()
         };
 
         if (destinationZone == selection.SourceZone)
         {
-            throw new InvalidOperationException("Card-selection source and destination zones coincide.");
+            throw new InvalidOperationException(
+                "Card-selection source and destination zones coincide.");
         }
 
+        var unselected = source
+            .Where(cardId => !selectedSet.Contains(cardId))
+            .ToArray();
         combat = SetZone(
             combat,
             selection.SourceZone,
-            source.Where(cardId => !selectedSet.Contains(cardId)).ToArray());
+            selection.RemoveUnselectedFromSource
+                ? Array.Empty<long>()
+                : unselected);
 
-        var destination = GetZone(combat, destinationZone);
-        combat = SetZone(
-            combat,
-            destinationZone,
-            destination.Concat(selected).ToArray());
+        if (selection.RemoveUnselectedFromSource)
+        {
+            var unselectedSet = unselected.ToHashSet();
+            if (combat.Cards.Any(card =>
+                    unselectedSet.Contains(card.InstanceId)
+                    && !card.IsTemporary))
+            {
+                throw new InvalidOperationException(
+                    "Only temporary choice cards may be removed when a selection resolves.");
+            }
+
+            combat = combat with
+            {
+                Cards = combat.Cards
+                    .Where(card =>
+                        !unselectedSet.Contains(card.InstanceId))
+                    .ToArray()
+            };
+        }
+
+        if (destinationZone is { } destination)
+        {
+            var destinationCards = GetZone(combat, destination);
+            combat = SetZone(
+                combat,
+                destination,
+                destinationCards.Concat(selected).ToArray());
+        }
 
         return combat;
     }
@@ -6356,6 +6552,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeCardZone.DrawPile => combat.DrawPile,
             PrototypeCardZone.DiscardPile => combat.DiscardPile,
             PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
+            PrototypeCardZone.ChoicePool => combat.ChoiceCardIds,
             _ => throw new ArgumentOutOfRangeException(nameof(zone))
         };
 
@@ -6369,6 +6566,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeCardZone.DrawPile => combat with { DrawPile = cards },
             PrototypeCardZone.DiscardPile => combat with { DiscardPile = cards },
             PrototypeCardZone.ExhaustPile => combat with { ExhaustPile = cards },
+            PrototypeCardZone.ChoicePool => combat with { ChoicePool = cards },
             _ => throw new ArgumentOutOfRangeException(nameof(zone))
         };
 

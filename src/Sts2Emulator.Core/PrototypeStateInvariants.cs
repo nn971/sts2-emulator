@@ -881,6 +881,7 @@ public static class PrototypeStateInvariants
             .Concat(combat.DrawPile.Select(id => (Id: id, Location: "DrawPile")))
             .Concat(combat.DiscardPile.Select(id => (Id: id, Location: "DiscardPile")))
             .Concat(combat.ExhaustPile.Select(id => (Id: id, Location: "ExhaustPile")))
+            .Concat(combat.ChoiceCardIds.Select(id => (Id: id, Location: "ChoicePool")))
             .ToList();
         var zones = zoneLocations
             .Select(item => item.Id)
@@ -944,6 +945,15 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Combat cards are not fully represented by zones/continuations.");
         }
 
+        if (combat.ChoiceCardIds.Length > 0
+            && (combat.PendingChoice is null
+                || combat.PendingChoice.Selection.SourceZone
+                    != PrototypeCardZone.ChoicePool))
+        {
+            throw new InvalidOperationException(
+                "Combat choice pool exists without a matching pending choice.");
+        }
+
         if (combat.PendingChoice is not null)
         {
             var pending = combat.PendingChoice;
@@ -953,6 +963,7 @@ public static class PrototypeStateInvariants
                 PrototypeCardZone.DrawPile => combat.DrawPile,
                 PrototypeCardZone.DiscardPile => combat.DiscardPile,
                 PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
+                PrototypeCardZone.ChoicePool => combat.ChoiceCardIds,
                 _ => throw new ArgumentOutOfRangeException()
             };
 

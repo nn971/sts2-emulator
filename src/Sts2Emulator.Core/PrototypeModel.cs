@@ -83,6 +83,7 @@ public enum PrototypeCombatEffectKind
     DrawCards,
     ApplyEnemyStatus,
     ChooseCards,
+    ChooseGeneratedCards,
     CreateCardsInHand,
     CreateCardsInHandFromPowerCardPayload,
     AutoPlayTaggedCardsFromZone,
@@ -177,12 +178,14 @@ public enum PrototypeCardZone
     Hand,
     DrawPile,
     DiscardPile,
-    ExhaustPile
+    ExhaustPile,
+    ChoicePool
 }
 
 public enum PrototypeCardSelectionResolutionKind
 {
     Preserve,
+    MoveToHand,
     MoveToDiscard,
     MoveToExhaust
 }
@@ -342,7 +345,8 @@ public sealed record PrototypeCardSelectionSpec(
     int MaxSelections,
     PrototypeCardSelectionResolutionKind Resolution,
     PrototypeCardType? RequiredCardType = null,
-    int SelectionsPerPowerStack = 0);
+    int SelectionsPerPowerStack = 0,
+    bool RemoveUnselectedFromSource = false);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
@@ -452,7 +456,9 @@ public sealed record PrototypeCombatEffectSpec(
     bool UpgradeAutoPlayedCardsOnSourceUpgrade = false,
     int ExtraCardRewardsOnFatal = 0,
     string? PlayerPowerOnFatalId = null,
-    int PlayerPowerOnFatalAmount = 0)
+    int PlayerPowerOnFatalAmount = 0,
+    PrototypeCardType? GeneratedChoiceCardType = null,
+    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -489,7 +495,9 @@ public sealed record PrototypeQueuedOperation(
     bool UpgradeAutoPlayedCardsBeforePlay = false,
     int ExtraCardRewardsOnFatal = 0,
     string? PlayerPowerOnFatalId = null,
-    int PlayerPowerOnFatalAmount = 0);
+    int PlayerPowerOnFatalAmount = 0,
+    PrototypeCardType? GeneratedChoiceCardType = null,
+    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -1234,6 +1242,7 @@ public sealed record PendingCombatChoiceState(
     bool SourceCardAlreadyMoved = false,
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
+    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
     PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null)
 {
@@ -1242,6 +1251,9 @@ public sealed record PendingCombatChoiceState(
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
         Continuation = (PrototypeQueuedOperation[])Continuation.Clone(),
         CompletionEvents = (PrototypeCombatEvent[])CompletionEvents.Clone(),
+        SelectedCardTemporaryCost = SelectedCardTemporaryCost is null
+            ? null
+            : SelectedCardTemporaryCost with { },
         EventDispatchContinuation = EventDispatchContinuation?.Fork(),
         OuterChoiceContinuation = OuterChoiceContinuation?.Fork()
     };
@@ -1292,7 +1304,8 @@ public sealed record CombatState(
     PrototypeAutomaticPipelineContinuationState? AutomaticPipelineContinuation = null,
     int Act = 1,
     int Ascension = 0,
-    int ExtraCardRewardsEarned = 0)
+    int ExtraCardRewardsEarned = 0,
+    long[]? ChoicePool = null)
 {
     public CombatState Fork() => this with
     {
@@ -1309,6 +1322,9 @@ public sealed record CombatState(
         Potions = Potions is null
             ? null
             : Potions.Select(potion => potion.Fork()).ToArray(),
+        ChoicePool = ChoicePool is null
+            ? null
+            : (long[])ChoicePool.Clone(),
         PendingChoice = PendingChoice?.Fork(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
@@ -1322,6 +1338,9 @@ public sealed record CombatState(
 
     public CombatPotionState[] PotionStates =>
         Potions ?? Array.Empty<CombatPotionState>();
+
+    public long[] ChoiceCardIds =>
+        ChoicePool ?? Array.Empty<long>();
 
     public PrototypeCombatCounters CounterState =>
         Counters ?? new PrototypeCombatCounters();

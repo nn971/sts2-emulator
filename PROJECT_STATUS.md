@@ -453,3 +453,16 @@ Power-based play-count modifiers now support an any-card-type replay mode. Dupli
 primitive to replay the next card once and consume one stack; Flex Potion and Reptile Trinket use a
 shared temporary-Strength power that contributes to Attack damage and is removed at player turn end.
 Reptile Trinket grants 3 temporary Strength whenever a potion is used in combat.
+
+
+## Mechanics-expansion pass: generated-card choices and card retrieval
+
+Combat now has a temporary ChoicePool zone that participates in normal state invariants and the
+existing select_cards action protocol. Generic generated-card choices can sample distinct,
+implemented single-player cards by card type, make the candidates free for the current turn, allow
+choose-one-or-skip, move the selected card into Hand, and delete unselected temporary candidates.
+
+Card-selection resolution now supports MoveToHand, optional cleanup of unselected source cards, and
+a selected-card temporary cost mutation. Attack Potion, Skill Potion, Power Potion, and Liquid
+Memories are implemented on these primitives. This is intentionally a broad mechanics substrate;
+native generation pools/RNG ordering remain deferred fidelity work.
