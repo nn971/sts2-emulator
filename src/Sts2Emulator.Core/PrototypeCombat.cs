@@ -131,7 +131,7 @@ public sealed partial class PrototypeGameEngine
                         _ = PrototypeContent.Power(power.PowerId);
                         return new PrototypePowerInstanceState(
                             power.PowerId,
-                            power.Stacks,
+                            power.StacksAt(state.Ascension),
                             nextPowerApplicationOrder++);
                     })
                     .Where(power => power.Stacks > 0)
@@ -1882,7 +1882,7 @@ public sealed partial class PrototypeGameEngine
                                     return new
                                         PrototypePowerInstanceState(
                                             power.PowerId,
-                                            power.Stacks,
+                                            power.StacksAt(ascension),
                                             nextPowerOrder++);
                                 })
                                 .Where(power =>
@@ -2072,7 +2072,7 @@ public sealed partial class PrototypeGameEngine
                         return new
                             PrototypePowerInstanceState(
                                 power.PowerId,
-                                power.Stacks,
+                                power.StacksAt(combat.Ascension),
                                 nextPowerOrder++);
                     })
                     .Where(power =>
