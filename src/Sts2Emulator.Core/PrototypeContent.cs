@@ -2363,6 +2363,21 @@ public static class PrototypeContent
                 EnergyPerTurnBonus: 1,
                 PreventPotionAcquisition: true),
             new PrototypeRelicDefinition(
+                "proto.relic.empty_cage",
+                "Empty Cage",
+                AcquisitionDeckChoice:
+                    new PrototypeRelicDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Remove,
+                        2)),
+            new PrototypeRelicDefinition(
+                "proto.relic.astrolabe",
+                "Astrolabe",
+                AcquisitionDeckChoice:
+                    new PrototypeRelicDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Transform,
+                        3,
+                        UpgradeTransformedCards: true)),
+            new PrototypeRelicDefinition(
                 "proto.relic.coffee_dripper",
                 "Coffee Dripper",
                 EnergyPerTurnBonus: 1,
@@ -6101,6 +6116,8 @@ public static class PrototypeContent
     public static string[] BossRelicPool { get; } =
     [
         "proto.relic.sozu",
+        "proto.relic.empty_cage",
+        "proto.relic.astrolabe",
         "proto.relic.coffee_dripper",
         "proto.relic.fusion_hammer",
         "proto.relic.velvet_choker",
