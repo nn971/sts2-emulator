@@ -531,6 +531,13 @@ public sealed record PrototypePowerDefinition(
     bool ClearSourceAfflictionWhenRemoved = false,
     bool DowngradeExistingCardsOnApply = false,
     bool RestoreDowngradedCardsWhenLastSourceRemoved = false,
+    bool DecrementAtPlayerTurnEnd = false,
+    int PlayerAttackDamageNumerator = 1,
+    int PlayerAttackDamageDenominator = 1,
+    int PlayerIncomingAttackDamageNumerator = 1,
+    int PlayerIncomingAttackDamageDenominator = 1,
+    int PlayerCardBlockNumerator = 1,
+    int PlayerCardBlockDenominator = 1,
     int EnemyAttackDamageBonusPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
@@ -564,7 +571,8 @@ public sealed record PrototypeEnemyEffectSpec(
     int AmountPerAct = 0,
     int Repetitions = 1,
     string? PowerId = null,
-    PrototypeAscensionDelta[]? AscensionDeltas = null)
+    PrototypeAscensionDelta[]? AscensionDeltas = null,
+    bool IsAttack = true)
 {
     public int AmountAt(
         int act,
