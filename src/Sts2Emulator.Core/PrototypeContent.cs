@@ -1318,11 +1318,21 @@ public static class PrototypeContent
                 "Calculated Gamble",
                 0,
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.DiscardHand,
+                        0),
+                    new(
+                        PrototypeCombatEffectKind.DrawCards,
+                        0,
+                        CountKind:
+                            PrototypeCombatCountKind.OtherCardsInHand,
+                        AmountPerCount: 1)
+                ],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Uncommon,
                 Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                RetainOnUpgrade: true),
             new PrototypeCardDefinition(
                 "proto.silent.concoct",
                 "Concoct",
@@ -1347,11 +1357,23 @@ public static class PrototypeContent
                 "Expose",
                 0,
                 PrototypeCardTarget.Enemy,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.RemoveEnemyBlock,
+                        0),
+                    new(
+                        PrototypeCombatEffectKind.RemoveEnemyPower,
+                        0,
+                        PowerId: "proto.power.artifact"),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        2,
+                        1,
+                        StatusId: "proto.status.vulnerable")
+                ],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Uncommon,
-                Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.fade",
                 "Fade",
@@ -1409,10 +1431,21 @@ public static class PrototypeContent
                 "Outbreak",
                 3,
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        9,
+                        3,
+                        StatusId: "proto.status.poison",
+                        Target: PrototypeEffectTarget.AllEnemies),
+                    new(
+                        PrototypeCombatEffectKind.TriggerEnemyStatus,
+                        0,
+                        StatusId: "proto.status.poison",
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.shadow_step",
                 "Shadow Step",
@@ -1453,19 +1486,39 @@ public static class PrototypeContent
                 "Storm of Steel",
                 1,
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.DiscardHand,
+                        0),
+                    new(
+                        PrototypeCombatEffectKind.CreateCardsInHand,
+                        0,
+                        CardId: "proto.silent.shiv",
+                        CountKind:
+                            PrototypeCombatCountKind.OtherCardsInHand,
+                        AmountPerCount: 1,
+                        GeneratedCardUpgradePerSourceUpgrade: 1)
+                ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Skill,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.strangle",
                 "Strangle",
                 1,
                 PrototypeCardTarget.Enemy,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        8,
+                        2),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyPower,
+                        2,
+                        1,
+                        PowerId: "proto.power.strangle")
+                ],
                 Rarity: PrototypeCardRarity.Uncommon,
-                Type: PrototypeCardType.Attack,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.silent.the_hunt",
                 "The Hunt",
@@ -2013,6 +2066,26 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
+            new PrototypePowerDefinition(
+                "proto.power.strangle",
+                "Strangle",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.LoseEnemyHp,
+                                0,
+                                Target:
+                                    PrototypeEffectTarget.SourcePowerOwnerEnemy,
+                                AmountPerPowerStack: 1)
+                        ])
+                ],
+                IsInstanced: true,
+                IsDebuff: true,
+                RemoveAtEnemyTurnEnd: true),
             new PrototypePowerDefinition(
                 "proto.power.vulnerable",
                 "Vulnerable",

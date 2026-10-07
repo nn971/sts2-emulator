@@ -35,7 +35,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 16 | Bubble Bubble | implemented |  |
 | 17 | Bullet Time | implemented |  |
 | 18 | Burst | implemented |  |
-| 19 | Calculated Gamble | catalog-only |  |
+| 19 | Calculated Gamble | implemented |  |
 | 20 | Cloak and Dagger | implemented |  |
 | 21 | Corrosive Wave | implemented |  |
 | 22 | Concoct | catalog-only | multiplayer-only |
@@ -50,7 +50,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 31 | Envenom | implemented |  |
 | 32 | Escape Plan | implemented |  |
 | 33 | Expertise | implemented |  |
-| 34 | Expose | catalog-only |  |
+| 34 | Expose | implemented |  |
 | 35 | Fade | catalog-only | multiplayer-only |
 | 36 | Fan of Knives | catalog-only |  |
 | 37 | Finisher | implemented |  |
@@ -75,7 +75,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 56 | Neutralize | implemented |  |
 | 57 | Nightmare | implemented |  |
 | 58 | Noxious Fumes | implemented |  |
-| 59 | Outbreak | catalog-only |  |
+| 59 | Outbreak | implemented |  |
 | 60 | Phantom Blades | implemented |  |
 | 61 | Piercing Wail | implemented |  |
 | 62 | Pinpoint | implemented |  |
@@ -94,8 +94,8 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 75 | Snakebite | implemented |  |
 | 76 | Sneaky | catalog-only | multiplayer-only |
 | 77 | Speedster | implemented |  |
-| 78 | Storm of Steel | catalog-only |  |
-| 79 | Strangle | catalog-only |  |
+| 78 | Storm of Steel | implemented |  |
+| 79 | Strangle | implemented |  |
 | 80 | Strike | implemented |  |
 | 81 | Sucker Punch | implemented |  |
 | 82 | Suppress | implemented |  |
@@ -111,26 +111,21 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 
 ## Catalog-only implementation queue
 
-The 21 source-backed catalog-only cards are:
+The 16 source-backed catalog-only cards are:
 
 - Accelerant
 - Blade of Ink
 - Blade Symphony (multiplayer-only)
-- Calculated Gamble
 - Concoct (multiplayer-only)
 - Echoing Slash
-- Expose
 - Fade (multiplayer-only)
 - Fan of Knives
 - Flanking (multiplayer-only)
 - Knife Trap
 - Malaise
-- Outbreak
 - Shadow Step
 - Shadowmeld
 - Sneaky (multiplayer-only)
-- Storm of Steel
-- Strangle
 - The Hunt
 - Well-Laid Plans
 - Wraith Form

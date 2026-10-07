@@ -1384,7 +1384,20 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
-            enemies[enemyIndex] = enemy with { Statuses = statuses };
+            var powers = stage
+                    == PrototypeTurnStage.EnemyTurnEnd
+                ? enemy.PowerStates
+                    .Where(power =>
+                        !PrototypeContent.Power(power.PowerId)
+                            .RemoveAtEnemyTurnEnd)
+                    .ToArray()
+                : enemy.PowerStates;
+
+            enemies[enemyIndex] = enemy with
+            {
+                Statuses = statuses,
+                Powers = powers
+            };
         }
 
         combat = combat with { Enemies = enemies };
@@ -2205,7 +2218,8 @@ public sealed partial class PrototypeGameEngine
         int powerStacks = 0,
         PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System,
         bool isPoweredAttack = false,
-        PrototypeCombatCardSnapshot? powerCardPayload = null)
+        PrototypeCombatCardSnapshot? powerCardPayload = null,
+        int? sourcePowerEnemyId = null)
     {
         var count = effect.CountKind is null
             ? 0
@@ -2227,6 +2241,11 @@ public sealed partial class PrototypeGameEngine
                 .Select(enemy => (int?)enemy.InstanceId)
                 .ToArray(),
             PrototypeEffectTarget.RandomEnemy => new int?[] { null },
+            PrototypeEffectTarget.SourcePowerOwnerEnemy =>
+                sourcePowerEnemyId is null
+                    ? throw new InvalidOperationException(
+                        "Source-power-owner targeting requires an enemy power source.")
+                    : new int?[] { sourcePowerEnemyId.Value },
             _ => throw new ArgumentOutOfRangeException()
         };
 
@@ -2448,6 +2467,32 @@ public sealed partial class PrototypeGameEngine
 
                     break;
 
+                case PrototypeCombatEffectKind.LoseEnemyHp:
+                {
+                    if (targetEnemyId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Enemy HP-loss operation requires a target.");
+                    }
+
+                    var hpLoss = LoseEnemyHp(
+                        combat,
+                        targetEnemyId.Value,
+                        operation.Amount);
+                    combat = hpLoss.Combat;
+                    if (hpLoss.Defeated)
+                    {
+                        combat =
+                            CleanupSourceBoundPowersForDefeatedEnemies(
+                                combat);
+                        combat = ResolveEnemyDeathSummons(
+                            combat,
+                            rng);
+                    }
+
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.GainPlayerBlock:
                 {
                     var modifiedAmount =
@@ -2563,6 +2608,76 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.DiscardHand:
+                {
+                    var discarded = (long[])combat.Hand.Clone();
+                    if (discarded.Length == 0)
+                    {
+                        break;
+                    }
+
+                    var slyCards = discarded
+                        .Where(cardInstanceId =>
+                            CardHasKeyword(
+                                combat,
+                                cardInstanceId,
+                                PrototypeCardKeyword.Sly))
+                        .ToArray();
+
+                    combat = combat with
+                    {
+                        Hand = Array.Empty<long>(),
+                        DiscardPile = combat.DiscardPile
+                            .Concat(discarded)
+                            .ToArray()
+                    };
+
+                    var discardEvents = discarded
+                        .Select(cardInstanceId =>
+                        {
+                            var discardedCard =
+                                RequireCombatCard(
+                                    combat,
+                                    cardInstanceId);
+                            return new PrototypeCombatEvent(
+                                PrototypeCombatEventKind.CardDiscarded,
+                                SourceCardInstanceId:
+                                    cardInstanceId,
+                                CardId:
+                                    discardedCard.CardId);
+                        })
+                        .ToArray();
+
+                    return ResumeChoiceResolutionContinuation(
+                        player,
+                        combat,
+                        rng,
+                        new PrototypeChoiceResolutionContinuationState(
+                            SourceCardInstanceId:
+                                sourceCardInstanceId,
+                            SourceCardDestination:
+                                sourceCardDestination,
+                            Operations:
+                                operations.ToArray(),
+                            PendingDiscardEvents:
+                                discardEvents,
+                            PendingSlyCardInstanceIds:
+                                slyCards,
+                            CompletionEvents:
+                                completionEvents
+                                ?? Array.Empty<PrototypeCombatEvent>(),
+                            CardPlaySeries:
+                                cardPlaySeries,
+                            MoveSourceCardOnCompletion:
+                                moveSourceCardOnCompletion,
+                            RemoveSourceCardOnCompletion:
+                                removeSourceCardOnCompletion,
+                            SourceCardAlreadyMoved:
+                                sourceCardAlreadyMoved,
+                            EventDispatchContinuation:
+                                eventDispatchContinuation?.Fork()));
+                }
+
                 case PrototypeCombatEffectKind.ChooseCards:
                 {
                     var selection = operation.Selection
@@ -2617,6 +2732,48 @@ public sealed partial class PrototypeGameEngine
                     };
                     return (player, combat);
                 }
+
+                case PrototypeCombatEffectKind.RemoveEnemyBlock:
+                    if (targetEnemyId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Remove-enemy-block operation requires a target.");
+                    }
+
+                    combat = SetEnemyBlock(
+                        combat,
+                        targetEnemyId.Value,
+                        0);
+                    break;
+
+                case PrototypeCombatEffectKind.RemoveEnemyPower:
+                    if (targetEnemyId is null
+                        || operation.PowerId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Remove-enemy-power operation requires a target and power ID.");
+                    }
+
+                    combat = RemoveEnemyPower(
+                        combat,
+                        targetEnemyId.Value,
+                        operation.PowerId);
+                    break;
+
+                case PrototypeCombatEffectKind.TriggerEnemyStatus:
+                    if (targetEnemyId is null
+                        || operation.StatusId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Trigger-enemy-status operation requires a target and status ID.");
+                    }
+
+                    combat = TriggerEnemyStatusOnce(
+                        combat,
+                        targetEnemyId.Value,
+                        operation.StatusId,
+                        rng);
+                    break;
 
                 case PrototypeCombatEffectKind.ApplyPlayerPower:
                     if (operation.PowerId is null)
@@ -3570,7 +3727,10 @@ public sealed partial class PrototypeGameEngine
         var baseValue = keyword switch
         {
             PrototypeCardKeyword.Retain =>
-                PrototypeContent.Card(card.CardId).Retain,
+                PrototypeContent.Card(card.CardId).Retain
+                || (card.UpgradeLevel > 0
+                    && PrototypeContent.Card(card.CardId)
+                        .RetainOnUpgrade),
             PrototypeCardKeyword.Sly =>
                 PrototypeContent.Card(card.CardId).Sly,
             PrototypeCardKeyword.Ethereal =>
@@ -4563,6 +4723,17 @@ public sealed partial class PrototypeGameEngine
             return (combat, enemy);
         }
 
+        if (definition.IsDebuff && stacks > 0)
+        {
+            var blocked =
+                TryBlockIncomingEnemyDebuff(enemy);
+            enemy = blocked.Enemy;
+            if (blocked.Blocked)
+            {
+                return (combat, enemy);
+            }
+        }
+
         var powers = enemy.PowerStates.ToList();
         var powerIndex = definition.IsInstanced
             ? -1
@@ -4816,7 +4987,9 @@ public sealed partial class PrototypeGameEngine
                     combat: combat,
                     powerStacks: subscriber.PowerStacks,
                     sourceKind: subscriber.SourceKind,
-                    powerCardPayload: subscriber.PowerCardPayload);
+                    powerCardPayload: subscriber.PowerCardPayload,
+                    sourcePowerEnemyId:
+                        subscriber.SourcePowerEnemyId);
             }
 
             var continuation =
@@ -4930,7 +5103,9 @@ public sealed partial class PrototypeGameEngine
                     combat: combat,
                     powerStacks: subscriber.PowerStacks,
                     sourceKind: subscriber.SourceKind,
-                    powerCardPayload: subscriber.PowerCardPayload);
+                    powerCardPayload: subscriber.PowerCardPayload,
+                    sourcePowerEnemyId:
+                        subscriber.SourcePowerEnemyId);
             }
 
             var nextContinuation =
@@ -5643,6 +5818,181 @@ public sealed partial class PrototypeGameEngine
         CombatState Combat,
         int DamageDealt,
         bool Defeated);
+
+    private static CombatState SetEnemyBlock(
+        CombatState combat,
+        int enemyId,
+        int block)
+    {
+        var enemies = combat.Enemies
+            .Select(enemy => enemy.Fork())
+            .ToArray();
+        var index = Array.FindIndex(
+            enemies,
+            enemy => enemy.InstanceId == enemyId);
+        if (index < 0)
+        {
+            throw new InvalidOperationException(
+                $"Enemy {enemyId} is missing.");
+        }
+
+        enemies[index] = enemies[index] with
+        {
+            Block = Math.Max(0, block)
+        };
+        return combat with { Enemies = enemies };
+    }
+
+    private static CombatState RemoveEnemyPower(
+        CombatState combat,
+        int enemyId,
+        string powerId)
+    {
+        var enemies = combat.Enemies
+            .Select(enemy => enemy.Fork())
+            .ToArray();
+        var index = Array.FindIndex(
+            enemies,
+            enemy => enemy.InstanceId == enemyId);
+        if (index < 0)
+        {
+            throw new InvalidOperationException(
+                $"Enemy {enemyId} is missing.");
+        }
+
+        enemies[index] = enemies[index] with
+        {
+            Powers = enemies[index].PowerStates
+                .Where(power =>
+                    !StringComparer.Ordinal.Equals(
+                        power.PowerId,
+                        powerId))
+                .ToArray()
+        };
+        return combat with { Enemies = enemies };
+    }
+
+    private static CombatState TriggerEnemyStatusOnce(
+        CombatState combat,
+        int enemyId,
+        string statusId,
+        RngBundle rng)
+    {
+        var definition = PrototypeContent.Status(statusId);
+        var enemy = combat.Enemies.SingleOrDefault(item =>
+            item.InstanceId == enemyId)
+            ?? throw new InvalidOperationException(
+                $"Enemy {enemyId} is missing.");
+
+        var stacks = enemy.Statuses.GetValueOrDefault(
+            statusId);
+        if (enemy.Hp <= 0 || stacks <= 0)
+        {
+            return combat;
+        }
+
+        if (definition.TriggerKind
+            != PrototypeStatusTriggerKind.DamageSelfByStacks)
+        {
+            throw new InvalidOperationException(
+                $"Status '{statusId}' has no immediate trigger semantics.");
+        }
+
+        var hpLoss = LoseEnemyHp(
+            combat,
+            enemyId,
+            stacks);
+        combat = hpLoss.Combat;
+
+        if (!hpLoss.Defeated
+            && definition.DecayOnTrigger != 0)
+        {
+            var enemies = combat.Enemies
+                .Select(item => item.Fork())
+                .ToArray();
+            var index = Array.FindIndex(
+                enemies,
+                item => item.InstanceId == enemyId);
+            var statuses = new Dictionary<string, int>(
+                enemies[index].Statuses,
+                StringComparer.Ordinal);
+            var remaining =
+                stacks - definition.DecayOnTrigger;
+            if (remaining > 0)
+            {
+                statuses[statusId] = remaining;
+            }
+            else
+            {
+                statuses.Remove(statusId);
+            }
+
+            enemies[index] = enemies[index] with
+            {
+                Statuses = statuses
+            };
+            combat = combat with { Enemies = enemies };
+        }
+
+        if (hpLoss.Defeated)
+        {
+            combat =
+                CleanupSourceBoundPowersForDefeatedEnemies(
+                    combat);
+            combat = ResolveEnemyDeathSummons(
+                combat,
+                rng);
+        }
+
+        return combat;
+    }
+
+    private static PrototypeDamageResult LoseEnemyHp(
+        CombatState combat,
+        int enemyId,
+        int hpLoss)
+    {
+        var enemies = combat.Enemies
+            .Select(enemy => enemy.Fork())
+            .ToArray();
+        var index = Array.FindIndex(
+            enemies,
+            enemy => enemy.InstanceId == enemyId);
+        if (index < 0)
+        {
+            throw new InvalidOperationException(
+                $"Enemy {enemyId} is missing.");
+        }
+
+        var enemy = enemies[index];
+        if (enemy.Hp <= 0)
+        {
+            return new PrototypeDamageResult(
+                combat,
+                0,
+                false);
+        }
+
+        var modified = ModifyEnemyHpLoss(
+            enemy,
+            hpLoss);
+        enemy = modified.Enemy;
+        var nextHp = Math.Max(
+            0,
+            enemy.Hp - modified.HpLoss);
+        var damageDealt = enemy.Hp - nextHp;
+
+        enemies[index] = enemy with
+        {
+            Hp = nextHp
+        };
+
+        return new PrototypeDamageResult(
+            combat with { Enemies = enemies },
+            damageDealt,
+            Defeated:
+                enemy.Hp > 0 && nextHp == 0);
+    }
 
     private static PrototypeDamageResult DamageEnemy(
         CombatState combat,

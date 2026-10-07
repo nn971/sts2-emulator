@@ -73,6 +73,11 @@ public enum PrototypeCardTarget
 public enum PrototypeCombatEffectKind
 {
     DamageEnemy,
+    LoseEnemyHp,
+    DiscardHand,
+    RemoveEnemyBlock,
+    RemoveEnemyPower,
+    TriggerEnemyStatus,
     GainPlayerBlock,
     DrawCards,
     ApplyEnemyStatus,
@@ -183,7 +188,8 @@ public enum PrototypeEffectTarget
 {
     ActionTargetEnemy,
     AllEnemies,
-    RandomEnemy
+    RandomEnemy,
+    SourcePowerOwnerEnemy
 }
 
 public enum PrototypeEffectSourceKind
@@ -492,7 +498,8 @@ public sealed record PrototypeCardDefinition(
     string[]? Tags = null,
     int EndTurnDamageIfInHand = 0,
     bool MechanicsImplemented = true,
-    bool MultiplayerOnly = false);
+    bool MultiplayerOnly = false,
+    bool RetainOnUpgrade = false);
 
 public sealed record PrototypePotionDefinition(
     string Id,
@@ -583,7 +590,8 @@ public sealed record PrototypePowerDefinition(
     string? OwnerAiStateOnHpThresholdTrigger = null,
     int EnemyAttackDamageBonusPerStack = 0,
     int EnemyStrengthGainAtTurnEndPerStack = 0,
-    int EnemyIncomingAttackDamagePercentPerCardPlayed = 0);
+    int EnemyIncomingAttackDamagePercentPerCardPlayed = 0,
+    bool RemoveAtEnemyTurnEnd = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
