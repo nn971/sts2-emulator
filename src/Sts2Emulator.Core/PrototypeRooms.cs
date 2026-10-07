@@ -922,14 +922,15 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId,
                 rng: state.Rng);
-            var deckChoice =
+            var acquisitionDeckChoice =
                 CreateRelicDeckChoice(
                     player,
                     relicId);
             reward = reward with
             {
                 RelicResolved = true,
-                PendingDeckChoice = deckChoice
+                PendingDeckChoice =
+                    acquisitionDeckChoice
             };
         }
         else
