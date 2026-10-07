@@ -172,7 +172,9 @@ public sealed partial class PrototypeGameEngine
             PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
             NextPowerApplicationOrder: nextPowerApplicationOrder,
             Relics: combatRelics,
-            Potions: combatPotions);
+            Potions: combatPotions,
+            Act: world.Act,
+            Ascension: state.Ascension);
 
         var openingHandTarget =
             PrototypeContent.Rules.HandSize + FirstTurnDrawBonus(state.Player);
