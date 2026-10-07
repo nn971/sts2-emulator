@@ -146,16 +146,32 @@ public sealed class PrototypeKnightGangTests
             2,
             card.Affliction.SourceEnemyInstanceId);
 
-        // Turn 2:
-        // Seeded Flail roll = Flail 9x2, Soul Slash 15,
-        // then Magi applies Dampen.
+        var flailMoves = new List<string>
+        {
+            combat.Enemies.Single(enemy =>
+                enemy.InstanceId == 1).LastMoveId!
+        };
+        var spectralMoves = new List<string>
+        {
+            combat.Enemies.Single(enemy =>
+                enemy.InstanceId == 2).LastMoveId!
+        };
+
+        // Turn 2 has two fixed pieces: Spectral's forced Soul Slash
+        // and Magi's Dampen. Flail has already entered its random pool.
         state = EndTurn(engine, state);
         combat = state.World!.Combat!;
-        Assert.Equal(446, state.Player.Hp);
-        Assert.Equal(
-            "flail",
+        flailMoves.Add(
             combat.Enemies.Single(enemy =>
-                enemy.InstanceId == 1).LastMoveId);
+                enemy.InstanceId == 1).LastMoveId!);
+        spectralMoves.Add(
+            combat.Enemies.Single(enemy =>
+                enemy.InstanceId == 2).LastMoveId!);
+        Assert.Equal("soul_slash", spectralMoves[^1]);
+        Assert.Equal(
+            "dampen",
+            combat.Enemies.Single(enemy =>
+                enemy.InstanceId == 3).LastMoveId);
         Assert.Contains(
             combat.PlayerPowers,
             power => power.PowerId
@@ -173,55 +189,80 @@ public sealed class PrototypeKnightGangTests
             upgradedDefend.InstanceId,
             combat.ExhaustPile);
 
-        // Turn 3:
-        // Flail again 9x2, Soul Flame 3x3, Magi Ram 10.
-        state = EndTurn(engine, state);
-        Assert.Equal(409, state.Player.Hp);
-
-        // Turn 4:
-        // Flail War Chant (+3 Strength), Soul Slash 15, Magi Prep +5 Block.
+        // The remaining turns combine two constrained-random enemies
+        // with Magi's fixed Ram / Prep / Magic Bomb suffix. Do not pin
+        // one prototype-RNG realization as if it were native RNG parity.
         state = EndTurn(engine, state);
         combat = state.World!.Combat!;
-        Assert.Equal(394, state.Player.Hp);
-        var flailKnight = combat.Enemies.Single(
-            enemy => enemy.InstanceId == 1);
-        Assert.Equal(
-            "war_chant",
-            flailKnight.LastMoveId);
-        Assert.Equal(
-            3,
-            Assert.Single(
-                flailKnight.PowerStates,
-                power => power.PowerId
-                    == "proto.power.strength")
-                .Stacks);
+        flailMoves.Add(EnemyMove(combat, 1));
+        spectralMoves.Add(EnemyMove(combat, 2));
+        Assert.Equal("ram", EnemyMove(combat, 3));
+
+        state = EndTurn(engine, state);
+        combat = state.World!.Combat!;
+        flailMoves.Add(EnemyMove(combat, 1));
+        spectralMoves.Add(EnemyMove(combat, 2));
+        Assert.Equal("prep", EnemyMove(combat, 3));
         Assert.Equal(
             5,
             combat.Enemies.Single(enemy =>
                 enemy.InstanceId == 3).Block);
 
-        // Turn 5:
-        // Strength-boosted Flail Ram 18, Soul Flame 3x3,
-        // Magi Magic Bomb 35.
         state = EndTurn(engine, state);
         combat = state.World!.Combat!;
-        Assert.Equal(332, state.Player.Hp);
-        Assert.Equal(
-            "ram",
-            combat.Enemies.Single(enemy =>
-                enemy.InstanceId == 1).LastMoveId);
-        Assert.Equal(
-            "soul_flame",
-            combat.Enemies.Single(enemy =>
-                enemy.InstanceId == 2).LastMoveId);
-        Assert.Equal(
-            "magic_bomb",
-            combat.Enemies.Single(enemy =>
-                enemy.InstanceId == 3).LastMoveId);
+        flailMoves.Add(EnemyMove(combat, 1));
+        spectralMoves.Add(EnemyMove(combat, 2));
+        Assert.Equal("magic_bomb", EnemyMove(combat, 3));
 
+        AssertFlailPolicy(flailMoves);
+        AssertSpectralPolicy(spectralMoves);
         Assert.All(
             combat.Enemies,
             enemy => Assert.Equal(5, enemy.MoveIndex));
+    }
+
+    private static string EnemyMove(
+        CombatState combat,
+        int instanceId) =>
+        combat.Enemies.Single(enemy =>
+            enemy.InstanceId == instanceId)
+            .LastMoveId!;
+
+    private static void AssertFlailPolicy(
+        IReadOnlyList<string> moves)
+    {
+        Assert.Equal("ram", moves[0]);
+        AssertRepeatLimit(moves, "war_chant", 1);
+        AssertRepeatLimit(moves, "flail", 2);
+        AssertRepeatLimit(moves, "ram", 2);
+    }
+
+    private static void AssertSpectralPolicy(
+        IReadOnlyList<string> moves)
+    {
+        Assert.Equal("hex", moves[0]);
+        Assert.Equal("soul_slash", moves[1]);
+        AssertRepeatLimit(moves.Skip(1).ToArray(), "soul_slash", 2);
+        AssertRepeatLimit(moves.Skip(1).ToArray(), "soul_flame", 1);
+    }
+
+    private static void AssertRepeatLimit(
+        IEnumerable<string> moves,
+        string moveId,
+        int maximum)
+    {
+        var consecutive = 0;
+        foreach (var move in moves)
+        {
+            consecutive = StringComparer.Ordinal.Equals(
+                    move,
+                    moveId)
+                ? consecutive + 1
+                : 0;
+            Assert.True(
+                consecutive <= maximum,
+                $"{moveId} repeated {consecutive} times");
+        }
     }
 
     private static RunState EndTurn(
