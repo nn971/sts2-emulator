@@ -60,7 +60,8 @@ public sealed record PrototypeAiReward(
     string? RelicOption,
     bool CardResolved,
     bool PotionResolved,
-    bool RelicResolved);
+    bool RelicResolved,
+    int ExtraCardRewardGroupsRemaining = 0);
 
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
@@ -300,7 +301,11 @@ public sealed class PrototypeAiEnvironment
                     world.Reward.RelicOption,
                     world.Reward.CardResolved,
                     world.Reward.PotionResolved,
-                    world.Reward.RelicResolved),
+                    world.Reward.RelicResolved,
+                    Math.Max(
+                        0,
+                        (world.Reward.ExtraCardOptions?.Length ?? 0)
+                        - world.Reward.ExtraCardRewardsResolved)),
             Shop: world?.Shop is null
                 ? null
                 : new PrototypeAiShop(
