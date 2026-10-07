@@ -1911,6 +1911,56 @@ public static class PrototypeContent
                 ],
                 MinHp: 44),
             new PrototypeEnemyDefinition(
+                "proto.enemy.assassin_ruby_raider",
+                "Assassin Raider",
+                23,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "killshot",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                10,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 18),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.snapping_jaxfruit",
+                "Snapping Jaxfruit",
+                33,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "energy_orb",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                3,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.strength")
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 3)
+                ],
+                MinHp: 31),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.twig_slime_s",
                 "Twig Slime (S)",
                 11,
