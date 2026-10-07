@@ -29,7 +29,7 @@ An encounter is not complete merely because all of its monster classes exist. Co
 - enemy self-powers and flat Strength attack scaling;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
-- first source-backed Act 1 monster: **Seapunk** (isolated model; encounter pool not yet promoted).
+- first source-backed Act 1 models: **Seapunk** and **Twig Slime (S)** (isolated models; encounter pools not yet promoted).
 
 ## Encounter coverage
 
@@ -80,7 +80,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Underdocks | Monster weak | `TOADPOLES_WEAK` | `TOADPOLE` | no | pending | pending | no |
 | Underdocks | Monster | `TWO_TAILED_RATS_NORMAL` | `TWO_TAILED_RAT` | no | pending | pending | no |
 
-\* `SEAPUNK_WEAK` has its only monster model implemented, but the encounter itself is deliberately not in the live selector until pool/formation translation is source-backed.
+\* `SEAPUNK_WEAK` has its only monster model implemented, but the encounter itself is deliberately not in the live selector until pool/formation translation is source-backed. Twig Slime (S) is implemented as a reusable model, but every encounter containing it still depends on additional slime/formation mechanics.
 
 ## Monster-model coverage
 
@@ -131,7 +131,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `TOADPOLE` — Toadpole | Normal | 21–25 | 22–26 | conditional | not started |
 | `TRACKER_RUBY_RAIDER` — Tracker Raider | Normal | 21–25 | 22–26 | cycle | not started |
 | `TWIG_SLIME_M` — Twig Slime (M) | Normal | 26–28 | 27–29 | random | not started |
-| `TWIG_SLIME_S` — Twig Slime (S) | Normal | 7–11 | 8–12 | cycle | not started |
+| `TWIG_SLIME_S` — Twig Slime (S) | Normal | 7–11 | 8–12 | cycle | implemented + focused tests |
 | `TWO_TAILED_RAT` — Two-Tailed Rat | Normal | 17–21 | 18–22 | random | not started |
 | `VANTOM` — Vantom | Boss | 173 | 183 | cycle | not started |
 | `VINE_SHAMBLER` — Vine Shambler | Normal | 61 | 64 | cycle | not started |
