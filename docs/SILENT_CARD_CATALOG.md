@@ -46,13 +46,13 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 27 | Defend | implemented |  |
 | 28 | Deflect | implemented |  |
 | 29 | Dodge and Roll | implemented |  |
-| 30 | Echoing Slash | catalog-only |  |
+| 30 | Echoing Slash | implemented |  |
 | 31 | Envenom | implemented |  |
 | 32 | Escape Plan | implemented |  |
 | 33 | Expertise | implemented |  |
 | 34 | Expose | implemented |  |
 | 35 | Fade | catalog-only | multiplayer-only |
-| 36 | Fan of Knives | catalog-only |  |
+| 36 | Fan of Knives | implemented |  |
 | 37 | Finisher | implemented |  |
 | 38 | Flanking | catalog-only | multiplayer-only |
 | 39 | Flechettes | implemented |  |
@@ -106,7 +106,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 87 | Tracking | implemented |  |
 | 88 | Untouchable | implemented |  |
 | 89 | Up My Sleeve | implemented |  |
-| 90 | Well-Laid Plans | catalog-only |  |
+| 90 | Well-Laid Plans | implemented |  |
 | 91 | Wraith Form | implemented |  |
 
 ## Catalog-only implementation queue
@@ -116,14 +116,11 @@ The 11 source-backed catalog-only cards are:
 - Blade of Ink
 - Blade Symphony (multiplayer-only)
 - Concoct (multiplayer-only)
-- Echoing Slash
 - Fade (multiplayer-only)
-- Fan of Knives
 - Flanking (multiplayer-only)
 - Knife Trap
 - Sneaky (multiplayer-only)
 - The Hunt
-- Well-Laid Plans
 
 A useful implementation order is to start with cards expressible through existing generic
 primitives (for example Strangle, Outbreak, Calculated Gamble), then add mechanics that create

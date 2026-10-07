@@ -73,6 +73,7 @@ public enum PrototypeCardTarget
 public enum PrototypeCombatEffectKind
 {
     DamageEnemy,
+    DamageAllEnemiesRepeatPerKill,
     LoseEnemyHp,
     DiscardHand,
     RemoveEnemyBlock,
@@ -598,7 +599,9 @@ public sealed record PrototypePowerDefinition(
     bool RemoveAtEnemyTurnEnd = false,
     bool NegativeApplicationIsDebuff = false,
     string? ExtraEnemyStatusTriggerStatusId = null,
-    int ExtraEnemyStatusTriggersPerStack = 0);
+    int ExtraEnemyStatusTriggersPerStack = 0,
+    bool PreventsHandDiscard = false,
+    string? AllEnemyTargetCardTag = null);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

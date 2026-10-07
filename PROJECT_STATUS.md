@@ -340,7 +340,7 @@ See `docs/reference-builds/v0.111.0-knight-gang-differential.md`.
 
 ## Silent card catalog milestone
 
-The pinned v0.111.0 native `SilentCardPool` is now represented explicitly as **91 unique cards**.
+The pinned v0.111.0 native `SilentCardPool` is represented explicitly as **91 unique cards**.
 Eighty currently map to implemented prototype mechanics; the remaining 11 have source-backed
 cost/type/rarity/keyword metadata and are gated with `MechanicsImplemented = false` so they cannot
 silently behave as no-op cards. The five multiplayer-only Silent cards are typed separately and
@@ -372,3 +372,11 @@ deterministic smoke policy over many seeds and reports:
 
 This is a structural audit and does not claim native RNG parity. See
 `docs/reference-builds/v0.111.0-mechanics-gap-043.md`.
+
+
+### Silent backlog pass: Echoing Slash / Fan of Knives / Well-Laid Plans
+
+Source-backed mechanics now include Echoing Slash's kill-propagating all-enemy attack,
+Fan of Knives' persistent Shiv all-enemy targeting plus 4 (5) generated Shivs, and
+Well-Laid Plans' end-turn whole-hand preservation with Ethereal still resolving first.
+These mechanics use generic power capabilities rather than card-ID branches.

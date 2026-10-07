@@ -624,7 +624,10 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            if (definition.Target == PrototypeCardTarget.Enemy)
+            var effectiveTarget = EffectiveCardTarget(
+                combat,
+                definition);
+            if (effectiveTarget == PrototypeCardTarget.Enemy)
             {
                 foreach (var enemy in combat.Enemies.Where(enemy => enemy.Hp > 0))
                 {
@@ -741,7 +744,10 @@ public sealed partial class PrototypeGameEngine
                 $"Card {payload.CardInstanceId} does not satisfy its play condition.");
         }
 
-        ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
+        ValidateTarget(
+            EffectiveCardTarget(combat, definition),
+            payload.TargetEnemyId,
+            combat);
         var energySpent = isFreeByPower
             ? 0
             : ResolveCardEnergySpent(
@@ -829,9 +835,17 @@ public sealed partial class PrototypeGameEngine
         var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
         {
+            var effectiveEffect =
+                ShouldCardTargetAllEnemies(combat, definition)
+                && effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                    ? effect with
+                    {
+                        Target = PrototypeEffectTarget.AllEnemies
+                    }
+                    : effect;
             EnqueueEffectOperations(
                 operations,
-                effect,
+                effectiveEffect,
                 0,
                 0,
                 payload.TargetEnemyId,
@@ -1146,13 +1160,18 @@ public sealed partial class PrototypeGameEngine
                             PrototypeCardKeyword.Ethereal))
                     .ToArray();
                 var etherealSet = ethereal.ToHashSet();
+                var preserveHand = combat.PlayerPowers.Any(power =>
+                    power.Stacks > 0
+                    && PrototypeContent.Power(power.PowerId)
+                        .PreventsHandDiscard);
                 var retained = combat.Hand
                     .Where(instanceId =>
                         !etherealSet.Contains(instanceId)
-                        && CardHasKeyword(
-                            combat,
-                            instanceId,
-                            PrototypeCardKeyword.Retain))
+                        && (preserveHand
+                            || CardHasKeyword(
+                                combat,
+                                instanceId,
+                                PrototypeCardKeyword.Retain)))
                     .ToArray();
                 var retainedSet = retained.ToHashSet();
                 var discarded = combat.Hand
@@ -2337,7 +2356,10 @@ public sealed partial class PrototypeGameEngine
                         + (effect.GeneratedCardUpgradePerSourceUpgrade * upgradeLevel),
                     TargetMode: effect.Target,
                     SourceKind: sourceKind,
-                    IsPoweredAttack: isPoweredAttack && effect.Kind == PrototypeCombatEffectKind.DamageEnemy,
+                    IsPoweredAttack: isPoweredAttack
+                        && effect.Kind is
+                            PrototypeCombatEffectKind.DamageEnemy
+                            or PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill,
                     Condition: effect.Condition,
                     SelectedCardPower: effect.SelectedCardPower is null
                         ? null
@@ -2512,6 +2534,124 @@ public sealed partial class PrototypeGameEngine
                     }
 
                     break;
+
+                case PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill:
+                {
+                    var pendingRounds = 1;
+                    while (pendingRounds > 0 && player.Hp > 0)
+                    {
+                        pendingRounds--;
+                        var roundTargets = combat.Enemies
+                            .Where(enemy => enemy.Hp > 0)
+                            .Select(enemy => enemy.InstanceId)
+                            .ToArray();
+
+                        foreach (var enemyId in roundTargets)
+                        {
+                            var enemyBeforeHit = combat.Enemies
+                                .Single(enemy => enemy.InstanceId == enemyId);
+                            if (enemyBeforeHit.Hp <= 0)
+                            {
+                                continue;
+                            }
+
+                            if (operation.IsPoweredAttack)
+                            {
+                                var retaliation = EnemyAttackRetaliation(
+                                    combat,
+                                    enemyId);
+                                if (retaliation > 0)
+                                {
+                                    var absorbed = Math.Min(
+                                        combat.PlayerBlock,
+                                        retaliation);
+                                    combat = combat with
+                                    {
+                                        PlayerBlock =
+                                            combat.PlayerBlock - absorbed
+                                    };
+                                    player = player with
+                                    {
+                                        Hp = Math.Max(
+                                            0,
+                                            player.Hp
+                                            - Math.Max(
+                                                0,
+                                                retaliation - absorbed))
+                                    };
+                                    if (player.Hp <= 0)
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            var damageAmount = operation.Amount;
+                            if (operation.IsPoweredAttack)
+                            {
+                                damageAmount = ModifyPlayerAttackDamage(
+                                    combat,
+                                    sourceCardInstanceId,
+                                    enemyId,
+                                    damageAmount);
+                                damageAmount = ModifyIncomingAttackDamage(
+                                    combat,
+                                    enemyId,
+                                    damageAmount,
+                                    includeCurrentCard:
+                                        sourceCardInstanceId is not null);
+                            }
+
+                            var damageResult = DamageEnemy(
+                                combat,
+                                enemyId,
+                                damageAmount);
+                            combat = damageResult.Combat;
+                            if (damageResult.Defeated)
+                            {
+                                pendingRounds++;
+                                combat =
+                                    CleanupSourceBoundPowersForDefeatedEnemies(
+                                        combat);
+                            }
+
+                            if (damageResult.DamageDealt > 0)
+                            {
+                                var damaged = DispatchCombatEvent(
+                                    player,
+                                    combat,
+                                    new PrototypeCombatEvent(
+                                        PrototypeCombatEventKind.EnemyDamaged,
+                                        TargetEnemyId: enemyId,
+                                        Amount: damageResult.DamageDealt),
+                                    rng,
+                                    eventDepth + 1);
+                                player = damaged.Player;
+                                combat = damaged.Combat;
+                            }
+
+                            if (damageResult.Defeated)
+                            {
+                                var defeated = DispatchCombatEvent(
+                                    player,
+                                    combat,
+                                    new PrototypeCombatEvent(
+                                        PrototypeCombatEventKind.EnemyDefeated,
+                                        TargetEnemyId: enemyId,
+                                        Amount: damageResult.DamageDealt),
+                                    rng,
+                                    eventDepth + 1);
+                                player = defeated.Player;
+                                combat = defeated.Combat;
+                                combat = ResolveEnemyDeathSummons(
+                                    combat,
+                                    rng);
+                            }
+                        }
+                    }
+
+                    break;
+                }
 
                 case PrototypeCombatEffectKind.LoseEnemyHp:
                 {
@@ -3582,6 +3722,35 @@ public sealed partial class PrototypeGameEngine
         return ApplyPlayerIncomingDamageCap(
             combat,
             modified);
+    }
+
+    private static PrototypeCardTarget EffectiveCardTarget(
+        CombatState combat,
+        PrototypeCardDefinition definition) =>
+        ShouldCardTargetAllEnemies(combat, definition)
+            ? PrototypeCardTarget.None
+            : definition.Target;
+
+    private static bool ShouldCardTargetAllEnemies(
+        CombatState combat,
+        PrototypeCardDefinition definition)
+    {
+        var tags = definition.Tags ?? Array.Empty<string>();
+        return combat.PlayerPowers.Any(power =>
+        {
+            if (power.Stacks <= 0)
+            {
+                return false;
+            }
+
+            var powerDefinition =
+                PrototypeContent.Power(power.PowerId);
+            return powerDefinition.AllEnemyTargetCardTag is
+                    { } requiredTag
+                && tags.Contains(
+                    requiredTag,
+                    StringComparer.Ordinal);
+        });
     }
 
     private static bool IsCardFreeByPower(

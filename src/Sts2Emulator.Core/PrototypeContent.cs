@@ -1353,10 +1353,15 @@ public static class PrototypeContent
                 "Echoing Slash",
                 1,
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill,
+                        10,
+                        3,
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ],
                 Rarity: PrototypeCardRarity.Uncommon,
-                Type: PrototypeCardType.Attack,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Attack)
             new PrototypeCardDefinition(
                 "proto.silent.expose",
                 "Expose",
@@ -1395,10 +1400,19 @@ public static class PrototypeContent
                 "Fan of Knives",
                 2,
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.fan_of_knives"),
+                    new(
+                        PrototypeCombatEffectKind.CreateCardsInHand,
+                        4,
+                        1,
+                        CardId: "proto.silent.shiv")
+                ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Power,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Power)
             new PrototypeCardDefinition(
                 "proto.silent.flanking",
                 "Flanking",
@@ -1566,10 +1580,14 @@ public static class PrototypeContent
                     2,
                     -1),
                 PrototypeCardTarget.None,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        1,
+                        PowerId: "proto.power.well_laid_plans")
+                ],
                 Rarity: PrototypeCardRarity.Rare,
-                Type: PrototypeCardType.Power,
-                MechanicsImplemented: false),
+                Type: PrototypeCardType.Power)
             new PrototypeCardDefinition(
                 "proto.silent.wraith_form",
                 "Wraith Form",
@@ -2359,6 +2377,21 @@ public static class PrototypeContent
                 BlockBonusPerStack: 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AttackRetaliationPerStack: 1)
+,
+            new PrototypePowerDefinition(
+                "proto.power.fan_of_knives",
+                "Fan of Knives",
+                0,
+                [],
+                DoesNotStack: true,
+                AllEnemyTargetCardTag: "Shiv"),
+            new PrototypePowerDefinition(
+                "proto.power.well_laid_plans",
+                "Well-Laid Plans",
+                0,
+                [],
+                DoesNotStack: true,
+                PreventsHandDiscard: true)
         }.ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
