@@ -596,7 +596,15 @@ public enum PrototypeEnemyMovePolicy
 public enum PrototypeEnemyAiStateKind
 {
     Move,
-    Random
+    Random,
+    Conditional
+}
+
+public enum PrototypeEnemyAiConditionKind
+{
+    IsAlone,
+    IsFront,
+    IsNotFront
 }
 
 public enum PrototypeEnemyAiRepeatRule
@@ -614,12 +622,17 @@ public sealed record PrototypeEnemyAiBranch(
         PrototypeEnemyAiRepeatRule.CanRepeatForever,
     int MaxTimes = 0);
 
+public sealed record PrototypeEnemyAiConditionalBranch(
+    string TargetStateId,
+    PrototypeEnemyAiConditionKind Condition);
+
 public sealed record PrototypeEnemyAiStateDefinition(
     string Id,
     PrototypeEnemyAiStateKind Kind,
     int? MoveIndex = null,
     string? NextStateId = null,
-    PrototypeEnemyAiBranch[]? Branches = null);
+    PrototypeEnemyAiBranch[]? Branches = null,
+    PrototypeEnemyAiConditionalBranch[]? ConditionalBranches = null);
 
 public sealed record PrototypeEnemyAiDefinition(
     string InitialStateId,
@@ -808,7 +821,8 @@ public sealed record EnemyCombatState(
     string? LastMoveId = null,
     int ConsecutiveMoveUses = 0,
     string? AiStateId = null,
-    Dictionary<string, int>? MoveUseCounts = null)
+    Dictionary<string, int>? MoveUseCounts = null,
+    int FormationPosition = 0)
 {
     public EnemyCombatState Fork() => this with
     {
