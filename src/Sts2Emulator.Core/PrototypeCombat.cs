@@ -610,7 +610,7 @@ public sealed partial class PrototypeGameEngine
         var actions = new List<GameAction>();
 
         var canPlayCard =
-            CanPlayAnotherCardThisTurn(combat);
+            CanPlayAnotherCardThisTurn(state.Player, combat);
         if (canPlayCard)
         {
         foreach (var instanceId in combat.Hand)
@@ -717,7 +717,7 @@ public sealed partial class PrototypeGameEngine
         if (!CanPlayAnotherCardThisTurn(combat))
         {
             throw new InvalidOperationException(
-                "A player power prevents playing another card this turn.");
+                "A player effect prevents playing another card this turn.");
         }
 
         var card = RequireCombatCard(combat, payload.CardInstanceId);
@@ -4279,13 +4279,20 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static bool CanPlayAnotherCardThisTurn(
+        PlayerState player,
         CombatState combat)
     {
-        var caps = combat.PlayerPowers
+        var powerCaps = combat.PlayerPowers
             .Where(power => power.Stacks > 0)
             .Select(power =>
                 PrototypeContent.Power(power.PowerId)
-                    .MaxCardsPlayablePerTurn)
+                    .MaxCardsPlayablePerTurn);
+        var relicCaps = player.Relics
+            .Select(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .MaxCardsPlayablePerTurn);
+        var caps = powerCaps
+            .Concat(relicCaps)
             .Where(cap => cap > 0)
             .ToArray();
 
