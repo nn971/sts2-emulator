@@ -2155,7 +2155,104 @@ public static class PrototypeContent
             new PrototypeRelicDefinition(
                 "proto.relic.frozen_egg",
                 "Frozen Egg",
-                UpgradeAddedCardType: PrototypeCardType.Power)
+                UpgradeAddedCardType: PrototypeCardType.Power),
+            new PrototypeRelicDefinition(
+                "proto.relic.bronze_scales",
+                "Bronze Scales",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [new(
+                            PrototypeCombatEffectKind.ApplyPlayerPower,
+                            3,
+                            PowerId: "proto.power.thorns")])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.oddly_smooth_stone",
+                "Oddly Smooth Stone",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [new(
+                            PrototypeCombatEffectKind.ApplyPlayerPower,
+                            1,
+                            PowerId: "proto.power.dexterity")])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.bag_of_marbles",
+                "Bag of Marbles",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [new(
+                            PrototypeCombatEffectKind.ApplyEnemyStatus,
+                            1,
+                            StatusId: "proto.status.vulnerable",
+                            Target: PrototypeEffectTarget.AllEnemies)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.gremlin_horn",
+                "Gremlin Horn",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.EnemyDefeated,
+                        [
+                            new(PrototypeCombatEffectKind.GainEnergy, 1),
+                            new(PrototypeCombatEffectKind.DrawCards, 1)
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.mercury_hourglass",
+                "Mercury Hourglass",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [new(
+                            PrototypeCombatEffectKind.DamageEnemy,
+                            3,
+                            Target: PrototypeEffectTarget.AllEnemies)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.orichalcum",
+                "Orichalcum",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnEnded,
+                        [new(
+                            PrototypeCombatEffectKind.GainPlayerBlock,
+                            6)],
+                        RequiresZeroPlayerBlock: true)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.horn_cleat",
+                "Horn Cleat",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [new(
+                            PrototypeCombatEffectKind.GainPlayerBlock,
+                            14)],
+                        TurnEquals: 2)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.captains_wheel",
+                "Captain's Wheel",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [new(
+                            PrototypeCombatEffectKind.GainPlayerBlock,
+                            18)],
+                        TurnEquals: 3)
+                ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -5837,7 +5934,15 @@ public static class PrototypeContent
         "proto.relic.darkstone_periapt",
         "proto.relic.molten_egg",
         "proto.relic.toxic_egg",
-        "proto.relic.frozen_egg"
+        "proto.relic.frozen_egg",
+        "proto.relic.bronze_scales",
+        "proto.relic.oddly_smooth_stone",
+        "proto.relic.bag_of_marbles",
+        "proto.relic.gremlin_horn",
+        "proto.relic.mercury_hourglass",
+        "proto.relic.orichalcum",
+        "proto.relic.horn_cleat",
+        "proto.relic.captains_wheel"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>
