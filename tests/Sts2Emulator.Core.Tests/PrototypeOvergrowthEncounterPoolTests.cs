@@ -37,8 +37,85 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
             Assert.IsType<string[]>(
                     pool.RemainingEliteEncounterIds)
                 .Order(StringComparer.Ordinal));
+        Assert.Contains(
+            pool.BossEncounterId,
+            PrototypeContent.OvergrowthBossEncounterPool);
 
         PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void FullUnlockBossSelectionIsPinnedAtRunStart()
+    {
+        var engine = new PrototypeGameEngine();
+        var seen = new HashSet<string>(
+            StringComparer.Ordinal);
+
+        for (var seedIndex = 0;
+             seedIndex < 96;
+             seedIndex++)
+        {
+            var state = StartRun(
+                $"overgrowth-boss-{seedIndex}",
+                engine);
+            var selected =
+                state.World!.ActOneEncounterPool!
+                    .BossEncounterId!;
+            Assert.Contains(
+                selected,
+                PrototypeContent.OvergrowthBossEncounterPool);
+            seen.Add(selected);
+
+            state = StartRoom(
+                engine,
+                state,
+                PrototypeRoomType.Boss,
+                floor: 17);
+
+            Assert.Equal(
+                selected,
+                state.World!.EncounterIds[^1]);
+        }
+
+        Assert.Equal(
+            PrototypeContent.OvergrowthBossEncounterPool
+                .Order(StringComparer.Ordinal),
+            seen.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void BossRoomDoesNotConsumeOrdinaryOrEliteBags()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = StartRun(
+            "overgrowth-boss-does-not-consume",
+            engine);
+        var before =
+            state.World!.ActOneEncounterPool!.Fork();
+
+        state = StartRoom(
+            engine,
+            state,
+            PrototypeRoomType.Boss,
+            floor: 17);
+
+        var after =
+            state.World!.ActOneEncounterPool!;
+        Assert.Equal(
+            before.OrdinaryCombatsStarted,
+            after.OrdinaryCombatsStarted);
+        Assert.Equal(
+            before.RemainingWeakEncounterIds,
+            after.RemainingWeakEncounterIds);
+        Assert.Equal(
+            before.RemainingNormalEncounterIds,
+            after.RemainingNormalEncounterIds);
+        Assert.Equal(
+            before.RemainingEliteEncounterIds,
+            after.RemainingEliteEncounterIds);
+        Assert.Equal(
+            before.BossEncounterId,
+            after.BossEncounterId);
     }
 
     [Fact]
