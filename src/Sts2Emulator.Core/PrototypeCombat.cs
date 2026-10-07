@@ -940,21 +940,43 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeEnemyMovePolicy.UniformRandomAfterOpener:
             {
-                if (definition.OpeningMoveIndex < 0
-                    || definition.OpeningMoveIndex
+                var openingMoves =
+                    definition.OpeningMoveIndices
+                    ?? [definition.OpeningMoveIndex];
+
+                if (openingMoves.Length == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Enemy '{definition.Id}' has an empty opening move sequence.");
+                }
+
+                foreach (var openingMoveIndex in openingMoves)
+                {
+                    if (openingMoveIndex < 0
+                        || openingMoveIndex
+                            >= definition.Moves.Length)
+                    {
+                        throw new InvalidOperationException(
+                            $"Enemy '{definition.Id}' has invalid opening move index {openingMoveIndex}.");
+                    }
+                }
+
+                if (enemy.MoveIndex < openingMoves.Length)
+                {
+                    return definition.Moves[
+                        openingMoves[enemy.MoveIndex]];
+                }
+
+                if (definition.RandomMovePoolStartIndex < 0
+                    || definition.RandomMovePoolStartIndex
                         >= definition.Moves.Length)
                 {
                     throw new InvalidOperationException(
-                        $"Enemy '{definition.Id}' has invalid opening move index {definition.OpeningMoveIndex}.");
-                }
-
-                if (enemy.MoveIndex == 0)
-                {
-                    return definition.Moves[
-                        definition.OpeningMoveIndex];
+                        $"Enemy '{definition.Id}' has invalid random-pool start index {definition.RandomMovePoolStartIndex}.");
                 }
 
                 var candidates = definition.Moves
+                    .Skip(definition.RandomMovePoolStartIndex)
                     .Where(move =>
                         move.MaxConsecutiveUses <= 0
                         || !StringComparer.Ordinal.Equals(
