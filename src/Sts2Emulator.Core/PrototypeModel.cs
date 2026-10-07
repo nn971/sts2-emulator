@@ -568,7 +568,8 @@ public sealed record PrototypeRelicDefinition(
     int FirstTurnDrawBonus = 0,
     int EnergyPerTurnBonus = 0,
     PrototypeRelicTriggerSpec[]? Triggers = null,
-    PrototypeRelicRunTriggerSpec[]? RunTriggers = null);
+    PrototypeRelicRunTriggerSpec[]? RunTriggers = null,
+    PrototypeCardType? UpgradeAddedCardType = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
