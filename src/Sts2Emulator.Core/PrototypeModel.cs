@@ -570,6 +570,17 @@ public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEffectSpec[] Effects,
     PrototypeCardType? RequiredCardType = null);
 
+public enum PrototypePersistentDeckChoiceKind
+{
+    Remove,
+    Transform
+}
+
+public sealed record PrototypeRelicDeckChoiceSpec(
+    PrototypePersistentDeckChoiceKind Kind,
+    int Selections,
+    bool UpgradeTransformedCards = false);
+
 public sealed record PrototypeRelicDefinition(
     string Id,
     string Name,
@@ -588,7 +599,8 @@ public sealed record PrototypeRelicDefinition(
     bool PreventRestHealing = false,
     bool PreventRestUpgrade = false,
     int MaxCardsPlayablePerTurn = 0,
-    bool HideEnemyIntents = false);
+    bool HideEnemyIntents = false,
+    PrototypeRelicDeckChoiceSpec? AcquisitionDeckChoice = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1387,6 +1399,20 @@ public sealed record CombatState(
         Counters ?? new PrototypeCombatCounters();
 }
 
+public sealed record PrototypePendingDeckChoiceState(
+    string SourceRelicId,
+    PrototypePersistentDeckChoiceKind Kind,
+    int RemainingSelections,
+    long[] CandidateCardInstanceIds,
+    bool UpgradeTransformedCards = false)
+{
+    public PrototypePendingDeckChoiceState Fork() => this with
+    {
+        CandidateCardInstanceIds =
+            (long[])CandidateCardInstanceIds.Clone()
+    };
+}
+
 public sealed record RewardState(
     string SourceRoom,
     string[] CardOptions,
@@ -1398,7 +1424,8 @@ public sealed record RewardState(
     bool EndsAct,
     string[][]? ExtraCardOptions = null,
     int ExtraCardRewardsResolved = 0,
-    string[]? RelicOptions = null)
+    string[]? RelicOptions = null,
+    PrototypePendingDeckChoiceState? PendingDeckChoice = null)
 {
     public string[] CurrentCardOptions
     {
@@ -1434,7 +1461,8 @@ public sealed record RewardState(
                 .ToArray(),
         RelicOptions = RelicOptions is null
             ? null
-            : (string[])RelicOptions.Clone()
+            : (string[])RelicOptions.Clone(),
+        PendingDeckChoice = PendingDeckChoice?.Fork()
     };
 }
 
@@ -1515,6 +1543,7 @@ public sealed record PlayCardPayload(long CardInstanceId, int? TargetEnemyId);
 public sealed record UsePotionPayload(int Slot, int? TargetEnemyId);
 public sealed record ChooseCardPayload(int Index);
 public sealed record ChooseRelicPayload(int Index);
+public sealed record ChooseDeckCardPayload(long CardInstanceId);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
 public sealed record UpgradeCardPayload(long CardInstanceId);
