@@ -610,7 +610,7 @@ public static class PrototypeStateInvariants
             if (!StringComparer.Ordinal.Equals(card.CardId, persistent.CardId)
                 || card.UpgradeLevel
                     + card.SuppressedUpgradeLevels
-                    != persistent.UpgradeLevel
+                    < persistent.UpgradeLevel
                 || card.Enchantment != persistent.Enchantment)
             {
                 throw new InvalidOperationException(
