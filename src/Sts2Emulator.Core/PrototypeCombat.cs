@@ -714,7 +714,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is not in hand.");
         }
 
-        if (!CanPlayAnotherCardThisTurn(combat))
+        if (!CanPlayAnotherCardThisTurn(state.Player, combat))
         {
             throw new InvalidOperationException(
                 "A player effect prevents playing another card this turn.");
