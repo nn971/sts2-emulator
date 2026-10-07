@@ -1017,7 +1017,12 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException("Enemy-status pipeline step is missing a stage.");
                 }
 
-                combat = ResolveEnemyStatusStage(combat, automaticStep.Stage.Value);
+                combat = ResolveEnemyStatusStage(
+                    combat,
+                    automaticStep.Stage.Value);
+                combat = ResolveEnemyDeathSummons(
+                    combat,
+                    state.Rng);
                 break;
 
             case PrototypeAutomaticStepKind.ResetEnemyBlock:
