@@ -757,6 +757,10 @@ public sealed record PrototypeEncounterSelectionGroup(
     bool ChooseDistinct = false,
     string[]? SlotNames = null);
 
+public sealed record PrototypeEncounterFormationVariant(
+    PrototypeEncounterEnemySpec[]? Formation = null,
+    PrototypeEncounterSelectionGroup[]? SelectionGroups = null);
+
 public sealed record PrototypeEncounterDefinition(
     string Id,
     PrototypeRoomType RoomType,
@@ -771,11 +775,13 @@ public sealed record PrototypeEncounterDefinition(
         PrototypeEncounterFormationPolicy.Fixed,
     string[]? EnemyPool = null,
     int EnemyCount = 0,
-    PrototypeEncounterSelectionGroup[]? SelectionGroups = null)
+    PrototypeEncounterSelectionGroup[]? SelectionGroups = null,
+    PrototypeEncounterFormationVariant[]? FormationVariants = null)
 {
     public PrototypeEncounterEnemySpec[] FixedEnemySpecs =>
         Formation
         ?? (SelectionGroups is { Length: > 0 }
+            || FormationVariants is { Length: > 0 }
             || FormationPolicy
                 == PrototypeEncounterFormationPolicy.ChooseDistinct
             ? Array.Empty<PrototypeEncounterEnemySpec>()
@@ -789,7 +795,20 @@ public sealed record PrototypeEncounterDefinition(
     public PrototypeEncounterEnemySpec[] ResolveEnemySpecs(
         RngBundle rng)
     {
-        var resolved = FixedEnemySpecs.ToList();
+        PrototypeEncounterFormationVariant? variant = null;
+        if (FormationVariants is { Length: > 0 } variants)
+        {
+            var variantIndex = variants.Length == 1
+                ? 0
+                : PrototypeRng.NextInt(
+                    rng,
+                    "combat",
+                    variants.Length);
+            variant = variants[variantIndex];
+        }
+
+        var resolved = (variant?.Formation ?? FixedEnemySpecs)
+            .ToList();
 
         if (FormationPolicy
                 == PrototypeEncounterFormationPolicy.ChooseDistinct)
@@ -823,7 +842,8 @@ public sealed record PrototypeEncounterDefinition(
         }
 
         foreach (var group in
-                 SelectionGroups
+                 variant?.SelectionGroups
+                 ?? SelectionGroups
                  ?? Array.Empty<
                      PrototypeEncounterSelectionGroup>())
         {
