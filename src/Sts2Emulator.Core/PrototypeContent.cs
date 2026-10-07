@@ -3170,6 +3170,14 @@ public static class PrototypeContent
                 OncePerRun: false)
         }.ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
+    public static string[] OvergrowthWeakEncounterPool { get; } =
+    [
+        "proto.encounter.nibbits_weak",
+        "proto.encounter.slimes_weak",
+        "proto.encounter.fuzzy_wurm_crawler_weak",
+        "proto.encounter.shrinker_beetle_weak"
+    ];
+
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
         new(
