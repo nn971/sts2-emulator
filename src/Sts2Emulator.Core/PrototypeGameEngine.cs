@@ -47,6 +47,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
         var rules = PrototypeContent.Rules;
         var rng = PrototypeRng.CreateBundle(state.RunSeed);
+        var actOneBossEncounterId =
+            PrototypeContent.OvergrowthBossEncounterPool[
+                PrototypeRng.NextInt(
+                    rng,
+                    "combat",
+                    PrototypeContent
+                        .OvergrowthBossEncounterPool.Length)];
         var nextId = 1L;
         var deck = PrototypeContent.StartingDeck
             .Select(cardId => new CardInstance(
@@ -96,7 +103,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 RemainingEliteEncounterIds:
                     (string[])PrototypeContent
                         .OvergrowthEliteEncounterPool
-                        .Clone()));
+                        .Clone(),
+                BossEncounterId:
+                    actOneBossEncounterId));
 
         world = world with { Map = GenerateActMap(world.Act, rng) };
 
