@@ -31,6 +31,8 @@ public sealed class PrototypeNightmareTests
             "proto.power.nightmare",
             effect.SelectedCardPower!.PowerId);
         Assert.Equal(3, effect.SelectedCardPower.AmountAt(0));
+        Assert.True(
+            effect.SelectedCardPower.ClearAfflictionFromPayload);
 
         var power = PrototypeContent.Power("proto.power.nightmare");
         Assert.True(power.IsInstanced);
@@ -134,6 +136,75 @@ public sealed class PrototypeNightmareTests
         // Native NightmarePower runs in BeforeHandDraw. Three stored copies
         // therefore coexist with the ordinary five-card draw.
         Assert.Equal(8, combat.Hand.Length);
+    }
+
+    [Fact]
+    public void NightmareClearsAfflictionOnlyFromGeneratedCopies()
+    {
+        var nightmare = Card(
+            1,
+            "proto.silent.nightmare");
+        var selected = Card(
+            2,
+            "proto.silent.defend") with
+        {
+            Affliction = new PrototypeCardAffliction(
+                PrototypeCardAfflictionKind.Entangled,
+                1)
+        };
+        var drawPile = Enumerable.Range(3, 5)
+            .Select(id => Card(id, "proto.silent.strike"))
+            .ToArray();
+
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(
+            energy: 3,
+            hand: [nightmare, selected],
+            drawPile: drawPile);
+
+        state = PlayCard(
+            engine,
+            state,
+            nightmare.InstanceId);
+        state = SelectOnly(
+            engine,
+            state,
+            selected.InstanceId);
+
+        var combat = state.World!.Combat!;
+        var original = combat.Cards.Single(
+            card => card.InstanceId == selected.InstanceId);
+        Assert.NotNull(original.Affliction);
+        Assert.Equal(
+            PrototypeCardAfflictionKind.Entangled,
+            original.Affliction!.Kind);
+
+        var payload = Assert.Single(
+            combat.PlayerPowers,
+            item => item.PowerId
+                == "proto.power.nightmare")
+            .CardPayload!;
+        Assert.Null(payload.Affliction);
+
+        state = EndTurn(engine, state);
+        combat = state.World!.Combat!;
+
+        var generated = combat.Hand
+            .Select(instanceId => combat.Cards.Single(
+                card => card.InstanceId == instanceId))
+            .Where(card =>
+                card.IsTemporary
+                && card.CardId == selected.CardId)
+            .ToArray();
+
+        Assert.Equal(3, generated.Length);
+        Assert.All(
+            generated,
+            card => Assert.Null(card.Affliction));
+
+        original = combat.Cards.Single(
+            card => card.InstanceId == selected.InstanceId);
+        Assert.NotNull(original.Affliction);
     }
 
     [Fact]
