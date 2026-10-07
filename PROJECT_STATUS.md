@@ -79,7 +79,7 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through twenty-four gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through twenty-five gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
 play-series replay for Burst (including repeated nested choices), Tools of the Trade's
@@ -195,7 +195,8 @@ The source-backed Act 1 monster-model set currently includes:
 - Twig Slime (S);
 - Assassin Raider;
 - Snapping Jaxfruit;
-- Mawler.
+- Mawler;
+- Toadpole.
 
 These definitions are deliberately not used to claim their full native encounters yet. Encounter
 multiplicity, slot layout, weak/normal pool membership and selection weights are promoted only when
@@ -215,6 +216,11 @@ native 3/2 incoming-Attack, 3/4 outgoing-Attack, and 3/4 card-Block multipliers.
 production Act 1 user of the state graph: fixed Claw opener, then constrained random Rip and Tear /
 Roar / Claw with Roar usable once. See
 `docs/reference-builds/v0.111.0-mechanics-gap-024.md`.
+
+Formation-sensitive enemy AI is now represented explicitly as well. Enemy combat state carries a
+formation position; conditional AI states can test alone/front/not-front over living enemies.
+Toadpole is the first production user, with source-backed front/back openers and its fixed follow-up
+cycle. See `docs/reference-builds/v0.111.0-mechanics-gap-025.md`.
 
 ## First live native capture
 
