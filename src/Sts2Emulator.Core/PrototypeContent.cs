@@ -2283,6 +2283,58 @@ public static class PrototypeContent
                     new(8, 1)
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.tracker_ruby_raider",
+                "Tracker Raider",
+                25,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "track",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                2,
+                                PowerId: "proto.power.frail")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "hounds",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                1,
+                                Repetitions: 8,
+                                RepetitionAscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 21,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "track",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "track",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "hounds"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "hounds",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "hounds")
+                    ])),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.crossbow_ruby_raider",
                 "Crossbow Raider",
                 21,
