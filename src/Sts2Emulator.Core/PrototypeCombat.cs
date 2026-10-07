@@ -2464,7 +2464,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         Func<PrototypePowerDefinition, bool> predicate)
     {
-        var powers = combat.PlayerPowers
+        var decremented = combat.PlayerPowers
             .Select(power =>
             {
                 if (!predicate(PrototypeContent.Power(power.PowerId)))
@@ -2474,10 +2474,44 @@ public sealed partial class PrototypeGameEngine
 
                 return power with { Stacks = power.Stacks - 1 };
             })
+            .ToArray();
+        var powers = decremented
             .Where(power => power.Stacks > 0)
             .ToArray();
+        var removed = decremented
+            .Where(power => power.Stacks <= 0)
+            .ToArray();
 
-        return combat with { PlayerPowers = powers };
+        var clearKinds = removed
+            .Select(power =>
+                PrototypeContent.Power(power.PowerId))
+            .Where(definition =>
+                definition.ClearAppliedCardAfflictionWhenRemoved
+                && definition.AppliedCardAffliction is not null)
+            .Select(definition =>
+                definition.AppliedCardAffliction!.Value)
+            .Where(kind =>
+                !powers.Any(power =>
+                    PrototypeContent.Power(power.PowerId)
+                        .AppliedCardAffliction == kind))
+            .ToHashSet();
+
+        return combat with
+        {
+            PlayerPowers = powers,
+            Cards = clearKinds.Count == 0
+                ? combat.Cards
+                : combat.Cards
+                    .Select(card =>
+                        card.Affliction is
+                            {
+                                SourceEnemyInstanceId: null
+                            } affliction
+                        && clearKinds.Contains(affliction.Kind)
+                            ? card with { Affliction = null }
+                            : card)
+                    .ToArray()
+        };
     }
 
     private static CombatState RemovePlayerPowers(
