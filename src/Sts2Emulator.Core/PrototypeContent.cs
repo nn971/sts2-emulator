@@ -4314,6 +4314,13 @@ public static class PrototypeContent
         "proto.encounter.phrog_parasite_elite"
     ];
 
+    public static string[] OvergrowthBossEncounterPool { get; } =
+    [
+        "proto.encounter.ceremonial_beast_boss",
+        "proto.encounter.the_kin_boss",
+        "proto.encounter.vantom_boss"
+    ];
+
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
         new(
