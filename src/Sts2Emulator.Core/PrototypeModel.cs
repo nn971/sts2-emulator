@@ -604,7 +604,9 @@ public sealed record PrototypeEnemyDefinition(
     PrototypeEnemyMovePolicy MovePolicy =
         PrototypeEnemyMovePolicy.SequentialLoop,
     int OpeningMoveIndex = 0,
-    PrototypeAscensionDelta[]? HpAscensionDeltas = null)
+    PrototypeAscensionDelta[]? HpAscensionDeltas = null,
+    int[]? OpeningMoveIndices = null,
+    int RandomMovePoolStartIndex = 0)
 {
     public int HpAt(
         int act,
