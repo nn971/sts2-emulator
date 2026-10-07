@@ -2422,6 +2422,62 @@ public static class PrototypeContent
                     new(8, 1)
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.fuzzy_wurm_crawler",
+                "Fuzzy Wurm Crawler",
+                57,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "acid_goop",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                4,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "inhale",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                7,
+                                PowerId: "proto.power.strength")
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 2)
+                ],
+                MinHp: 55,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 3)
+                ],
+                Ai: new PrototypeEnemyAiDefinition(
+                    "acid_1",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "acid_1",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "inhale"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "inhale",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "acid_2"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "acid_2",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "acid_1")
+                    ])),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.nibbit",
                 "Nibbit",
                 46,
@@ -3113,6 +3169,19 @@ public static class PrototypeContent
             MinFloor: 2,
             MaxFloor: 4,
             Weight: 3),
+        new(
+            "proto.encounter.fuzzy_wurm_crawler_weak",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.fuzzy_wurm_crawler"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.fuzzy_wurm_crawler",
+                    0)
+            ]),
         new(
             "proto.encounter.nibbits_weak",
             PrototypeRoomType.Combat,
