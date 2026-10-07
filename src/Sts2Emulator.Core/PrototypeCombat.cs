@@ -2543,6 +2543,54 @@ public sealed partial class PrototypeGameEngine
             * power.Stacks);
     }
 
+    private sealed record PrototypeDebuffBlockResult(
+        CombatState Combat,
+        bool Blocked);
+
+    private static PrototypeDebuffBlockResult
+        TryBlockIncomingPlayerDebuff(CombatState combat)
+    {
+        var candidate = combat.PlayerPowers
+            .Where(power =>
+                power.Stacks > 0
+                && PrototypeContent.Power(power.PowerId)
+                    .BlocksNextDebuff)
+            .OrderBy(power => power.ApplicationOrder)
+            .FirstOrDefault();
+        if (candidate is null)
+        {
+            return new PrototypeDebuffBlockResult(
+                combat,
+                false);
+        }
+
+        var powers = combat.PlayerPowers.ToList();
+        var index = powers.FindIndex(power =>
+            power.ApplicationOrder
+                == candidate.ApplicationOrder);
+        if (index < 0)
+        {
+            throw new InvalidOperationException(
+                "Debuff-blocking power disappeared before consumption.");
+        }
+
+        if (powers[index].Stacks <= 1)
+        {
+            powers.RemoveAt(index);
+        }
+        else
+        {
+            powers[index] = powers[index] with
+            {
+                Stacks = powers[index].Stacks - 1
+            };
+        }
+
+        return new PrototypeDebuffBlockResult(
+            combat with { PlayerPowers = powers.ToArray() },
+            true);
+    }
+
     private static CombatState ApplyPlayerPower(
         CombatState combat,
         string powerId,
@@ -2555,6 +2603,16 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException(
                 $"Source-bound power '{powerId}' requires an enemy source.");
+        }
+
+        if (definition.IsDebuff && stacks > 0)
+        {
+            var blocked = TryBlockIncomingPlayerDebuff(combat);
+            combat = blocked.Combat;
+            if (blocked.Blocked)
+            {
+                return combat;
+            }
         }
 
         if (definition.IsInstanced)
