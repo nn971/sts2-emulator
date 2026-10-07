@@ -554,12 +554,29 @@ public enum PrototypeEnemyEffectKind
     ApplyEnemyPower
 }
 
+public sealed record PrototypeAscensionDelta(
+    int MinAscension,
+    int Delta);
+
 public sealed record PrototypeEnemyEffectSpec(
     PrototypeEnemyEffectKind Kind,
     int Amount,
     int AmountPerAct = 0,
     int Repetitions = 1,
-    string? PowerId = null);
+    string? PowerId = null,
+    PrototypeAscensionDelta[]? AscensionDeltas = null)
+{
+    public int AmountAt(
+        int act,
+        int ascension) =>
+        Amount
+        + ((act - 1) * AmountPerAct)
+        + (AscensionDeltas
+            ?? Array.Empty<PrototypeAscensionDelta>())
+            .Where(delta =>
+                ascension >= delta.MinAscension)
+            .Sum(delta => delta.Delta);
+}
 
 public enum PrototypeEnemyMovePolicy
 {
@@ -586,7 +603,20 @@ public sealed record PrototypeEnemyDefinition(
     int MoveLoopStartIndex = 0,
     PrototypeEnemyMovePolicy MovePolicy =
         PrototypeEnemyMovePolicy.SequentialLoop,
-    int OpeningMoveIndex = 0);
+    int OpeningMoveIndex = 0,
+    PrototypeAscensionDelta[]? HpAscensionDeltas = null)
+{
+    public int HpAt(
+        int act,
+        int ascension) =>
+        MaxHp
+        + ((act - 1) * HpPerAct)
+        + (HpAscensionDeltas
+            ?? Array.Empty<PrototypeAscensionDelta>())
+            .Where(delta =>
+                ascension >= delta.MinAscension)
+            .Sum(delta => delta.Delta);
+}
 
 public sealed record PrototypeEncounterDefinition(
     string Id,
