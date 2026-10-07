@@ -584,7 +584,11 @@ public sealed record PrototypeRelicDefinition(
     int ShopPriceNumerator = 1,
     int ShopPriceDenominator = 1,
     int? ShopRemovalPriceOverride = null,
-    bool PreventPotionAcquisition = false);
+    bool PreventPotionAcquisition = false,
+    bool PreventRestHealing = false,
+    bool PreventRestUpgrade = false,
+    int MaxCardsPlayablePerTurn = 0,
+    bool HideEnemyIntents = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1393,7 +1397,8 @@ public sealed record RewardState(
     bool RelicResolved,
     bool EndsAct,
     string[][]? ExtraCardOptions = null,
-    int ExtraCardRewardsResolved = 0)
+    int ExtraCardRewardsResolved = 0,
+    string[]? RelicOptions = null)
 {
     public string[] CurrentCardOptions
     {
@@ -1412,6 +1417,13 @@ public sealed record RewardState(
         }
     }
 
+    public string[] CurrentRelicOptions =>
+        RelicOptions is { Length: > 0 }
+            ? RelicOptions
+            : RelicOption is null
+                ? Array.Empty<string>()
+                : [RelicOption];
+
     public RewardState Fork() => this with
     {
         CardOptions = (string[])CardOptions.Clone(),
@@ -1419,7 +1431,10 @@ public sealed record RewardState(
             ? null
             : ExtraCardOptions
                 .Select(group => (string[])group.Clone())
-                .ToArray()
+                .ToArray(),
+        RelicOptions = RelicOptions is null
+            ? null
+            : (string[])RelicOptions.Clone()
     };
 }
 
@@ -1499,6 +1514,7 @@ public sealed record ChooseMapNodePayload(string NodeId);
 public sealed record PlayCardPayload(long CardInstanceId, int? TargetEnemyId);
 public sealed record UsePotionPayload(int Slot, int? TargetEnemyId);
 public sealed record ChooseCardPayload(int Index);
+public sealed record ChooseRelicPayload(int Index);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
 public sealed record UpgradeCardPayload(long CardInstanceId);
