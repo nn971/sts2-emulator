@@ -40,6 +40,10 @@ public sealed class PrototypeRunEconomyRelicTests
             extra,
             frame.Observation.Reward!.CardOptions);
         Assert.Equal(
+            1,
+            frame.Observation.Reward
+                .ExtraCardRewardGroupsRemaining);
+        Assert.Equal(
             4,
             frame.LegalActions.Count(action =>
                 action.Kind == "take_reward_card"));
@@ -93,7 +97,7 @@ public sealed class PrototypeRunEconomyRelicTests
         Assert.Equal(
             shop.RelicOffer!.UndiscountedPrice / 2,
             shop.RelicOffer.Price);
-        Assert.Equal(50, shop.UndiscountedRemovalPrice);
+        Assert.Equal(75, shop.UndiscountedRemovalPrice);
         Assert.Equal(25, shop.RemovalPrice);
     }
 
