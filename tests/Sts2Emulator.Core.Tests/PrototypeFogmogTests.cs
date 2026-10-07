@@ -81,9 +81,9 @@ public sealed class PrototypeFogmogTests
             enemy.EnemyId == "proto.enemy.eye_with_teeth");
         Assert.Equal(6, eye.Hp);
         Assert.Equal(1, eye.LeaderEnemyInstanceId);
-        Assert.Empty(
-            combat.Cards.Where(card =>
-                card.CardId == "proto.status.dazed"));
+        Assert.DoesNotContain(
+            combat.Cards,
+            card => card.CardId == "proto.status.dazed");
 
         state = EndTurn(engine, state);
 
@@ -139,9 +139,9 @@ public sealed class PrototypeFogmogTests
                 .Single(enemy =>
                     enemy.EnemyId == "proto.enemy.eye_with_teeth")
                 .Hp);
-        Assert.Empty(
-            combat.Cards.Where(card =>
-                card.CardId == "proto.status.dazed"));
+        Assert.DoesNotContain(
+            combat.Cards,
+            card => card.CardId == "proto.status.dazed");
 
         state = EndTurn(engine, state);
         combat = state.World!.Combat!;
