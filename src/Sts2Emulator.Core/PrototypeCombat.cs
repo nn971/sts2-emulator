@@ -959,7 +959,15 @@ public sealed partial class PrototypeGameEngine
                 {
                     if (definition.TriggerKind == PrototypeStatusTriggerKind.DamageSelfByStacks)
                     {
-                        enemy = enemy with { Hp = Math.Max(0, enemy.Hp - stacks) };
+                        var hpLoss = ModifyEnemyHpLoss(
+                            enemy,
+                            stacks);
+                        enemy = hpLoss.Enemy with
+                        {
+                            Hp = Math.Max(
+                                0,
+                                hpLoss.Enemy.Hp - hpLoss.HpLoss)
+                        };
                     }
 
                     stacks -= definition.DecayOnTrigger;
@@ -1384,14 +1392,17 @@ public sealed partial class PrototypeGameEngine
                                 var retaliationBlocked = Math.Min(
                                     enemy.Block,
                                     retaliation);
-                                enemy = enemy with
+                                var hpLoss = ModifyEnemyHpLoss(
+                                    enemy,
+                                    Math.Max(
+                                        0,
+                                        retaliation - retaliationBlocked));
+                                enemy = hpLoss.Enemy with
                                 {
                                     Block = enemy.Block - retaliationBlocked,
                                     Hp = Math.Max(
                                         0,
-                                        enemy.Hp - Math.Max(
-                                            0,
-                                            retaliation - retaliationBlocked))
+                                        hpLoss.Enemy.Hp - hpLoss.HpLoss)
                                 };
                             }
 
@@ -4773,8 +4784,11 @@ public sealed partial class PrototypeGameEngine
         }
 
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
-        var hpDamage = Math.Max(0, damage - absorbed);
-        var nextHp = Math.Max(0, enemy.Hp - hpDamage);
+        var hpDamage = ModifyEnemyHpLoss(
+            enemy,
+            Math.Max(0, damage - absorbed));
+        enemy = hpDamage.Enemy;
+        var nextHp = Math.Max(0, enemy.Hp - hpDamage.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
 
         enemies[index] = enemy with
@@ -4787,6 +4801,78 @@ public sealed partial class PrototypeGameEngine
             combat with { Enemies = enemies },
             damageDealt,
             Defeated: enemy.Hp > 0 && nextHp == 0);
+    }
+
+    private sealed record PrototypeEnemyHpLossResult(
+        EnemyCombatState Enemy,
+        int HpLoss);
+
+    private static PrototypeEnemyHpLossResult ModifyEnemyHpLoss(
+        EnemyCombatState enemy,
+        int requestedHpLoss)
+    {
+        var hpLoss = Math.Max(0, requestedHpLoss);
+        if (hpLoss == 0 || enemy.Hp <= 0)
+        {
+            return new PrototypeEnemyHpLossResult(
+                enemy,
+                hpLoss);
+        }
+
+        var powers = enemy.PowerStates.ToList();
+        var candidate = powers
+            .Where(power =>
+                power.Stacks > 0
+                && PrototypeContent.Power(power.PowerId)
+                    .EnemyHpLossCapPerTrigger > 0)
+            .OrderBy(power => power.ApplicationOrder)
+            .FirstOrDefault();
+
+        if (candidate is null)
+        {
+            return new PrototypeEnemyHpLossResult(
+                enemy,
+                hpLoss);
+        }
+
+        var definition = PrototypeContent.Power(
+            candidate.PowerId);
+        hpLoss = Math.Min(
+            hpLoss,
+            definition.EnemyHpLossCapPerTrigger);
+
+        if (definition.ConsumeOnEnemyHpLoss)
+        {
+            var index = powers.FindIndex(power =>
+                power.ApplicationOrder
+                    == candidate.ApplicationOrder);
+            if (index < 0)
+            {
+                throw new InvalidOperationException(
+                    "Enemy HP-loss modifier disappeared before consumption.");
+            }
+
+            if (powers[index].Stacks <= 1)
+            {
+                powers.RemoveAt(index);
+            }
+            else
+            {
+                powers[index] = powers[index] with
+                {
+                    Stacks = powers[index].Stacks - 1
+                };
+            }
+
+            enemy = enemy with
+            {
+                Powers = powers.ToArray()
+            };
+        }
+
+        return new PrototypeEnemyHpLossResult(
+            enemy,
+            hpLoss);
     }
 
     private static CombatState MultiplyEnemyStatus(
