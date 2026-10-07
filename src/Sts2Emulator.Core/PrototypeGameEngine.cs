@@ -453,10 +453,24 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     private static PlayerState AppendCard(PlayerState player, long instanceId, string cardId)
     {
+        var definition = PrototypeContent.Card(cardId);
+        var upgradeLevel = player.Relics.Any(relic =>
+        {
+            var relicDefinition =
+                PrototypeContent.Relic(relic.RelicId);
+            return relicDefinition.UpgradeAddedCardType
+                    == definition.Type
+                && definition.Type is not
+                    PrototypeCardType.Status
+                    and not PrototypeCardType.Curse;
+        })
+            ? 1
+            : 0;
+
         var card = new CardInstance(
             instanceId,
             cardId,
-            0,
+            upgradeLevel,
             PrototypeJson.EmptyObject());
         player = player with
         {
