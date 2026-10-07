@@ -555,6 +555,10 @@ public sealed partial class PrototypeGameEngine
 
         var actions = new List<GameAction>();
 
+        var canPlayCard =
+            CanPlayAnotherCardThisTurn(combat);
+        if (canPlayCard)
+        {
         foreach (var instanceId in combat.Hand)
         {
             var card = RequireCombatCard(combat, instanceId);
@@ -589,6 +593,7 @@ public sealed partial class PrototypeGameEngine
                     "play_card",
                     new PlayCardPayload(instanceId, null)));
             }
+        }
         }
 
         for (var slot = 0; slot < state.Player.PotionSlots.Length; slot++)
@@ -649,6 +654,12 @@ public sealed partial class PrototypeGameEngine
         if (!combat.Hand.Contains(payload.CardInstanceId))
         {
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is not in hand.");
+        }
+
+        if (!CanPlayAnotherCardThisTurn(combat))
+        {
+            throw new InvalidOperationException(
+                "A player power prevents playing another card this turn.");
         }
 
         var card = RequireCombatCard(combat, payload.CardInstanceId);
@@ -3290,6 +3301,22 @@ public sealed partial class PrototypeGameEngine
         return combat with { PlayerPowers = powers.ToArray() };
     }
 
+    private static bool CanPlayAnotherCardThisTurn(
+        CombatState combat)
+    {
+        var caps = combat.PlayerPowers
+            .Where(power => power.Stacks > 0)
+            .Select(power =>
+                PrototypeContent.Power(power.PowerId)
+                    .MaxCardsPlayablePerTurn)
+            .Where(cap => cap > 0)
+            .ToArray();
+
+        return caps.Length == 0
+            || combat.CounterState.CardsPlayedThisTurn
+                < caps.Min();
+    }
+
     private static bool IsCardAffordable(
         CombatState combat,
         CombatCardInstance card,
@@ -5620,7 +5647,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var powers = enemy.PowerStates.ToList();
-        var candidate = powers
+        var capCandidate = powers
             .Where(power =>
                 power.Stacks > 0
                 && PrototypeContent.Power(power.PowerId)
@@ -5628,47 +5655,87 @@ public sealed partial class PrototypeGameEngine
             .OrderBy(power => power.ApplicationOrder)
             .FirstOrDefault();
 
-        if (candidate is null)
+        if (capCandidate is not null)
         {
-            return new PrototypeEnemyHpLossResult(
-                enemy,
-                hpLoss);
+            var definition = PrototypeContent.Power(
+                capCandidate.PowerId);
+            hpLoss = Math.Min(
+                hpLoss,
+                definition.EnemyHpLossCapPerTrigger);
+
+            if (definition.ConsumeOnEnemyHpLoss)
+            {
+                var index = powers.FindIndex(power =>
+                    power.ApplicationOrder
+                        == capCandidate.ApplicationOrder);
+                if (index < 0)
+                {
+                    throw new InvalidOperationException(
+                        "Enemy HP-loss modifier disappeared before consumption.");
+                }
+
+                if (powers[index].Stacks <= 1)
+                {
+                    powers.RemoveAt(index);
+                }
+                else
+                {
+                    powers[index] = powers[index] with
+                    {
+                        Stacks = powers[index].Stacks - 1
+                    };
+                }
+            }
         }
 
-        var definition = PrototypeContent.Power(
-            candidate.PowerId);
-        hpLoss = Math.Min(
-            hpLoss,
-            definition.EnemyHpLossCapPerTrigger);
-
-        if (definition.ConsumeOnEnemyHpLoss)
-        {
-            var index = powers.FindIndex(power =>
-                power.ApplicationOrder
-                    == candidate.ApplicationOrder);
-            if (index < 0)
+        var nextHp = Math.Max(0, enemy.Hp - hpLoss);
+        var thresholdCandidate = powers
+            .Where(power =>
             {
-                throw new InvalidOperationException(
-                    "Enemy HP-loss modifier disappeared before consumption.");
-            }
-
-            if (powers[index].Stacks <= 1)
-            {
-                powers.RemoveAt(index);
-            }
-            else
-            {
-                powers[index] = powers[index] with
+                if (power.Stacks <= 0)
                 {
-                    Stacks = powers[index].Stacks - 1
-                };
+                    return false;
+                }
+
+                var definition = PrototypeContent.Power(
+                    power.PowerId);
+                return definition.TriggerOwnerAtHpAtOrBelowStacks
+                    && nextHp <= power.Stacks;
+            })
+            .OrderBy(power => power.ApplicationOrder)
+            .FirstOrDefault();
+
+        if (thresholdCandidate is not null)
+        {
+            var thresholdDefinition =
+                PrototypeContent.Power(
+                    thresholdCandidate.PowerId);
+            powers.RemoveAll(power =>
+                power.ApplicationOrder
+                    == thresholdCandidate.ApplicationOrder);
+
+            if (thresholdDefinition
+                    .ClearOwnerStrengthOnHpThresholdTrigger)
+            {
+                powers.RemoveAll(power =>
+                    StringComparer.Ordinal.Equals(
+                        power.PowerId,
+                        "proto.power.strength"));
             }
 
             enemy = enemy with
             {
-                Powers = powers.ToArray()
+                AiStateId =
+                    thresholdDefinition
+                        .OwnerAiStateOnHpThresholdTrigger
+                    ?? enemy.AiStateId
             };
         }
+
+        enemy = enemy with
+        {
+            Powers = powers.ToArray()
+        };
 
         return new PrototypeEnemyHpLossResult(
             enemy,
