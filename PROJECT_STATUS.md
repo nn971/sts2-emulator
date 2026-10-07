@@ -229,7 +229,7 @@ insertion path preserves combat-card identity and active source-bound Affliction
 `Slimed` is defined with its pinned 1-energy Draw-1/Exhaust semantics. Leaf Slime (S) uses its
 source-shaped random Tackle/Goop policy with no immediate repeats, while Leaf Slime (M) uses its
 Sticky Shot / Clump Shot alternation. See
-`docs/reference-builds/v0.111.0-mechanics-gap-026.md`.
+`docs/reference-builds/v0.111.0-mechanics-gap-027.md`.
 
 ## First live native capture
 
