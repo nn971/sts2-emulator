@@ -1877,10 +1877,123 @@ public sealed partial class PrototypeGameEngine
         };
         combat = CleanupSourceBoundPowersForDefeatedEnemies(
             combat);
+        combat = ResolveEnemyDeathSummons(
+            combat,
+            rng);
 
         return (
             player with { Hp = hp },
             combat);
+    }
+
+    private static CombatState ResolveEnemyDeathSummons(
+        CombatState combat,
+        RngBundle rng)
+    {
+        var enemies = combat.Enemies
+            .Select(enemy => enemy.Fork())
+            .ToList();
+        var nextPowerOrder =
+            combat.NextPowerApplicationOrder;
+        var changed = false;
+
+        for (var index = 0;
+             index < enemies.Count;
+             index++)
+        {
+            var source = enemies[index];
+            if (source.Hp > 0
+                || source.DeathEffectsResolved)
+            {
+                continue;
+            }
+
+            var sourceDefinition =
+                PrototypeContent.Enemy(source.EnemyId);
+            var summons =
+                sourceDefinition.DeathSummons
+                ?? Array.Empty<
+                    PrototypeEnemyDeathSummonSpec>();
+            if (summons.Length == 0)
+            {
+                continue;
+            }
+
+            enemies[index] = source with
+            {
+                DeathEffectsResolved = true
+            };
+            changed = true;
+
+            foreach (var summon in summons)
+            {
+                var definition =
+                    PrototypeContent.Enemy(
+                        summon.EnemyId);
+                var hpRange = definition.HpRangeAt(
+                    combat.Act,
+                    combat.Ascension);
+                var hp =
+                    hpRange.Min == hpRange.Max
+                        ? hpRange.Min
+                        : hpRange.Min
+                            + PrototypeRng.NextInt(
+                                rng,
+                                "combat",
+                                hpRange.Max
+                                    - hpRange.Min
+                                    + 1);
+                var powers =
+                    (definition.StartingPowers
+                        ?? Array.Empty<
+                            PrototypeStartingPowerSpec>())
+                    .Select(power =>
+                    {
+                        _ = PrototypeContent.Power(
+                            power.PowerId);
+                        return new
+                            PrototypePowerInstanceState(
+                                power.PowerId,
+                                power.Stacks,
+                                nextPowerOrder++);
+                    })
+                    .Where(power =>
+                        power.Stacks > 0)
+                    .ToArray();
+                var nextEnemyId =
+                    enemies.Count == 0
+                        ? 1
+                        : enemies.Max(enemy =>
+                            enemy.InstanceId) + 1;
+
+                enemies.Add(
+                    new EnemyCombatState(
+                        InstanceId: nextEnemyId,
+                        EnemyId: summon.EnemyId,
+                        Hp: hp,
+                        Block: 0,
+                        MoveIndex: 0,
+                        Statuses:
+                            new Dictionary<string, int>(
+                                StringComparer.Ordinal),
+                        Powers: powers,
+                        FormationPosition:
+                            summon.FormationPosition,
+                        SlotName: summon.SlotName,
+                        SkipNextEnemyAction: true));
+            }
+        }
+
+        return changed
+            ? combat with
+            {
+                Enemies = enemies
+                    .Select(enemy => enemy.Fork())
+                    .ToArray(),
+                NextPowerApplicationOrder =
+                    nextPowerOrder
+            }
+            : combat;
     }
 
     private static void EnqueueEffectOperations(
@@ -2129,6 +2242,9 @@ public sealed partial class PrototypeGameEngine
                             eventDepth + 1);
                         player = defeated.Player;
                         combat = defeated.Combat;
+                        combat = ResolveEnemyDeathSummons(
+                            combat,
+                            rng);
                     }
 
                     break;
