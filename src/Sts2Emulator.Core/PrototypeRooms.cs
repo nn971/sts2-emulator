@@ -352,10 +352,35 @@ public sealed partial class PrototypeGameEngine
 
         if (shop.PotionOffer is { Sold: false } potion
             && potion.Price <= state.Player.Gold
-            && CanAcquirePotion(state.Player)
-            && Array.IndexOf(state.Player.PotionSlots, null) >= 0)
+            && CanAcquirePotion(state.Player))
         {
-            actions.Add(GameAction.Create("buy_potion", new BuyOfferPayload(potion.OfferId)));
+            var emptySlot =
+                Array.IndexOf(
+                    state.Player.PotionSlots,
+                    null);
+            if (emptySlot >= 0)
+            {
+                actions.Add(
+                    GameAction.Create(
+                        "buy_potion",
+                        new BuyOfferPayload(
+                            potion.OfferId)));
+            }
+            else
+            {
+                actions.AddRange(
+                    state.Player.PotionSlots
+                        .Select((item, slot) =>
+                            (Potion: item, Slot: slot))
+                        .Where(item =>
+                            item.Potion is not null)
+                        .Select(item =>
+                            GameAction.Create(
+                                "replace_shop_potion",
+                                new ReplaceShopPotionPayload(
+                                    potion.OfferId,
+                                    item.Slot))));
+            }
         }
 
         if (shop.RelicOffer is { Sold: false } relic && relic.Price <= state.Player.Gold)
@@ -470,6 +495,52 @@ public sealed partial class PrototypeGameEngine
             };
             shop = shop with { PotionOffer = offer with { Sold = true } };
         }
+        else if (StringComparer.Ordinal.Equals(
+                     action.Kind,
+                     "replace_shop_potion"))
+        {
+            var payload =
+                action.ReadPayload<
+                    ReplaceShopPotionPayload>();
+            var offer = shop.PotionOffer
+                ?? throw new InvalidOperationException(
+                    "Shop has no potion offer.");
+            if (offer.OfferId != payload.OfferId)
+            {
+                throw new InvalidOperationException(
+                    $"Unknown potion offer {payload.OfferId}.");
+            }
+
+            EnsurePurchasable(player, offer);
+            if (!CanAcquirePotion(player))
+            {
+                throw new InvalidOperationException(
+                    "Player cannot acquire potions.");
+            }
+
+            if (Array.IndexOf(
+                    player.PotionSlots,
+                    null) >= 0)
+            {
+                throw new InvalidOperationException(
+                    "Potion replacement is only needed when all slots are occupied.");
+            }
+
+            player = player with
+            {
+                Gold =
+                    player.Gold - offer.Price,
+                PotionSlots = ReplacePotionSlot(
+                    player.PotionSlots,
+                    payload.Slot,
+                    offer.ItemId)
+            };
+            shop = shop with
+            {
+                PotionOffer =
+                    offer with { Sold = true }
+            };
+        }
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_relic"))
         {
             var payload = action.ReadPayload<BuyOfferPayload>();
@@ -516,6 +587,32 @@ public sealed partial class PrototypeGameEngine
             Player = player,
             World = world
         };
+    }
+
+    private static PotionInstance?[] ReplacePotionSlot(
+        PotionInstance?[] potionSlots,
+        int slot,
+        string potionId)
+    {
+        if (slot < 0 || slot >= potionSlots.Length)
+        {
+            throw new InvalidOperationException(
+                $"Potion slot {slot} is invalid.");
+        }
+
+        if (potionSlots[slot] is null)
+        {
+            throw new InvalidOperationException(
+                $"Potion slot {slot} is empty and cannot be replaced.");
+        }
+
+        _ = PrototypeContent.Potion(potionId);
+        var slots =
+            (PotionInstance?[])potionSlots.Clone();
+        slots[slot] = new PotionInstance(
+            potionId,
+            PrototypeJson.EmptyObject());
+        return slots;
     }
 
     private static void EnsurePurchasable(PlayerState player, ShopOffer offer)
@@ -684,14 +781,31 @@ public sealed partial class PrototypeGameEngine
         if (!reward.PotionResolved)
         {
             var actions = new List<GameAction>();
-            if (CanAcquirePotion(state.Player)
-                && Array.IndexOf(
-                    state.Player.PotionSlots,
-                    null) >= 0)
+            if (CanAcquirePotion(state.Player))
             {
-                actions.Add(
-                    GameAction.Empty(
-                        "take_reward_potion"));
+                var emptySlot = Array.IndexOf(
+                    state.Player.PotionSlots,
+                    null);
+                if (emptySlot >= 0)
+                {
+                    actions.Add(
+                        GameAction.Empty(
+                            "take_reward_potion"));
+                }
+                else
+                {
+                    actions.AddRange(
+                        state.Player.PotionSlots
+                            .Select((item, slot) =>
+                                (Potion: item, Slot: slot))
+                            .Where(item =>
+                                item.Potion is not null)
+                            .Select(item =>
+                                GameAction.Create(
+                                    "replace_reward_potion",
+                                    new ReplaceRewardPotionPayload(
+                                        item.Slot))));
+                }
             }
 
             actions.Add(GameAction.Empty("skip_reward_potion"));
@@ -859,11 +973,14 @@ public sealed partial class PrototypeGameEngine
         }
         else if (!reward.PotionResolved)
         {
-            if (StringComparer.Ordinal.Equals(action.Kind, "take_reward_potion"))
+            if (StringComparer.Ordinal.Equals(
+                    action.Kind,
+                    "take_reward_potion"))
             {
                 if (reward.PotionOption is null)
                 {
-                    throw new InvalidOperationException("Reward has no potion.");
+                    throw new InvalidOperationException(
+                        "Reward has no potion.");
                 }
 
                 if (!CanAcquirePotion(player))
@@ -872,22 +989,73 @@ public sealed partial class PrototypeGameEngine
                         "Player cannot acquire potions.");
                 }
 
-                var slot = Array.IndexOf(player.PotionSlots, null);
+                var slot = Array.IndexOf(
+                    player.PotionSlots,
+                    null);
                 if (slot < 0)
                 {
-                    throw new InvalidOperationException("No potion slot is available.");
+                    throw new InvalidOperationException(
+                        "No potion slot is available.");
                 }
 
-                var slots = (PotionInstance?[])player.PotionSlots.Clone();
-                slots[slot] = new PotionInstance(reward.PotionOption, PrototypeJson.EmptyObject());
-                player = player with { PotionSlots = slots };
+                var slots =
+                    (PotionInstance?[])
+                    player.PotionSlots.Clone();
+                slots[slot] =
+                    new PotionInstance(
+                        reward.PotionOption,
+                        PrototypeJson.EmptyObject());
+                player = player with
+                {
+                    PotionSlots = slots
+                };
+            }
+            else if (StringComparer.Ordinal.Equals(
+                         action.Kind,
+                         "replace_reward_potion"))
+            {
+                if (reward.PotionOption is null)
+                {
+                    throw new InvalidOperationException(
+                        "Reward has no potion.");
+                }
+
+                if (!CanAcquirePotion(player))
+                {
+                    throw new InvalidOperationException(
+                        "Player cannot acquire potions.");
+                }
+
+                if (Array.IndexOf(
+                        player.PotionSlots,
+                        null) >= 0)
+                {
+                    throw new InvalidOperationException(
+                        "Potion replacement is only needed when all slots are occupied.");
+                }
+
+                var payload =
+                    action.ReadPayload<
+                        ReplaceRewardPotionPayload>();
+                player = player with
+                {
+                    PotionSlots = ReplacePotionSlot(
+                        player.PotionSlots,
+                        payload.Slot,
+                        reward.PotionOption)
+                };
             }
             else
             {
-                RequireKind(action, "skip_reward_potion");
+                RequireKind(
+                    action,
+                    "skip_reward_potion");
             }
 
-            reward = reward with { PotionResolved = true };
+            reward = reward with
+            {
+                PotionResolved = true
+            };
         }
         else if (!reward.RelicResolved)
         {
