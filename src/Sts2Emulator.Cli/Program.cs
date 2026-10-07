@@ -620,8 +620,9 @@ switch (args[0])
                     id => id,
                     _ => 0,
                     StringComparer.Ordinal);
-        var runsLeavingActOne = 0;
         var weakSequenceViolations = 0;
+        var normalBagViolations = 0;
+        var eliteBagViolations = 0;
 
         for (var runIndex = 0;
              runIndex < runCount;
@@ -632,73 +633,122 @@ switch (args[0])
             var state = PrototypeGameFactory.Create(
                 seed,
                 ascension);
-            string? selectedBoss = null;
 
-            for (var step = 0;
-                 step < 5_000
-                 && state.Phase != RunPhase.Terminal;
-                 step++)
-            {
-                var legal = engine.GetLegalActions(state);
-                if (legal.Count == 0)
-                {
-                    throw new InvalidOperationException(
-                        $"Overgrowth audit stuck on seed {seed} in {state.Phase}.");
-                }
+            state = engine.Step(
+                state,
+                AssertSingleAuditAction(
+                    engine.GetLegalActions(state),
+                    "run start")).State;
+            PrototypeStateInvariants.Validate(state);
 
-                state = engine.Step(
-                    state,
-                    ChoosePrototypeAction(state, legal)).State;
-                PrototypeStateInvariants.Validate(state);
-
-                selectedBoss ??=
-                    state.World?.ActOneEncounterPool
-                        ?.BossEncounterId;
-            }
-
-            if (state.Phase != RunPhase.Terminal)
+            var pool = state.World?.ActOneEncounterPool
+                ?? throw new InvalidOperationException(
+                    $"Overgrowth audit seed {seed} did not initialize an Act 1 encounter pool.");
+            if (pool.Region
+                != PrototypeActOneRegion.Overgrowth)
             {
                 throw new InvalidOperationException(
-                    $"Overgrowth audit seed {seed} exceeded 5,000 decisions.");
+                    $"Overgrowth audit seed {seed} initialized region {pool.Region}.");
             }
 
-            if (selectedBoss is null)
-            {
-                throw new InvalidOperationException(
-                    $"Overgrowth audit seed {seed} never selected an Act 1 boss.");
-            }
-
+            var selectedBoss = pool.BossEncounterId
+                ?? throw new InvalidOperationException(
+                    $"Overgrowth audit seed {seed} did not preselect a boss.");
             bossCounts[selectedBoss] =
                 bossCounts.GetValueOrDefault(selectedBoss) + 1;
 
-            var world = state.World
-                ?? throw new InvalidOperationException(
-                    "Terminal prototype run has no world state.");
-            if (world.Act > 1)
+            var weak = new List<string>();
+            for (var index = 0; index < 3; index++)
             {
-                runsLeavingActOne++;
+                state = StartPrototypeAuditRoom(
+                    engine,
+                    state,
+                    PrototypeRoomType.Combat,
+                    floor: index + 1);
+                var id = state.World!.EncounterIds[^1];
+                weak.Add(id);
+                encounterCounts[id]++;
+                PrototypeStateInvariants.Validate(state);
             }
 
-            foreach (var encounterId in world.EncounterIds)
-            {
-                if (encounterCounts.ContainsKey(encounterId))
-                {
-                    encounterCounts[encounterId]++;
-                }
-            }
-
-            var weakSeen = world.EncounterIds
-                .Where(id =>
-                    PrototypeContent.OvergrowthWeakEncounterPool
-                        .Contains(id, StringComparer.Ordinal))
-                .Take(3)
-                .ToArray();
-            if (weakSeen.Length != weakSeen
-                    .Distinct(StringComparer.Ordinal)
-                    .Count())
+            if (weak.Count
+                != weak.Distinct(StringComparer.Ordinal).Count()
+                || weak.Any(id =>
+                    !PrototypeContent.OvergrowthWeakEncounterPool
+                        .Contains(id, StringComparer.Ordinal)))
             {
                 weakSequenceViolations++;
             }
+
+            var normal = new List<string>();
+            for (var index = 0;
+                 index < PrototypeContent
+                     .OvergrowthNormalEncounterPool.Length;
+                 index++)
+            {
+                state = StartPrototypeAuditRoom(
+                    engine,
+                    state,
+                    PrototypeRoomType.Combat,
+                    floor: index + 4);
+                var id = state.World!.EncounterIds[^1];
+                normal.Add(id);
+                encounterCounts[id]++;
+                PrototypeStateInvariants.Validate(state);
+            }
+
+            if (normal.Count
+                != normal.Distinct(StringComparer.Ordinal).Count()
+                || normal.Any(id =>
+                    !PrototypeContent.OvergrowthNormalEncounterPool
+                        .Contains(id, StringComparer.Ordinal)))
+            {
+                normalBagViolations++;
+            }
+
+            var elites = new List<string>();
+            for (var index = 0;
+                 index < PrototypeContent
+                     .OvergrowthEliteEncounterPool.Length;
+                 index++)
+            {
+                state = StartPrototypeAuditRoom(
+                    engine,
+                    state,
+                    PrototypeRoomType.Elite,
+                    floor: index + 5);
+                var id = state.World!.EncounterIds[^1];
+                elites.Add(id);
+                encounterCounts[id]++;
+                PrototypeStateInvariants.Validate(state);
+            }
+
+            if (elites.Count
+                != elites.Distinct(StringComparer.Ordinal).Count()
+                || elites.Any(id =>
+                    !PrototypeContent.OvergrowthEliteEncounterPool
+                        .Contains(id, StringComparer.Ordinal)))
+            {
+                eliteBagViolations++;
+            }
+
+            state = StartPrototypeAuditRoom(
+                engine,
+                state,
+                PrototypeRoomType.Boss,
+                floor: 17);
+            var bossEncounter = state.World!.EncounterIds[^1];
+            if (!StringComparer.Ordinal.Equals(
+                    bossEncounter,
+                    selectedBoss))
+            {
+                throw new InvalidOperationException(
+                    $"Overgrowth audit seed {seed} entered boss '{bossEncounter}' " +
+                    $"instead of preselected boss '{selectedBoss}'.");
+            }
+
+            encounterCounts[bossEncounter]++;
+            PrototypeStateInvariants.Validate(state);
         }
 
         var covered = encounterCounts
@@ -709,14 +759,16 @@ switch (args[0])
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Console.WriteLine($"Runs: {runCount}");
+        Console.WriteLine($"Selector samples: {runCount}");
         Console.WriteLine($"Ascension: {ascension}");
         Console.WriteLine(
             $"Overgrowth encounter coverage: {covered}/{overgrowthEncounterIds.Count}");
         Console.WriteLine(
-            $"Runs leaving Act 1: {runsLeavingActOne}/{runCount}");
-        Console.WriteLine(
             $"Weak no-replacement violations: {weakSequenceViolations}");
+        Console.WriteLine(
+            $"Normal-bag violations: {normalBagViolations}");
+        Console.WriteLine(
+            $"Elite-bag violations: {eliteBagViolations}");
         Console.WriteLine("Boss selections:");
         foreach (var item in bossCounts.OrderBy(item => item.Key))
         {
