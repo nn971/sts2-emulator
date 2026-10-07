@@ -477,7 +477,29 @@ public sealed partial class PrototypeGameEngine
                     == PrototypeRunEffectKind.LoseHp)
             .Sum(effect =>
                 Math.Max(0, effect.Amount));
-        return hpCost < player.Hp;
+        if (hpCost >= player.Hp)
+        {
+            return false;
+        }
+
+        if (choice.DeckChoice is not { } deckChoice)
+        {
+            return true;
+        }
+
+        return player.Deck.Any(card =>
+            deckChoice.Kind switch
+            {
+                PrototypePersistentDeckChoiceKind.Remove =>
+                    !PrototypeContent.Card(
+                        card.CardId).Eternal,
+                PrototypePersistentDeckChoiceKind.Upgrade =>
+                    card.UpgradeLevel == 0,
+                PrototypePersistentDeckChoiceKind.Transform =>
+                    !PrototypeContent.Card(
+                        card.CardId).Eternal,
+                _ => false
+            });
     }
 
     private static PrototypePendingEventDeckChoiceState?
