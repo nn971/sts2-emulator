@@ -2143,7 +2143,19 @@ public static class PrototypeContent
                         PrototypeRunEventKind.CardAdded,
                         [new(PrototypeRunEffectKind.GainMaxHp, 6)],
                         RequiredCardType: PrototypeCardType.Curse)
-                ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.molten_egg",
+                "Molten Egg",
+                UpgradeAddedCardType: PrototypeCardType.Attack),
+            new PrototypeRelicDefinition(
+                "proto.relic.toxic_egg",
+                "Toxic Egg",
+                UpgradeAddedCardType: PrototypeCardType.Skill),
+            new PrototypeRelicDefinition(
+                "proto.relic.frozen_egg",
+                "Frozen Egg",
+                UpgradeAddedCardType: PrototypeCardType.Power)
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -5822,7 +5834,10 @@ public static class PrototypeContent
         "proto.relic.lees_waffle",
         "proto.relic.meal_ticket",
         "proto.relic.lucky_fysh",
-        "proto.relic.darkstone_periapt"
+        "proto.relic.darkstone_periapt",
+        "proto.relic.molten_egg",
+        "proto.relic.toxic_egg",
+        "proto.relic.frozen_egg"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>
