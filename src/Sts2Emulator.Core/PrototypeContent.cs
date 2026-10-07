@@ -1685,6 +1685,12 @@ public static class PrototypeContent
                 SkipCardsWithExistingAffliction: true,
                 ClearSourceAfflictionWhenRemoved: true),
             new PrototypePowerDefinition(
+                "proto.power.strength",
+                "Strength",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                EnemyAttackDamageBonusPerStack: 1),
+            new PrototypePowerDefinition(
                 "proto.power.thorns",
                 "Thorns",
                 BlockBonusPerStack: 0,
@@ -1695,6 +1701,42 @@ public static class PrototypeContent
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
         new[]
         {
+            new PrototypeEnemyDefinition(
+                "proto.enemy.flail_knight",
+                "Flail Knight",
+                101,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "war_chant",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                3,
+                                PowerId: "proto.power.strength")
+                        ],
+                        MaxConsecutiveUses: 1),
+                    new PrototypeEnemyMoveDefinition(
+                        "flail",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                9,
+                                Repetitions: 2)
+                        ],
+                        MaxConsecutiveUses: 2),
+                    new PrototypeEnemyMoveDefinition(
+                        "ram",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                15)
+                        ],
+                        MaxConsecutiveUses: 2)
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.UniformRandomAfterOpener,
+                OpeningMoveIndex: 2),
             new PrototypeEnemyDefinition(
                 "proto.enemy.magi_knight",
                 "Magi Knight",
