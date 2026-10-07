@@ -608,7 +608,9 @@ public static class PrototypeStateInvariants
             var persistent = player.Deck.Single(item =>
                 item.InstanceId == card.PersistentCardInstanceId!.Value);
             if (!StringComparer.Ordinal.Equals(card.CardId, persistent.CardId)
-                || card.UpgradeLevel != persistent.UpgradeLevel
+                || card.UpgradeLevel
+                    + card.SuppressedUpgradeLevels
+                    != persistent.UpgradeLevel
                 || card.Enchantment != persistent.Enchantment)
             {
                 throw new InvalidOperationException(
