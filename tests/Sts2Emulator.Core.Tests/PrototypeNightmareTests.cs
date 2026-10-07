@@ -58,7 +58,9 @@ public sealed class PrototypeNightmareTests
         {
             State = selectedState,
             CombatEnergyCostDelta = -1,
-            ReplayCount = 2
+            ReplayCount = 2,
+            Enchantment = new(
+                PrototypeCardEnchantmentKind.Spiral)
         };
         var drawPile = Enumerable.Range(3, 5)
             .Select(id => Card(id, "proto.silent.strike"))
@@ -86,6 +88,12 @@ public sealed class PrototypeNightmareTests
         Assert.Equal(1, power.CardPayload.UpgradeLevel);
         Assert.Equal(-1, power.CardPayload.CombatEnergyCostDelta);
         Assert.Equal(2, power.CardPayload.ReplayCount);
+        Assert.NotNull(power.CardPayload.Enchantment);
+        Assert.Equal(
+            PrototypeCardEnchantmentKind.Spiral,
+            power.CardPayload.Enchantment!.Kind);
+        Assert.False(
+            power.CardPayload.EnchantmentTriggeredThisCombat);
         Assert.Equal(
             7,
             power.CardPayload.State.GetProperty("marker").GetInt32());
@@ -112,6 +120,12 @@ public sealed class PrototypeNightmareTests
             Assert.Equal(1, card.UpgradeLevel);
             Assert.Equal(-1, card.CombatEnergyCostDelta);
             Assert.Equal(2, card.ReplayCount);
+            Assert.NotNull(card.Enchantment);
+            Assert.Equal(
+                PrototypeCardEnchantmentKind.Spiral,
+                card.Enchantment!.Kind);
+            Assert.False(
+                card.EnchantmentTriggeredThisCombat);
             Assert.Equal(
                 7,
                 card.State.GetProperty("marker").GetInt32());
