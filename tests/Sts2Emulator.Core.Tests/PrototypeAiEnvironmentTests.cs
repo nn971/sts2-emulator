@@ -40,10 +40,17 @@ public sealed class PrototypeAiEnvironmentTests
             Assert.Single(
                 new PrototypeGameEngine()
                     .GetLegalActions(state))).State;
+        var observation =
+            environment.Observe(state).Observation;
         Assert.Equal(
             PrototypeActOneRegion.Overgrowth,
-            environment.Observe(state)
-                .Observation.ActOneRegion);
+            observation.ActOneRegion);
+        Assert.Equal(
+            state.World!.ActOneEncounterPool!.BossEncounterId,
+            observation.ActOneBossEncounterId);
+        Assert.Contains(
+            observation.ActOneBossEncounterId,
+            PrototypeContent.OvergrowthBossEncounterPool);
 
         var fork = environment.Fork(state);
         Assert.Equal(9, fork.Ascension);
