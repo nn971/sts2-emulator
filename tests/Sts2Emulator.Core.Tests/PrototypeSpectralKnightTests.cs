@@ -40,6 +40,46 @@ public sealed class PrototypeSpectralKnightTests
     }
 
     [Fact]
+    public void ArtifactBlocksOpeningHexAndConsumesOneStack()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(
+            powers:
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.artifact",
+                    2,
+                    1)
+            ]);
+
+        state = EndTurn(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.DoesNotContain(
+            combat.PlayerPowers,
+            power => power.PowerId == "proto.power.hex");
+
+        var artifact = Assert.Single(
+            combat.PlayerPowers,
+            power => power.PowerId == "proto.power.artifact");
+        Assert.Equal(1, artifact.Stacks);
+
+        Assert.All(
+            combat.Cards,
+            card => Assert.False(
+                card.Affliction?.Kind
+                    == PrototypeCardAfflictionKind.Hexed));
+
+        // Spectral Knight proceeds to its normal post-opener loop;
+        // blocked Hex is not retried.
+        state = EndTurn(engine, state);
+        Assert.Equal(55, state.Player.Hp);
+        Assert.DoesNotContain(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.hex");
+    }
+
+    [Fact]
     public void CombatPatternHexThenAlternatesSlashAndFlame()
     {
         var engine = new PrototypeGameEngine();
@@ -84,8 +124,10 @@ public sealed class PrototypeSpectralKnightTests
         return engine.Step(state, action).State;
     }
 
-    private static RunState CreateState()
+    private static RunState CreateState(
+        PrototypePowerInstanceState[]? powers = null)
     {
+        powers ??= [];
         var empty = PrototypeJson.EmptyObject();
         var player = new PlayerState(
             70,
@@ -117,8 +159,12 @@ public sealed class PrototypeSpectralKnightTests
             ],
             NextCardInstanceId: 1,
             Cards: [],
-            PlayerPowers: [],
-            NextPowerApplicationOrder: 1);
+            PlayerPowers: powers,
+            NextPowerApplicationOrder:
+                powers.Length == 0
+                    ? 1
+                    : powers.Max(
+                        power => power.ApplicationOrder) + 1);
 
         return new RunState(
             "prototype-unbound",
