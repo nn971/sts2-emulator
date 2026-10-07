@@ -490,7 +490,9 @@ public sealed record PrototypeCardDefinition(
     PrototypeCardType Type = PrototypeCardType.Unknown,
     PrototypeCombatPredicateSpec? PlayCondition = null,
     string[]? Tags = null,
-    int EndTurnDamageIfInHand = 0);
+    int EndTurnDamageIfInHand = 0,
+    bool MechanicsImplemented = true,
+    bool MultiplayerOnly = false);
 
 public sealed record PrototypePotionDefinition(
     string Id,

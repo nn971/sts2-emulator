@@ -338,6 +338,20 @@ native monster-AI RNG parity remain unresolved; neither blocks the new Act 1 ene
 See `docs/reference-builds/v0.111.0-knight-gang-differential.md`.
 
 
+## Silent card catalog milestone
+
+The pinned v0.111.0 native `SilentCardPool` is now represented explicitly as **91 unique cards**.
+Seventy currently map to implemented prototype mechanics; the remaining 21 have source-backed
+cost/type/rarity/keyword metadata and are gated with `MechanicsImplemented = false` so they cannot
+silently behave as no-op cards. The five multiplayer-only Silent cards are typed separately and
+excluded from single-player rewards.
+
+Five older compatibility definitions remain available to focused tests but are excluded from the
+pinned native pool and therefore from rewards: Quick Slash, Concentrate, Catalyst, Crippling Cloud,
+and Die Die Die. Shiv remains a generated token outside the 91-card pool.
+
+See `docs/SILENT_CARD_CATALOG.md`.
+
 ## Overgrowth fidelity-audit baseline
 
 Overgrowth is now the active Act 1 target; Underdocks is deferred.

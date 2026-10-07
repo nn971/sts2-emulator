@@ -609,7 +609,8 @@ public sealed partial class PrototypeGameEngine
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
             var isFreeByPower = IsCardFreeByPower(combat, definition);
-            if (definition.Unplayable
+            if (!definition.MechanicsImplemented
+                || definition.Unplayable
                 || (!isFreeByPower
                     && !IsCardAffordable(
                         combat,
@@ -709,6 +710,12 @@ public sealed partial class PrototypeGameEngine
 
         var card = RequireCombatCard(combat, payload.CardInstanceId);
         var definition = PrototypeContent.Card(card.CardId);
+        if (!definition.MechanicsImplemented)
+        {
+            throw new NotSupportedException(
+                $"Card '{definition.Name}' is catalogued but its combat mechanics are not implemented.");
+        }
+
         if (definition.Unplayable)
         {
             throw new InvalidOperationException(
