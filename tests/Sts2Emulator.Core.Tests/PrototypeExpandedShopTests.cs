@@ -90,8 +90,8 @@ public sealed class PrototypeExpandedShopTests
         Assert.Equal(
             selected.ItemId,
             Assert.Single(
-                state.Player.PotionSlots
-                    .Where(potion => potion is not null))!
+                state.Player.PotionSlots,
+                potion => potion is not null)!
                 .PotionId);
 
         var after = state.World!.Shop!;
@@ -117,6 +117,7 @@ public sealed class PrototypeExpandedShopTests
             [],
             new PotionInstance?[
                 PrototypeContent.Rules.PotionSlots]);
+        var engine = new PrototypeGameEngine();
         var state = new RunState(
             "prototype-unbound",
             "prototype-0.1",
