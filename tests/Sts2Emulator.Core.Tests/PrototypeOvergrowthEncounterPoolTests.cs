@@ -183,6 +183,51 @@ public sealed class PrototypeOvergrowthEncounterPoolTests
     }
 
     [Fact]
+    public void EliteRepeatGuardSurvivesInterveningOrdinaryCombat()
+    {
+        var engine = new PrototypeGameEngine();
+
+        for (var seedIndex = 0;
+             seedIndex < 96;
+             seedIndex++)
+        {
+            var state = StartRun(
+                $"overgrowth-elite-gap-{seedIndex}",
+                engine);
+
+            string? previousElite = null;
+            for (var eliteIndex = 0;
+                 eliteIndex < 3;
+                 eliteIndex++)
+            {
+                state = StartRoom(
+                    engine,
+                    state,
+                    PrototypeRoomType.Elite,
+                    floor: eliteIndex + 3);
+                previousElite =
+                    state.World!.EncounterIds[^1];
+            }
+
+            state = StartRoom(
+                engine,
+                state,
+                PrototypeRoomType.Combat,
+                floor: 6);
+
+            state = StartRoom(
+                engine,
+                state,
+                PrototypeRoomType.Elite,
+                floor: 7);
+
+            Assert.NotEqual(
+                previousElite,
+                state.World!.EncounterIds[^1]);
+        }
+    }
+
+    [Fact]
     public void FourthOrdinaryCombatStartsNormalBagWithoutTouchingWeakPool()
     {
         var engine = new PrototypeGameEngine();
