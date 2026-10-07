@@ -13,7 +13,8 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
   `MechanicsImplemented` is false. These cards cannot be played or sampled into single-player
   rewards yet.
 - **multiplayer-only** mirrors the native card constraint and keeps the card out of single-player
-  rewards.
+  rewards. Multiplayer-only mechanics are **out of scope** for this project and are not part of the
+  implementation backlog.
 
 | # | Card | Engine support | Native constraint |
 |---:|---|---|---|
@@ -111,21 +112,25 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 
 ## Catalog-only implementation queue
 
-The 11 source-backed catalog-only cards are:
+The active **single-player** implementation backlog is now only:
 
 - Blade of Ink
-- Blade Symphony (multiplayer-only)
-- Concoct (multiplayer-only)
-- Fade (multiplayer-only)
-- Flanking (multiplayer-only)
 - Knife Trap
-- Sneaky (multiplayer-only)
 - The Hunt
 
-A useful implementation order is to start with cards expressible through existing generic
-primitives (for example Strangle, Outbreak, Calculated Gamble), then add mechanics that create
-new reusable engine concepts (Fatal rewards, Intangible, teammate targeting, enchantment creation,
-and discard/exhaust replay).
+The following five native Silent cards remain catalogued for version completeness but are
+**multiplayer-only and intentionally out of scope** for mechanics implementation:
+
+- Blade Symphony
+- Concoct
+- Fade
+- Flanking
+- Sneaky
+
+Future Silent card work should therefore ignore multiplayer-only behavior entirely unless the
+project scope is explicitly changed. The useful next single-player engine concepts are enchantment
+creation (Blade of Ink), exhaust-pile Shiv autoplay (Knife Trap), and Fatal reward modification
+(The Hunt).
 
 ## Compatibility definitions outside the pinned pool
 

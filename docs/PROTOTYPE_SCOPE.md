@@ -5,6 +5,7 @@ content**, rather than native-fidelity coverage of individual systems.
 
 The first playable ruleset is:
 
+- mode: **single-player only**; multiplayer-only cards/mechanics are out of scope;
 - character: Silent;
 - ruleset ID: `prototype-silent-v0`;
 - three acts;
@@ -101,6 +102,14 @@ The initial catalog intentionally stays small:
 
 Some familiar names are used to make development readable; behavior and numbers remain prototype
 fixtures until verified against a pinned game build.
+
+## Multiplayer scope
+
+This project deliberately targets single-player STS2. Native multiplayer-only content may be kept
+in version-pinned inventories so catalog membership stays faithful, but its gameplay mechanics,
+teammate targeting, multiplayer synchronization, and multiplayer-specific fidelity are not
+implementation goals. Such content should remain excluded from single-player generation and AI
+training surfaces.
 
 ## Development rule
 

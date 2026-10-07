@@ -2,6 +2,10 @@
 
 **Stage:** Natural-run Overgrowth oracle pass, then parent AI prototype integration.
 
+**Project scope constraint:** this emulator targets **single-player STS2 only**. Multiplayer-only
+cards and mechanics may remain in the pinned catalog as metadata, but they are not implementation,
+fidelity, testing, or AI-training targets unless this scope is explicitly changed later.
+
 Implemented on the current prototype branch:
 
 - emulator charter and subrepo boundary;
@@ -343,8 +347,8 @@ See `docs/reference-builds/v0.111.0-knight-gang-differential.md`.
 The pinned v0.111.0 native `SilentCardPool` is represented explicitly as **91 unique cards**.
 Eighty-three currently map to implemented prototype mechanics; the remaining 8 have source-backed
 cost/type/rarity/keyword metadata and are gated with `MechanicsImplemented = false` so they cannot
-silently behave as no-op cards. The five multiplayer-only Silent cards are typed separately and
-excluded from single-player rewards.
+silently behave as no-op cards. The five multiplayer-only Silent cards are typed separately, excluded from single-player rewards,
+and intentionally out of scope for mechanics implementation.
 
 Five older compatibility definitions remain available to focused tests but are excluded from the
 pinned native pool and therefore from rewards: Quick Slash, Concentrate, Catalyst, Crippling Cloud,
