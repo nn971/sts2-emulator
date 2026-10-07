@@ -23,7 +23,8 @@ public sealed record PrototypeActOneEncounterPoolState(
     int OrdinaryCombatsStarted,
     string[] RemainingWeakEncounterIds,
     string[]? RemainingNormalEncounterIds = null,
-    string[]? RemainingEliteEncounterIds = null)
+    string[]? RemainingEliteEncounterIds = null,
+    string? BossEncounterId = null)
 {
     public PrototypeActOneEncounterPoolState Fork() => this with
     {
