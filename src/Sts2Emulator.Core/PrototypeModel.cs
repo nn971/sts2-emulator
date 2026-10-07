@@ -278,7 +278,8 @@ public sealed record PrototypeEventSubscriberState(
     bool RemoveSourcePowerAfterTrigger = false,
     int? RelicStateIndex = null,
     int? RelicTriggerIndex = null,
-    int EveryNth = 1)
+    int EveryNth = 1,
+    int? MaxTriggersPerCounterWindow = null)
 {
     public PrototypeEventSubscriberState Fork() => this with
     {
@@ -561,6 +562,7 @@ public sealed record PrototypeRelicTriggerSpec(
     bool RequiresZeroPlayerBlock = false,
     PrototypeCardType? RequiredSourceCardType = null,
     bool ResetCounterEachTurn = false,
+    int? MaxTriggersPerCounterWindow = null,
     int? MaxAttacksPlayedLastTurn = null);
 
 public sealed record PrototypeRelicRunTriggerSpec(
