@@ -451,6 +451,32 @@ public static class PrototypeStateInvariants
                 throw new InvalidOperationException("Reward contains a basic-only card.");
             }
         }
+
+        var relicOptions = reward.CurrentRelicOptions;
+        if (relicOptions.Length
+            != relicOptions
+                .Distinct(StringComparer.Ordinal)
+                .Count())
+        {
+            throw new InvalidOperationException(
+                "Reward relic options contain duplicates.");
+        }
+
+        foreach (var relicId in relicOptions)
+        {
+            if (!PrototypeContent.Relics.ContainsKey(relicId))
+            {
+                throw new InvalidOperationException(
+                    $"Reward contains unknown relic '{relicId}'.");
+            }
+        }
+
+        if (!reward.RelicResolved
+            && relicOptions.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Unresolved relic reward has no relic options.");
+        }
     }
 
     private static void ValidateCombatPotions(
