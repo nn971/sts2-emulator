@@ -80,18 +80,24 @@ workloads determine which batching/performance improvements matter.
 
 ## Sprint D — parent AI integration
 
-The prototype AI boundary is ready to consume from the parent `sts2-ai` project. Keep strategy,
-search, and training outside this repository. Emulator work should stay focused on exact mechanics,
-stable state/action semantics, and measured simulation performance.
+The prototype AI boundary is ready to consume from the parent `sts2-ai` project. This becomes the
+**next active development sprint after one compact natural-run Overgrowth oracle pass**.
+
+The oracle pass is a gate for catching obvious combat-fidelity mistakes, rather than a requirement
+for exact native parity. After reviewing several ordinary Silent A0 Overgrowth runs, fix
+high-confidence divergences that materially affect decisions, record smaller uncertainties as
+known fidelity gaps, and move on to the AI prototype.
+
+Keep strategy, search, and training outside this repository. Emulator work should stay focused on
+stable state/action semantics, materially important mechanics, and measured simulation performance.
 
 ## Sprint E — complete Act 1 combat
 
-This is the active fidelity milestone.
+The broad Overgrowth implementation phase is complete at the current semantic-fidelity target.
+The active fidelity task is now a **single natural-run oracle corpus pass** before Sprint D.
 
-The active target is **Overgrowth**. Underdocks is the second Act 1 region variant, but is deferred
-until Overgrowth is complete. The shared ledger still inventories both regions; current implementation
-and oracle work should only advance Overgrowth rows. Track monster mechanics, formation/slot
-semantics, encounter-pool semantics, Ascension scaling, and oracle coverage independently.
+The target remains **Overgrowth**. Underdocks is deferred. Track monster mechanics, formation/slot
+semantics, encounter-pool semantics, Ascension scaling, and oracle evidence independently.
 
 Completed reusable Act 1 foundations include:
 
@@ -102,19 +108,18 @@ Completed reusable Act 1 foundations include:
 - player Vulnerable / Weak / Frail with owner-turn duration and multiplicative combat modifiers;
 - source-backed Seapunk, Twig Slime (S), Assassin Raider, Snapping Jaxfruit, and Mawler.
 
-Continue by Overgrowth dependency rather than raw encounter order:
+Oracle handoff plan:
 
-1. complete the Overgrowth **normal** encounter pool, promoting already-implemented formations first;
-2. finish the remaining normal Overgrowth monster families, introducing summon/death primitives only
-   when a concrete encounter requires them;
-3. translate Overgrowth elite formations/pool, then its three bosses;
-4. run representative A0/A10 native differentials across deterministic, random, conditional,
-   source-bound-debuff, elite, and boss mechanics;
-5. finish with an Overgrowth-only deterministic sweep before reopening Underdocks.
+1. build the passive reference bridge in `overgrowth-silent-act1` corpus mode;
+2. collect several ordinary Silent A0 runs through Act 1 Overgrowth with no gameplay mods;
+3. analyze the combined logs for encounter coverage, move legality, numeric effects, lifecycle
+   behavior, and decision-relevant divergences;
+4. fix clear material discrepancies; preserve minor/uncertain differences as explicit known gaps;
+5. freeze this Overgrowth fidelity pass and begin the parent `sts2-ai` prototype.
 
-Static sources come first: use the commit/blob-pinned Spire Codex corpus and the locally decompiled
-pinned `sts2.dll`; use live Loadout-assisted oracle captures for runtime ordering, conditional
-formation behavior, and RNG questions that static evidence leaves unresolved.
+Exact native RNG call-order parity, exhaustive oracle coverage of all 22 encounters, and exhaustive
+Ascension differential testing are later refinement work unless the natural corpus exposes a
+decision-relevant problem.
 
 See [ACT1_COMBAT_COMPLETENESS.md](ACT1_COMBAT_COMPLETENESS.md),
 [REFERENCE_DATA_STRATEGY.md](REFERENCE_DATA_STRATEGY.md), and
