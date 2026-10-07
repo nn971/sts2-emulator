@@ -1544,6 +1544,8 @@ public sealed record UsePotionPayload(int Slot, int? TargetEnemyId);
 public sealed record ChooseCardPayload(int Index);
 public sealed record ChooseRelicPayload(int Index);
 public sealed record ChooseDeckCardPayload(long CardInstanceId);
+public sealed record ReplaceRewardPotionPayload(int Slot);
+public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
 public sealed record UpgradeCardPayload(long CardInstanceId);
