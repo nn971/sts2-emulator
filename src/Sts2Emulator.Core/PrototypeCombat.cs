@@ -65,7 +65,9 @@ public sealed partial class PrototypeGameEngine
             .Select((enemyId, index) =>
             {
                 var definition = PrototypeContent.Enemy(enemyId);
-                var hp = definition.MaxHp + ((world.Act - 1) * definition.HpPerAct);
+                var hp = definition.HpAt(
+                    world.Act,
+                    state.Ascension);
                 var powers = (definition.StartingPowers ?? Array.Empty<PrototypeStartingPowerSpec>())
                     .Select(power =>
                     {
@@ -735,6 +737,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     combat,
                     world.Act,
+                    state.Ascension,
                     state.Rng);
                 player = result.Player;
                 combat = result.Combat;
@@ -983,6 +986,7 @@ public sealed partial class PrototypeGameEngine
         PlayerState player,
         CombatState combat,
         int act,
+        int ascension,
         RngBundle rng)
     {
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
@@ -1010,7 +1014,9 @@ public sealed partial class PrototypeGameEngine
 
             foreach (var effect in move.Effects)
             {
-                var amount = effect.Amount + ((act - 1) * effect.AmountPerAct);
+                var amount = effect.AmountAt(
+                    act,
+                    ascension);
                 for (var repetition = 0; repetition < effect.Repetitions; repetition++)
                 {
                     switch (effect.Kind)
