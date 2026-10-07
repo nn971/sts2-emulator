@@ -752,6 +752,8 @@ public sealed record PrototypeEncounterDefinition(
     public PrototypeEncounterEnemySpec[] FixedEnemySpecs =>
         Formation
         ?? (SelectionGroups is { Length: > 0 }
+            || FormationPolicy
+                == PrototypeEncounterFormationPolicy.ChooseDistinct
             ? Array.Empty<PrototypeEncounterEnemySpec>()
             : EnemyIds
                 .Select((enemyId, index) =>
@@ -759,6 +761,111 @@ public sealed record PrototypeEncounterDefinition(
                         enemyId,
                         index))
                 .ToArray());
+
+    public PrototypeEncounterEnemySpec[] ResolveEnemySpecs(
+        RngBundle rng)
+    {
+        var resolved = FixedEnemySpecs.ToList();
+
+        if (FormationPolicy
+                == PrototypeEncounterFormationPolicy.ChooseDistinct)
+        {
+            var pool = EnemyPool
+                ?? throw new InvalidOperationException(
+                    $"Encounter '{Id}' is missing its enemy pool.");
+            if (EnemyCount <= 0 || EnemyCount > pool.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Encounter '{Id}' has invalid distinct enemy count {EnemyCount}.");
+            }
+
+            var candidates = pool.ToList();
+            for (var position = 0;
+                 position < EnemyCount;
+                 position++)
+            {
+                var index = candidates.Count == 1
+                    ? 0
+                    : PrototypeRng.NextInt(
+                        rng,
+                        "combat",
+                        candidates.Count);
+                resolved.Add(
+                    new PrototypeEncounterEnemySpec(
+                        candidates[index],
+                        position));
+                candidates.RemoveAt(index);
+            }
+        }
+
+        foreach (var group in
+                 SelectionGroups
+                 ?? Array.Empty<
+                     PrototypeEncounterSelectionGroup>())
+        {
+            if (group.EnemyPool.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Encounter '{Id}' has an empty selection group.");
+            }
+
+            if (group.SlotNames is { } slotNames
+                && slotNames.Length
+                    != group.FormationPositions.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Encounter '{Id}' has mismatched slot-name and position counts.");
+            }
+
+            if (group.ChooseDistinct
+                && group.FormationPositions.Length
+                    > group.EnemyPool.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Encounter '{Id}' cannot choose " +
+                    $"{group.FormationPositions.Length} distinct enemies " +
+                    $"from a pool of {group.EnemyPool.Length}.");
+            }
+
+            var candidates = group.EnemyPool.ToList();
+            for (var index = 0;
+                 index < group.FormationPositions.Length;
+                 index++)
+            {
+                var choiceIndex = candidates.Count == 1
+                    ? 0
+                    : PrototypeRng.NextInt(
+                        rng,
+                        "combat",
+                        candidates.Count);
+                var selected = candidates[choiceIndex];
+                resolved.Add(
+                    new PrototypeEncounterEnemySpec(
+                        selected,
+                        group.FormationPositions[index],
+                        group.SlotNames?[index]));
+
+                if (group.ChooseDistinct)
+                {
+                    candidates.RemoveAt(choiceIndex);
+                }
+            }
+        }
+
+        var duplicatePosition = resolved
+            .GroupBy(spec => spec.FormationPosition)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicatePosition is not null)
+        {
+            throw new InvalidOperationException(
+                $"Encounter '{Id}' assigns multiple enemies to " +
+                $"formation position {duplicatePosition.Key}.");
+        }
+
+        return resolved
+            .OrderBy(spec => spec.FormationPosition)
+            .ToArray();
+    }
 }
 
 public sealed record PrototypeStatusDefinition(
