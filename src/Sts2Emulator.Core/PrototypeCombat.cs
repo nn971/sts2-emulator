@@ -5596,8 +5596,21 @@ public sealed partial class PrototypeGameEngine
 
     private static bool RelicTriggerMatchesPlayer(
         PrototypeRelicTriggerSpec trigger,
-        PlayerState player)
+        PlayerState player,
+        CombatState combat)
     {
+        if (trigger.TurnEquals is { } turn
+            && combat.Turn != turn)
+        {
+            return false;
+        }
+
+        if (trigger.RequiresZeroPlayerBlock
+            && combat.PlayerBlock != 0)
+        {
+            return false;
+        }
+
         if (player.MaxHp <= 0)
         {
             return trigger.MaxPlayerHpPercent is null
@@ -5742,7 +5755,8 @@ public sealed partial class PrototypeGameEngine
                 if (trigger.EventKind != combatEvent.Kind
                     || !RelicTriggerMatchesPlayer(
                         trigger,
-                        player))
+                        player,
+                        combat))
                 {
                     continue;
                 }
