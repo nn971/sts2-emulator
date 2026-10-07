@@ -69,6 +69,21 @@ public enum PrototypeCardKeyword
     Ethereal
 }
 
+public enum PrototypeCardAfflictionKind
+{
+    Bound,
+    Entangled,
+    Galvanized,
+    Hexed,
+    Ringing,
+    Smog,
+    Tainted
+}
+
+public sealed record PrototypeCardAffliction(
+    PrototypeCardAfflictionKind Kind,
+    int Amount = 1);
+
 [Flags]
 public enum PrototypeCardKeywordOverrideExpiry
 {
@@ -103,7 +118,8 @@ public sealed record PrototypeCombatCardSnapshot(
     PrototypeCardKeywordOverride[]? KeywordOverrides = null,
     int ReplayCount = 0,
     PrototypeCardEnchantment? Enchantment = null,
-    bool EnchantmentTriggeredThisCombat = false)
+    bool EnchantmentTriggeredThisCombat = false,
+    PrototypeCardAffliction? Affliction = null)
 {
     public PrototypeCombatCardSnapshot Fork() => this with
     {
@@ -287,7 +303,8 @@ public sealed record PrototypeCardSelectionSpec(
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
     int Amount,
-    int UpgradeDelta = 0)
+    int UpgradeDelta = 0,
+    bool ClearAfflictionFromPayload = false)
 {
     public int AmountAt(int upgradeLevel) =>
         Amount + (UpgradeDelta * upgradeLevel);
@@ -295,7 +312,8 @@ public sealed record PrototypeSelectedCardPowerSpec(
 
 public sealed record PrototypeSelectedCardPowerAction(
     string PowerId,
-    int Amount);
+    int Amount,
+    bool ClearAfflictionFromPayload = false);
 
 public sealed record PrototypeCardKeywordOverrideSpec(
     PrototypeCardKeyword Keyword,
@@ -681,7 +699,8 @@ public sealed record CombatCardInstance(
     PrototypeCardKeywordOverride[]? KeywordOverrides = null,
     int ReplayCount = 0,
     PrototypeCardEnchantment? Enchantment = null,
-    bool EnchantmentTriggeredThisCombat = false)
+    bool EnchantmentTriggeredThisCombat = false,
+    PrototypeCardAffliction? Affliction = null)
 {
     public CombatCardInstance Fork() => this with
     {
