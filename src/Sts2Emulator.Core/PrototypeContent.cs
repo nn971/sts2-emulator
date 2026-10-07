@@ -1705,6 +1705,20 @@ public static class PrototypeContent
                 EnemyHpLossCapPerTrigger: 1,
                 ConsumeOnEnemyHpLoss: true),
             new PrototypePowerDefinition(
+                "proto.power.tangled",
+                "Tangled",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                AppliedCardAffliction:
+                    PrototypeCardAfflictionKind.Entangled,
+                AppliedCardAfflictionRequiredCardType:
+                    PrototypeCardType.Attack,
+                AfflictedCardEnergyCostPerStack: 1,
+                SkipCardsWithExistingAffliction: true,
+                ClearAppliedCardAfflictionWhenRemoved: true,
+                DecrementAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
                 "proto.power.constrict",
                 "Constrict",
                 BlockBonusPerStack: 0,
@@ -2677,6 +2691,55 @@ public static class PrototypeContent
                     new(8, 1)
                 ]),
             new PrototypeEnemyDefinition(
+                "proto.enemy.vine_shambler",
+                "Vine Shambler",
+                61,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "swipe",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                6,
+                                Repetitions: 2,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "grasping_vines",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                8,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ]),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                1,
+                                PowerId: "proto.power.tangled")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "chomp",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                16,
+                                AscensionDeltas:
+                                [
+                                    new(9, 2)
+                                ])
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 3)
+                ]),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.slithering_strangler",
                 "Slithering Strangler",
                 55,
@@ -3621,6 +3684,19 @@ public static class PrototypeContent
             [
                 new(
                     "proto.enemy.cubex_construct",
+                    0)
+            ]),
+        new(
+            "proto.encounter.vine_shambler_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.vine_shambler"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.vine_shambler",
                     0)
             ]),
         new(
