@@ -555,7 +555,9 @@ public sealed record PrototypeRelicTriggerSpec(
     PrototypeCombatEffectSpec[] Effects,
     int EveryNth = 1,
     int? MaxPlayerHpPercent = null,
-    int? MinPlayerHpPercent = null);
+    int? MinPlayerHpPercent = null,
+    int? TurnEquals = null,
+    bool RequiresZeroPlayerBlock = false);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
