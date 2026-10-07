@@ -100,6 +100,25 @@ public sealed class PrototypeAiEnvironmentTests
     }
 
     [Fact]
+    public void RolloutStepFrameMatchesFullFrameWithoutComputingHashes()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var state = environment.Reset("ai-rollout-frame-test");
+        var selected = Assert.Single(environment.Observe(state).LegalActions);
+
+        var rollout = environment.RolloutStepFrame(state, selected.ActionId);
+        var full = environment.Observe(rollout.State);
+
+        Assert.Equal(selected.ActionId, rollout.Action.ActionId);
+        Assert.Equal(
+            CanonicalJson.Serialize(full.Observation),
+            CanonicalJson.Serialize(rollout.Observation));
+        Assert.Equal(
+            full.LegalActions.Select(action => action.ActionId),
+            rollout.LegalActions.Select(action => action.ActionId));
+    }
+
+    [Fact]
     public void ObservationExposesMapAndVisibleCombatWithoutRngOrDrawOrder()
     {
         var environment = new PrototypeAiEnvironment();
