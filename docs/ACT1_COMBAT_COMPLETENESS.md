@@ -1,13 +1,16 @@
 # Act 1 combat completeness
 
-This is the active intermediate fidelity milestone for the restrictive emulator.
+This document inventories both native Act 1 regions, but the active completion target is now
+**Overgrowth**. Underdocks remains tracked below so that its work can resume later without losing
+the dependency map.
 
 ## Reference boundary
 
 - Native oracle: STS2 v0.111.0 / 41cef1ea.
 - Structured inventory source: `ptrlrd/spire-codex@b59c6f96043051afee8683237d04f943309ced35`.
 - Pinned blobs: `encounters.json` d948d8b6bcbb6b664fe0bd65526310dd4960f1b0; `monsters.json` 5fe2f086b44266fc41e56169f26d13c577ca966d.
-- Scope: both first-act regions, **Overgrowth** and **Underdocks**.
+- Inventory scope: both first-act regions, **Overgrowth** and **Underdocks**.
+- Active implementation scope: **Overgrowth only**; Underdocks is deferred.
 - Event-only combats are excluded from this milestone unless they reuse a required Act 1 monster mechanic.
 
 The structured corpus contains **42 Act 1 combat encounters** and **51 distinct monster models**: 22 Overgrowth encounters and 20 Underdocks encounters.
@@ -31,7 +34,10 @@ An encounter is not complete merely because all of its monster classes exist. Co
 - timed player Vulnerable / Weak / Frail with attack/card-Block multipliers;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
-- source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, **Toadpole**, **Leaf Slime (S)**, **Leaf Slime (M)**, **Twig Slime (M)**, and **Nibbit** (isolated models; encounter pools not yet promoted).
+- source-backed Overgrowth models currently promoted in this ledger include **Twig Slime (S)**,
+  **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, **Leaf Slime (S)**, **Leaf Slime (M)**,
+  **Twig Slime (M)**, **Nibbit**, **Fuzzy Wurm Crawler**, and **Shrinker Beetle**;
+- typed Act-1 region state plus a forkable Overgrowth weak-encounter queue.
 
 ## Encounter coverage
 
@@ -48,16 +54,16 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | no | pending | pending | no |
 | Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | no | pending | pending | no |
 | Overgrowth | Monster | `FOGMOG_NORMAL` | `EYE_WITH_TEETH`, `FOGMOG` | no | pending | pending | no |
-| Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | yes | yes | pending | no |
+| Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | yes | yes | yes | no |
 | Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | no | pending | pending | no |
 | Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | no | pending | pending | no |
 | Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | pending | no |
-| Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | yes | yes | pending | no |
+| Overgrowth | Monster weak | `NIBBITS_WEAK` | `NIBBIT` | yes | yes | yes | no |
 | Overgrowth | Monster | `OVERGROWTH_CRAWLERS` | `FUZZY_WURM_CRAWLER`, `SHRINKER_BEETLE` | yes | yes | pending | no |
 | Overgrowth | Monster | `RUBY_RAIDERS_NORMAL` | `ASSASSIN_RUBY_RAIDER`, `AXE_RUBY_RAIDER`, `BRUTE_RUBY_RAIDER`, `CROSSBOW_RUBY_RAIDER`, `TRACKER_RUBY_RAIDER` | no | pending | pending | no |
-| Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | yes | yes | pending | no |
+| Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | yes | yes | yes | no |
 | Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
-| Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
+| Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | yes | no |
 | Overgrowth | Monster | `SLITHERING_STRANGLER_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `SLITHERING_STRANGLER`, `SNAPPING_JAXFRUIT`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | no | pending | pending | no |
 | Overgrowth | Monster | `SNAPPING_JAXFRUIT_NORMAL` | `FLYCONID`, `SNAPPING_JAXFRUIT` | no | pending | pending | no |
 | Overgrowth | Monster | `VINE_SHAMBLER_NORMAL` | `VINE_SHAMBLER` | no | pending | pending | no |
@@ -82,7 +88,11 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Underdocks | Monster weak | `TOADPOLES_WEAK` | `TOADPOLE` | no | pending | pending | no |
 | Underdocks | Monster | `TWO_TAILED_RATS_NORMAL` | `TWO_TAILED_RAT` | no | pending | pending | no |
 
-\* `SEAPUNK_WEAK` has its only monster model implemented, but the encounter itself is deliberately not in the live selector until pool/formation translation is source-backed. `SLIMES_WEAK` and `SLIMES_NORMAL` now have source-backed formation constructors represented as weight-0 reference encounters, so they exercise exact composition without changing the live prototype pool. Their native weak/normal pool-selection semantics remain pending. Assassin Raider and Snapping Jaxfruit are implemented as reusable models, but their native encounters still depend on additional formation/pool or companion-enemy mechanics.
+\* Underdocks rows are retained as deferred inventory. The four Overgrowth weak encounters now
+participate in a typed native-shape queue: the first three ordinary combats select three distinct
+encounters uniformly from the four-entry weak pool. Exact native RNG codec/call-order parity is not
+claimed. `SLIMES_NORMAL`, `NIBBITS_NORMAL`, and `OVERGROWTH_CRAWLERS` have source-backed
+formations but still await the normal-pool translation.
 
 ## Monster-model coverage
 
