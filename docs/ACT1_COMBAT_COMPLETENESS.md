@@ -31,7 +31,7 @@ An encounter is not complete merely because all of its monster classes exist. Co
 - timed player Vulnerable / Weak / Frail with attack/card-Block multipliers;
 - typed Ascension value deltas;
 - native enemy HP ranges (added for Act 1);
-- source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, **Toadpole**, **Leaf Slime (S)**, and **Leaf Slime (M)** (isolated models; encounter pools not yet promoted).
+- source-backed Act 1 models: **Seapunk**, **Twig Slime (S)**, **Assassin Raider**, **Snapping Jaxfruit**, **Mawler**, **Toadpole**, **Leaf Slime (S)**, **Leaf Slime (M)**, and **Twig Slime (M)** (isolated models; encounter pools not yet promoted).
 
 ## Encounter coverage
 
@@ -132,7 +132,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `TERROR_EEL` — Terror Eel | Elite | 140 | 150 | cycle | not started |
 | `TOADPOLE` — Toadpole | Normal | 21–25 | 22–26 | conditional | implemented + focused tests |
 | `TRACKER_RUBY_RAIDER` — Tracker Raider | Normal | 21–25 | 22–26 | cycle | not started |
-| `TWIG_SLIME_M` — Twig Slime (M) | Normal | 26–28 | 27–29 | random | not started |
+| `TWIG_SLIME_M` — Twig Slime (M) | Normal | 26–28 | 27–29 | random | implemented + focused tests |
 | `TWIG_SLIME_S` — Twig Slime (S) | Normal | 7–11 | 8–12 | cycle | implemented + focused tests |
 | `TWO_TAILED_RAT` — Two-Tailed Rat | Normal | 17–21 | 18–22 | random | not started |
 | `VANTOM` — Vantom | Boss | 173 | 183 | cycle | not started |
