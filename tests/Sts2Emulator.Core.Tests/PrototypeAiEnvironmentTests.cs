@@ -35,6 +35,15 @@ public sealed class PrototypeAiEnvironmentTests
             ascension: 9);
 
         Assert.Equal(9, state.Ascension);
+        state = new PrototypeGameEngine().Step(
+            state,
+            Assert.Single(
+                new PrototypeGameEngine()
+                    .GetLegalActions(state))).State;
+        Assert.Equal(
+            PrototypeActOneRegion.Overgrowth,
+            environment.Observe(state)
+                .Observation.ActOneRegion);
 
         var fork = environment.Fork(state);
         Assert.Equal(9, fork.Ascension);
