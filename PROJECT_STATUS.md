@@ -263,7 +263,7 @@ Shrinker Beetle now adds the source-bound Shrink lifecycle: a non-stacking playe
 Overgrowth encounter selection now has typed, forkable Act-1 region state. New whole runs default to Overgrowth; the first three ordinary combats consume three distinct encounters from the native four-entry weak pool while elites and other room types leave that queue untouched. The selected region is exposed to the AI observation, while exact native encounter RNG parity remains separate. See
 `docs/reference-builds/v0.111.0-mechanics-gap-033.md`.
 
-A branch reconciliation found additional Overgrowth work already present: Axe, Brute, Crossbow, and Tracker Ruby Raiders plus Cubex Construct all have source-backed definitions and focused tests. Together with Assassin Raider this makes the Ruby Raider monster family model-complete. Mawler Normal and Cubex Construct Normal now also have weight-0 source-backed singleton formations; Ruby Raiders still await exact formation/slot construction. See
+A branch reconciliation found additional Overgrowth work already present: Axe, Brute, Crossbow, and Tracker Ruby Raiders plus Cubex Construct all have source-backed definitions and focused tests. Together with Assassin Raider this makes the Ruby Raider monster family model-complete. Mawler Normal and Cubex Construct Normal now have weight-0 source-backed singleton formations, and Ruby Raiders is represented as three distinct choices from its five-raider pool. The twelve-entry Overgrowth normal encounter inventory is now explicit, but activation still waits for the remaining normal encounters. See
 `docs/reference-builds/v0.111.0-mechanics-gap-034.md`.
 
 Encounter construction now supports independent random slot groups with optional distinct selection.
