@@ -7,19 +7,29 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         PrototypeEncounterDefinition encounter;
 
-        var overgrowthElite =
-            TryPickOvergrowthEliteEncounter(
-                state,
+        var overgrowthBoss =
+            TryPickOvergrowthBossEncounter(
                 world,
                 roomType);
-        if (overgrowthElite is not null)
+        if (overgrowthBoss is not null)
         {
-            encounter = overgrowthElite.Value.Encounter;
-            world = overgrowthElite.Value.World;
+            encounter = overgrowthBoss;
         }
         else
         {
-            var overgrowthWeak =
+            var overgrowthElite =
+                TryPickOvergrowthEliteEncounter(
+                    state,
+                    world,
+                    roomType);
+            if (overgrowthElite is not null)
+            {
+                encounter = overgrowthElite.Value.Encounter;
+                world = overgrowthElite.Value.World;
+            }
+            else
+            {
+                var overgrowthWeak =
                 TryPickOvergrowthWeakEncounter(
                     state,
                     world,
@@ -82,6 +92,7 @@ public sealed partial class PrototypeGameEngine
                         state.Rng);
                 }
             }
+        }
         }
 
         var combatRelics = state.Player.Relics
@@ -230,6 +241,40 @@ public sealed partial class PrototypeGameEngine
             World = world,
             Phase = RunPhase.Combat
         };
+    }
+
+    private static PrototypeEncounterDefinition?
+        TryPickOvergrowthBossEncounter(
+            RunWorldState world,
+            PrototypeRoomType roomType)
+    {
+        if (roomType != PrototypeRoomType.Boss
+            || world.Act != 1
+            || world.ActOneRegion
+                != PrototypeActOneRegion.Overgrowth)
+        {
+            return null;
+        }
+
+        var pool = world.ActOneEncounterPool;
+        if (pool is null
+            || pool.Region
+                != PrototypeActOneRegion.Overgrowth
+            || pool.BossEncounterId is null)
+        {
+            return null;
+        }
+
+        if (!PrototypeContent.OvergrowthBossEncounterPool.Contains(
+                pool.BossEncounterId,
+                StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Unknown Overgrowth boss encounter '{pool.BossEncounterId}'.");
+        }
+
+        return PrototypeContent.Encounter(
+            pool.BossEncounterId);
     }
 
     private static (
