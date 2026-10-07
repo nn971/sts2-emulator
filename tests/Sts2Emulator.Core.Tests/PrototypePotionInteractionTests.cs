@@ -53,6 +53,38 @@ public sealed class PrototypePotionInteractionTests
     }
 
     [Fact]
+    public void DuplicatorCalculatedGambleExhaustsSourceOnlyOnce()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.calculated_gamble"),
+                Card(2, "proto.silent.strike")
+            ],
+            hand: [1, 2],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.duplicator");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        var gamble = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>()
+                    .CardInstanceId == 1);
+        state = engine.Step(state, gamble).State;
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(
+            1,
+            combat.ExhaustPile.Count(id => id == 1));
+        Assert.Equal(
+            2,
+            combat.CounterState.CardsPlayedThisTurn);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void FlexPotionGrantsTemporaryStrengthUntilTurnEnd()
     {
         var state = CreateState(

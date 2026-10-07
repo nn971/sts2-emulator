@@ -2947,7 +2947,8 @@ public sealed partial class PrototypeGameEngine
                             SourceCardAlreadyMoved:
                                 sourceCardAlreadyMoved,
                             EventDispatchContinuation:
-                                eventDispatchContinuation?.Fork()));
+                                eventDispatchContinuation?.Fork()),
+                        resumeCardPlaySeries: false);
                 }
 
                 case PrototypeCombatEffectKind.ChooseCards:
@@ -6036,7 +6037,8 @@ public sealed partial class PrototypeGameEngine
             PlayerState player,
             CombatState combat,
             RngBundle rng,
-            PrototypeChoiceResolutionContinuationState continuation)
+            PrototypeChoiceResolutionContinuationState continuation,
+            bool resumeCardPlaySeries = true)
     {
         for (var eventIndex = 0;
              eventIndex < continuation.PendingDiscardEvents.Length;
@@ -6153,8 +6155,9 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
-        if (continuation.CardPlaySeries is
-            { HasRemainingExecutions: true } series)
+        if (resumeCardPlaySeries
+            && continuation.CardPlaySeries is
+                { HasRemainingExecutions: true } series)
         {
             resolved = AllEnemiesDefeated(resolved.Combat)
                 ? FinalizeInterruptedCardPlaySeries(
