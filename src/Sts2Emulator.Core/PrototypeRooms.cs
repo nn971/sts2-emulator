@@ -268,10 +268,19 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartShop(RunState state)
     {
         var world = RequireWorld(state);
-        var cardIds = PickShopCards(
-            world.Act,
-            3,
-            state.Rng);
+        var cardIds = new[]
+            {
+                (Type: PrototypeCardType.Attack, Count: 2),
+                (Type: PrototypeCardType.Skill, Count: 2),
+                (Type: PrototypeCardType.Power, Count: 1)
+            }
+            .SelectMany(group =>
+                PickShopCards(
+                    world.Act,
+                    group.Count,
+                    state.Rng,
+                    group.Type))
+            .ToArray();
 
         var offers = cardIds
             .Select((cardId, index) =>
@@ -287,39 +296,70 @@ public sealed partial class PrototypeGameEngine
             })
             .ToArray();
 
-        var potionId = PrototypeContent.PotionPool[
-            PrototypeRng.NextInt(state.Rng, "shop", PrototypeContent.PotionPool.Length)];
-        var relicId = PrototypeContent.RelicPool[
-            PrototypeRng.NextInt(state.Rng, "shop", PrototypeContent.RelicPool.Length)];
-        var potionBasePrice =
-            40 + PrototypeRng.NextInt(
-                state.Rng,
-                "shop",
-                21);
-        var relicBasePrice =
-            100 + PrototypeRng.NextInt(
-                state.Rng,
-                "shop",
-                41);
+        var potionIds = PickDistinct(
+            PrototypeContent.PotionPool,
+            3,
+            state.Rng,
+            "shop");
+        var availableRelics =
+            PrototypeContent.RelicPool
+                .Where(id =>
+                    !state.Player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(
+                            relic.RelicId,
+                            id)))
+                .ToArray();
+        var relicIds = PickDistinct(
+            availableRelics,
+            3,
+            state.Rng,
+            "shop");
+
+        var potionOffers = potionIds
+            .Select((potionId, index) =>
+            {
+                var basePrice =
+                    40 + PrototypeRng.NextInt(
+                        state.Rng,
+                        "shop",
+                        21);
+                return new ShopOffer(
+                    100 + index,
+                    potionId,
+                    basePrice,
+                    false,
+                    BasePrice: basePrice);
+            })
+            .ToArray();
+        var relicOffers = relicIds
+            .Select((relicId, index) =>
+            {
+                var basePrice =
+                    100 + PrototypeRng.NextInt(
+                        state.Rng,
+                        "shop",
+                        41);
+                return new ShopOffer(
+                    200 + index,
+                    relicId,
+                    basePrice,
+                    false,
+                    BasePrice: basePrice);
+            })
+            .ToArray();
         var removalBasePrice =
             75 + ((world.Act - 1) * 15);
 
         var shop = new ShopState(
             offers,
-            new ShopOffer(
-                100,
-                potionId,
-                potionBasePrice,
-                false,
-                BasePrice: potionBasePrice),
-            new ShopOffer(
-                200,
-                relicId,
-                relicBasePrice,
-                false,
-                BasePrice: relicBasePrice),
+            potionOffers.FirstOrDefault(),
+            relicOffers.FirstOrDefault(),
             RemovalPrice: removalBasePrice,
-            BaseRemovalPrice: removalBasePrice);
+            BaseRemovalPrice: removalBasePrice,
+            AdditionalPotionOffers:
+                potionOffers.Skip(1).ToArray(),
+            AdditionalRelicOffers:
+                relicOffers.Skip(1).ToArray());
 
         var player = ApplyRelicRunEvent(
             state.Player,
@@ -350,9 +390,11 @@ public sealed partial class PrototypeGameEngine
             actions.Add(GameAction.Create("buy_card", new BuyOfferPayload(offer.OfferId)));
         }
 
-        if (shop.PotionOffer is { Sold: false } potion
-            && potion.Price <= state.Player.Gold
-            && CanAcquirePotion(state.Player))
+        foreach (var potion in shop.PotionOffers
+                     .Where(offer =>
+                         !offer.Sold
+                         && offer.Price <= state.Player.Gold
+                         && CanAcquirePotion(state.Player)))
         {
             var emptySlot =
                 Array.IndexOf(
@@ -383,9 +425,16 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
-        if (shop.RelicOffer is { Sold: false } relic && relic.Price <= state.Player.Gold)
+        foreach (var relic in shop.RelicOffers
+                     .Where(offer =>
+                         !offer.Sold
+                         && offer.Price <= state.Player.Gold))
         {
-            actions.Add(GameAction.Create("buy_relic", new BuyOfferPayload(relic.OfferId)));
+            actions.Add(
+                GameAction.Create(
+                    "buy_relic",
+                    new BuyOfferPayload(
+                        relic.OfferId)));
         }
 
         if (!shop.RemovalUsed && shop.RemovalPrice <= state.Player.Gold)
@@ -466,12 +515,11 @@ public sealed partial class PrototypeGameEngine
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_potion"))
         {
             var payload = action.ReadPayload<BuyOfferPayload>();
-            var offer = shop.PotionOffer
-                ?? throw new InvalidOperationException("Shop has no potion offer.");
-            if (offer.OfferId != payload.OfferId)
-            {
-                throw new InvalidOperationException($"Unknown potion offer {payload.OfferId}.");
-            }
+            var offer = shop.PotionOffers
+                .FirstOrDefault(item =>
+                    item.OfferId == payload.OfferId)
+                ?? throw new InvalidOperationException(
+                    $"Unknown potion offer {payload.OfferId}.");
 
             EnsurePurchasable(player, offer);
             if (!CanAcquirePotion(player))
@@ -493,7 +541,9 @@ public sealed partial class PrototypeGameEngine
                 Gold = player.Gold - offer.Price,
                 PotionSlots = slots
             };
-            shop = shop with { PotionOffer = offer with { Sold = true } };
+            shop = UpdatePotionOffer(
+                shop,
+                offer with { Sold = true });
         }
         else if (StringComparer.Ordinal.Equals(
                      action.Kind,
@@ -502,14 +552,11 @@ public sealed partial class PrototypeGameEngine
             var payload =
                 action.ReadPayload<
                     ReplaceShopPotionPayload>();
-            var offer = shop.PotionOffer
+            var offer = shop.PotionOffers
+                .FirstOrDefault(item =>
+                    item.OfferId == payload.OfferId)
                 ?? throw new InvalidOperationException(
-                    "Shop has no potion offer.");
-            if (offer.OfferId != payload.OfferId)
-            {
-                throw new InvalidOperationException(
                     $"Unknown potion offer {payload.OfferId}.");
-            }
 
             EnsurePurchasable(player, offer);
             if (!CanAcquirePotion(player))
@@ -535,21 +582,18 @@ public sealed partial class PrototypeGameEngine
                     payload.Slot,
                     offer.ItemId)
             };
-            shop = shop with
-            {
-                PotionOffer =
-                    offer with { Sold = true }
-            };
+            shop = UpdatePotionOffer(
+                shop,
+                offer with { Sold = true });
         }
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_relic"))
         {
             var payload = action.ReadPayload<BuyOfferPayload>();
-            var offer = shop.RelicOffer
-                ?? throw new InvalidOperationException("Shop has no relic offer.");
-            if (offer.OfferId != payload.OfferId)
-            {
-                throw new InvalidOperationException($"Unknown relic offer {payload.OfferId}.");
-            }
+            var offer = shop.RelicOffers
+                .FirstOrDefault(item =>
+                    item.OfferId == payload.OfferId)
+                ?? throw new InvalidOperationException(
+                    $"Unknown relic offer {payload.OfferId}.");
 
             EnsurePurchasable(player, offer);
             player = player with
@@ -563,10 +607,9 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: offer.ItemId,
                 rng: state.Rng);
-            shop = shop with
-            {
-                RelicOffer = offer with { Sold = true }
-            };
+            shop = UpdateRelicOffer(
+                shop,
+                offer with { Sold = true });
             shop = RepriceShop(
                 shop,
                 player);
@@ -586,6 +629,74 @@ public sealed partial class PrototypeGameEngine
         {
             Player = player,
             World = world
+        };
+    }
+
+    private static ShopState UpdatePotionOffer(
+        ShopState shop,
+        ShopOffer updated)
+    {
+        if (shop.PotionOffer?.OfferId
+            == updated.OfferId)
+        {
+            return shop with
+            {
+                PotionOffer = updated
+            };
+        }
+
+        var additional =
+            shop.AdditionalPotionOffers
+            ?? Array.Empty<ShopOffer>();
+        if (!additional.Any(offer =>
+                offer.OfferId == updated.OfferId))
+        {
+            throw new InvalidOperationException(
+                $"Unknown potion offer {updated.OfferId}.");
+        }
+
+        return shop with
+        {
+            AdditionalPotionOffers = additional
+                .Select(offer =>
+                    offer.OfferId == updated.OfferId
+                        ? updated
+                        : offer)
+                .ToArray()
+        };
+    }
+
+    private static ShopState UpdateRelicOffer(
+        ShopState shop,
+        ShopOffer updated)
+    {
+        if (shop.RelicOffer?.OfferId
+            == updated.OfferId)
+        {
+            return shop with
+            {
+                RelicOffer = updated
+            };
+        }
+
+        var additional =
+            shop.AdditionalRelicOffers
+            ?? Array.Empty<ShopOffer>();
+        if (!additional.Any(offer =>
+                offer.OfferId == updated.OfferId))
+        {
+            throw new InvalidOperationException(
+                $"Unknown relic offer {updated.OfferId}.");
+        }
+
+        return shop with
+        {
+            AdditionalRelicOffers = additional
+                .Select(offer =>
+                    offer.OfferId == updated.OfferId
+                        ? updated
+                        : offer)
+                .ToArray()
         };
     }
 
@@ -1281,9 +1392,15 @@ public sealed partial class PrototypeGameEngine
     private static string[] PickShopCards(
         int act,
         int count,
-        RngBundle rng)
+        RngBundle rng,
+        PrototypeCardType? requiredType = null)
     {
-        var available = PrototypeContent.RewardCardPool.ToList();
+        var available = PrototypeContent.RewardCardPool
+            .Where(cardId =>
+                requiredType is null
+                || PrototypeContent.Card(cardId).Type
+                    == requiredType.Value)
+            .ToList();
         var selected = new List<string>(Math.Min(count, available.Count));
 
         while (selected.Count < count && available.Count > 0)
