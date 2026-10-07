@@ -5,7 +5,7 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class PrototypeSpectralKnightTests
 {
     [Fact]
-    public void DefinitionUsesPinnedA0OpeningAndAlternatingLoop()
+    public void DefinitionUsesPinnedOpeningAndRandomRepeatLimits()
     {
         var enemy = PrototypeContent.Enemy(
             "proto.enemy.spectral_knight");
@@ -13,7 +13,11 @@ public sealed class PrototypeSpectralKnightTests
         Assert.Equal("Spectral Knight", enemy.Name);
         Assert.Equal(93, enemy.MaxHp);
         Assert.Equal(0, enemy.HpPerAct);
-        Assert.Equal(1, enemy.MoveLoopStartIndex);
+        Assert.Equal(
+            PrototypeEnemyMovePolicy.UniformRandomAfterOpener,
+            enemy.MovePolicy);
+        Assert.Equal([0, 1], enemy.OpeningMoveIndices);
+        Assert.Equal(1, enemy.RandomMovePoolStartIndex);
         Assert.Equal(
             ["hex", "soul_slash", "soul_flame"],
             enemy.Moves.Select(move => move.Id).ToArray());
@@ -37,6 +41,8 @@ public sealed class PrototypeSpectralKnightTests
             flame.Kind);
         Assert.Equal(3, flame.Amount);
         Assert.Equal(3, flame.Repetitions);
+        Assert.Equal(2, enemy.Moves[1].MaxConsecutiveUses);
+        Assert.Equal(1, enemy.Moves[2].MaxConsecutiveUses);
     }
 
     [Fact]
@@ -80,39 +86,87 @@ public sealed class PrototypeSpectralKnightTests
     }
 
     [Fact]
-    public void CombatPatternHexThenAlternatesSlashAndFlame()
+    public void CombatPatternStartsHexSlashThenRespectsRandomLimits()
     {
         var engine = new PrototypeGameEngine();
-        var state = CreateState();
+        var state = CreateState(
+            hp: 10_000);
+        var observed = new List<string>();
 
-        state = EndTurn(engine, state);
-        var combat = state.World!.Combat!;
-        Assert.Equal(70, state.Player.Hp);
+        for (var turn = 0; turn < 30; turn++)
+        {
+            state = EndTurn(engine, state);
+            observed.Add(
+                Assert.Single(
+                    state.World!.Combat!.Enemies)
+                    .LastMoveId!);
+        }
+
+        Assert.Equal("hex", observed[0]);
+        Assert.Equal("soul_slash", observed[1]);
+        Assert.All(
+            observed.Skip(2),
+            move => Assert.Contains(
+                move,
+                new[] { "soul_slash", "soul_flame" }));
+
+        AssertRepeatLimits(
+            observed.Skip(1).ToArray());
+
         var hex = Assert.Single(
-            combat.PlayerPowers,
+            state.World!.Combat!.PlayerPowers,
             power => power.PowerId == "proto.power.hex");
         Assert.Equal(2, hex.Stacks);
         Assert.Equal(1, hex.SourceEnemyInstanceId);
+    }
 
-        state = EndTurn(engine, state);
-        Assert.Equal(55, state.Player.Hp);
+    [Fact]
+    public void NativeCapture003SequenceFitsCorrectedPolicy()
+    {
+        var observed = new[]
+        {
+            "hex",
+            "soul_slash",
+            "soul_slash",
+            "soul_flame",
+            "soul_slash",
+            "soul_flame",
+            "soul_slash",
+            "soul_slash",
+            "soul_flame"
+        };
 
-        state = EndTurn(engine, state);
-        Assert.Equal(46, state.Player.Hp);
+        Assert.Equal("hex", observed[0]);
+        Assert.Equal("soul_slash", observed[1]);
+        AssertRepeatLimits(
+            observed.Skip(1).ToArray());
+    }
 
-        state = EndTurn(engine, state);
-        Assert.Equal(31, state.Player.Hp);
+    private static void AssertRepeatLimits(
+        string[] observed)
+    {
+        for (var index = 0; index < observed.Length;)
+        {
+            var move = observed[index];
+            var end = index + 1;
+            while (end < observed.Length
+                && StringComparer.Ordinal.Equals(
+                    observed[end],
+                    move))
+            {
+                end++;
+            }
 
-        combat = state.World!.Combat!;
-        Assert.Equal(
-            4,
-            Assert.Single(combat.Enemies).MoveIndex);
-        Assert.Equal(
-            2,
-            Assert.Single(
-                combat.PlayerPowers,
-                power => power.PowerId == "proto.power.hex")
-                .Stacks);
+            var runLength = end - index;
+            var maximum = move switch
+            {
+                "soul_slash" => 2,
+                "soul_flame" => 1,
+                _ => int.MaxValue
+            };
+            Assert.InRange(runLength, 1, maximum);
+            index = end;
+        }
     }
 
     private static RunState EndTurn(
@@ -125,13 +179,14 @@ public sealed class PrototypeSpectralKnightTests
     }
 
     private static RunState CreateState(
-        PrototypePowerInstanceState[]? powers = null)
+        PrototypePowerInstanceState[]? powers = null,
+        int hp = 70)
     {
         powers ??= [];
         var empty = PrototypeJson.EmptyObject();
         var player = new PlayerState(
-            70,
-            70,
+            hp,
+            hp,
             0,
             [],
             [],
