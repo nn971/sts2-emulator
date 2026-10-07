@@ -2072,6 +2072,84 @@ public static class PrototypeContent
                             ])
                     ])),
             new PrototypeEnemyDefinition(
+                "proto.enemy.toadpole",
+                "Toadpole",
+                25,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "spike_spit",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                3,
+                                Repetitions: 3,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "whirl",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                7,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "spiken",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyEnemyPower,
+                                2,
+                                PowerId: "proto.power.thorns")
+                        ])
+                ],
+                MovePolicy:
+                    PrototypeEnemyMovePolicy.StateMachine,
+                HpAscensionDeltas:
+                [
+                    new(8, 1)
+                ],
+                MinHp: 21,
+                Ai: new PrototypeEnemyAiDefinition(
+                    "init",
+                    [
+                        new PrototypeEnemyAiStateDefinition(
+                            "spike_spit_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 0,
+                            NextStateId: "whirl_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "whirl_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 1,
+                            NextStateId: "spiken_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "spiken_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "spike_spit_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "init",
+                            PrototypeEnemyAiStateKind.Conditional,
+                            ConditionalBranches:
+                            [
+                                new(
+                                    "whirl_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .IsNotFront),
+                                new(
+                                    "spiken_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .IsFront)
+                            ])
+                    ])),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.twig_slime_s",
                 "Twig Slime (S)",
                 11,
