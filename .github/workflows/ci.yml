@@ -20,6 +20,8 @@ jobs:
         run: dotnet test Sts2Emulator.sln -c Release --no-build
       - name: Prototype sweep diversity report
         run: dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-sweep 500
+      - name: Overgrowth seeded audit
+        run: dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-overgrowth-audit 64
       - name: Prototype AI JSONL bridge self-check
         run: |
           python - <<'PY'
