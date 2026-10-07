@@ -16,7 +16,9 @@ public sealed class PrototypeSpectralKnightTests
         Assert.Equal(
             PrototypeEnemyMovePolicy.UniformRandomAfterOpener,
             enemy.MovePolicy);
-        Assert.Equal([0, 1], enemy.OpeningMoveIndices);
+        Assert.Equal(
+            [0, 1],
+            Assert.IsType<int[]>(enemy.OpeningMoveIndices));
         Assert.Equal(1, enemy.RandomMovePoolStartIndex);
         Assert.Equal(
             ["hex", "soul_slash", "soul_flame"],
