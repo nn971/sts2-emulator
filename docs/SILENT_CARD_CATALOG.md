@@ -102,7 +102,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 | 82 | Suppress | implemented |  |
 | 83 | Survivor | implemented |  |
 | 84 | Tactician | implemented |  |
-| 85 | The Hunt | catalog-only |  |
+| 85 | The Hunt | implemented |  |
 | 86 | Tools of the Trade | implemented |  |
 | 87 | Tracking | implemented |  |
 | 88 | Untouchable | implemented |  |
@@ -112,9 +112,7 @@ inventory in `PrototypeContent.NativeSilentCardPool`.
 
 ## Catalog-only implementation queue
 
-The active **single-player** implementation backlog is now only:
-
-- The Hunt
+The active **single-player** Silent card backlog is complete for the pinned v0.111.0 pool.
 
 The following five native Silent cards remain catalogued for version completeness but are
 **multiplayer-only and intentionally out of scope** for mechanics implementation:
@@ -127,9 +125,9 @@ The following five native Silent cards remain catalogued for version completenes
 
 Future Silent card work should therefore ignore multiplayer-only behavior entirely unless the
 project scope is explicitly changed. Blade of Ink exercises generated-card enchantment creation and Inky's post-card-effect Weak hook.
-Knife Trap now exercises tagged autoplay directly from Exhaust, including upgrade-before-autoplay
-and reuse of the ordinary card-play/replay/event path. The remaining single-player engine concept
-is Fatal reward modification (The Hunt).
+Knife Trap exercises tagged autoplay directly from Exhaust, including upgrade-before-autoplay and
+reuse of the ordinary card-play/replay/event path. The Hunt now adds source-backed Fatal handling,
+including Fatal eligibility, a separate 3-card extra reward, and the Hunt counter power.
 
 ## Compatibility definitions outside the pinned pool
 

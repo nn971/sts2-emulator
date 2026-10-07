@@ -1580,11 +1580,20 @@ public static class PrototypeContent
                 "The Hunt",
                 1,
                 PrototypeCardTarget.Enemy,
-                [],
+                [
+                    new(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        10,
+                        5,
+                        ExtraCardRewardsOnFatal: 1,
+                        PlayerPowerOnFatalId:
+                            "proto.power.the_hunt",
+                        PlayerPowerOnFatalAmount: 1)
+                ],
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Rare,
                 Type: PrototypeCardType.Attack,
-                MechanicsImplemented: false),
+                CanBeGeneratedInCombat: false),
             new PrototypeCardDefinition(
                 "proto.silent.well_laid_plans",
                 "Well-Laid Plans",
@@ -2306,7 +2315,8 @@ public static class PrototypeContent
                 "Minion",
                 BlockBonusPerStack: 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
-                DoesNotStack: true),
+                DoesNotStack: true,
+                OwnerDeathTriggersFatal: false),
             new PrototypePowerDefinition(
                 "proto.power.tangled",
                 "Tangled",
@@ -2398,6 +2408,11 @@ public static class PrototypeContent
                 [],
                 DoesNotStack: true,
                 AllEnemyTargetCardTag: "Shiv"),
+            new PrototypePowerDefinition(
+                "proto.power.the_hunt",
+                "The Hunt",
+                0,
+                []),
             new PrototypePowerDefinition(
                 "proto.power.well_laid_plans",
                 "Well-Laid Plans",

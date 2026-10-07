@@ -445,7 +445,10 @@ public sealed record PrototypeCombatEffectSpec(
     PrototypeCardEnchantment? GeneratedCardEnchantment = null,
     PrototypeCardZone? AutoPlaySourceZone = null,
     string? RequiredCardTag = null,
-    bool UpgradeAutoPlayedCardsOnSourceUpgrade = false)
+    bool UpgradeAutoPlayedCardsOnSourceUpgrade = false,
+    int ExtraCardRewardsOnFatal = 0,
+    string? PlayerPowerOnFatalId = null,
+    int PlayerPowerOnFatalAmount = 0)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -479,7 +482,10 @@ public sealed record PrototypeQueuedOperation(
     PrototypeCardEnchantment? GeneratedCardEnchantment = null,
     PrototypeCardZone? AutoPlaySourceZone = null,
     string? RequiredCardTag = null,
-    bool UpgradeAutoPlayedCardsBeforePlay = false);
+    bool UpgradeAutoPlayedCardsBeforePlay = false,
+    int ExtraCardRewardsOnFatal = 0,
+    string? PlayerPowerOnFatalId = null,
+    int PlayerPowerOnFatalAmount = 0);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -509,7 +515,8 @@ public sealed record PrototypeCardDefinition(
     int EndTurnDamageIfInHand = 0,
     bool MechanicsImplemented = true,
     bool MultiplayerOnly = false,
-    bool RetainOnUpgrade = false);
+    bool RetainOnUpgrade = false,
+    bool CanBeGeneratedInCombat = true);
 
 public sealed record PrototypePotionDefinition(
     string Id,
@@ -610,7 +617,8 @@ public sealed record PrototypePowerDefinition(
     string? ExtraEnemyStatusTriggerStatusId = null,
     int ExtraEnemyStatusTriggersPerStack = 0,
     bool PreventsHandDiscard = false,
-    string? AllEnemyTargetCardTag = null);
+    string? AllEnemyTargetCardTag = null,
+    bool OwnerDeathTriggersFatal = true);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -1275,7 +1283,8 @@ public sealed record CombatState(
     bool IsPlayerTurn = true,
     PrototypeAutomaticPipelineContinuationState? AutomaticPipelineContinuation = null,
     int Act = 1,
-    int Ascension = 0)
+    int Ascension = 0,
+    int ExtraCardRewardsEarned = 0)
 {
     public CombatState Fork() => this with
     {
@@ -1318,9 +1327,19 @@ public sealed record RewardState(
     bool CardResolved,
     bool PotionResolved,
     bool RelicResolved,
-    bool EndsAct)
+    bool EndsAct,
+    string[][]? ExtraCardOptions = null,
+    int ExtraCardRewardsResolved = 0)
 {
-    public RewardState Fork() => this with { CardOptions = (string[])CardOptions.Clone() };
+    public RewardState Fork() => this with
+    {
+        CardOptions = (string[])CardOptions.Clone(),
+        ExtraCardOptions = ExtraCardOptions is null
+            ? null
+            : ExtraCardOptions
+                .Select(group => (string[])group.Clone())
+                .ToArray()
+    };
 }
 
 public sealed record ShopOffer(

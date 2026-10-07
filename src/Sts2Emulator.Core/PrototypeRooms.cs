@@ -583,6 +583,25 @@ public sealed partial class PrototypeGameEngine
             return actions;
         }
 
+        var extraCardOptions =
+            reward.ExtraCardOptions
+            ?? Array.Empty<string[]>();
+        if (reward.ExtraCardRewardsResolved
+            < extraCardOptions.Length)
+        {
+            var currentOptions =
+                extraCardOptions[
+                    reward.ExtraCardRewardsResolved];
+            var actions = currentOptions
+                .Select((_, index) => GameAction.Create(
+                    "take_reward_card",
+                    new ChooseCardPayload(index)))
+                .ToList();
+            actions.Add(
+                GameAction.Empty("skip_reward_card"));
+            return actions;
+        }
+
         if (!reward.PotionResolved)
         {
             var actions = new List<GameAction>();
@@ -629,6 +648,46 @@ public sealed partial class PrototypeGameEngine
             }
 
             reward = reward with { CardResolved = true };
+        }
+        else if (reward.ExtraCardRewardsResolved
+                 < (reward.ExtraCardOptions?.Length ?? 0))
+        {
+            var extraCardOptions =
+                reward.ExtraCardOptions
+                ?? throw new InvalidOperationException(
+                    "Extra card reward state is missing.");
+            var currentOptions =
+                extraCardOptions[
+                    reward.ExtraCardRewardsResolved];
+
+            if (StringComparer.Ordinal.Equals(
+                    action.Kind,
+                    "take_reward_card"))
+            {
+                var payload =
+                    action.ReadPayload<ChooseCardPayload>();
+                if (payload.Index < 0
+                    || payload.Index >= currentOptions.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"Extra reward card index {payload.Index} is invalid.");
+                }
+
+                player = AppendCard(
+                    player,
+                    nextId++,
+                    currentOptions[payload.Index]);
+            }
+            else
+            {
+                RequireKind(action, "skip_reward_card");
+            }
+
+            reward = reward with
+            {
+                ExtraCardRewardsResolved =
+                    reward.ExtraCardRewardsResolved + 1
+            };
         }
         else if (!reward.PotionResolved)
         {
@@ -702,6 +761,9 @@ public sealed partial class PrototypeGameEngine
     private static RunState EnterReward(RunState state)
     {
         var world = RequireWorld(state);
+        var combat = world.Combat
+            ?? throw new InvalidOperationException(
+                "Combat reward has no combat state.");
         var room = world.ActiveRoom
             ?? throw new InvalidOperationException("Combat reward has no active room.");
 
@@ -716,6 +778,14 @@ public sealed partial class PrototypeGameEngine
             world.Act,
             3,
             state.Rng);
+        var extraCardOptions = Enumerable.Range(
+                0,
+                Math.Max(0, combat.ExtraCardRewardsEarned))
+            .Select(_ => PickRewardCards(
+                world.Act,
+                3,
+                state.Rng))
+            .ToArray();
 
         var potion = PrototypeRng.NextBool(state.Rng, "reward", 1, 2)
             ? PrototypeContent.PotionPool[
@@ -735,7 +805,8 @@ public sealed partial class PrototypeGameEngine
             CardResolved: false,
             PotionResolved: potion is null,
             RelicResolved: relic is null,
-            EndsAct: room == PrototypeRoomType.Boss);
+            EndsAct: room == PrototypeRoomType.Boss,
+            ExtraCardOptions: extraCardOptions);
 
         world = world with
         {

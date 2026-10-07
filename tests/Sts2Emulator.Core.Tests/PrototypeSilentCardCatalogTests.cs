@@ -11,7 +11,6 @@ public sealed class PrototypeSilentCardCatalogTests
         "Fade",
         "Flanking",
         "Sneaky",
-        "The Hunt"
     ];
 
     private static readonly string[] MultiplayerOnlyNames =

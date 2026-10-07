@@ -412,3 +412,19 @@ continuation-boundary feature. Native Knife Trap only selects Shiv-tagged cards,
 single-player content does not require that extension.
 
 The active single-player Silent card backlog is now only The Hunt.
+
+
+### Silent backlog pass: The Hunt / single-player catalog completion
+
+The Hunt is now source-backed at 10 (15) damage with Exhaust and cannot be generated in combat.
+A successful Fatal records a separate extra 3-card reward and adds the counter-style Hunt power.
+Fatal eligibility is evaluated before the hit against the target's powers; Minion is now explicitly
+marked as preventing Fatal, matching the native power contract.
+
+Reward state now represents extra card-reward groups separately and resolves each group as its own
+choose-or-skip decision rather than merging extra options into the ordinary combat card reward.
+Exact native reward RNG ordering remains an oracle-fidelity question, but the strategic decision
+structure is represented.
+
+All pinned v0.111.0 **single-player** Silent cards now have mechanics implemented. The five
+multiplayer-only Silent cards remain catalog metadata only and are intentionally out of scope.

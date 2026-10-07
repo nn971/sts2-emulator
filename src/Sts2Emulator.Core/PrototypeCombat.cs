@@ -2376,7 +2376,13 @@ public sealed partial class PrototypeGameEngine
                         effect.RequiredCardTag,
                     UpgradeAutoPlayedCardsBeforePlay:
                         effect.UpgradeAutoPlayedCardsOnSourceUpgrade
-                        && upgradeLevel > 0));
+                        && upgradeLevel > 0,
+                    ExtraCardRewardsOnFatal:
+                        effect.ExtraCardRewardsOnFatal,
+                    PlayerPowerOnFatalId:
+                        effect.PlayerPowerOnFatalId,
+                    PlayerPowerOnFatalAmount:
+                        effect.PlayerPowerOnFatalAmount));
             }
         }
     }
@@ -2436,6 +2442,14 @@ public sealed partial class PrototypeGameEngine
                     {
                         throw new InvalidOperationException("Damage operation requires an enemy target.");
                     }
+
+                    var fatalEligible =
+                        (operation.ExtraCardRewardsOnFatal > 0
+                            || (operation.PlayerPowerOnFatalId is not null
+                                && operation.PlayerPowerOnFatalAmount != 0))
+                        && ShouldEnemyDeathTriggerFatal(
+                            combat,
+                            targetEnemyId.Value);
 
                     if (operation.IsPoweredAttack && player.Hp <= 0)
                     {
@@ -2534,6 +2548,29 @@ public sealed partial class PrototypeGameEngine
                         combat = ResolveEnemyDeathSummons(
                             combat,
                             rng);
+
+                        if (fatalEligible)
+                        {
+                            if (operation.ExtraCardRewardsOnFatal > 0)
+                            {
+                                combat = combat with
+                                {
+                                    ExtraCardRewardsEarned =
+                                        combat.ExtraCardRewardsEarned
+                                        + operation.ExtraCardRewardsOnFatal
+                                };
+                            }
+
+                            if (operation.PlayerPowerOnFatalId is
+                                    { } fatalPowerId
+                                && operation.PlayerPowerOnFatalAmount != 0)
+                            {
+                                combat = ApplyPlayerPower(
+                                    combat,
+                                    fatalPowerId,
+                                    operation.PlayerPowerOnFatalAmount);
+                            }
+                        }
                     }
 
                     break;
@@ -3888,6 +3925,20 @@ public sealed partial class PrototypeGameEngine
             actionTargetEnemyId,
             combat,
             sourceKind: PrototypeEffectSourceKind.Card);
+    }
+
+    private static bool ShouldEnemyDeathTriggerFatal(
+        CombatState combat,
+        int enemyId)
+    {
+        var enemy = combat.Enemies.SingleOrDefault(
+            item => item.InstanceId == enemyId)
+            ?? throw new InvalidOperationException(
+                $"Enemy {enemyId} is missing.");
+
+        return enemy.PowerStates.All(power =>
+            PrototypeContent.Power(power.PowerId)
+                .OwnerDeathTriggersFatal);
     }
 
     private static PrototypeCardTarget EffectiveCardTarget(
