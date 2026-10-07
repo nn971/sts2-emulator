@@ -1348,19 +1348,52 @@ public sealed partial class PrototypeGameEngine
         int ascension,
         RngBundle rng)
     {
-        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
+        var enemies = combat.Enemies
+            .Select(enemy => enemy.Fork())
+            .ToList();
         var block = combat.PlayerBlock;
         var hp = player.Hp;
 
-        for (var index = 0; index < enemies.Length; index++)
+        for (var index = 0; index < enemies.Count; index++)
         {
             var enemy = enemies[index];
+            var definition = PrototypeContent.Enemy(enemy.EnemyId);
+
             if (enemy.Hp <= 0)
             {
+                var leaderAlive = enemy.LeaderEnemyInstanceId is not
+                        { } leaderId
+                    || enemies.Any(candidate =>
+                        candidate.InstanceId == leaderId
+                        && candidate.Hp > 0);
+                if (definition.RevivesOnEnemyTurn && leaderAlive)
+                {
+                    var hpRange = definition.HpRangeAt(
+                        act,
+                        ascension);
+                    enemy = enemy with
+                    {
+                        Hp = hpRange.Max,
+                        Block = 0,
+                        Statuses =
+                            new Dictionary<string, int>(
+                                StringComparer.Ordinal)
+                    };
+                    enemies[index] = enemy;
+                }
+
                 continue;
             }
 
-            var definition = PrototypeContent.Enemy(enemy.EnemyId);
+            if (enemy.SkipNextEnemyAction)
+            {
+                enemies[index] = enemy with
+                {
+                    SkipNextEnemyAction = false
+                };
+                continue;
+            }
+
             if (definition.Moves.Length == 0)
             {
                 continue;
@@ -1479,6 +1512,91 @@ public sealed partial class PrototypeGameEngine
                                 amount);
                             break;
 
+                        case PrototypeEnemyEffectKind.SummonEnemy:
+                        {
+                            if (effect.EnemyId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Enemy summon effect is missing an enemy ID.");
+                            }
+
+                            var summonedDefinition =
+                                PrototypeContent.Enemy(
+                                    effect.EnemyId);
+                            var hpRange =
+                                summonedDefinition.HpRangeAt(
+                                    act,
+                                    ascension);
+                            var summonedHp =
+                                hpRange.Min == hpRange.Max
+                                    ? hpRange.Min
+                                    : hpRange.Min
+                                        + PrototypeRng.NextInt(
+                                            rng,
+                                            "combat",
+                                            hpRange.Max
+                                                - hpRange.Min
+                                                + 1);
+                            var nextEnemyId =
+                                enemies.Count == 0
+                                    ? 1
+                                    : enemies.Max(item =>
+                                        item.InstanceId) + 1;
+                            var nextPowerOrder =
+                                combat.NextPowerApplicationOrder;
+                            var powers =
+                                (summonedDefinition.StartingPowers
+                                    ?? Array.Empty<
+                                        PrototypeStartingPowerSpec>())
+                                .Select(power =>
+                                {
+                                    _ = PrototypeContent.Power(
+                                        power.PowerId);
+                                    return new
+                                        PrototypePowerInstanceState(
+                                            power.PowerId,
+                                            power.Stacks,
+                                            nextPowerOrder++);
+                                })
+                                .Where(power =>
+                                    power.Stacks > 0)
+                                .ToArray();
+                            var nextFormationPosition =
+                                enemies.Count == 0
+                                    ? 0
+                                    : enemies.Max(item =>
+                                        item.FormationPosition)
+                                      + 1;
+
+                            enemies.Add(
+                                new EnemyCombatState(
+                                    InstanceId: nextEnemyId,
+                                    EnemyId: effect.EnemyId,
+                                    Hp: summonedHp,
+                                    Block: 0,
+                                    MoveIndex: 0,
+                                    Statuses:
+                                        new Dictionary<string, int>(
+                                            StringComparer.Ordinal),
+                                    Powers: powers,
+                                    FormationPosition:
+                                        nextFormationPosition,
+                                    LeaderEnemyInstanceId:
+                                        summonedDefinition.IsMinion
+                                            ? enemy.InstanceId
+                                            : null,
+                                    SkipNextEnemyAction: true));
+                            combat = combat with
+                            {
+                                NextPowerApplicationOrder =
+                                    nextPowerOrder,
+                                Enemies = enemies
+                                    .Select(item => item.Fork())
+                                    .ToArray()
+                            };
+                            break;
+                        }
+
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
@@ -1529,7 +1647,7 @@ public sealed partial class PrototypeGameEngine
         combat = combat with
         {
             PlayerBlock = block,
-            Enemies = enemies
+            Enemies = enemies.ToArray()
         };
         combat = CleanupSourceBoundPowersForDefeatedEnemies(
             combat);
@@ -3712,6 +3830,24 @@ public sealed partial class PrototypeGameEngine
         CleanupSourceBoundPowersForDefeatedEnemies(
             CombatState combat)
     {
+        var leaderHp = combat.Enemies
+            .ToDictionary(
+                enemy => enemy.InstanceId,
+                enemy => enemy.Hp);
+        var cleanedEnemies = combat.Enemies
+            .Select(enemy =>
+                enemy.LeaderEnemyInstanceId is
+                        { } leaderId
+                    && leaderHp.GetValueOrDefault(
+                        leaderId) <= 0
+                    ? enemy with { Hp = 0, Block = 0 }
+                    : enemy)
+            .ToArray();
+        combat = combat with
+        {
+            Enemies = cleanedEnemies
+        };
+
         var defeatedEnemyIds = combat.Enemies
             .Where(enemy => enemy.Hp <= 0)
             .Select(enemy => enemy.InstanceId)
