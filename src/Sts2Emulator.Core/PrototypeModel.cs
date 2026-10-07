@@ -1482,16 +1482,44 @@ public sealed record ShopState(
     ShopOffer? RelicOffer,
     int RemovalPrice = 75,
     bool RemovalUsed = false,
-    int? BaseRemovalPrice = null)
+    int? BaseRemovalPrice = null,
+    ShopOffer[]? AdditionalPotionOffers = null,
+    ShopOffer[]? AdditionalRelicOffers = null)
 {
     public int UndiscountedRemovalPrice =>
         BaseRemovalPrice ?? RemovalPrice;
+
+    public ShopOffer[] PotionOffers =>
+        (PotionOffer is null
+            ? Array.Empty<ShopOffer>()
+            : [PotionOffer])
+        .Concat(
+            AdditionalPotionOffers
+            ?? Array.Empty<ShopOffer>())
+        .ToArray();
+
+    public ShopOffer[] RelicOffers =>
+        (RelicOffer is null
+            ? Array.Empty<ShopOffer>()
+            : [RelicOffer])
+        .Concat(
+            AdditionalRelicOffers
+            ?? Array.Empty<ShopOffer>())
+        .ToArray();
 
     public ShopState Fork() => this with
     {
         CardOffers = (ShopOffer[])CardOffers.Clone(),
         PotionOffer = PotionOffer is null ? null : PotionOffer with { },
-        RelicOffer = RelicOffer is null ? null : RelicOffer with { }
+        RelicOffer = RelicOffer is null ? null : RelicOffer with { },
+        AdditionalPotionOffers =
+            AdditionalPotionOffers is null
+                ? null
+                : (ShopOffer[])AdditionalPotionOffers.Clone(),
+        AdditionalRelicOffers =
+            AdditionalRelicOffers is null
+                ? null
+                : (ShopOffer[])AdditionalRelicOffers.Clone()
     };
 }
 
