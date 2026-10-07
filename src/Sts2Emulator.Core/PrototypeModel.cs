@@ -287,6 +287,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
 
 public enum PrototypeAutomaticStepKind
 {
+    ResolvePlayerEndTurnHandEffects,
     DispatchCombatEvent,
     DiscardPlayerHand,
     DispatchEnemyStatusStage,
@@ -482,7 +483,8 @@ public sealed record PrototypeCardDefinition(
     bool RewardEligible = true,
     PrototypeCardType Type = PrototypeCardType.Unknown,
     PrototypeCombatPredicateSpec? PlayCondition = null,
-    string[]? Tags = null);
+    string[]? Tags = null,
+    int EndTurnDamageIfInHand = 0);
 
 public sealed record PrototypePotionDefinition(
     string Id,
@@ -693,6 +695,11 @@ public sealed record PrototypeStartingPowerSpec(
     string PowerId,
     int Stacks);
 
+public sealed record PrototypeEnemyDeathSummonSpec(
+    string EnemyId,
+    int FormationPosition,
+    string? SlotName = null);
+
 public sealed record PrototypeEnemyDefinition(
     string Id,
     string Name,
@@ -711,7 +718,8 @@ public sealed record PrototypeEnemyDefinition(
     PrototypeAscensionDelta[]? MinHpAscensionDeltas = null,
     PrototypeEnemyAiDefinition? Ai = null,
     bool IsMinion = false,
-    bool RevivesOnEnemyTurn = false)
+    bool RevivesOnEnemyTurn = false,
+    PrototypeEnemyDeathSummonSpec[]? DeathSummons = null)
 {
     public (int Min, int Max) HpRangeAt(
         int act,
@@ -1036,7 +1044,8 @@ public sealed record EnemyCombatState(
     int FormationPosition = 0,
     string? SlotName = null,
     int? LeaderEnemyInstanceId = null,
-    bool SkipNextEnemyAction = false)
+    bool SkipNextEnemyAction = false,
+    bool DeathEffectsResolved = false)
 {
     public EnemyCombatState Fork() => this with
     {
