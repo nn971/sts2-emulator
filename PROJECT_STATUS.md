@@ -526,3 +526,16 @@ Choice-opening potions now keep PotionUsed inside the same effect continuation. 
 consumed before its effect resolves, generated-card/retrieval choices may suspend safely, and
 PotionUsed relic hooks fire only after that choice completes. This removes a sweep-only crash that
 appeared once generated-choice potions entered the ordinary potion pool.
+
+
+## Mechanics-expansion pass: discard-reactive relics
+
+Discard effects now feed the generic combat-event subscriber layer into reusable relic mechanics.
+Relic trigger counters can cap how many times a trigger fires inside a reset window while still
+counting later matching events, so first-discard/first-action style relics no longer need item-ID
+branches.
+
+Tough Bandages gains 3 Block for each actual discard, Tingsha deals 3 damage to a random living
+enemy for each actual discard, and Hovering Kite gains 1 Energy on only the first actual discard
+each player turn. Ordinary end-of-turn hand cleanup remains separate from CardDiscarded and does
+not trigger these relics.
