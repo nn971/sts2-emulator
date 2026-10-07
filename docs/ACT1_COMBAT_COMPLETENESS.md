@@ -64,9 +64,9 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster weak | `SHRINKER_BEETLE_WEAK` | `SHRINKER_BEETLE` | yes | yes | yes | no |
 | Overgrowth | Monster | `SLIMES_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
 | Overgrowth | Monster weak | `SLIMES_WEAK` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | yes | no |
-| Overgrowth | Monster | `SLITHERING_STRANGLER_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `SLITHERING_STRANGLER`, `SNAPPING_JAXFRUIT`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | no | pending | pending | no |
+| Overgrowth | Monster | `SLITHERING_STRANGLER_NORMAL` | `LEAF_SLIME_M`, `LEAF_SLIME_S`, `SLITHERING_STRANGLER`, `SNAPPING_JAXFRUIT`, `TWIG_SLIME_M`, `TWIG_SLIME_S` | yes | yes | pending | no |
 | Overgrowth | Monster | `SNAPPING_JAXFRUIT_NORMAL` | `FLYCONID`, `SNAPPING_JAXFRUIT` | yes | yes | pending | no |
-| Overgrowth | Monster | `VINE_SHAMBLER_NORMAL` | `VINE_SHAMBLER` | no | pending | pending | no |
+| Overgrowth | Monster | `VINE_SHAMBLER_NORMAL` | `VINE_SHAMBLER` | yes | yes | pending | no |
 | Underdocks | Boss | `LAGAVULIN_MATRIARCH_BOSS` | `LAGAVULIN_MATRIARCH` | no | pending | pending | no |
 | Underdocks | Boss | `SOUL_FYSH_BOSS` | `SOUL_FYSH` | no | pending | pending | no |
 | Underdocks | Boss | `WATERFALL_GIANT_BOSS` | `WATERFALL_GIANT` | no | pending | pending | no |
@@ -134,7 +134,7 @@ formations but still await the normal-pool translation.
 | `SEWER_CLAM` — Sewer Clam | Normal | 56 | 58 | cycle | not started |
 | `SHRINKER_BEETLE` — Shrinker Beetle | Normal | 38–40 | 40–42 | cycle | implemented + focused tests |
 | `SKULKING_COLONY` — Skulking Colony | Elite | 75 | 80 | cycle | not started |
-| `SLITHERING_STRANGLER` — Slithering Strangler | Normal | 53–55 | 54–56 | random | not started |
+| `SLITHERING_STRANGLER` — Slithering Strangler | Normal | 53–55 | 54–56 | random | implemented + focused tests |
 | `SLUDGE_SPINNER` — Sludge Spinner | Normal | 37–39 | 41–42 | random | not started |
 | `SNAPPING_JAXFRUIT` — Snapping Jaxfruit | Normal | 31–33 | 34–36 | cycle | implemented + focused tests |
 | `SNEAKY_GREMLIN` — Sneaky Gremlin | Normal | 10–14 | 11–15 | cycle | not started |
@@ -146,7 +146,7 @@ formations but still await the normal-pool translation.
 | `TWIG_SLIME_S` — Twig Slime (S) | Normal | 7–11 | 8–12 | cycle | implemented + focused tests |
 | `TWO_TAILED_RAT` — Two-Tailed Rat | Normal | 17–21 | 18–22 | random | not started |
 | `VANTOM` — Vantom | Boss | 173 | 183 | cycle | not started |
-| `VINE_SHAMBLER` — Vine Shambler | Normal | 61 | 64 | cycle | not started |
+| `VINE_SHAMBLER` — Vine Shambler | Normal | 61 | 64 | cycle | implemented + focused tests |
 | `WATERFALL_GIANT` — Waterfall Giant | Boss | 240 | 250 | cycle | not started |
 | `WRIGGLER` — Wriggler | Elite | 17–21 | 18–22 | conditional | not started |
 
