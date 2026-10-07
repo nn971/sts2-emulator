@@ -79,7 +79,7 @@ and must not be redistributed. See `docs/REFERENCE_DATA_STRATEGY.md` and
 The first safe static corrections have landed: the starter relic is Ring of the Snake; Blade Dance
 Exhausts; Skewer is 8×X (+3); Slice is 6 (+3); and Sucker Punch is 8 (+2) with Weak 1 (+1).
 
-Static-first Silent mechanics work has now progressed through thirteen gap passes. The engine includes
+Static-first Silent mechanics work has now progressed through fourteen gap passes. The engine includes
 source-backed random-target attacks, Sly, universal card keywords, card/local cost modifiers,
 turn-scoped and delayed powers, draw events, native Power-card removal from combat, whole-card
 play-series replay for Burst (including repeated nested choices), Tools of the Trade's
@@ -124,11 +124,17 @@ has fired in the current fight; and Nightmare snapshots preserve both the enchan
 combat-local consumption state. Spiral adds Replay on every play, while Glam adds Replay only to
 the first play each combat, and both compose additively with intrinsic Replay and Burst.
 
-The next card-local modifier slice is typed combat Affliction state, beginning with the source-backed
-Nightmare rule introduced in v0.104.0 and present in v0.111.0: the selected original keeps its
-Affliction, while Nightmare's generated copies have it cleared. After that, add individual
-Affliction behavior only when a pinned Silent encounter requires it. See
-`docs/reference-builds/v0.111.0-mechanics-gap-013.md`.
+Typed combat-card Affliction state is now present for the seven native Affliction identities.
+Nightmare expresses its v0.111.0 behavior as a generic selected-card snapshot transform: the
+selected original retains its Affliction, while the stored payload and generated copies have it
+cleared. Hexed is the first Affliction with active semantics and contributes Ethereal through the
+ordinary effective-keyword query.
+
+This does not yet model the full Affliction lifecycle. In particular, source powers/enemies that
+apply Afflictions, re-affliction rules, and source-dependent cleanup such as Hexed disappearing when
+its source Hex no longer applies still need native encounter-driven work. Add those incrementally
+with their pinned encounters rather than treating the typed identity catalog as semantic coverage.
+See `docs/reference-builds/v0.111.0-mechanics-gap-014.md`.
 
 
 ## First live native capture
