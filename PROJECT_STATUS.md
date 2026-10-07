@@ -1,6 +1,6 @@
 # Project status
 
-**Stage:** Act 1 combat fidelity on the whole-run prototype skeleton.
+**Stage:** Overgrowth Act 1 combat fidelity on the whole-run prototype skeleton.
 
 Implemented on the current prototype branch:
 
@@ -177,12 +177,14 @@ See `docs/reference-builds/v0.111.0-mechanics-gap-021.md`.
 
 ## Active Act 1 combat-completeness milestone
 
-The main fidelity axis is now bounded to both native first-act regions, Overgrowth and Underdocks,
-while retaining the whole-run engine as the integration harness.
+The active fidelity axis is now **Overgrowth**, one of the two native Act 1 region variants.
+Underdocks remains inventoried but is deliberately deferred until Overgrowth is complete. The
+whole-run engine remains the integration harness.
 
-The pinned structured corpus contains 42 Act 1 combat encounters and 51 distinct monster models.
-`docs/ACT1_COMBAT_COMPLETENESS.md` tracks enemy-model fidelity, native formation/slot semantics,
-encounter-pool fidelity, Ascension scaling, and oracle coverage separately.
+`docs/ACT1_COMBAT_COMPLETENESS.md` retains both regions for bookkeeping while treating the 22
+Overgrowth combat encounters as the current completion target. Enemy-model fidelity,
+formation/slot semantics, encounter-pool fidelity, Ascension scaling, and oracle coverage remain
+separate claims.
 
 Act 1 work has also added native enemy HP ranges. Combat setup now rolls within a source-backed
 inclusive HP range when a monster has one, while fixed-HP definitions remain unchanged. This models
@@ -252,6 +254,9 @@ Fuzzy Wurm Crawler is now source-backed with the native Acid Goop / Inhale / Aci
 
 Shrinker Beetle now adds the source-bound Shrink lifecycle: a non-stacking player debuff that multiplies Attack damage by 7/10 and is removed when its source Beetle dies. The Beetle's Shrinker opener and alternating Chomp/Stomp loop, A8 HP, A9 damage, singleton weak formation, and Fuzzy+Beetle normal formation are covered by focused tests. See
 `docs/reference-builds/v0.111.0-mechanics-gap-032.md`.
+
+Overgrowth encounter selection now has typed, forkable Act-1 region state. New whole runs default to Overgrowth; the first three ordinary combats consume three distinct encounters from the native four-entry weak pool while elites and other room types leave that queue untouched. The selected region is exposed to the AI observation, while exact native encounter RNG parity remains separate. See
+`docs/reference-builds/v0.111.0-mechanics-gap-033.md`.
 
 Encounter construction now supports independent random slot groups with optional distinct selection.
 The native-shape `SLIMES_WEAK` and `SLIMES_NORMAL` formations are represented as weight-0
