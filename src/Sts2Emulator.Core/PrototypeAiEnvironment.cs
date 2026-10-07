@@ -71,6 +71,18 @@ public sealed record PrototypeAiReward(
     string[]? RelicOptions = null,
     PrototypeAiDeckChoice? PendingDeckChoice = null);
 
+public sealed record PrototypeAiEventDeckChoice(
+    string ChoiceId,
+    PrototypePersistentDeckChoiceKind Kind,
+    int RemainingSelections,
+    long[] CandidateCardInstanceIds,
+    bool UpgradeTransformedCards);
+
+public sealed record PrototypeAiEvent(
+    string EventId,
+    string? ChosenChoiceId,
+    PrototypeAiEventDeckChoice? PendingDeckChoice);
+
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
     ShopOffer? PotionOffer,
@@ -101,7 +113,8 @@ public sealed record PrototypeAiObservation(
     PrototypeAiReward? Reward,
     PrototypeAiShop? Shop,
     string? EventId,
-    string? TerminalOutcome);
+    string? TerminalOutcome,
+    PrototypeAiEvent? Event = null);
 
 public sealed record PrototypeAiFrame(
     string SchemaId,
@@ -345,7 +358,22 @@ public sealed class PrototypeAiEnvironment
                         .Select(offer => offer with { })
                         .ToArray()),
             EventId: world?.Event?.EventId,
-            TerminalOutcome: world?.TerminalOutcome);
+            TerminalOutcome: world?.TerminalOutcome,
+            Event: world?.Event is null
+                ? null
+                : new PrototypeAiEvent(
+                    world.Event.EventId,
+                    world.Event.ChosenChoiceId,
+                    world.Event.PendingDeckChoice is null
+                        ? null
+                        : new PrototypeAiEventDeckChoice(
+                            world.Event.PendingDeckChoice.ChoiceId,
+                            world.Event.PendingDeckChoice.Kind,
+                            world.Event.PendingDeckChoice.RemainingSelections,
+                            (long[])world.Event.PendingDeckChoice
+                                .CandidateCardInstanceIds.Clone(),
+                            world.Event.PendingDeckChoice
+                                .UpgradeTransformedCards)));
     }
 
     private static PrototypeAiCombat CreateCombatObservation(
