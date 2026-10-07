@@ -61,10 +61,11 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
 
         var nextPowerApplicationOrder = combatRelics.Length + 1L;
-        var enemies = encounter.EnemyIds
-            .Select((enemyId, index) =>
+        var enemies = encounter.EnemySpecs
+            .Select((enemySpec, index) =>
             {
-                var definition = PrototypeContent.Enemy(enemyId);
+                var definition = PrototypeContent.Enemy(
+                    enemySpec.EnemyId);
                 var hpRange = definition.HpRangeAt(
                     world.Act,
                     state.Ascension);
@@ -89,13 +90,15 @@ public sealed partial class PrototypeGameEngine
 
                 return new EnemyCombatState(
                     InstanceId: index + 1,
-                    EnemyId: enemyId,
+                    EnemyId: enemySpec.EnemyId,
                     Hp: hp,
                     Block: 0,
                     MoveIndex: 0,
                     Statuses: new Dictionary<string, int>(StringComparer.Ordinal),
                     Powers: powers,
-                    FormationPosition: index);
+                    FormationPosition:
+                        enemySpec.FormationPosition,
+                    SlotName: enemySpec.SlotName);
             })
             .ToArray();
 
@@ -1137,7 +1140,7 @@ public sealed partial class PrototypeGameEngine
                         branch => EnemyAiConditionMatches(
                             enemy,
                             formation,
-                            branch.Condition));
+                            branch));
                     if (selected is null)
                     {
                         throw new InvalidOperationException(
@@ -1171,7 +1174,7 @@ public sealed partial class PrototypeGameEngine
     private static bool EnemyAiConditionMatches(
         EnemyCombatState enemy,
         IReadOnlyList<EnemyCombatState> formation,
-        PrototypeEnemyAiConditionKind condition)
+        PrototypeEnemyAiConditionalBranch branch)
     {
         var living = formation
             .Where(item => item.Hp > 0)
@@ -1183,7 +1186,7 @@ public sealed partial class PrototypeGameEngine
         var isFront = living.Length > 0
             && living[0].InstanceId == enemy.InstanceId;
 
-        return condition switch
+        return branch.Condition switch
         {
             PrototypeEnemyAiConditionKind.IsAlone =>
                 isAlone,
@@ -1191,8 +1194,13 @@ public sealed partial class PrototypeGameEngine
                 isFront,
             PrototypeEnemyAiConditionKind.IsNotFront =>
                 !isFront,
+            PrototypeEnemyAiConditionKind.SlotNameEquals =>
+                branch.Value is not null
+                && StringComparer.Ordinal.Equals(
+                    enemy.SlotName,
+                    branch.Value),
             _ => throw new ArgumentOutOfRangeException(
-                nameof(condition))
+                nameof(branch.Condition))
         };
     }
 
