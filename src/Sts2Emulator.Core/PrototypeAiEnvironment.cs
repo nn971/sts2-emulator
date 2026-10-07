@@ -295,7 +295,7 @@ public sealed class PrototypeAiEnvironment
             Reward: world?.Reward is null
                 ? null
                 : new PrototypeAiReward(
-                    (string[])world.Reward.CardOptions.Clone(),
+                    (string[])world.Reward.CurrentCardOptions.Clone(),
                     world.Reward.PotionOption,
                     world.Reward.RelicOption,
                     world.Reward.CardResolved,
