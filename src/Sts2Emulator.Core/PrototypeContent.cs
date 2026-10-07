@@ -1696,6 +1696,53 @@ public static class PrototypeContent
         new[]
         {
             new PrototypeEnemyDefinition(
+                "proto.enemy.magi_knight",
+                "Magi Knight",
+                82,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "power_shield",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                6),
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                5)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "dampen",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                1,
+                                PowerId: "proto.power.dampen")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "ram",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                10)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "prep",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.GainBlock,
+                                5)
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "magic_bomb",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                35)
+                        ])
+                ],
+                MoveLoopStartIndex: 2),
+            new PrototypeEnemyDefinition(
                 "proto.enemy.spectral_knight",
                 "Spectral Knight",
                 93,
