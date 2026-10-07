@@ -466,3 +466,19 @@ Card-selection resolution now supports MoveToHand, optional cleanup of unselecte
 a selected-card temporary cost mutation. Attack Potion, Skill Potion, Power Potion, and Liquid
 Memories are implemented on these primitives. This is intentionally a broad mechanics substrate;
 native generation pools/RNG ordering remain deferred fidelity work.
+
+
+## Mechanics-expansion pass: any-time and stateful potions
+
+Fidelity remains deliberately secondary. Potion definitions can now carry run-level effects and
+declare that they are usable outside combat. Noncombat phases expose those potion actions without
+disturbing their normal room decisions, and combat use shares the same persistent-player mutation
+path before synchronizing combat-local potion slots.
+
+New reusable mechanics include max-HP gain, percent-max-HP healing, filling empty potion slots, and
+upgrading all upgradable cards currently in hand. Temporary Dexterity is represented as a generic
+turn-scoped power.
+
+The expanded potion pool now includes Blessing of the Forge, Speed Potion, Vulnerable Potion,
+Liquid Bronze, Ghost in a Jar, Fruit Juice, Blood Potion, and Entropic Brew. These intentionally
+favor broad strategic semantics over exact native RNG/timing parity.
