@@ -2,11 +2,22 @@ using System.Text.Json;
 
 namespace Sts2Emulator.Core;
 
+public enum PrototypeCardEnchantmentKind
+{
+    Spiral,
+    Glam
+}
+
+public sealed record PrototypeCardEnchantment(
+    PrototypeCardEnchantmentKind Kind,
+    int Amount = 1);
+
 public sealed record CardInstance(
     long InstanceId,
     string CardId,
     int UpgradeLevel,
-    JsonElement PersistentState);
+    JsonElement PersistentState,
+    PrototypeCardEnchantment? Enchantment = null);
 
 public sealed record RelicInstance(
     string RelicId,
