@@ -242,6 +242,26 @@ public static class PrototypeStateInvariants
                     "Act 1 normal encounter pool size disagrees with its combat counter.");
             }
         }
+
+        if (pool.RemainingEliteEncounterIds is { } elite)
+        {
+            if (elite.Distinct(StringComparer.Ordinal).Count()
+                != elite.Length)
+            {
+                throw new InvalidOperationException(
+                    "Act 1 elite encounter pool contains duplicate encounter IDs.");
+            }
+
+            if (pool.Region == PrototypeActOneRegion.Overgrowth
+                && elite.Any(id =>
+                    !PrototypeContent.OvergrowthEliteEncounterPool.Contains(
+                        id,
+                        StringComparer.Ordinal)))
+            {
+                throw new InvalidOperationException(
+                    "Overgrowth elite encounter pool contains a foreign encounter.");
+            }
+        }
     }
 
     private static void ValidateEventHistory(RunWorldState world)
@@ -379,6 +399,9 @@ public static class PrototypeStateInvariants
                     encounter.Id,
                     StringComparer.Ordinal)
                 || PrototypeContent.OvergrowthNormalEncounterPool.Contains(
+                    encounter.Id,
+                    StringComparer.Ordinal)
+                || PrototypeContent.OvergrowthEliteEncounterPool.Contains(
                     encounter.Id,
                     StringComparer.Ordinal));
 
