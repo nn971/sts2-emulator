@@ -78,52 +78,46 @@ The first prototype adapter is complete:
 The next step is to consume this boundary from the parent `sts2-ai` repository and let real search
 workloads determine which batching/performance improvements matter.
 
-## Sprint D — parent AI integration, then connect real game data
+## Sprint D — parent AI integration
 
-Before deep fidelity work, add a thin `sts2-ai` integration that can reset, observe, enumerate stable
-actions, fork/expand, and run deterministic prototype evaluations. Keep all strategy/search code in
-the parent repository.
+The prototype AI boundary is ready to consume from the parent `sts2-ai` project. Keep strategy,
+search, and training outside this repository. Emulator work should stay focused on exact mechanics,
+stable state/action semantics, and measured simulation performance.
 
-The native build is now pinned and the data-source inventory is substantially complete. The fidelity
-workflow is now **static-first**:
+## Sprint E — complete Act 1 combat
 
-1. sync/query the exact, commit- and blob-pinned Spire Codex `v0.111.0` corpus locally;
-2. decompile once and search the pinned local `sts2.dll`;
-3. derive generic primitives and versioned rules from those two sources, while treating parser-derived
-   columns as hints that must survive text/source cross-checking;
-4. compare legal actions and decision-boundary states against native evidence;
-5. use live probes only for unresolved runtime ordering/RNG/readiness questions;
-6. replace prototype generation, RNG, timing, and content through versioned rulesets.
+This is the active fidelity milestone.
 
-The static mechanics program has now reached pass 009. Source-backed work includes Sly,
-Innate/Retain/Ethereal/Unplayable/Eternal, random-target attacks, typed predicates/counters,
-card-local and hand-local costs, turn-scoped/delayed powers, whole-card Burst replay, native
-Power-card result-pile semantics, Tools of the Trade's turn-start draw/discard policy, Nightmare's
-instanced delayed selected-card payload, typed combat-card keyword overrides, event-source card
-mutation, intrinsic Replay, target-status-conditioned Attack modifiers, aggregate enemy-status
-queries, and upgrade-sensitive Exhaust removal.
+The target is both native first-act regions, **Overgrowth** and **Underdocks**, comprising 42 pinned
+combat encounters and 51 distinct monster models. Track monster mechanics, formation/slot semantics,
+encounter-pool semantics, Ascension scaling, and oracle coverage independently.
 
-The next structural priority is a real continuation stack for automatic hook/event dispatch so a
-subscriber may suspend for a player choice and later resume the remaining subscriber order and
-containing automatic/card pipeline. After that, continue source-driven value/counter mechanics and
-enchantment/affliction state.
+Completed reusable Act 1 foundations include:
 
-See [REFERENCE_DATA_STRATEGY.md](REFERENCE_DATA_STRATEGY.md) and
-[the latest gap report](reference-builds/v0.111.0-mechanics-gap-009.md).
+- native HP ranges and typed Ascension deltas;
+- source-shaped enemy AI state graphs;
+- `CannotRepeat` and `UseOnlyOnce` branch rules;
+- enemy Strength and multi-hit attacks;
+- player Vulnerable / Weak / Frail with owner-turn duration and multiplicative combat modifiers;
+- source-backed Seapunk, Twig Slime (S), Assassin Raider, Snapping Jaxfruit, and Mawler.
 
-## Sprint E — fidelity loop
+Continue by mechanic dependency rather than encounter order:
 
-Work subsystem-first rather than probe-first. Prioritize:
+1. conditional/slot-aware AI needed by Nibbit and Toadpole;
+2. exact `CanRepeatXTimes` semantics before a production user depends on it;
+3. summon/despawn/death primitives;
+4. status-card creation and other shared Act 1 effects;
+5. elites and bosses after their reusable mechanics exist;
+6. native encounter formations and pools after participating monster models are trustworthy;
+7. representative A0/A10 native differentials, then an Act 1 deterministic sweep.
 
-1. core combat/card/power primitives from the pinned corpus;
-2. Silent-native content translation;
-3. run generation/reward/shop/rest rules;
-4. monster state machines;
-5. nested player choices;
-6. exact RNG consumption and hook ordering.
+Static sources come first: use the commit/blob-pinned Spire Codex corpus and the locally decompiled
+pinned `sts2.dll`; use live Loadout-assisted oracle captures for runtime ordering, conditional
+formation behavior, and RNG questions that static evidence leaves unresolved.
 
-Use differential replay only after static sources have produced an implementation. Treat every
-verified ordering/RNG/content correction as version-pinned evidence rather than a global assumption.
+See [ACT1_COMBAT_COMPLETENESS.md](ACT1_COMBAT_COMPLETENESS.md),
+[REFERENCE_DATA_STRATEGY.md](REFERENCE_DATA_STRATEGY.md), and
+[pass 024](reference-builds/v0.111.0-mechanics-gap-024.md).
 
 ## Sprint F — performance loop
 
