@@ -1698,6 +1698,16 @@ public static class PrototypeContent
                 PlayerCardBlockNumerator: 3,
                 PlayerCardBlockDenominator: 4),
             new PrototypePowerDefinition(
+                "proto.power.shrink",
+                "Shrink",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                SourceBoundToEnemy: true,
+                DoesNotStack: true,
+                IsDebuff: true,
+                PlayerAttackDamageNumerator: 7,
+                PlayerAttackDamageDenominator: 10),
+            new PrototypePowerDefinition(
                 "proto.power.artifact",
                 "Artifact",
                 BlockBonusPerStack: 0,
@@ -2421,6 +2431,53 @@ public static class PrototypeContent
                 [
                     new(8, 1)
                 ]),
+            new PrototypeEnemyDefinition(
+                "proto.enemy.shrinker_beetle",
+                "Shrinker Beetle",
+                40,
+                0,
+                [
+                    new PrototypeEnemyMoveDefinition(
+                        "shrinker",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.ApplyPlayerPower,
+                                1,
+                                PowerId: "proto.power.shrink")
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "chomp",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                7,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ]),
+                    new PrototypeEnemyMoveDefinition(
+                        "stomp",
+                        [
+                            new PrototypeEnemyEffectSpec(
+                                PrototypeEnemyEffectKind.DamagePlayer,
+                                13,
+                                AscensionDeltas:
+                                [
+                                    new(9, 1)
+                                ])
+                        ])
+                ],
+                HpAscensionDeltas:
+                [
+                    new(8, 2)
+                ],
+                MinHp: 38,
+                MinHpAscensionDeltas:
+                [
+                    new(8, 2)
+                ],
+                MoveLoopStartIndex: 1),
             new PrototypeEnemyDefinition(
                 "proto.enemy.fuzzy_wurm_crawler",
                 "Fuzzy Wurm Crawler",
@@ -3169,6 +3226,38 @@ public static class PrototypeContent
             MinFloor: 2,
             MaxFloor: 4,
             Weight: 3),
+        new(
+            "proto.encounter.shrinker_beetle_weak",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.shrinker_beetle"],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.shrinker_beetle",
+                    0)
+            ]),
+        new(
+            "proto.encounter.overgrowth_crawlers",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.fuzzy_wurm_crawler",
+                "proto.enemy.shrinker_beetle"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0,
+            Formation:
+            [
+                new(
+                    "proto.enemy.fuzzy_wurm_crawler",
+                    0),
+                new(
+                    "proto.enemy.shrinker_beetle",
+                    1)
+            ]),
         new(
             "proto.encounter.fuzzy_wurm_crawler_weak",
             PrototypeRoomType.Combat,
