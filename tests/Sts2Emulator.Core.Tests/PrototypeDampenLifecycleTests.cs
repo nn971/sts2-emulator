@@ -183,6 +183,75 @@ public sealed class PrototypeDampenLifecycleTests
     }
 
     [Fact]
+    public void UpgradeGainedDuringDampenIsKeptWhenStoredLevelsReturn()
+    {
+        WithDampenSourceDefinition(() =>
+        {
+            var tracked = Card(
+                1,
+                "proto.silent.defend",
+                upgradeLevel: 1);
+            var killer = Card(
+                2,
+                "proto.silent.strike");
+            var filler = Card(
+                3,
+                "proto.silent.defend");
+
+            var engine = new PrototypeGameEngine();
+            var state = CreateState(
+                hand: [filler],
+                drawPile: [tracked, killer],
+                enemies:
+                [
+                    Enemy(
+                        1,
+                        DampenSourceEnemyId,
+                        hp: 1),
+                    Enemy(
+                        2,
+                        "proto.enemy.crawler",
+                        hp: 999)
+                ]);
+
+            state = EndTurn(engine, state);
+
+            var world = state.World!;
+            var combat = world.Combat!;
+            combat = combat with
+            {
+                Cards = combat.Cards
+                    .Select(card =>
+                        card.InstanceId == tracked.InstanceId
+                            ? card with { UpgradeLevel = 1 }
+                            : card)
+                    .ToArray()
+            };
+            state = state with
+            {
+                World = world with { Combat = combat }
+            };
+
+            PrototypeStateInvariants.Validate(state);
+
+            state = PlayCard(
+                engine,
+                state,
+                killer.InstanceId,
+                targetEnemyId: 1);
+
+            combat = state.World!.Combat!;
+            var restored = combat.Cards.Single(
+                card => card.InstanceId
+                    == tracked.InstanceId);
+            Assert.Equal(2, restored.UpgradeLevel);
+            Assert.Equal(
+                0,
+                restored.SuppressedUpgradeLevels);
+        });
+    }
+
+    [Fact]
     public void ArtifactBlocksDampenBeforeAnyCardIsDowngraded()
     {
         WithDampenSourceDefinition(() =>
