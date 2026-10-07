@@ -3384,7 +3384,7 @@ public sealed partial class PrototypeGameEngine
 
         return combat with
         {
-            PlayerPowers = powers,
+            PlayerPowers = powers.ToArray(),
             Cards = clearKinds.Count == 0
                 ? combat.Cards
                 : combat.Cards
