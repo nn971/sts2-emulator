@@ -48,7 +48,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | Overgrowth | Monster | `CUBEX_CONSTRUCT_NORMAL` | `CUBEX_CONSTRUCT` | no | pending | pending | no |
 | Overgrowth | Monster | `FLYCONID_NORMAL` | `FLYCONID`, `LEAF_SLIME_M`, `TWIG_SLIME_M` | no | pending | pending | no |
 | Overgrowth | Monster | `FOGMOG_NORMAL` | `EYE_WITH_TEETH`, `FOGMOG` | no | pending | pending | no |
-| Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | no | pending | pending | no |
+| Overgrowth | Monster weak | `FUZZY_WURM_CRAWLER_WEAK` | `FUZZY_WURM_CRAWLER` | yes | yes | pending | no |
 | Overgrowth | Monster | `INKLETS_NORMAL` | `INKLET` | no | pending | pending | no |
 | Overgrowth | Monster | `MAWLER_NORMAL` | `MAWLER` | no | pending | pending | no |
 | Overgrowth | Monster | `NIBBITS_NORMAL` | `NIBBIT` | yes | yes | pending | no |
@@ -104,7 +104,7 @@ Legend: `model` = all listed enemy models implemented; `formation` = exact multi
 | `FLYCONID` — Flyconid | Normal | 47–49 | 51–53 | random | not started |
 | `FOGMOG` — Fogmog | Normal | 74 | 78 | random | not started |
 | `FOSSIL_STALKER` — Fossil Stalker | Normal | 51–53 | 54–56 | random | not started |
-| `FUZZY_WURM_CRAWLER` — Fuzzy Wurm Crawler | Normal | 55–57 | 58–59 | cycle | not started |
+| `FUZZY_WURM_CRAWLER` — Fuzzy Wurm Crawler | Normal | 55–57 | 58–59 | cycle | implemented + focused tests |
 | `GAS_BOMB` — Gas Bomb | Normal | 7 | 8 | cycle | not started |
 | `GREMLIN_MERC` — Gremlin Merc | Normal | 47–49 | 51–53 | cycle | not started |
 | `HAUNTED_SHIP` — Haunted Ship | Normal | 63 | 67 | cycle | not started |
