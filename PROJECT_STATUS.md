@@ -705,3 +705,17 @@ Snecko Oil now draws up to seven cards and then randomizes every fixed-cost play
 in hand to 0..3 until end of turn or until played. X-cost and unplayable cards are left untouched.
 The whole-hand randomization is a reusable combat effect and shares the combat RNG stream with other
 combat-local random effects.
+
+
+## Mechanics-expansion pass: automatic death-prevention potions
+
+Potion definitions can now be marked automatic and carry a death-prevention heal percentage. Automatic
+potions are omitted from manual combat actions and direct manual-use attempts are rejected. When
+combat damage would leave the player at zero HP, the engine consumes the first eligible automatic
+potion from both persistent and combat-local potion state, restores HP, and emits PotionUsed so
+ordinary potion-use relic hooks still observe the consumption.
+
+Fairy in a Bottle exercises this path and restores 30% of max HP (with a minimum of 1). Immediate
+card-effect and attack-retaliation damage use the death-prevention path inside operation resolution;
+the automatic end-turn pipeline also applies it before declaring defeat. Exact native animation and
+multi-enemy timing are intentionally outside this strategic prototype.

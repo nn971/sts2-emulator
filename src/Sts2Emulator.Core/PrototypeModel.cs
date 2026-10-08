@@ -562,7 +562,9 @@ public sealed record PrototypePotionDefinition(
     PrototypeCardTarget Target,
     PrototypeCombatEffectSpec[] Effects,
     bool UsableOutsideCombat = false,
-    PrototypeRunEffectSpec[]? RunEffects = null);
+    PrototypeRunEffectSpec[]? RunEffects = null,
+    bool AutomaticUsage = false,
+    int DeathPreventionHealPercent = 0);
 
 public sealed record PrototypeRelicTriggerSpec(
     PrototypeCombatEventKind EventKind,

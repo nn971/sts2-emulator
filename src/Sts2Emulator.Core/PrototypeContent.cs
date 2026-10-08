@@ -2025,7 +2025,14 @@ public static class PrototypeContent
                     new(
                         PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
                         4)
-                ])
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.fairy_in_a_bottle",
+                "Fairy in a Bottle",
+                PrototypeCardTarget.None,
+                [],
+                AutomaticUsage: true,
+                DeathPreventionHealPercent: 30)
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =

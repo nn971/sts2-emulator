@@ -147,6 +147,35 @@ public sealed class PrototypeExpandedPotionTests
         Assert.Equal(11, state.World!.Combat!.Enemies.Single().Hp);
     }
 
+    [Fact]
+    public void FairyInABottleIsAutomaticAndRevivesAfterLethalDamage()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.fairy_in_a_bottle",
+            playerHp: 1);
+        var engine = new PrototypeGameEngine();
+
+        Assert.DoesNotContain(
+            engine.GetLegalActions(state),
+            action => action.Kind == "use_potion");
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action =>
+                    action.Kind == "end_turn")).State;
+
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        Assert.Equal(21, state.Player.Hp);
+        Assert.Null(state.Player.PotionSlots[0]);
+        Assert.DoesNotContain(
+            state.World!.Combat!.PotionStates,
+            potion => potion.Slot == 0);
+        PrototypeStateInvariants.Validate(state);
+    }
+
     [Theory]
     [InlineData("proto.potion.liquid_bronze", "proto.power.thorns", 3)]
     [InlineData("proto.potion.ghost_in_a_jar", "proto.power.intangible", 1)]
@@ -247,7 +276,8 @@ public sealed class PrototypeExpandedPotionTests
         long[] hand,
         string potionId,
         int playerBlock = 0,
-        int enemyHp = 100)
+        int enemyHp = 100,
+        int playerHp = 70)
     {
         var empty = PrototypeJson.EmptyObject();
         var persistent = cards
@@ -262,7 +292,7 @@ public sealed class PrototypeExpandedPotionTests
             new PotionInstance?[PrototypeContent.Rules.PotionSlots];
         slots[0] = new PotionInstance(potionId, empty);
         var player = new PlayerState(
-            70,
+            playerHp,
             70,
             0,
             persistent,

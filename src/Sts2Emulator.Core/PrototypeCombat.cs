@@ -668,6 +668,11 @@ public sealed partial class PrototypeGameEngine
             }
 
             var definition = PrototypeContent.Potion(potion.PotionId);
+            if (definition.AutomaticUsage)
+            {
+                continue;
+            }
+
             if (definition.Target == PrototypeCardTarget.Enemy)
             {
                 foreach (var enemy in combat.Enemies.Where(enemy => enemy.Hp > 0))
@@ -694,18 +699,33 @@ public sealed partial class PrototypeGameEngine
         var combat = RequireWorld(state).Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
-        if (combat.PendingChoice is not null)
+        var next = combat.PendingChoice is not null
+            ? ResolvePendingChoice(state, action)
+            : action.Kind switch
+            {
+                "play_card" =>
+                    PlayCard(
+                        state,
+                        action.ReadPayload<PlayCardPayload>()),
+                "use_potion" =>
+                    UsePotion(
+                        state,
+                        action.ReadPayload<UsePotionPayload>()),
+                "end_turn" => EndPlayerTurn(state),
+                _ => throw new InvalidOperationException(
+                    $"Unknown combat action '{action.Kind}'.")
+            };
+
+        if (next.Phase != RunPhase.Combat
+            || next.Player.Hp > 0)
         {
-            return ResolvePendingChoice(state, action);
+            return next;
         }
 
-        return action.Kind switch
-        {
-            "play_card" => PlayCard(state, action.ReadPayload<PlayCardPayload>()),
-            "use_potion" => UsePotion(state, action.ReadPayload<UsePotionPayload>()),
-            "end_turn" => EndPlayerTurn(state),
-            _ => throw new InvalidOperationException($"Unknown combat action '{action.Kind}'.")
-        };
+        next = TryUseAutomaticDeathPrevention(next);
+        return next.Player.Hp > 0
+            ? next
+            : EndRun(next, "defeat");
     }
 
     private static RunState PlayCard(RunState state, PlayCardPayload payload)
@@ -852,6 +872,12 @@ public sealed partial class PrototypeGameEngine
         }
 
         var definition = PrototypeContent.Potion(combatPotion.PotionId);
+        if (definition.AutomaticUsage)
+        {
+            throw new InvalidOperationException(
+                $"Potion '{definition.Name}' is automatic and cannot be used manually.");
+        }
+
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
 
         var operations = new Queue<PrototypeQueuedOperation>();
@@ -920,6 +946,103 @@ public sealed partial class PrototypeGameEngine
         return AllEnemiesDefeated(combatAfterPotion)
             ? EnterCombatReward(state)
             : state;
+    }
+
+    private static RunState TryUseAutomaticDeathPrevention(
+        RunState state)
+    {
+        if (state.Player.Hp > 0
+            || state.Phase != RunPhase.Combat)
+        {
+            return state;
+        }
+
+        var world = RequireWorld(state);
+        var combat = world.Combat
+            ?? throw new InvalidOperationException(
+                "Combat death prevention has no combat state.");
+        var prevented = TryUseAutomaticDeathPrevention(
+            state.Player,
+            combat,
+            state.Rng);
+
+        return state with
+        {
+            Player = prevented.Player,
+            World = world with
+            {
+                Combat = prevented.Combat
+            }
+        };
+    }
+
+    private static (PlayerState Player, CombatState Combat)
+        TryUseAutomaticDeathPrevention(
+            PlayerState player,
+            CombatState combat,
+            RngBundle rng,
+            int eventDepth = 0)
+    {
+        if (player.Hp > 0)
+        {
+            return (player, combat);
+        }
+
+        for (var slot = 0;
+             slot < player.PotionSlots.Length;
+             slot++)
+        {
+            var potion = player.PotionSlots[slot];
+            if (potion is null)
+            {
+                continue;
+            }
+
+            var definition =
+                PrototypeContent.Potion(
+                    potion.PotionId);
+            if (!definition.AutomaticUsage
+                || definition.DeathPreventionHealPercent <= 0)
+            {
+                continue;
+            }
+
+            var slots =
+                (PotionInstance?[])player.PotionSlots.Clone();
+            slots[slot] = null;
+            var healedHp = Math.Max(
+                1,
+                (player.MaxHp
+                    * definition.DeathPreventionHealPercent)
+                / 100);
+            player = player with
+            {
+                Hp = Math.Min(
+                    player.MaxHp,
+                    healedHp),
+                PotionSlots = slots
+            };
+            combat = combat with
+            {
+                Potions = combat.PotionStates
+                    .Where(item =>
+                        item.Slot != slot)
+                    .ToArray()
+            };
+
+            var dispatched = DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PotionUsed),
+                rng,
+                eventDepth + 1);
+            return (
+                dispatched.Player,
+                dispatched.Combat);
+        }
+
+        return (player, combat);
     }
 
     private static RunState EnterCombatReward(
@@ -1032,7 +1155,12 @@ public sealed partial class PrototypeGameEngine
 
             if (state.Player.Hp <= 0)
             {
-                return EndRun(state, "defeat");
+                state = TryUseAutomaticDeathPrevention(
+                    state);
+                if (state.Player.Hp <= 0)
+                {
+                    return EndRun(state, "defeat");
+                }
             }
 
             currentCombat = RequireWorld(state).Combat
@@ -2598,6 +2726,17 @@ public sealed partial class PrototypeGameEngine
                                             0,
                                             retaliation - absorbed))
                                 };
+                                if (player.Hp <= 0)
+                                {
+                                    var prevented =
+                                        TryUseAutomaticDeathPrevention(
+                                            player,
+                                            combat,
+                                            rng,
+                                            eventDepth);
+                                    player = prevented.Player;
+                                    combat = prevented.Combat;
+                                }
                             }
                         }
                     }
@@ -2734,7 +2873,18 @@ public sealed partial class PrototypeGameEngine
                                     };
                                     if (player.Hp <= 0)
                                     {
-                                        break;
+                                        var prevented =
+                                            TryUseAutomaticDeathPrevention(
+                                                player,
+                                                combat,
+                                                rng,
+                                                eventDepth);
+                                        player = prevented.Player;
+                                        combat = prevented.Combat;
+                                        if (player.Hp <= 0)
+                                        {
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -3289,6 +3439,17 @@ public sealed partial class PrototypeGameEngine
                                 0,
                                 incoming - absorbed))
                     };
+                    if (player.Hp <= 0)
+                    {
+                        var prevented =
+                            TryUseAutomaticDeathPrevention(
+                                player,
+                                combat,
+                                rng,
+                                eventDepth);
+                        player = prevented.Player;
+                        combat = prevented.Combat;
+                    }
                     break;
                 }
 
