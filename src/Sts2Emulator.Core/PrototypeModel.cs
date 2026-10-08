@@ -358,6 +358,7 @@ public enum PrototypeRunEffectKind
     GainRandomRareCard,
     OfferThreeRareCards,
     OfferThreeCardsAndPotion,
+    OfferCardBundles,
     OfferRandomRelic,
     GainPotionSlots,
     TransformFirstCardOfId,
@@ -1527,7 +1528,8 @@ public sealed record RewardState(
     PrototypePendingDeckChoiceState? PendingDeckChoice = null,
     bool CardOptionsUpgraded = false,
     bool[]? ExtraCardOptionsUpgraded = null,
-    string? AddCardAfterReward = null)
+    string? AddCardAfterReward = null,
+    string[][]? CardBundles = null)
 {
     public string[] CurrentCardOptions
     {
@@ -1567,6 +1569,9 @@ public sealed record RewardState(
         ExtraCardOptionsUpgraded = ExtraCardOptionsUpgraded is null
             ? null
             : (bool[])ExtraCardOptionsUpgraded.Clone(),
+        CardBundles = CardBundles is null
+            ? null
+            : CardBundles.Select(bundle => (string[])bundle.Clone()).ToArray(),
         PendingDeckChoice = PendingDeckChoice?.Fork()
     };
 }
@@ -1766,6 +1771,7 @@ public sealed record ChooseMapNodePayload(string NodeId);
 public sealed record PlayCardPayload(long CardInstanceId, int? TargetEnemyId);
 public sealed record UsePotionPayload(int Slot, int? TargetEnemyId);
 public sealed record ChooseCardPayload(int Index);
+public sealed record ChooseBundlePayload(int Index);
 public sealed record ChooseRelicPayload(int Index);
 public sealed record ChooseDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceRewardPotionPayload(int Slot);
