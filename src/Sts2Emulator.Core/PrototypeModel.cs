@@ -355,6 +355,7 @@ public enum PrototypeRunEffectKind
     GainGold,
     LoseGold,
     AddCard,
+    GainRandomRareCard,
     GainRelic,
     GainPotion,
     FillPotionSlots,
