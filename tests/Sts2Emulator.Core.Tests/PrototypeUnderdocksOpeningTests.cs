@@ -112,7 +112,7 @@ public sealed class PrototypeUnderdocksOpeningTests
         Assert.NotNull(spinner.Ai);
         var encounter = PrototypeContent.Encounter(
             "proto.encounter.sludge_spinner_weak");
-        Assert.Single(encounter.Enemies);
+        Assert.Single(encounter.EnemyIds);
     }
 
     [Fact]
