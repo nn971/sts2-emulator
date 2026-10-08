@@ -150,6 +150,53 @@ public sealed class PrototypeRouteHistoryTests
     }
 
     [Fact]
+    public void EnteringCombatDoesNotCompleteIt()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create(
+            "route-history-in-progress");
+        state = engine.Step(
+            state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+
+        Assert.Empty(state.World!.CompletedRooms);
+        var combatEntry = engine.GetLegalActions(state)
+            .First(action => action.Kind == "choose_map_node");
+        state = engine.Step(state, combatEntry).State;
+
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        Assert.Empty(state.World!.CompletedRooms);
+        Assert.Empty(new PrototypeAiEnvironment()
+            .Observe(state).Observation.CompletedRooms!);
+    }
+
+    [Fact]
+    public void TrailLedgerDoesNotCountPreviousActCombats()
+    {
+        var engine = new PrototypeGameEngine();
+        var history = new[]
+        {
+            new PrototypeCompletedRoomRecord(
+                1, 1, "old-1", PrototypeRoomType.Combat),
+            new PrototypeCompletedRoomRecord(
+                1, 2, "old-2", PrototypeRoomType.Combat)
+        };
+        var state = CreateState(
+            2, 1, PrototypeRoomType.Combat,
+            RunPhase.Reward, history,
+            ["proto.relic.trail_ledger"]);
+
+        state = engine.Step(
+            state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+
+        Assert.Equal(10, state.Player.Gold);
+        Assert.Equal(3, state.World!.CompletedRooms.Length);
+        Assert.Equal(2, state.World.CompletedRooms[^1].Act);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void InvalidRouteChronologyIsRejected()
     {
         var invalid = new[]
