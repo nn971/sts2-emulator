@@ -243,15 +243,15 @@ public static class PrototypeStateInvariants
                 "Act 1 encounter pool region disagrees with the run region.");
         }
 
-        // Incomplete Underdocks content is represented by a small,
-        // explicitly supported weak bag and empty later encounter bags.
-        // Never use Overgrowth capacities to validate Underdocks state.
+        // Region-specific playable encounter bags may be smaller than
+        // native inventories. Never validate one region using another
+        // region's encounter capacities.
         var weakPool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthWeakEncounterPool
             : PrototypeNativeUnderdocks.SupportedWeakEncounterIds;
         var normalPool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthNormalEncounterPool
-            : Array.Empty<string>();
+            : PrototypeNativeUnderdocks.SupportedNormalEncounterIds;
         var elitePool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthEliteEncounterPool
             : Array.Empty<string>();
@@ -321,8 +321,10 @@ public static class PrototypeStateInvariants
                 || visit.Act > world.Act
                 || visit.Floor < 1
                 || visit.Floor > (world.Act == 1
-                    && world.Map.GenerationProfileId
-                        == PrototypeNativeOvergrowthMap.GenerationProfileId
+                    && (world.Map.GenerationProfileId
+                            == PrototypeNativeOvergrowthMap.GenerationProfileId
+                        || world.Map.GenerationProfileId
+                            == PrototypeNativeUnderdocks.GenerationProfileId)
                         ? PrototypeNativeOvergrowthMap.BossFloor
                         : PrototypeContent.Rules.FloorsPerAct)
                 || string.IsNullOrWhiteSpace(visit.NodeId))
@@ -1015,8 +1017,10 @@ public static class PrototypeStateInvariants
         var promotedUnderdocksEncounter =
             world.Act == 1
             && world.ActOneRegion == PrototypeActOneRegion.Underdocks
-            && PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
-                encounter.Id, StringComparer.Ordinal);
+            && (PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal));
 
         if (encounter.RoomType != world.ActiveRoom
             || world.Act < encounter.MinAct
