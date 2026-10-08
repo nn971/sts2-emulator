@@ -122,7 +122,8 @@ public sealed record PrototypeAiObservation(
     string? EventId,
     string? TerminalOutcome,
     PrototypeAiEvent? Event = null,
-    string? MapGenerationProfileId = null);
+    string? MapGenerationProfileId = null,
+    PrototypeCompletedRoomRecord[]? CompletedRooms = null);
 
 public sealed record PrototypeAiFrame(
     string SchemaId,
@@ -392,7 +393,10 @@ public sealed class PrototypeAiEnvironment
                             (int[])world.Event.PendingPotionReplacement
                                 .CandidateSlots.Clone())),
             MapGenerationProfileId:
-                world?.Map.GenerationProfileId);
+                world?.Map.GenerationProfileId,
+            CompletedRooms: world is null
+                ? Array.Empty<PrototypeCompletedRoomRecord>()
+                : (PrototypeCompletedRoomRecord[])world.CompletedRooms.Clone());
     }
 
     private static PrototypeAiCombat CreateCombatObservation(
