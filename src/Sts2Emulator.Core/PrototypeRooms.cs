@@ -660,9 +660,14 @@ public sealed partial class PrototypeGameEngine
             Event = new EventState(
                 selected.Id,
                 NativeEventGold:
-                    selected.Id == PrototypeNativeDenseVegetation.EventId
-                        ? 61 + PrototypeRng.NextInt(state.Rng, "event", 39)
-                        : 0),
+                    selected.Id switch
+                    {
+                        PrototypeNativeDenseVegetation.EventId =>
+                            61 + PrototypeRng.NextInt(state.Rng, "event", 39),
+                        "proto.native.event.whispering_hollow" =>
+                            26 + PrototypeRng.NextInt(state.Rng, "event", 19),
+                        _ => 0
+                    }),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
@@ -1006,12 +1011,20 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeRunEffectKind.LoseGold:
+                {
+                    var price =
+                        eventState.EventId ==
+                            "proto.native.event.whispering_hollow"
+                        && choice.Id == "gold"
+                        && eventState.NativeEventGold is >= 26 and <= 44
+                            ? eventState.NativeEventGold
+                            : effect.Amount;
                     player = player with
                     {
-                        Gold =
-                            player.Gold - effect.Amount
+                        Gold = player.Gold - price
                     };
                     break;
+                }
 
                 case PrototypeRunEffectKind.LoseAllGold:
                     player = player with { Gold = 0 };
