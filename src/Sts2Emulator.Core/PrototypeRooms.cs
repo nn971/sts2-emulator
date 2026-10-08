@@ -1741,8 +1741,10 @@ public sealed partial class PrototypeGameEngine
         var potionOffers = potionIds
             .Select((potionId, index) =>
             {
-                var basePrice =
-                    40 + PrototypeRng.NextInt(
+                var basePrice = nativeMerchant
+                    ? PrototypeNativePotionShop.MerchantPrice(
+                        potionId, state.Rng)
+                    : 40 + PrototypeRng.NextInt(
                         state.Rng,
                         "shop",
                         21);

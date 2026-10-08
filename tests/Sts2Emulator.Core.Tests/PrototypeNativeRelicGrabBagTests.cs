@@ -162,7 +162,19 @@ public sealed class PrototypeNativeRelicGrabBagTests
         var state = engine.Step(ready, GameAction.Create(
             "choose_map_node", new ChooseMapNodePayload(node.NodeId))).State;
         Assert.Equal(RunPhase.Shop, state.Phase);
-        var offers = state.World!.Shop!.RelicOffers;
+        var potionOffers = state.World!.Shop!.PotionOffers;
+        Assert.Equal(3, potionOffers.Length);
+        foreach (var offer in potionOffers)
+        {
+            var cost = PrototypeNativePotionShop.MerchantBaseCost(
+                offer.ItemId);
+            Assert.InRange(offer.Price,
+                (int)Math.Round(cost * 0.95),
+                (int)Math.Round(cost * 1.05));
+            Assert.Equal(offer.Price, offer.UndiscountedPrice);
+        }
+
+        var offers = state.World.Shop.RelicOffers;
         Assert.Equal(3, offers.Length);
         Assert.Equal(3, offers.Select(offer => offer.ItemId)
             .Distinct(StringComparer.Ordinal).Count());

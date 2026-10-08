@@ -1363,3 +1363,17 @@ draws. The full native float/RNG order remains deferred. The legacy abstract
 prototype map continues to use its existing unrestricted relic
 selection. This is a **persistent selection mechanics milestone**,
 not yet exact native relic RNG fidelity.
+
+## Native merchant potion prices (2026-10-08)
+
+The pinned `MerchantPotionEntry` prices Common potions at 50,
+Uncommon at 75, and Rare at 100, with a 95–105% Shops-stream
+variation. All 32 currently implemented potion models have now
+been mapped to their pinned source rarities. Native-shaped
+Overgrowth merchants use those base prices and a discrete
+integer-percent approximation to the source's floating-point
+roll; the pre-discount base price is retained for shop repricing.
+Unbound/abstract prototype merchants continue to use their
+older simplified prices. Native potion reward odds, weighted
+potion selection, exact float RNG ordering, and additional
+character or colorless potions are still deferred.
