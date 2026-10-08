@@ -134,7 +134,7 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException("Shop phase has no shop state.");
                 }
 
-                ValidateShop(world.Shop);
+                ValidateShop(state.Player, world.Shop);
                 break;
 
             case RunPhase.Event:
@@ -651,8 +651,65 @@ public static class PrototypeStateInvariants
         }
     }
 
-    private static void ValidateShop(ShopState shop)
+    private static void ValidateShop(PlayerState player, ShopState shop)
     {
+        if (shop.PendingDeckChoice is { } pending)
+        {
+            if (pending.RemainingSelections <= 0
+                || pending.CandidateCardInstanceIds.Length
+                    < pending.RemainingSelections
+                || pending.CandidateCardInstanceIds.Length
+                    != pending.CandidateCardInstanceIds
+                        .Distinct().Count())
+            {
+                throw new InvalidOperationException(
+                    "Shop relic deck choice has invalid selections or duplicate candidates.");
+            }
+
+            if (!player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(
+                        relic.RelicId, pending.SourceRelicId)))
+            {
+                throw new InvalidOperationException(
+                    "Shop deck-choice source relic is not owned.");
+            }
+
+            var spec = PrototypeContent.Relic(
+                    pending.SourceRelicId)
+                .AcquisitionDeckChoice
+                ?? throw new InvalidOperationException(
+                    "Shop relic deck choice has no acquisition specification.");
+            if (spec.Kind != pending.Kind
+                || spec.UpgradeTransformedCards
+                    != pending.UpgradeTransformedCards)
+            {
+                throw new InvalidOperationException(
+                    "Shop relic deck choice disagrees with the source relic.");
+            }
+
+            if (!shop.RelicOffers.Any(offer =>
+                    offer.Sold
+                    && StringComparer.Ordinal.Equals(
+                        offer.ItemId, pending.SourceRelicId)))
+            {
+                throw new InvalidOperationException(
+                    "Shop relic deck-choice source offer was not sold.");
+            }
+
+            foreach (var id in pending.CandidateCardInstanceIds)
+            {
+                var candidate = player.Deck
+                    .FirstOrDefault(card => card.InstanceId == id)
+                    ?? throw new InvalidOperationException(
+                        $"Shop relic deck choice refers to missing card {id}.");
+                if (PrototypeContent.Card(candidate.CardId).Eternal)
+                {
+                    throw new InvalidOperationException(
+                        "Shop relic deck choice cannot target Eternal cards.");
+                }
+            }
+        }
+
         if (shop.RemovalPrice <= 0)
         {
             throw new InvalidOperationException("Shop removal price must be positive.");
