@@ -56,6 +56,8 @@ public static class PrototypeNativeOvergrowthEvents
                         PrototypePersistentDeckChoiceKind.Remove, 1),
                     "NewLeaf" => new PrototypeRelicDeckChoiceSpec(
                         PrototypePersistentDeckChoiceKind.Transform, 1),
+                    "PrecariousShears" => new PrototypeRelicDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Remove, 2),
                     _ => null
                 },
                 RunTriggers: name switch
@@ -126,6 +128,38 @@ public static class PrototypeNativeOvergrowthEvents
                             new(PrototypeRunEffectKind.GainRelic,
                                 RelicId: NeowRelicId(name)),
                             new(PrototypeRunEffectKind.GainRandomRareCard)
+                        ],
+                        "NeowsTorment" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.native.neow.neows_fury")
+                        ],
+                        "DowsingRod" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.native.neow.dowsing")
+                        ],
+                        "PrecariousShears" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            // The native damage occurs after both removals;
+                            // intermediate HP timing is still approximate.
+                            new(PrototypeRunEffectKind.LoseHp, 16)
+                        ],
+                        "LeafyPoultice" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.LoseMaxHp, 12),
+                            new(PrototypeRunEffectKind.TransformFirstCardOfId,
+                                CardId: "proto.silent.strike"),
+                            new(PrototypeRunEffectKind.TransformFirstCardOfId,
+                                CardId: "proto.silent.defend")
                         ],
                         _ =>
                         [
