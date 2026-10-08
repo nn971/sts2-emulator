@@ -883,6 +883,7 @@ public sealed partial class PrototypeGameEngine
         var queuedPotionIds = new List<string>();
         var queuedDeckChoices =
             new List<PrototypePendingEventDeckChoiceState>();
+        RewardState? deferredReward = null;
 
         foreach (var effect in choice.Effects)
         {
@@ -1039,6 +1040,21 @@ public sealed partial class PrototypeGameEngine
 
                     break;
                 }
+
+                case PrototypeRunEffectKind.OfferThreeRareCards:
+                case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
+                case PrototypeRunEffectKind.OfferRandomRelic:
+                    if (deferredReward is not null)
+                    {
+                        throw new InvalidOperationException(
+                            "Only one custom reward offer per event option is supported.");
+                    }
+                    deferredReward = CreateDeferredEventReward(
+                        state,
+                        effect.Kind,
+                        player,
+                        eventState.EventId);
+                    break;
 
                 case PrototypeRunEffectKind.GainPotionSlots:
                     if (effect.Amount <= 0)
@@ -1198,7 +1214,8 @@ public sealed partial class PrototypeGameEngine
                     PendingDeckChoice = null,
                     PendingPotionReplacement = null,
                     QueuedPotionIds = queuedPotionIds.ToArray(),
-                    QueuedDeckChoices = queuedDeckChoices.ToArray()
+                    QueuedDeckChoices = queuedDeckChoices.ToArray(),
+                    PendingReward = deferredReward
                 }
             }
         };
@@ -2548,6 +2565,37 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var reward = world.Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
+
+        if (reward.SourceRoom.StartsWith("Event:", StringComparison.Ordinal))
+        {
+            if (world.Event is null
+                || !StringComparer.Ordinal.Equals(
+                    reward.SourceRoom,
+                    "Event:" + world.Event.EventId))
+            {
+                throw new InvalidOperationException(
+                    "Custom event reward has no matching active event.");
+            }
+
+            var player = state.Player;
+            var nextId = world.NextCardInstanceId;
+            if (reward.AddCardAfterReward is { } additionalCardId)
+            {
+                player = AppendCard(
+                    player, nextId++, additionalCardId, state.Rng);
+            }
+
+            return AdvanceEventContinuations(state with
+            {
+                Player = player,
+                World = world with
+                {
+                    NextCardInstanceId = nextId,
+                    Reward = null
+                },
+                Phase = RunPhase.Event
+            });
+        }
 
         if (reward.EndsAct)
         {
