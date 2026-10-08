@@ -16,6 +16,10 @@ public sealed class PrototypeCombatStartChoiceRelicTests
                 engine.GetLegalActions(state))).State;
 
         var empty = PrototypeJson.EmptyObject();
+        var world = state.World
+            ?? throw new InvalidOperationException(
+                "Expected initialized run world.");
+        var entryNodeId = world.Map.EntryNodeIds[0];
         state = state with
         {
             Player = state.Player with
@@ -27,14 +31,13 @@ public sealed class PrototypeCombatStartChoiceRelicTests
                         empty)
                 ]
             },
-            World = state.World! with
+            World = world with
             {
-                Map = state.World!.Map with
+                Map = world.Map with
                 {
-                    Nodes = state.World.Map.Nodes
+                    Nodes = world.Map.Nodes
                         .Select(node =>
-                            node.NodeId
-                                == state.World.Map.EntryNodeIds[0]
+                            node.NodeId == entryNodeId
                                 ? node with
                                 {
                                     RoomType =
@@ -45,9 +48,6 @@ public sealed class PrototypeCombatStartChoiceRelicTests
                 }
             }
         };
-
-        var entryNodeId =
-            state.World!.Map.EntryNodeIds[0];
         state = engine.Step(
             state,
             GameAction.Create(
@@ -124,6 +124,10 @@ public sealed class PrototypeCombatStartChoiceRelicTests
                 engine.GetLegalActions(state))).State;
 
         var empty = PrototypeJson.EmptyObject();
+        var world = state.World
+            ?? throw new InvalidOperationException(
+                "Expected initialized run world.");
+        var entryNodeId = world.Map.EntryNodeIds[0];
         state = state with
         {
             Player = state.Player with
@@ -135,14 +139,13 @@ public sealed class PrototypeCombatStartChoiceRelicTests
                         empty)
                 ]
             },
-            World = state.World! with
+            World = world with
             {
-                Map = state.World!.Map with
+                Map = world.Map with
                 {
-                    Nodes = state.World.Map.Nodes
+                    Nodes = world.Map.Nodes
                         .Select(node =>
-                            node.NodeId
-                                == state.World.Map.EntryNodeIds[0]
+                            node.NodeId == entryNodeId
                                 ? node with
                                 {
                                     RoomType =
@@ -153,9 +156,6 @@ public sealed class PrototypeCombatStartChoiceRelicTests
                 }
             }
         };
-
-        var entryNodeId =
-            state.World!.Map.EntryNodeIds[0];
         state = engine.Step(
             state,
             GameAction.Create(
