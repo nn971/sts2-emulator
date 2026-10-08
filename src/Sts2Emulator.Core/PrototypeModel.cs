@@ -1529,7 +1529,9 @@ public sealed record RewardState(
     bool CardOptionsUpgraded = false,
     bool[]? ExtraCardOptionsUpgraded = null,
     string? AddCardAfterReward = null,
-    string[][]? CardBundles = null)
+    string[][]? CardBundles = null,
+    string[]? ExtraRelicRewardIds = null,
+    int ExtraRelicsResolved = 0)
 {
     public string[] CurrentCardOptions
     {
@@ -1572,6 +1574,9 @@ public sealed record RewardState(
         CardBundles = CardBundles is null
             ? null
             : CardBundles.Select(bundle => (string[])bundle.Clone()).ToArray(),
+        ExtraRelicRewardIds = ExtraRelicRewardIds is null
+            ? null
+            : (string[])ExtraRelicRewardIds.Clone(),
         PendingDeckChoice = PendingDeckChoice?.Fork()
     };
 }
