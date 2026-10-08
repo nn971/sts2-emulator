@@ -23,6 +23,18 @@ public sealed class PrototypeUnderdocksOpeningTests
             Assert.Equal(PrototypeRoomType.Combat, encounter.RoomType);
             Assert.Equal(0, encounter.Weight);
         });
+        Assert.Equal(10, PrototypeNativeUnderdocks.NativeNormalEncounterIds.Length);
+        Assert.Equal(2, PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Length);
+        Assert.All(PrototypeNativeUnderdocks.SupportedNormalEncounterIds, id =>
+        {
+            Assert.Contains(id,
+                PrototypeNativeUnderdocks.NativeNormalEncounterIds);
+            var encounter = PrototypeContent.Encounter(id);
+            Assert.Equal(PrototypeRoomType.Combat, encounter.RoomType);
+            Assert.Equal(0, encounter.Weight);
+            Assert.DoesNotContain(id,
+                PrototypeContent.OvergrowthNormalEncounterPool);
+        });
         Assert.All(PrototypeNativeUnderdocks.NativeBossEncounterIds, id =>
             Assert.DoesNotContain(id,
                 PrototypeNativeUnderdocks.SupportedWeakEncounterIds));
@@ -48,7 +60,8 @@ public sealed class PrototypeUnderdocksOpeningTests
         Assert.Equal(0, pool.OrdinaryCombatsStarted);
         Assert.Equal(PrototypeNativeUnderdocks.SupportedWeakEncounterIds,
             pool.RemainingWeakEncounterIds);
-        Assert.Empty(pool.RemainingNormalEncounterIds!);
+        Assert.Equal(PrototypeNativeUnderdocks.SupportedNormalEncounterIds,
+            pool.RemainingNormalEncounterIds!);
         Assert.Empty(pool.RemainingEliteEncounterIds!);
         Assert.Contains(pool.BossEncounterId,
             PrototypeNativeUnderdocks.NativeBossEncounterIds);
@@ -94,11 +107,100 @@ public sealed class PrototypeUnderdocksOpeningTests
             .RemainingWeakEncounterIds);
 
         Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, state, PrototypeRoomType.Combat, 4));
-        Assert.Throws<NotSupportedException>(() =>
             StartRoom(engine, state, PrototypeRoomType.Elite, 5));
         Assert.Throws<NotSupportedException>(() =>
             StartRoom(engine, state, PrototypeRoomType.Boss, 16));
+    }
+
+    [Fact]
+    public void NormalEncounterBagDrawsTwoDistinctSupportedFights()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeNativeUnderdocksRunFactory.Create(
+            "underdocks-normal-bag");
+        for (var floor = 1; floor <= 3; floor++)
+        {
+            state = StartRoom(engine, state, PrototypeRoomType.Combat, floor);
+        }
+
+        Assert.Equal(3,
+            state.World!.ActOneEncounterPool!.OrdinaryCombatsStarted);
+        Assert.Equal(PrototypeNativeUnderdocks.SupportedNormalEncounterIds,
+            state.World.ActOneEncounterPool.RemainingNormalEncounterIds);
+
+        var selected = new List<string>();
+        for (var floor = 4; floor <= 5; floor++)
+        {
+            var before = CanonicalJson.Sha256(state);
+            var replay = state.Fork();
+            var original = StartRoom(
+                engine, state, PrototypeRoomType.Combat, floor);
+            var repeated = StartRoom(
+                engine, replay, PrototypeRoomType.Combat, floor);
+            Assert.Equal(CanonicalJson.Sha256(original),
+                CanonicalJson.Sha256(repeated));
+            Assert.Equal(before, CanonicalJson.Sha256(state));
+            state = original;
+
+            var encounterId = state.World!.EncounterIds[^1];
+            selected.Add(encounterId);
+            Assert.Contains(encounterId,
+                PrototypeNativeUnderdocks.SupportedNormalEncounterIds);
+            Assert.Equal(floor,
+                state.World.ActOneEncounterPool!.OrdinaryCombatsStarted);
+            Assert.Equal(5 - floor,
+                state.World.ActOneEncounterPool.RemainingNormalEncounterIds!.Length);
+
+            var combat = state.World.Combat!;
+            if (encounterId == "proto.encounter.corpse_slugs_normal")
+            {
+                Assert.Equal(3, combat.Enemies.Length);
+                Assert.All(combat.Enemies, enemy =>
+                    Assert.Equal("proto.enemy.corpse_slug", enemy.EnemyId));
+                Assert.Equal(3,
+                    combat.Enemies.Select(enemy => enemy.AiStateId)
+                        .Distinct().Count());
+            }
+            else
+            {
+                Assert.Equal("proto.encounter.punch_construct_normal",
+                    encounterId);
+                Assert.Equal("proto.enemy.punch_construct",
+                    Assert.Single(combat.Enemies).EnemyId);
+                Assert.Single(Assert.Single(combat.Enemies).PowerStates,
+                    power => power.PowerId == "proto.power.artifact");
+            }
+        }
+
+        Assert.Equal(2, selected.Distinct(StringComparer.Ordinal).Count());
+        Assert.Empty(state.World!.ActOneEncounterPool!
+            .RemainingNormalEncounterIds!);
+        Assert.Single(state.World.ActOneEncounterPool.RemainingWeakEncounterIds);
+        var finalHash = CanonicalJson.Sha256(state);
+        Assert.Throws<NotSupportedException>(() =>
+            StartRoom(engine, state, PrototypeRoomType.Combat, 6));
+        Assert.Equal(finalHash, CanonicalJson.Sha256(state));
+    }
+
+    [Fact]
+    public void SourceBackedNormalFormationsUseExistingEnemyMechanics()
+    {
+        var slugs = PrototypeContent.Encounter(
+            "proto.encounter.corpse_slugs_normal");
+        Assert.Equal(3, slugs.FixedEnemySpecs.Length);
+        Assert.Equal(new[] { "whip", "glomp", "goop" },
+            slugs.CyclicOpeningAiStateIds);
+
+        var punch = PrototypeContent.Enemy("proto.enemy.punch_construct");
+        Assert.Equal((55, 55), punch.HpRangeAt(1, 0));
+        Assert.Equal((60, 60), punch.HpRangeAt(1, 8));
+        Assert.Equal(new[] { "ready", "fast_punch", "strong_punch" },
+            punch.Moves.Select(move => move.Id));
+        Assert.Equal(1,
+            punch.StartingPowers!.Single().Stacks);
+        Assert.Equal("proto.power.artifact",
+            punch.StartingPowers!.Single().PowerId);
+        Assert.Equal(2, punch.Moves[1].Effects[0].Repetitions);
     }
 
     [Fact]
