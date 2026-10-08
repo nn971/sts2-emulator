@@ -767,7 +767,7 @@ public static class PrototypeStateInvariants
                     "Pending event potion replacement has invalid slot candidates.");
             }
 
-            if (UsesNativeEventPotionOffer(eventState.EventId))
+            if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId))
             {
                 var firstEmpty = Array.IndexOf(player.PotionSlots, null);
                 var expectedSlots = firstEmpty >= 0
@@ -785,7 +785,7 @@ public static class PrototypeStateInvariants
                 if (slot < 0
                     || slot >= player.PotionSlots.Length
                     || (player.PotionSlots[slot] is null
-                        && !UsesNativeEventPotionOffer(eventState.EventId)))
+                        && !PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)))
                 {
                     throw new InvalidOperationException(
                         $"Pending event potion reward references invalid slot {slot}.");

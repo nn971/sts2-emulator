@@ -9,10 +9,6 @@ public sealed partial class PrototypeGameEngine
     /// Queued deck choices are refreshed against the *current* deck so a prior
     /// removal/upgrade cannot leave invalid instance IDs in a later prompt.
     /// </summary>
-    private static bool UsesNativeEventPotionOffer(string eventId) =>
-        eventId is "proto.native.event.wellspring"
-            or "proto.native.event.whispering_hollow";
-
     private static RunState AdvanceEventContinuations(RunState state)
     {
         while (true)
@@ -35,7 +31,7 @@ public sealed partial class PrototypeGameEngine
                 eventState = eventState with { QueuedPotionIds = remaining };
 
                 var emptySlot = Array.IndexOf(state.Player.PotionSlots, null);
-                var nativeOffer = UsesNativeEventPotionOffer(eventState.EventId);
+                var nativeOffer = PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId);
                 if (emptySlot >= 0 && !nativeOffer)
                 {
                     var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();

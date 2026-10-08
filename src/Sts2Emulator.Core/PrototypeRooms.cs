@@ -815,10 +815,15 @@ public sealed partial class PrototypeGameEngine
 
             player = player with
             {
-                PotionSlots = ReplacePotionSlot(
-                    player.PotionSlots,
-                    payload.Slot,
-                    potionReplacement.PotionId)
+                PotionSlots = isEmptySlot
+                    ? FillEventPotionSlot(
+                        player.PotionSlots,
+                        payload.Slot,
+                        potionReplacement.PotionId)
+                    : ReplacePotionSlot(
+                        player.PotionSlots,
+                        payload.Slot,
+                        potionReplacement.PotionId)
             };
             eventState = eventState with
             {
@@ -1250,7 +1255,7 @@ public sealed partial class PrototypeGameEngine
                     // receiving a reward is a player decision even when a
                     // potion slot is empty. Other prototype direct-grant
                     // events retain their historical acquisition behavior.
-                    if (UsesNativeEventPotionOffer(eventState.EventId))
+                    if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId))
                     {
                         queuedPotionIds.Add(potionId);
                     }
@@ -2140,6 +2145,21 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException($"Offer {offer.OfferId} is unaffordable.");
         }
+    }
+
+    private static PotionInstance?[] FillEventPotionSlot(
+        PotionInstance?[] slots, int slot, string potionId)
+    {
+        if (slot < 0 || slot >= slots.Length || slots[slot] is not null)
+        {
+            throw new InvalidOperationException(
+                "Cannot accept an event potion into an occupied or invalid slot.");
+        }
+
+        _ = PrototypeContent.Potion(potionId);
+        var copy = (PotionInstance?[])slots.Clone();
+        copy[slot] = new PotionInstance(potionId, PrototypeJson.EmptyObject());
+        return copy;
     }
 
     private static IReadOnlyList<GameAction> GetRestActions(RunState state)
