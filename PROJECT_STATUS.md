@@ -680,3 +680,16 @@ Stable Serum introduces a reusable post-hand-cleanup power timer. Its Retain Han
 non-Ethereal cards during hand cleanup, then decrements only after that cleanup has used the power.
 Applying two stacks therefore retains the hand across exactly two end-of-turn cleanups instead of
 using an off-by-one PlayerTurnEnded decrement or a potion-specific branch.
+
+
+## Mechanics-expansion pass: strategic map topology
+
+Procedurally generated acts now use the `prototype-strategic-map-v1` profile instead of a fixed modulo-lane graph. Floor widths are seeded: floor 1 has 3 entries; floors 2-4 have 3-4 nodes; floor 5 has 2-3 rests; and floor 6 has one boss. Node IDs are stable act/floor/index identifiers and no longer encode room type, so changing room assignment does not perturb graph identity.
+
+Adjacent layers are connected by a sparse seeded topology. Every nonterminal node has one or two outgoing edges, every node after floor 1 has an incoming edge, every generated node is reachable from an entry and can reach the boss, and the graph guarantees meaningful branching and pre-boss reconvergence. Additional optional second edges add seed-dependent topology variety without making each floor nearly complete.
+
+Floor rules now support width bounds, required room types, and special-room predecessor constraints. The current profile guarantees Event+Shop opportunities on floor 2, Event+Elite on floor 3, Shop+Rest on floor 4, Rest on floor 5, and Boss on floor 6. Floors 3 and 4 avoid placing a special room directly after the same special room along an edge. Existing same-floor duplicate-special restrictions remain in force.
+
+Generated maps carry their profile ID canonically, while hand-authored test maps remain unprofiled so small fixtures stay convenient. The state invariant layer applies strict profile-specific width, room, connectivity, branch, convergence, and reachability checks to generated maps. The AI observation continues to expose the complete graph and now also exposes the map generation profile ID. Map regression coverage checks topology persistence after route selection, room/edge constraints, at least ten distinct maps across thirty seeds, and boss reachability for every node across one hundred seeds.
+
+The broader route distribution exposed an old CLI sweep-policy assumption: it attempted to heal whenever below half HP even when Coffee Dripper removed the heal action. The prototype sweep policy is now capability-aware and falls back to upgrade/train/other legal rest actions rather than assuming a specific rest option exists.
