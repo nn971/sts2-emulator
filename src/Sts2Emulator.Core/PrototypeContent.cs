@@ -5810,6 +5810,33 @@ public static class PrototypeContent
                 ],
                 Weight: 2),
             new PrototypeEventDefinition(
+                "proto.event.collectors_annex",
+                "Collector's Annex",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "bundle",
+                        "Pay 25 gold for relics, two potions and a final upgrade",
+                        [
+                            new(PrototypeRunEffectKind.LoseGold, 25),
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: "proto.relic.empty_cage"),
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: "proto.relic.astrolabe"),
+                            new(PrototypeRunEffectKind.GainPotion,
+                                PotionId: "proto.potion.strength"),
+                            new(PrototypeRunEffectKind.GainPotion,
+                                PotionId: "proto.potion.fire")
+                        ],
+                        DeckChoice: new PrototypeEventDeckChoiceSpec(
+                            PrototypePersistentDeckChoiceKind.Upgrade, 1)),
+                    new PrototypeEventChoiceDefinition(
+                        "leave",
+                        "Leave the annex",
+                        [])
+                ],
+                MinAct: 2,
+                Weight: 1),
+            new PrototypeEventDefinition(
                 "proto.event.forbidden_archive",
                 "Forbidden Archive",
                 [
