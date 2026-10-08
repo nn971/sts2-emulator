@@ -15,7 +15,7 @@ public sealed class PrototypeUnderdocksOpeningTests
         Assert.Equal(20, inventory.Length);
         Assert.Equal(20, inventory.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(4, PrototypeNativeUnderdocks.NativeWeakEncounterIds.Length);
-        Assert.Equal(3, PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Length);
+        Assert.Equal(4, PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Length);
         Assert.All(PrototypeNativeUnderdocks.SupportedWeakEncounterIds, id =>
         {
             Assert.Contains(id, inventory);
@@ -74,11 +74,12 @@ public sealed class PrototypeUnderdocksOpeningTests
                 PrototypeNativeUnderdocks.SupportedWeakEncounterIds);
             Assert.Equal(index + 1,
                 state.World.ActOneEncounterPool!.OrdinaryCombatsStarted);
-            Assert.Equal(2 - index,
+            Assert.Equal(3 - index,
                 state.World.ActOneEncounterPool.RemainingWeakEncounterIds.Length);
             Assert.All(state.World.Combat!.Enemies, enemy =>
                 Assert.Contains(enemy.EnemyId, new[]
                 {
+                    "proto.enemy.corpse_slug",
                     "proto.enemy.seapunk",
                     "proto.enemy.sludge_spinner",
                     "proto.enemy.toadpole"
@@ -89,7 +90,7 @@ public sealed class PrototypeUnderdocksOpeningTests
         }
 
         Assert.Equal(3, seen.Distinct(StringComparer.Ordinal).Count());
-        Assert.Empty(state.World!.ActOneEncounterPool!
+        Assert.Single(state.World!.ActOneEncounterPool!
             .RemainingWeakEncounterIds);
 
         Assert.Throws<NotSupportedException>(() =>

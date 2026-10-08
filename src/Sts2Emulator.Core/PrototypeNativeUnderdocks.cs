@@ -2,9 +2,9 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// v0.111.0 Underdocks single-player Act 1 content inventory.
-/// SupportedWeakEncounterIds is intentionally smaller than the native
-/// four-entry weak pool. Unsupported encounters are never silently
-/// substituted with Overgrowth content.
+/// The entire native weak encounter set is now playable. Normal,
+/// elite and boss content remains explicitly gated rather than replaced
+/// with Overgrowth content.
 /// </summary>
 public static class PrototypeNativeUnderdocks
 {
@@ -50,13 +50,73 @@ public static class PrototypeNativeUnderdocks
 
     public static string[] SupportedWeakEncounterIds { get; } =
     [
+        "proto.encounter.corpse_slugs_weak",
         "proto.encounter.seapunk_weak",
         "proto.encounter.sludge_spinner_weak",
         "proto.encounter.toadpoles_weak"
     ];
 
+    public static PrototypePowerDefinition[] Powers { get; } =
+    [
+        // Native RavenousPower.AfterDeath: when another ally dies, gain
+        // Strength equal to Ravenous stacks and replace the next action
+        // with one stunned turn. Death of the owner never triggers itself.
+        new(
+            "proto.power.ravenous",
+            "Ravenous",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            AllyDeathStrengthPerStack: 1,
+            StunOnAllyDeath: true)
+    ];
+
     public static PrototypeEnemyDefinition[] Enemies { get; } =
     [
+        // Native CorpseSlug: 25–27 HP (A8: 27–29), rotating
+        // whip/slap, glomp, goop. The encounter coordinates openers.
+        new(
+            "proto.enemy.corpse_slug",
+            "Corpse Slug",
+            27,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "whip_slap",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 3,
+                        Repetitions: 2)]),
+                new PrototypeEnemyMoveDefinition(
+                    "glomp",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 8,
+                        AscensionDeltas: [new(9, 1)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "goop",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyPlayerPower, 2,
+                        PowerId: "proto.power.frail")])
+            ],
+            StartingPowers:
+            [
+                new("proto.power.ravenous", 4,
+                    [new(9, 1)])
+            ],
+            MinHp: 25,
+            HpAscensionDeltas: [new(8, 2)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "whip",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "whip", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "glomp"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "glomp", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "goop"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "goop", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "whip")
+                ])),
         // Native SludgeSpinner: 37–39 HP (A8: 41–42).
         // Forced Oil Spray, then uniform no-immediate-repeat branch
         // between Oil Spray, Slam and Rage.
@@ -126,6 +186,17 @@ public static class PrototypeNativeUnderdocks
     // have Weight=0 outside the opt-in Underdocks pool.
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
+        new(
+            "proto.encounter.corpse_slugs_weak",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.corpse_slug", "proto.enemy.corpse_slug"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation:
+            [
+                new("proto.enemy.corpse_slug", 0),
+                new("proto.enemy.corpse_slug", 1)
+            ],
+            CyclicOpeningAiStateIds: ["whip", "glomp", "goop"]),
         new(
             "proto.encounter.seapunk_weak",
             PrototypeRoomType.Combat,

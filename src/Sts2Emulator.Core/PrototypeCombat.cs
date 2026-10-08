@@ -151,6 +151,25 @@ public sealed partial class PrototypeGameEngine
                 .ToDictionary(
                     item => item.FormationPosition,
                     item => item.InstanceId);
+        // Some native encounters coordinate their monsters' initial
+        // move-state positions with one encounter-local roll. Keep that
+        // property declarative and deterministic within the emulator.
+        var openingAiStates = encounter.CyclicOpeningAiStateIds;
+        if (openingAiStates is { Length: 0 })
+        {
+            throw new InvalidOperationException(
+                $"Encounter '{encounter.Id}' has an empty cyclic opening AI list.");
+        }
+        if (openingAiStates is not null
+            && enemySpecs.Length > openingAiStates.Length)
+        {
+            throw new InvalidOperationException(
+                $"Encounter '{encounter.Id}' has too few distinct opening AI states.");
+        }
+        var openingOffset = openingAiStates is null
+            ? 0
+            : PrototypeRng.NextInt(
+                state.Rng, "combat", openingAiStates.Length);
         var enemies = enemySpecs
             .Select((enemySpec, index) =>
             {
@@ -189,6 +208,10 @@ public sealed partial class PrototypeGameEngine
                     FormationPosition:
                         enemySpec.FormationPosition,
                     SlotName: enemySpec.SlotName,
+                    AiStateId: openingAiStates is null
+                        ? null
+                        : openingAiStates[(openingOffset + index)
+                            % openingAiStates.Length],
                     LeaderEnemyInstanceId:
                         enemySpec.LeaderFormationPosition is
                             { } leaderFormationPosition
@@ -1671,6 +1694,7 @@ public sealed partial class PrototypeGameEngine
         for (var enemyIndex = 0; enemyIndex < enemies.Length; enemyIndex++)
         {
             var enemy = enemies[enemyIndex];
+            var wasAlive = enemy.Hp > 0;
             if (enemy.Hp <= 0)
             {
                 continue;
@@ -1759,6 +1783,17 @@ public sealed partial class PrototypeGameEngine
                 Statuses = statuses,
                 Powers = powers
             };
+            if (wasAlive && enemies[enemyIndex].Hp <= 0)
+            {
+                // Scheduled poison damage is processed directly in this
+                // stage rather than through LoseEnemyHp. It must still
+                // dispatch ally-death powers before other enemies act.
+                combat = ResolveAllyDeathPowers(
+                    combat with { Enemies = enemies }, enemy.InstanceId);
+                enemies = combat.Enemies
+                    .Select(item => item.Fork())
+                    .ToArray();
+            }
         }
 
         combat = combat with { Enemies = enemies };
@@ -7904,11 +7939,14 @@ public sealed partial class PrototypeGameEngine
             Hp = nextHp
         };
 
+        var defeated = enemy.Hp > 0 && nextHp == 0;
+        var nextCombat = combat with { Enemies = enemies };
+        if (defeated)
+        {
+            nextCombat = ResolveAllyDeathPowers(nextCombat, enemyId);
+        }
         return new PrototypeDamageResult(
-            combat with { Enemies = enemies },
-            damageDealt,
-            Defeated:
-                enemy.Hp > 0 && nextHp == 0);
+            nextCombat, damageDealt, Defeated: defeated);
     }
 
     private static PrototypeDamageResult DamageEnemy(
@@ -7943,10 +7981,74 @@ public sealed partial class PrototypeGameEngine
             Hp = nextHp
         };
 
+        var defeated = enemy.Hp > 0 && nextHp == 0;
+        var nextCombat = combat with { Enemies = enemies };
+        if (defeated)
+        {
+            nextCombat = ResolveAllyDeathPowers(nextCombat, enemyId);
+        }
         return new PrototypeDamageResult(
-            combat with { Enemies = enemies },
-            damageDealt,
-            Defeated: enemy.Hp > 0 && nextHp == 0);
+            nextCombat, damageDealt, Defeated: defeated);
+    }
+
+    /// <summary>
+    /// Dispatch source-backed powers that react to a different ally's
+    /// death. This runs for both powered attacks and raw HP loss (e.g.,
+    /// poison), before removal of defeated creatures. Only a living
+    /// owner may react, and the owner never reacts to its own death.
+    /// </summary>
+    private static CombatState ResolveAllyDeathPowers(
+        CombatState combat, int defeatedEnemyId)
+    {
+        foreach (var owner in combat.Enemies
+            .Where(item => item.Hp > 0
+                && item.InstanceId != defeatedEnemyId)
+            .OrderBy(item => item.InstanceId))
+        {
+            var reactions = owner.PowerStates
+                .OrderBy(power => power.ApplicationOrder)
+                .Where(power => power.Stacks > 0)
+                .Select(power => (
+                    Definition: PrototypeContent.Power(power.PowerId),
+                    power.Stacks))
+                .Where(pair =>
+                    pair.Definition.AllyDeathStrengthPerStack > 0
+                    || pair.Definition.StunOnAllyDeath)
+                .ToArray();
+            foreach (var reaction in reactions)
+            {
+                if (reaction.Definition.AllyDeathStrengthPerStack > 0)
+                {
+                    combat = ApplyEnemyPower(
+                        combat, owner.InstanceId, "proto.power.strength",
+                        checked(reaction.Stacks
+                            * reaction.Definition.AllyDeathStrengthPerStack));
+                }
+                if (reaction.Definition.StunOnAllyDeath)
+                {
+                    var enemies = combat.Enemies
+                        .Select(item => item.Fork())
+                        .ToArray();
+                    var index = Array.FindIndex(enemies,
+                        item => item.InstanceId == owner.InstanceId);
+                    if (index < 0 || enemies[index].Hp <= 0)
+                    {
+                        continue;
+                    }
+                    // Native CreatureCmd.Stun replaces the pending move
+                    // for one turn; repeated applications before that turn
+                    // must not stack multiple skipped turns.
+                    enemies[index] = enemies[index] with
+                    {
+                        EnemyActionSkipsRemaining =
+                            Math.Max(1,
+                                enemies[index].EnemyActionSkipsRemaining)
+                    };
+                    combat = combat with { Enemies = enemies };
+                }
+            }
+        }
+        return combat;
     }
 
     private sealed record PrototypeEnemyHpLossResult(

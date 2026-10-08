@@ -764,7 +764,9 @@ public sealed record PrototypePowerDefinition(
     int ExtraEnemyStatusTriggersPerStack = 0,
     bool PreventsHandDiscard = false,
     string? AllEnemyTargetCardTag = null,
-    bool OwnerDeathTriggersFatal = true);
+    bool OwnerDeathTriggersFatal = true,
+    int AllyDeathStrengthPerStack = 0,
+    bool StunOnAllyDeath = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -999,7 +1001,8 @@ public sealed record PrototypeEncounterDefinition(
     string[]? EnemyPool = null,
     int EnemyCount = 0,
     PrototypeEncounterSelectionGroup[]? SelectionGroups = null,
-    PrototypeEncounterFormationVariant[]? FormationVariants = null)
+    PrototypeEncounterFormationVariant[]? FormationVariants = null,
+    string[]? CyclicOpeningAiStateIds = null)
 {
     public PrototypeEncounterEnemySpec[] FixedEnemySpecs =>
         Formation

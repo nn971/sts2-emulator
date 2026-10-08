@@ -3492,7 +3492,8 @@ public static class PrototypeContent
                 [],
                 DoesNotStack: true,
                 PreventsHandDiscard: true)
-        }.ToDictionary(power => power.Id, StringComparer.Ordinal);
+        }.Concat(PrototypeNativeUnderdocks.Powers)
+            .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
         new[]
