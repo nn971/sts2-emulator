@@ -104,6 +104,26 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (eventState.DeferredHpLoss > 0)
+            {
+                var hp = Math.Max(
+                    0, state.Player.Hp - eventState.DeferredHpLoss);
+                state = state with
+                {
+                    Player = state.Player with { Hp = hp },
+                    World = world with
+                    {
+                        Event = eventState with { DeferredHpLoss = 0 }
+                    }
+                };
+                if (hp <= 0)
+                {
+                    return EndRun(state, "defeat");
+                }
+
+                continue;
+            }
+
             if (eventState.PendingReward is { } pendingReward)
             {
                 // A selected event choice can temporarily enter the
