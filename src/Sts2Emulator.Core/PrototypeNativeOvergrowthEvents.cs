@@ -522,7 +522,10 @@ public static class PrototypeNativeOvergrowthEvents
         {
             return player.Gold >= 100
                 && player.Deck.Count(card =>
-                    !PrototypeContent.Card(card.CardId).Eternal) >= 2;
+                    PrototypeGameEngine.CanSelectEventDeckCard(
+                        card,
+                        PrototypePersistentDeckChoiceKind.Transform,
+                        null, null, false)) >= 2;
         }
 
         if (id == "proto.native.event.luminous_choir")
