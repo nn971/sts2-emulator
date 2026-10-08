@@ -871,3 +871,35 @@ These are prototype mechanics and interaction-consistency checks rather
 than independently oracle-verified assertions about native StS2 UI
 availability of potion actions during event dialogs. No `sts2-ai`
 repository modifications are part of this pass.
+
+
+## Native-shaped Overgrowth generation sweep (2026-10-08)
+
+A standalone `prototype-native-overgrowth-sweep [n] [ascension]` CLI
+command now constructs independently seeded native-shaped Act 1 maps,
+runs each from Neow to Act 1 clear or defeat with the prototype policy,
+and verifies canonical invariants after every action. It throws on
+no-legal-action softlocks, missing settlement within 5,000 decisions,
+or malformed native-structure map floors. CI runs this command on
+24 seeds at A0 alongside the established prototype test and audit suite.
+
+Initial 24-seed A0 CI run: **all 24 settled as defeats** (none cleared
+the act), but all 15 normal room floors appeared in completed-room
+history across the sweep, all three boss IDs were selected across
+seeds, and every ordinary room family occurred. This is a run-generation
+and transition-smoke result; it does **not** verify a successful
+native-shaped boss-clear/reward transition. The fixed baseline policy
+is weak, and outcome statistics cannot be interpreted as game balance.
+
+Remaining blockers to a *complete native Act 1 generator*: the map's
+geometry uses source-shaped placement but not native RNG/call order;
+Neow offered relics are still metadata-only definitions without their
+actual gameplay effects; several Overgrowth events explicitly substitute
+approximate, single-page or empty choices for native multi-page,
+enchantment or follow-up combat behavior; treasure/shop/reward
+selection still draws from prototype item pools/economy; and exact native
+room generation/selection and seeded run parity have not been proven.
+Keep the `native-overgrowth-map-structure-v0.111.0-v1` profile opt-in
+until these are implemented and tested. Do not call this a native-complete
+environment or begin the requested fidelity phase solely because the
+sweep succeeds.
