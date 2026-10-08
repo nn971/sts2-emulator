@@ -46,7 +46,7 @@ public sealed class PrototypePristineRewardProposalTests
     {
         var (before, after, chosen) = FindFirstReward();
         var untouched = before.Rng.Streams.Single(s => s.StreamId == "reward");
-        Assert.Equal(0L, untouched.CallCount);
+        Assert.True(untouched.CallCount is 0);
         var originalHash = CanonicalJson.Sha256(before);
 
         var replay = PrototypePristineRewardProposal.Branch(
