@@ -1288,3 +1288,24 @@ this source-grounded rule. Shop purchases, discounts and other
 prices remain unchanged. Regressions cover the cost schedule,
 inflation threshold, sold/removal guard, map completion,
 and negative-count invariants.
+
+## Native merchant character-card sale (2026-10-08)
+
+On the native Overgrowth map profile, each normal merchant now
+selects one of five character-card slots for an explicit
+`ShopOffer.OnSale` flag. Card base prices follow source-shaped
+50/75/150 common/uncommon/rare values, with a prototype 95–105%
+integer-percent variance. The sale slot rerolls its ordinary
+price, then halves it (integer division), as in
+`MerchantCardEntry.SetOnSale`. Persisted base price retains
+the sale amount before relic modifiers. Generated nonnative
+prototype shops keep their existing broad prices and do not
+claim native sale fidelity. Invariants prohibit multiple sale
+cards or sale-marked potion/relic slots, and regressions check
+native map shop generation, listed price ranges, forking,
+purchase settlement and sold/sale identity.
+
+Still missing from the native merchant inventory: two colorless
+card offers, relic rarity-class draw order / back-of-deque
+selection, native potion rarity prices, and exact float/RNG
+call order. Those are separate future increments.

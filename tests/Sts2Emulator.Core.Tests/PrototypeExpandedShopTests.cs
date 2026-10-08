@@ -313,6 +313,115 @@ public sealed class PrototypeExpandedShopTests
             () => PrototypeStateInvariants.Validate(state));
     }
 
+
+    [Fact]
+    public void NativeOvergrowthMerchantHasExactlyOneSaleCharacterCard()
+    {
+        var engine = new PrototypeGameEngine();
+        var initial = PrototypeNativeOvergrowthRunFactory.Create(
+            "merchant-native-sale");
+        var shopNode = initial.World!.Map.Nodes.First(node =>
+            node.RoomType == PrototypeRoomType.Shop);
+        var parent = initial.World.Map.Nodes.First(node =>
+            node.NextNodeIds?.Contains(shopNode.NodeId,
+                StringComparer.Ordinal) == true);
+        var map = initial.World.Map;
+        var history = Enumerable.Range(1, parent.Floor)
+            .Select(floor =>
+            {
+                var selected = floor == parent.Floor
+                    ? parent
+                    : map.Nodes.First(node => node.Floor == floor);
+                return new PrototypeCompletedRoomRecord(
+                    1, floor, selected.NodeId, selected.RoomType);
+            })
+            .ToArray();
+
+        var ready = initial with
+        {
+            Player = initial.Player with { Gold = 999 },
+            Phase = RunPhase.MapChoice,
+            World = initial.World with
+            {
+                Event = null,
+                Floor = parent.Floor,
+                ActiveRoom = null,
+                CompletedRoomHistory = history,
+                Map = map with { CurrentNodeId = parent.NodeId }
+            }
+        };
+        PrototypeStateInvariants.Validate(ready);
+
+        var state = engine.Step(ready, GameAction.Create(
+            "choose_map_node",
+            new ChooseMapNodePayload(shopNode.NodeId))).State;
+        Assert.Equal(RunPhase.Shop, state.Phase);
+        var shop = state.World!.Shop!;
+        Assert.Equal(5, shop.CardOffers.Length);
+        var sale = Assert.Single(shop.CardOffers, offer => offer.OnSale);
+        Assert.All(shop.PotionOffers, offer => Assert.False(offer.OnSale));
+        Assert.All(shop.RelicOffers, offer => Assert.False(offer.OnSale));
+        Assert.Equal(sale.Price, sale.UndiscountedPrice);
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(state.Fork()));
+        foreach (var offer in shop.CardOffers)
+        {
+            var rarity = PrototypeContent.Card(offer.ItemId).Rarity;
+            var baseCost = rarity switch
+            {
+                PrototypeCardRarity.Common => 50,
+                PrototypeCardRarity.Uncommon => 75,
+                PrototypeCardRarity.Rare => 150,
+                _ => throw new InvalidOperationException()
+            };
+            var minimum = (int)Math.Round(baseCost * 0.95);
+            var maximum = (int)Math.Round(baseCost * 1.05);
+            Assert.InRange(offer.Price,
+                offer.OnSale ? minimum / 2 : minimum,
+                offer.OnSale ? maximum / 2 : maximum);
+        }
+
+        var buy = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "buy_card"
+            && action.ReadPayload<BuyOfferPayload>()
+                .OfferId == sale.OfferId);
+        state = engine.Step(state, buy).State;
+        Assert.Equal(RunPhase.Shop, state.Phase);
+        Assert.Equal(999 - sale.Price, state.Player.Gold);
+        Assert.Contains(state.Player.Deck,
+            card => card.CardId == sale.ItemId);
+        Assert.True(state.World!.Shop!.CardOffers.Single(offer =>
+            offer.OfferId == sale.OfferId).Sold);
+        Assert.True(state.World.Shop.CardOffers.Single(offer =>
+            offer.OfferId == sale.OfferId).OnSale);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void AtMostOneCardCanBeMarkedOnSale()
+    {
+        var state = EnterGeneratedShop(
+            gold: 999,
+            relicIds: []);
+        var shop = state.World!.Shop!;
+        Assert.All(shop.CardOffers, offer => Assert.False(offer.OnSale));
+        state = state with
+        {
+            World = state.World with
+            {
+                Shop = shop with
+                {
+                    CardOffers = shop.CardOffers
+                        .Select((offer, index) =>
+                            offer with { OnSale = index < 2 })
+                        .ToArray()
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(state));
+    }
+
     private static ShopOffer Offer(
         int id,
         string itemId,

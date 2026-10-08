@@ -1637,6 +1637,14 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartShop(RunState state)
     {
         var world = RequireWorld(state);
+        var nativeMerchant = world.Act == 1
+            && world.Map.GenerationProfileId
+                == PrototypeNativeOvergrowthMap.GenerationProfileId;
+        // MerchantInventory chooses one of the five character-card
+        // slots before populating the inventory.
+        var saleIndex = nativeMerchant
+            ? PrototypeRng.NextInt(state.Rng, "shop", 5)
+            : -1;
         var cardIds = new[]
             {
                 (Type: PrototypeCardType.Attack, Count: 2),
@@ -1654,14 +1662,24 @@ public sealed partial class PrototypeGameEngine
         var offers = cardIds
             .Select((cardId, index) =>
             {
-                var basePrice =
-                    ShopCardPrice(cardId, state.Rng);
+                var onSale = index == saleIndex;
+                var basePrice = nativeMerchant
+                    ? NativeMerchantCardPrice(cardId, state.Rng)
+                    : ShopCardPrice(cardId, state.Rng);
+                if (onSale)
+                {
+                    // MerchantCardEntry.SetOnSale calls CalcCost
+                    // again, then halves the newly rolled price.
+                    basePrice =
+                        NativeMerchantCardPrice(cardId, state.Rng) / 2;
+                }
                 return new ShopOffer(
                     index + 1,
                     cardId,
                     basePrice,
                     false,
-                    BasePrice: basePrice);
+                    BasePrice: basePrice,
+                    OnSale: onSale);
             })
             .ToArray();
 
@@ -2973,6 +2991,25 @@ public sealed partial class PrototypeGameEngine
         }
 
         return selected.ToArray();
+    }
+
+    private static int NativeMerchantCardPrice(
+        string cardId, RngBundle rng)
+    {
+        var baseCost = PrototypeContent.Card(cardId).Rarity switch
+        {
+            PrototypeCardRarity.Common => 50,
+            PrototypeCardRarity.Uncommon => 75,
+            PrototypeCardRarity.Rare => 150,
+            _ => throw new InvalidOperationException(
+                "Native shop character cards must have a purchasable rarity.")
+        };
+        // Native CalcCost uses Shops.NextFloat(0.95, 1.05)
+        // followed by Mathf.RoundToInt. Integer percentage samples
+        // approximate that distribution without claiming RNG parity.
+        var percent = 95 + PrototypeRng.NextInt(rng, "shop", 11);
+        return Math.Max(1,
+            (int)Math.Round(baseCost * percent / 100.0));
     }
 
     private static int ShopCardPrice(string cardId, RngBundle rng)

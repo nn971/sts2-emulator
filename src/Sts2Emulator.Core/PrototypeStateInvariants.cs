@@ -879,6 +879,14 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Shop offer IDs are duplicated.");
         }
 
+        if (shop.CardOffers.Count(offer => offer.OnSale) > 1
+            || shop.PotionOffers.Any(offer => offer.OnSale)
+            || shop.RelicOffers.Any(offer => offer.OnSale))
+        {
+            throw new InvalidOperationException(
+                "Only one character card can be marked on sale.");
+        }
+
         foreach (var offer in shop.CardOffers)
         {
             if (offer.Price <= 0

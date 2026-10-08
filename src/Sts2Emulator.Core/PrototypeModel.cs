@@ -1603,7 +1603,8 @@ public sealed record ShopOffer(
     string ItemId,
     int Price,
     bool Sold,
-    int? BasePrice = null)
+    int? BasePrice = null,
+    bool OnSale = false)
 {
     public int UndiscountedPrice => BasePrice ?? Price;
 }
