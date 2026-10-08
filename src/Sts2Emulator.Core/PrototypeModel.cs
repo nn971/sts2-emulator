@@ -1541,7 +1541,8 @@ public sealed record PrototypePendingEventDeckChoiceState(
     PrototypePersistentDeckChoiceKind Kind,
     int RemainingSelections,
     long[] CandidateCardInstanceIds,
-    bool UpgradeTransformedCards = false)
+    bool UpgradeTransformedCards = false,
+    string? SourceRelicId = null)
 {
     public PrototypePendingEventDeckChoiceState Fork() => this with
     {
