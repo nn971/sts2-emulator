@@ -664,7 +664,11 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         };
     }
 
-    private static PlayerState AppendCard(PlayerState player, long instanceId, string cardId)
+    private static PlayerState AppendCard(
+        PlayerState player,
+        long instanceId,
+        string cardId,
+        RngBundle rng)
     {
         var definition = PrototypeContent.Card(cardId);
         var upgradeLevel = player.Relics.Any(relic =>
@@ -693,7 +697,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         return ApplyRelicRunEvent(
             player,
             PrototypeRunEventKind.CardAdded,
-            addedCard: card);
+            addedCard: card,
+            rng: rng);
     }
 
     private static RunState EndRun(RunState state, string outcome)
