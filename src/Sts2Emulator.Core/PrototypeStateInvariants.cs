@@ -657,7 +657,15 @@ public static class PrototypeStateInvariants
                     choice.Id)
                 || pending.Kind != expectedKind
                 || pending.UpgradeTransformedCards
-                    != expectedUpgradeTransformedCards)
+                    != expectedUpgradeTransformedCards
+                || (pending.SourceRelicId is null
+                    && (choice.DeckChoice is not { } sourceSpec
+                        || pending.TransformToCardId
+                            != sourceSpec.TransformToCardId
+                        || pending.EnchantmentKind
+                            != sourceSpec.EnchantmentKind
+                        || pending.BasicCardsOnly
+                            != sourceSpec.BasicCardsOnly)))
             {
                 throw new InvalidOperationException(
                     "Pending event deck choice disagrees with its source.");
@@ -690,22 +698,14 @@ public static class PrototypeStateInvariants
                     ?? throw new InvalidOperationException(
                         $"Pending event deck choice references missing card {cardInstanceId}.");
 
-                if (pending.Kind is
-                        PrototypePersistentDeckChoiceKind.Remove
-                        or PrototypePersistentDeckChoiceKind.Transform
-                    && PrototypeContent.Card(card.CardId)
-                        .Eternal)
+                if (!CanSelectEventDeckCard(
+                        card, pending.Kind,
+                        pending.TransformToCardId,
+                        pending.EnchantmentKind,
+                        pending.BasicCardsOnly))
                 {
                     throw new InvalidOperationException(
-                        "Pending event deck choice includes an Eternal card.");
-                }
-
-                if (pending.Kind
-                        == PrototypePersistentDeckChoiceKind.Upgrade
-                    && card.UpgradeLevel != 0)
-                {
-                    throw new InvalidOperationException(
-                        "Pending event upgrade choice includes an already-upgraded card.");
+                        "Pending event deck choice includes an ineligible card.");
                 }
             }
         }
