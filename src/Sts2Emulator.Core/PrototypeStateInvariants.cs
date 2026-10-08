@@ -418,7 +418,9 @@ public static class PrototypeStateInvariants
         if (eventState.ChosenChoiceId is null)
         {
             if (eventState.PendingDeckChoice is not null
-                || eventState.PendingPotionReplacement is not null)
+                || eventState.PendingPotionReplacement is not null
+                || eventState.RemainingPotionIds.Length > 0
+                || eventState.RemainingDeckChoices.Length > 0)
             {
                 throw new InvalidOperationException(
                     "Pending event continuation has no chosen event option.");
@@ -443,7 +445,70 @@ public static class PrototypeStateInvariants
             && potionReplacement is null)
         {
             throw new InvalidOperationException(
-                "Resolved event choice should not remain in Event phase without a pending continuation.");
+                "Resolved event choice should not remain in Event phase without an active continuation.");
+        }
+
+        if (pending is not null
+            && potionReplacement is not null)
+        {
+            throw new InvalidOperationException(
+                "An event cannot present two continuation prompts simultaneously.");
+        }
+
+        foreach (var queuedPotionId in eventState.RemainingPotionIds)
+        {
+            _ = PrototypeContent.Potion(queuedPotionId);
+            if (!choice.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainPotion
+                    && StringComparer.Ordinal.Equals(
+                        effect.PotionId, queuedPotionId)))
+            {
+                throw new InvalidOperationException(
+                    "Queued event potion has no matching source effect.");
+            }
+        }
+
+        foreach (var queuedDeckChoice in eventState.RemainingDeckChoices)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    queuedDeckChoice.ChoiceId,
+                    choice.Id)
+                || queuedDeckChoice.RemainingSelections <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Queued event deck continuation has invalid provenance or selections.");
+            }
+
+            if (queuedDeckChoice.SourceRelicId is { } sourceRelic)
+            {
+                if (!player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(
+                            relic.RelicId, sourceRelic)))
+                {
+                    throw new InvalidOperationException(
+                        "Queued event deck continuation references an unowned relic.");
+                }
+
+                var sourceSpec = PrototypeContent.Relic(sourceRelic)
+                    .AcquisitionDeckChoice
+                    ?? throw new InvalidOperationException(
+                        "Queued event deck continuation has no relic source specification.");
+                if (sourceSpec.Kind != queuedDeckChoice.Kind
+                    || sourceSpec.UpgradeTransformedCards
+                        != queuedDeckChoice.UpgradeTransformedCards)
+                {
+                    throw new InvalidOperationException(
+                        "Queued event deck continuation disagrees with its relic.");
+                }
+            }
+            else if (choice.DeckChoice is not { } eventSpec
+                || eventSpec.Kind != queuedDeckChoice.Kind
+                || eventSpec.UpgradeTransformedCards
+                    != queuedDeckChoice.UpgradeTransformedCards)
+            {
+                throw new InvalidOperationException(
+                    "Queued event deck continuation disagrees with its source choice.");
+            }
         }
 
         if (pending is not null)
