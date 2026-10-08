@@ -48,6 +48,19 @@ public sealed partial class PrototypeGameEngine
                     cardInstanceId,
                     choice.UpgradeTransformedCards,
                     rng),
+            PrototypePersistentDeckChoiceKind.Upgrade =>
+                player with
+                {
+                    Deck = player.Deck
+                        .Select(card =>
+                            card.InstanceId == cardInstanceId
+                                ? card with
+                                {
+                                    UpgradeLevel = card.UpgradeLevel + 1
+                                }
+                                : card)
+                        .ToArray()
+                },
             _ => throw new ArgumentOutOfRangeException()
         };
 
