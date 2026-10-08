@@ -1377,3 +1377,24 @@ Unbound/abstract prototype merchants continue to use their
 older simplified prices. Native potion reward odds, weighted
 potion selection, exact float RNG ordering, and additional
 character or colorless potions are still deferred.
+
+## Native potion rarity selection (2026-10-08)
+
+The pinned `PotionFactory.CreateRandomPotions` uses a rarity roll
+with 10% Rare, 25% Uncommon, and 65% Common probability, followed by
+a uniform choice within the chosen rarity; merchant batches are
+sampled without replacement. Native Overgrowth merchants now use
+this source-shaped selection for their three potion slots.
+Whispering Hollow potion rewards and native combat reward potion
+contents use the same weighting, on the Rewards stream. Wellspring
+Bottle intentionally remains a *uniform choice over the whole pool*
+on the Rewards stream: its pinned event uses `NextItem`, not
+`PotionFactory`. The legacy abstract prototype map keeps its
+existing selection policy. All selections remain restricted to
+the 32 implemented potions, without adding colorless-card
+or cross-character mechanics.
+
+The choice of whether combat offers a potion still uses the
+prototype's flat 50% chance at this stage; the native
+`PotionRewardOdds` pity system and exact RNG float semantics
+are separate outstanding fidelity tasks.

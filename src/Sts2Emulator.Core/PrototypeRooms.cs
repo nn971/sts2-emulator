@@ -1250,12 +1250,23 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.GainPotion:
                 case PrototypeRunEffectKind.GainRandomPotion:
                 {
+                    var nativeOvergrowth = world.Act == 1
+                        && world.Map.GenerationProfileId
+                            == PrototypeNativeOvergrowthMap.GenerationProfileId;
                     var potionId = effect.Kind
                         == PrototypeRunEffectKind.GainRandomPotion
-                        ? PrototypeContent.PotionPool[
-                            PrototypeRng.NextInt(
-                                state.Rng, "event",
-                                PrototypeContent.PotionPool.Length)]
+                        ? nativeOvergrowth && eventState.EventId
+                            == "proto.native.event.wellspring"
+                            ? PrototypeNativePotionShop.PickUniform(
+                                state.Rng, "reward")
+                            : nativeOvergrowth && eventState.EventId
+                                == "proto.native.event.whispering_hollow"
+                                ? PrototypeNativePotionShop.PickWeighted(
+                                    state.Rng, "reward")
+                                : PrototypeContent.PotionPool[
+                                    PrototypeRng.NextInt(
+                                        state.Rng, "event",
+                                        PrototypeContent.PotionPool.Length)]
                         : effect.PotionId
                             ?? throw new InvalidOperationException(
                                 "Gain-potion event effect is missing a potion ID.");
@@ -1699,11 +1710,14 @@ public sealed partial class PrototypeGameEngine
             })
             .ToArray();
 
-        var potionIds = PickDistinct(
-            PrototypeContent.PotionPool,
-            3,
-            state.Rng,
-            "shop");
+        var potionIds = nativeMerchant
+            ? PrototypeNativePotionShop.PickWeightedDistinct(
+                state.Rng, "shop", 3)
+            : PickDistinct(
+                PrototypeContent.PotionPool,
+                3,
+                state.Rng,
+                "shop");
         var availableRelics =
             PrototypeContent.RelicPool
                 .Where(id =>
@@ -2815,17 +2829,23 @@ public sealed partial class PrototypeGameEngine
             state.Player,
             1 + extraCardOptions.Length);
 
+        var nativeOvergrowth = world.Act == 1
+            && world.Map.GenerationProfileId
+                == PrototypeNativeOvergrowthMap.GenerationProfileId;
         var potion = CanAcquirePotion(silverCrucible.Player)
             && PrototypeRng.NextBool(
                 state.Rng,
                 "reward",
                 1,
                 2)
-            ? PrototypeContent.PotionPool[
-                PrototypeRng.NextInt(
-                    state.Rng,
-                    "reward",
-                    PrototypeContent.PotionPool.Length)]
+            ? nativeOvergrowth
+                ? PrototypeNativePotionShop.PickWeighted(
+                    state.Rng, "reward")
+                : PrototypeContent.PotionPool[
+                    PrototypeRng.NextInt(
+                        state.Rng,
+                        "reward",
+                        PrototypeContent.PotionPool.Length)]
             : null;
 
         string? relic = null;
