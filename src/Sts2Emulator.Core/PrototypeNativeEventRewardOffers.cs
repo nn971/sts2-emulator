@@ -56,6 +56,42 @@ public sealed partial class PrototypeGameEngine
                     EndsAct: false);
             }
 
+            case PrototypeRunEffectKind.OfferCardBundles:
+            {
+                var commons = PrototypeContent.RewardCardPool
+                    .Where(id => PrototypeContent.Card(id).Rarity ==
+                        PrototypeCardRarity.Common)
+                    .ToArray();
+                var uncommons = PrototypeContent.RewardCardPool
+                    .Where(id => PrototypeContent.Card(id).Rarity ==
+                        PrototypeCardRarity.Uncommon)
+                    .ToArray();
+                if (commons.Length < 4 || uncommons.Length < 2)
+                {
+                    throw new InvalidOperationException(
+                        "Scroll Boxes requires four Commons and two Uncommons.");
+                }
+
+                // The native single-player Silent version has no
+                // Defect-specific Claw bundle exception.
+                PrototypeRng.Shuffle(state.Rng, "reward", commons);
+                PrototypeRng.Shuffle(state.Rng, "reward", uncommons);
+                return new RewardState(
+                    SourceRoom: prefix,
+                    CardOptions: [],
+                    PotionOption: null,
+                    RelicOption: null,
+                    CardResolved: false,
+                    PotionResolved: true,
+                    RelicResolved: true,
+                    EndsAct: false,
+                    CardBundles:
+                    [
+                        [commons[0], commons[1], uncommons[0]],
+                        [commons[2], commons[3], uncommons[1]]
+                    ]);
+            }
+
             case PrototypeRunEffectKind.OfferRandomRelic:
             {
                 var available = PrototypeContent.RelicPool
