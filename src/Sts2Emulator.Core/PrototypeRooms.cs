@@ -659,13 +659,15 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.PendingPotionReplacement is { } potionReplacement)
         {
-            return potionReplacement.CandidateSlots
+            var actions = potionReplacement.CandidateSlots
                 .Select(slot =>
                     GameAction.Create(
                         "replace_event_potion",
                         new ReplaceEventPotionPayload(
                             slot)))
-                .ToArray();
+                .ToList();
+            actions.Add(GameAction.Empty("skip_event_potion"));
+            return actions;
         }
 
         if (eventState.PendingDeckChoice is { } pending)
@@ -708,6 +710,23 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.PendingPotionReplacement is { } potionReplacement)
         {
+            if (StringComparer.Ordinal.Equals(
+                    action.Kind,
+                    "skip_event_potion"))
+            {
+                state = state with
+                {
+                    World = world with
+                    {
+                        Event = eventState with
+                        {
+                            PendingPotionReplacement = null
+                        }
+                    }
+                };
+                return AdvanceEventContinuations(state);
+            }
+
             RequireKind(
                 action,
                 "replace_event_potion");
