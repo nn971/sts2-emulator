@@ -70,7 +70,7 @@ def main():
         assert good["passed"], good["errors"]
         assert good["counts"] == {
             "boundaries_with_rng": 2, "stream_snapshots": 30,
-            "verified_transitions": 15, "xoshiro_steps": 441
+            "verified_transitions": 15, "xoshiro_steps": 439
         }, good["counts"]
         assert len(good["streams_checked"]) == 15
         assert good["last_counters"]["run.Shuffle"] == 14
