@@ -111,7 +111,7 @@ public sealed class PrototypeNativeEventOrderingTests
         state = engine.Step(state, takeFirst).State;
         PrototypeStateInvariants.Validate(state);
         Assert.Equal(RunPhase.Event, state.Phase);
-        Assert.Single(state.Player.PotionSlots.Where(p => p is not null));
+        Assert.Single(state.Player.PotionSlots, p => p is not null);
 
         var second = engine.GetLegalActions(state);
         Assert.Contains(second, action => action.Kind == "skip_event_potion");
@@ -456,7 +456,7 @@ public sealed class PrototypeNativeEventOrderingTests
             .Single(action => action.Kind == "take_event_potion");
         state = engine.Step(state, next).State;
         Assert.Equal(RunPhase.MapChoice, state.Phase);
-        Assert.Single(state.Player.PotionSlots.Where(p => p is not null));
+        Assert.Single(state.Player.PotionSlots, p => p is not null);
         Assert.Null(state.World!.Event);
         PrototypeStateInvariants.Validate(state);
     }
