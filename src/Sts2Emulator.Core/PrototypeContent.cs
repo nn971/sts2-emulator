@@ -135,6 +135,32 @@ public static class PrototypeContent
             // If it is the final card in hand when played, draw 2 (3)
             // and gain 2 (3) energy. Both operations snapshot the
             // condition before any of the draws execute.
+            // Wood Carvings transforms existing basic cards into these
+            // specific, non-reward-pool event cards.
+            new PrototypeCardDefinition(
+                "proto.native.event.peck",
+                "Peck",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.DamageEnemy,
+                        2, Repetitions: 3, RepetitionUpgradeDelta: 1)
+                ],
+                Rarity: PrototypeCardRarity.Token,
+                RewardEligible: false,
+                Type: PrototypeCardType.Attack),
+            new PrototypeCardDefinition(
+                "proto.native.event.toric_toughness",
+                "Toric Toughness",
+                2,
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainToricToughnessBlock,
+                        5, UpgradeDelta: 2)
+                ],
+                Rarity: PrototypeCardRarity.Token,
+                RewardEligible: false,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.native.event.byrdonis_egg",
                 "Byrdonis Egg",
