@@ -51,17 +51,20 @@ public sealed class PrototypeNativeWhiteBeastStatueTests
                 Relics = player.Relics.Append(new RelicInstance(
                     RelicId, PrototypeJson.EmptyObject())).ToArray()
             };
-            // The owned relic must not remain in the native relic bag.
-            var bag = world.RelicBag!;
-            world = world with
+            // The native relic bag is initialized lazily. If one was
+            // initialized already, do not leave an owned relic inside it.
+            if (world.RelicBag is { } bag)
             {
-                RelicBag = bag with
+                world = world with
                 {
-                    Rare = bag.Rare
-                        .Where(id => !StringComparer.Ordinal.Equals(
-                            id, RelicId)).ToArray()
-                }
-            };
+                    RelicBag = bag with
+                    {
+                        Rare = bag.Rare
+                            .Where(id => !StringComparer.Ordinal.Equals(
+                                id, RelicId)).ToArray()
+                    }
+                };
+            }
         }
         state = state with
         {
@@ -113,8 +116,9 @@ public sealed class PrototypeNativeWhiteBeastStatueTests
         Assert.Equal(PrototypeRelicRarity.Rare, rarity);
         var initial = PrototypeNativeOvergrowthRunFactory.Create(
             "white-beast-catalog");
-        var bag = Assert.IsType<PrototypeRelicBagState>(
-            initial.World!.RelicBag);
+        // The bag is built on first pull, not at native run creation.
+        var bag = PrototypeNativeRelicGrabBag.Create(
+            initial.Player, initial.Rng.Fork());
         Assert.Contains(RelicId, bag.Rare);
     }
 
