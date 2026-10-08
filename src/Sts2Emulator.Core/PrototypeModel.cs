@@ -1677,7 +1677,8 @@ public sealed record EventState(
     PrototypePendingEventDeckChoiceState[]? QueuedDeckChoices = null,
     string[]? OfferedChoiceIds = null,
     RewardState? PendingReward = null,
-    int DeferredHpLoss = 0)
+    int DeferredHpLoss = 0,
+    int NativePageIndex = 0)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
