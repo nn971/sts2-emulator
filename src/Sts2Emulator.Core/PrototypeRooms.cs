@@ -979,7 +979,6 @@ public sealed partial class PrototypeGameEngine
 
                     var relicChoice =
                         CreateRelicEventDeckChoice(
-                            player,
                             choice.Id,
                             relicDefinition);
                     if (relicChoice is not null)
@@ -1037,7 +1036,6 @@ public sealed partial class PrototypeGameEngine
 
         var explicitDeckChoice =
             CreateEventDeckChoice(
-                player,
                 choice);
         if (explicitDeckChoice is not null)
         {
@@ -1167,88 +1165,33 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypePendingEventDeckChoiceState?
         CreateRelicEventDeckChoice(
-            PlayerState player,
             string choiceId,
             PrototypeRelicDefinition relic)
     {
-        var spec =
-            relic.AcquisitionDeckChoice;
-        if (spec is null
-            || spec.Selections <= 0)
-        {
-            return null;
-        }
-
-        var candidates = player.Deck
-            .Where(card =>
-                spec.Kind switch
-                {
-                    PrototypePersistentDeckChoiceKind.Remove =>
-                        !PrototypeContent.Card(
-                            card.CardId).Eternal,
-                    PrototypePersistentDeckChoiceKind.Upgrade =>
-                        card.UpgradeLevel == 0,
-                    PrototypePersistentDeckChoiceKind.Transform =>
-                        !PrototypeContent.Card(
-                            card.CardId).Eternal,
-                    _ => false
-                })
-            .Select(card =>
-                card.InstanceId)
-            .ToArray();
-        var selections = Math.Min(
-            spec.Selections,
-            candidates.Length);
-        return selections <= 0
+        var spec = relic.AcquisitionDeckChoice;
+        return spec is null || spec.Selections <= 0
             ? null
             : new PrototypePendingEventDeckChoiceState(
                 choiceId,
                 spec.Kind,
-                selections,
-                candidates,
+                spec.Selections,
+                Array.Empty<long>(),
                 spec.UpgradeTransformedCards,
                 SourceRelicId: relic.Id);
     }
 
     private static PrototypePendingEventDeckChoiceState?
         CreateEventDeckChoice(
-            PlayerState player,
             PrototypeEventChoiceDefinition choice)
     {
         var spec = choice.DeckChoice;
-        if (spec is null
-            || spec.Selections <= 0)
-        {
-            return null;
-        }
-
-        var candidates = player.Deck
-            .Where(card =>
-                spec.Kind switch
-                {
-                    PrototypePersistentDeckChoiceKind.Remove =>
-                        !PrototypeContent.Card(
-                            card.CardId).Eternal,
-                    PrototypePersistentDeckChoiceKind.Upgrade =>
-                        card.UpgradeLevel == 0,
-                    PrototypePersistentDeckChoiceKind.Transform =>
-                        !PrototypeContent.Card(
-                            card.CardId).Eternal,
-                    _ => false
-                })
-            .Select(card =>
-                card.InstanceId)
-            .ToArray();
-        var selections = Math.Min(
-            spec.Selections,
-            candidates.Length);
-        return selections <= 0
+        return spec is null || spec.Selections <= 0
             ? null
             : new PrototypePendingEventDeckChoiceState(
                 choice.Id,
                 spec.Kind,
-                selections,
-                candidates,
+                spec.Selections,
+                Array.Empty<long>(),
                 spec.UpgradeTransformedCards);
     }
 
