@@ -1170,3 +1170,15 @@ constraints are documented in
 Cross-character reward mechanics and oracle fidelity remain
 postponed; other regional event effects and enchantments
 are still unfinished.
+
+
+## Whispering Hollow dynamic gold pricing (2026-10-08)
+
+Replaced the fixed 35-gold Whispering Hollow purchase with
+the native 26–44 event-specific price. The amount is sampled
+once when the event is generated and persisted in the canonical
+`NativeEventGold` field, so event choice and fork replay do not
+reroll its cost. Native-event invariants distinguish this
+price interval from Dense Vegetation's 61–99 gold reward.
+Targeted tests exercise both extreme prices with two generated
+potion rewards and normal room completion.
