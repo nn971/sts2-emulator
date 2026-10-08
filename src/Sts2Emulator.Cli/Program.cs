@@ -8,6 +8,10 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("Commands:");
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
+    Console.WriteLine("  prototype-native-overgrowth-map [seed] [ascension]");
+    Console.WriteLine("                          Print source-shaped 15-row Act 1 map (not native RNG-exact)");
+    Console.WriteLine("  prototype-native-overgrowth-run [seed] [ascension]");
+    Console.WriteLine("                          Run the opt-in native-shaped Act 1 in the prototype engine");
     Console.WriteLine("  prototype-run [seed] [ascension]");
     Console.WriteLine("                          Drive the restrictive Silent prototype to terminal state");
     Console.WriteLine("  prototype-sweep [n] [ascension]");
@@ -534,6 +538,75 @@ switch (args[0])
     case "prototype-ai-jsonl":
         Sts2Emulator.Cli.PrototypeAiJsonlServer.Run(Console.In, Console.Out);
         break;
+
+    case "prototype-native-overgrowth-map":
+    {
+        var seed = args.Length >= 2 ? args[1] : "demo";
+        var ascension = args.Length >= 3
+            ? int.Parse(args[2])
+            : 0;
+        if (ascension < 0)
+        {
+            throw new ArgumentException("Ascension must not be negative.");
+        }
+
+        var state = PrototypeNativeOvergrowthRunFactory.Create(seed, ascension);
+        PrototypeStateInvariants.Validate(state);
+        var map = state.World!.Map;
+        Console.WriteLine($"Seed: {seed} / Ascension: {ascension}");
+        Console.WriteLine($"Map profile: {map.GenerationProfileId}");
+        for (var floor = 1; floor <= PrototypeNativeOvergrowthMap.BossFloor; floor++)
+        {
+            var layer = map.Nodes
+                .Where(node => node.Floor == floor)
+                .OrderBy(node => node.NodeId, StringComparer.Ordinal);
+            Console.WriteLine($"Floor {floor,2}: {string.Join(" | ", layer.Select(node =>
+                $"{node.NodeId} {node.RoomType} -> {string.Join(",", node.NextNodeIds ?? [])}"))}");
+        }
+        break;
+    }
+
+    case "prototype-native-overgrowth-run":
+    {
+        var seed = args.Length >= 2 ? args[1] : "demo";
+        var ascension = args.Length >= 3 ? int.Parse(args[2]) : 0;
+        if (ascension < 0)
+        {
+            throw new ArgumentException("Ascension must not be negative.");
+        }
+
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeNativeOvergrowthRunFactory.Create(seed, ascension);
+        var reachedFloors = new HashSet<int>();
+        var phases = new HashSet<RunPhase> { state.Phase };
+        for (var step = 0; step < 5_000
+             && state.Phase != RunPhase.Terminal; step++)
+        {
+            var legal = engine.GetLegalActions(state);
+            if (legal.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Native-structure run is stuck in {state.Phase}.");
+            }
+            state = engine.Step(
+                state, ChoosePrototypeAction(state, legal)).State;
+            PrototypeStateInvariants.Validate(state);
+            phases.Add(state.Phase);
+            if (state.World?.Act == 1)
+            {
+                reachedFloors.Add(state.World.Floor);
+            }
+        }
+
+        Console.WriteLine($"Seed: {seed}");
+        Console.WriteLine($"Mode: native-shaped Overgrowth map + prototype economy");
+        Console.WriteLine($"Outcome: {state.World?.TerminalOutcome}");
+        Console.WriteLine($"Act/Floor: {state.World?.Act}/{state.World?.Floor}");
+        Console.WriteLine($"Decisions: {state.DecisionIndex}");
+        Console.WriteLine($"Act 1 floors seen: {string.Join(", ", reachedFloors.Order())}");
+        Console.WriteLine($"Phases: {string.Join(", ", phases.Order())}");
+        break;
+    }
 
     case "prototype-run":
     {
