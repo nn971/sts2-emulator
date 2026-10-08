@@ -371,7 +371,8 @@ public enum PrototypeRunEventKind
     RelicAcquired,
     ShopEntered,
     CardAdded,
-    RoomCompleted
+    RoomCompleted,
+    RestSiteHealed
 }
 
 public sealed record PrototypeCompletedRoomRecord(
