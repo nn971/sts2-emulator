@@ -1110,7 +1110,16 @@ public sealed record PrototypeMapFloorRule(
     int MinFloor,
     int MaxFloor,
     PrototypeRoomType[] RoomPool,
-    bool AllowDuplicateSpecialRooms = false);
+    bool AllowDuplicateSpecialRooms = false,
+    int MinNodes = 1,
+    int MaxNodes = 1,
+    PrototypeRoomType[]? RequiredRoomTypes = null,
+    bool AvoidMatchingSpecialPredecessors = false)
+{
+    public PrototypeRoomType[] RequiredRooms =>
+        RequiredRoomTypes
+        ?? Array.Empty<PrototypeRoomType>();
+}
 
 public sealed record PrototypeRuleset(
     string Id,
