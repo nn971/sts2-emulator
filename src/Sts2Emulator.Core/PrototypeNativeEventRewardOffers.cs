@@ -92,6 +92,49 @@ public sealed partial class PrototypeGameEngine
                     ]);
             }
 
+            case PrototypeRunEffectKind.OfferNeowsBonesRelics:
+            {
+                // The pinned native Neow's Bones samples from all
+                // allowed Neow relics except Bones itself. Until the
+                // remaining special acquisition hooks are implemented,
+                // restrict this generator to already-functional
+                // single-player Silent relic acquisition paths.
+                string[] supportedNativeNames =
+                [
+                    "BoomingConch", "FishingRod", "GoldenPearl",
+                    "LavaRock", "NutritiousOyster", "StoneHumidifier",
+                    "NeowsTalisman", "Pomander", "PreciseScissors",
+                    "NewLeaf", "SilverCrucible", "SilkenTress"
+                ];
+                var available = supportedNativeNames
+                    .Select(PrototypeNativeOvergrowthEvents.NeowRelicId)
+                    .Where(id => !player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                    .ToArray();
+                var chosen = PickDistinct(
+                    available, Math.Min(2, available.Length),
+                    state.Rng, "reward");
+                if (chosen.Length != 2)
+                {
+                    throw new InvalidOperationException(
+                        "Neow's Bones requires two eligible Neow relics.");
+                }
+
+                return new RewardState(
+                    SourceRoom: prefix,
+                    CardOptions: [],
+                    PotionOption: null,
+                    RelicOption: null,
+                    CardResolved: true,
+                    PotionResolved: true,
+                    RelicResolved: true,
+                    EndsAct: false,
+                    ExtraRelicRewardIds: chosen,
+                    // Injury is the sole ordinary standalone Curse
+                    // implemented in the current Silent prototype.
+                    AddCardAfterReward: "proto.native.neow.injury");
+            }
+
             case PrototypeRunEffectKind.OfferRandomRelic:
             {
                 var available = PrototypeContent.RelicPool
