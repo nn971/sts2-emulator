@@ -2102,6 +2102,10 @@ public sealed partial class PrototypeGameEngine
     private static IReadOnlyList<GameAction> GetRestActions(RunState state)
     {
         var actions = new List<GameAction>();
+        if (CanHatchByrdonisEgg(state.Player))
+        {
+            actions.Add(GameAction.Empty("rest_hatch"));
+        }
         if (CanRestHeal(state.Player))
         {
             actions.Add(GameAction.Empty("rest_heal"));
@@ -2127,6 +2131,20 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepRest(RunState state, GameAction action)
     {
+        if (StringComparer.Ordinal.Equals(action.Kind, "rest_hatch"))
+        {
+            if (!CanHatchByrdonisEgg(state.Player))
+            {
+                throw new InvalidOperationException(
+                    "Hatch requires a Byrdonis Egg and an available pet slot.");
+            }
+
+            return CompleteRoomToMap(state with
+            {
+                Player = HatchByrdonisEgg(state.Player, state.Rng)
+            });
+        }
+
         if (StringComparer.Ordinal.Equals(action.Kind, "rest_heal"))
         {
             if (!CanRestHeal(state.Player))

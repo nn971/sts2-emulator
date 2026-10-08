@@ -530,8 +530,13 @@ public static class PrototypeNativeOvergrowthEvents
 
         if (id == "proto.native.event.byrdonis_nest")
         {
+            // Source eligibility is !HasEventPet(). Within the pinned
+            // single-player content, an Egg or hatched Byrdpip occupies
+            // that event-pet progression.
             return !player.Deck.Any(card =>
-                card.CardId == "proto.native.event.byrdonis_egg");
+                card.CardId == "proto.native.event.byrdonis_egg")
+                && !player.Relics.Any(relic =>
+                    relic.RelicId == "proto.native.event.byrdpip");
         }
 
         return true;

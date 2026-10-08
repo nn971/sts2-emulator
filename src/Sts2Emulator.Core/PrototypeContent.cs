@@ -161,6 +161,23 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Token,
                 RewardEligible: false,
                 Type: PrototypeCardType.Skill),
+
+            // Byrdonis Egg supplies a rest-site Hatch option. The
+            // obtained Byrdpip relic converts each persistent Egg into
+            // this zero-cost event Attack (14 / upgraded 18 damage).
+            new PrototypeCardDefinition(
+                "proto.native.event.byrd_swoop",
+                "Byrd Swoop",
+                0,
+                PrototypeCardTarget.Enemy,
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DamageEnemy,
+                        14, UpgradeDelta: 4)
+                ],
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Token,
+                Type: PrototypeCardType.Attack),
             new PrototypeCardDefinition(
                 "proto.native.event.byrdonis_egg",
                 "Byrdonis Egg",
@@ -2476,6 +2493,9 @@ public static class PrototypeContent
                         [new(PrototypeRunEffectKind.GainMaxHp, 6)],
                         RequiredCardType: PrototypeCardType.Curse)
                 ]),
+            new PrototypeRelicDefinition(
+                "proto.native.event.byrdpip",
+                "Byrdpip"),
             new PrototypeRelicDefinition(
                 "proto.native.event.sword_of_stone",
                 "Sword of Stone"),

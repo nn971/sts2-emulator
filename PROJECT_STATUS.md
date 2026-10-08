@@ -1233,3 +1233,14 @@ existing trigger system. Normal wins leave the elite counter
 unchanged. Targeted tests cover acquisition, four/five elite
 wins, ordinary wins and the resulting combat power. Source
 seed/RNG parity is a separate later milestone.
+
+## Byrdonis Egg rest-site Hatch progression (2026-10-08)
+
+Added native-shaped `rest_hatch` for Byrdonis Eggs. Acquiring Byrdpip
+transforms all persistent Eggs to Byrd Swoop (0 cost, 14/18 Attack),
+preserving card instance IDs and one-rest-room completion.
+Byrdonis Nest eligibility now excludes hatched Byrdpip ownership.
+Tests cover action availability, multiple Eggs, card registration,
+persistent identity, canonical forking, rest completion, and blocked
+pet duplicate acquisition. Byrdpip's cosmetic idle pet is omitted,
+as it supplies no autonomous combat action.
