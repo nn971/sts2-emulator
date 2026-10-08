@@ -443,8 +443,8 @@ public static class PrototypeNativeOvergrowthEvents
             [
                 new("bottle", "Gain one random potion",
                     [new(PrototypeRunEffectKind.GainRandomPotion)]),
-                new("bathe", "Remove one card and gain Guilty (effect order approximate)",
-                    [new(PrototypeRunEffectKind.AddCard,
+                new("bathe", "Remove one card, then gain Guilty",
+                    [new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
                         CardId: "proto.native.event.guilty")],
                     new PrototypeEventDeckChoiceSpec(
                         PrototypePersistentDeckChoiceKind.Remove, 1))
@@ -460,8 +460,8 @@ public static class PrototypeNativeOvergrowthEvents
                         new(PrototypeRunEffectKind.GainRandomPotion),
                         new(PrototypeRunEffectKind.GainRandomPotion)
                     ]),
-                new("hug", "Transform one card and lose 9 HP",
-                    [new(PrototypeRunEffectKind.LoseHp, 9)],
+                new("hug", "Transform one card, then lose 9 HP",
+                    [new(PrototypeRunEffectKind.LoseHpAfterDeckChoices, 9)],
                     new PrototypeEventDeckChoiceSpec(
                         PrototypePersistentDeckChoiceKind.Transform, 1))
             ],
