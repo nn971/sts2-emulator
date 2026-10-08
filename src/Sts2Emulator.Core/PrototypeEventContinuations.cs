@@ -104,6 +104,23 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (StringComparer.Ordinal.Equals(
+                    eventState.EventId,
+                    PrototypeNativeOvergrowthEvents.NeowEventId)
+                && world.Act == 1
+                && world.Map.GenerationProfileId
+                    == PrototypeNativeOvergrowthMap.GenerationProfileId
+                && world.Map.CurrentNodeId is null)
+            {
+                // The Ancient opening precedes all selectable map rows.
+                // It does not count as a completed map room.
+                return state with
+                {
+                    World = world with { Event = null },
+                    Phase = RunPhase.MapChoice
+                };
+            }
+
             return CompleteRoomToMap(state);
         }
     }
