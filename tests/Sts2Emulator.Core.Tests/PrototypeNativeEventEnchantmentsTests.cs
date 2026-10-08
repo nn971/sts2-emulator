@@ -119,7 +119,9 @@ public sealed class PrototypeNativeEventEnchantmentsTests
         RunState state, string cardId)
     {
         var combat = state.World!.Combat!;
-        var chosen = combat.Cards.Single(c => c.CardId == cardId);
+        var chosen = combat.Cards.First(c => c.CardId == cardId
+            && (cardId != "proto.silent.strike"
+                || c.PersistentCardInstanceId == 1L));
         var otherIds = combat.Cards.Select(c => c.InstanceId)
             .Where(id => id != chosen.InstanceId).ToArray();
         combat = combat with
