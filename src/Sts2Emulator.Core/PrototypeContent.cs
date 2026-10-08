@@ -131,6 +131,32 @@ public static class PrototypeContent
     public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
         new[]
         {
+            // Native v0.111.0 common starter card, outside SilentCardPool.
+            // If it is the final card in hand when played, draw 2 (3)
+            // and gain 2 (3) energy. Both operations snapshot the
+            // condition before any of the draws execute.
+            new PrototypeCardDefinition(
+                "proto.common.restlessness",
+                "Restlessness",
+                0,
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.DrawCards,
+                        2,
+                        UpgradeDelta: 1,
+                        Condition: new PrototypeCombatPredicateSpec(
+                            PrototypeCombatPredicateKind.HandEmptyAtEnqueue)),
+                    new(
+                        PrototypeCombatEffectKind.GainEnergy,
+                        2,
+                        UpgradeDelta: 1,
+                        Condition: new PrototypeCombatPredicateSpec(
+                            PrototypeCombatPredicateKind.HandEmptyAtEnqueue))
+                ],
+                Retain: true,
+                RewardEligible: false,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.status.infection",
                 "Infection",
