@@ -26,6 +26,7 @@ jobs:
         run: |
           dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-native-overgrowth-map native-ci 0
           dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-native-overgrowth-run native-ci 0
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-native-overgrowth-sweep 24 0
       - name: Prototype AI JSONL bridge self-check
         run: |
           python - <<'PY'
