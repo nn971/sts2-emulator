@@ -281,7 +281,8 @@ public sealed class PrototypeNativeIndependentRewardsTests
         var reward = state.World!.Reward!;
         reward = reward with
         {
-            ExtraRelicRewardIds = ["proto.relic.prayer_wheel"]
+            ExtraRelicRewardIds = ["proto.relic.prayer_wheel"],
+            ExtraRelicGroupsResolved = [false]
         };
         state = state with
         {
@@ -319,7 +320,9 @@ public sealed class PrototypeNativeIndependentRewardsTests
                 {
                     IndependentSelection = false,
                     GoldOption = null,
-                    GoldResolved = true
+                    GoldResolved = true,
+                    ExtraCardGroupsResolved = null,
+                    ExtraRelicGroupsResolved = null
                 }
             }
         };
