@@ -316,12 +316,15 @@ public sealed class PrototypeEventItemTradeoffTests
                 .Observation.Event!.QueuedDeckChoices!.Length);
 
         var fork = state.Fork();
-        fork.World!.Event!.QueuedDeckChoices![0]
-            .CandidateCardInstanceIds[0] = 999;
+        fork.World!.Event!.QueuedDeckChoices![0] =
+            fork.World.Event.QueuedDeckChoices[0] with
+            {
+                RemainingSelections = 999
+            };
         Assert.NotEqual(
             999,
             state.World.Event.RemainingDeckChoices[0]
-                .CandidateCardInstanceIds[0]);
+                .RemainingSelections);
 
         state = ReplacePotion(engine, state, 0);
         Assert.Equal(RunPhase.Event, state.Phase);
@@ -411,6 +414,34 @@ public sealed class PrototypeEventItemTradeoffTests
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Empty(state.Player.Deck);
         Assert.Equal(50, state.Player.Gold);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void RelicDeckRequestIsDeferredUntilLaterCardsAreAdded()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.collectors_annex",
+            act: 2,
+            hp: 70,
+            maxHp: 70,
+            gold: 0,
+            deck: []);
+
+        state = ChooseEvent(engine, state, "late_card");
+        var newlyAdded = Assert.Single(state.Player.Deck);
+        Assert.Equal("proto.silent.backflip", newlyAdded.CardId);
+        Assert.Equal(
+            "proto.relic.empty_cage",
+            state.World!.Event!.PendingDeckChoice!.SourceRelicId);
+        Assert.Equal(
+            new[] { newlyAdded.InstanceId },
+            state.World.Event.PendingDeckChoice.CandidateCardInstanceIds);
+
+        state = ChooseDeckCard(engine, state, newlyAdded.InstanceId);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Empty(state.Player.Deck);
         PrototypeStateInvariants.Validate(state);
     }
 
