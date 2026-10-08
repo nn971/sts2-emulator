@@ -151,6 +151,25 @@ public sealed partial class PrototypeGameEngine
                 .ToDictionary(
                     item => item.FormationPosition,
                     item => item.InstanceId);
+        // Some native encounters coordinate their monsters' initial
+        // move-state positions with one encounter-local roll. Keep that
+        // property declarative and deterministic within the emulator.
+        var openingAiStates = encounter.CyclicOpeningAiStateIds;
+        if (openingAiStates is { Length: 0 })
+        {
+            throw new InvalidOperationException(
+                $"Encounter '{encounter.Id}' has an empty cyclic opening AI list.");
+        }
+        if (openingAiStates is not null
+            && enemySpecs.Length > openingAiStates.Length)
+        {
+            throw new InvalidOperationException(
+                $"Encounter '{encounter.Id}' has too few distinct opening AI states.");
+        }
+        var openingOffset = openingAiStates is null
+            ? 0
+            : PrototypeRng.NextInt(
+                state.Rng, "combat", openingAiStates.Length);
         var enemies = enemySpecs
             .Select((enemySpec, index) =>
             {
@@ -189,6 +208,10 @@ public sealed partial class PrototypeGameEngine
                     FormationPosition:
                         enemySpec.FormationPosition,
                     SlotName: enemySpec.SlotName,
+                    AiStateId: openingAiStates is null
+                        ? null
+                        : openingAiStates[(openingOffset + index)
+                            % openingAiStates.Length],
                     LeaderEnemyInstanceId:
                         enemySpec.LeaderFormationPosition is
                             { } leaderFormationPosition
