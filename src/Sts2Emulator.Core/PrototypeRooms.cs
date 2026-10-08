@@ -2864,8 +2864,9 @@ public sealed partial class PrototypeGameEngine
 
         var candidates = player.Deck
             .Where(card =>
-                !PrototypeContent.Card(card.CardId)
-                    .Eternal)
+                !PrototypeContent.Card(card.CardId).Eternal
+                && (spec.Kind != PrototypePersistentDeckChoiceKind.Upgrade
+                    || card.UpgradeLevel == 0))
             .Select(card => card.InstanceId)
             .ToArray();
         var selections =
