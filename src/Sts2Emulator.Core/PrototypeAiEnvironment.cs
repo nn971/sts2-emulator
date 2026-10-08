@@ -121,7 +121,8 @@ public sealed record PrototypeAiObservation(
     PrototypeAiShop? Shop,
     string? EventId,
     string? TerminalOutcome,
-    PrototypeAiEvent? Event = null);
+    PrototypeAiEvent? Event = null,
+    string? MapGenerationProfileId = null);
 
 public sealed record PrototypeAiFrame(
     string SchemaId,
@@ -389,7 +390,9 @@ public sealed class PrototypeAiEnvironment
                             world.Event.PendingPotionReplacement.ChoiceId,
                             world.Event.PendingPotionReplacement.PotionId,
                             (int[])world.Event.PendingPotionReplacement
-                                .CandidateSlots.Clone())));
+                                .CandidateSlots.Clone())),
+            MapGenerationProfileId:
+                world?.Map.GenerationProfileId);
     }
 
     private static PrototypeAiCombat CreateCombatObservation(
