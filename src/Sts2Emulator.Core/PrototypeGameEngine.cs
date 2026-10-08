@@ -304,7 +304,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         PrototypeRunEventKind eventKind,
         CardInstance? addedCard = null,
         string? acquiredRelicId = null,
-        RngBundle? rng = null)
+        RngBundle? rng = null,
+        RunWorldState? world = null)
     {
         foreach (var relic in player.Relics)
         {
@@ -336,6 +337,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     {
                         continue;
                     }
+                }
+
+                if (trigger.RouteCondition is not null
+                    && (world is null
+                        || !MatchesRouteCondition(
+                            world,
+                            trigger.RouteCondition)))
+                {
+                    continue;
                 }
 
                 player = ApplyPlayerRunEffects(
