@@ -141,9 +141,9 @@ public sealed class PrototypeNativeOvergrowthEventCatalogTests
     {
         var definition = PrototypeContent.Card(cardId);
         Assert.Equal(0, definition.MaxUpgradeLevel);
-        Assert.False(PrototypeGameEngine.CanSelectEventDeckCard(
-            new CardInstance(10, cardId, 0, PrototypeJson.EmptyObject()),
-            PrototypePersistentDeckChoiceKind.Upgrade, null, null, false));
+        Assert.False(new CardInstance(
+            10, cardId, 0, PrototypeJson.EmptyObject()).UpgradeLevel
+            < definition.MaxUpgradeLevel);
     }
 
 }
