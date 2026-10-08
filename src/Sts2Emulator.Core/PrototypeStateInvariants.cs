@@ -912,6 +912,29 @@ public static class PrototypeStateInvariants
                 "Reward card-upgrade metadata does not match reward groups.");
         }
 
+        if (reward.CardBundles is { } bundles)
+        {
+            if (reward.CardOptions.Length > 0
+                || bundles.Length != 2
+                || bundles.Any(bundle =>
+                    bundle.Length != 3
+                    || bundle.Take(2).Any(id =>
+                        !PrototypeContent.RewardCardPool.Contains(id,
+                            StringComparer.Ordinal)
+                        || PrototypeContent.Card(id).Rarity
+                            != PrototypeCardRarity.Common)
+                    || !PrototypeContent.RewardCardPool.Contains(
+                        bundle[2], StringComparer.Ordinal)
+                    || PrototypeContent.Card(bundle[2]).Rarity
+                        != PrototypeCardRarity.Uncommon)
+                || bundles.SelectMany(bundle => bundle)
+                    .Distinct(StringComparer.Ordinal).Count() != 6)
+            {
+                throw new InvalidOperationException(
+                    "Card-bundle reward must contain two distinct Common-Common-Uncommon offers.");
+            }
+        }
+
         if (reward.CardOptions.Length != reward.CardOptions.Distinct(StringComparer.Ordinal).Count())
         {
             throw new InvalidOperationException("Reward card options contain duplicates.");
