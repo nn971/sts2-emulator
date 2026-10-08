@@ -599,7 +599,7 @@ switch (args[0])
                     $"Native Overgrowth generated invalid floor structure for run {run}.");
             }
 
-            if (state.World.ActOneBossEncounterId is { } boss)
+            if (state.World.ActOneEncounterPool?.BossEncounterId is { } boss)
             {
                 bossIds.Add(boss);
             }
