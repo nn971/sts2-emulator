@@ -319,6 +319,23 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     };
                     break;
 
+                case PrototypeRunEffectKind.UpgradeLastCardOfId:
+                {
+                    var id = effect.CardId ?? throw new InvalidOperationException(
+                        "Upgrading the last matching card requires a card ID.");
+                    var index = Array.FindLastIndex(
+                        player.Deck,
+                        card => StringComparer.Ordinal.Equals(card.CardId, id));
+                    if (index >= 0 && player.Deck[index].UpgradeLevel == 0)
+                    {
+                        var deck = (CardInstance[])player.Deck.Clone();
+                        deck[index] = deck[index] with { UpgradeLevel = 1 };
+                        player = player with { Deck = deck };
+                    }
+
+                    break;
+                }
+
                 case PrototypeRunEffectKind.AddCard:
                     throw new NotSupportedException(
                         "Generic run effects do not currently create persistent cards directly.");
