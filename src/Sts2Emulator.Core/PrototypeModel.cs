@@ -1551,7 +1551,8 @@ public sealed record RewardState(
     int ExtraRelicsResolved = 0,
     bool[]? CardOptionUpgradeFlags = null,
     bool[][]? ExtraCardOptionUpgradeFlags = null,
-    int? NativeCombatGoldAutoGranted = null)
+    int? GoldOption = null,
+    bool GoldResolved = true)
 {
     public string[] CurrentCardOptions
     {

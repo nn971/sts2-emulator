@@ -147,12 +147,135 @@ public sealed class PrototypeNativeCombatGoldRewardTests
             ascension, out var goldBefore);
         Assert.Equal(RunPhase.Reward, state.Phase);
         var reward = state.World!.Reward!;
-        var amount = Assert.IsType<int>(reward.NativeCombatGoldAutoGranted);
+        var amount = Assert.IsType<int>(reward.GoldOption);
         Assert.InRange(amount, minimum, maximum);
-        Assert.Equal(goldBefore + amount, state.Player.Gold);
+        Assert.Equal(goldBefore, state.Player.Gold);
+        Assert.False(reward.GoldResolved);
         Assert.NotEqual(25, amount);
         PrototypeStateInvariants.Validate(state);
         Assert.Equal(CanonicalJson.Sha256(state),
             CanonicalJson.Sha256(state.Fork()));
+    }
+
+    [Fact]
+    public void CombatGoldCanBeCollectedAfterTakingACardAndOnlyOnce()
+    {
+        var state = WinFirstCombat(
+            "native-gold-pickup-after-card", 0, out var goldBefore);
+        var reward = state.World!.Reward!;
+        var amount = Assert.IsType<int>(reward.GoldOption);
+        var engine = new PrototypeGameEngine();
+        var environment = new PrototypeAiEnvironment();
+        var observed = environment.Observe(state);
+        Assert.Equal((int?)amount, observed.Observation.Reward!.GoldOption);
+        Assert.False(observed.Observation.Reward!.GoldResolved);
+        Assert.Contains(observed.LegalActions, a =>
+            a.Kind == "take_reward_gold");
+        Assert.Contains(observed.LegalActions, a =>
+            a.Kind == "take_reward_card");
+        Assert.Contains(observed.LegalActions, a =>
+            a.Kind == "leave_reward");
+
+        state = engine.Step(state,
+            engine.GetLegalActions(state).First(a =>
+                a.Kind == "take_reward_card")).State;
+        Assert.Equal(goldBefore, state.Player.Gold);
+        Assert.False(state.World!.Reward!.GoldResolved);
+
+        var pending = state.Fork();
+        var claimed = engine.Step(state,
+            engine.GetLegalActions(state).Single(a =>
+                a.Kind == "take_reward_gold")).State;
+        Assert.Equal(goldBefore + amount, claimed.Player.Gold);
+        Assert.True(claimed.World!.Reward!.GoldResolved);
+        Assert.DoesNotContain(engine.GetLegalActions(claimed),
+            action => action.Kind == "take_reward_gold");
+        Assert.Equal(goldBefore, pending.Player.Gold);
+        Assert.False(pending.World!.Reward!.GoldResolved);
+        Assert.Throws<InvalidOperationException>(() => engine.Step(
+            claimed, GameAction.Empty("take_reward_gold")));
+        PrototypeStateInvariants.Validate(claimed);
+    }
+
+    [Fact]
+    public void LeavingEarlyAbandonsGoldAndRemainingRewards()
+    {
+        var state = WinFirstCombat(
+            "native-gold-early-leave", 0, out var goldBefore);
+        var deckBefore = state.Player.Deck.Length;
+        var engine = new PrototypeGameEngine();
+        var fork = state.Fork();
+        var skipped = engine.Step(state,
+            engine.GetLegalActions(state).Single(a =>
+                a.Kind == "leave_reward")).State;
+        Assert.Equal(RunPhase.MapChoice, skipped.Phase);
+        Assert.Equal(goldBefore, skipped.Player.Gold);
+        Assert.Equal(deckBefore, skipped.Player.Deck.Length);
+        Assert.Null(skipped.World!.Reward);
+        PrototypeStateInvariants.Validate(skipped);
+
+        // An independent fork can still collect the same offer.
+        var gold = Assert.IsType<int>(fork.World!.Reward!.GoldOption);
+        var collected = engine.Step(fork,
+            engine.GetLegalActions(fork).Single(a =>
+                a.Kind == "take_reward_gold")).State;
+        Assert.Equal(goldBefore + gold, collected.Player.Gold);
+        Assert.Equal(goldBefore, state.Player.Gold);
+        Assert.True(collected.World!.Reward!.GoldResolved);
+        PrototypeStateInvariants.Validate(collected);
+    }
+
+    [Fact]
+    public void LeavingAfterTakingGoldRetainsGoldButSkipsCards()
+    {
+        var state = WinFirstCombat(
+            "native-gold-only-then-leave", 0, out var initial);
+        var offered = Assert.IsType<int>(state.World!.Reward!.GoldOption);
+        var deckSize = state.Player.Deck.Length;
+        var engine = new PrototypeGameEngine();
+        state = engine.Step(state,
+            engine.GetLegalActions(state).Single(a =>
+                a.Kind == "take_reward_gold")).State;
+        state = engine.Step(state,
+            engine.GetLegalActions(state).Single(a =>
+                a.Kind == "leave_reward")).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(initial + offered, state.Player.Gold);
+        Assert.Equal(deckSize, state.Player.Deck.Length);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void InvariantsRejectMalformedGoldOffer()
+    {
+        var state = WinFirstCombat(
+            "native-gold-invalid-offer", 0, out _);
+        var world = state.World!;
+        var invalid = state with
+        {
+            World = world with
+            {
+                Reward = world.Reward! with
+                {
+                    GoldOption = -1
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(invalid));
+
+        var missing = state with
+        {
+            World = world with
+            {
+                Reward = world.Reward! with
+                {
+                    GoldOption = null,
+                    GoldResolved = false
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(missing));
     }
 }

@@ -1057,10 +1057,13 @@ public static class PrototypeStateInvariants
         PlayerState player,
         RewardState reward)
     {
-        if (reward.NativeCombatGoldAutoGranted is < 0)
+        if (reward.GoldOption is < 0
+            || (reward.GoldOption is null && !reward.GoldResolved)
+            || (reward.GoldOption is not null
+                && reward.SourceRoom is not ("Combat" or "Elite" or "Boss")))
         {
             throw new InvalidOperationException(
-                "Native auto-granted combat gold must be nonnegative.");
+                "Combat gold offer is invalid or unresolved without an offer.");
         }
 
         var extraRelics = reward.ExtraRelicRewardIds

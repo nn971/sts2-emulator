@@ -2380,6 +2380,32 @@ public sealed partial class PrototypeGameEngine
         var reward = RequireWorld(state).Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
 
+        var orderedActions = GetOrderedRewardActions(state, reward);
+        if (reward.GoldOption is null
+            || reward.PendingDeckChoice is not null)
+        {
+            return orderedActions;
+        }
+
+        // Native RewardsSet displays separate selectable rewards and
+        // permits proceeding without claiming the remaining entries.
+        // Preserve the existing card/potion/relic ordered prototype flow,
+        // while exposing gold pickup and early exit at every ordinary stage.
+        var actions = orderedActions
+            .Where(action => !StringComparer.Ordinal.Equals(
+                action.Kind, "leave_reward"))
+            .ToList();
+        if (!reward.GoldResolved)
+        {
+            actions.Add(GameAction.Empty("take_reward_gold"));
+        }
+        actions.Add(GameAction.Empty("leave_reward"));
+        return actions;
+    }
+
+    private static IReadOnlyList<GameAction> GetOrderedRewardActions(
+        RunState state, RewardState reward)
+    {
         if (reward.PendingDeckChoice is { } deckChoice)
         {
             return deckChoice.CandidateCardInstanceIds
@@ -2499,7 +2525,41 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
 
-        if (reward.PendingDeckChoice is { } deckChoice)
+        if (reward.GoldOption is { } goldOffer
+            && StringComparer.Ordinal.Equals(
+                action.Kind, "take_reward_gold"))
+        {
+            if (reward.GoldResolved)
+            {
+                throw new InvalidOperationException(
+                    "Combat gold has already been collected.");
+            }
+
+            player = player with
+            {
+                Gold = checked(player.Gold + goldOffer)
+            };
+            reward = reward with { GoldResolved = true };
+        }
+        else if (reward.GoldOption is not null
+            && reward.PendingDeckChoice is null
+            && StringComparer.Ordinal.Equals(
+                action.Kind, "leave_reward"))
+        {
+            // Native proceed/skip abandons all remaining optional
+            // rewards; none of the offered but unclaimed gold is gained.
+            state = state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Reward = reward,
+                    NextCardInstanceId = nextId
+                }
+            };
+            return CompleteReward(state);
+        }
+        else if (reward.PendingDeckChoice is { } deckChoice)
         {
             RequireKind(action, "choose_relic_deck_card");
             var payload = action.ReadPayload<ChooseDeckCardPayload>();
@@ -2802,10 +2862,8 @@ public sealed partial class PrototypeGameEngine
             && world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId;
 
-        // Source RewardsSet creates the GoldReward before card rewards.
-        // Draw its amount from Rewards before constructing card options.
-        // The prototype still auto-credits it at reward entry; native
-        // player-triggered pickup is an explicit later fidelity task.
+        // Source RewardsSet creates GoldReward before card rewards.
+        // Roll the offer now; player gold changes only upon collection.
         var nativeGold = nativeOvergrowth
             ? PrototypeNativeCombatGoldReward.Roll(
                 room, state.Ascension, state.Rng)
@@ -2962,7 +3020,8 @@ public sealed partial class PrototypeGameEngine
             ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
             CardOptionUpgradeFlags: cardUpgradeFlags,
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
-            NativeCombatGoldAutoGranted: nativeGold);
+            GoldOption: nativeGold,
+            GoldResolved: nativeGold is null);
 
         world = world with
         {
@@ -2974,7 +3033,9 @@ public sealed partial class PrototypeGameEngine
         {
             Player = lavaRock.Player with
             {
-                Gold = lavaRock.Player.Gold + gold
+                // Legacy prototype combat rewards retain auto-credit.
+                Gold = lavaRock.Player.Gold
+                    + (nativeOvergrowth ? 0 : gold)
             },
             World = world,
             Phase = RunPhase.Reward
