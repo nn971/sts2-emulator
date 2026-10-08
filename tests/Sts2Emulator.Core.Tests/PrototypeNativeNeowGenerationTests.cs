@@ -68,6 +68,8 @@ public sealed class PrototypeNativeNeowGenerationTests
             Assert.Equal(a, b);
             Assert.Equal(3, a.Length);
             Assert.Equal(3, a.Distinct(StringComparer.Ordinal).Count());
+            // Massive Scroll is restricted to multiplayer in native v0.111.0.
+            Assert.DoesNotContain(OptionId("MassiveScroll"), a);
 
             var names = a.Select(id => id[
                 ("take_proto.native.neow.").Length..]).ToArray();
@@ -241,6 +243,93 @@ public sealed class PrototypeNativeNeowGenerationTests
         Assert.True(definition.Unplayable);
         Assert.Equal(PrototypeCardRarity.Curse, definition.Rarity);
         Assert.DoesNotContain(definition.Id, PrototypeContent.RewardCardPool);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void PreciseScissorsRemovesOneSelectedStartingCardBeforeTheMap()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = ForceNeowOption("precise-scissors", "PreciseScissors");
+        var before = state.Player.Deck;
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.ReadPayload<EventChoicePayload>().ChoiceId
+                == OptionId("PreciseScissors"))).State;
+
+        Assert.Equal(RunPhase.Event, state.Phase);
+        var pending = Assert.IsType<PrototypePendingEventDeckChoiceState>(
+            state.World!.Event!.PendingDeckChoice);
+        Assert.Equal(PrototypePersistentDeckChoiceKind.Remove, pending.Kind);
+        Assert.Equal(1, pending.RemainingSelections);
+        Assert.Equal(13, pending.CandidateCardInstanceIds.Length);
+        Assert.Equal(PrototypeNativeOvergrowthEvents.NeowRelicId("PreciseScissors"),
+            pending.SourceRelicId);
+        PrototypeStateInvariants.Validate(state);
+
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.Kind == "choose_event_deck_card"
+                && action.ReadPayload<ChooseEventDeckCardPayload>()
+                    .CardInstanceId == 1)).State;
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(12, state.Player.Deck.Length);
+        Assert.Equal(before.Skip(1).Select(card => card.InstanceId),
+            state.Player.Deck.Select(card => card.InstanceId));
+        Assert.Equal(14, state.World!.NextCardInstanceId);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void NewLeafTransformsExactlyOneSelectedStartingCard()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = ForceNeowOption("new-leaf", "NewLeaf");
+        var before = state.Player.Deck;
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.ReadPayload<EventChoicePayload>().ChoiceId
+                == OptionId("NewLeaf"))).State;
+
+        Assert.Equal(RunPhase.Event, state.Phase);
+        var pending = Assert.IsType<PrototypePendingEventDeckChoiceState>(
+            state.World!.Event!.PendingDeckChoice);
+        Assert.Equal(PrototypePersistentDeckChoiceKind.Transform, pending.Kind);
+        Assert.Equal(1, pending.RemainingSelections);
+        Assert.Equal(13, pending.CandidateCardInstanceIds.Length);
+
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.Kind == "choose_event_deck_card"
+                && action.ReadPayload<ChooseEventDeckCardPayload>()
+                    .CardInstanceId == 1)).State;
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(13, state.Player.Deck.Length);
+        Assert.Equal(before.Select(card => card.InstanceId),
+            state.Player.Deck.Select(card => card.InstanceId));
+        Assert.NotEqual(before[0].CardId, state.Player.Deck[0].CardId);
+        Assert.Equal(PrototypeCardRarity.Basic,
+            PrototypeContent.Card(before[0].CardId).Rarity);
+        Assert.NotEqual(PrototypeCardRarity.Basic,
+            PrototypeContent.Card(state.Player.Deck[0].CardId).Rarity);
+        Assert.Equal(before.Skip(1).Select(card => card.CardId),
+            state.Player.Deck.Skip(1).Select(card => card.CardId));
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void SilkenTressConsumesAllStartingGold()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = ForceNeowOption("silken-tress", "SilkenTress");
+        Assert.True(state.Player.Gold > 0);
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.ReadPayload<EventChoicePayload>().ChoiceId
+                == OptionId("SilkenTress"))).State;
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(0, state.Player.Gold);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == PrototypeNativeOvergrowthEvents
+                .NeowRelicId("SilkenTress"));
         PrototypeStateInvariants.Validate(state);
     }
 
