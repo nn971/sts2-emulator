@@ -2215,10 +2215,11 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException($"Reward card index {payload.Index} is invalid.");
                 }
 
-                player = AppendCard(
+                player = AppendNativeCardReward(
                     player,
                     nextId++,
                     reward.CardOptions[payload.Index],
+                    reward.CardOptionsUpgraded,
                     state.Rng);
             }
             else
@@ -2252,10 +2253,12 @@ public sealed partial class PrototypeGameEngine
                         $"Extra reward card index {payload.Index} is invalid.");
                 }
 
-                player = AppendCard(
+                player = AppendNativeCardReward(
                     player,
                     nextId++,
                     currentOptions[payload.Index],
+                    reward.ExtraCardOptionsUpgraded is { } upgrades
+                    && upgrades[reward.ExtraCardRewardsResolved],
                     state.Rng);
             }
             else
@@ -2466,7 +2469,11 @@ public sealed partial class PrototypeGameEngine
                 state.Rng))
             .ToArray();
 
-        var potion = CanAcquirePotion(state.Player)
+        var silverCrucible = ApplySilverCrucibleToCardRewardGeneration(
+            state.Player,
+            1 + extraCardOptions.Length);
+
+        var potion = CanAcquirePotion(silverCrucible.Player)
             && PrototypeRng.NextBool(
                 state.Rng,
                 "reward",
@@ -2514,7 +2521,10 @@ public sealed partial class PrototypeGameEngine
                     || relicOptions.Length == 0),
             EndsAct: room == PrototypeRoomType.Boss,
             ExtraCardOptions: extraCardOptions,
-            RelicOptions: relicOptions);
+            RelicOptions: relicOptions,
+            CardOptionsUpgraded: silverCrucible.UpgradeGroups[0],
+            ExtraCardOptionsUpgraded:
+                silverCrucible.UpgradeGroups.Skip(1).ToArray());
 
         world = world with
         {
@@ -2524,7 +2534,10 @@ public sealed partial class PrototypeGameEngine
 
         return state with
         {
-            Player = state.Player with { Gold = state.Player.Gold + gold },
+            Player = silverCrucible.Player with
+            {
+                Gold = silverCrucible.Player.Gold + gold
+            },
             World = world,
             Phase = RunPhase.Reward
         };
