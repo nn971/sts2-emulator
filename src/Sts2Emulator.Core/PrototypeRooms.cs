@@ -1020,6 +1020,22 @@ public sealed partial class PrototypeGameEngine
                         state.Rng);
                     break;
 
+                case PrototypeRunEffectKind.TransformFirstCardOfId:
+                {
+                    var cardId = effect.CardId
+                        ?? throw new InvalidOperationException(
+                            "Transform-first-card effect requires a card ID.");
+                    var first = player.Deck.FirstOrDefault(card =>
+                        StringComparer.Ordinal.Equals(card.CardId, cardId));
+                    if (first is not null)
+                    {
+                        player = TransformPersistentDeckCard(
+                            player, first.InstanceId, false, state.Rng);
+                    }
+
+                    break;
+                }
+
                 case PrototypeRunEffectKind.GainRandomRareCard:
                 {
                     // Source-shaped Arcane Scroll reward: one Rare from the
