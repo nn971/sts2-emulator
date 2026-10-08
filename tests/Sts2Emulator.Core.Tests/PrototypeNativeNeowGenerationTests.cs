@@ -267,7 +267,8 @@ public sealed class PrototypeNativeNeowGenerationTests
                     [
                         offer,
                         other,
-                        OptionId("CursedPearl")
+                        OptionId(name == "GoldenPearl"
+                            ? "DowsingRod" : "CursedPearl")
                     ]
                 }
             }
