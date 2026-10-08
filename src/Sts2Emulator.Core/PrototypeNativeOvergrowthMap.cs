@@ -304,8 +304,17 @@ public static class PrototypeNativeOvergrowthRunFactory
             {
                 Map = map,
                 NextCardInstanceId = world.NextCardInstanceId + 1,
-                UnknownRoomOdds = new PrototypeUnknownRoomOddsState()
-            }
+                UnknownRoomOdds = new PrototypeUnknownRoomOddsState(),
+                Event = new EventState(
+                    PrototypeNativeOvergrowthEvents.NeowEventId,
+                    OfferedChoiceIds:
+                        PrototypeNativeOvergrowthEvents.GenerateNeowOfferedChoiceIds(rng)),
+                EventHistory:
+                [
+                    PrototypeNativeOvergrowthEvents.NeowEventId
+                ]
+            },
+            Phase = RunPhase.Event
         };
     }
 }
