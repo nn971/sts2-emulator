@@ -68,6 +68,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.ice_cream"] = PrototypeRelicRarity.Rare,
             ["proto.relic.tough_bandages"] = PrototypeRelicRarity.Rare,
             ["proto.relic.prayer_wheel"] = PrototypeRelicRarity.Rare,
+            ["proto.relic.white_beast_statue"] = PrototypeRelicRarity.Rare,
             ["proto.relic.art_of_war"] = PrototypeRelicRarity.Rare,
             ["proto.relic.charons_ashes"] = PrototypeRelicRarity.Rare,
             ["proto.relic.gambling_chip"] = PrototypeRelicRarity.Rare,

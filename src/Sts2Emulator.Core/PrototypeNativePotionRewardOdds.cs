@@ -16,8 +16,18 @@ public static class PrototypeNativePotionRewardOdds
     public const int EliteBonus = 125;
 
     public static (bool Offered, int UpdatedThousandths) Roll(
-        int currentThousandths, bool elite, RngBundle rng)
+        int currentThousandths, bool elite, RngBundle rng,
+        bool forced = false)
     {
+        // Native PotionRewardOdds.Roll calls
+        // Hook.ShouldForcePotionReward before sampling Rewards RNG
+        // or changing persistent pity. White Beast Statue provides
+        // this hook for every combat room, including elites and bosses.
+        if (forced)
+        {
+            return (true, currentThousandths);
+        }
+
         // Do not clamp the odds here: native AbstractOdds.CurrentValue
         // is updated directly, without explicit clipping.
         var threshold = currentThousandths + (elite ? EliteBonus : 0);

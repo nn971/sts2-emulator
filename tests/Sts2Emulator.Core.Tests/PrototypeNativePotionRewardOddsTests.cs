@@ -61,6 +61,27 @@ public sealed class PrototypeNativePotionRewardOddsTests
             1100, elite: false, rng));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ForcedPotionSkipsRngAndPreservesPity(bool elite)
+    {
+        var rng = PrototypeRng.CreateBundle(
+            "forced-potion-" + elite);
+        var before = rng.Streams.Single(
+            stream => stream.StreamId == "reward").CallCount;
+        foreach (var current in new[] { -200, 0, 400, 900, 1200 })
+        {
+            var (offered, updated) =
+                PrototypeNativePotionRewardOdds.Roll(
+                    current, elite, rng, forced: true);
+            Assert.True(offered);
+            Assert.Equal(current, updated);
+        }
+        Assert.Equal(before, rng.Streams.Single(
+            stream => stream.StreamId == "reward").CallCount);
+    }
+
     [Fact]
     public void RunWorldForkPreservesPityAndInvariantRejectsFractionalSteps()
     {

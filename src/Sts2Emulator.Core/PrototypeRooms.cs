@@ -2932,11 +2932,15 @@ public sealed partial class PrototypeGameEngine
         string? potion;
         if (nativeOvergrowth)
         {
+            var forcePotion = silverCrucible.Player.Relics.Any(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .ForceCombatPotionReward);
             var (offered, nextOdds) =
                 PrototypeNativePotionRewardOdds.Roll(
                     world.PotionRewardOddsThousandths,
                     room == PrototypeRoomType.Elite,
-                    state.Rng);
+                    state.Rng,
+                    forced: forcePotion);
             world = world with
             {
                 PotionRewardOddsThousandths = nextOdds

@@ -676,7 +676,8 @@ public sealed record PrototypeRelicDefinition(
     bool PreventsHandDiscard = false,
     int XValueBonus = 0,
     int HandDrawBonus = 0,
-    int RandomizeDrawnCardCostMaxExclusive = 0);
+    int RandomizeDrawnCardCostMaxExclusive = 0,
+    bool ForceCombatPotionReward = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

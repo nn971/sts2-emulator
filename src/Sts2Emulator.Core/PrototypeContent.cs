@@ -2711,6 +2711,10 @@ public static class PrototypeContent
                 "Prayer Wheel",
                 ExtraNormalCombatCardRewardGroups: 1),
             new PrototypeRelicDefinition(
+                "proto.relic.white_beast_statue",
+                "White Beast Statue",
+                ForceCombatPotionReward: true),
+            new PrototypeRelicDefinition(
                 "proto.relic.membership_card",
                 "Membership Card",
                 ShopPriceNumerator: 1,
@@ -6835,6 +6839,7 @@ public static class PrototypeContent
         "proto.relic.hovering_kite",
         "proto.relic.question_card",
         "proto.relic.prayer_wheel",
+        "proto.relic.white_beast_statue",
         "proto.relic.membership_card",
         "proto.relic.smiling_mask",
         "proto.relic.art_of_war",

@@ -56,9 +56,10 @@ public sealed class PrototypeNativeRelicGrabBagTests
             initial.Player, initial.Rng.Fork());
         Assert.Equal(10, bag.Common.Length);
         Assert.Equal(11, bag.Uncommon.Length);
-        Assert.Equal(15, bag.Rare.Length);
+        Assert.Equal(16, bag.Rare.Length);
         Assert.Equal(4, bag.Shop.Length);
-        Assert.Equal(40, bag.Remaining.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(41, bag.Remaining.Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains("proto.relic.white_beast_statue", bag.Rare);
         Assert.DoesNotContain("proto.relic.darkstone_periapt", bag.Remaining);
         Assert.DoesNotContain("proto.relic.forgotten_soul", bag.Remaining);
         Assert.DoesNotContain("proto.relic.ink_bottle", bag.Remaining);
