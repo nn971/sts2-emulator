@@ -86,10 +86,11 @@ public sealed class PrototypeExhaustRelicTests
 
         var combat = state.World!.Combat!;
         var copied = Assert.Single(
-            combat.Cards.Where(card =>
+            combat.Cards,
+            card =>
                 card.CardId
                     == "proto.silent.blade_dance"
-                && card.InstanceId != 1));
+                && card.InstanceId != 1);
         Assert.True(copied.IsTemporary);
         Assert.Null(copied.PersistentCardInstanceId);
         Assert.Equal(1, copied.UpgradeLevel);
