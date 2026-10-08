@@ -24,7 +24,9 @@ public static class PrototypeContent
                 RoomPool:
                 [
                     PrototypeRoomType.Combat
-                ]),
+                ],
+                MinNodes: 3,
+                MaxNodes: 3),
             new(
                 MinFloor: 2,
                 MaxFloor: 2,
@@ -32,6 +34,13 @@ public static class PrototypeContent
                 [
                     PrototypeRoomType.Combat,
                     PrototypeRoomType.Combat,
+                    PrototypeRoomType.Event,
+                    PrototypeRoomType.Shop
+                ],
+                MinNodes: 3,
+                MaxNodes: 4,
+                RequiredRoomTypes:
+                [
                     PrototypeRoomType.Event,
                     PrototypeRoomType.Shop
                 ]),
@@ -44,7 +53,15 @@ public static class PrototypeContent
                     PrototypeRoomType.Combat,
                     PrototypeRoomType.Event,
                     PrototypeRoomType.Elite
-                ]),
+                ],
+                MinNodes: 3,
+                MaxNodes: 4,
+                RequiredRoomTypes:
+                [
+                    PrototypeRoomType.Event,
+                    PrototypeRoomType.Elite
+                ],
+                AvoidMatchingSpecialPredecessors: true),
             new(
                 MinFloor: 4,
                 MaxFloor: 4,
@@ -55,7 +72,15 @@ public static class PrototypeContent
                     PrototypeRoomType.Shop,
                     PrototypeRoomType.Rest,
                     PrototypeRoomType.Elite
-                ]),
+                ],
+                MinNodes: 3,
+                MaxNodes: 4,
+                RequiredRoomTypes:
+                [
+                    PrototypeRoomType.Shop,
+                    PrototypeRoomType.Rest
+                ],
+                AvoidMatchingSpecialPredecessors: true),
             new(
                 MinFloor: 5,
                 MaxFloor: 5,
@@ -63,11 +88,19 @@ public static class PrototypeContent
                 [
                     PrototypeRoomType.Rest
                 ],
-                AllowDuplicateSpecialRooms: true),
+                AllowDuplicateSpecialRooms: true,
+                MinNodes: 2,
+                MaxNodes: 3),
             new(
                 MinFloor: 6,
                 MaxFloor: 6,
                 RoomPool:
+                [
+                    PrototypeRoomType.Boss
+                ],
+                MinNodes: 1,
+                MaxNodes: 1,
+                RequiredRoomTypes:
                 [
                     PrototypeRoomType.Boss
                 ])
