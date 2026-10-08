@@ -12,7 +12,7 @@ public sealed class PrototypeConditionedCombatEntryTests
         state = environment.Step(
             state, Assert.Single(environment.Observe(state).LegalActions).ActionId).State;
         var map = environment.Observe(state);
-        var action = map.LegalActions.Single(candidate =>
+        var action = map.LegalActions.First(candidate =>
             candidate.Kind == "choose_map_node"
             && state.World!.Map.AvailableNodes()
                 .Single(node =>
