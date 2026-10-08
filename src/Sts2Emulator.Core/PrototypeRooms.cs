@@ -2544,7 +2544,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     nextId++,
                     reward.CardOptions[payload.Index],
-                    reward.CardOptionsUpgraded,
+                    reward.CurrentCardOptionUpgradeFlags[payload.Index],
                     state.Rng);
             }
             else
@@ -2582,8 +2582,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     nextId++,
                     currentOptions[payload.Index],
-                    reward.ExtraCardOptionsUpgraded is { } upgrades
-                    && upgrades[reward.ExtraCardRewardsResolved],
+                    reward.CurrentCardOptionUpgradeFlags[payload.Index],
                     state.Rng);
             }
             else
@@ -2821,22 +2820,30 @@ public sealed partial class PrototypeGameEngine
                 : 0);
         string[] cardOptions;
         string[][] extraCardOptions;
+        bool[]? cardUpgradeFlags = null;
+        bool[][]? extraCardUpgradeFlags = null;
         if (nativeOvergrowth)
         {
             var offset = world.CardRarityOffsetBasisPoints;
             var first = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
-                cardChoiceCount, state.Ascension, room, offset, state.Rng);
+                cardChoiceCount, state.Ascension, room, offset, state.Rng,
+                act: world.Act);
             cardOptions = first.Cards;
+            cardUpgradeFlags = first.UpgradeFlags;
             offset = first.NextOffsetBasisPoints;
             var extras = new List<string[]>();
+            var extraUpgrades = new List<bool[]>();
             for (var i = 0; i < extraCardRewardGroups; i++)
             {
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
-                    cardChoiceCount, state.Ascension, room, offset, state.Rng);
+                    cardChoiceCount, state.Ascension, room, offset, state.Rng,
+                    act: world.Act);
                 extras.Add(next.Cards);
+                extraUpgrades.Add(next.UpgradeFlags);
                 offset = next.NextOffsetBasisPoints;
             }
             extraCardOptions = extras.ToArray();
+            extraCardUpgradeFlags = extraUpgrades.ToArray();
             world = world with { CardRarityOffsetBasisPoints = offset };
         }
         else
@@ -2941,7 +2948,9 @@ public sealed partial class PrototypeGameEngine
             CardOptionsUpgraded: silverCrucible.UpgradeGroups[0],
             ExtraCardOptionsUpgraded:
                 silverCrucible.UpgradeGroups.Skip(1).ToArray(),
-            ExtraRelicRewardIds: lavaRock.AdditionalRelicIds);
+            ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
+            CardOptionUpgradeFlags: cardUpgradeFlags,
+            ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags);
 
         world = world with
         {

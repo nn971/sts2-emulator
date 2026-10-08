@@ -105,6 +105,11 @@ public sealed class PrototypeNativeSilverCrucibleTests
         state = StartAndWinFirstCombat(state);
         var reward = state.World!.Reward!;
         Assert.Equal(shouldUpgrade, reward.CardOptionsUpgraded);
+        Assert.All(reward.CurrentCardOptionUpgradeFlags,
+            flag => Assert.Equal(shouldUpgrade, flag));
+        Assert.Equal(reward.CurrentCardOptionUpgradeFlags,
+            new PrototypeAiEnvironment().Observe(state).Observation
+                .Reward!.CardOptionUpgradeFlags);
         Assert.Equal(0,
             reward.ExtraCardOptionsUpgraded?.Length);
         var relic = state.Player.Relics.Single(relic =>

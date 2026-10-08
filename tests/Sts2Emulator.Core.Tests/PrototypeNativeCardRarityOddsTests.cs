@@ -91,6 +91,67 @@ public sealed class PrototypeNativeCardRarityOddsTests
             left.Streams.Single(s => s.StreamId == "reward").CallCount);
     }
 
+    [Theory]
+    [InlineData(1, 0, 0)]
+    [InlineData(2, 0, 1250)]
+    [InlineData(3, 0, 2500)]
+    [InlineData(2, 7, 2500)]
+    [InlineData(3, 7, 5000)]
+    public void UpgradeRollFollowsPinnedActAndScarcityOdds(
+        int act, int ascension, int threshold)
+    {
+        var cardId = PrototypeContent.RewardCardPool.First(id =>
+            PrototypeContent.Card(id).Rarity == PrototypeCardRarity.Common
+            && PrototypeContent.Card(id).MaxUpgradeLevel > 0);
+        var rng = PrototypeRng.CreateBundle(
+            $"reward-upgrade-{act}-{ascension}");
+        var expected = rng.Fork();
+        for (var i = 0; i < 250; i++)
+        {
+            var roll = PrototypeRng.NextInt(expected, "reward", 10000);
+            var result = PrototypeNativeCardRarityOdds.RollEncounterCardUpgrade(
+                cardId, act, ascension, rng);
+            Assert.Equal(roll < threshold, result);
+        }
+        Assert.Equal(expected.Streams.Single(s => s.StreamId == "reward").CallCount,
+            rng.Streams.Single(s => s.StreamId == "reward").CallCount);
+    }
+
+    [Fact]
+    public void RareCardUpgradeConsumesRngButRemainsUnupgraded()
+    {
+        var rareId = PrototypeContent.RewardCardPool.First(id =>
+            PrototypeContent.Card(id).Rarity == PrototypeCardRarity.Rare);
+        var rng = PrototypeRng.CreateBundle("rare-upgrade-roll");
+        Assert.False(PrototypeNativeCardRarityOdds.RollEncounterCardUpgrade(
+            rareId, 3, 7, rng));
+        Assert.Equal((ulong?)1,
+            rng.Streams.Single(s => s.StreamId == "reward").CallCount);
+    }
+
+    [Fact]
+    public void EncounterUpgradeFlagsReplayAndAlignWithChoices()
+    {
+        var left = PrototypeRng.CreateBundle("reward-upgrade-flags");
+        var right = left.Fork();
+        var a = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+            8, 7, PrototypeRoomType.Combat, 1500, left, act: 3);
+        var b = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+            8, 7, PrototypeRoomType.Combat, 1500, right, act: 3);
+        Assert.Equal(a.Cards, b.Cards);
+        Assert.Equal(a.UpgradeFlags, b.UpgradeFlags);
+        Assert.Equal(a.NextOffsetBasisPoints, b.NextOffsetBasisPoints);
+        Assert.Equal(a.Cards.Length, a.UpgradeFlags.Length);
+        Assert.All(a.Cards.Select((id, i) => (id, i)), entry =>
+        {
+            if (PrototypeContent.Card(entry.id).Rarity
+                == PrototypeCardRarity.Rare)
+            {
+                Assert.False(a.UpgradeFlags[entry.i]);
+            }
+        });
+    }
+
     [Fact]
     public void MerchantRarityUsesRewardStreamButLeavesPityUnchanged()
     {

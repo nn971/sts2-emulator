@@ -1078,6 +1078,25 @@ public static class PrototypeStateInvariants
                 "Reward card-upgrade metadata does not match reward groups.");
         }
 
+        if (reward.CardOptionUpgradeFlags is { } flags
+            && flags.Length != reward.CardOptions.Length)
+        {
+            throw new InvalidOperationException(
+                "Card-option upgrade flags disagree with the options.");
+        }
+
+        if (reward.ExtraCardOptionUpgradeFlags is { } extraFlags
+            && (extraFlags.Length !=
+                    (reward.ExtraCardOptions?.Length ?? 0)
+                || extraFlags.Where((group, index) =>
+                    group is null
+                    || group.Length != reward.ExtraCardOptions![index].Length)
+                    .Any()))
+        {
+            throw new InvalidOperationException(
+                "Extra reward upgrade flags disagree with the options.");
+        }
+
         if (reward.CardBundles is { } bundles)
         {
             if (reward.CardOptions.Length > 0

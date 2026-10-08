@@ -105,10 +105,41 @@ public static class PrototypeNativeCardRarityOdds
             "No purchasable/reward card rarity remains in the restricted pool.");
     }
 
-    public static (string[] Cards, int NextOffsetBasisPoints)
+    /// <summary>
+    /// Pinned CardFactory.RollForUpgrade's zero-base reward odds:
+    /// (act-1) * 12.5% below Scarcity, or (act-1) * 25% at A7+.
+    /// Rare and non-upgradable cards remain unupgraded, but still
+    /// consume an RNG draw. The discrete sampler treats zero as zero;
+    /// native NextFloat() <= 0 can extremely rarely upgrade on zero.
+    /// </summary>
+    public static bool RollEncounterCardUpgrade(
+        string cardId, int act, int ascension, RngBundle rng)
+    {
+        if (act < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(act));
+        }
+        if (ascension < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ascension));
+        }
+        var definition = PrototypeContent.Card(cardId);
+        var threshold = definition.Rarity == PrototypeCardRarity.Rare
+            || definition.MaxUpgradeLevel <= 0
+                ? 0
+                : Math.Min(10000,
+                    (act - 1) * (ascension >= ScarcityAscension
+                        ? 2500 : 1250));
+        var roll = PrototypeRng.NextInt(rng, "reward", 10000);
+        return roll < threshold;
+    }
+
+    public static (string[] Cards, int NextOffsetBasisPoints,
+        bool[] UpgradeFlags)
         GenerateEncounterCards(
             int count, int ascension, PrototypeRoomType room,
-            int currentOffsetBasisPoints, RngBundle rng)
+            int currentOffsetBasisPoints, RngBundle rng,
+            int act = 1)
     {
         if (count < 0)
         {
@@ -126,6 +157,7 @@ public static class PrototypeNativeCardRarityOdds
         };
         var pool = PrototypeContent.RewardCardPool.ToList();
         var cards = new List<string>(count);
+        var upgrades = new List<bool>(count);
         var offset = currentOffsetBasisPoints;
         for (var i = 0; i < count; i++)
         {
@@ -141,12 +173,10 @@ public static class PrototypeNativeCardRarityOdds
                 rng, "reward", candidates.Length)];
             cards.Add(selected);
             pool.Remove(selected);
-            // CardFactory.CreateForReward also performs a separate
-            // Rewards upgrade roll per generated card. In Act 1 the
-            // normal baseline upgrade chance is zero.
-            _ = PrototypeRng.NextInt(rng, "reward", 10000);
+            upgrades.Add(RollEncounterCardUpgrade(
+                selected, act, ascension, rng));
         }
-        return (cards.ToArray(), offset);
+        return (cards.ToArray(), offset, upgrades.ToArray());
     }
 
     public static string[] GenerateMerchantCards(

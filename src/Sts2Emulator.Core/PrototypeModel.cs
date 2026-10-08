@@ -1548,7 +1548,9 @@ public sealed record RewardState(
     string? AddCardAfterReward = null,
     string[][]? CardBundles = null,
     string[]? ExtraRelicRewardIds = null,
-    int ExtraRelicsResolved = 0)
+    int ExtraRelicsResolved = 0,
+    bool[]? CardOptionUpgradeFlags = null,
+    bool[][]? ExtraCardOptionUpgradeFlags = null)
 {
     public string[] CurrentCardOptions
     {
@@ -1564,6 +1566,40 @@ public sealed record RewardState(
             return ExtraCardRewardsResolved < extra.Length
                 ? extra[ExtraCardRewardsResolved]
                 : Array.Empty<string>();
+        }
+    }
+
+    /// <summary>
+    /// Per-visible-option upgrades composed with Silver Crucible's
+    /// group-wide override. Known to the player at reward selection.
+    /// </summary>
+    public bool[] CurrentCardOptionUpgradeFlags
+    {
+        get
+        {
+            if (!CardResolved)
+            {
+                return Enumerable.Range(0, CardOptions.Length)
+                    .Select(index => CardOptionsUpgraded
+                        || (CardOptionUpgradeFlags is { } flags
+                            && flags[index]))
+                    .ToArray();
+            }
+
+            var extras = ExtraCardOptions ?? Array.Empty<string[]>();
+            if (ExtraCardRewardsResolved >= extras.Length)
+            {
+                return Array.Empty<bool>();
+            }
+
+            var groupIndex = ExtraCardRewardsResolved;
+            var silverUpgraded = ExtraCardOptionsUpgraded is { } silver
+                && silver[groupIndex];
+            return Enumerable.Range(0, extras[groupIndex].Length)
+                .Select(index => silverUpgraded
+                    || (ExtraCardOptionUpgradeFlags is { } flags
+                        && flags[groupIndex][index]))
+                .ToArray();
         }
     }
 
@@ -1588,6 +1624,14 @@ public sealed record RewardState(
         ExtraCardOptionsUpgraded = ExtraCardOptionsUpgraded is null
             ? null
             : (bool[])ExtraCardOptionsUpgraded.Clone(),
+        CardOptionUpgradeFlags = CardOptionUpgradeFlags is null
+            ? null
+            : (bool[])CardOptionUpgradeFlags.Clone(),
+        ExtraCardOptionUpgradeFlags = ExtraCardOptionUpgradeFlags is null
+            ? null
+            : ExtraCardOptionUpgradeFlags
+                .Select(group => (bool[])group.Clone())
+                .ToArray(),
         CardBundles = CardBundles is null
             ? null
             : CardBundles.Select(bundle => (string[])bundle.Clone()).ToArray(),
