@@ -130,6 +130,12 @@ public static class PrototypeNativeOvergrowthEvents
                                 RelicId: NeowRelicId(name)),
                             new(PrototypeRunEffectKind.GainRandomRareCard)
                         ],
+                        "NeowsBones" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.OfferNeowsBonesRelics)
+                        ],
                         "HeftyTablet" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
