@@ -2480,6 +2480,18 @@ public static class PrototypeContent
                 "proto.native.event.sword_of_stone",
                 "Sword of Stone"),
             new PrototypeRelicDefinition(
+                "proto.native.event.sword_of_jade",
+                "Sword of Jade",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [new PrototypeCombatEffectSpec(
+                            PrototypeCombatEffectKind.ApplyPlayerPower,
+                            3,
+                            PowerId: "proto.power.strength")])
+                ]),
+            new PrototypeRelicDefinition(
                 "proto.relic.molten_egg",
                 "Molten Egg",
                 UpgradeAddedCardType: PrototypeCardType.Attack),

@@ -1223,3 +1223,13 @@ on event entry and persisted in canonical event state. A single
 gold-value resolver serves legal-action filtering and effect settlement.
 Range invariants and event-level endpoint/rejection/fork regressions
 were added. Source-seeded RNG parity remains future work.
+
+## Sunken Statue's persistent relic progression (2026-10-08)
+
+Sword of Stone now tracks elite victories as canonical relic
+state and transforms in place to Sword of Jade at five.
+Sword of Jade grants +3 Strength on combat entry through the
+existing trigger system. Normal wins leave the elite counter
+unchanged. Targeted tests cover acquisition, four/five elite
+wins, ordinary wins and the resulting combat power. Source
+seed/RNG parity is a separate later milestone.

@@ -326,4 +326,94 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
         Assert.Equal(RunPhase.Reward, state.Phase);
         return state;
     }
+
+    [Fact]
+    public void SwordOfStoneTracksEliteVictoriesAndTransformsIntoJade()
+    {
+        const string stoneId = "proto.native.event.sword_of_stone";
+        const string jadeId = "proto.native.event.sword_of_jade";
+
+        RunState WithStone(string seed, int defeated)
+        {
+            var state = Pick("GoldenPearl", seed);
+            return state with
+            {
+                Player = state.Player with
+                {
+                    Relics =
+                    [
+                        .. state.Player.Relics,
+                        new RelicInstance(stoneId,
+                            JsonSerializer.SerializeToElement(
+                                new { ElitesDefeated = defeated }))
+                    ]
+                }
+            };
+        }
+
+        var fourth = DefeatCombat(EnterEliteCombat(
+            WithStone("stone-fourth-elite", 3)));
+        var stone = Assert.Single(fourth.Player.Relics,
+            relic => relic.RelicId == stoneId);
+        Assert.Equal(4, stone.PersistentState
+            .GetProperty("ElitesDefeated").GetInt32());
+        Assert.DoesNotContain(fourth.Player.Relics,
+            relic => relic.RelicId == jadeId);
+        PrototypeStateInvariants.Validate(fourth);
+
+        var fifth = DefeatCombat(EnterEliteCombat(
+            WithStone("stone-fifth-elite", 4)));
+        Assert.DoesNotContain(fifth.Player.Relics,
+            relic => relic.RelicId == stoneId);
+        Assert.Single(fifth.Player.Relics,
+            relic => relic.RelicId == jadeId);
+        PrototypeStateInvariants.Validate(fifth);
+
+        var withJade = Pick("GoldenPearl", "jade-next-combat");
+        withJade = withJade with
+        {
+            Player = withJade.Player with
+            {
+                Relics =
+                [
+                    .. withJade.Player.Relics,
+                    new RelicInstance(jadeId, PrototypeJson.EmptyObject())
+                ]
+            }
+        };
+        var nextCombat = EnterFirstCombat(withJade);
+        var strength = Assert.Single(
+            nextCombat.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.strength");
+        Assert.Equal(3, strength.Stacks);
+        PrototypeStateInvariants.Validate(nextCombat);
+    }
+
+    [Fact]
+    public void SwordOfStoneIgnoresOrdinaryVictories()
+    {
+        const string stoneId = "proto.native.event.sword_of_stone";
+        var state = Pick("GoldenPearl", "stone-ordinary-victory");
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics =
+                [
+                    .. state.Player.Relics,
+                    new RelicInstance(stoneId,
+                        JsonSerializer.SerializeToElement(
+                            new { ElitesDefeated = 4 }))
+                ]
+            }
+        };
+        state = DefeatCombat(EnterFirstCombat(state));
+        var stone = Assert.Single(state.Player.Relics,
+            relic => relic.RelicId == stoneId);
+        Assert.Equal(4, stone.PersistentState
+            .GetProperty("ElitesDefeated").GetInt32());
+        Assert.DoesNotContain(state.Player.Relics,
+            relic => relic.RelicId == "proto.native.event.sword_of_jade");
+        PrototypeStateInvariants.Validate(state);
+    }
 }

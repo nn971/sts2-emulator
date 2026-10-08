@@ -261,4 +261,20 @@ public sealed class PrototypeNativeEventOrderingTests
         Assert.Throws<InvalidOperationException>(
             () => PrototypeStateInvariants.Validate(state));
     }
+
+    [Fact]
+    public void SunkenStatueGrabGivesPersistentSwordOfStone()
+    {
+        var state = EnterEvent("proto.native.event.sunken_statue",
+            "sunken-statue-sword", nativeEventGold: 111);
+        var count = state.Player.Relics.Length;
+        state = Take(state, "grab");
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(count + 1, state.Player.Relics.Length);
+        Assert.Single(state.Player.Relics,
+            relic => relic.RelicId == "proto.native.event.sword_of_stone");
+        Assert.Null(state.World!.Event);
+        PrototypeStateInvariants.Validate(state);
+    }
 }

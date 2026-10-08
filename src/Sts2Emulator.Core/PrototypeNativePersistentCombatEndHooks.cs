@@ -11,6 +11,8 @@ public sealed partial class PrototypeGameEngine
 {
     private sealed record NativeCombatsSeen(int CombatsSeen);
 
+    private sealed record NativeElitesDefeated(int ElitesDefeated);
+
     private static PlayerState ApplyNativePersistentCombatEnd(
         PlayerState player,
         PrototypeRoomType? roomType,
@@ -37,6 +39,31 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
 
         player = player with { Deck = deck };
+
+        // Sword of Stone increments on elite victories only. The fifth
+        // victory replaces it in place with Sword of Jade, preserving
+        // relic order and giving future combats Jade's opening Strength.
+        if (roomType == PrototypeRoomType.Elite)
+        {
+            const string stoneId = "proto.native.event.sword_of_stone";
+            const string jadeId = "proto.native.event.sword_of_jade";
+            var index = Array.FindIndex(player.Relics,
+                relic => relic.RelicId == stoneId);
+            if (index >= 0)
+            {
+                var relics = (RelicInstance[])player.Relics.Clone();
+                var defeated = GetNativeElitesDefeated(
+                    relics[index].PersistentState) + 1;
+                relics[index] = defeated >= 5
+                    ? new RelicInstance(jadeId, PrototypeJson.EmptyObject())
+                    : relics[index] with
+                    {
+                        PersistentState = JsonSerializer.SerializeToElement(
+                            new NativeElitesDefeated(defeated))
+                    };
+                player = player with { Relics = relics };
+            }
+        }
 
         // Fishing Rod counts only ordinary monster encounters. Every
         // third one upgrades one random currently upgradable deck card.
@@ -98,6 +125,14 @@ public sealed partial class PrototypeGameEngine
                     : card).ToArray()
         };
     }
+
+    private static int GetNativeElitesDefeated(JsonElement state) =>
+        state.ValueKind == JsonValueKind.Object
+        && state.TryGetProperty(
+            nameof(NativeElitesDefeated.ElitesDefeated), out var count)
+        && count.ValueKind == JsonValueKind.Number
+            ? count.GetInt32()
+            : 0;
 
     private static int GetNativeCombatsSeen(JsonElement state) =>
         state.ValueKind == JsonValueKind.Object
