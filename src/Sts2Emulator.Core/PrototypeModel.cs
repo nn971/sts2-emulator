@@ -1766,7 +1766,8 @@ public sealed record RunWorldState(
     PrototypeActOneRegion? ActOneRegion = null,
     PrototypeActOneEncounterPoolState? ActOneEncounterPool = null,
     PrototypeCompletedRoomRecord[]? CompletedRoomHistory = null,
-    PrototypeUnknownRoomOddsState? UnknownRoomOdds = null)
+    PrototypeUnknownRoomOddsState? UnknownRoomOdds = null,
+    int ShopRemovalsUsed = 0)
 {
     public RunWorldState Fork() => this with
     {

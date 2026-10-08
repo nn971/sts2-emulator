@@ -1716,8 +1716,13 @@ public sealed partial class PrototypeGameEngine
                     BasePrice: basePrice);
             })
             .ToArray();
-        var removalBasePrice =
-            75 + ((world.Act - 1) * 15);
+        // Native MerchantCardRemovalEntry uses the player's run-wide
+        // completed-removal count, independent of act and shop visits.
+        // Ascension 6 (Inflation) raises both base and increment.
+        var inflated = state.Ascension >= 6;
+        var removalBasePrice = checked(
+            (inflated ? 100 : 75)
+            + (inflated ? 50 : 25) * world.ShopRemovalsUsed);
 
         var shop = new ShopState(
             offers,
@@ -1897,6 +1902,10 @@ public sealed partial class PrototypeGameEngine
                     .ToArray()
             };
             shop = shop with { RemovalUsed = true };
+            world = world with
+            {
+                ShopRemovalsUsed = checked(world.ShopRemovalsUsed + 1)
+            };
         }
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_card"))
         {

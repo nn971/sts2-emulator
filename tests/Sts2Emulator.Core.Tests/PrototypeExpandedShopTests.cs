@@ -229,6 +229,90 @@ public sealed class PrototypeExpandedShopTests
                 StringComparer.Ordinal));
     }
 
+
+    [Theory]
+    [InlineData(0, 0, 75)]
+    [InlineData(1, 0, 100)]
+    [InlineData(3, 0, 150)]
+    [InlineData(0, 6, 100)]
+    [InlineData(1, 6, 150)]
+    [InlineData(3, 6, 250)]
+    [InlineData(1, 10, 150)]
+    public void GeneratedShopRemovalPriceUsesRunWideCountAndInflation(
+        int priorRemovals, int ascension, int expectedPrice)
+    {
+        var state = EnterGeneratedShop(
+            gold: 999,
+            relicIds: [],
+            priorRemovals: priorRemovals,
+            ascension: ascension,
+            removalCards: true);
+
+        Assert.Equal(expectedPrice, state.World!.Shop!.RemovalPrice);
+        Assert.Equal(expectedPrice, state.World.Shop.BaseRemovalPrice);
+        Assert.Equal(priorRemovals, state.World.ShopRemovalsUsed);
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(state.Fork()));
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void ShopRemovalAdvancesRunWideCountExactlyOnce()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = EnterGeneratedShop(
+            gold: 999,
+            relicIds: [],
+            priorRemovals: 1,
+            removalCards: true);
+        var oldCardCount = state.Player.Deck.Length;
+        var oldPrice = state.World!.Shop!.RemovalPrice;
+        var initialGold = state.Player.Gold;
+        var remove = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "remove_card"
+                && action.ReadPayload<RemoveCardPayload>()
+                    .CardInstanceId == 1);
+        state = engine.Step(state, remove).State;
+
+        Assert.Equal(2, state.World!.ShopRemovalsUsed);
+        Assert.True(state.World.Shop!.RemovalUsed);
+        Assert.Equal(initialGold - oldPrice, state.Player.Gold);
+        Assert.Equal(oldCardCount - 1, state.Player.Deck.Length);
+        Assert.DoesNotContain(engine.GetLegalActions(state),
+            action => action.Kind == "remove_card");
+        Assert.Throws<InvalidOperationException>(() => engine.Step(state, remove));
+        Assert.Equal(2, state.World.ShopRemovalsUsed);
+        PrototypeStateInvariants.Validate(state);
+
+        state = engine.Step(
+            state, GameAction.Empty("leave_shop")).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(2, state.World!.ShopRemovalsUsed);
+        PrototypeStateInvariants.Validate(state);
+
+        // This is the next merchant's generation state, with the
+        // run-wide counter carried over rather than an act multiplier.
+        var later = EnterGeneratedShop(
+            gold: 999,
+            relicIds: [],
+            priorRemovals: state.World.ShopRemovalsUsed,
+            removalCards: true);
+        Assert.Equal(125, later.World!.Shop!.RemovalPrice);
+    }
+
+    [Fact]
+    public void NegativeRunWideShopRemovalCountIsInvalid()
+    {
+        var state = EnterGeneratedShop(
+            gold: 999, relicIds: []);
+        state = state with
+        {
+            World = state.World! with { ShopRemovalsUsed = -1 }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(state));
+    }
+
     private static ShopOffer Offer(
         int id,
         string itemId,
@@ -242,14 +326,22 @@ public sealed class PrototypeExpandedShopTests
 
     private static RunState EnterGeneratedShop(
         int gold,
-        string[] relicIds)
+        string[] relicIds,
+        int priorRemovals = 0,
+        int ascension = 0,
+        bool removalCards = false)
     {
         var empty = PrototypeJson.EmptyObject();
         var player = new PlayerState(
             70,
             70,
             gold,
-            [],
+            removalCards
+                ? [
+                    new CardInstance(1, "proto.silent.strike", 0, empty),
+                    new CardInstance(2, "proto.silent.defend", 0, empty)
+                ]
+                : [],
             relicIds
                 .Select(id =>
                     new RelicInstance(id, empty))
@@ -272,7 +364,7 @@ public sealed class PrototypeExpandedShopTests
                 PrototypeContent.CharacterId,
                 1,
                 1,
-                1,
+                removalCards ? 3 : 1,
                 null,
                 new MapState(
                     [
@@ -319,7 +411,9 @@ public sealed class PrototypeExpandedShopTests
                 null,
                 null,
                 null,
-                null));
+                null,
+                ShopRemovalsUsed: priorRemovals),
+            Ascension: ascension);
 
         var engine = new PrototypeGameEngine();
         return engine.Step(

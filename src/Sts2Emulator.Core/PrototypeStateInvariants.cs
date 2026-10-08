@@ -39,6 +39,12 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException($"Player gold is negative: {state.Player.Gold}.");
         }
 
+        if (world.ShopRemovalsUsed < 0)
+        {
+            throw new InvalidOperationException(
+                "Run-wide shop removal count cannot be negative.");
+        }
+
         if (world.Act < 1 || world.Act > PrototypeContent.Rules.Acts)
         {
             throw new InvalidOperationException($"Invalid act {world.Act}.");

@@ -1275,3 +1275,16 @@ Luminous Choir, and Whispering Hollow; action lists no longer
 become empty solely because these optional card pickers have
 no valid cards. Multi-stage completion and empty-deck
 regressions added.
+
+## Run-wide merchant removal pricing (2026-10-08)
+
+The pinned `MerchantCardRemovalEntry` prices the first removal
+at 75 gold (100 at Ascension 6+), and adds 25 (50 at Ascension 6+)
+per prior merchant removal, without an act multiplier.
+`RunWorldState.ShopRemovalsUsed` now persists this counter across
+shops, canonical forks, and map transitions; successful removals
+increment it exactly once. Native-shaped and abstract shops share
+this source-grounded rule. Shop purchases, discounts and other
+prices remain unchanged. Regressions cover the cost schedule,
+inflation threshold, sold/removal guard, map completion,
+and negative-count invariants.
