@@ -1103,6 +1103,9 @@ public sealed partial class PrototypeGameEngine
             return false;
         }
 
+        var newlyGrantedRelics =
+            new HashSet<string>(StringComparer.Ordinal);
+        var canAcquirePotions = CanAcquirePotion(player);
         foreach (var effect in choice.Effects)
         {
             if (effect.Kind
@@ -1116,7 +1119,7 @@ public sealed partial class PrototypeGameEngine
 
                 _ = PrototypeContent.Potion(
                     effect.PotionId);
-                if (!CanAcquirePotion(player))
+                if (!canAcquirePotions)
                 {
                     return false;
                 }
@@ -1131,14 +1134,20 @@ public sealed partial class PrototypeGameEngine
                         "Gain-relic event effect is missing a relic ID.");
                 }
 
-                _ = PrototypeContent.Relic(
+                var definition = PrototypeContent.Relic(
                     effect.RelicId);
                 if (player.Relics.Any(relic =>
                         StringComparer.Ordinal.Equals(
                             relic.RelicId,
-                            effect.RelicId)))
+                            effect.RelicId))
+                    || !newlyGrantedRelics.Add(effect.RelicId))
                 {
                     return false;
+                }
+
+                if (definition.PreventPotionAcquisition)
+                {
+                    canAcquirePotions = false;
                 }
             }
         }
