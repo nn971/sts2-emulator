@@ -462,7 +462,10 @@ public static class PrototypeStateInvariants
             || (eventState.EventId ==
                     PrototypeNativeTabletOfTruth.EventId
                 ? eventState.NativePageIndex > 4
-                : eventState.NativePageIndex != 0))
+                : eventState.EventId ==
+                    PrototypeNativeDenseVegetation.EventId
+                    ? eventState.NativePageIndex > 2
+                    : eventState.NativePageIndex != 0))
         {
             throw new InvalidOperationException(
                 "Native event page progress is out of range.");
@@ -472,7 +475,16 @@ public static class PrototypeStateInvariants
             && eventState.ChosenChoiceId is not null)
         {
             throw new InvalidOperationException(
-                "Tablet followup page cannot have a completed choice.");
+                "Native followup page cannot have a completed choice.");
+        }
+
+        if (eventState.NativeEventGold != 0
+            && (eventState.EventId
+                    != PrototypeNativeDenseVegetation.EventId
+                || eventState.NativeEventGold is < 61 or > 99))
+        {
+            throw new InvalidOperationException(
+                "Native event gold roll is invalid.");
         }
 
         if (eventState.ChosenChoiceId is null)
