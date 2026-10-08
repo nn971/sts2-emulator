@@ -26,7 +26,7 @@ public sealed partial class PrototypeGameEngine
                 or PrototypePersistentDeckChoiceKind.Transform =>
                     !definition.Eternal,
             PrototypePersistentDeckChoiceKind.Upgrade =>
-                card.UpgradeLevel == 0,
+                card.UpgradeLevel < definition.MaxUpgradeLevel,
             PrototypePersistentDeckChoiceKind.Enchant =>
                 enchantmentKind is not null
                 && card.Enchantment is null

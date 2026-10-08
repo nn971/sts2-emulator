@@ -187,7 +187,8 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Quest,
-                Type: PrototypeCardType.Quest),
+                Type: PrototypeCardType.Quest,
+                MaxUpgradeLevel: 0),
             new PrototypeCardDefinition(
                 "proto.native.event.spore_mind",
                 "Spore Mind",
@@ -197,7 +198,8 @@ public static class PrototypeContent
                 ExhaustOnUse: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
-                Type: PrototypeCardType.Curse),
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
             new PrototypeCardDefinition(
                 "proto.native.event.poor_sleep",
                 "Poor Sleep",
@@ -208,7 +210,8 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
-                Type: PrototypeCardType.Curse),
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
             // Neow's Cursed Pearl grants Greed: a permanent Eternal,
             // unplayable curse, not eligible for ordinary card rewards.
             new PrototypeCardDefinition(

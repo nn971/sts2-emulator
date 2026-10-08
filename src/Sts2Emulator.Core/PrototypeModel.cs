@@ -605,7 +605,8 @@ public sealed record PrototypeCardDefinition(
     bool MechanicsImplemented = true,
     bool MultiplayerOnly = false,
     bool RetainOnUpgrade = false,
-    bool CanBeGeneratedInCombat = true);
+    bool CanBeGeneratedInCombat = true,
+    int MaxUpgradeLevel = 1);
 
 public sealed record PrototypePotionDefinition(
     string Id,

@@ -2185,7 +2185,8 @@ public sealed partial class PrototypeGameEngine
         {
             actions.AddRange(
                 state.Player.Deck
-                    .Where(card => card.UpgradeLevel == 0)
+                    .Where(card => card.UpgradeLevel <
+                        PrototypeContent.Card(card.CardId).MaxUpgradeLevel)
                     .Select(card => GameAction.Create(
                         "rest_upgrade",
                         new UpgradeCardPayload(card.InstanceId))));
@@ -2269,9 +2270,10 @@ public sealed partial class PrototypeGameEngine
                     return card;
                 }
 
-                if (card.UpgradeLevel != 0)
+                if (card.UpgradeLevel >=
+                    PrototypeContent.Card(card.CardId).MaxUpgradeLevel)
                 {
-                    throw new InvalidOperationException("Prototype cards may currently be upgraded once.");
+                    throw new InvalidOperationException("Card has reached its maximum upgrade level.");
                 }
 
                 found = true;
