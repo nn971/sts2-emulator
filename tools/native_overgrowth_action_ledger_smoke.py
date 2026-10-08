@@ -135,8 +135,8 @@ def main() -> None:
              "amount": 10}
         ]
         path.write_text(
-            "\\n".join(json.dumps(record) for record in records + extra)
-            + "\\n",
+            "\n".join(json.dumps(record) for record in records + extra)
+            + "\n",
             encoding="utf-8",
         )
         full = audit(path, None)
