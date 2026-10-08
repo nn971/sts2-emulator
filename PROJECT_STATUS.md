@@ -903,3 +903,33 @@ Keep the `native-overgrowth-map-structure-v0.111.0-v1` profile opt-in
 until these are implemented and tested. Do not call this a native-complete
 environment or begin the requested fidelity phase solely because the
 sweep succeeds.
+
+
+## Native-shaped Neow opening — source-backed generation and first effects
+
+The native-structure Act 1 factory now offers two positive Neow relics
+and one cursed relic using the pinned v0.111.0 **selection graph** rather
+than a fixed fourteen-relic positive pool. This includes three
+conditionally added positive families, Large Capsule suppression,
+and the five incompatibility cases between a selected curse and
+positive candidates. The complete thirty-identity offer catalog is
+registered and covered by a deterministic seed/property test sweep.
+Native RNG codecs, unlock filters and `IsAllowedAtNeow` rules are
+still pending.
+
+Six source-backed relic effects are now implemented: Nutritious
+Oyster's +11 maximum HP, Golden Pearl's +150 gold, Neow's Talisman's
+final Strike/Defend upgrades, Pomander's suspended one-card upgrade,
+Cursed Pearl's Eternal Greed plus 333 gold, and Stone Humidifier's
++5 maximum HP after rest-site healing. A general last-card-of-ID
+upgrade effect and a `RestSiteHealed` relic event were added rather
+than hiding those operations in Neow-specific dispatch branches.
+Tests exercise initialization, event continuations, persistent card
+identity, and the distinction between rest healing and training.
+
+See `docs/reference-builds/v0.111.0-neow-generation.md`.
+Neow is **not complete**: most other relic acquisition/ongoing
+mechanics, native eligibility, and exact RNG remain unimplemented.
+Native map generation, non-combat event continuations, and reward
+economy also remain incomplete. All work is confined to
+`sts2-emulator`; `sts2-ai` has not been changed.
