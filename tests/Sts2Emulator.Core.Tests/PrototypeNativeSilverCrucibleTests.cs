@@ -138,7 +138,7 @@ public sealed class PrototypeNativeSilverCrucibleTests
         var first = ObtainCrucible("silver-treasure-first");
         first = BeforeTreasure(first);
         var engine = new PrototypeGameEngine();
-        var treasureNode = first.World!.Map.AvailableNodes().Single(
+        var treasureNode = first.World!.Map.AvailableNodes().First(
             node => node.RoomType == PrototypeRoomType.Treasure);
         var choice = GameAction.Create(
             "choose_map_node",
@@ -174,7 +174,7 @@ public sealed class PrototypeNativeSilverCrucibleTests
             }
         };
         second = BeforeTreasure(second);
-        treasureNode = second.World!.Map.AvailableNodes().Single(
+        treasureNode = second.World!.Map.AvailableNodes().First(
             node => node.RoomType == PrototypeRoomType.Treasure);
         second = engine.Step(second, GameAction.Create(
             "choose_map_node",
