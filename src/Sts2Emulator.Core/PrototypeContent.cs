@@ -3694,11 +3694,13 @@ public static class PrototypeContent
                         [
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.GainBlock,
-                                7),
+                                7,
+                                AscensionDeltas: [new(8, 1)]),
                             new PrototypeEnemyEffectSpec(
                                 PrototypeEnemyEffectKind.ApplyEnemyPower,
                                 1,
-                                PowerId: "proto.power.strength")
+                                PowerId: "proto.power.strength",
+                                AscensionDeltas: [new(9, 1)])
                         ])
                 ],
                 HpAscensionDeltas:
@@ -5796,7 +5798,8 @@ public static class PrototypeContent
                             new(PrototypeEnemyEffectKind.DamagePlayer, 16)
                         ])
                 ])
-        }.ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
+        }.Concat(PrototypeNativeUnderdocks.Enemies)
+            .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
         new[]
@@ -6748,7 +6751,8 @@ public static class PrototypeContent
             ["proto.enemy.boss_three"],
             MinAct: 3,
             MaxAct: 3,
-            Weight: 1)
+            Weight: 1),
+        ..PrototypeNativeUnderdocks.Encounters
     ];
 
     public static string[] StartingDeck { get; } =
