@@ -4,7 +4,8 @@ namespace Sts2Emulator.Core.Tests;
 
 public sealed class PrototypeNativeEventOrderingTests
 {
-    private static RunState EnterEvent(string eventId, string seed)
+    private static RunState EnterEvent(
+        string eventId, string seed, int nativeEventGold = 0)
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeNativeOvergrowthRunFactory.Create(seed);
@@ -60,7 +61,8 @@ public sealed class PrototypeNativeEventOrderingTests
                 Map = map with { CurrentNodeId = unknown.NodeId },
                 ActiveRoom = PrototypeRoomType.Event,
                 CompletedRoomHistory = completed,
-                Event = new EventState(eventId),
+                Event = new EventState(
+                    eventId, NativeEventGold: nativeEventGold),
                 EventHistory = state.World.EventIds.Append(eventId).ToArray()
             }
         };
@@ -77,6 +79,31 @@ public sealed class PrototypeNativeEventOrderingTests
         state = engine.Step(state, action).State;
         PrototypeStateInvariants.Validate(state);
         return state;
+    }
+
+    [Theory]
+    [InlineData(26)]
+    [InlineData(44)]
+    public void WhisperingHollowGoldOfferChargesStoredNativeRoll(int cost)
+    {
+        var state = EnterEvent(
+            "proto.native.event.whispering_hollow",
+            "whisper-gold-" + cost,
+            nativeEventGold: cost);
+        var startingGold = state.Player.Gold;
+        var beforeDeck = state.Player.Deck.ToArray();
+        Assert.Null(state.Player.PotionSlots[0]);
+        Assert.Null(state.Player.PotionSlots[1]);
+
+        state = Take(state, "gold");
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(startingGold - cost, state.Player.Gold);
+        Assert.Equal(beforeDeck, state.Player.Deck);
+        Assert.Equal(2, state.Player.PotionSlots.Count(p => p is not null));
+        Assert.All(state.Player.PotionSlots,
+            p => Assert.Contains(p!.PotionId, PrototypeContent.PotionPool));
+        Assert.Null(state.World!.Event);
+        PrototypeStateInvariants.Validate(state);
     }
 
     [Fact]
