@@ -458,6 +458,23 @@ public static class PrototypeStateInvariants
                 "Event deferred HP loss cannot be negative.");
         }
 
+        if (eventState.NativePageIndex < 0
+            || (eventState.EventId ==
+                    PrototypeNativeTabletOfTruth.EventId
+                ? eventState.NativePageIndex > 4
+                : eventState.NativePageIndex != 0))
+        {
+            throw new InvalidOperationException(
+                "Native event page progress is out of range.");
+        }
+
+        if (eventState.NativePageIndex > 0
+            && eventState.ChosenChoiceId is not null)
+        {
+            throw new InvalidOperationException(
+                "Tablet followup page cannot have a completed choice.");
+        }
+
         if (eventState.ChosenChoiceId is null)
         {
             if (eventState.PendingDeckChoice is not null
