@@ -199,7 +199,7 @@ public sealed class PrototypeUnderdocksOpeningTests
         Assert.Equal(1,
             punch.StartingPowers!.Single().Stacks);
         Assert.Equal("proto.power.artifact",
-            punch.StartingPowers.Single().PowerId);
+            punch.StartingPowers!.Single().PowerId);
         Assert.Equal(2, punch.Moves[1].Effects[0].Repetitions);
     }
 
