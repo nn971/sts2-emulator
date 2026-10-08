@@ -76,8 +76,9 @@ public sealed class PrototypeNativeNeowAdditionalTests
         var before = state.Player.Deck;
         state = Pick(state, "PrecariousShears");
         Assert.Equal(RunPhase.Event, state.Phase);
-        Assert.Equal(54, state.Player.Hp);
+        Assert.Equal(70, state.Player.Hp);
         Assert.Equal(70, state.Player.MaxHp);
+        Assert.Equal(16, state.World!.Event!.DeferredHpLoss);
         var pending = Assert.IsType<PrototypePendingEventDeckChoiceState>(
             state.World!.Event!.PendingDeckChoice);
         Assert.Equal(PrototypePersistentDeckChoiceKind.Remove, pending.Kind);
@@ -95,6 +96,12 @@ public sealed class PrototypeNativeNeowAdditionalTests
                 && candidate.ReadPayload<ChooseEventDeckCardPayload>()
                     .CardInstanceId == id);
             state = engine.Step(state, action).State;
+            if (id == 1)
+            {
+                Assert.Equal(RunPhase.Event, state.Phase);
+                Assert.Equal(70, state.Player.Hp);
+                Assert.Equal(16, state.World!.Event!.DeferredHpLoss);
+            }
             PrototypeStateInvariants.Validate(state);
         }
 
