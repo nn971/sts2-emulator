@@ -2248,6 +2248,20 @@ public static class PrototypeContent
                         [new(PrototypeRunEffectKind.Heal, 15)])
                 ]),
             new PrototypeRelicDefinition(
+                "proto.relic.trail_ledger",
+                "Trail Ledger",
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.RoomCompleted,
+                        [new(PrototypeRunEffectKind.GainGold, 20)],
+                        RouteCondition:
+                            new PrototypeRouteConditionSpec(
+                                RoomType: PrototypeRoomType.Combat,
+                                EveryNthMatchingVisit: 2,
+                                CurrentActOnly: true))
+                ]),
+            new PrototypeRelicDefinition(
                 "proto.relic.lucky_fysh",
                 "Lucky Fysh",
                 RunTriggers:
@@ -5618,6 +5632,34 @@ public static class PrototypeContent
                 MinAct: 2,
                 Weight: 2),
             new PrototypeEventDefinition(
+                "proto.event.path_broker",
+                "Path Broker",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "elite_contract",
+                        "Collect 75 gold for a completed elite fight",
+                        [new(PrototypeRunEffectKind.GainGold, 75)],
+                        RouteCondition:
+                            new PrototypeRouteConditionSpec(
+                                RoomType: PrototypeRoomType.Elite,
+                                MinimumCompletedVisits: 1,
+                                CurrentActOnly: true)),
+                    new PrototypeEventChoiceDefinition(
+                        "combat_streak",
+                        "Gain 5 Max HP after two consecutive combats",
+                        [new(PrototypeRunEffectKind.GainMaxHp, 5)],
+                        RouteCondition:
+                            new PrototypeRouteConditionSpec(
+                                RoomType: PrototypeRoomType.Combat,
+                                MinimumConsecutiveCompleted: 2,
+                                CurrentActOnly: true)),
+                    new PrototypeEventChoiceDefinition(
+                        "ordinary_trade",
+                        "Take 15 gold",
+                        [new(PrototypeRunEffectKind.GainGold, 15)])
+                ],
+                Weight: 2),
+            new PrototypeEventDefinition(
                 "proto.event.forgotten_altar",
                 "Forgotten Altar",
                 [
@@ -6463,6 +6505,7 @@ public static class PrototypeContent
         "proto.relic.lees_waffle",
         "proto.relic.meal_ticket",
         "proto.relic.lucky_fysh",
+        "proto.relic.trail_ledger",
         "proto.relic.darkstone_periapt",
         "proto.relic.molten_egg",
         "proto.relic.toxic_egg",
