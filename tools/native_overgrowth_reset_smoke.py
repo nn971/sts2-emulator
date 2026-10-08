@@ -17,17 +17,24 @@ MAP_PROFILE = "native-overgrowth-map-structure-v0.111.0-v1"
 POLICY = "prototype-fair-v0"
 
 
-def verify_start(payload: dict) -> None:
+def verify_start(payload: dict, *, ascension: int = 0) -> None:
     assert payload["act"] == 1
     assert payload["floor"] == 0
     assert payload["map_generation_profile_id"] == MAP_PROFILE
     assert payload["event_id"] == "proto.native.event.neow"
     assert any(point["floor"] == 16 for point in payload["map"])
     assert len(payload["deck"]) == 13
-    assert sum(
-        card["card_id"] == "proto.common.restlessness"
-        for card in payload["deck"]
-    ) == 1
+    extra_card = (
+        "proto.curse.ascenders_bane"
+        if ascension >= 5 else "proto.common.restlessness"
+    )
+    absent_card = (
+        "proto.common.restlessness"
+        if ascension >= 5 else "proto.curse.ascenders_bane"
+    )
+    assert sum(card["card_id"] == extra_card for card in payload["deck"]) == 1
+    assert all(card["card_id"] != absent_card for card in payload["deck"])
+    assert payload["hp"] == (56 if ascension >= 2 else 70)
     assert sum(card["card_id"] == "proto.silent.strike" for card in payload["deck"]) == 5
     assert sum(card["card_id"] == "proto.silent.defend" for card in payload["deck"]) == 5
 
@@ -143,7 +150,7 @@ def main() -> None:
         )
         assert high["schemaId"] == RESET_SCHEMA
         handles.append(high["stateHandle"])
-        verify_start(observe(high["stateHandle"])[0])
+        verify_start(observe(high["stateHandle"])[0], ascension=10)
 
         released = request("release_many", state_handles=handles)
         assert released["released"] == len(set(handles))

@@ -48,7 +48,13 @@ public sealed class PrototypeNativeOvergrowthStarterTests
         Assert.Contains(frame.Observation.Map, node => node.Floor == 16);
         Assert.Equal(13, frame.Observation.Deck.Length);
         Assert.Single(frame.Observation.Deck,
-            card => card.CardId == "proto.common.restlessness");
+            card => card.CardId == (ascension >= 5
+                ? "proto.curse.ascenders_bane"
+                : "proto.common.restlessness"));
+        Assert.DoesNotContain(frame.Observation.Deck,
+            card => card.CardId == (ascension >= 5
+                ? "proto.common.restlessness"
+                : "proto.curse.ascenders_bane"));
         Assert.Equal(3, frame.LegalActions.Length);
         Assert.All(frame.LegalActions, action =>
             Assert.Equal("event_choice", action.Kind));
@@ -64,6 +70,62 @@ public sealed class PrototypeNativeOvergrowthStarterTests
         Assert.Equal(CanonicalJson.Sha256(next),
             CanonicalJson.Sha256(nextReplay));
         PrototypeStateInvariants.Validate(next);
+    }
+
+    [Theory]
+    [InlineData(0, 70, 3, false)]
+    [InlineData(1, 70, 3, false)]
+    [InlineData(2, 56, 3, false)]
+    [InlineData(3, 56, 3, false)]
+    [InlineData(4, 56, 2, false)]
+    [InlineData(5, 56, 2, true)]
+    [InlineData(10, 56, 2, true)]
+    public void NativeOpeningModelsNeowHealingTightBeltAndBane(
+        int ascension, int hp, int potionSlots, bool hasBane)
+    {
+        var native = PrototypeNativeOvergrowthRunFactory.Create(
+            $"native-ascension-opening-{ascension}", ascension);
+        var legacy = new PrototypeGameEngine().Step(
+            PrototypeGameFactory.Create(
+                $"native-ascension-opening-{ascension}", ascension),
+            GameAction.Empty("start_run")).State;
+
+        Assert.Equal(RunPhase.Event, native.Phase);
+        Assert.True(native.World!.NativeOvergrowthOpening);
+        Assert.False(legacy.World!.NativeOvergrowthOpening);
+        Assert.Equal(70, native.Player.MaxHp);
+        Assert.Equal(hp, native.Player.Hp);
+        Assert.Equal(potionSlots, native.Player.PotionSlots.Length);
+        Assert.Equal(2, legacy.Player.PotionSlots.Length);
+        Assert.Equal(70, legacy.Player.Hp);
+        Assert.Equal(13, native.Player.Deck.Length);
+        Assert.Single(native.Player.Deck,
+            card => card.CardId == (hasBane
+                ? "proto.curse.ascenders_bane"
+                : "proto.common.restlessness"));
+        Assert.DoesNotContain(native.Player.Deck,
+            card => card.CardId == (hasBane
+                ? "proto.common.restlessness"
+                : "proto.curse.ascenders_bane"));
+
+        var fork = native.Fork();
+        Assert.NotSame(native.Player.PotionSlots, fork.Player.PotionSlots);
+        Assert.Equal(potionSlots, fork.Player.PotionSlots.Length);
+        Assert.Equal(CanonicalJson.Sha256(native), CanonicalJson.Sha256(fork));
+        PrototypeStateInvariants.Validate(native);
+        PrototypeStateInvariants.Validate(fork);
+        PrototypeStateInvariants.Validate(legacy);
+    }
+
+    [Fact]
+    public void BaneIsNativeEternalUnplayableAndEthereal()
+    {
+        var bane = PrototypeContent.Card("proto.curse.ascenders_bane");
+        Assert.True(bane.Eternal);
+        Assert.True(bane.Ethereal);
+        Assert.True(bane.Unplayable);
+        Assert.Equal(PrototypeCardType.Curse, bane.Type);
+        Assert.False(bane.RewardEligible);
     }
 
     [Theory]

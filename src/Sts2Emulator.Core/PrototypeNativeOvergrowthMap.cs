@@ -288,21 +288,39 @@ public static class PrototypeNativeOvergrowthRunFactory
         rng.Streams[index] = clean.Streams[cleanIndex].Fork();
 
         var map = PrototypeNativeOvergrowthMap.Generate(rng, ascension);
-        var restlessness = new CardInstance(
+        // The A5 native curse belongs to run initialization rather
+        // than a random reward. Our A0 profile retains the previously
+        // captured Restlessness starter for the existing training gate;
+        // at A5+ that slot carries native Ascender's Bane instead.
+        var additionalStarterCard = new CardInstance(
             world.NextCardInstanceId,
-            "proto.common.restlessness",
+            ascension >= 5
+                ? "proto.curse.ascenders_bane"
+                : "proto.common.restlessness",
             0,
             PrototypeJson.EmptyObject());
+
+        // The native Neow event sets HP to zero before healing the
+        // player. Weary Traveler (A2+) grants only 80% of max HP.
+        // Tight Belt (A4+) removes one of the three native potion slots.
+        var neowHp = ascension >= 2
+            ? (int)(state.Player.MaxHp * 0.8m)
+            : state.Player.MaxHp;
+        var nativePotionSlots = ascension >= 4 ? 2 : 3;
+
         return state with
         {
             Player = state.Player with
             {
-                Deck = state.Player.Deck.Append(restlessness).ToArray()
+                Hp = neowHp,
+                PotionSlots = new PotionInstance?[nativePotionSlots],
+                Deck = state.Player.Deck.Append(additionalStarterCard).ToArray()
             },
             Rng = rng,
             World = world with
             {
                 Map = map,
+                NativeOvergrowthOpening = true,
                 NextCardInstanceId = world.NextCardInstanceId + 1,
                 UnknownRoomOdds = new PrototypeUnknownRoomOddsState(),
                 Event = new EventState(

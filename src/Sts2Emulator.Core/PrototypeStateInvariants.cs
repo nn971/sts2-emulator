@@ -105,8 +105,15 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException($"Invalid floor {world.Floor}.");
         }
 
+        // An opt-in native Overgrowth opening starts with three potion
+        // slots; Tight Belt at A4+ subtracts one. This run-provenance
+        // flag survives Act 1 so later hybrid prototype acts keep the
+        // same belt capacity. Legacy prototype starts remain unchanged.
+        var basePotionSlots = world.NativeOvergrowthOpening
+            ? state.Ascension >= 4 ? 2 : 3
+            : PrototypeContent.Rules.PotionSlots;
         if (state.Player.PotionSlots.Length
-            != PrototypeContent.Rules.PotionSlots
+            != basePotionSlots
                 + state.Player.Relics.Sum(relic =>
                     PrototypeContent.Relic(relic.RelicId).ExtraPotionSlots))
         {

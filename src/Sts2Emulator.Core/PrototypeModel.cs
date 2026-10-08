@@ -1908,7 +1908,8 @@ public sealed record RunWorldState(
     int PotionRewardOddsThousandths =
         PrototypeNativePotionRewardOdds.InitialThousandths,
     int CardRarityOffsetBasisPoints =
-        PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints)
+        PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints,
+    bool NativeOvergrowthOpening = false)
 {
     public RunWorldState Fork() => this with
     {
