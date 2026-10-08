@@ -4,6 +4,8 @@ public static class PrototypeContent
 {
     public const string CharacterId = "silent";
     public const string RulesetId = "prototype-silent-v0";
+    public const string MapGenerationProfileId =
+        "prototype-strategic-map-v1";
 
     public static PrototypeRuleset Rules { get; } = new(
         Id: RulesetId,
