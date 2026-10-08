@@ -53,18 +53,7 @@ public sealed class PrototypeCorpseSlugsTests
             Assert.InRange(first, 0, 2);
             Assert.Equal(cycle[(first + 1) % 3], slugs[1].AiStateId);
             starts.Add(slugs[0].AiStateId!);
-            PrototypeStateInvariants.Validate(
-                state with
-                {
-                    World = state.World with
-                    {
-                        // Validate combat invariants independently of the
-                        // synthetic map route used to enter the test room.
-                        Map = PrototypeNativeUnderdocksRunFactory.Create(
-                            "slug-cycle-" + seedIndex).World!.Map,
-                        Floor = 0
-                    }
-                });
+            PrototypeStateInvariants.Validate(state);
             Assert.Equal(CanonicalJson.Sha256(state),
                 CanonicalJson.Sha256(state.Fork()));
         }
@@ -166,22 +155,13 @@ public sealed class PrototypeCorpseSlugsTests
         {
             var initial = PrototypeNativeUnderdocksRunFactory.Create(
                 seed + "-" + attempt);
-            var map = initial.World!.Map;
-            var entry = map.Nodes.First(node => node.Floor == 1);
             var state = initial with
             {
                 Phase = RunPhase.MapChoice,
-                World = initial.World with
-                {
-                    Event = null,
-                    Map = map with
-                    {
-                        EntryNodeIds = [entry.NodeId]
-                    }
-                }
+                World = initial.World! with { Event = null }
             };
             var action = engine.GetLegalActions(state)
-                .Single(a => a.Kind == "choose_map_node");
+                .First(a => a.Kind == "choose_map_node");
             state = engine.Step(state, action).State;
             if (state.World!.EncounterIds[^1] == WeakEncounterId)
             {
