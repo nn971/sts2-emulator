@@ -580,7 +580,9 @@ switch (args[0])
         var reachedFloors = new HashSet<int>();
         var phases = new HashSet<RunPhase> { state.Phase };
         for (var step = 0; step < 5_000
-             && state.Phase != RunPhase.Terminal; step++)
+             && state.Phase != RunPhase.Terminal
+             && !(state.Phase == RunPhase.ActTransition
+                  && state.World?.Act == 1); step++)
         {
             var legal = engine.GetLegalActions(state);
             if (legal.Count == 0)
@@ -600,7 +602,9 @@ switch (args[0])
 
         Console.WriteLine($"Seed: {seed}");
         Console.WriteLine($"Mode: native-shaped Overgrowth map + prototype economy");
-        Console.WriteLine($"Outcome: {state.World?.TerminalOutcome}");
+        Console.WriteLine($"Act 1 outcome: {(state.Phase == RunPhase.ActTransition
+            ? "cleared"
+            : state.World?.TerminalOutcome ?? "incomplete")}");
         Console.WriteLine($"Act/Floor: {state.World?.Act}/{state.World?.Floor}");
         Console.WriteLine($"Decisions: {state.DecisionIndex}");
         Console.WriteLine($"Act 1 floors seen: {string.Join(", ", reachedFloors.Order())}");
