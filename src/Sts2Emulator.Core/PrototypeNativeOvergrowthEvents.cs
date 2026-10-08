@@ -270,6 +270,12 @@ public static class PrototypeNativeOvergrowthEvents
         // offer it in this explicitly single-player generator.
         positives.Remove("MassiveScroll");
 
+        // Scope restriction for the Silent-only prototype: Kaleidoscope
+        // rewards from other character pools are deliberately postponed.
+        // Keep the native identity in the catalog for future parity work,
+        // but never offer it in the current restricted training profile.
+        positives.Remove("Kaleidoscope");
+
         var shuffled = positives.ToArray();
         PrototypeRng.Shuffle(rng, "event", shuffled);
         return shuffled.Take(2).Append(cursed)
