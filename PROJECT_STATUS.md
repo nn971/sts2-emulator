@@ -1066,3 +1066,25 @@ This extends executable single-player Silent Act 1 opening
 generation; it does not yet implement Neow's Bones, all
 Kaleidoscope cross-character offers, or multi-page regional
 events.
+
+
+## Restricted cross-character scope and Lava Rock boss rewards (2026-10-08)
+
+User explicitly postponed cross-character reward mechanics. The
+single-player Silent Neow generator excludes Kaleidoscope from actual
+opening offers while retaining its catalog identity. Massive Scroll
+continues to be excluded because it is multiplayer-only.
+
+Lava Rock adds exactly two independently collected relic rewards
+at the first Act 1 boss reward screen. The implementation persists
+its one-shot `HasTriggered` flag and stores the sequential extra
+relic rewards and progress in canonical `RewardState`. Normal
+boss relic selection still offers three options and proceeds to
+ActTransition only after the additional rewards resolve. Extra
+relics use prototype unowned ordinary-relic sampling, not the
+pinned native relic-deck RNG.
+
+Added focused boss-combat completion and reward tests plus a
+300-seed regression that Kaleidoscope never appears among Silent
+opening offers. Cross-character implementation and fidelity
+testing remain postponed.
