@@ -884,6 +884,7 @@ public sealed partial class PrototypeGameEngine
         var queuedDeckChoices =
             new List<PrototypePendingEventDeckChoiceState>();
         RewardState? deferredReward = null;
+        var deferredHpLoss = 0;
 
         foreach (var effect in choice.Effects)
         {
@@ -957,6 +958,10 @@ public sealed partial class PrototypeGameEngine
                             0,
                             player.Hp - effect.Amount)
                     };
+                    break;
+
+                case PrototypeRunEffectKind.LoseHpAfterDeckChoices:
+                    deferredHpLoss += Math.Max(0, effect.Amount);
                     break;
 
                 case PrototypeRunEffectKind.GainGold:
@@ -1216,7 +1221,8 @@ public sealed partial class PrototypeGameEngine
                     PendingPotionReplacement = null,
                     QueuedPotionIds = queuedPotionIds.ToArray(),
                     QueuedDeckChoices = queuedDeckChoices.ToArray(),
-                    PendingReward = deferredReward
+                    PendingReward = deferredReward,
+                    DeferredHpLoss = deferredHpLoss
                 }
             }
         };
@@ -1273,8 +1279,9 @@ public sealed partial class PrototypeGameEngine
 
         var hpCost = choice.Effects
             .Where(effect =>
-                effect.Kind
-                    == PrototypeRunEffectKind.LoseHp)
+                effect.Kind is
+                    PrototypeRunEffectKind.LoseHp
+                    or PrototypeRunEffectKind.LoseHpAfterDeckChoices)
             .Sum(effect =>
                 Math.Max(0, effect.Amount));
         if (hpCost >= player.Hp)
