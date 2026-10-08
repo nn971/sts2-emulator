@@ -97,8 +97,10 @@ public sealed class PrototypeNativeOvergrowthRoomTests
 
         return state with
         {
+            Phase = RunPhase.MapChoice,
             World = state.World with
             {
+                Event = null,
                 Floor = parent.Floor,
                 ActiveRoom = null,
                 CompletedRoomHistory = history,
