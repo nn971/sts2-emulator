@@ -168,6 +168,82 @@ public sealed class PrototypeNativeNeowGenerationTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void GoldenPearlGrantsOneHundredFiftyGoldOnAcquisition()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = ForceNeowOption("golden-pearl", "GoldenPearl");
+        var initialGold = state.Player.Gold;
+        state = engine.Step(state,
+            engine.GetLegalActions(state).Single(action =>
+                action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == OptionId("GoldenPearl"))).State;
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(initialGold + 150, state.Player.Gold);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void PomanderOpensExactlyOneDeckUpgradePromptBeforeMap()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = ForceNeowOption("pomander", "Pomander");
+        state = engine.Step(state,
+            engine.GetLegalActions(state).Single(action =>
+                action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == OptionId("Pomander"))).State;
+
+        Assert.Equal(RunPhase.Event, state.Phase);
+        var pending = state.World!.Event!.PendingDeckChoice!;
+        Assert.Equal(PrototypePersistentDeckChoiceKind.Upgrade,
+            pending.Kind);
+        Assert.Equal(1, pending.RemainingSelections);
+        Assert.Equal(13, pending.CandidateCardInstanceIds.Length);
+        Assert.Equal(PrototypeNativeOvergrowthEvents.NeowRelicId("Pomander"),
+            pending.SourceRelicId);
+        Assert.DoesNotContain(engine.GetLegalActions(state),
+            action => action.Kind == "choose_map_node");
+
+        var action = engine.GetLegalActions(state)
+            .Single(option =>
+                option.Kind == "choose_event_deck_card"
+                && option.ReadPayload<ChooseEventDeckCardPayload>()
+                    .CardInstanceId == 1);
+        state = engine.Step(state, action).State;
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(1,
+            state.Player.Deck.Single(card => card.InstanceId == 1).UpgradeLevel);
+        Assert.Single(state.Player.Deck,
+            card => card.UpgradeLevel == 1);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void CursedPearlGrantsGoldAndUnremovableGreed()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = ForceNeowOption("cursed-pearl", "CursedPearl");
+        var initialGold = state.Player.Gold;
+        state = engine.Step(state,
+            engine.GetLegalActions(state).Single(action =>
+                action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == OptionId("CursedPearl"))).State;
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(initialGold + 333, state.Player.Gold);
+        Assert.Equal(14, state.Player.Deck.Length);
+        var greed = Assert.Single(state.Player.Deck,
+            card => card.CardId == "proto.native.neow.greed");
+        var definition = PrototypeContent.Card(greed.CardId);
+        Assert.True(definition.Eternal);
+        Assert.True(definition.Unplayable);
+        Assert.Equal(PrototypeCardRarity.Curse, definition.Rarity);
+        Assert.DoesNotContain(definition.Id, PrototypeContent.RewardCardPool);
+        PrototypeStateInvariants.Validate(state);
+    }
+
     private static RunState ForceNeowOption(string seed, string name)
     {
         var state = PrototypeNativeOvergrowthRunFactory.Create(
