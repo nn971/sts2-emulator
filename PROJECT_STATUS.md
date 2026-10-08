@@ -1348,8 +1348,18 @@ rewards remain outside the bag. Merchant rolls use the native
 50% / 33% / 17% Common / Uncommon / Rare weights, but are sampled
 by the prototype's integer RNG, not native NextFloat. Shop exclusion
 filters currently include Old Coin and Lucky Fysh; full native
-`IsAllowed` state-dependent filters, relic price metadata, and
-the Circlet exhaustion fallback are pending. The legacy abstract
+`IsAllowed` state-dependent filters, the Circlet exhaustion fallback are pending.
+Native Overgrowth merchant relic prices now use pinned
+`RelicModel.MerchantCost` values: Common 175, Uncommon 225,
+Rare 275, Shop 200, with prototype shop-stream integer-percent
+sampling over 85–115% in place of `NextFloat(0.85, 1.15)`.
+`ShopOffer.BasePrice` records the result before relic discounts;
+existing shop repricing remains in effect. Native relic shop
+exclusions have been checked against all 40 supported source
+classes; only Old Coin and Lucky Fysh explicitly disallow shops.
+Conditional `IsAllowed` on several relics depends on the Act 3
+treasure threshold and therefore does not block Act 1 Overgrowth
+draws. The full native float/RNG order remains deferred. The legacy abstract
 prototype map continues to use its existing unrestricted relic
 selection. This is a **persistent selection mechanics milestone**,
 not yet exact native relic RNG fidelity.
