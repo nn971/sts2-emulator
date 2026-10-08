@@ -904,6 +904,19 @@ public static class PrototypeStateInvariants
         PlayerState player,
         RewardState reward)
     {
+        var extraRelics = reward.ExtraRelicRewardIds
+            ?? Array.Empty<string>();
+        if (reward.ExtraRelicsResolved < 0
+            || reward.ExtraRelicsResolved > extraRelics.Length
+            || extraRelics.Distinct(StringComparer.Ordinal).Count()
+                != extraRelics.Length
+            || extraRelics.Any(id =>
+                !PrototypeContent.Relics.ContainsKey(id)))
+        {
+            throw new InvalidOperationException(
+                "Extra relic rewards have invalid progression or IDs.");
+        }
+
         if (reward.ExtraCardOptionsUpgraded is { } upgrades
             && upgrades.Length !=
                 (reward.ExtraCardOptions?.Length ?? 0))
