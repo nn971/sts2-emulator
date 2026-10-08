@@ -767,14 +767,28 @@ public static class PrototypeStateInvariants
                     "Pending event potion replacement has invalid slot candidates.");
             }
 
+            if (UsesNativeEventPotionOffer(eventState.EventId))
+            {
+                var firstEmpty = Array.IndexOf(player.PotionSlots, null);
+                var expectedSlots = firstEmpty >= 0
+                    ? new[] { firstEmpty }
+                    : Enumerable.Range(0, player.PotionSlots.Length).ToArray();
+                if (!potionReplacement.CandidateSlots.SequenceEqual(expectedSlots))
+                {
+                    throw new InvalidOperationException(
+                        "Native event potion offer candidates disagree with available slots.");
+                }
+            }
+
             foreach (var slot in potionReplacement.CandidateSlots)
             {
                 if (slot < 0
                     || slot >= player.PotionSlots.Length
-                    || player.PotionSlots[slot] is null)
+                    || (player.PotionSlots[slot] is null
+                        && !UsesNativeEventPotionOffer(eventState.EventId)))
                 {
                     throw new InvalidOperationException(
-                        $"Pending event potion replacement references invalid slot {slot}.");
+                        $"Pending event potion reward references invalid slot {slot}.");
                 }
             }
         }

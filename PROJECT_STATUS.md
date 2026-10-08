@@ -1255,3 +1255,12 @@ the stored roll and the original event-completion lifecycle.
 Tests cover both choice endpoints, invalid or unpaired rolls,
 and the surviving-HP precondition. Prototype integer RNG is
 a documented approximation to the pinned source float draws.
+
+## Wellspring / Whispering Hollow potion offer decisions (2026-10-08)
+
+These native reward-screen events no longer auto-collect free-slot
+potions. They present explicit accept/skip actions and occupied-slot
+replacement choices when the potion belt is full. Multiple Whispering
+Hollow potions are independently resolvable, with the gold price
+charged only once. State, canonical forks and invalid action
+guardrails are tested. Unrelated direct potion grants are unchanged.

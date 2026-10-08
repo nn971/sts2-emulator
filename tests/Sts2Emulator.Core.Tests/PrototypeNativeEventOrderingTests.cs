@@ -99,9 +99,26 @@ public sealed class PrototypeNativeEventOrderingTests
         Assert.Null(state.Player.PotionSlots[1]);
 
         state = Take(state, "gold");
-        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(RunPhase.Event, state.Phase);
         Assert.Equal(startingGold - cost, state.Player.Gold);
         Assert.Equal(beforeDeck, state.Player.Deck);
+        Assert.All(state.Player.PotionSlots, potion => Assert.Null(potion));
+
+        var engine = new PrototypeGameEngine();
+        var first = engine.GetLegalActions(state);
+        Assert.Contains(first, action => action.Kind == "skip_event_potion");
+        var takeFirst = first.Single(action => action.Kind == "take_event_potion");
+        state = engine.Step(state, takeFirst).State;
+        PrototypeStateInvariants.Validate(state);
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Single(state.Player.PotionSlots.Where(p => p is not null));
+
+        var second = engine.GetLegalActions(state);
+        Assert.Contains(second, action => action.Kind == "skip_event_potion");
+        var takeSecond = second.Single(action => action.Kind == "take_event_potion");
+        state = engine.Step(state, takeSecond).State;
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(2, state.Player.PotionSlots.Count(p => p is not null));
         Assert.All(state.Player.PotionSlots,
             p => Assert.Contains(p!.PotionId, PrototypeContent.PotionPool));
@@ -359,6 +376,101 @@ public sealed class PrototypeNativeEventOrderingTests
             action => action.Kind == "event_choice"
                 && action.ReadPayload<EventChoicePayload>().ChoiceId
                     == "join");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void WellspringBottleCanBeSkippedWithAnEmptyPotionBelt()
+    {
+        var state = EnterEvent(
+            "proto.native.event.wellspring", "wellspring-skip-bottle");
+        state = Take(state, "bottle");
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.All(state.Player.PotionSlots, potion => Assert.Null(potion));
+        var pending = state.World!.Event!.PendingPotionReplacement;
+        Assert.NotNull(pending);
+        Assert.Single(pending.CandidateSlots);
+
+        var engine = new PrototypeGameEngine();
+        var actions = engine.GetLegalActions(state);
+        Assert.Single(actions, action => action.Kind == "take_event_potion");
+        Assert.Single(actions, action => action.Kind == "skip_event_potion");
+        var fork = state.Fork();
+        Assert.Equal(CanonicalJson.Sha256(state), CanonicalJson.Sha256(fork));
+        state = engine.Step(
+            state, GameAction.Empty("skip_event_potion")).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.All(state.Player.PotionSlots, potion => Assert.Null(potion));
+        Assert.Null(state.World!.Event);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void WellspringBottleCanReplaceAFullPotionBelt()
+    {
+        var state = EnterEvent(
+            "proto.native.event.wellspring", "wellspring-replace-bottle");
+        var oldPotion = PrototypeContent.PotionPool[0];
+        var slots = state.Player.PotionSlots
+            .Select(_ => (PotionInstance?)new PotionInstance(
+                oldPotion, PrototypeJson.EmptyObject()))
+            .ToArray();
+        state = state with { Player = state.Player with { PotionSlots = slots } };
+        PrototypeStateInvariants.Validate(state);
+        state = Take(state, "bottle");
+        Assert.Equal(RunPhase.Event, state.Phase);
+        var engine = new PrototypeGameEngine();
+        var actions = engine.GetLegalActions(state);
+        Assert.Equal(slots.Length,
+            actions.Count(action => action.Kind == "replace_event_potion"));
+        Assert.DoesNotContain(actions, action => action.Kind == "take_event_potion");
+        Assert.Contains(actions, action => action.Kind == "skip_event_potion");
+
+        var offeredId = state.World!.Event!.PendingPotionReplacement!.PotionId;
+        var chosen = actions.Single(action =>
+            action.Kind == "replace_event_potion"
+            && action.ReadPayload<ReplaceEventPotionPayload>().Slot == 0);
+        state = engine.Step(state, chosen).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(offeredId, state.Player.PotionSlots[0]!.PotionId);
+        Assert.Equal(oldPotion, state.Player.PotionSlots[1]!.PotionId);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void WhisperingHollowSupportsSkippingOnlyFirstPotionReward()
+    {
+        var state = EnterEvent(
+            "proto.native.event.whispering_hollow",
+            "whisper-skip-first", nativeEventGold: 35);
+        var oldGold = state.Player.Gold;
+        state = Take(state, "gold");
+        var engine = new PrototypeGameEngine();
+        state = engine.Step(
+            state, GameAction.Empty("skip_event_potion")).State;
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(oldGold - 35, state.Player.Gold);
+        Assert.All(state.Player.PotionSlots, potion => Assert.Null(potion));
+        Assert.NotNull(state.World!.Event!.PendingPotionReplacement);
+        var next = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "take_event_potion");
+        state = engine.Step(state, next).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Single(state.Player.PotionSlots.Where(p => p is not null));
+        Assert.Null(state.World!.Event);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void EventPotionActionCannotReplaceOccupiedSlotWithTake()
+    {
+        var state = EnterEvent(
+            "proto.native.event.wellspring", "wellspring-malformed-action");
+        state = Take(state, "bottle");
+        var engine = new PrototypeGameEngine();
+        Assert.Throws<InvalidOperationException>(() =>
+            engine.Step(state, GameAction.Create(
+                "replace_event_potion", new ReplaceEventPotionPayload(0))));
         PrototypeStateInvariants.Validate(state);
     }
 }

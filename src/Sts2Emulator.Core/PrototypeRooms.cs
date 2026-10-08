@@ -703,7 +703,9 @@ public sealed partial class PrototypeGameEngine
             var actions = potionReplacement.CandidateSlots
                 .Select(slot =>
                     GameAction.Create(
-                        "replace_event_potion",
+                        state.Player.PotionSlots[slot] is null
+                            ? "take_event_potion"
+                            : "replace_event_potion",
                         new ReplaceEventPotionPayload(
                             slot)))
                 .ToList();
@@ -788,9 +790,12 @@ public sealed partial class PrototypeGameEngine
                 return AdvanceEventContinuations(state);
             }
 
-            RequireKind(
-                action,
-                "replace_event_potion");
+            if (action.Kind != "take_event_potion"
+                && action.Kind != "replace_event_potion")
+            {
+                throw new InvalidOperationException(
+                    "Unexpected event potion reward action.");
+            }
             var payload =
                 action.ReadPayload<
                     ReplaceEventPotionPayload>();
@@ -798,7 +803,14 @@ public sealed partial class PrototypeGameEngine
                     .Contains(payload.Slot))
             {
                 throw new InvalidOperationException(
-                    $"Potion slot {payload.Slot} is not eligible for the event replacement.");
+                    $"Potion slot {payload.Slot} is not eligible for the event reward.");
+            }
+
+            var isEmptySlot = player.PotionSlots[payload.Slot] is null;
+            if (isEmptySlot != (action.Kind == "take_event_potion"))
+            {
+                throw new InvalidOperationException(
+                    "Event potion action disagrees with the destination slot.");
             }
 
             player = player with
@@ -1234,21 +1246,30 @@ public sealed partial class PrototypeGameEngine
                             "Player cannot acquire potions.");
                     }
 
-                    var emptySlot = Array.IndexOf(
-                        player.PotionSlots,
-                        null);
-                    if (emptySlot >= 0)
+                    // Native potion-offer events call RewardsCmd.OfferCustom:
+                    // receiving a reward is a player decision even when a
+                    // potion slot is empty. Other prototype direct-grant
+                    // events retain their historical acquisition behavior.
+                    if (UsesNativeEventPotionOffer(eventState.EventId))
                     {
-                        var slots = (PotionInstance?[])
-                            player.PotionSlots.Clone();
-                        slots[emptySlot] = new PotionInstance(
-                            potionId,
-                            PrototypeJson.EmptyObject());
-                        player = player with { PotionSlots = slots };
+                        queuedPotionIds.Add(potionId);
                     }
                     else
                     {
-                        queuedPotionIds.Add(potionId);
+                        var emptySlot = Array.IndexOf(
+                            player.PotionSlots, null);
+                        if (emptySlot >= 0)
+                        {
+                            var slots = (PotionInstance?[])
+                                player.PotionSlots.Clone();
+                            slots[emptySlot] = new PotionInstance(
+                                potionId, PrototypeJson.EmptyObject());
+                            player = player with { PotionSlots = slots };
+                        }
+                        else
+                        {
+                            queuedPotionIds.Add(potionId);
+                        }
                     }
 
                     break;

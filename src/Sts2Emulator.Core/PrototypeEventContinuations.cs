@@ -9,6 +9,10 @@ public sealed partial class PrototypeGameEngine
     /// Queued deck choices are refreshed against the *current* deck so a prior
     /// removal/upgrade cannot leave invalid instance IDs in a later prompt.
     /// </summary>
+    private static bool UsesNativeEventPotionOffer(string eventId) =>
+        eventId is "proto.native.event.wellspring"
+            or "proto.native.event.whispering_hollow";
+
     private static RunState AdvanceEventContinuations(RunState state)
     {
         while (true)
@@ -31,7 +35,8 @@ public sealed partial class PrototypeGameEngine
                 eventState = eventState with { QueuedPotionIds = remaining };
 
                 var emptySlot = Array.IndexOf(state.Player.PotionSlots, null);
-                if (emptySlot >= 0)
+                var nativeOffer = UsesNativeEventPotionOffer(eventState.EventId);
+                if (emptySlot >= 0 && !nativeOffer)
                 {
                     var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
                     slots[emptySlot] = new PotionInstance(
@@ -45,11 +50,13 @@ public sealed partial class PrototypeGameEngine
                     continue;
                 }
 
-                var candidateSlots = state.Player.PotionSlots
-                    .Select((potion, slot) => (Potion: potion, Slot: slot))
-                    .Where(item => item.Potion is not null)
-                    .Select(item => item.Slot)
-                    .ToArray();
+                // Native reward UI offers "take" or "skip" even with
+                // room in the potion belt. If full, offer all occupied
+                // slots as replacement destinations.
+                var candidateSlots = emptySlot >= 0
+                    ? new[] { emptySlot }
+                    : Enumerable.Range(0, state.Player.PotionSlots.Length)
+                        .ToArray();
                 if (candidateSlots.Length == 0)
                 {
                     throw new InvalidOperationException(
