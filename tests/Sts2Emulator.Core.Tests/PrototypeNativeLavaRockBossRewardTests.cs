@@ -130,14 +130,14 @@ public sealed class PrototypeNativeLavaRockBossRewardTests
         Assert.Equal(0, reward.ExtraRelicsResolved);
         Assert.Equal(2, reward.ExtraRelicRewardIds!
             .Distinct(StringComparer.Ordinal).Count());
-        Assert.DoesNotContain(reward.ExtraRelicRewardIds,
+        Assert.DoesNotContain(reward.ExtraRelicRewardIds!,
             id => reward.CurrentRelicOptions.Contains(id));
         Assert.True(state.Player.Relics.Single(relic =>
             relic.RelicId ==
                 PrototypeNativeOvergrowthEvents.NeowRelicId("LavaRock"))
             .PersistentState.GetProperty("HasTriggered").GetBoolean());
         var fork = state.Fork();
-        Assert.NotSame(state.World.Reward.ExtraRelicRewardIds,
+        Assert.NotSame(state.World!.Reward!.ExtraRelicRewardIds,
             fork.World!.Reward!.ExtraRelicRewardIds);
         Assert.Equal(CanonicalJson.Sha256(state), CanonicalJson.Sha256(fork));
 
