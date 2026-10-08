@@ -613,3 +613,12 @@ Events can now suspend after a branch is chosen and expose a sequential persiste
 Event branch costs are applied exactly once before the deck-choice continuation begins. Gold loss is now a first-class run effect, and event legality suppresses branches the player cannot afford, branches whose HP cost would be lethal, and paid deck-shaping branches with no eligible card. Multi-card choices remain sequential rather than enumerating subsets, keeping the action surface approximately linear in deck size.
 
 Two prototype strategic events exercise the capability. Forgotten Altar offers 50-gold card removal, 7-HP card upgrading, or a small gold exit. Warped Mirror offers a 9-HP two-card transform, a 35-gold transform-and-upgrade, or no effect. Regression coverage verifies single-payment semantics, AI visibility, legality filtering, persistent instance-ID preservation, sequential two-card transformation, and upgraded transform results.
+
+
+## Mechanics-expansion pass: event item/relic/card tradeoffs
+
+Event run effects now cover max-HP loss, relic acquisition, and named potion acquisition in addition to the existing HP, gold, card, and deck-shaping effects. Relics acquired through events use the normal RelicAcquired run-event path, so acquisition hooks such as Old Coin fire exactly as they do from other acquisition surfaces. If an acquired relic itself requires a persistent-deck choice, the event reuses the canonical sequential event deck-choice continuation and records the source relic in both canonical and AI-visible state.
+
+Named potion acquisition uses an empty slot immediately when available. On a full belt, the event suspends on a canonical potion-replacement continuation containing the offered potion and eligible occupied slots; the player/AI then explicitly chooses which potion to replace. Sozu suppresses potion-acquisition event branches. Event state can carry both a potion replacement and a deck continuation, and each continuation completes without reapplying the original event costs.
+
+Caged Vault exercises max-HP-for-Empty-Cage, HP-for-Old-Coin, gold-for-Strength-Potion, and a safe gold exit. Forbidden Archive exercises paired persistent card acquisition by offering Wraith Form together with an Infection downside card. Regression coverage verifies relic-sourced Empty Cage removals, Old Coin's acquisition trigger, full-belt potion replacement and AI exposure, empty-slot potion acquisition, Sozu legality filtering, and paired card addition with stable persistent IDs.
