@@ -60,8 +60,9 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
     {
         var state = Pick("LargeCapsule");
         Assert.Equal(RunPhase.MapChoice, state.Phase);
-        Assert.Equal(3, state.Player.Relics.Length);
-        Assert.Equal(3, state.Player.Relics
+        // Silent already owns its Ring of the Snake starter relic.
+        Assert.Equal(4, state.Player.Relics.Length);
+        Assert.Equal(4, state.Player.Relics
             .Select(relic => relic.RelicId)
             .Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(15, state.Player.Deck.Length);
@@ -193,14 +194,14 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
         var ordinary = EnterFirstCombat(Pick(
             "BoomingConch", "native-conch-normal"));
         Assert.Equal(3, ordinary.World!.Combat!.Energy);
-        Assert.Equal(5, ordinary.World.Combat.Hand.Length);
+        Assert.Equal(7, ordinary.World.Combat.Hand.Length);
         PrototypeStateInvariants.Validate(ordinary);
 
         var elite = EnterEliteCombat(Pick(
             "BoomingConch", "native-conch-elite"));
         Assert.Equal(PrototypeRoomType.Elite, elite.World!.ActiveRoom);
         Assert.Equal(4, elite.World.Combat!.Energy);
-        Assert.Equal(7, elite.World.Combat.Hand.Length);
+        Assert.Equal(9, elite.World.Combat.Hand.Length);
         PrototypeStateInvariants.Validate(elite);
     }
 
