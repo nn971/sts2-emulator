@@ -44,7 +44,10 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException($"Invalid act {world.Act}.");
         }
 
-        if (world.Floor < 0 || world.Floor > PrototypeContent.Rules.FloorsPerAct)
+        if (world.Floor < 0 || world.Floor > (
+                world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
+                    ? PrototypeNativeOvergrowthMap.BossFloor
+                    : PrototypeContent.Rules.FloorsPerAct))
         {
             throw new InvalidOperationException($"Invalid floor {world.Floor}.");
         }
@@ -292,7 +295,11 @@ public static class PrototypeStateInvariants
             if (visit.Act < 1
                 || visit.Act > world.Act
                 || visit.Floor < 1
-                || visit.Floor > PrototypeContent.Rules.FloorsPerAct
+                || visit.Floor > (world.Act == 1
+                    && world.Map.GenerationProfileId
+                        == PrototypeNativeOvergrowthMap.GenerationProfileId
+                        ? PrototypeNativeOvergrowthMap.BossFloor
+                        : PrototypeContent.Rules.FloorsPerAct)
                 || string.IsNullOrWhiteSpace(visit.NodeId))
             {
                 throw new InvalidOperationException(
@@ -322,7 +329,12 @@ public static class PrototypeStateInvariants
                             visit.NodeId));
                 if (node is null
                     || node.Floor != visit.Floor
-                    || node.RoomType != visit.RoomType)
+                    || (node.RoomType != visit.RoomType
+                        && !(node.RoomType == PrototypeRoomType.Unknown
+                            && visit.RoomType is PrototypeRoomType.Combat
+                                or PrototypeRoomType.Event
+                                or PrototypeRoomType.Shop
+                                or PrototypeRoomType.Treasure)))
                 {
                     throw new InvalidOperationException(
                         "Completed-room history disagrees with the active generated map.");
@@ -1097,6 +1109,13 @@ public static class PrototypeStateInvariants
 
     private static void ValidateMap(RunWorldState world)
     {
+        if (world.Map.GenerationProfileId
+            == PrototypeNativeOvergrowthMap.GenerationProfileId)
+        {
+            ValidateNativeOvergrowthMap(world);
+            return;
+        }
+
         var map = world.Map;
         var nodesById = map.Nodes.ToDictionary(node => node.NodeId, StringComparer.Ordinal);
         if (nodesById.Count != map.Nodes.Length)
