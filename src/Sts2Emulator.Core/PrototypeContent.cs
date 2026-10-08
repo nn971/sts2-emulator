@@ -179,6 +179,45 @@ public static class PrototypeContent
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
                 Type: PrototypeCardType.Curse),
+            // Neow's Torment grants Neow's Fury. Native v0.111.0:
+            // deal 10 (14), then choose up to 2 (3) discard-pile cards
+            // to return to hand, exhausting Fury afterward.
+            new PrototypeCardDefinition(
+                "proto.native.neow.neows_fury",
+                "Neow's Fury",
+                1,
+                PrototypeCardTarget.Enemy,
+                [
+                    new(PrototypeCombatEffectKind.DamageEnemy, 10, 4),
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.DiscardPile,
+                            0,
+                            2,
+                            PrototypeCardSelectionResolutionKind.MoveToHand,
+                            MaxSelectionsUpgradeDelta: 1))
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Ancient,
+                RewardEligible: false,
+                CanBeGeneratedInCombat: false,
+                Type: PrototypeCardType.Attack),
+            // Dowsing Rod adds the native Dowsing quest card.
+            // Its five-unknown-room Abundance transformation is
+            // explicitly deferred pending persistent-card room hooks.
+            new PrototypeCardDefinition(
+                "proto.native.neow.dowsing",
+                "Dowsing",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Unplayable: true,
+                Rarity: PrototypeCardRarity.Quest,
+                RewardEligible: false,
+                MechanicsImplemented: false,
+                Type: PrototypeCardType.Quest),
             new PrototypeCardDefinition(
                 "proto.native.event.guilty",
                 "Guilty",
