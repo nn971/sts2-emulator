@@ -114,6 +114,8 @@ jobs:
         run: python tools/native_overgrowth_action_ledger_smoke.py
       - name: Native action-frame identity and callback smoke
         run: python tools/native_overgrowth_action_frames_smoke.py
+      - name: Pinned native RNG stream audit smoke
+        run: python tools/native_rng_stream_audit_smoke.py
       - name: Native Overgrowth training-reset JSONL contract
         run: python tools/native_overgrowth_reset_smoke.py
       - name: Hypothetical draw-order JSONL integration
