@@ -12,11 +12,34 @@ internal static class PrototypeAiJsonlServer
     {
         var environment = new PrototypeAiEnvironment();
         var states = new Dictionary<string, RunState>(StringComparer.Ordinal);
+        // Opaque handle provenance is managed at the bridge boundary.
+        // Generic reset handles are never eligible for draw-order injection.
+        var hypotheticalHandles = new HashSet<string>(StringComparer.Ordinal);
+        var freshCombatHandles = new HashSet<string>(StringComparer.Ordinal);
         long nextHandle = 1;
 
-        string Store(RunState state)
+        string Store(
+            RunState state,
+            string? parentHandle = null,
+            bool rootHypothetical = false)
         {
             var handle = $"s{nextHandle++}";
+            if (rootHypothetical
+                || (parentHandle is not null && hypotheticalHandles.Contains(parentHandle)))
+            {
+                hypotheticalHandles.Add(handle);
+            }
+            if (parentHandle is not null)
+            {
+                var parent = states[parentHandle];
+                if (state.Phase == RunPhase.Combat
+                    && (parent.Phase != RunPhase.Combat
+                        || (freshCombatHandles.Contains(parentHandle)
+                            && parent.DecisionIndex == state.DecisionIndex)))
+                {
+                    freshCombatHandles.Add(handle);
+                }
+            }
             states.Add(handle, state);
             return handle;
         }
@@ -97,6 +120,80 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "reset_hypothetical":
+                    {
+                        // Separate declared search-seed namespace from live resets.
+                        // The caller MUST generate search_seed independently of
+                        // any actual game's seed or internal RNG cursor.
+                        var searchSeed = RequiredString(request, "search_seed");
+                        if (searchSeed.Length != 32
+                            || searchSeed.Any(ch => !Uri.IsHexDigit(ch)))
+                        {
+                            throw new ArgumentException(
+                                "search_seed must be an independent 128-bit hex value.");
+                        }
+                        var ascension = OptionalInt(request, "ascension") ?? 0;
+                        var state = environment.Reset(
+                            $"fair-hypothetical:{searchSeed.ToLowerInvariant()}", ascension);
+                        var handle = Store(state, rootHypothetical: true);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            stateHandle = handle,
+                            terminal = state.Phase == RunPhase.Terminal,
+                            hypothetical = true
+                        });
+                        break;
+                    }
+
+                    case "hypothetical_draw_order":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var state = RequireState(request);
+                        if (!hypotheticalHandles.Contains(parentHandle)
+                            || !freshCombatHandles.Contains(parentHandle))
+                        {
+                            throw new InvalidOperationException(
+                                "Draw-order injection requires a declared hypothetical "
+                                + "fresh-combat handle; live, oracle and previously "
+                                + "acted-on combat states are ineligible.");
+                        }
+                        if (!request.TryGetProperty("ordered_cards", out var cards)
+                            || cards.ValueKind != JsonValueKind.Array)
+                        {
+                            throw new ArgumentException(
+                                "ordered_cards must be an array of public card variants.");
+                        }
+                        var order = cards.EnumerateArray().Select(card =>
+                        {
+                            if (card.ValueKind != JsonValueKind.Object)
+                            {
+                                throw new ArgumentException(
+                                    "Every ordered_cards entry must be an object.");
+                            }
+                            return new PrototypePublicDrawCard(
+                                RequiredString(card, "card_id"),
+                                OptionalInt(card, "upgrade_level")
+                                ?? throw new ArgumentException(
+                                    "Every ordered card requires upgrade_level."));
+                        }).ToArray();
+                        var branch = PrototypeHypotheticalDrawOrder.Apply(state, order);
+                        var child = Store(branch, parentHandle);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            child,
+                            schemaId = PrototypeHypotheticalDrawOrder.SchemaId,
+                            // No exact-state hash or hidden card instances in
+                            // this operation's response.
+                            policyId = FairPolicyId,
+                            observationHash = environment.Observe(branch).ObservationHash
+                        });
+                        break;
+                    }
+
                     case "legal_actions":
                     {
                         var state = RequireState(request);
@@ -148,7 +245,7 @@ internal static class PrototypeAiJsonlServer
                                 $"Action '{actionId}' is not legal in state '{parentHandle}'.");
 
                         var next = environment.Step(state, actionId).State;
-                        var childHandle = Store(next);
+                        var childHandle = Store(next, parentHandle);
                         Write(new
                         {
                             requestId,
@@ -173,7 +270,7 @@ internal static class PrototypeAiJsonlServer
                         var expansions = environment.Expand(state)
                             .Select(expansion =>
                             {
-                                var childHandle = Store(expansion.State);
+                                var childHandle = Store(expansion.State, parentHandle);
                                 return new
                                 {
                                     parent = parentHandle,
@@ -226,7 +323,7 @@ internal static class PrototypeAiJsonlServer
                                         $"Action '{actionId}' is not legal in state '{parentHandle}'.");
 
                                 var next = environment.Step(state, actionId).State;
-                                var childHandle = Store(next);
+                                var childHandle = Store(next, parentHandle);
                                 return new
                                 {
                                     parent = parentHandle,
@@ -280,7 +377,7 @@ internal static class PrototypeAiJsonlServer
                                         $"Unknown state handle '{parentHandle}'.");
 
                                 var stepped = environment.StepFrame(state, actionId);
-                                var childHandle = Store(stepped.State);
+                                var childHandle = Store(stepped.State, parentHandle);
                                 var frame = stepped.Frame;
                                 return new
                                 {
@@ -340,7 +437,7 @@ internal static class PrototypeAiJsonlServer
                                         $"Unknown state handle '{parentHandle}'.");
 
                                 var stepped = environment.RolloutStepFrame(state, actionId);
-                                var childHandle = Store(stepped.State);
+                                var childHandle = Store(stepped.State, parentHandle);
                                 return new
                                 {
                                     parent = parentHandle,
@@ -446,7 +543,7 @@ internal static class PrototypeAiJsonlServer
                             var expansions = environment.Expand(state)
                                 .Select(expansion =>
                                 {
-                                    var childHandle = Store(expansion.State);
+                                    var childHandle = Store(expansion.State, parentHandle);
                                     return new
                                     {
                                         parent = parentHandle,
@@ -497,6 +594,8 @@ internal static class PrototypeAiJsonlServer
                                     "state_handles entry is null.");
                             if (states.Remove(handle))
                             {
+                                hypotheticalHandles.Remove(handle);
+                                freshCombatHandles.Remove(handle);
                                 released++;
                             }
                         }
@@ -512,8 +611,9 @@ internal static class PrototypeAiJsonlServer
 
                     case "fork":
                     {
+                        var parentHandle = RequiredString(request, "state_handle");
                         var state = RequireState(request);
-                        var child = Store(environment.Fork(state));
+                        var child = Store(environment.Fork(state), parentHandle);
                         Write(new
                         {
                             requestId,
