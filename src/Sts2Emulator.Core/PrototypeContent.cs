@@ -166,6 +166,19 @@ public static class PrototypeContent
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
                 Type: PrototypeCardType.Curse),
+            // Neow's Cursed Pearl grants Greed: a permanent Eternal,
+            // unplayable curse, not eligible for ordinary card rewards.
+            new PrototypeCardDefinition(
+                "proto.native.neow.greed",
+                "Greed",
+                0,
+                PrototypeCardTarget.None,
+                [],
+                Eternal: true,
+                Unplayable: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse),
             new PrototypeCardDefinition(
                 "proto.native.event.guilty",
                 "Guilty",
