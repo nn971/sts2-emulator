@@ -1043,6 +1043,7 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeRunEffectKind.OfferThreeRareCards:
                 case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
+                case PrototypeRunEffectKind.OfferCardBundles:
                 case PrototypeRunEffectKind.OfferRandomRelic:
                     if (deferredReward is not null)
                     {
@@ -2116,6 +2117,15 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
+        if (!reward.CardResolved && reward.CardBundles is { } bundles)
+        {
+            // Bundle selection is mandatory, like the native
+            // FromChooseABundleScreen interaction.
+            return bundles.Select((_, index) => GameAction.Create(
+                "take_reward_bundle",
+                new ChooseBundlePayload(index))).ToArray();
+        }
+
         if (!reward.CardResolved)
         {
             var actions = reward.CardOptions
@@ -2221,6 +2231,22 @@ public sealed partial class PrototypeGameEngine
             {
                 PendingDeckChoice = resolved.Remaining
             };
+        }
+        else if (!reward.CardResolved && reward.CardBundles is { } bundles)
+        {
+            RequireKind(action, "take_reward_bundle");
+            var payload = action.ReadPayload<ChooseBundlePayload>();
+            if (payload.Index < 0 || payload.Index >= bundles.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Reward bundle index {payload.Index} is invalid.");
+            }
+
+            foreach (var cardId in bundles[payload.Index])
+            {
+                player = AppendCard(player, nextId++, cardId, state.Rng);
+            }
+            reward = reward with { CardResolved = true };
         }
         else if (!reward.CardResolved)
         {
