@@ -14,6 +14,14 @@ public sealed partial class PrototypeGameEngine
         {
             encounter = scriptedEncounter;
         }
+        else if (world.Act == 1
+            && world.ActOneRegion == PrototypeActOneRegion.Underdocks)
+        {
+            var selected = PickUnderdocksEncounter(
+                state, world, roomType);
+            encounter = selected.Encounter;
+            world = selected.World;
+        }
         else
         {
         var overgrowthBoss =
