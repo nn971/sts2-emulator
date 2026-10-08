@@ -99,7 +99,63 @@ def main() -> None:
         assert second["evidence"]["blocked"] == 17
         assert second["evidence"]["target"] == 0
         assert result["source"]["game_version"] == "v0.111.0"
-    print("PASS: native action-ledger move IDs, damage, snapshots, provenance")
+
+        # A second tiny capture exercises newly covered public card events,
+        # source-bound Ringing and the all-combats selection policy.
+        extra = [
+            {"type": "boundary", "recorder_combat_index": 0,
+             "sequence": 1, "boundary": "combat_history.Changed",
+             "state": {"combat": None}},
+            boundary(102, {
+                "runtime_type": "CardDrawnEntry",
+                "card": {"runtime_type": "MegaCrit.Sts2.Core.Models.Cards.Backflip",
+                         "current_upgrade_level": 1},
+            }),
+            boundary(103, {
+                "runtime_type": "CardAfflictedEntry",
+                "card": {
+                    "runtime_type": "MegaCrit.Sts2.Core.Models.Cards.Backflip",
+                    "current_upgrade_level": 1,
+                    "affliction": {
+                        "runtime_type":
+                        "MegaCrit.Sts2.Core.Models.Afflictions.Ringing"
+                    },
+                },
+            }),
+            boundary(104, {
+                "runtime_type": "BlockGainedEntry",
+                "receiver": {"combat_id": 0},
+                "amount": 8,
+            }),
+            boundary(105, {}),
+        ]
+        extra[-1]["boundary"] = "combat_manager.CombatEnded"
+        extra[2]["state"]["enemies"][0]["powers"]["items"] = [
+            {"runtime_type": "MegaCrit.Sts2.Core.Models.Powers.StrengthPower",
+             "amount": 10}
+        ]
+        path.write_text(
+            "\\n".join(json.dumps(record) for record in records + extra)
+            + "\\n",
+            encoding="utf-8",
+        )
+        full = audit(path, None)
+        assert set(full["combats"]) == {6}
+        kinds = [e["evidence"]["kind"] for e in full["combats"][6]["events"]]
+        assert kinds == ["enemy_move", "damage", "card_drawn",
+                         "card_afflicted", "block_gained", "combat_ended"]
+        aff = full["combats"][6]["events"][3]
+        assert aff["evidence"] == {
+            "kind": "card_afflicted", "card": "Backflip",
+            "upgrade": 1, "affliction": "Ringing"
+        }
+        assert aff["snapshot"]["enemies"][0]["power_amounts"] == [
+            {"power": "StrengthPower", "amount": 10}
+        ]
+        assert full["combats"][6]["events"][4]["evidence"]["target"] == 0
+        assert "All positive combat indices" in full["limits"][-1]
+    print("PASS: native action-ledger all-combats/card-affliction/power evidence")
+
 
 
 if __name__ == "__main__":
