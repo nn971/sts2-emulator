@@ -411,6 +411,73 @@ public sealed class PrototypePotionInteractionTests
     }
 
     [Fact]
+    public void DistilledChaosSkipsUnplayableDowsingWithoutAbortingAutoplay()
+    {
+        // Native Dowsing is a persistent unplayable quest card with
+        // MechanicsImplemented=false: it is not a missing combat effect.
+        // The potion must still finish its two subsequent normal plays.
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.defend"),
+                Card(2, "proto.native.neow.dowsing"),
+                Card(3, "proto.silent.strike"),
+                Card(4, "proto.silent.defend")
+            ],
+            hand: [1],
+            drawPile: [2, 3, 4],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.distilled_chaos");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Empty(combat.PlayCardIds);
+        Assert.Empty(combat.DrawPile);
+        Assert.Equal(94, combat.Enemies.Single().Hp);
+        Assert.Equal(5, combat.PlayerBlock);
+        Assert.Equal(2, combat.CounterState.CardsPlayedThisTurn);
+        Assert.All(
+            new long[] { 2, 3, 4 },
+            id => Assert.Contains(id, combat.DiscardPile));
+        Assert.Contains(
+            state.Player.Deck,
+            card => card.CardId == "proto.native.neow.dowsing");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void DistilledChaosSkipsUnplayableQuestEggAsWell()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.native.event.byrdonis_egg"),
+                Card(3, "proto.native.neow.dowsing"),
+                Card(4, "proto.silent.strike")
+            ],
+            hand: [1],
+            drawPile: [2, 3, 4],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.distilled_chaos");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.Empty(combat.PlayCardIds);
+        Assert.Equal(94, combat.Enemies.Single().Hp);
+        Assert.Equal(1, combat.CounterState.CardsPlayedThisTurn);
+        Assert.All(
+            new long[] { 2, 3, 4 },
+            id => Assert.Contains(id, combat.DiscardPile));
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void DistilledChaosPreservesOuterAutoplayAcrossNestedChoice()
     {
         var state = CreateState(
