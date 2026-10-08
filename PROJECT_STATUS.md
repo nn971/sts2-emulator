@@ -1132,3 +1132,41 @@ now support `Upgrade`, preserving instance identity and filtering
 already-upgraded candidates. A dedicated Neow's Bones regression
 exercises receiving Pomander, upgrading a starter Strike, acquiring
 Golden Pearl second, and adding Injury only on final reward exit.
+
+
+## Source-shaped Overgrowth multi-page events (2026-10-08)
+
+Ported Tablet of Truth's full five-Decipher decision chain:
+maximum HP costs 3/6/12/24/(current max HP-1), a random
+upgradable deck card on each of the first four pages, and
+all remaining eligible upgrades on the fifth. Give Up is
+available on each intermediate followup page; Smash heals
+20 and terminates the event immediately. Progress is stored
+in canonical `EventState.NativePageIndex` rather than hidden
+runtime state, with deep-fork and legality regression tests.
+
+Wellspring now queues Guilty until after the selected card
+is removed, and Whispering Hollow defers its 9 HP loss until
+after the selected card transforms. Both use reusable event
+continuation effects and preserve persistent card identity.
+Regressions verify intermediate pages, effect ordering, and
+completion exactly once as one visited map room.
+
+Dense Vegetation now rolls 61–99 gold per event instead of
+granting fixed 80 on Trudge; Rest heals as at a rest site,
+then exposes the mandatory followup Fight against four
+Wrigglers. A reusable forced-encounter combat path selects
+a zero-weight event-only encounter from the canonical
+catalog without advancing the regular Act 1 monster pool.
+The event preserves its map room through combat, and
+combat-win callbacks complete the Event directly **without
+an ordinary combat reward screen**. Integration tests
+cover both branches, event progression, enemy lineup,
+and the rewardless boss-independent combat end.
+
+Source notes and current approximate RNG/upgradability
+constraints are documented in
+`docs/reference-builds/v0.111.0-overgrowth-event-pages.md`.
+Cross-character reward mechanics and oracle fidelity remain
+postponed; other regional event effects and enchantments
+are still unfinished.
