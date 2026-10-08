@@ -9,7 +9,9 @@ public enum PrototypeRoomType
     Event,
     Shop,
     Rest,
-    Boss
+    Boss,
+    Unknown,
+    Treasure
 }
 
 public enum PrototypeActOneRegion
@@ -1658,6 +1660,25 @@ public sealed record EventState(
     };
 }
 
+public sealed record PrototypeUnknownRoomOddsState(
+    int MonsterWeight = 100,
+    int TreasureWeight = 20,
+    int ShopWeight = 30)
+{
+    public const int Scale = 1000;
+
+    public PrototypeUnknownRoomOddsState After(PrototypeRoomType rolled) =>
+        this with
+        {
+            MonsterWeight = rolled == PrototypeRoomType.Combat
+                ? 100 : MonsterWeight + 100,
+            TreasureWeight = rolled == PrototypeRoomType.Treasure
+                ? 20 : TreasureWeight + 20,
+            ShopWeight = rolled == PrototypeRoomType.Shop
+                ? 30 : ShopWeight + 30
+        };
+}
+
 public sealed record RunWorldState(
     string RulesetId,
     string CharacterId,
@@ -1675,7 +1696,8 @@ public sealed record RunWorldState(
     string[]? EventHistory = null,
     PrototypeActOneRegion? ActOneRegion = null,
     PrototypeActOneEncounterPoolState? ActOneEncounterPool = null,
-    PrototypeCompletedRoomRecord[]? CompletedRoomHistory = null)
+    PrototypeCompletedRoomRecord[]? CompletedRoomHistory = null,
+    PrototypeUnknownRoomOddsState? UnknownRoomOdds = null)
 {
     public RunWorldState Fork() => this with
     {
