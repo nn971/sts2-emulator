@@ -356,7 +356,12 @@ public enum PrototypeRunEffectKind
     AddCard,
     GainRelic,
     GainPotion,
-    FillPotionSlots
+    FillPotionSlots,
+    LoseAllGold,
+    GainRandomRelic,
+    GainRandomPotion,
+    UpgradeRandomCard,
+    UpgradeAllCards
 }
 
 public enum PrototypeRunEventKind
