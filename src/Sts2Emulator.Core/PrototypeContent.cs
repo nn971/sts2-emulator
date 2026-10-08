@@ -136,6 +136,47 @@ public static class PrototypeContent
             // and gain 2 (3) energy. Both operations snapshot the
             // condition before any of the draws execute.
             new PrototypeCardDefinition(
+                "proto.native.event.byrdonis_egg",
+                "Byrdonis Egg",
+                0,
+                PrototypeCardTarget.None,
+                [],
+                Unplayable: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Quest,
+                Type: PrototypeCardType.Quest),
+            new PrototypeCardDefinition(
+                "proto.native.event.spore_mind",
+                "Spore Mind",
+                1,
+                PrototypeCardTarget.None,
+                [],
+                ExhaustOnUse: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse),
+            new PrototypeCardDefinition(
+                "proto.native.event.poor_sleep",
+                "Poor Sleep",
+                0,
+                PrototypeCardTarget.None,
+                [],
+                Retain: true,
+                Unplayable: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse),
+            new PrototypeCardDefinition(
+                "proto.native.event.guilty",
+                "Guilty",
+                0,
+                PrototypeCardTarget.None,
+                [],
+                Unplayable: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse),
+            new PrototypeCardDefinition(
                 "proto.common.restlessness",
                 "Restlessness",
                 0,
@@ -2315,6 +2356,9 @@ public static class PrototypeContent
                         [new(PrototypeRunEffectKind.GainMaxHp, 6)],
                         RequiredCardType: PrototypeCardType.Curse)
                 ]),
+            new PrototypeRelicDefinition(
+                "proto.native.event.sword_of_stone",
+                "Sword of Stone"),
             new PrototypeRelicDefinition(
                 "proto.relic.molten_egg",
                 "Molten Egg",
@@ -5919,7 +5963,8 @@ public static class PrototypeContent
                 ],
                 Weight: 2,
                 OncePerRun: false)
-        }.ToDictionary(evt => evt.Id, StringComparer.Ordinal);
+        }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
+            .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
     public static string[] OvergrowthWeakEncounterPool { get; } =
     [
