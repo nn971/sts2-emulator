@@ -252,6 +252,27 @@ public sealed class PrototypeNativeNeowGenerationTests
         var world = initial.World!;
         var restNode = world.Map.Nodes.First(node =>
             node.Floor == PrototypeNativeOvergrowthMap.PreBossRestFloor);
+        // Construct a coherent completed-room history along a real
+        // predecessor path; generated maps enforce consecutive floors.
+        var reversePath = new List<MapNodeState>();
+        var current = restNode;
+        for (var floor = restNode.Floor - 1; floor >= 1; floor--)
+        {
+            var nextId = current.NodeId;
+            current = world.Map.Nodes.First(node =>
+                node.Floor == floor
+                && node.NextNodeIds?.Contains(
+                    nextId, StringComparer.Ordinal) == true);
+            reversePath.Add(current);
+        }
+
+        reversePath.Reverse();
+        var completed = reversePath.Select(node =>
+            new PrototypeCompletedRoomRecord(
+                1, node.Floor, node.NodeId,
+                node.RoomType == PrototypeRoomType.Unknown
+                    ? PrototypeRoomType.Event
+                    : node.RoomType)).ToArray();
         var prepared = initial with
         {
             Phase = RunPhase.Rest,
@@ -269,6 +290,7 @@ public sealed class PrototypeNativeNeowGenerationTests
             {
                 Floor = restNode.Floor,
                 ActiveRoom = PrototypeRoomType.Rest,
+                CompletedRoomHistory = completed,
                 Event = null,
                 Map = world.Map with
                 {
