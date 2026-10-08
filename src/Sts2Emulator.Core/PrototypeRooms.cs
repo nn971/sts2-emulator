@@ -1020,6 +1020,30 @@ public sealed partial class PrototypeGameEngine
                         state.Rng);
                     break;
 
+                case PrototypeRunEffectKind.GainRandomRareCard:
+                {
+                    // Source-shaped Arcane Scroll reward: one Rare from the
+                    // character card pool. The prototype reward pool and
+                    // stream still differ from native v0.111.0.
+                    var rares = PrototypeContent.RewardCardPool
+                        .Where(cardId =>
+                            PrototypeContent.Card(cardId).Rarity
+                                == PrototypeCardRarity.Rare)
+                        .ToArray();
+                    if (rares.Length == 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Random Rare-card reward has an empty pool.");
+                    }
+
+                    var cardId = rares[
+                        PrototypeRng.NextInt(
+                            state.Rng, "reward", rares.Length)];
+                    player = AppendCard(
+                        player, nextId++, cardId, state.Rng);
+                    break;
+                }
+
                 case PrototypeRunEffectKind.GainRelic:
                 case PrototypeRunEffectKind.GainRandomRelic:
                 {
