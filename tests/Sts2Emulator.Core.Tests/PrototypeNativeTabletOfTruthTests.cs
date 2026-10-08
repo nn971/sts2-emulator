@@ -36,8 +36,10 @@ public sealed class PrototypeNativeTabletOfTruthTests
         Assert.Equal(RunPhase.MapChoice, state.Phase);
 
         var map = state.World!.Map;
+        // Native Overgrowth hides event destinations behind '?'
+        // nodes, rather than placing visible Event tiles.
         var node = map.Nodes.First(item =>
-            item.RoomType == PrototypeRoomType.Event);
+            item.RoomType == PrototypeRoomType.Unknown);
         var parent = map.Nodes.First(item =>
             item.NextNodeIds?.Contains(node.NodeId,
                 StringComparer.Ordinal) == true);
@@ -50,29 +52,21 @@ public sealed class PrototypeNativeTabletOfTruthTests
                 return new PrototypeCompletedRoomRecord(
                     1, floor, room.NodeId, room.RoomType);
             }).ToArray();
+        // Force the random Unknown destination to resolve to this
+        // specific native event, without replacing its map node type.
+        // This isolates the event-page state machine from '?' RNG.
         state = state with
         {
+            Phase = RunPhase.Event,
             World = state.World with
             {
-                Floor = parent.Floor,
+                Floor = node.Floor,
+                ActiveRoom = PrototypeRoomType.Event,
                 CompletedRoomHistory = completed,
-                Map = map with { CurrentNodeId = parent.NodeId }
-            }
-        };
-        PrototypeStateInvariants.Validate(state);
-
-        state = engine.Step(state,
-            GameAction.Create("choose_map_node",
-                new ChooseMapNodePayload(node.NodeId))).State;
-        Assert.Equal(RunPhase.Event, state.Phase);
-        world = state.World!;
-        state = state with
-        {
-            World = world with
-            {
+                Map = map with { CurrentNodeId = node.NodeId },
                 Event = new EventState(PrototypeNativeTabletOfTruth.EventId),
-                EventHistory = world.EventIds.SkipLast(1)
-                    .Append(PrototypeNativeTabletOfTruth.EventId).ToArray()
+                EventHistory = state.World.EventIds.Append(
+                    PrototypeNativeTabletOfTruth.EventId).ToArray()
             }
         };
         PrototypeStateInvariants.Validate(state);
