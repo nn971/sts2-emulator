@@ -264,12 +264,22 @@ public static class PrototypeNativeOvergrowthRunFactory
         rng.Streams[index] = clean.Streams[cleanIndex].Fork();
 
         var map = PrototypeNativeOvergrowthMap.Generate(rng, ascension);
+        var restlessness = new CardInstance(
+            world.NextCardInstanceId,
+            "proto.common.restlessness",
+            0,
+            PrototypeJson.EmptyObject());
         return state with
         {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Append(restlessness).ToArray()
+            },
             Rng = rng,
             World = world with
             {
                 Map = map,
+                NextCardInstanceId = world.NextCardInstanceId + 1,
                 UnknownRoomOdds = new PrototypeUnknownRoomOddsState()
             }
         };
