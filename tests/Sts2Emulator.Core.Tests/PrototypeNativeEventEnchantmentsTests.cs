@@ -273,6 +273,44 @@ public sealed class PrototypeNativeEventEnchantmentsTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Theory]
+    [InlineData(false, 6)]
+    [InlineData(true, 8)]
+    public void PeckHitsThreeTimesOrFourTimesWhenUpgraded(
+        bool upgraded, int expectedDamage)
+    {
+        var state = ChooseAndApply(EnterEvent(
+            "proto.native.event.wood_carvings", "peck-hit-" + upgraded),
+            "bird", 1L);
+        if (upgraded)
+        {
+            state = state with
+            {
+                Player = state.Player with
+                {
+                    Deck = state.Player.Deck.Select(card =>
+                        card.InstanceId == 1
+                            ? card with { UpgradeLevel = 1 } : card)
+                        .ToArray()
+                }
+            };
+        }
+        state = PutOnlyCardInHand(StartFirstCombat(state),
+            "proto.native.event.peck");
+        var combat = state.World!.Combat!;
+        var peck = combat.Cards.Single(card =>
+            card.CardId == "proto.native.event.peck");
+        var target = combat.Enemies[0];
+        Assert.True(target.Hp > expectedDamage);
+        var engine = new PrototypeGameEngine();
+        var action = GameAction.Create("play_card",
+            new PlayCardPayload(peck.InstanceId, target.InstanceId));
+        state = engine.Step(state, action).State;
+        Assert.Equal(target.Hp - expectedDamage,
+            state.World!.Combat!.Enemies[0].Hp);
+        PrototypeStateInvariants.Validate(state);
+    }
+
     [Fact]
     public void ToricToughnessGrantsBlockAndTwoFutureRenewals()
     {
@@ -292,6 +330,19 @@ public sealed class PrototypeNativeEventEnchantmentsTests
         var shield = Assert.Single(state.World.Combat.ToricShields!);
         Assert.Equal(5, shield.BlockAmount);
         Assert.Equal(2, shield.ClearsRemaining);
+        PrototypeStateInvariants.Validate(state);
+        state = engine.Step(state, GameAction.Empty("end_turn")).State;
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        Assert.Equal(2, state.World!.Combat!.Turn);
+        var firstRenewal = Assert.Single(state.World.Combat.ToricShields!);
+        Assert.Equal(5, firstRenewal.BlockAmount);
+        Assert.Equal(1, firstRenewal.ClearsRemaining);
+        PrototypeStateInvariants.Validate(state);
+
+        state = engine.Step(state, GameAction.Empty("end_turn")).State;
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        Assert.Equal(3, state.World!.Combat!.Turn);
+        Assert.Empty(state.World.Combat.ToricShields!);
         PrototypeStateInvariants.Validate(state);
     }
 }
