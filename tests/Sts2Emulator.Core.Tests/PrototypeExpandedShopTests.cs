@@ -412,6 +412,21 @@ public sealed class PrototypeExpandedShopTests
         Assert.True(state.World.Shop.CardOffers.Single(offer =>
             offer.OfferId == sale.OfferId).OnSale);
         PrototypeStateInvariants.Validate(state);
+
+        // A colorless offer uses the ordinary buy-card action and enters
+        // the persistent deck without entering the Silent reward pool.
+        var colorless = shop.CardOffers[5];
+        var buyColorless = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "buy_card"
+            && action.ReadPayload<BuyOfferPayload>()
+                .OfferId == colorless.OfferId);
+        state = engine.Step(state, buyColorless).State;
+        Assert.Equal(999 - sale.Price - colorless.Price,
+            state.Player.Gold);
+        Assert.Contains(state.Player.Deck,
+            card => card.CardId == colorless.ItemId);
+        Assert.True(state.World!.Shop!.CardOffers[5].Sold);
+        PrototypeStateInvariants.Validate(state);
     }
 
     [Fact]
