@@ -353,4 +353,234 @@ public sealed class PrototypeNativeIndependentRewardsTests
         Assert.Throws<InvalidOperationException>(
             () => PrototypeStateInvariants.Validate(invalid));
     }
+    [Fact]
+    public void ExtraCardOffersCanResolveOutOfOrderWithoutChangingOtherOffers()
+    {
+        var state = WinFirstCombat(
+            "native-independent-card-groups", prayerWheel: true);
+        var reward = state.World!.Reward!;
+        var original = reward.ExtraCardOptions![0];
+        var second = (string[])reward.CardOptions.Clone();
+        var oldFlags = reward.ExtraCardOptionUpgradeFlags![0];
+        reward = reward with
+        {
+            ExtraCardOptions = [original, second],
+            ExtraCardOptionUpgradeFlags =
+                [(bool[])oldFlags.Clone(), [true, false, false]],
+            ExtraCardOptionsUpgraded = [false, false],
+            ExtraCardGroupsResolved = [false, false]
+        };
+        state = state with
+        {
+            World = state.World with { Reward = reward }
+        };
+        PrototypeStateInvariants.Validate(state);
+        var engine = new PrototypeGameEngine();
+        var offer = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "take_reward_card_group"
+            && action.ReadPayload<ChooseRewardCardGroupPayload>()
+                .GroupIndex == 2
+            && action.ReadPayload<ChooseRewardCardGroupPayload>()
+                .Index == 0);
+        var deckCount = state.Player.Deck.Length;
+        var originalFork = state.Fork();
+
+        state = engine.Step(state, offer).State;
+        Assert.False(state.World!.Reward!.CardResolved);
+        Assert.Equal(1, state.World.Reward.ExtraCardRewardsResolved);
+        Assert.Equal(new[] { false, true },
+            state.World.Reward.ExtraCardGroupsResolved);
+        Assert.Equal(deckCount + 1, state.Player.Deck.Length);
+        Assert.Equal(1, state.Player.Deck[^1].UpgradeLevel);
+        Assert.Equal(0, originalFork.World!.Reward!.ExtraCardRewardsResolved);
+        Assert.Equal(new[] { false, false },
+            originalFork.World.Reward.ExtraCardGroupsResolved);
+        Assert.Throws<InvalidOperationException>(
+            () => engine.Step(state, offer));
+
+        var remaining = new PrototypeAiEnvironment().Observe(state)
+            .Observation.Reward!.PendingCardGroups!;
+        Assert.Equal(new[] { 0, 1 },
+            remaining.Select(group => group.GroupIndex).ToArray());
+        Assert.Equal(original, remaining.Single(group =>
+            group.GroupIndex == 1).CardOptions);
+        Assert.DoesNotContain(engine.GetLegalActions(state), action =>
+            action.Kind == "take_reward_card_group"
+            && action.ReadPayload<ChooseRewardCardGroupPayload>()
+                .GroupIndex == 2);
+
+        state = engine.Step(state,
+            Action(engine, state, "skip_reward_card")).State;
+        Assert.True(state.World!.Reward!.CardResolved);
+        Assert.Equal(1, state.World.Reward.ExtraCardRewardsResolved);
+        state = engine.Step(state,
+            Action(engine, state, "take_reward_card")).State;
+        Assert.Equal(2, state.World!.Reward!.ExtraCardRewardsResolved);
+        Assert.Equal(new[] { true, true },
+            state.World.Reward.ExtraCardGroupsResolved);
+        Assert.DoesNotContain(engine.GetLegalActions(state),
+            action => action.Kind is "take_reward_card"
+                or "take_reward_card_group");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void ExplicitSkipTargetsOnlyTheNamedCardGroup()
+    {
+        var state = WinFirstCombat(
+            "native-independent-card-skip", prayerWheel: true);
+        var engine = new PrototypeGameEngine();
+        var original = state.World!.Reward!.CardOptions;
+        var choice = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "skip_reward_card_group"
+            && action.ReadPayload<ChooseRewardCardGroupPayload>()
+                .GroupIndex == 1);
+        state = engine.Step(state, choice).State;
+        Assert.False(state.World!.Reward!.CardResolved);
+        Assert.Equal(1, state.World.Reward.ExtraCardRewardsResolved);
+        Assert.True(state.World.Reward.ExtraCardGroupsResolved![0]);
+        Assert.Contains(engine.GetLegalActions(state), action =>
+            action.Kind == "take_reward_card");
+        Assert.Equal(original, new PrototypeAiEnvironment()
+            .Observe(state).Observation.Reward!.CardOptions);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void ExtraRelicsCanBeTakenInArbitraryOrderEvenBeforeBossRelic()
+    {
+        var state = WithRelicOffer(WinFirstCombat(
+            "native-independent-relic-groups"));
+        var world = state.World!;
+        state = state with
+        {
+            World = world with
+            {
+                Reward = world.Reward! with
+                {
+                    ExtraRelicRewardIds =
+                        ["proto.relic.prayer_wheel",
+                         "proto.relic.question_card"],
+                    ExtraRelicGroupsResolved = [false, false]
+                }
+            }
+        };
+        PrototypeStateInvariants.Validate(state);
+        var engine = new PrototypeGameEngine();
+        var extra = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "take_reward_extra_relic"
+            && action.ReadPayload<ChooseRelicPayload>().Index == 1);
+        var fork = state.Fork();
+        state = engine.Step(state, extra).State;
+        Assert.False(state.World!.Reward!.RelicResolved);
+        Assert.Equal(new[] { false, true },
+            state.World.Reward.ExtraRelicGroupsResolved);
+        Assert.Equal(1, state.World.Reward.ExtraRelicsResolved);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == "proto.relic.question_card");
+        Assert.Equal(new[] { false, false },
+            fork.World!.Reward!.ExtraRelicGroupsResolved);
+        Assert.Throws<InvalidOperationException>(
+            () => engine.Step(state, extra));
+        var observed = new PrototypeAiEnvironment().Observe(state);
+        Assert.Single(observed.Observation.Reward!.PendingExtraRelicRewards!);
+        Assert.Equal(0, observed.Observation.Reward!
+            .PendingExtraRelicRewards![0].GroupIndex);
+
+        state = engine.Step(state,
+            Action(engine, state, "take_reward_relic")).State;
+        Assert.True(state.World!.Reward!.RelicResolved);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == OfferedRelic);
+        state = engine.Step(state,
+            Action(engine, state, "take_reward_relic")).State;
+        Assert.Equal(new[] { true, true },
+            state.World!.Reward!.ExtraRelicGroupsResolved);
+        Assert.Equal(2, state.World.Reward.ExtraRelicsResolved);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == "proto.relic.prayer_wheel");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void AcquiringExtraDeckChoiceRelicSuspendsPrimaryRewardToo()
+    {
+        var state = WithRelicOffer(WinFirstCombat(
+            "native-extra-deck-choice"));
+        state = state with
+        {
+            World = state.World! with
+            {
+                Reward = state.World.Reward! with
+                {
+                    ExtraRelicRewardIds = ["proto.relic.empty_cage"],
+                    ExtraRelicGroupsResolved = [false]
+                }
+            }
+        };
+        PrototypeStateInvariants.Validate(state);
+        var engine = new PrototypeGameEngine();
+        var extra = Action(engine, state, "take_reward_extra_relic");
+        state = engine.Step(state, extra).State;
+        Assert.False(state.World!.Reward!.RelicResolved);
+        Assert.True(state.World.Reward.ExtraRelicGroupsResolved![0]);
+        Assert.NotNull(state.World.Reward.PendingDeckChoice);
+        Assert.All(engine.GetLegalActions(state), action =>
+            Assert.Equal("choose_relic_deck_card", action.Kind));
+        for (var i = 0; i < 2; i++)
+        {
+            state = engine.Step(state,
+                Action(engine, state, "choose_relic_deck_card")).State;
+        }
+        Assert.Null(state.World!.Reward!.PendingDeckChoice);
+        Assert.Contains(engine.GetLegalActions(state), action =>
+            action.Kind == "take_reward_relic");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void IncorrectRewardResolutionFlagsAreRejected()
+    {
+        var state = WinFirstCombat(
+            "native-reward-group-invariant", prayerWheel: true);
+        var world = state.World!;
+        var reward = world.Reward!;
+        var invalid = state with
+        {
+            World = world with
+            {
+                Reward = reward with
+                {
+                    ExtraCardRewardsResolved = 1
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(invalid));
+        invalid = state with
+        {
+            World = world with
+            {
+                Reward = reward with
+                {
+                    ExtraCardGroupsResolved = [false, false]
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(invalid));
+        invalid = state with
+        {
+            World = world with
+            {
+                Reward = reward with
+                {
+                    ExtraRelicGroupsResolved = null
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(invalid));
+    }
+
 }

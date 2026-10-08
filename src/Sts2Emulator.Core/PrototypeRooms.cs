@@ -2392,16 +2392,38 @@ public sealed partial class PrototypeGameEngine
         }
 
         var actions = new List<GameAction>();
-        if (!reward.CardResolved
-            || reward.ExtraCardRewardsResolved
-                < (reward.ExtraCardOptions?.Length ?? 0))
+        var firstExtraCard = reward.FirstPendingExtraCardGroupIndex;
+        if (!reward.CardResolved || firstExtraCard >= 0)
         {
+            // The original action ID remains valid for the primary
+            // offer or the earliest remaining extra offer.
             actions.AddRange(
                 reward.CurrentCardOptions.Select((_, index) =>
                     GameAction.Create(
                         "take_reward_card",
                         new ChooseCardPayload(index))));
             actions.Add(GameAction.Empty("skip_reward_card"));
+        }
+
+        // Every other extra offer gets an explicit stable group ID.
+        // They remain selectable even if the primary offer is pending.
+        for (var i = 0; i < (reward.ExtraCardOptions?.Length ?? 0); i++)
+        {
+            if (reward.IsExtraCardGroupResolved(i)
+                || (reward.CardResolved && i == firstExtraCard))
+            {
+                continue;
+            }
+
+            for (var index = 0; index < reward.ExtraCardOptions![i].Length; index++)
+            {
+                actions.Add(GameAction.Create(
+                    "take_reward_card_group",
+                    new ChooseRewardCardGroupPayload(i + 1, index)));
+            }
+            actions.Add(GameAction.Create(
+                "skip_reward_card_group",
+                new ChooseRewardCardGroupPayload(i + 1, -1)));
         }
 
         if (!reward.PotionResolved)
@@ -2444,11 +2466,24 @@ public sealed partial class PrototypeGameEngine
                     "take_reward_relic",
                     new ChooseRelicPayload(index))));
         }
-        else if (reward.ExtraRelicsResolved
-                 < (reward.ExtraRelicRewardIds?.Length ?? 0))
+        var firstExtraRelic = reward.FirstPendingExtraRelicGroupIndex;
+        for (var i = 0; i < (reward.ExtraRelicRewardIds?.Length ?? 0); i++)
         {
-            actions.Add(GameAction.Create(
-                "take_reward_relic", new ChooseRelicPayload(0)));
+            if (reward.IsExtraRelicGroupResolved(i))
+            {
+                continue;
+            }
+
+            if (reward.RelicResolved && i == firstExtraRelic)
+            {
+                actions.Add(GameAction.Create(
+                    "take_reward_relic", new ChooseRelicPayload(0)));
+            }
+            else
+            {
+                actions.Add(GameAction.Create(
+                    "take_reward_extra_relic", new ChooseRelicPayload(i)));
+            }
         }
 
         if (reward.GoldOption is not null && !reward.GoldResolved)
@@ -2658,6 +2693,76 @@ public sealed partial class PrototypeGameEngine
             }
             reward = reward with { CardResolved = true };
         }
+        else if (reward.IndependentSelection
+                 && (reward.CardResolved || reward.CardBundles is null)
+                 && (action.Kind is "take_reward_card_group"
+                     or "skip_reward_card_group"))
+        {
+            var payload = action.ReadPayload<ChooseRewardCardGroupPayload>();
+            var groupIndex = payload.GroupIndex - 1;
+            if (groupIndex < 0
+                || groupIndex >= (reward.ExtraCardOptions?.Length ?? 0)
+                || reward.IsExtraCardGroupResolved(groupIndex))
+            {
+                throw new InvalidOperationException(
+                    "Extra card reward group is unavailable.");
+            }
+
+            var options = reward.ExtraCardOptions![groupIndex];
+            if (action.Kind == "take_reward_card_group")
+            {
+                if (payload.Index < 0 || payload.Index >= options.Length)
+                {
+                    throw new InvalidOperationException(
+                        "Extra card reward option index is invalid.");
+                }
+                player = AppendNativeCardReward(
+                    player, nextId++, options[payload.Index],
+                    reward.CardUpgradeFlagsForGroup(groupIndex + 1)[payload.Index],
+                    state.Rng);
+            }
+            else if (payload.Index != -1)
+            {
+                throw new InvalidOperationException(
+                    "Skipped card reward option index must be -1.");
+            }
+
+            reward = reward.ResolveExtraCardGroup(groupIndex);
+        }
+        else if (reward.IndependentSelection
+                 && action.Kind == "take_reward_extra_relic")
+        {
+            var payload = action.ReadPayload<ChooseRelicPayload>();
+            if (payload.Index < 0
+                || payload.Index >= (reward.ExtraRelicRewardIds?.Length ?? 0)
+                || reward.IsExtraRelicGroupResolved(payload.Index))
+            {
+                throw new InvalidOperationException(
+                    "Extra relic reward group is unavailable.");
+            }
+
+            var relicId = reward.ExtraRelicRewardIds![payload.Index];
+            if (player.Relics.Any(relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, relicId)))
+            {
+                throw new InvalidOperationException(
+                    "Extra relic reward is already owned.");
+            }
+
+            player = player with
+            {
+                Relics = player.Relics.Append(
+                    new RelicInstance(relicId,
+                        PrototypeJson.EmptyObject())).ToArray()
+            };
+            player = ApplyRelicRunEvent(
+                player, PrototypeRunEventKind.RelicAcquired,
+                acquiredRelicId: relicId, rng: state.Rng);
+            reward = reward.ResolveExtraRelicGroup(payload.Index) with
+            {
+                PendingDeckChoice = CreateRelicDeckChoice(player, relicId)
+            };
+        }
         else if (!reward.CardResolved
                  && (!reward.IndependentSelection
                      || IsCardRewardAction(action)))
@@ -2684,8 +2789,7 @@ public sealed partial class PrototypeGameEngine
 
             reward = reward with { CardResolved = true };
         }
-        else if (reward.ExtraCardRewardsResolved
-                 < (reward.ExtraCardOptions?.Length ?? 0)
+        else if (reward.FirstPendingExtraCardGroupIndex >= 0
                  && (!reward.IndependentSelection
                      || IsCardRewardAction(action)))
         {
@@ -2693,9 +2797,8 @@ public sealed partial class PrototypeGameEngine
                 reward.ExtraCardOptions
                 ?? throw new InvalidOperationException(
                     "Extra card reward state is missing.");
-            var currentOptions =
-                extraCardOptions[
-                    reward.ExtraCardRewardsResolved];
+            var extraCardGroupIndex = reward.FirstPendingExtraCardGroupIndex;
+            var currentOptions = extraCardOptions[extraCardGroupIndex];
 
             if (StringComparer.Ordinal.Equals(
                     action.Kind,
@@ -2722,11 +2825,7 @@ public sealed partial class PrototypeGameEngine
                 RequireKind(action, "skip_reward_card");
             }
 
-            reward = reward with
-            {
-                ExtraCardRewardsResolved =
-                    reward.ExtraCardRewardsResolved + 1
-            };
+            reward = reward.ResolveExtraCardGroup(extraCardGroupIndex);
         }
         else if (!reward.PotionResolved
                  && (!reward.IndependentSelection
@@ -2862,8 +2961,7 @@ public sealed partial class PrototypeGameEngine
                     acquisitionDeckChoice
             };
         }
-        else if (reward.ExtraRelicsResolved
-                 < (reward.ExtraRelicRewardIds?.Length ?? 0)
+        else if (reward.FirstPendingExtraRelicGroupIndex >= 0
                  && (!reward.IndependentSelection
                      || action.Kind == "take_reward_relic"))
         {
@@ -2875,8 +2973,8 @@ public sealed partial class PrototypeGameEngine
                     "A single extra relic reward requires choice index zero.");
             }
 
-            var relicId = reward.ExtraRelicRewardIds![
-                reward.ExtraRelicsResolved];
+            var extraRelicGroupIndex = reward.FirstPendingExtraRelicGroupIndex;
+            var relicId = reward.ExtraRelicRewardIds![extraRelicGroupIndex];
             if (player.Relics.Any(relic =>
                 StringComparer.Ordinal.Equals(relic.RelicId, relicId)))
             {
@@ -2893,9 +2991,8 @@ public sealed partial class PrototypeGameEngine
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId, rng: state.Rng);
-            reward = reward with
+            reward = reward.ResolveExtraRelicGroup(extraRelicGroupIndex) with
             {
-                ExtraRelicsResolved = reward.ExtraRelicsResolved + 1,
                 PendingDeckChoice = CreateRelicDeckChoice(player, relicId)
             };
         }
@@ -3138,7 +3235,13 @@ public sealed partial class PrototypeGameEngine
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
             GoldOption: nativeGold,
             GoldResolved: nativeGold is null,
-            IndependentSelection: nativeOvergrowth);
+            IndependentSelection: nativeOvergrowth,
+            ExtraCardGroupsResolved: nativeOvergrowth
+                ? new bool[extraCardOptions.Length]
+                : null,
+            ExtraRelicGroupsResolved: nativeOvergrowth
+                ? new bool[lavaRock.AdditionalRelicIds.Length]
+                : null);
 
         world = world with
         {

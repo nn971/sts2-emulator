@@ -1073,8 +1073,36 @@ public static class PrototypeStateInvariants
                 "Independent reward selection requires a combat reward.");
         }
 
+        var extraCards = reward.ExtraCardOptions ?? Array.Empty<string[]>();
         var extraRelics = reward.ExtraRelicRewardIds
             ?? Array.Empty<string>();
+
+        if (reward.ExtraCardRewardsResolved < 0
+            || reward.ExtraCardRewardsResolved > extraCards.Length
+            || reward.IndependentSelection
+                && (reward.ExtraCardGroupsResolved is null
+                    || reward.ExtraCardGroupsResolved.Length != extraCards.Length
+                    || reward.ExtraCardGroupsResolved.Count(resolved => resolved)
+                        != reward.ExtraCardRewardsResolved)
+            || !reward.IndependentSelection
+                && reward.ExtraCardGroupsResolved is not null)
+        {
+            throw new InvalidOperationException(
+                "Extra card reward group resolution is invalid.");
+        }
+
+        if (reward.IndependentSelection
+            && (reward.ExtraRelicGroupsResolved is null
+                || reward.ExtraRelicGroupsResolved.Length != extraRelics.Length
+                || reward.ExtraRelicGroupsResolved.Count(resolved => resolved)
+                    != reward.ExtraRelicsResolved)
+            || !reward.IndependentSelection
+                && reward.ExtraRelicGroupsResolved is not null)
+        {
+            throw new InvalidOperationException(
+                "Extra relic reward group resolution is invalid.");
+        }
+
         if (reward.ExtraRelicsResolved < 0
             || reward.ExtraRelicsResolved > extraRelics.Length
             || extraRelics.Distinct(StringComparer.Ordinal).Count()
@@ -1183,10 +1211,10 @@ public static class PrototypeStateInvariants
 
         if (reward.PendingDeckChoice is { } deckChoice)
         {
-            if (!reward.RelicResolved)
+            if (!reward.RelicResolved && reward.ExtraRelicsResolved == 0)
             {
                 throw new InvalidOperationException(
-                    "Pending relic deck choice requires the relic reward itself to be resolved.");
+                    "Pending relic deck choice requires an acquired relic reward.");
             }
 
             if (deckChoice.RemainingSelections <= 0)

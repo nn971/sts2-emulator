@@ -61,6 +61,15 @@ public sealed record PrototypeAiDeckChoice(
     int RemainingSelections,
     long[] CandidateCardInstanceIds);
 
+public sealed record PrototypeAiRewardCardGroup(
+    int GroupIndex,
+    string[] CardOptions,
+    bool[] OptionUpgradeFlags);
+
+public sealed record PrototypeAiExtraRelicReward(
+    int GroupIndex,
+    string RelicId);
+
 public sealed record PrototypeAiReward(
     string[] CardOptions,
     string? PotionOption,
@@ -74,7 +83,9 @@ public sealed record PrototypeAiReward(
     bool[]? CardOptionUpgradeFlags = null,
     int? GoldOption = null,
     bool GoldResolved = true,
-    bool IndependentSelection = false);
+    bool IndependentSelection = false,
+    PrototypeAiRewardCardGroup[]? PendingCardGroups = null,
+    PrototypeAiExtraRelicReward[]? PendingExtraRelicRewards = null);
 
 public sealed record PrototypeAiEventDeckChoice(
     string ChoiceId,
@@ -369,7 +380,28 @@ public sealed class PrototypeAiEnvironment
                     (bool[])world.Reward.CurrentCardOptionUpgradeFlags.Clone(),
                     world.Reward.GoldOption,
                     world.Reward.GoldResolved,
-                    world.Reward.IndependentSelection),
+                    world.Reward.IndependentSelection,
+                    world.Reward.IndependentSelection
+                        ? Enumerable.Range(0,
+                                1 + (world.Reward.ExtraCardOptions?.Length ?? 0))
+                            .Where(index => index == 0
+                                ? !world.Reward.CardResolved
+                                : !world.Reward.IsExtraCardGroupResolved(index - 1))
+                            .Select(index => new PrototypeAiRewardCardGroup(
+                                index,
+                                (string[])world.Reward.CardOptionsForGroup(index).Clone(),
+                                world.Reward.CardUpgradeFlagsForGroup(index)))
+                            .ToArray()
+                        : null,
+                    world.Reward.IndependentSelection
+                        ? Enumerable.Range(0,
+                                world.Reward.ExtraRelicRewardIds?.Length ?? 0)
+                            .Where(index => !world.Reward.IsExtraRelicGroupResolved(index))
+                            .Select(index => new PrototypeAiExtraRelicReward(
+                                index,
+                                world.Reward.ExtraRelicRewardIds![index]))
+                            .ToArray()
+                        : null),
             Shop: world?.Shop is null
                 ? null
                 : new PrototypeAiShop(

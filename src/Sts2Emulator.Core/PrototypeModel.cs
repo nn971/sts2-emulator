@@ -1554,58 +1554,139 @@ public sealed record RewardState(
     bool[][]? ExtraCardOptionUpgradeFlags = null,
     int? GoldOption = null,
     bool GoldResolved = true,
-    bool IndependentSelection = false)
+    bool IndependentSelection = false,
+    bool[]? ExtraCardGroupsResolved = null,
+    bool[]? ExtraRelicGroupsResolved = null)
 {
-    public string[] CurrentCardOptions
+    /// <summary>
+    /// Native rewards resolve each extra offer by its stable original
+    /// group index. The legacy integer counters remain a count of
+    /// completed groups and retain prefix semantics when flags are null.
+    /// </summary>
+    public bool IsExtraCardGroupResolved(int index) =>
+        ExtraCardGroupsResolved is { } flags
+            ? flags[index]
+            : index < ExtraCardRewardsResolved;
+
+    public bool IsExtraRelicGroupResolved(int index) =>
+        ExtraRelicGroupsResolved is { } flags
+            ? flags[index]
+            : index < ExtraRelicsResolved;
+
+    public int FirstPendingExtraCardGroupIndex
     {
         get
         {
-            if (!CardResolved)
+            var count = ExtraCardOptions?.Length ?? 0;
+            for (var index = 0; index < count; index++)
             {
-                return CardOptions;
+                if (!IsExtraCardGroupResolved(index))
+                {
+                    return index;
+                }
             }
-
-            var extra = ExtraCardOptions
-                ?? Array.Empty<string[]>();
-            return ExtraCardRewardsResolved < extra.Length
-                ? extra[ExtraCardRewardsResolved]
-                : Array.Empty<string>();
+            return -1;
         }
     }
 
-    /// <summary>
-    /// Per-visible-option upgrades composed with Silver Crucible's
-    /// group-wide override. Known to the player at reward selection.
-    /// </summary>
-    public bool[] CurrentCardOptionUpgradeFlags
+    public int FirstPendingExtraRelicGroupIndex
     {
         get
         {
-            if (!CardResolved)
+            var count = ExtraRelicRewardIds?.Length ?? 0;
+            for (var index = 0; index < count; index++)
             {
-                return Enumerable.Range(0, CardOptions.Length)
-                    .Select(index => CardOptionsUpgraded
-                        || (CardOptionUpgradeFlags is { } flags
-                            && flags[index]))
-                    .ToArray();
+                if (!IsExtraRelicGroupResolved(index))
+                {
+                    return index;
+                }
             }
+            return -1;
+        }
+    }
 
-            var extras = ExtraCardOptions ?? Array.Empty<string[]>();
-            if (ExtraCardRewardsResolved >= extras.Length)
-            {
-                return Array.Empty<bool>();
-            }
+    public RewardState ResolveExtraCardGroup(int index)
+    {
+        if (IsExtraCardGroupResolved(index))
+        {
+            throw new InvalidOperationException(
+                "Card reward group has already been resolved.");
+        }
+        var flags = ExtraCardGroupsResolved is null
+            ? null
+            : (bool[])ExtraCardGroupsResolved.Clone();
+        if (flags is not null)
+        {
+            flags[index] = true;
+        }
+        return this with
+        {
+            ExtraCardRewardsResolved = ExtraCardRewardsResolved + 1,
+            ExtraCardGroupsResolved = flags
+        };
+    }
 
-            var groupIndex = ExtraCardRewardsResolved;
-            var silverUpgraded = ExtraCardOptionsUpgraded is { } silver
-                && silver[groupIndex];
-            return Enumerable.Range(0, extras[groupIndex].Length)
-                .Select(index => silverUpgraded
-                    || (ExtraCardOptionUpgradeFlags is { } flags
-                        && flags[groupIndex][index]))
+    public RewardState ResolveExtraRelicGroup(int index)
+    {
+        if (IsExtraRelicGroupResolved(index))
+        {
+            throw new InvalidOperationException(
+                "Relic reward group has already been resolved.");
+        }
+        var flags = ExtraRelicGroupsResolved is null
+            ? null
+            : (bool[])ExtraRelicGroupsResolved.Clone();
+        if (flags is not null)
+        {
+            flags[index] = true;
+        }
+        return this with
+        {
+            ExtraRelicsResolved = ExtraRelicsResolved + 1,
+            ExtraRelicGroupsResolved = flags
+        };
+    }
+
+    public string[] CardOptionsForGroup(int groupIndex) =>
+        groupIndex == 0
+            ? CardOptions
+            : ExtraCardOptions![groupIndex - 1];
+
+    public bool[] CardUpgradeFlagsForGroup(int groupIndex)
+    {
+        if (groupIndex == 0)
+        {
+            return Enumerable.Range(0, CardOptions.Length)
+                .Select(index => CardOptionsUpgraded
+                    || (CardOptionUpgradeFlags is { } flags
+                        && flags[index]))
                 .ToArray();
         }
+        var extraIndex = groupIndex - 1;
+        var options = ExtraCardOptions![extraIndex];
+        var silver = ExtraCardOptionsUpgraded is { } upgrades
+            && upgrades[extraIndex];
+        return Enumerable.Range(0, options.Length)
+            .Select(index => silver
+                || (ExtraCardOptionUpgradeFlags is { } flags
+                    && flags[extraIndex][index]))
+            .ToArray();
     }
+
+    public string[] CurrentCardOptions =>
+        !CardResolved
+            ? CardOptions
+            : FirstPendingExtraCardGroupIndex is var index && index >= 0
+                ? ExtraCardOptions![index]
+                : Array.Empty<string>();
+
+    /// <summary>Upgrades for the next pending card reward group.</summary>
+    public bool[] CurrentCardOptionUpgradeFlags =>
+        !CardResolved
+            ? CardUpgradeFlagsForGroup(0)
+            : FirstPendingExtraCardGroupIndex is var index && index >= 0
+                ? CardUpgradeFlagsForGroup(index + 1)
+                : Array.Empty<bool>();
 
     public string[] CurrentRelicOptions =>
         RelicOptions is { Length: > 0 }
@@ -1642,6 +1723,12 @@ public sealed record RewardState(
         ExtraRelicRewardIds = ExtraRelicRewardIds is null
             ? null
             : (string[])ExtraRelicRewardIds.Clone(),
+        ExtraCardGroupsResolved = ExtraCardGroupsResolved is null
+            ? null
+            : (bool[])ExtraCardGroupsResolved.Clone(),
+        ExtraRelicGroupsResolved = ExtraRelicGroupsResolved is null
+            ? null
+            : (bool[])ExtraRelicGroupsResolved.Clone(),
         PendingDeckChoice = PendingDeckChoice?.Fork()
     };
 }
@@ -1857,6 +1944,7 @@ public sealed record ChooseMapNodePayload(string NodeId);
 public sealed record PlayCardPayload(long CardInstanceId, int? TargetEnemyId);
 public sealed record UsePotionPayload(int Slot, int? TargetEnemyId);
 public sealed record ChooseCardPayload(int Index);
+public sealed record ChooseRewardCardGroupPayload(int GroupIndex, int Index);
 public sealed record ChooseBundlePayload(int Index);
 public sealed record ChooseRelicPayload(int Index);
 public sealed record ChooseDeckCardPayload(long CardInstanceId);
