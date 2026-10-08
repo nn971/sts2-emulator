@@ -277,6 +277,182 @@ public sealed class PrototypeEventItemTradeoffTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void CollectorsAnnexResolvesMultiplePotionAndDeckChoicesInSequence()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.collectors_annex",
+            act: 2,
+            hp: 70,
+            maxHp: 70,
+            gold: 100,
+            deck:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend"),
+                Card(3, "proto.silent.strike"),
+                Card(4, "proto.silent.defend"),
+                Card(5, "proto.silent.backflip"),
+                Card(6, "proto.silent.neutralize")
+            ],
+            potionSlots:
+            [
+                Potion("proto.potion.block"),
+                Potion("proto.potion.block")
+            ]);
+
+        state = ChooseEvent(engine, state, "bundle");
+        Assert.Equal(75, state.Player.Gold);
+        Assert.Equal(2, state.Player.Relics.Length);
+        Assert.Equal(
+            "proto.potion.strength",
+            state.World!.Event!.PendingPotionReplacement!.PotionId);
+        Assert.Equal(new[] { "proto.potion.fire" },
+            state.World.Event.RemainingPotionIds);
+        Assert.Equal(3, state.World.Event.RemainingDeckChoices.Length);
+        Assert.Equal(3,
+            new PrototypeAiEnvironment().Observe(state)
+                .Observation.Event!.QueuedDeckChoices!.Length);
+
+        var fork = state.Fork();
+        fork.World!.Event!.QueuedDeckChoices![0]
+            .CandidateCardInstanceIds[0] = 999;
+        Assert.NotEqual(
+            999,
+            state.World.Event.RemainingDeckChoices[0]
+                .CandidateCardInstanceIds[0]);
+
+        state = ReplacePotion(engine, state, 0);
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(
+            "proto.potion.fire",
+            state.World!.Event!.PendingPotionReplacement!.PotionId);
+        state = ReplacePotion(engine, state, 1);
+        Assert.Equal("proto.potion.strength",
+            state.Player.PotionSlots[0]!.PotionId);
+        Assert.Equal("proto.potion.fire",
+            state.Player.PotionSlots[1]!.PotionId);
+        Assert.Equal(
+            "proto.relic.empty_cage",
+            state.World!.Event!.PendingDeckChoice!.SourceRelicId);
+
+        state = ChooseDeckCard(engine, state, 1);
+        Assert.Equal(75, state.Player.Gold);
+        state = ChooseDeckCard(engine, state, 2);
+        Assert.Equal(
+            "proto.relic.astrolabe",
+            state.World!.Event!.PendingDeckChoice!.SourceRelicId);
+        Assert.DoesNotContain(1,
+            state.World.Event.PendingDeckChoice.CandidateCardInstanceIds);
+        Assert.DoesNotContain(2,
+            state.World.Event.PendingDeckChoice.CandidateCardInstanceIds);
+
+        state = ChooseDeckCard(engine, state, 3);
+        state = ChooseDeckCard(engine, state, 4);
+        state = ChooseDeckCard(engine, state, 5);
+        var finalUpgrade = state.World!.Event!.PendingDeckChoice!;
+        Assert.Null(finalUpgrade.SourceRelicId);
+        Assert.Equal(PrototypePersistentDeckChoiceKind.Upgrade,
+            finalUpgrade.Kind);
+        Assert.Equal(new long[] { 6 },
+            finalUpgrade.CandidateCardInstanceIds);
+
+        state = ChooseDeckCard(engine, state, 6);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(75, state.Player.Gold);
+        Assert.Equal(new long[] { 3, 4, 5, 6 },
+            state.Player.Deck.Select(card => card.InstanceId).ToArray());
+        Assert.All(state.Player.Deck,
+            card => Assert.Equal(1, card.UpgradeLevel));
+        Assert.Null(state.World!.Event);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void CompositePotionAcquisitionUsesEmptySlotThenPrompts()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.collectors_annex",
+            act: 2,
+            hp: 70,
+            maxHp: 70,
+            gold: 75,
+            deck:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend")
+            ],
+            potionSlots:
+            [
+                Potion("proto.potion.block"),
+                null
+            ]);
+        state = ChooseEvent(engine, state, "bundle");
+
+        Assert.Equal(50, state.Player.Gold);
+        Assert.Equal("proto.potion.strength",
+            state.Player.PotionSlots[1]!.PotionId);
+        Assert.Equal("proto.potion.fire",
+            state.World!.Event!.PendingPotionReplacement!.PotionId);
+        Assert.Empty(state.World.Event.RemainingPotionIds);
+        PrototypeStateInvariants.Validate(state);
+
+        state = ReplacePotion(engine, state, 0);
+        Assert.Equal(
+            "proto.relic.empty_cage",
+            state.World!.Event!.PendingDeckChoice!.SourceRelicId);
+        state = ChooseDeckCard(engine, state, 1);
+        state = ChooseDeckCard(engine, state, 2);
+
+        // Empty Cage removed every card. Later Astrolabe and the event
+        // upgrade must be skipped, not offer stale card-instance IDs.
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Empty(state.Player.Deck);
+        Assert.Equal(50, state.Player.Gold);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void CompositeEventRespectsUpfrontCostsAndDuplicateRelics()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.collectors_annex",
+            act: 2,
+            hp: 70,
+            maxHp: 70,
+            gold: 24,
+            deck: [Card(1, "proto.silent.strike")]);
+
+        var choices = engine.GetLegalActions(state)
+            .Where(action => action.Kind == "event_choice")
+            .Select(action => action.ReadPayload<EventChoicePayload>().ChoiceId)
+            .ToArray();
+        Assert.DoesNotContain("bundle", choices);
+        Assert.Contains("leave", choices);
+
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Gold = 100,
+                Relics =
+                [
+                    new RelicInstance(
+                        "proto.relic.astrolabe",
+                        PrototypeJson.EmptyObject())
+                ]
+            }
+        };
+        choices = engine.GetLegalActions(state)
+            .Where(action => action.Kind == "event_choice")
+            .Select(action => action.ReadPayload<EventChoicePayload>().ChoiceId)
+            .ToArray();
+        Assert.DoesNotContain("bundle", choices);
+    }
+
     private static RunState ChooseEvent(
         PrototypeGameEngine engine,
         RunState state,
