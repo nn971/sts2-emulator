@@ -1737,6 +1737,15 @@ public static class PrototypeStateInvariants
 
     private static void ValidateCombat(PlayerState player, CombatState combat)
     {
+        if (combat.ToricShields is { } shields
+            && shields.Any(shield =>
+                shield.BlockAmount <= 0
+                || shield.ClearsRemaining is < 1 or > 2))
+        {
+            throw new InvalidOperationException(
+                "Toric Toughness delayed block must be positive and expire within two clears.");
+        }
+
         if (combat.Turn <= 0)
         {
             throw new InvalidOperationException($"Combat turn must be positive, got {combat.Turn}.");
