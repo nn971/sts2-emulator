@@ -105,7 +105,8 @@ public sealed record PrototypeAiShop(
     int RemovalPrice,
     bool RemovalUsed,
     ShopOffer[]? PotionOffers = null,
-    ShopOffer[]? RelicOffers = null);
+    ShopOffer[]? RelicOffers = null,
+    PrototypeAiDeckChoice? PendingDeckChoice = null);
 
 public sealed record PrototypeAiObservation(
     string RulesetId,
@@ -373,7 +374,15 @@ public sealed class PrototypeAiEnvironment
                         .ToArray(),
                     world.Shop.RelicOffers
                         .Select(offer => offer with { })
-                        .ToArray()),
+                        .ToArray(),
+                    world.Shop.PendingDeckChoice is null
+                        ? null
+                        : new PrototypeAiDeckChoice(
+                            world.Shop.PendingDeckChoice.SourceRelicId,
+                            world.Shop.PendingDeckChoice.Kind,
+                            world.Shop.PendingDeckChoice.RemainingSelections,
+                            (long[])world.Shop.PendingDeckChoice
+                                .CandidateCardInstanceIds.Clone())),
             EventId: world?.Event?.EventId,
             TerminalOutcome: world?.TerminalOutcome,
             Event: world?.Event is null
