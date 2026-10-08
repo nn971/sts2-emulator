@@ -116,7 +116,44 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             definition,
             state.Rng);
 
-        return state with { Player = player };
+        state = state with { Player = player };
+
+        // An event's full-belt potion offer is still pending when a
+        // usable potion is consumed from the belt. The newly vacated
+        // slot can accept that offer directly; leaving its old replacement
+        // candidates active would expose an invalid slot and could make
+        // the event impossible to finish.
+        if (state.Phase == RunPhase.Event
+            && state.World?.Event?.PendingPotionReplacement
+                is { } replacement)
+        {
+            var emptySlot = Array.IndexOf(
+                player.PotionSlots,
+                null);
+            if (emptySlot >= 0)
+            {
+                var slots =
+                    (PotionInstance?[])player.PotionSlots.Clone();
+                slots[emptySlot] = new PotionInstance(
+                    replacement.PotionId,
+                    PrototypeJson.EmptyObject());
+                var world = RequireWorld(state);
+                state = state with
+                {
+                    Player = player with { PotionSlots = slots },
+                    World = world with
+                    {
+                        Event = world.Event! with
+                        {
+                            PendingPotionReplacement = null
+                        }
+                    }
+                };
+                return AdvanceEventContinuations(state);
+            }
+        }
+
+        return state;
     }
 
     private static PlayerState ConsumePotionSlot(
