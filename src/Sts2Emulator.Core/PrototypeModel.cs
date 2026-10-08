@@ -356,6 +356,7 @@ public enum PrototypeRunEffectKind
     GainGold,
     LoseGold,
     AddCard,
+    AddCardAfterDeckChoices,
     GainRandomRareCard,
     OfferThreeRareCards,
     OfferThreeCardsAndPotion,
@@ -1678,7 +1679,8 @@ public sealed record EventState(
     string[]? OfferedChoiceIds = null,
     RewardState? PendingReward = null,
     int DeferredHpLoss = 0,
-    int NativePageIndex = 0)
+    int NativePageIndex = 0,
+    string? DeferredCardId = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
