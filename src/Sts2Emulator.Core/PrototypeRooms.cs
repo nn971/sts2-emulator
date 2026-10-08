@@ -35,7 +35,11 @@ public sealed partial class PrototypeGameEngine
             Shop = null,
             Event = null
         };
-        state = state with { World = world };
+        state = state with
+        {
+            World = world,
+            Player = ApplyPersistentCardRoomEntry(state.Player, node)
+        };
 
         return room switch
         {
