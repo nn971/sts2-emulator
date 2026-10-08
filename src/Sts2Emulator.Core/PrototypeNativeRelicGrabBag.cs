@@ -110,6 +110,39 @@ public static class PrototypeNativeRelicGrabBag
             Make(PrototypeRelicRarity.Shop));
     }
 
+    /// <summary>
+    /// RelicModel.MerchantCost's default for each native rarity.
+    /// All source-classified relics in this restricted bag use that default.
+    /// </summary>
+    public static int MerchantBaseCost(string relicId)
+    {
+        if (!TryGetRarity(relicId, out var rarity))
+        {
+            throw new InvalidOperationException(
+                $"No native merchant rarity for relic '{relicId}'.");
+        }
+
+        return rarity switch
+        {
+            PrototypeRelicRarity.Common => 175,
+            PrototypeRelicRarity.Uncommon => 225,
+            PrototypeRelicRarity.Rare => 275,
+            PrototypeRelicRarity.Shop => 200,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    /// <summary>
+    /// MerchantRelicEntry.CalcCost uses Shops.NextFloat(0.85, 1.15)
+    /// and Math.Round. Sample integer hundredths from the shop stream
+    /// until exact native float/PRNG parity is implemented.
+    /// </summary>
+    public static int MerchantPrice(string relicId, RngBundle rng)
+    {
+        var percent = 85 + PrototypeRng.NextInt(rng, "shop", 31);
+        return (int)Math.Round(MerchantBaseCost(relicId) * percent / 100.0);
+    }
+
     public static PrototypeRelicRarity RollRarity(
         RngBundle rng, bool merchant = false)
     {
