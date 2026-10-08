@@ -5483,6 +5483,17 @@ public static class PrototypeContent
                                 RelicId: "proto.relic.empty_cage")
                         ]),
                     new PrototypeEventChoiceDefinition(
+                        "coffer",
+                        "Lose 15 HP and take the old coffer",
+                        [
+                            new(
+                                PrototypeRunEffectKind.LoseHp,
+                                15),
+                            new(
+                                PrototypeRunEffectKind.GainRelic,
+                                RelicId: "proto.relic.old_coin")
+                        ]),
+                    new PrototypeEventChoiceDefinition(
                         "tonic",
                         "Pay 30 gold for a Strength Potion",
                         [
