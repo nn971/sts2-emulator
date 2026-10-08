@@ -741,3 +741,14 @@ Gambling Chip now reuses the same sequential optional discard-and-refill continu
 Brew, but starts it from the combat-start relic event after the opening hand has been drawn. This is
 a useful cross-check that the linearized choice state survives event-subscriber suspension and resumes
 the combat-start dispatch correctly; no relic-specific choice branch is required.
+
+
+## Mechanics-expansion pass: completed route history and conditional run effects
+
+Canonical `RunWorldState.CompletedRoomHistory` records (act, floor, stable map node ID, room type) only when a room is fully resolved: the final event/rest/shop action, a non-boss reward's leave action, or a boss reward's leave action. Entering a room or fighting an unfinished combat does not count. Boss completion is recorded before transitioning acts and clears `ActiveRoom`, while history survives act transitions, deterministic forks, canonical state hashes, and AI observation projection. Hand-authored map-free fixture states remain supported; the generated-map profile requires an active matching node at completion.
+
+`PrototypeRouteConditionSpec` is a reusable declarative predicate on the completed route. It supports room-type matching, a minimum visit count, consecutive ending streaks, every-Nth matching visit, current-act-only scoping, and act/floor gates. Event choices can carry a route condition; both legal-action enumeration and direct action validation enforce it. Relic run triggers can carry the same condition and the new `RoomCompleted` run event is dispatched once after appending the completed room to history, making an every-second-combat trigger see the newly completed fight. Context-free run events continue to use the existing generic relic trigger machinery.
+
+The prototype Trail Ledger relic grants 20 gold on every second completed ordinary Combat room within each act. The Path Broker event offers a 75-gold elite dividend unlocked by a completed Elite in the current act; a +5 Max HP combat-march reward unlocked by two consecutive completed Combats; and an unconditional +15 gold exit. These examples are mechanics breadth probes rather than claims of native game fidelity.
+
+Route-history invariants reject out-of-order/duplicate act-floor completions, future acts, malformed locations, and—in generated maps—visits not matching the selected map or skipped floors, plus already-completed active rooms. Regression coverage checks no counting on room entry, recording only after reward completion, fork isolation and AI history visibility, boss completion/act transition, current-act relic counter reset, conditional event legality, and chronology rejection.
