@@ -187,6 +187,94 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void BoomingConchOnlyBoostsTheOpeningEliteTurn()
+    {
+        var ordinary = EnterFirstCombat(Pick(
+            "BoomingConch", "native-conch-normal"));
+        Assert.Equal(3, ordinary.World!.Combat!.Energy);
+        Assert.Equal(5, ordinary.World.Combat.Hand.Length);
+        PrototypeStateInvariants.Validate(ordinary);
+
+        var elite = EnterEliteCombat(Pick(
+            "BoomingConch", "native-conch-elite"));
+        Assert.Equal(PrototypeRoomType.Elite, elite.World!.ActiveRoom);
+        Assert.Equal(4, elite.World.Combat!.Energy);
+        Assert.Equal(7, elite.World.Combat.Hand.Length);
+        PrototypeStateInvariants.Validate(elite);
+    }
+
+    [Fact]
+    public void FishingRodDoesNotCountEliteVictory()
+    {
+        var state = Pick("FishingRod", "native-fishing-elite");
+        var rodId = PrototypeNativeOvergrowthEvents.NeowRelicId(
+            "FishingRod");
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = state.Player.Relics.Select(relic =>
+                    relic.RelicId == rodId
+                        ? relic with
+                        {
+                            PersistentState = JsonSerializer.SerializeToElement(
+                                new { CombatsSeen = 2 })
+                        }
+                        : relic).ToArray()
+            }
+        };
+        state = DefeatCombat(EnterEliteCombat(state));
+        var rod = Assert.Single(state.Player.Relics,
+            relic => relic.RelicId == rodId);
+        Assert.Equal(2,
+            rod.PersistentState.GetProperty("CombatsSeen").GetInt32());
+        Assert.DoesNotContain(state.Player.Deck,
+            card => card.UpgradeLevel > 0);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    private static RunState EnterEliteCombat(RunState state)
+    {
+        var engine = new PrototypeGameEngine();
+        var world = state.World!;
+        var map = world.Map;
+        var elite = map.Nodes.First(node =>
+            node.RoomType == PrototypeRoomType.Elite
+            && node.Floor >= 3);
+        var predecessor = map.Nodes.First(node =>
+            node.NextNodeIds?.Contains(elite.NodeId,
+                StringComparer.Ordinal) == true);
+        var history = Enumerable.Range(1, predecessor.Floor)
+            .Select(floor =>
+            {
+                var node = floor == predecessor.Floor
+                    ? predecessor
+                    : map.Nodes.First(item => item.Floor == floor);
+                return new PrototypeCompletedRoomRecord(
+                    1, floor, node.NodeId, node.RoomType);
+            }).ToArray();
+
+        state = state with
+        {
+            World = world with
+            {
+                Floor = predecessor.Floor,
+                Map = map with { CurrentNodeId = predecessor.NodeId },
+                Event = null,
+                CompletedRoomHistory = history
+            }
+        };
+        PrototypeStateInvariants.Validate(state);
+        var action = engine.GetLegalActions(state).Single(candidate =>
+            candidate.Kind == "choose_map_node"
+            && candidate.ReadPayload<ChooseMapNodePayload>()
+                .NodeId == elite.NodeId);
+        state = engine.Step(state, action).State;
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        return state;
+    }
+
     private static RunState EnterFirstCombat(RunState state)
     {
         var engine = new PrototypeGameEngine();
