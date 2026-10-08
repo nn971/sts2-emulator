@@ -103,6 +103,76 @@ public sealed class PrototypeStrategicRelicExpansionTests
         Assert.Contains(2L, combat.ExhaustPile);
     }
 
+    [Fact]
+    public void SneckoEyeDrawsSevenAndRandomizesFixedCosts()
+    {
+        var cards = Enumerable.Range(1, 7)
+            .Select(id =>
+                Card(id, "proto.silent.defend"))
+            .ToArray();
+        var state = CreateState(
+            cards: cards,
+            hand: [],
+            draw: cards
+                .Select(card => card.InstanceId)
+                .ToArray(),
+            enemies: [Enemy(1, 100)],
+            energy: 3,
+            relicIds: ["proto.relic.snecko_eye"]);
+        var engine = new PrototypeGameEngine();
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(7, combat.Hand.Length);
+        Assert.All(
+            combat.Hand,
+            instanceId =>
+            {
+                var card = combat.Cards.Single(
+                    item => item.InstanceId == instanceId);
+                Assert.NotNull(card.TemporaryEnergyCost);
+                Assert.InRange(
+                    card.TemporaryEnergyCost!.Cost,
+                    0,
+                    3);
+                Assert.Equal(
+                    PrototypeTemporaryCardCostExpiry.None,
+                    card.TemporaryEnergyCost.Expiry);
+            });
+    }
+
+    [Fact]
+    public void SneckoEyeLeavesXCostCardsUnrandomized()
+    {
+        var skewer = Card(
+            1,
+            "proto.silent.skewer");
+        var state = CreateState(
+            cards: [skewer],
+            hand: [],
+            draw: [1],
+            enemies: [Enemy(1, 100)],
+            energy: 3,
+            relicIds: ["proto.relic.snecko_eye"]);
+        var engine = new PrototypeGameEngine();
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        var combat = state.World!.Combat!;
+        Assert.Contains(1L, combat.Hand);
+        Assert.Null(
+            combat.Cards.Single(
+                    card => card.InstanceId == 1)
+                .TemporaryEnergyCost);
+    }
+
     private static RunState Play(
         PrototypeGameEngine engine,
         RunState state,

@@ -2442,7 +2442,12 @@ public static class PrototypeContent
             new PrototypeRelicDefinition(
                 "proto.relic.runic_pyramid",
                 "Runic Pyramid",
-                PreventsHandDiscard: true)
+                PreventsHandDiscard: true),
+            new PrototypeRelicDefinition(
+                "proto.relic.snecko_eye",
+                "Snecko Eye",
+                HandDrawBonus: 2,
+                RandomizeDrawnCardCostMaxExclusive: 4)
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -6305,7 +6310,8 @@ public static class PrototypeContent
         "proto.relic.coffee_dripper",
         "proto.relic.fusion_hammer",
         "proto.relic.velvet_choker",
-        "proto.relic.runic_dome"
+        "proto.relic.runic_dome",
+        "proto.relic.snecko_eye"
     ];
 
     public static PrototypeCardDefinition Card(string id) =>

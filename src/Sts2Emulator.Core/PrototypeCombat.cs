@@ -220,7 +220,11 @@ public sealed partial class PrototypeGameEngine
             Ascension: state.Ascension);
 
         var openingHandTarget =
-            PrototypeContent.Rules.HandSize + FirstTurnDrawBonus(state.Player);
+            PrototypeContent.Rules.HandSize
+            + FirstTurnDrawBonus(state.Player)
+            + state.Player.Relics.Sum(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .HandDrawBonus);
         var openingDraw = DrawCards(
             state.Player,
             combat,
@@ -1418,9 +1422,14 @@ public sealed partial class PrototypeGameEngine
                 player = beforeHandDraw.Player;
                 combat = beforeHandDraw.Combat;
 
-                var handDrawBonus = combat.PlayerPowers.Sum(power =>
-                    PrototypeContent.Power(power.PowerId)
-                        .HandDrawBonusPerStack * power.Stacks);
+                var handDrawBonus =
+                    combat.PlayerPowers.Sum(power =>
+                        PrototypeContent.Power(power.PowerId)
+                            .HandDrawBonusPerStack
+                        * power.Stacks)
+                    + player.Relics.Sum(relic =>
+                        PrototypeContent.Relic(relic.RelicId)
+                            .HandDrawBonus);
                 var drawn = DrawCards(
                     player,
                     combat,
@@ -7456,6 +7465,34 @@ public sealed partial class PrototypeGameEngine
             drawnCardInstanceIds.Add(cardInstanceId);
 
             var card = RequireCombatCard(combat, cardInstanceId);
+            var randomizedCostUpperBound =
+                player.Relics
+                    .Select(relic =>
+                        PrototypeContent.Relic(relic.RelicId)
+                            .RandomizeDrawnCardCostMaxExclusive)
+                    .DefaultIfEmpty(0)
+                    .Max();
+            var cardDefinition =
+                PrototypeContent.Card(card.CardId);
+            if (randomizedCostUpperBound > 0
+                && cardDefinition.Cost.Kind
+                    == PrototypeCardCostKind.Fixed
+                && cardDefinition.Cost.Amount >= 0)
+            {
+                combat = SetCardTemporaryEnergyCost(
+                    combat,
+                    cardInstanceId,
+                    new PrototypeTemporaryCardCost(
+                        PrototypeRng.NextInt(
+                            rng,
+                            "combat",
+                            randomizedCostUpperBound),
+                        PrototypeTemporaryCardCostExpiry.None));
+                card = RequireCombatCard(
+                    combat,
+                    cardInstanceId);
+            }
+
             var dispatched = DispatchCombatEvent(
                 player,
                 combat,

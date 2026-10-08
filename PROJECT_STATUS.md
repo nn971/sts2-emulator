@@ -635,3 +635,12 @@ end-turn hand-preservation policy from powers to relics while still resolving Et
 These are intentionally mechanics-first implementations: exact native RNG stream details and edge
 timing remain deferred, but the strategic state transitions are represented through reusable fields
 and effects rather than relic-ID branches.
+
+
+## Mechanics-expansion pass: draw-time cost randomization
+
+Snecko Eye now exercises two reusable relic modifiers: a persistent hand-draw bonus and random
+absolute energy-cost assignment when cards are drawn. Draw-time cost mutation uses the existing
+combat RNG, skips X/unplayable negative-cost cards, and persists with the card until a later draw
+overwrites it. This keeps randomized costs visible in canonical combat state and therefore directly
+usable by AI/search code.

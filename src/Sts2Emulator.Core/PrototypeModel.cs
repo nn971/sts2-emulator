@@ -611,7 +611,9 @@ public sealed record PrototypeRelicDefinition(
     bool HideEnemyIntents = false,
     PrototypeRelicDeckChoiceSpec? AcquisitionDeckChoice = null,
     bool PreventsHandDiscard = false,
-    int XValueBonus = 0);
+    int XValueBonus = 0,
+    int HandDrawBonus = 0,
+    int RandomizeDrawnCardCostMaxExclusive = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
