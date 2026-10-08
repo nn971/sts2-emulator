@@ -6751,8 +6751,9 @@ public static class PrototypeContent
             ["proto.enemy.boss_three"],
             MinAct: 3,
             MaxAct: 3,
-            Weight: 1)
-    ].Concat(PrototypeNativeUnderdocks.Encounters).ToArray();
+            Weight: 1),
+        ..PrototypeNativeUnderdocks.Encounters
+    ];
 
     public static string[] StartingDeck { get; } =
     [
