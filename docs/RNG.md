@@ -20,7 +20,9 @@ because `S` contains the RNG bundle.
 
 ## Multiple streams
 
-STS2 uses multiple context-specific RNG streams. The exact inventory, initialization rules, lazy-materialization behavior, and call ordering must be recovered from the pinned game build and validated with native traces.
+STS2 uses multiple context-specific RNG streams. The pinned **v0.111.0** native source establishes **12 eager run-level streams, three eager per-player streams**, and additional context-created map, event, encounter and monster RNGs. Their names, exact xxHash64 → SplitMix64 → xoshiro256** initialization, concrete source paths, and native capture evidence are documented in [v0.111.0 RNG inventory and fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md).
+
+The remaining work is to match the **consumer-to-stream mapping and call ordering** of every relevant mechanic, then compare exact seeded native/emulator replay. The six-stream SplitMix64 `PrototypeRng` remains a separately versioned approximation; it is not the pinned native RNG codec.
 
 The scaffold therefore represents a stream generically as:
 
