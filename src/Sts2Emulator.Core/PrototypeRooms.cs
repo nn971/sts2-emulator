@@ -956,6 +956,42 @@ public sealed partial class PrototypeGameEngine
                     };
                     break;
 
+                case PrototypeRunEffectKind.LoseAllGold:
+                    player = player with { Gold = 0 };
+                    break;
+
+                case PrototypeRunEffectKind.UpgradeRandomCard:
+                {
+                    var candidates = player.Deck
+                        .Where(card => card.UpgradeLevel == 0)
+                        .Select(card => card.InstanceId)
+                        .ToArray();
+                    if (candidates.Length > 0)
+                    {
+                        var selectedId = candidates[
+                            PrototypeRng.NextInt(
+                                state.Rng, "event", candidates.Length)];
+                        player = player with
+                        {
+                            Deck = player.Deck.Select(card =>
+                                card.InstanceId == selectedId
+                                    ? card with { UpgradeLevel = 1 }
+                                    : card).ToArray()
+                        };
+                    }
+                    break;
+                }
+
+                case PrototypeRunEffectKind.UpgradeAllCards:
+                    player = player with
+                    {
+                        Deck = player.Deck.Select(card =>
+                            card.UpgradeLevel == 0
+                                ? card with { UpgradeLevel = 1 }
+                                : card).ToArray()
+                    };
+                    break;
+
                 case PrototypeRunEffectKind.AddCard:
                     if (effect.CardId is null)
                     {
@@ -971,10 +1007,14 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeRunEffectKind.GainRelic:
+                case PrototypeRunEffectKind.GainRandomRelic:
                 {
-                    var relicId = effect.RelicId
-                        ?? throw new InvalidOperationException(
-                            "Gain-relic event effect is missing a relic ID.");
+                    var relicId = effect.Kind
+                        == PrototypeRunEffectKind.GainRandomRelic
+                        ? PickUnownedEventRelic(player, state.Rng)
+                        : effect.RelicId
+                            ?? throw new InvalidOperationException(
+                                "Gain-relic event effect is missing a relic ID.");
                     var relicDefinition =
                         PrototypeContent.Relic(
                             relicId);
@@ -1015,10 +1055,17 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 case PrototypeRunEffectKind.GainPotion:
+                case PrototypeRunEffectKind.GainRandomPotion:
                 {
-                    var potionId = effect.PotionId
-                        ?? throw new InvalidOperationException(
-                            "Gain-potion event effect is missing a potion ID.");
+                    var potionId = effect.Kind
+                        == PrototypeRunEffectKind.GainRandomPotion
+                        ? PrototypeContent.PotionPool[
+                            PrototypeRng.NextInt(
+                                state.Rng, "event",
+                                PrototypeContent.PotionPool.Length)]
+                        : effect.PotionId
+                            ?? throw new InvalidOperationException(
+                                "Gain-potion event effect is missing a potion ID.");
                     _ = PrototypeContent.Potion(
                         potionId);
                     if (!CanAcquirePotion(player))
@@ -1094,6 +1141,23 @@ public sealed partial class PrototypeGameEngine
         return AdvanceEventContinuations(state);
     }
 
+    private static string PickUnownedEventRelic(
+        PlayerState player,
+        RngBundle rng)
+    {
+        var available = PrototypeContent.RelicPool
+            .Where(id => !player.Relics.Any(relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, id)))
+            .ToArray();
+        if (available.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "No unowned prototype relics remain for an event reward.");
+        }
+        return available[PrototypeRng.NextInt(
+            rng, "event", available.Length)];
+    }
+
     private static bool CanTakeEventChoice(
         PlayerState player,
         PrototypeEventChoiceDefinition choice,
@@ -1128,22 +1192,34 @@ public sealed partial class PrototypeGameEngine
             return false;
         }
 
+        if (choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRandomRelic)
+            && !PrototypeContent.RelicPool.Any(id =>
+                !player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(relic.RelicId, id))))
+        {
+            return false;
+        }
+
         var newlyGrantedRelics =
             new HashSet<string>(StringComparer.Ordinal);
         var canAcquirePotions = CanAcquirePotion(player);
         foreach (var effect in choice.Effects)
         {
-            if (effect.Kind
-                == PrototypeRunEffectKind.GainPotion)
+            if (effect.Kind is
+                PrototypeRunEffectKind.GainPotion
+                or PrototypeRunEffectKind.GainRandomPotion)
             {
-                if (effect.PotionId is null)
+                if (effect.Kind == PrototypeRunEffectKind.GainPotion)
                 {
-                    throw new InvalidOperationException(
-                        "Gain-potion event effect is missing a potion ID.");
-                }
+                    if (effect.PotionId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Gain-potion event effect is missing a potion ID.");
+                    }
 
-                _ = PrototypeContent.Potion(
-                    effect.PotionId);
+                    _ = PrototypeContent.Potion(effect.PotionId);
+                }
                 if (!canAcquirePotions)
                 {
                     return false;
