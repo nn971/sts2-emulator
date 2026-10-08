@@ -29,24 +29,60 @@ public static class PrototypeNativeOvergrowthEvents
         "PrecariousShears", "SilkenTress", "SilverCrucible"
     ];
 
+    // Three paired selections are appended to the positive pool before
+    // its two options are drawn. The Large Capsule curse suppresses the
+    // Lava Rock / Small Capsule pair entirely in v0.111.0.
+    public static string[] NeowConditionalPositiveRelicNames { get; } =
+    [
+        "LavaRock", "SmallCapsule", "NutritiousOyster",
+        "StoneHumidifier", "NeowsTalisman", "Pomander"
+    ];
+
     public static string NeowRelicId(string nativeClass) =>
         "proto.native.neow." + nativeClass.ToLowerInvariant();
 
     public static PrototypeRelicDefinition[] NeowRelicDefinitions { get; } =
         NeowPositiveRelicNames
+            .Concat(NeowConditionalPositiveRelicNames)
             .Concat(NeowCursedRelicNames)
             .Select(name => new PrototypeRelicDefinition(
-                NeowRelicId(name), name))
+                NeowRelicId(name),
+                name,
+                RunTriggers: name switch
+                {
+                    "NutritiousOyster" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [new(PrototypeRunEffectKind.GainMaxHp, 11)])
+                    ],
+                    "NeowsTalisman" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [
+                                new(
+                                    PrototypeRunEffectKind.UpgradeLastCardOfId,
+                                    CardId: "proto.silent.strike"),
+                                new(
+                                    PrototypeRunEffectKind.UpgradeLastCardOfId,
+                                    CardId: "proto.silent.defend")
+                            ])
+                    ],
+                    _ => []
+                }))
             .ToArray();
 
     public static PrototypeEventDefinition NeowDefinition { get; } =
         new(
             NeowEventId,
             "Neow",
-            NeowPositiveRelicNames.Concat(NeowCursedRelicNames)
+            NeowPositiveRelicNames
+                .Concat(NeowConditionalPositiveRelicNames)
+                .Concat(NeowCursedRelicNames)
                 .Select(name => new PrototypeEventChoiceDefinition(
                     "take_" + NeowRelicId(name),
-                    "Choose " + name + " (mechanics not yet implemented)",
+                    "Choose " + name,
                     [new(PrototypeRunEffectKind.GainRelic,
                         RelicId: NeowRelicId(name))]))
                 .ToArray(),
@@ -54,11 +90,49 @@ public static class PrototypeNativeOvergrowthEvents
 
     public static string[] GenerateNeowOfferedChoiceIds(RngBundle rng)
     {
-        var positive = (string[])NeowPositiveRelicNames.Clone();
-        PrototypeRng.Shuffle(rng, "event", positive);
+        // Mirrors the native Neow.GenerateInitialOptions decision graph,
+        // while still using the emulator RNG (not native call-order parity).
+        // Unlock/IsAllowedAtNeow filtering is not yet translated.
         var cursed = NeowCursedRelicNames[
             PrototypeRng.NextInt(rng, "event", NeowCursedRelicNames.Length)];
-        return positive.Take(2).Append(cursed)
+        var positives = NeowPositiveRelicNames.ToList();
+
+        // Suppress a positive whose corresponding curse is offered.
+        // This pairing is handled before conditional options are added.
+        switch (cursed)
+        {
+            case "CursedPearl":
+                positives.Remove("GoldenPearl");
+                break;
+            case "HeftyTablet":
+                positives.Remove("ArcaneScroll");
+                break;
+            case "LeafyPoultice":
+                positives.Remove("NewLeaf");
+                break;
+            case "PrecariousShears":
+                positives.Remove("PreciseScissors");
+                break;
+            case "NeowsSacrifice":
+                positives.Remove("PhialHolster");
+                positives.Remove("LostCoffer");
+                break;
+        }
+
+        if (cursed != "LargeCapsule")
+        {
+            positives.Add(PrototypeRng.NextInt(rng, "event", 2) == 0
+                ? "LavaRock" : "SmallCapsule");
+        }
+
+        positives.Add(PrototypeRng.NextInt(rng, "event", 2) == 0
+            ? "NutritiousOyster" : "StoneHumidifier");
+        positives.Add(PrototypeRng.NextInt(rng, "event", 2) == 0
+            ? "NeowsTalisman" : "Pomander");
+
+        var shuffled = positives.ToArray();
+        PrototypeRng.Shuffle(rng, "event", shuffled);
+        return shuffled.Take(2).Append(cursed)
             .Select(name => "take_" + NeowRelicId(name))
             .ToArray();
     }
