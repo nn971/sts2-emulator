@@ -76,12 +76,19 @@ public sealed record PrototypeAiEventDeckChoice(
     PrototypePersistentDeckChoiceKind Kind,
     int RemainingSelections,
     long[] CandidateCardInstanceIds,
-    bool UpgradeTransformedCards);
+    bool UpgradeTransformedCards,
+    string? SourceRelicId = null);
+
+public sealed record PrototypeAiEventPotionReplacement(
+    string ChoiceId,
+    string PotionId,
+    int[] CandidateSlots);
 
 public sealed record PrototypeAiEvent(
     string EventId,
     string? ChosenChoiceId,
-    PrototypeAiEventDeckChoice? PendingDeckChoice);
+    PrototypeAiEventDeckChoice? PendingDeckChoice,
+    PrototypeAiEventPotionReplacement? PendingPotionReplacement = null);
 
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
@@ -373,7 +380,16 @@ public sealed class PrototypeAiEnvironment
                             (long[])world.Event.PendingDeckChoice
                                 .CandidateCardInstanceIds.Clone(),
                             world.Event.PendingDeckChoice
-                                .UpgradeTransformedCards)));
+                                .UpgradeTransformedCards,
+                            world.Event.PendingDeckChoice
+                                .SourceRelicId),
+                    world.Event.PendingPotionReplacement is null
+                        ? null
+                        : new PrototypeAiEventPotionReplacement(
+                            world.Event.PendingPotionReplacement.ChoiceId,
+                            world.Event.PendingPotionReplacement.PotionId,
+                            (int[])world.Event.PendingPotionReplacement
+                                .CandidateSlots.Clone())));
     }
 
     private static PrototypeAiCombat CreateCombatObservation(
