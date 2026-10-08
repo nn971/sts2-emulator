@@ -3281,15 +3281,23 @@ public sealed partial class PrototypeGameEngine
                             .ToArray();
                     }
 
-                    if (candidates.Length == 0 || selection.MaxSelections <= 0)
+                    const int maxHandSize = 10;
+                    var capacity = selection.Resolution
+                            == PrototypeCardSelectionResolutionKind.MoveToHand
+                        ? Math.Max(0, maxHandSize - combat.Hand.Length)
+                        : int.MaxValue;
+                    var maxSelectable = Math.Min(
+                        Math.Min(selection.MaxSelections, candidates.Length),
+                        capacity);
+                    if (candidates.Length == 0 || maxSelectable <= 0)
                     {
                         break;
                     }
 
                     var effective = selection with
                     {
-                        MinSelections = Math.Min(selection.MinSelections, candidates.Length),
-                        MaxSelections = Math.Min(selection.MaxSelections, candidates.Length)
+                        MinSelections = Math.Min(selection.MinSelections, maxSelectable),
+                        MaxSelections = maxSelectable
                     };
 
                     combat = combat with
