@@ -2636,6 +2636,10 @@ public sealed partial class PrototypeGameEngine
                         effect.GeneratedChoiceCardType,
                     GeneratedChoiceCardsFreeThisTurn:
                         effect.GeneratedChoiceCardsFreeThisTurn,
+                    GeneratedChoiceCardsUpgraded:
+                        effect.GeneratedChoiceCardsUpgraded,
+                    GeneratedChoiceMustPick:
+                        effect.GeneratedChoiceMustPick,
                     SelectedCardTemporaryCost:
                         effect.SelectedCardTemporaryCost is null
                             ? null
@@ -3200,6 +3204,7 @@ public sealed partial class PrototypeGameEngine
                         operation.GeneratedChoiceCardType,
                         operation.Amount,
                         operation.GeneratedChoiceCardsFreeThisTurn,
+                        operation.GeneratedChoiceCardsUpgraded,
                         rng);
                     combat = generated.Combat;
                     if (generated.CardInstanceIds.Length == 0)
@@ -3215,7 +3220,7 @@ public sealed partial class PrototypeGameEngine
                             SourceCardDestination: sourceCardDestination,
                             Selection: new PrototypeCardSelectionSpec(
                                 PrototypeCardZone.ChoicePool,
-                                0,
+                                operation.GeneratedChoiceMustPick ? 1 : 0,
                                 1,
                                 PrototypeCardSelectionResolutionKind
                                     .MoveToHand,
@@ -4192,6 +4197,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeCardType? cardType,
         int count,
         bool freeThisTurn,
+        bool upgraded,
         RngBundle rng)
     {
         var candidates = PrototypeContent.RewardCardPool
@@ -4224,7 +4230,7 @@ public sealed partial class PrototypeGameEngine
                 InstanceId: combat.NextCardInstanceId,
                 PersistentCardInstanceId: null,
                 CardId: cardId,
-                UpgradeLevel: 0,
+                UpgradeLevel: upgraded ? 1 : 0,
                 IsTemporary: true,
                 State: PrototypeJson.EmptyObject(),
                 TemporaryEnergyCost:
