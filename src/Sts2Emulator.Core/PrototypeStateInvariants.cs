@@ -1133,8 +1133,6 @@ public static class PrototypeStateInvariants
         var entryIds =
             map.EntryNodeIds
             ?? Array.Empty<string>();
-        var entrySet = entryIds.ToHashSet(
-            StringComparer.Ordinal);
         foreach (var node in map.Nodes.Where(node =>
                      node.Floor > 1))
         {
