@@ -142,6 +142,12 @@ public static class PrototypeNativeOvergrowthEvents
                                 RelicId: NeowRelicId(name)),
                             new(PrototypeRunEffectKind.OfferThreeCardsAndPotion)
                         ],
+                        "ScrollBoxes" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.OfferCardBundles)
+                        ],
                         "SmallCapsule" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
