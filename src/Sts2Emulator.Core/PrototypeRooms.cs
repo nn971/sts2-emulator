@@ -700,7 +700,10 @@ public sealed partial class PrototypeGameEngine
 
         return definition.Choices
             .Where(choice =>
-                CanTakeEventChoice(
+                (eventState.OfferedChoiceIds is null
+                    || eventState.OfferedChoiceIds.Contains(
+                        choice.Id, StringComparer.Ordinal))
+                && CanTakeEventChoice(
                     state.Player,
                     choice,
                     RequireWorld(state)))
@@ -861,7 +864,10 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 $"Unknown event choice '{choicePayload.ChoiceId}'.");
 
-        if (!CanTakeEventChoice(
+        if ((eventState.OfferedChoiceIds is not null
+                && !eventState.OfferedChoiceIds.Contains(
+                    choice.Id, StringComparer.Ordinal))
+            || !CanTakeEventChoice(
                 player,
                 choice,
                 world))
