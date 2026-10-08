@@ -21,6 +21,21 @@ def model_id(obj):
     return ((obj or {}).get("id") or {}).get("entry")
 
 
+def compact_power(power):
+    """Retain the public power amount needed for numeric parity checks."""
+    return {"power": runtime_leaf(power), "amount": power.get("amount")}
+
+
+def card_evidence(card):
+    """History cards are observations, not persistent/native instance IDs."""
+    return {
+        "card": runtime_leaf(card),
+        "upgrade": card.get("current_upgrade_level"),
+        "affliction": (runtime_leaf(card.get("affliction"))
+                       if card.get("affliction") else None),
+    }
+
+
 def creature(obj):
     return (obj or {}).get("creature") or {}
 
@@ -44,6 +59,9 @@ def summarize(state):
             "powers": [
                 runtime_leaf(p) for p in (body.get("powers") or {}).get("items", [])
             ],
+            "power_amounts": [
+                compact_power(p) for p in (body.get("powers") or {}).get("items", [])
+            ],
         },
         "enemies": [
             {
@@ -55,6 +73,9 @@ def summarize(state):
                 "slot": e.get("slot_name"),
                 "powers": [
                     runtime_leaf(p) for p in (e.get("powers") or {}).get("items", [])
+                ],
+                "power_amounts": [
+                    compact_power(p) for p in (e.get("powers") or {}).get("items", [])
                 ],
             }
             for e in enemies
@@ -68,18 +89,27 @@ def event_of(record):
     if name == "CardPlayStartedEntry":
         cp = h.get("card_play") or {}
         card = cp.get("card") or {}
-        return {"kind": "card_started", "card": runtime_leaf(card),
+        return {"kind": "card_started", **card_evidence(card),
                 "target": ((cp.get("target") or {}).get("combat_id"))}
     if name == "CardPlayFinishedEntry":
         cp = h.get("card_play") or {}
-        return {"kind": "card_finished", "card": runtime_leaf(cp.get("card") or {})}
+        return {"kind": "card_finished",
+                **card_evidence(cp.get("card") or {})}
+    if name in ("CardDrawnEntry", "CardDiscardedEntry",
+                "CardExhaustedEntry", "CardGeneratedEntry", "CardAfflictedEntry"):
+        kinds = {
+            "CardDrawnEntry": "card_drawn",
+            "CardDiscardedEntry": "card_discarded",
+            "CardExhaustedEntry": "card_exhausted",
+            "CardGeneratedEntry": "card_generated",
+            "CardAfflictedEntry": "card_afflicted",
+        }
+        return {"kind": kinds[name], **card_evidence(h.get("card") or {})}
     if name == "MonsterPerformedMoveEntry":
         return {"kind": "enemy_move", "monster": runtime_leaf(h.get("monster") or {}),
                 "move": (h.get("move") or {}).get("state_id") or
                         (h.get("move") or {}).get("id") or
                         (h.get("move") or {}).get("name")}
-    if name == "CardGeneratedEntry":
-        return {"kind": "card_generated", "card": runtime_leaf(h.get("card") or {})}
     if name == "DamageReceivedEntry":
         result = h.get("result") or {}
         return {"kind": "damage", "unblocked": result.get("unblocked_damage"),
@@ -92,17 +122,22 @@ def event_of(record):
     if name == "PotionUsedEntry":
         return {"kind": "potion_used", "potion": runtime_leaf(h.get("potion") or {})}
     if name == "BlockGainedEntry":
-        return {"kind": "block_gained", "amount": h.get("amount")}
+        return {"kind": "block_gained", "amount": h.get("amount"),
+                "target": (h.get("receiver") or {}).get("combat_id")}
     if name == "EnergySpentEntry":
         return {"kind": "energy_spent", "amount": h.get("amount")}
     if record.get("boundary") == "combat_manager.PlayerEndedTurn":
         return {"kind": "player_ended_turn"}
     if record.get("boundary") == "combat_manager.TurnStarted":
         return {"kind": "turn_started"}
+    if record.get("boundary") == "combat_manager.CombatWon":
+        return {"kind": "combat_won"}
+    if record.get("boundary") == "combat_manager.CombatEnded":
+        return {"kind": "combat_ended"}
     return None
 
 
-def audit(path, combats):
+def audit(path, combats: set[int] | None):
     records = {}
     session = None
     with path.open(encoding="utf-8") as source:
@@ -115,7 +150,11 @@ def audit(path, combats):
             if record.get("type") != "boundary":
                 continue
             index = record.get("recorder_combat_index")
-            if index not in combats:
+            if combats is None:
+                # Index zero is the recorder's pre-combat initialization.
+                if not isinstance(index, int) or index <= 0:
+                    continue
+            elif index not in combats:
                 continue
             state = record.get("state") or {}
             meta = (state.get("combat") or {}).get("encounter") or {}
@@ -154,7 +193,8 @@ def audit(path, combats):
             "Passive history callbacks are not synchronous step checkpoints",
             "No emulator replay or RNG equality is claimed",
             "HP/block/powers may reflect intermediate effects",
-            "Only selected combat indices are included",
+            ("All positive combat indices are included" if combats is None
+             else "Only selected combat indices are included"),
         ],
         "combats": records,
     }
@@ -163,10 +203,14 @@ def audit(path, combats):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("trace", type=Path)
-    p.add_argument("--combats", nargs="+", type=int, default=[5, 6])
+    group = p.add_mutually_exclusive_group()
+    group.add_argument("--combats", nargs="+", type=int, default=None)
+    group.add_argument("--all", action="store_true",
+                       help="Include every numbered combat (skip index 0)")
     p.add_argument("-o", "--output", type=Path)
     args = p.parse_args()
-    result = audit(args.trace, set(args.combats))
+    result = audit(args.trace, None if args.all else
+                   set(args.combats if args.combats is not None else [5, 6]))
     if args.output:
         args.output.write_text(json.dumps(result, indent=2) + "\n")
     for number, info in sorted(result["combats"].items()):
