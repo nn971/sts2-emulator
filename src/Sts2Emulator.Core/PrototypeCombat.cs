@@ -2588,6 +2588,8 @@ public sealed partial class PrototypeGameEngine
                                 effect.Selection.MaxSelections
                                 + (effect.Selection.SelectionsPerPowerStack
                                     * powerStacks)
+                                + (effect.Selection.MaxSelectionsUpgradeDelta
+                                    * upgradeLevel)
                         },
                     effect.CardId,
                     effect.PowerId,
