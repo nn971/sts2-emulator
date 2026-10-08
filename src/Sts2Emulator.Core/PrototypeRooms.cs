@@ -961,7 +961,8 @@ public sealed partial class PrototypeGameEngine
                     player = AppendCard(
                         player,
                         nextId++,
-                        effect.CardId);
+                        effect.CardId,
+                        state.Rng);
                     break;
 
                 case PrototypeRunEffectKind.GainRelic:
@@ -1578,7 +1579,11 @@ public sealed partial class PrototypeGameEngine
             var offer = shop.CardOffers.FirstOrDefault(item => item.OfferId == payload.OfferId)
                 ?? throw new InvalidOperationException($"Unknown card offer {payload.OfferId}.");
             EnsurePurchasable(player, offer);
-            player = AppendCard(player with { Gold = player.Gold - offer.Price }, nextId++, offer.ItemId);
+            player = AppendCard(
+                player with { Gold = player.Gold - offer.Price },
+                nextId++,
+                offer.ItemId,
+                state.Rng);
             shop = shop with
             {
                 CardOffers = shop.CardOffers
@@ -2055,7 +2060,11 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException($"Reward card index {payload.Index} is invalid.");
                 }
 
-                player = AppendCard(player, nextId++, reward.CardOptions[payload.Index]);
+                player = AppendCard(
+                    player,
+                    nextId++,
+                    reward.CardOptions[payload.Index],
+                    state.Rng);
             }
             else
             {
@@ -2091,7 +2100,8 @@ public sealed partial class PrototypeGameEngine
                 player = AppendCard(
                     player,
                     nextId++,
-                    currentOptions[payload.Index]);
+                    currentOptions[payload.Index],
+                    state.Rng);
             }
             else
             {
