@@ -85,7 +85,8 @@ public sealed class PrototypeUnderdocksCultistsAndFossilTests
         var state = FindNormalCombat(
             "fossil-suck", "proto.encounter.fossil_stalker_normal");
         var combat = state.World!.Combat!;
-        Assert.Equal("latch", Assert.Single(combat.Enemies).AiStateId);
+        // An unset runtime cursor uses the enemy definition's initial AI state.
+        Assert.Null(Assert.Single(combat.Enemies).AiStateId);
         state = state with
         {
             World = state.World with
