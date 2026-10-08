@@ -1057,6 +1057,12 @@ public static class PrototypeStateInvariants
         PlayerState player,
         RewardState reward)
     {
+        if (reward.NativeCombatGoldAutoGranted is < 0)
+        {
+            throw new InvalidOperationException(
+                "Native auto-granted combat gold must be nonnegative.");
+        }
+
         var extraRelics = reward.ExtraRelicRewardIds
             ?? Array.Empty<string>();
         if (reward.ExtraRelicsResolved < 0

@@ -2798,18 +2798,29 @@ public sealed partial class PrototypeGameEngine
         var room = world.ActiveRoom
             ?? throw new InvalidOperationException("Combat reward has no active room.");
 
-        var gold = room switch
-        {
-            PrototypeRoomType.Elite => 40 + (world.Act * 5),
-            PrototypeRoomType.Boss => 60 + (world.Act * 5),
-            _ => 20 + (world.Act * 5)
-        };
-
-        var cardChoiceCount =
-            RewardCardChoiceCount(state.Player);
         var nativeOvergrowth = world.Act == 1
             && world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId;
+
+        // Source RewardsSet creates the GoldReward before card rewards.
+        // Draw its amount from Rewards before constructing card options.
+        // The prototype still auto-credits it at reward entry; native
+        // player-triggered pickup is an explicit later fidelity task.
+        var nativeGold = nativeOvergrowth
+            ? PrototypeNativeCombatGoldReward.Roll(
+                room, state.Ascension, state.Rng)
+            : null;
+        var gold = nativeOvergrowth
+            ? nativeGold ?? 0
+            : room switch
+            {
+                PrototypeRoomType.Elite => 40 + (world.Act * 5),
+                PrototypeRoomType.Boss => 60 + (world.Act * 5),
+                _ => 20 + (world.Act * 5)
+            };
+
+        var cardChoiceCount =
+            RewardCardChoiceCount(state.Player);
         var extraCardRewardGroups =
             Math.Max(
                 0,
@@ -2950,7 +2961,8 @@ public sealed partial class PrototypeGameEngine
                 silverCrucible.UpgradeGroups.Skip(1).ToArray(),
             ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
             CardOptionUpgradeFlags: cardUpgradeFlags,
-            ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags);
+            ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
+            NativeCombatGoldAutoGranted: nativeGold);
 
         world = world with
         {
