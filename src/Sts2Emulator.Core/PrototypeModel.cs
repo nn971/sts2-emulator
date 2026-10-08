@@ -1560,7 +1560,8 @@ public sealed record ShopState(
     bool RemovalUsed = false,
     int? BaseRemovalPrice = null,
     ShopOffer[]? AdditionalPotionOffers = null,
-    ShopOffer[]? AdditionalRelicOffers = null)
+    ShopOffer[]? AdditionalRelicOffers = null,
+    PrototypePendingDeckChoiceState? PendingDeckChoice = null)
 {
     public int UndiscountedRemovalPrice =>
         BaseRemovalPrice ?? RemovalPrice;
@@ -1595,7 +1596,8 @@ public sealed record ShopState(
         AdditionalRelicOffers =
             AdditionalRelicOffers is null
                 ? null
-                : (ShopOffer[])AdditionalRelicOffers.Clone()
+                : (ShopOffer[])AdditionalRelicOffers.Clone(),
+        PendingDeckChoice = PendingDeckChoice?.Fork()
     };
 }
 
