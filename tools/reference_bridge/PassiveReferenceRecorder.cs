@@ -15,6 +15,13 @@ internal static class PassiveReferenceRecorder
     private static readonly HashSet<string> CataloguedTypes =
         new(StringComparer.Ordinal);
 
+    // Observation-only identity: reference equality distinguishes duplicate
+    // card models in the same combat without inspecting or mutating native IDs.
+    private static readonly object CardIdentityGate = new();
+    private static readonly Dictionary<object, long> CardIds =
+        new(ReferenceEqualityComparer.Instance);
+    private static long _nextCardId;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -426,6 +433,11 @@ internal static class PassiveReferenceRecorder
                     "combat_manager.CombatSetUp"))
             {
                 Interlocked.Increment(ref _combatIndex);
+                lock (CardIdentityGate)
+                {
+                    CardIds.Clear();
+                    _nextCardId = 0;
+                }
             }
 
             var state = CaptureState();
@@ -465,6 +477,15 @@ internal static class PassiveReferenceRecorder
             }
 
             WriteRecord(record);
+            if (StringComparer.Ordinal.Equals(
+                boundary, "combat_manager.CombatEnded"))
+            {
+                lock (CardIdentityGate)
+                {
+                    CardIds.Clear();
+                    _nextCardId = 0;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -684,6 +705,29 @@ internal static class PassiveReferenceRecorder
         }
     }
 
+    private static bool IsNativeCard(object value) =>
+        (value.GetType().FullName ?? string.Empty).Contains(
+            ".Models.Cards.", StringComparison.Ordinal);
+
+    private static long? RecorderCardId(object value)
+    {
+        if (!IsNativeCard(value))
+        {
+            return null;
+        }
+
+        lock (CardIdentityGate)
+        {
+            if (!CardIds.TryGetValue(value, out var id))
+            {
+                id = ++_nextCardId;
+                CardIds.Add(value, id);
+            }
+
+            return id;
+        }
+    }
+
     private static Dictionary<string, object?> ReadNamed(
         object target,
         params string[] propertyNames)
@@ -692,6 +736,11 @@ internal static class PassiveReferenceRecorder
         {
             ["type"] = target.GetType().FullName
         };
+
+        if (RecorderCardId(target) is { } cardId)
+        {
+            result["recorder_card_id"] = cardId;
+        }
 
         foreach (var propertyName in propertyNames)
         {
@@ -881,10 +930,16 @@ internal static class PassiveReferenceRecorder
 
         if (depth <= 0)
         {
-            return new Dictionary<string, object?>
+            var leaf = new Dictionary<string, object?>
             {
                 ["type"] = value.GetType().FullName
             };
+            if (RecorderCardId(value) is { } cardId)
+            {
+                leaf["recorder_card_id"] = cardId;
+            }
+
+            return leaf;
         }
 
         if (value is IDictionary dictionary)
@@ -931,6 +986,10 @@ internal static class PassiveReferenceRecorder
             ["runtime_type"] = projectedType.FullName,
             ["type"] = projectedType.FullName
         };
+        if (RecorderCardId(value) is { } cardId)
+        {
+            result["recorder_card_id"] = cardId;
+        }
 
         foreach (var property in value.GetType().GetProperties(
                      BindingFlags.Instance | BindingFlags.Public))
@@ -1279,6 +1338,12 @@ internal static class PassiveReferenceRecorder
             }
 
             _combatManager = null;
+        }
+
+        lock (CardIdentityGate)
+        {
+            CardIds.Clear();
+            _nextCardId = 0;
         }
     }
 }

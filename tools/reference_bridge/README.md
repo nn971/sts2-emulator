@@ -52,6 +52,29 @@ These fields are aimed at Knight Gang differential validation. Missing reflectiv
 simply absent from the JSON rather than inferred. The stream remains a probe rather than a
 parity-complete `reference-trace-v0.2`.
 
+### Action-frame and duplicate-card observation
+
+The bridge now also attaches optional `recorder_card_id` values to card models
+in both card piles and CombatHistory records. Each ID follows **reference
+equality of the native card object within a single combat**, letting a later
+analyzer distinguish two otherwise identical Strikes or other duplicate cards.
+The IDs reset at CombatSetUp and are released at combat end. This is a read-only
+observer identity, not a persistent card instance ID from the game.
+
+After playing with the updated instrumented mod, extract action frames:
+
+```fish
+python tools/native_overgrowth_action_frames.py \
+  '/path/to/overgrowth-silent-act1-capture.jsonl' \
+  --combats 5 6 9 --output /tmp/native-action-frames.json
+```
+
+Older v4 traces without the new IDs remain supported and are labeled
+`card_class_only`. Callback-time player observations are *not* synchronized
+pre/post-decision checkpoints; the extractor's field names and diagnostics make
+that distinction explicit. See
+[`docs/reference-builds/v0.111.0-native-combat-action-frames.md`](../../docs/reference-builds/v0.111.0-native-combat-action-frames.md).
+
 ## Preserve the clean oracle
 
 Do not install this mod into the clean oracle copy.
