@@ -51,17 +51,17 @@ public sealed partial class PrototypeGameEngine
                 relic => relic.RelicId == stoneId);
             if (index >= 0)
             {
-                var relics = (RelicInstance[])player.Relics.Clone();
+                var stoneRelics = (RelicInstance[])player.Relics.Clone();
                 var defeated = GetNativeElitesDefeated(
-                    relics[index].PersistentState) + 1;
-                relics[index] = defeated >= 5
+                    stoneRelics[index].PersistentState) + 1;
+                stoneRelics[index] = defeated >= 5
                     ? new RelicInstance(jadeId, PrototypeJson.EmptyObject())
-                    : relics[index] with
+                    : stoneRelics[index] with
                     {
                         PersistentState = JsonSerializer.SerializeToElement(
                             new NativeElitesDefeated(defeated))
                     };
-                player = player with { Relics = relics };
+                player = player with { Relics = stoneRelics };
             }
         }
 
