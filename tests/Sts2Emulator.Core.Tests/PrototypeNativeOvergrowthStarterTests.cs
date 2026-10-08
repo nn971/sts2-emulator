@@ -34,8 +34,32 @@ public sealed class PrototypeNativeOvergrowthStarterTests
         var engine = new PrototypeGameEngine();
         var state = PrototypeNativeOvergrowthRunFactory.Create(
             $"restlessness-{upgraded}-{otherCardsInHand}");
-        var opening = Assert.Single(
-            engine.GetLegalActions(state).Take(1));
+        // This card-behavior test needs a no-deck-change Neow option.
+        // The generated Neow pool also contains multi-page rewards
+        // (Scroll Boxes, Lost Coffer, etc.), so blindly taking its
+        // first random offer is no longer a valid setup shortcut.
+        state = state with
+        {
+            World = state.World! with
+            {
+                Event = state.World.Event! with
+                {
+                    OfferedChoiceIds =
+                    [
+                        "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
+                            "GoldenPearl"),
+                        "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
+                            "BoomingConch"),
+                        "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
+                            "DowsingRod")
+                    ]
+                }
+            }
+        };
+        var opening = engine.GetLegalActions(state).Single(action =>
+            action.ReadPayload<EventChoicePayload>().ChoiceId ==
+                "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
+                    "GoldenPearl"));
         state = engine.Step(state, opening).State;
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         var first = engine.GetLegalActions(state)[0];
