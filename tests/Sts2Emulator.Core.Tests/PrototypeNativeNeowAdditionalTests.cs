@@ -135,6 +135,53 @@ public sealed class PrototypeNativeNeowAdditionalTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void NeowsFuryCannotRetrieveMoreThanTheHandHasRoomFor()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = Pick(Offer("NeowsTorment", "neow-fury-hand-cap"),
+            "NeowsTorment");
+        state = engine.Step(state, engine.GetLegalActions(state)[0]).State;
+
+        var combat = state.World!.Combat!;
+        var fury = Assert.Single(combat.Cards, card =>
+            card.CardId == "proto.native.neow.neows_fury");
+        var others = combat.Cards.Select(card => card.InstanceId)
+            .Where(id => id != fury.InstanceId).ToArray();
+        combat = combat with
+        {
+            Hand = new[] { fury.InstanceId }.Concat(others.Take(9)).ToArray(),
+            DiscardPile = others.Skip(9).ToArray(),
+            DrawPile = [],
+            ExhaustPile = [],
+            PlayPile = [],
+            Energy = 3
+        };
+        state = state with { World = state.World with { Combat = combat } };
+        PrototypeStateInvariants.Validate(state);
+
+        var play = engine.GetLegalActions(state).First(candidate =>
+            candidate.Kind == "play_card"
+            && candidate.ReadPayload<PlayCardPayload>().CardInstanceId
+                == fury.InstanceId);
+        state = engine.Step(state, play).State;
+        var pending = Assert.IsType<PendingCombatChoiceState>(
+            state.World!.Combat!.PendingChoice);
+        Assert.Equal(1, pending.Selection.MaxSelections);
+        Assert.DoesNotContain(engine.GetLegalActions(state), action =>
+            action.Kind == "select_cards"
+            && action.ReadPayload<SelectCardsPayload>().CardInstanceIds.Length > 1);
+
+        var choice = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "select_cards"
+            && action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.SequenceEqual(new[] { others[9] }));
+        state = engine.Step(state, choice).State;
+        Assert.Equal(10, state.World!.Combat!.Hand.Length);
+        Assert.Contains(fury.InstanceId, state.World.Combat.ExhaustPile);
+        PrototypeStateInvariants.Validate(state);
+    }
+
     [Theory]
     [InlineData(false, 2)]
     [InlineData(true, 3)]
