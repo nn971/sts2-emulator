@@ -52,7 +52,8 @@ public enum PrototypeCardRarity
     Ancient,
     Curse,
     Status,
-    Token
+    Token,
+    Quest
 }
 
 public enum PrototypeCardType
