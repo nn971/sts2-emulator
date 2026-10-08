@@ -379,6 +379,48 @@ public sealed class PrototypePotionInteractionTests
     }
 
     [Fact]
+    public void LethalUpgradedDaggerThrowCompletesDiscardBeforeCombatWon()
+    {
+        // Reproduces native self-play failure neural-train-86-1 at floor 13:
+        // Dagger Throw+ hits the final 12-HP Mawler, draws and demands one
+        // discard, while Meat on the Bone triggers on CombatWon at low HP.
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.dagger_throw") with { UpgradeLevel = 1 },
+                Card(2, "proto.silent.strike"),
+                Card(3, "proto.silent.defend")
+            ],
+            hand: [1, 2],
+            drawPile: [3],
+            enemies: [Enemy(1, 12)],
+            potionId: "proto.potion.energy",
+            relicId: "proto.relic.meat_on_the_bone");
+        state = state with { Player = state.Player with { Hp = 21 } };
+        var engine = new PrototypeGameEngine();
+
+        var play = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1);
+        state = engine.Step(state, play).State;
+
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        var combat = state.World!.Combat!;
+        Assert.Equal(0, combat.Enemies.Single().Hp);
+        Assert.NotNull(combat.PendingChoice);
+        Assert.Equal("select_cards", combat.PendingChoice.ChoiceId);
+        PrototypeStateInvariants.Validate(state);
+
+        var select = engine.GetLegalActions(state).First(action =>
+            action.Kind == "select_cards");
+        state = engine.Step(state, select).State;
+
+        Assert.Equal(RunPhase.Reward, state.Phase);
+        Assert.Equal(33, state.Player.Hp); // Meat on the Bone, exactly once.
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void DistilledChaosStagesAndAutoPlaysTopThreeCards()
     {
         var state = CreateState(
