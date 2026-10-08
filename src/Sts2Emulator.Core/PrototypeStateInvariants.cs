@@ -73,6 +73,7 @@ public static class PrototypeStateInvariants
         ValidateActOneEncounterPool(world);
         ValidateEncounterHistory(world);
         ValidateEventHistory(world);
+        ValidateCompletedRoomHistory(world);
         ValidatePhaseState(state, world);
 
         if (world.Combat is not null)
@@ -278,6 +279,85 @@ public static class PrototypeStateInvariants
         {
             throw new InvalidOperationException(
                 "Overgrowth run has an invalid selected boss encounter.");
+        }
+    }
+
+    private static void ValidateCompletedRoomHistory(
+        RunWorldState world)
+    {
+        var history = world.CompletedRooms;
+        for (var index = 0; index < history.Length; index++)
+        {
+            var visit = history[index];
+            if (visit.Act < 1
+                || visit.Act > world.Act
+                || visit.Floor < 1
+                || visit.Floor > PrototypeContent.Rules.FloorsPerAct
+                || string.IsNullOrWhiteSpace(visit.NodeId))
+            {
+                throw new InvalidOperationException(
+                    "Completed-room history contains an invalid act, floor or node.");
+            }
+
+            if (index > 0)
+            {
+                var previous = history[index - 1];
+                if (visit.Act < previous.Act
+                    || (visit.Act == previous.Act
+                        && visit.Floor <= previous.Floor))
+                {
+                    throw new InvalidOperationException(
+                        "Completed-room history is not strictly ordered.");
+                }
+            }
+
+            if (visit.Act == world.Act
+                && world.Map.GenerationProfileId
+                    == PrototypeContent.MapGenerationProfileId)
+            {
+                var node = world.Map.Nodes
+                    .FirstOrDefault(candidate =>
+                        StringComparer.Ordinal.Equals(
+                            candidate.NodeId,
+                            visit.NodeId));
+                if (node is null
+                    || node.Floor != visit.Floor
+                    || node.RoomType != visit.RoomType)
+                {
+                    throw new InvalidOperationException(
+                        "Completed-room history disagrees with the active generated map.");
+                }
+            }
+        }
+
+        if (world.Map.GenerationProfileId
+            != PrototypeContent.MapGenerationProfileId)
+        {
+            return;
+        }
+
+        var completedThisAct = history
+            .Where(visit => visit.Act == world.Act)
+            .ToArray();
+        for (var index = 0;
+             index < completedThisAct.Length;
+             index++)
+        {
+            if (completedThisAct[index].Floor != index + 1)
+            {
+                throw new InvalidOperationException(
+                    "Generated map history must complete consecutive floors.");
+            }
+        }
+
+        if (world.ActiveRoom is not null
+            && world.Map.CurrentNodeId is { } activeId
+            && completedThisAct.Any(visit =>
+                StringComparer.Ordinal.Equals(
+                    visit.NodeId, activeId)))
+        {
+            throw new InvalidOperationException(
+                "An active room has already been completed.");
         }
     }
 
