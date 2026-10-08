@@ -7,7 +7,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    private static bool CanSelectEventDeckCard(
+    internal static bool CanSelectEventDeckCard(
         CardInstance card,
         PrototypePersistentDeckChoiceKind kind,
         string? transformToCardId,
