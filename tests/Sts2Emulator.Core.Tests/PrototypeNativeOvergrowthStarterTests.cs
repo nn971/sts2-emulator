@@ -34,6 +34,10 @@ public sealed class PrototypeNativeOvergrowthStarterTests
         var engine = new PrototypeGameEngine();
         var state = PrototypeNativeOvergrowthRunFactory.Create(
             $"restlessness-{upgraded}-{otherCardsInHand}");
+        var opening = Assert.Single(
+            engine.GetLegalActions(state).Take(1));
+        state = engine.Step(state, opening).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
         var first = engine.GetLegalActions(state)[0];
         state = engine.Step(state, first).State;
         var combat = state.World!.Combat!;
