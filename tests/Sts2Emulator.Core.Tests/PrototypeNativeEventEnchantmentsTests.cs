@@ -157,9 +157,11 @@ public sealed class PrototypeNativeEventEnchantmentsTests
         var pending = state.World!.Event!.PendingDeckChoice!;
         Assert.True(pending.BasicCardsOnly);
         Assert.Equal(expectedCardId, pending.TransformToCardId);
-        Assert.Equal(10, pending.CandidateCardInstanceIds.Length);
-        Assert.DoesNotContain(11L, pending.CandidateCardInstanceIds);
-        Assert.DoesNotContain(12L, pending.CandidateCardInstanceIds);
+        // The native Silent starter has 12 Basic cards:
+        // 5 Strike, 5 Defend, Neutralize, and Survivor.
+        Assert.Equal(12, pending.CandidateCardInstanceIds.Length);
+        Assert.Contains(11L, pending.CandidateCardInstanceIds);
+        Assert.Contains(12L, pending.CandidateCardInstanceIds);
         Assert.DoesNotContain(13L, pending.CandidateCardInstanceIds);
 
         var select = engine.GetLegalActions(state).Single(a =>
