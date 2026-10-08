@@ -3949,13 +3949,11 @@ public sealed partial class PrototypeGameEngine
                     var autoPlayDefinition =
                         PrototypeContent.Card(
                             autoPlayCard.CardId);
-                    if (!autoPlayDefinition
-                            .MechanicsImplemented)
-                    {
-                        throw new NotSupportedException(
-                            $"Autoplay cannot resolve unsupported card '{autoPlayDefinition.Name}'.");
-                    }
-
+                    // Unplayable cards have no on-play behavior. The autoplay
+                    // stage still moves them to their destination, even when
+                    // their *play* mechanics are deliberately unsupported (for
+                    // example, persistent quest cards like Dowsing). Validate
+                    // playable card mechanics only after this early exit.
                     var autoPlayDestination =
                         CardExhaustsOnUse(
                             autoPlayDefinition,
@@ -3981,6 +3979,12 @@ public sealed partial class PrototypeGameEngine
                                 .Append(autoPlayId)
                                 .ToArray());
                         break;
+                    }
+
+                    if (!autoPlayDefinition.MechanicsImplemented)
+                    {
+                        throw new NotSupportedException(
+                            $"Autoplay cannot resolve unsupported card '{autoPlayDefinition.Name}'.");
                     }
 
                     int? autoPlayTarget =
