@@ -6,7 +6,9 @@ public enum PrototypeCardEnchantmentKind
 {
     Spiral,
     Glam,
-    Inky
+    Inky,
+    Sown,
+    Slither
 }
 
 public sealed record PrototypeCardEnchantment(
