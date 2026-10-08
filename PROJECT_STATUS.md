@@ -933,3 +933,25 @@ mechanics, native eligibility, and exact RNG remain unimplemented.
 Native map generation, non-combat event continuations, and reward
 economy also remain incomplete. All work is confined to
 `sts2-emulator`; `sts2-ai` has not been changed.
+
+
+## Native-shaped Neow expansion — additional acquisition effects (2026-10-08)
+
+The Neow source-shaped pool now explicitly removes Massive Scroll after
+assembling conditional positive options: the pinned relic's native
+`IsAllowed` requires multiplayer, while this project targets single-player
+only. Its catalog entry remains available for source bookkeeping.
+
+Three additional Neow relics now have canonical effects: Precise Scissors
+opens a one-card removal continuation, New Leaf opens a one-card transform
+continuation, and Silken Tress consumes all current gold when acquired.
+Both deck-choice relics reuse the existing event continuation state machine,
+and gold loss uses the common `LoseAllGold` acquisition run effect.
+
+The New Leaf replacement pool remains the existing prototype card pool;
+the exact native transformation RNG/eligibility remains future work.
+Silken Tress's later Glam enchantment reward trigger is also still pending.
+Regressions cover the source relic identity, single-player offer filtering,
+selected-card preservation/removal, continuation completion, and state
+invariants. CI status must be checked separately; this pass does not
+claim finished Neow or full Act 1 native generation.
