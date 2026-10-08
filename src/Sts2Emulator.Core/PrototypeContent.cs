@@ -2048,6 +2048,15 @@ public static class PrototypeContent
                             PrototypeCardSelectionResolutionKind.MoveToDiscard,
                             SequentialOptional: true,
                             DrawEqualToSelectionsOnCompletion: true))
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.distilled_chaos",
+                "Distilled Chaos",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.AutoPlayTopDrawCards,
+                        3)
                 ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 

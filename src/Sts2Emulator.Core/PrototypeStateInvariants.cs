@@ -1479,6 +1479,7 @@ public static class PrototypeStateInvariants
             .Concat(combat.DrawPile.Select(id => (Id: id, Location: "DrawPile")))
             .Concat(combat.DiscardPile.Select(id => (Id: id, Location: "DiscardPile")))
             .Concat(combat.ExhaustPile.Select(id => (Id: id, Location: "ExhaustPile")))
+            .Concat(combat.PlayCardIds.Select(id => (Id: id, Location: "PlayPile")))
             .Concat(combat.ChoiceCardIds.Select(id => (Id: id, Location: "ChoicePool")))
             .ToList();
         var zones = zoneLocations
@@ -1561,6 +1562,7 @@ public static class PrototypeStateInvariants
                 PrototypeCardZone.DrawPile => combat.DrawPile,
                 PrototypeCardZone.DiscardPile => combat.DiscardPile,
                 PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
+                PrototypeCardZone.PlayPile => combat.PlayCardIds,
                 PrototypeCardZone.ChoicePool => combat.ChoiceCardIds,
                 _ => throw new ArgumentOutOfRangeException()
             };

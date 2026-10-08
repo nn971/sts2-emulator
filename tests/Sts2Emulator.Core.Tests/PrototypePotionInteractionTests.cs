@@ -379,6 +379,82 @@ public sealed class PrototypePotionInteractionTests
     }
 
     [Fact]
+    public void DistilledChaosStagesAndAutoPlaysTopThreeCards()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.defend"),
+                Card(2, "proto.silent.strike"),
+                Card(3, "proto.silent.defend"),
+                Card(4, "proto.silent.strike")
+            ],
+            hand: [1],
+            drawPile: [2, 3, 4],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.distilled_chaos");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Empty(combat.PlayCardIds);
+        Assert.Empty(combat.DrawPile);
+        Assert.Equal(88, combat.Enemies.Single().Hp);
+        Assert.Equal(5, combat.PlayerBlock);
+        Assert.Equal(3, combat.CounterState.CardsPlayedThisTurn);
+        Assert.All(
+            new long[] { 2, 3, 4 },
+            id => Assert.Contains(id, combat.DiscardPile));
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void DistilledChaosPreservesOuterAutoplayAcrossNestedChoice()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.defend"),
+                Card(2, "proto.silent.strike"),
+                Card(3, "proto.silent.survivor"),
+                Card(4, "proto.silent.strike")
+            ],
+            hand: [1],
+            drawPile: [2, 3, 4],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.distilled_chaos");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.NotNull(combat.PendingChoice);
+        Assert.Contains(2L, combat.PlayCardIds);
+        Assert.DoesNotContain(3L, combat.PlayCardIds);
+
+        var discard = Assert.Single(
+            engine.GetLegalActions(state));
+        Assert.Equal(
+            [1L],
+            discard.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds);
+        state = engine.Step(state, discard).State;
+
+        combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Empty(combat.PlayCardIds);
+        Assert.Equal(88, combat.Enemies.Single().Hp);
+        Assert.Equal(8, combat.PlayerBlock);
+        Assert.Equal(3, combat.CounterState.CardsPlayedThisTurn);
+        Assert.All(
+            new long[] { 1, 2, 3, 4 },
+            id => Assert.Contains(id, combat.DiscardPile));
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void ReptileTrinketTriggersAfterPotionIsConsumed()
     {
         var state = CreateState(

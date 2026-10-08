@@ -752,3 +752,19 @@ Canonical `RunWorldState.CompletedRoomHistory` records (act, floor, stable map n
 The prototype Trail Ledger relic grants 20 gold on every second completed ordinary Combat room within each act. The Path Broker event offers a 75-gold elite dividend unlocked by a completed Elite in the current act; a +5 Max HP combat-march reward unlocked by two consecutive completed Combats; and an unconditional +15 gold exit. These examples are mechanics breadth probes rather than claims of native game fidelity.
 
 Route-history invariants reject out-of-order/duplicate act-floor completions, future acts, malformed locations, and—in generated maps—visits not matching the selected map or skipped floors, plus already-completed active rooms. Regression coverage checks no counting on room entry, recording only after reward completion, fork isolation and AI history visibility, boss completion/act transition, current-act relic counter reset, conditional event legality, and chronology rejection.
+
+
+## Mechanics-expansion pass: staged draw-pile autoplay
+
+Combat state now has an explicit PlayPile zone. Distilled Chaos first removes up to three cards from
+the top of DrawPile (shuffling Discard into Draw when necessary) and stages all selected cards in
+PlayPile before any resolve. Each staged card is then an ordinary queued autoplay: enemy-targeted
+cards choose through the combat-target RNG, X-cost cards capture current Energy without spending it,
+and card play/replay/exhaust hooks continue through the normal card-play series.
+
+The queued representation also preserves the outer autoplay sequence across nested card choices.
+For example, if Distilled Chaos reaches Survivor, the discard choice can suspend with later staged
+cards still represented in PlayPile; resolving the choice resumes the remaining autoplay operations
+and finally the potion's PotionUsed event. The AI combat observation now exposes PlayPile explicitly.
+Tagged zone autoplay was routed through the same staged-card primitive, removing its former nested-
+choice limitation.

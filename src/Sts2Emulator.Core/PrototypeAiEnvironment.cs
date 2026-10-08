@@ -44,6 +44,7 @@ public sealed record PrototypeAiCombat(
     int DrawPileCount,
     PrototypeAiCard[] DiscardPile,
     PrototypeAiCard[] ExhaustPile,
+    PrototypeAiCard[] PlayPile,
     PrototypeAiEnemy[] Enemies,
     string? PendingChoiceId);
 
@@ -428,6 +429,7 @@ public sealed class PrototypeAiEnvironment
             DrawPileCount: combat.DrawPile.Length,
             DiscardPile: combat.DiscardPile.Select(Card).ToArray(),
             ExhaustPile: combat.ExhaustPile.Select(Card).ToArray(),
+            PlayPile: combat.PlayCardIds.Select(Card).ToArray(),
             Enemies: combat.Enemies.Select(enemy =>
             {
                 var definition = PrototypeContent.Enemy(enemy.EnemyId);

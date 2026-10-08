@@ -89,6 +89,8 @@ public enum PrototypeCombatEffectKind
     CreateCardsInHandFromPowerCardPayload,
     CreateEventSourceCardCopyInHand,
     AutoPlayTaggedCardsFromZone,
+    AutoPlayTopDrawCards,
+    AutoPlayCombatCard,
     ApplyPlayerPower,
     ApplyEnemyPower,
     HealPlayer,
@@ -184,6 +186,7 @@ public enum PrototypeCardZone
     DrawPile,
     DiscardPile,
     ExhaustPile,
+    PlayPile,
     ChoicePool
 }
 
@@ -541,7 +544,8 @@ public sealed record PrototypeQueuedOperation(
     int PlayerPowerOnFatalAmount = 0,
     PrototypeCardType? GeneratedChoiceCardType = null,
     bool GeneratedChoiceCardsFreeThisTurn = true,
-    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null);
+    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
+    long? CardInstanceId = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -1423,7 +1427,8 @@ public sealed record CombatState(
     int Act = 1,
     int Ascension = 0,
     int ExtraCardRewardsEarned = 0,
-    long[]? ChoicePool = null)
+    long[]? ChoicePool = null,
+    long[]? PlayPile = null)
 {
     public CombatState Fork() => this with
     {
@@ -1443,6 +1448,9 @@ public sealed record CombatState(
         ChoicePool = ChoicePool is null
             ? null
             : (long[])ChoicePool.Clone(),
+        PlayPile = PlayPile is null
+            ? null
+            : (long[])PlayPile.Clone(),
         PendingChoice = PendingChoice?.Fork(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
@@ -1459,6 +1467,9 @@ public sealed record CombatState(
 
     public long[] ChoiceCardIds =>
         ChoicePool ?? Array.Empty<long>();
+
+    public long[] PlayCardIds =>
+        PlayPile ?? Array.Empty<long>();
 
     public PrototypeCombatCounters CounterState =>
         Counters ?? new PrototypeCombatCounters();

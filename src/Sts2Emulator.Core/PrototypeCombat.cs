@@ -3659,15 +3659,20 @@ public sealed partial class PrototypeGameEngine
                             "Tagged autoplay requires a source zone and card tag.");
                     }
 
-                    var sourceZone = operation.AutoPlaySourceZone.Value;
-                    var autoPlayIds = GetZone(combat, sourceZone)
+                    var sourceZone =
+                        operation.AutoPlaySourceZone.Value;
+                    var autoPlayIds = GetZone(
+                            combat,
+                            sourceZone)
                         .Where(instanceId =>
                         {
-                            var candidate = RequireCombatCard(
-                                combat,
-                                instanceId);
+                            var candidate =
+                                RequireCombatCard(
+                                    combat,
+                                    instanceId);
                             var candidateDefinition =
-                                PrototypeContent.Card(candidate.CardId);
+                                PrototypeContent.Card(
+                                    candidate.CardId);
                             return (candidateDefinition.Tags
                                     ?? Array.Empty<string>())
                                 .Contains(
@@ -3676,88 +3681,334 @@ public sealed partial class PrototypeGameEngine
                         })
                         .ToArray();
 
-                    foreach (var autoPlayId in autoPlayIds)
+                    if (autoPlayIds.Length == 0)
                     {
-                        var autoPlayCard = RequireCombatCard(
+                        break;
+                    }
+
+                    var autoPlaySet =
+                        autoPlayIds.ToHashSet();
+                    combat = SetZone(
+                        combat,
+                        sourceZone,
+                        GetZone(combat, sourceZone)
+                            .Where(id =>
+                                !autoPlaySet.Contains(id))
+                            .ToArray());
+                    combat = SetZone(
+                        combat,
+                        PrototypeCardZone.PlayPile,
+                        combat.PlayCardIds
+                            .Concat(autoPlayIds)
+                            .ToArray());
+
+                    operations = new Queue<
+                        PrototypeQueuedOperation>(
+                        autoPlayIds.Select(id =>
+                            new PrototypeQueuedOperation(
+                                PrototypeCombatEffectKind
+                                    .AutoPlayCombatCard,
+                                0,
+                                TargetEnemyId:
+                                    targetEnemyId,
+                                SourceKind:
+                                    operation.SourceKind,
+                                UpgradeAutoPlayedCardsBeforePlay:
+                                    operation
+                                        .UpgradeAutoPlayedCardsBeforePlay,
+                                CardInstanceId: id))
+                        .Concat(operations));
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.AutoPlayTopDrawCards:
+                {
+                    var count = Math.Max(
+                        0,
+                        operation.Amount);
+                    var draw =
+                        combat.DrawPile.ToList();
+                    var discard =
+                        combat.DiscardPile.ToList();
+                    var staged = new List<long>();
+
+                    for (var index = 0;
+                         index < count;
+                         index++)
+                    {
+                        if (draw.Count == 0
+                            && discard.Count > 0)
+                        {
+                            var shuffled =
+                                discard.ToArray();
+                            PrototypeRng.Shuffle(
+                                rng,
+                                "combat",
+                                shuffled);
+                            draw.AddRange(shuffled);
+                            discard.Clear();
+                        }
+
+                        if (draw.Count == 0)
+                        {
+                            break;
+                        }
+
+                        var cardId =
+                            draw[^1];
+                        draw.RemoveAt(
+                            draw.Count - 1);
+                        staged.Add(cardId);
+                    }
+
+                    if (staged.Count == 0)
+                    {
+                        break;
+                    }
+
+                    combat = combat with
+                    {
+                        DrawPile = draw.ToArray(),
+                        DiscardPile =
+                            discard.ToArray(),
+                        PlayPile =
+                            combat.PlayCardIds
+                                .Concat(staged)
+                                .ToArray()
+                    };
+
+                    operations = new Queue<
+                        PrototypeQueuedOperation>(
+                        staged.Select(id =>
+                            new PrototypeQueuedOperation(
+                                PrototypeCombatEffectKind
+                                    .AutoPlayCombatCard,
+                                0,
+                                SourceKind:
+                                    operation.SourceKind,
+                                CardInstanceId: id))
+                        .Concat(operations));
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.AutoPlayCombatCard:
+                {
+                    if (operation.CardInstanceId is not
+                        { } autoPlayId)
+                    {
+                        throw new InvalidOperationException(
+                            "Autoplay-card operation is missing a card instance.");
+                    }
+
+                    if (!combat.PlayCardIds.Contains(
+                            autoPlayId))
+                    {
+                        throw new InvalidOperationException(
+                            $"Autoplay card {autoPlayId} is not staged in the play pile.");
+                    }
+
+                    var autoPlayCard =
+                        RequireCombatCard(
                             combat,
                             autoPlayId);
-                        if (operation.UpgradeAutoPlayedCardsBeforePlay
-                            && autoPlayCard.UpgradeLevel <= 0)
+                    if (operation
+                            .UpgradeAutoPlayedCardsBeforePlay
+                        && autoPlayCard.UpgradeLevel <= 0)
+                    {
+                        combat = combat with
                         {
-                            combat = combat with
-                            {
-                                Cards = combat.Cards
-                                    .Select(item =>
-                                        item.InstanceId == autoPlayId
-                                            ? item with
-                                            {
-                                                UpgradeLevel = 1
-                                            }
-                                            : item)
-                                    .ToArray()
-                            };
-                            autoPlayCard = RequireCombatCard(
+                            Cards = combat.Cards
+                                .Select(item =>
+                                    item.InstanceId
+                                        == autoPlayId
+                                        ? item with
+                                        {
+                                            UpgradeLevel = 1
+                                        }
+                                        : item)
+                                .ToArray()
+                        };
+                        autoPlayCard =
+                            RequireCombatCard(
                                 combat,
                                 autoPlayId);
-                        }
+                    }
 
-                        var autoPlayDefinition =
-                            PrototypeContent.Card(
-                                autoPlayCard.CardId);
-                        if (!autoPlayDefinition.MechanicsImplemented
-                            || autoPlayDefinition.Unplayable)
-                        {
-                            throw new NotSupportedException(
-                                $"Tagged autoplay cannot play '{autoPlayDefinition.Name}'.");
-                        }
+                    var autoPlayDefinition =
+                        PrototypeContent.Card(
+                            autoPlayCard.CardId);
+                    if (!autoPlayDefinition
+                            .MechanicsImplemented)
+                    {
+                        throw new NotSupportedException(
+                            $"Autoplay cannot resolve unsupported card '{autoPlayDefinition.Name}'.");
+                    }
 
+                    var autoPlayDestination =
+                        CardExhaustsOnUse(
+                            autoPlayDefinition,
+                            autoPlayCard.UpgradeLevel)
+                            ? PrototypeCardZone.ExhaustPile
+                            : PrototypeCardZone.DiscardPile;
+
+                    if (autoPlayDefinition.Unplayable)
+                    {
                         combat = SetZone(
                             combat,
-                            sourceZone,
-                            GetZone(combat, sourceZone)
-                                .Where(id => id != autoPlayId)
+                            PrototypeCardZone.PlayPile,
+                            combat.PlayCardIds
+                                .Where(id =>
+                                    id != autoPlayId)
                                 .ToArray());
+                        combat = SetZone(
+                            combat,
+                            autoPlayDestination,
+                            GetZone(
+                                    combat,
+                                    autoPlayDestination)
+                                .Append(autoPlayId)
+                                .ToArray());
+                        break;
+                    }
 
-                        var autoPlayCount =
-                            ResolveCardPlayCountAndConsumeModifiers(
+                    int? autoPlayTarget =
+                        operation.TargetEnemyId;
+                    if (EffectiveCardTarget(
+                            combat,
+                            autoPlayDefinition)
+                        == PrototypeCardTarget.Enemy)
+                    {
+                        var liveTargets =
+                            combat.Enemies
+                                .Where(enemy =>
+                                    enemy.Hp > 0)
+                                .Select(enemy =>
+                                    enemy.InstanceId)
+                                .ToArray();
+                        if (liveTargets.Length == 0)
+                        {
+                            combat = SetZone(
                                 combat,
-                                autoPlayCard,
-                                autoPlayDefinition.Type);
-                        combat = autoPlayCount.Combat;
+                                PrototypeCardZone.PlayPile,
+                                combat.PlayCardIds
+                                    .Where(id =>
+                                        id != autoPlayId)
+                                    .ToArray());
+                            combat = SetZone(
+                                combat,
+                                autoPlayDestination,
+                                GetZone(
+                                        combat,
+                                        autoPlayDestination)
+                                    .Append(autoPlayId)
+                                    .ToArray());
+                            break;
+                        }
 
-                        var autoPlayDestination =
-                            CardExhaustsOnUse(
-                                autoPlayDefinition,
-                                autoPlayCard.UpgradeLevel)
-                                ? PrototypeCardZone.ExhaustPile
-                                : PrototypeCardZone.DiscardPile;
-                        var autoPlaySeries =
-                            new PrototypeCardPlaySeriesState(
-                                SourceCardInstanceId: autoPlayId,
-                                SourceCardDestination:
-                                    autoPlayDestination,
-                                TargetEnemyId: targetEnemyId,
-                                EnergySpent: 0,
-                                PlayCount:
-                                    autoPlayCount.PlayCount,
-                                NextPlayIndex: 0,
-                                RemoveSourceCardOnCompletion:
-                                    autoPlayDefinition.Type
-                                        == PrototypeCardType.Power);
+                        if (autoPlayTarget is null
+                            || !liveTargets.Contains(
+                                autoPlayTarget.Value))
+                        {
+                            autoPlayTarget =
+                                liveTargets[
+                                    PrototypeRng.NextInt(
+                                        rng,
+                                        "combat_targets",
+                                        liveTargets.Length)];
+                        }
+                    }
+                    else
+                    {
+                        autoPlayTarget = null;
+                    }
 
-                        var autoPlayed = ResolveCardPlaySeries(
+                    combat = SetZone(
+                        combat,
+                        PrototypeCardZone.PlayPile,
+                        combat.PlayCardIds
+                            .Where(id =>
+                                id != autoPlayId)
+                            .ToArray());
+
+                    var autoPlayCount =
+                        ResolveCardPlayCountAndConsumeModifiers(
+                            combat,
+                            autoPlayCard,
+                            autoPlayDefinition.Type);
+                    combat = autoPlayCount.Combat;
+                    var autoPlayXValue =
+                        autoPlayDefinition.Cost.Kind
+                            == PrototypeCardCostKind.X
+                            ? combat.Energy
+                                + player.Relics.Sum(relic =>
+                                    PrototypeContent.Relic(
+                                            relic.RelicId)
+                                        .XValueBonus)
+                            : 0;
+
+                    var autoPlaySeries =
+                        new PrototypeCardPlaySeriesState(
+                            SourceCardInstanceId:
+                                autoPlayId,
+                            SourceCardDestination:
+                                autoPlayDestination,
+                            TargetEnemyId:
+                                autoPlayTarget,
+                            EnergySpent:
+                                autoPlayXValue,
+                            PlayCount:
+                                autoPlayCount.PlayCount,
+                            NextPlayIndex: 0,
+                            RemoveSourceCardOnCompletion:
+                                autoPlayDefinition.Type
+                                    == PrototypeCardType.Power);
+
+                    var autoPlayed =
+                        ResolveCardPlaySeries(
                             player,
                             combat,
                             rng,
                             autoPlaySeries);
-                        player = autoPlayed.Player;
-                        combat = autoPlayed.Combat;
+                    player = autoPlayed.Player;
+                    combat = autoPlayed.Combat;
 
-                        if (combat.PendingChoice is not null)
-                        {
-                            throw new NotSupportedException(
-                                "Tagged autoplay does not yet preserve an outer effect queue across a nested player choice.");
-                        }
+                    if (combat.PendingChoice
+                        is not null)
+                    {
+                        var outerContinuation =
+                            new PrototypeChoiceResolutionContinuationState(
+                                SourceCardInstanceId:
+                                    sourceCardInstanceId,
+                                SourceCardDestination:
+                                    sourceCardDestination,
+                                Operations:
+                                    operations.ToArray(),
+                                PendingDiscardEvents:
+                                    Array.Empty<
+                                        PrototypeCombatEvent>(),
+                                PendingSlyCardInstanceIds:
+                                    Array.Empty<long>(),
+                                CompletionEvents:
+                                    completionEvents is null
+                                        ? Array.Empty<
+                                            PrototypeCombatEvent>()
+                                        : (PrototypeCombatEvent[])
+                                            completionEvents.Clone(),
+                                CardPlaySeries:
+                                    cardPlaySeries,
+                                MoveSourceCardOnCompletion:
+                                    moveSourceCardOnCompletion,
+                                RemoveSourceCardOnCompletion:
+                                    removeSourceCardOnCompletion,
+                                SourceCardAlreadyMoved:
+                                    sourceCardAlreadyMoved,
+                                EventDispatchContinuation:
+                                    eventDispatchContinuation?.Fork());
+                        combat =
+                            AttachOuterChoiceContinuation(
+                                combat,
+                                outerContinuation);
+                        return (player, combat);
                     }
 
                     break;
@@ -7197,6 +7448,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeCardZone.DrawPile => combat.DrawPile,
             PrototypeCardZone.DiscardPile => combat.DiscardPile,
             PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
+            PrototypeCardZone.PlayPile => combat.PlayCardIds,
             PrototypeCardZone.ChoicePool => combat.ChoiceCardIds,
             _ => throw new ArgumentOutOfRangeException(nameof(zone))
         };
@@ -7211,6 +7463,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeCardZone.DrawPile => combat with { DrawPile = cards },
             PrototypeCardZone.DiscardPile => combat with { DiscardPile = cards },
             PrototypeCardZone.ExhaustPile => combat with { ExhaustPile = cards },
+            PrototypeCardZone.PlayPile => combat with { PlayPile = cards },
             PrototypeCardZone.ChoicePool => combat with { ChoicePool = cards },
             _ => throw new ArgumentOutOfRangeException(nameof(zone))
         };
