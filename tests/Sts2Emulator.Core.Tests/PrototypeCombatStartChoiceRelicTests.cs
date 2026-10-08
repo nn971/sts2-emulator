@@ -214,4 +214,95 @@ public sealed class PrototypeCombatStartChoiceRelicTests
         PrototypeStateInvariants.Validate(
             state);
     }
+    [Fact]
+    public void GamblingChipUsesSequentialOpeningHandChoiceAndRefills()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create(
+            "gambling-chip-combat-start");
+        state = engine.Step(
+            state,
+            Assert.Single(
+                engine.GetLegalActions(state))).State;
+
+        var empty = PrototypeJson.EmptyObject();
+        var world = state.World
+            ?? throw new InvalidOperationException(
+                "Expected initialized run world.");
+        var entryNodeIds = world.Map.EntryNodeIds
+            ?? throw new InvalidOperationException(
+                "Expected initialized map entry nodes.");
+        var entryNodeId = entryNodeIds[0];
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics =
+                [
+                    new RelicInstance(
+                        "proto.relic.gambling_chip",
+                        empty)
+                ]
+            },
+            World = world with
+            {
+                Map = world.Map with
+                {
+                    Nodes = world.Map.Nodes
+                        .Select(node =>
+                            node.NodeId == entryNodeId
+                                ? node with
+                                {
+                                    RoomType =
+                                        PrototypeRoomType.Combat
+                                }
+                                : node)
+                        .ToArray()
+                }
+            }
+        };
+
+        state = engine.Step(
+            state,
+            GameAction.Create(
+                "choose_map_node",
+                new ChooseMapNodePayload(
+                    entryNodeId))).State;
+
+        var combat = state.World!.Combat!;
+        var initialHand =
+            (long[])combat.Hand.Clone();
+        Assert.NotEmpty(initialHand);
+        Assert.IsType<PendingCombatChoiceState>(
+            combat.PendingChoice);
+        Assert.True(
+            combat.PendingChoice!.Selection
+                .SequentialOptional);
+
+        var first = initialHand[0];
+        var choose = engine.GetLegalActions(state)
+            .Single(action =>
+                action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.SequenceEqual([first]));
+        state = engine.Step(state, choose).State;
+
+        Assert.Contains(
+            first,
+            state.World!.Combat!.Hand);
+        var finish = engine.GetLegalActions(state)
+            .Single(action =>
+                action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.Length == 0);
+        state = engine.Step(state, finish).State;
+
+        combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.DoesNotContain(first, combat.Hand);
+        Assert.Contains(first, combat.DiscardPile);
+        Assert.Equal(
+            initialHand.Length,
+            combat.Hand.Length);
+        PrototypeStateInvariants.Validate(state);
+    }
+
 }

@@ -733,3 +733,11 @@ cards are discarded together and the emulator draws the same number. This keeps 
 linear in hand size (11 actions at a ten-card hand rather than 1,024 subset actions). Sly discard
 autoplay still follows the prototype's existing generic discard-continuation order; exact native hook
 ordering remains a later fidelity refinement.
+
+
+## Mechanics-expansion pass: Gambling Chip reuse
+
+Gambling Chip now reuses the same sequential optional discard-and-refill continuation as Gambler's
+Brew, but starts it from the combat-start relic event after the opening hand has been drawn. This is
+a useful cross-check that the linearized choice state survives event-subscriber suspension and resumes
+the combat-start dispatch correctly; no relic-specific choice branch is required.

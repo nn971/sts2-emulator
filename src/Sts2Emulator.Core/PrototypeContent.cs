@@ -2640,6 +2640,26 @@ public static class PrototypeContent
                             3,
                             GeneratedChoiceCardsFreeThisTurn:
                                 false)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.gambling_chip",
+                "Gambling Chip",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [
+                            new(
+                                PrototypeCombatEffectKind.ChooseCards,
+                                0,
+                                Selection: new(
+                                    PrototypeCardZone.Hand,
+                                    0,
+                                    999999999,
+                                    PrototypeCardSelectionResolutionKind.MoveToDiscard,
+                                    SequentialOptional: true,
+                                    DrawEqualToSelectionsOnCompletion: true))
+                        ])
                 ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
@@ -6533,7 +6553,8 @@ public static class PrototypeContent
         "proto.relic.joss_paper",
         "proto.relic.burning_sticks",
         "proto.relic.forgotten_soul",
-        "proto.relic.toolbox"
+        "proto.relic.toolbox",
+        "proto.relic.gambling_chip"
     ];
 
     public static string[] BossRelicPool { get; } =
