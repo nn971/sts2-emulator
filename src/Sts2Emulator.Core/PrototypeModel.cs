@@ -339,10 +339,13 @@ public enum PrototypeRunEffectKind
     HealToFull,
     HealPercentMaxHp,
     GainMaxHp,
+    LoseMaxHp,
     LoseHp,
     GainGold,
     LoseGold,
     AddCard,
+    GainRelic,
+    GainPotion,
     FillPotionSlots
 }
 
@@ -516,7 +519,9 @@ public sealed record PrototypeQueuedOperation(
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
     int Amount = 0,
-    string? CardId = null);
+    string? CardId = null,
+    string? RelicId = null,
+    string? PotionId = null);
 
 public sealed record PrototypeCardDefinition(
     string Id,
@@ -1545,15 +1550,29 @@ public sealed record PrototypePendingEventDeckChoiceState(
     };
 }
 
+public sealed record PrototypePendingEventPotionReplacementState(
+    string ChoiceId,
+    string PotionId,
+    int[] CandidateSlots)
+{
+    public PrototypePendingEventPotionReplacementState Fork() => this with
+    {
+        CandidateSlots = (int[])CandidateSlots.Clone()
+    };
+}
+
 public sealed record EventState(
     string EventId,
     string? ChosenChoiceId = null,
-    PrototypePendingEventDeckChoiceState? PendingDeckChoice = null)
+    PrototypePendingEventDeckChoiceState? PendingDeckChoice = null,
+    PrototypePendingEventPotionReplacementState? PendingPotionReplacement = null)
 {
     public EventState Fork() => this with
     {
         PendingDeckChoice =
-            PendingDeckChoice?.Fork()
+            PendingDeckChoice?.Fork(),
+        PendingPotionReplacement =
+            PendingPotionReplacement?.Fork()
     };
 }
 
@@ -1609,6 +1628,7 @@ public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
 public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
+public sealed record ReplaceEventPotionPayload(int Slot);
 public sealed record UpgradeCardPayload(long CardInstanceId);
 public sealed record RemoveCardPayload(long CardInstanceId);
 public sealed record SelectCardsPayload(long[] CardInstanceIds);
