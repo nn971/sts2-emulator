@@ -999,3 +999,15 @@ Power choices, and state invariants.
 Do not mistake this for full native Neow completion or validated
 seed parity. Further Neow effect families, Overgrowth event
 continuations, and native reward/shop economy remain.
+
+
+## Choice-to-hand capacity guard (2026-10-08)
+
+The reusable combat `ChooseCards` resolver now bounds selections
+moving cards into hand by the remaining capacity of the native
+ten-card hand. Neow's Fury's optional discard retrieval therefore
+offers at most one card when nine remain in hand after the Attack
+leaves the hand, and skips the retrieval when the hand is already
+full. This cap also covers other discard/choice-to-hand effects.
+A targeted regression verifies one-card offer legality, the final
+ten-card hand, card exhaustion, and invariants.
