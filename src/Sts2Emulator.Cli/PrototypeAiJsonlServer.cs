@@ -7,6 +7,8 @@ internal static class PrototypeAiJsonlServer
 {
     public const string WireSchemaId = "prototype-ai-jsonl-v0";
     public const string FairPolicyId = "prototype-fair-v0";
+    public const string NativeOvergrowthResetId =
+        "prototype-native-overgrowth-reset-v1";
 
     public static void Run(TextReader input, TextWriter output)
     {
@@ -90,7 +92,8 @@ internal static class PrototypeAiJsonlServer
                             hypotheticalDrawOrderId = PrototypeHypotheticalDrawOrder.SchemaId,
                             conditionalCombatEntryId = PrototypeConditionedCombatEntry.SchemaId,
                             factorizedInitialStreamsId = PrototypeFactorizedRunFactory.SchemaId,
-                            pristineRewardProposalId = PrototypePristineRewardProposal.SchemaId
+                            pristineRewardProposalId = PrototypePristineRewardProposal.SchemaId,
+                            nativeOvergrowthResetId = NativeOvergrowthResetId
                         });
                         break;
 
@@ -120,6 +123,27 @@ internal static class PrototypeAiJsonlServer
                             stateHandle = handle,
                             exactHash = CanonicalJson.Sha256(state),
                             terminal = state.Phase == RunPhase.Terminal
+                        });
+                        break;
+                    }
+
+                    case "reset_native_overgrowth":
+                    {
+                        // A genuine live-run root, never a hypothetical search
+                        // state. Use the factory itself so Neow, map layout,
+                        // encounter pools and reward odds are initialized in
+                        // exactly the same path as native-structure CLI runs.
+                        var seed = RequiredString(request, "seed");
+                        var ascension = OptionalInt(request, "ascension") ?? 0;
+                        var state = PrototypeNativeOvergrowthRunFactory.Create(
+                            seed, ascension);
+                        var handle = Store(state);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            stateHandle = handle,
+                            schemaId = NativeOvergrowthResetId
                         });
                         break;
                     }

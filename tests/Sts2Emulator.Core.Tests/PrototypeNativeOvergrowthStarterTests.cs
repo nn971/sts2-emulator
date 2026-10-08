@@ -24,6 +24,49 @@ public sealed class PrototypeNativeOvergrowthStarterTests
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(10)]
+    public void NativeFactoryExposesReplayablePublicOpening(int ascension)
+    {
+        var environment = new PrototypeAiEnvironment();
+        var first = PrototypeNativeOvergrowthRunFactory.Create(
+            $"training-gate-{ascension}", ascension);
+        var replay = PrototypeNativeOvergrowthRunFactory.Create(
+            $"training-gate-{ascension}", ascension);
+        var frame = environment.Observe(first);
+        var repeated = environment.Observe(replay);
+
+        Assert.Equal(
+            PrototypeNativeOvergrowthMap.GenerationProfileId,
+            frame.Observation.MapGenerationProfileId);
+        Assert.Equal(1, frame.Observation.Act);
+        Assert.Equal(0, frame.Observation.Floor);
+        Assert.Equal(RunPhase.Event, frame.Observation.Phase);
+        Assert.Equal(
+            PrototypeNativeOvergrowthEvents.NeowEventId,
+            frame.Observation.EventId);
+        Assert.Contains(frame.Observation.Map, node => node.Floor == 16);
+        Assert.Equal(13, frame.Observation.Deck.Length);
+        Assert.Single(frame.Observation.Deck,
+            card => card.CardId == "proto.common.restlessness");
+        Assert.Equal(3, frame.LegalActions.Length);
+        Assert.All(frame.LegalActions, action =>
+            Assert.Equal("event_choice", action.Kind));
+
+        Assert.Equal(frame.ObservationHash, repeated.ObservationHash);
+        Assert.Equal(frame.CanonicalStateHash, repeated.CanonicalStateHash);
+        Assert.Equal(
+            frame.LegalActions.Select(action => action.ActionId),
+            repeated.LegalActions.Select(action => action.ActionId));
+        var next = environment.Step(first, frame.LegalActions[0].ActionId).State;
+        var nextReplay = environment.Step(
+            replay, repeated.LegalActions[0].ActionId).State;
+        Assert.Equal(CanonicalJson.Sha256(next),
+            CanonicalJson.Sha256(nextReplay));
+        PrototypeStateInvariants.Validate(next);
+    }
+
+    [Theory]
     [InlineData(false, 0, 2, 2)]
     [InlineData(true, 0, 3, 3)]
     [InlineData(false, 1, 0, 0)]

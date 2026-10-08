@@ -83,3 +83,34 @@ dotnet run --project src/Sts2Emulator.Cli -- prototype-manifest
 
 Experiment metadata in the parent AI project should record at least the emulator commit,
 `RulesetId`, and `AiSchemaId`.
+
+## Native-shaped Overgrowth training reset (live-run JSONL)
+
+The long-lived CLI `prototype-ai-jsonl` server advertises
+`nativeOvergrowthResetId: "prototype-native-overgrowth-reset-v1"`
+in `hello`. The matching request uses `op: "reset_native_overgrowth"`,
+a required `seed` string, and an optional integer `ascension` (default 0).
+It calls `PrototypeNativeOvergrowthRunFactory.Create(seed, ascension)`
+without reconstructing the state from ordinary `reset`.
+
+The successful response contains `ok: true`, the original `requestId`,
+`stateHandle`, and `schemaId: "prototype-native-overgrowth-reset-v1"`.
+The resulting handle lives in the ordinary live handle table and supports
+`observe`, `legal_actions`, `step`, `is_terminal`, `fork`,
+`batch_step`, and `release_many`; it is **not** marked hypothetical.
+The usual public-only observation policy and the live-handle guard
+against hypothetical draw-order injection remain intact.
+
+This is an opt-in **hybrid** training environment: source-shaped native
+Act 1 Overgrowth through floor 16, followed by the existing prototype
+six-room Acts 2 and 3. It deliberately does not alter the legacy six-floor
+`reset` or promise native RNG/timing fidelity. The first exposed state is
+the Neow event, with 13 Silent starting cards including Restlessness.
+See `tools/native_overgrowth_reset_smoke.py` and
+`tests/Sts2Emulator.Core.Tests/PrototypeNativeOvergrowthStarterTests.cs`
+for black-box and direct public-observation regression coverage.
+
+The AI consumer in `nn971/sts2-ai` independently verifies the advertised
+capability, response schema, map profile, Neow event and deck before
+initiating training. Updating the emulator repository alone does not
+update the separate `sts2-ai` git-submodule pin.
