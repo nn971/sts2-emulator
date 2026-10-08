@@ -319,6 +319,10 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     };
                     break;
 
+                case PrototypeRunEffectKind.LoseAllGold:
+                    player = player with { Gold = 0 };
+                    break;
+
                 case PrototypeRunEffectKind.UpgradeLastCardOfId:
                 {
                     var id = effect.CardId ?? throw new InvalidOperationException(
