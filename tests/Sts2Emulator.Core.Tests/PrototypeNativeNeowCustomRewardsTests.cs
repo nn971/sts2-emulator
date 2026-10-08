@@ -122,7 +122,7 @@ public sealed class PrototypeNativeNeowCustomRewardsTests
         Assert.True(reward.RelicResolved);
         Assert.NotNull(reward.PotionOption);
         Assert.Equal(13, state.Player.Deck.Length);
-        Assert.Empty(state.Player.PotionSlots.Where(p => p is not null));
+        Assert.DoesNotContain(state.Player.PotionSlots, p => p is not null);
         var selectedCard = reward.CardOptions[0];
         var offeredPotion = reward.PotionOption;
 
