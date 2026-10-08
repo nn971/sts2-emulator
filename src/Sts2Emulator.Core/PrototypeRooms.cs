@@ -2832,21 +2832,36 @@ public sealed partial class PrototypeGameEngine
         var nativeOvergrowth = world.Act == 1
             && world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId;
-        var potion = CanAcquirePotion(silverCrucible.Player)
-            && PrototypeRng.NextBool(
-                state.Rng,
-                "reward",
-                1,
-                2)
-            ? nativeOvergrowth
+        string? potion;
+        if (nativeOvergrowth)
+        {
+            var (offered, nextOdds) =
+                PrototypeNativePotionRewardOdds.Roll(
+                    world.PotionRewardOddsThousandths,
+                    room == PrototypeRoomType.Elite,
+                    state.Rng);
+            world = world with
+            {
+                PotionRewardOddsThousandths = nextOdds
+            };
+            potion = offered
+                && CanAcquirePotion(silverCrucible.Player)
                 ? PrototypeNativePotionShop.PickWeighted(
                     state.Rng, "reward")
-                : PrototypeContent.PotionPool[
+                : null;
+        }
+        else
+        {
+            potion = CanAcquirePotion(silverCrucible.Player)
+                && PrototypeRng.NextBool(
+                    state.Rng, "reward", 1, 2)
+                ? PrototypeContent.PotionPool[
                     PrototypeRng.NextInt(
                         state.Rng,
                         "reward",
                         PrototypeContent.PotionPool.Length)]
-            : null;
+                : null;
+        }
 
         string? relic = null;
         if (room == PrototypeRoomType.Elite)

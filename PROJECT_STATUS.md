@@ -1398,3 +1398,23 @@ The choice of whether combat offers a potion still uses the
 prototype's flat 50% chance at this stage; the native
 `PotionRewardOdds` pity system and exact RNG float semantics
 are separate outstanding fidelity tasks.
+
+## Persistent native combat potion reward odds (2026-10-08)
+
+Combat potion *presence* on native Overgrowth now uses the
+source-shaped `PotionRewardOdds` mechanism. The persisted per-run
+value starts at 40% and changes by −10 percentage points after a
+successful roll or +10 percentage points after a miss, with an
+extra +12.5 percentage points applied to the *roll* in elite rooms
+(not permanently added to the pity state). The resulting chance
+is deliberately not clamped, as in `AbstractOdds`. Every normal,
+elite, and boss combat reward generation updates the value, and
+the state persists through serialization and forks. Successful
+offers continue to use the rarity-weighted picker.
+
+The emulator uses a 0–999 integer threshold sample on the existing
+reward stream rather than the pinned game's dedicated odds RNG
+and float values; hook-forced potion rewards and exact RNG
+alignment are not modeled. The legacy abstract map retains its
+former 50% potion-reward chance. No colorless card or
+cross-character mechanics were added.

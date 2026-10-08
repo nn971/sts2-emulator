@@ -45,6 +45,12 @@ public static class PrototypeStateInvariants
                 "Run-wide shop removal count cannot be negative.");
         }
 
+        if (world.PotionRewardOddsThousandths % 100 != 0)
+        {
+            throw new InvalidOperationException(
+                "Potion reward odds must preserve native 10-percent increments.");
+        }
+
         if (world.RelicBag is { } bag)
         {
             var remaining = bag.Remaining;

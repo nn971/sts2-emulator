@@ -1769,7 +1769,9 @@ public sealed record RunWorldState(
     PrototypeCompletedRoomRecord[]? CompletedRoomHistory = null,
     PrototypeUnknownRoomOddsState? UnknownRoomOdds = null,
     int ShopRemovalsUsed = 0,
-    PrototypeRelicBagState? RelicBag = null)
+    PrototypeRelicBagState? RelicBag = null,
+    int PotionRewardOddsThousandths =
+        PrototypeNativePotionRewardOdds.InitialThousandths)
 {
     public RunWorldState Fork() => this with
     {
