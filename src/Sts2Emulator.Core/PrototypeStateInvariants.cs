@@ -45,6 +45,37 @@ public static class PrototypeStateInvariants
                 "Run-wide shop removal count cannot be negative.");
         }
 
+        if (world.RelicBag is { } bag)
+        {
+            var remaining = bag.Remaining;
+            if (remaining.Length != remaining.Distinct(StringComparer.Ordinal).Count()
+                || remaining.Any(id => !PrototypeContent.RelicPool.Contains(
+                        id, StringComparer.Ordinal))
+                || remaining.Any(id => state.Player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(relic.RelicId, id))))
+            {
+                throw new InvalidOperationException(
+                    "Native relic bag contains duplicates, invalid or owned relics.");
+            }
+
+            foreach (var (tier, ids) in new[]
+            {
+                (PrototypeRelicRarity.Common, bag.Common),
+                (PrototypeRelicRarity.Uncommon, bag.Uncommon),
+                (PrototypeRelicRarity.Rare, bag.Rare),
+                (PrototypeRelicRarity.Shop, bag.Shop)
+            })
+            {
+                if (ids.Any(id =>
+                    !PrototypeNativeRelicGrabBag.TryGetRarity(id, out var actual)
+                    || actual != tier))
+                {
+                    throw new InvalidOperationException(
+                        "Native relic bag has incorrectly partitioned relics.");
+                }
+            }
+        }
+
         if (world.Act < 1 || world.Act > PrototypeContent.Rules.Acts)
         {
             throw new InvalidOperationException($"Invalid act {world.Act}.");

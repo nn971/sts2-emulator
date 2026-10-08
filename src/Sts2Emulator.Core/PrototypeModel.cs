@@ -1768,7 +1768,8 @@ public sealed record RunWorldState(
     PrototypeActOneEncounterPoolState? ActOneEncounterPool = null,
     PrototypeCompletedRoomRecord[]? CompletedRoomHistory = null,
     PrototypeUnknownRoomOddsState? UnknownRoomOdds = null,
-    int ShopRemovalsUsed = 0)
+    int ShopRemovalsUsed = 0,
+    PrototypeRelicBagState? RelicBag = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -1786,7 +1787,8 @@ public sealed record RunWorldState(
         CompletedRoomHistory = CompletedRoomHistory is null
             ? null
             : (PrototypeCompletedRoomRecord[])CompletedRoomHistory.Clone(),
-        ActOneEncounterPool = ActOneEncounterPool?.Fork()
+        ActOneEncounterPool = ActOneEncounterPool?.Fork(),
+        RelicBag = RelicBag?.Fork()
     };
 
     public string[] EncounterIds =>

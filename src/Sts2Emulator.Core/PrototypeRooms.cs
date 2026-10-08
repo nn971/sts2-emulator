@@ -1186,12 +1186,28 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.GainRelic:
                 case PrototypeRunEffectKind.GainRandomRelic:
                 {
-                    var relicId = effect.Kind
-                        == PrototypeRunEffectKind.GainRandomRelic
-                        ? PickUnownedEventRelic(player, state.Rng)
-                        : effect.RelicId
+                    string relicId;
+                    if (effect.Kind == PrototypeRunEffectKind.GainRandomRelic
+                        && world.Act == 1
+                        && world.Map.GenerationProfileId
+                            == PrototypeNativeOvergrowthMap.GenerationProfileId)
+                    {
+                        var draw = PrototypeNativeRelicGrabBag.Draw(
+                            world, player, state.Rng, merchant: false);
+                        world = draw.World;
+                        relicId = draw.Id
                             ?? throw new InvalidOperationException(
-                                "Gain-relic event effect is missing a relic ID.");
+                                "No source-eligible event relics remain in the bag.");
+                    }
+                    else
+                    {
+                        relicId = effect.Kind
+                            == PrototypeRunEffectKind.GainRandomRelic
+                            ? PickUnownedEventRelic(player, state.Rng)
+                            : effect.RelicId
+                                ?? throw new InvalidOperationException(
+                                    "Gain-relic event effect is missing a relic ID.");
+                    }
                     var relicDefinition =
                         PrototypeContent.Relic(
                             relicId);
@@ -1696,11 +1712,31 @@ public sealed partial class PrototypeGameEngine
                             relic.RelicId,
                             id)))
                 .ToArray();
-        var relicIds = PickDistinct(
-            availableRelics,
-            3,
-            state.Rng,
-            "shop");
+        string[] relicIds;
+        if (nativeMerchant)
+        {
+            var selections = new List<string>(3);
+            for (var index = 0; index < 3; index++)
+            {
+                var tier = index == 2
+                    ? PrototypeRelicRarity.Shop
+                    : PrototypeNativeRelicGrabBag.RollRarity(state.Rng);
+                var draw = PrototypeNativeRelicGrabBag.Draw(
+                    world, state.Player, state.Rng,
+                    merchant: true, forcedRarity: tier);
+                world = draw.World;
+                if (draw.Id is not null)
+                {
+                    selections.Add(draw.Id);
+                }
+            }
+            relicIds = selections.ToArray();
+        }
+        else
+        {
+            relicIds = PickDistinct(
+                availableRelics, 3, state.Rng, "shop");
+        }
 
         var potionOffers = potionIds
             .Select((potionId, index) =>
@@ -2788,13 +2824,27 @@ public sealed partial class PrototypeGameEngine
                     PrototypeContent.PotionPool.Length)]
             : null;
 
-        var relic = room == PrototypeRoomType.Elite
-            ? PrototypeContent.RelicPool[
-                PrototypeRng.NextInt(
-                    state.Rng,
-                    "reward",
-                    PrototypeContent.RelicPool.Length)]
-            : null;
+        string? relic = null;
+        if (room == PrototypeRoomType.Elite)
+        {
+            if (world.Act == 1
+                && world.Map.GenerationProfileId
+                    == PrototypeNativeOvergrowthMap.GenerationProfileId)
+            {
+                var draw = PrototypeNativeRelicGrabBag.Draw(
+                    world, state.Player, state.Rng, merchant: false);
+                world = draw.World;
+                relic = draw.Id;
+            }
+            else
+            {
+                relic = PrototypeContent.RelicPool[
+                    PrototypeRng.NextInt(
+                        state.Rng,
+                        "reward",
+                        PrototypeContent.RelicPool.Length)];
+            }
+        }
         var relicOptions =
             room == PrototypeRoomType.Boss
                 ? PickDistinct(

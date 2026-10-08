@@ -53,20 +53,33 @@ public sealed partial class PrototypeGameEngine
         }
 
         var world = RequireWorld(state);
-        var available = PrototypeContent.RelicPool
-            .Where(relicId => !state.Player.Relics.Any(relic =>
-                StringComparer.Ordinal.Equals(relic.RelicId, relicId)))
-            .ToArray();
-
-        if (available.Length == 0)
+        string? relicId;
+        if (world.Act == 1
+            && world.Map.GenerationProfileId
+                == PrototypeNativeOvergrowthMap.GenerationProfileId)
         {
-            // This is a constrained prototype fallback; the native game's
-            // treasure reward system has broader relic classes and hooks.
-            return CompleteRoomToMap(state);
+            var draw = PrototypeNativeRelicGrabBag.Draw(
+                world, state.Player, state.Rng, merchant: false);
+            world = draw.World;
+            relicId = draw.Id;
+        }
+        else
+        {
+            var available = PrototypeContent.RelicPool
+                .Where(id => !state.Player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                .ToArray();
+            relicId = available.Length == 0
+                ? null
+                : available[PrototypeRng.NextInt(
+                    state.Rng, "reward", available.Length)];
         }
 
-        var relicId = available[
-            PrototypeRng.NextInt(state.Rng, "reward", available.Length)];
+        if (relicId is null)
+        {
+            // Constrained catalog exhaustion. Native uses Circlet.
+            return CompleteRoomToMap(state with { World = world });
+        }
         var reward = new RewardState(
             SourceRoom: "Treasure",
             CardOptions: [],

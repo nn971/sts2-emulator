@@ -1326,3 +1326,30 @@ on native relic rarity selection and pool ordering, potion
 generation/pricing, reward mechanics, and shop behavior without
 adding colorless content. Cross-character rewards and multiplayer
 mechanics remain out of scope for this milestone.
+
+## Source-classified native relic draw queues (2026-10-08)
+
+The native Overgrowth profile now lazily initializes a persisted,
+rarity-partitioned relic grab bag for the supported single-player relic
+subset. The pinned `RelicGrabBag` / `RelicFactory` implementations
+use front draws for events, elites and treasure, and back draws for
+merchants; `MerchantInventory` rolls two normal rarity slots plus
+one Shop-rarity slot. The emulator now uses those same selection
+directions and queues, removing offered relics *when generated*,
+not only after they are purchased or accepted. That prevents later
+rooms from independently rerolling previously offered relics.
+The bag is forked deeply with run state, validated for duplicates,
+rarity and ownership, and serialized with world state.
+
+The restricted source-classified set has 10 Common, 11 Uncommon,
+15 Rare, and 4 Shop relics. Native event-only relics, source-absent
+legacy prototype relics, colorless cards, and cross-character
+rewards remain outside the bag. Merchant rolls use the native
+50% / 33% / 17% Common / Uncommon / Rare weights, but are sampled
+by the prototype's integer RNG, not native NextFloat. Shop exclusion
+filters currently include Old Coin and Lucky Fysh; full native
+`IsAllowed` state-dependent filters, relic price metadata, and
+the Circlet exhaustion fallback are pending. The legacy abstract
+prototype map continues to use its existing unrestricted relic
+selection. This is a **persistent selection mechanics milestone**,
+not yet exact native relic RNG fidelity.
