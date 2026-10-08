@@ -905,6 +905,16 @@ public sealed partial class PrototypeGameEngine
             World = world with { Combat = combat }
         };
 
+        // An attack may kill the final enemy while its own effects still
+        // require a card-selection choice (e.g. upgraded Dagger Throw).
+        // Resolve that choice and its card-play continuation before firing
+        // CombatWon: entering rewards here dispatches an unrelated event
+        // against an existing pending choice and corrupts the continuation.
+        if (combat.PendingChoice is not null)
+        {
+            return state;
+        }
+
         return AllEnemiesDefeated(combat)
             ? EnterCombatReward(state)
             : state;
