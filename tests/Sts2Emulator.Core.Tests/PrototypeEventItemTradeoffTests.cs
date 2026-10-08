@@ -65,6 +65,127 @@ public sealed class PrototypeEventItemTradeoffTests
     }
 
     [Fact]
+    public void EventPotionCanBeDeclinedWithoutReplacingBelt()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.caged_vault",
+            act: 1,
+            hp: 65,
+            maxHp: 70,
+            gold: 100,
+            deck: [Card(1, "proto.silent.strike")],
+            potionSlots:
+            [
+                Potion("proto.potion.block"),
+                Potion("proto.potion.fire")
+            ]);
+
+        state = ChooseEvent(engine, state, "tonic");
+        var actions = engine.GetLegalActions(state);
+        Assert.Contains(actions, action => action.Kind == "skip_event_potion");
+        Assert.Equal(2, actions.Count(action =>
+            action.Kind == "replace_event_potion"));
+
+        state = engine.Step(state,
+            actions.Single(action => action.Kind == "skip_event_potion")).State;
+
+        Assert.Equal(70, state.Player.Gold);
+        Assert.Equal(65, state.Player.Hp);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal("proto.potion.block",
+            state.Player.PotionSlots[0]!.PotionId);
+        Assert.Equal("proto.potion.fire",
+            state.Player.PotionSlots[1]!.PotionId);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void UsingPotionDuringFullBeltEventOfferFillsFreedSlot()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.caged_vault",
+            act: 1,
+            hp: 35,
+            maxHp: 70,
+            gold: 100,
+            deck: [Card(1, "proto.silent.strike")],
+            potionSlots:
+            [
+                Potion("proto.potion.blood"),
+                Potion("proto.potion.block")
+            ]);
+
+        state = ChooseEvent(engine, state, "tonic");
+        var use = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "use_potion");
+        Assert.Equal(0, use.ReadPayload<UsePotionPayload>().Slot);
+        state = engine.Step(state, use).State;
+
+        Assert.Equal(49, state.Player.Hp);
+        Assert.Equal(70, state.Player.Gold);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal("proto.potion.strength",
+            state.Player.PotionSlots[0]!.PotionId);
+        Assert.Equal("proto.potion.block",
+            state.Player.PotionSlots[1]!.PotionId);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void DecliningQueuedPotionStillResolvesSubsequentRewards()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.collectors_annex",
+            act: 2,
+            hp: 65,
+            maxHp: 70,
+            gold: 100,
+            deck:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend")
+            ],
+            potionSlots:
+            [
+                Potion("proto.potion.block"),
+                Potion("proto.potion.blood")
+            ]);
+
+        state = ChooseEvent(engine, state, "bundle");
+        Assert.Equal(75, state.Player.Gold);
+        Assert.Equal("proto.potion.strength",
+            state.World!.Event!.PendingPotionReplacement!.PotionId);
+        state = engine.Step(state,
+            engine.GetLegalActions(state).Single(action =>
+                action.Kind == "skip_event_potion")).State;
+
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal("proto.potion.fire",
+            state.World!.Event!.PendingPotionReplacement!.PotionId);
+        Assert.Equal(75, state.Player.Gold);
+        state = engine.Step(state,
+            engine.GetLegalActions(state).Single(action =>
+                action.Kind == "skip_event_potion")).State;
+
+        Assert.Equal("proto.relic.empty_cage",
+            state.World!.Event!.PendingDeckChoice!.SourceRelicId);
+        Assert.Equal("proto.potion.block",
+            state.Player.PotionSlots[0]!.PotionId);
+        Assert.Equal("proto.potion.blood",
+            state.Player.PotionSlots[1]!.PotionId);
+
+        state = ChooseDeckCard(engine, state, 1);
+        state = ChooseDeckCard(engine, state, 2);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Empty(state.Player.Deck);
+        Assert.Equal(75, state.Player.Gold);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void CagedVaultCofferFiresRelicAcquiredHooks()
     {
         var engine = new PrototypeGameEngine();
