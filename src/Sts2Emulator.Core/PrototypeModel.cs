@@ -356,6 +356,9 @@ public enum PrototypeRunEffectKind
     LoseGold,
     AddCard,
     GainRandomRareCard,
+    OfferThreeRareCards,
+    OfferThreeCardsAndPotion,
+    OfferRandomRelic,
     GainPotionSlots,
     TransformFirstCardOfId,
     GainRelic,
@@ -1523,7 +1526,8 @@ public sealed record RewardState(
     string[]? RelicOptions = null,
     PrototypePendingDeckChoiceState? PendingDeckChoice = null,
     bool CardOptionsUpgraded = false,
-    bool[]? ExtraCardOptionsUpgraded = null)
+    bool[]? ExtraCardOptionsUpgraded = null,
+    string? AddCardAfterReward = null)
 {
     public string[] CurrentCardOptions
     {
@@ -1659,7 +1663,8 @@ public sealed record EventState(
     PrototypePendingEventPotionReplacementState? PendingPotionReplacement = null,
     string[]? QueuedPotionIds = null,
     PrototypePendingEventDeckChoiceState[]? QueuedDeckChoices = null,
-    string[]? OfferedChoiceIds = null)
+    string[]? OfferedChoiceIds = null,
+    RewardState? PendingReward = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -1684,7 +1689,8 @@ public sealed record EventState(
         OfferedChoiceIds =
             OfferedChoiceIds is null
                 ? null
-                : (string[])OfferedChoiceIds.Clone()
+                : (string[])OfferedChoiceIds.Clone(),
+        PendingReward = PendingReward?.Fork()
     };
 }
 
