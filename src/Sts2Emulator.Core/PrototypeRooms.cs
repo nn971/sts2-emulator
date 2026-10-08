@@ -1407,6 +1407,15 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var shop = world.Shop
             ?? throw new InvalidOperationException("Shop phase has no shop state.");
+        if (shop.PendingDeckChoice is { } pending)
+        {
+            return pending.CandidateCardInstanceIds
+                .Select(cardInstanceId => GameAction.Create(
+                    "choose_shop_relic_deck_card",
+                    new ChooseDeckCardPayload(cardInstanceId)))
+                .ToArray();
+        }
+
         var actions = new List<GameAction>();
 
         foreach (var offer in shop.CardOffers.Where(offer => !offer.Sold && offer.Price <= state.Player.Gold))
@@ -1480,6 +1489,28 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var shop = world.Shop
             ?? throw new InvalidOperationException("Shop phase has no shop state.");
+
+        if (shop.PendingDeckChoice is { } pending)
+        {
+            RequireKind(action, "choose_shop_relic_deck_card");
+            var payload = action.ReadPayload<ChooseDeckCardPayload>();
+            var resolved = ResolveRelicDeckChoice(
+                state.Player,
+                pending,
+                payload.CardInstanceId,
+                state.Rng);
+            return state with
+            {
+                Player = resolved.Player,
+                World = world with
+                {
+                    Shop = shop with
+                    {
+                        PendingDeckChoice = resolved.Remaining
+                    }
+                }
+            };
+        }
 
         if (StringComparer.Ordinal.Equals(action.Kind, "leave_shop"))
         {
@@ -1637,6 +1668,12 @@ public sealed partial class PrototypeGameEngine
             shop = RepriceShop(
                 shop,
                 player);
+            shop = shop with
+            {
+                PendingDeckChoice = CreateRelicDeckChoice(
+                    player,
+                    offer.ItemId)
+            };
         }
         else
         {
@@ -1976,75 +2013,17 @@ public sealed partial class PrototypeGameEngine
 
         if (reward.PendingDeckChoice is { } deckChoice)
         {
-            RequireKind(
-                action,
-                "choose_relic_deck_card");
-            var payload =
-                action.ReadPayload<ChooseDeckCardPayload>();
-            if (!deckChoice.CandidateCardInstanceIds
-                    .Contains(payload.CardInstanceId))
-            {
-                throw new InvalidOperationException(
-                    $"Card instance {payload.CardInstanceId} is not eligible for the relic deck choice.");
-            }
-
-            var selectedCard =
-                player.Deck.FirstOrDefault(card =>
-                    card.InstanceId
-                        == payload.CardInstanceId)
-                ?? throw new InvalidOperationException(
-                    $"Card instance {payload.CardInstanceId} is missing.");
-
-            if (PrototypeContent.Card(
-                    selectedCard.CardId).Eternal)
-            {
-                throw new InvalidOperationException(
-                    $"Eternal card {payload.CardInstanceId} cannot be changed by this relic.");
-            }
-
-            player = deckChoice.Kind switch
-            {
-                PrototypePersistentDeckChoiceKind.Remove =>
-                    player with
-                    {
-                        Deck = player.Deck
-                            .Where(card =>
-                                card.InstanceId
-                                    != payload.CardInstanceId)
-                            .ToArray()
-                    },
-                PrototypePersistentDeckChoiceKind.Transform =>
-                    TransformPersistentDeckCard(
-                        player,
-                        payload.CardInstanceId,
-                        deckChoice.UpgradeTransformedCards,
-                        state.Rng),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-
-            var remainingCandidates =
-                deckChoice.CandidateCardInstanceIds
-                    .Where(id =>
-                        id != payload.CardInstanceId)
-                    .Where(id =>
-                        player.Deck.Any(card =>
-                            card.InstanceId == id))
-                    .ToArray();
-            var remainingSelections =
-                deckChoice.RemainingSelections - 1;
+            RequireKind(action, "choose_relic_deck_card");
+            var payload = action.ReadPayload<ChooseDeckCardPayload>();
+            var resolved = ResolveRelicDeckChoice(
+                player,
+                deckChoice,
+                payload.CardInstanceId,
+                state.Rng);
+            player = resolved.Player;
             reward = reward with
             {
-                PendingDeckChoice =
-                    remainingSelections > 0
-                    && remainingCandidates.Length > 0
-                        ? deckChoice with
-                        {
-                            RemainingSelections =
-                                remainingSelections,
-                            CandidateCardInstanceIds =
-                                remainingCandidates
-                        }
-                        : null
+                PendingDeckChoice = resolved.Remaining
             };
         }
         else if (!reward.CardResolved)
