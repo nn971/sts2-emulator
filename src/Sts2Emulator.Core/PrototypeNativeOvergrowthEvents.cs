@@ -48,8 +48,18 @@ public static class PrototypeNativeOvergrowthEvents
             .Select(name => new PrototypeRelicDefinition(
                 NeowRelicId(name),
                 name,
+                AcquisitionDeckChoice: name == "Pomander"
+                    ? new PrototypeRelicDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Upgrade, 1)
+                    : null,
                 RunTriggers: name switch
                 {
+                    "GoldenPearl" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [new(PrototypeRunEffectKind.GainGold, 150)])
+                    ],
                     "NutritiousOyster" =>
                     [
                         new PrototypeRelicRunTriggerSpec(
@@ -83,8 +93,18 @@ public static class PrototypeNativeOvergrowthEvents
                 .Select(name => new PrototypeEventChoiceDefinition(
                     "take_" + NeowRelicId(name),
                     "Choose " + name,
-                    [new(PrototypeRunEffectKind.GainRelic,
-                        RelicId: NeowRelicId(name))]))
+                    name == "CursedPearl"
+                        ? [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.native.neow.greed"),
+                            new(PrototypeRunEffectKind.GainGold, 333)
+                        ]
+                        : [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name))
+                        ]))
                 .ToArray(),
             MaxAct: 1);
 
