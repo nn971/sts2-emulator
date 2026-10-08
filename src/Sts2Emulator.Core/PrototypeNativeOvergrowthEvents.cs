@@ -48,12 +48,24 @@ public static class PrototypeNativeOvergrowthEvents
             .Select(name => new PrototypeRelicDefinition(
                 NeowRelicId(name),
                 name,
-                AcquisitionDeckChoice: name == "Pomander"
-                    ? new PrototypeRelicDeckChoiceSpec(
-                        PrototypePersistentDeckChoiceKind.Upgrade, 1)
-                    : null,
+                AcquisitionDeckChoice: name switch
+                {
+                    "Pomander" => new PrototypeRelicDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Upgrade, 1),
+                    "PreciseScissors" => new PrototypeRelicDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Remove, 1),
+                    "NewLeaf" => new PrototypeRelicDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Transform, 1),
+                    _ => null
+                },
                 RunTriggers: name switch
                 {
+                    "SilkenTress" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [new(PrototypeRunEffectKind.LoseAllGold)])
+                    ],
                     "GoldenPearl" =>
                     [
                         new PrototypeRelicRunTriggerSpec(
@@ -155,6 +167,11 @@ public static class PrototypeNativeOvergrowthEvents
             ? "NutritiousOyster" : "StoneHumidifier");
         positives.Add(PrototypeRng.NextInt(rng, "event", 2) == 0
             ? "NeowsTalisman" : "Pomander");
+
+        // Massive Scroll's native IsAllowed requires more than one
+        // player. Retain its catalog entry for reference, but never
+        // offer it in this explicitly single-player generator.
+        positives.Remove("MassiveScroll");
 
         var shuffled = positives.ToArray();
         PrototypeRng.Shuffle(rng, "event", shuffled);
