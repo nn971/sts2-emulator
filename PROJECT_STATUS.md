@@ -1101,3 +1101,23 @@ validated, and still checked for lethal consequences.
 Event-cost legality prevents choosing the effect at
 insufficient HP. The exact native damage-command details
 remain a later fidelity task.
+
+
+## Neow's Bones sequential acquisition path (2026-10-08)
+
+Neow's Bones now uses the generic Neow event-to-reward
+continuation to grant two **sequential, distinct** source-shaped
+Neow relic rewards, then adds a curse upon reward completion.
+Any relic-provided removal, upgrade or transform choice is
+resolved before the next phase. Normal Neow opening semantics
+are preserved: no map floor or room completion is inserted.
+The extra reward IDs, counter, and pending deck choices survive
+canonical state forks.
+
+This is a restricted playable prototype rather than native
+selection parity: eligible source relics are currently limited
+to 12 already-implemented Silent-compatible Neow pickup paths,
+and the random curse placeholder is Injury. Kaleidoscope and
+other cross-character mechanics remain postponed, as requested.
+Regressions cover seeded diversity, eligibility, correct
+two-stage acquisition, curse ordering, and map resumption.
