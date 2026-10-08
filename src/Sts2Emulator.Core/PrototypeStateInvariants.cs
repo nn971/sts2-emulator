@@ -1066,6 +1066,13 @@ public static class PrototypeStateInvariants
                 "Combat gold offer is invalid or unresolved without an offer.");
         }
 
+        if (reward.IndependentSelection
+            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss"))
+        {
+            throw new InvalidOperationException(
+                "Independent reward selection requires a combat reward.");
+        }
+
         var extraRelics = reward.ExtraRelicRewardIds
             ?? Array.Empty<string>();
         if (reward.ExtraRelicsResolved < 0

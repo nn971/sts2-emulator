@@ -1553,7 +1553,8 @@ public sealed record RewardState(
     bool[]? CardOptionUpgradeFlags = null,
     bool[][]? ExtraCardOptionUpgradeFlags = null,
     int? GoldOption = null,
-    bool GoldResolved = true)
+    bool GoldResolved = true,
+    bool IndependentSelection = false)
 {
     public string[] CurrentCardOptions
     {

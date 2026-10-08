@@ -73,7 +73,8 @@ public sealed record PrototypeAiReward(
     PrototypeAiDeckChoice? PendingDeckChoice = null,
     bool[]? CardOptionUpgradeFlags = null,
     int? GoldOption = null,
-    bool GoldResolved = true);
+    bool GoldResolved = true,
+    bool IndependentSelection = false);
 
 public sealed record PrototypeAiEventDeckChoice(
     string ChoiceId,
@@ -367,7 +368,8 @@ public sealed class PrototypeAiEnvironment
                                 .CandidateCardInstanceIds.Clone()),
                     (bool[])world.Reward.CurrentCardOptionUpgradeFlags.Clone(),
                     world.Reward.GoldOption,
-                    world.Reward.GoldResolved),
+                    world.Reward.GoldResolved,
+                    world.Reward.IndependentSelection),
             Shop: world?.Shop is null
                 ? null
                 : new PrototypeAiShop(

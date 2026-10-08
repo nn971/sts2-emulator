@@ -2380,28 +2380,93 @@ public sealed partial class PrototypeGameEngine
         var reward = RequireWorld(state).Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
 
-        var orderedActions = GetOrderedRewardActions(state, reward);
-        if (reward.GoldOption is null
-            || reward.PendingDeckChoice is not null)
+        // Event/legacy rewards retain their previous ordered interaction.
+        // Native encounter rewards expose all unresolved reward types
+        // independently; a nested deck selection or bundle choice is
+        // mandatory and cannot be bypassed by other reward actions.
+        if (!reward.IndependentSelection
+            || reward.PendingDeckChoice is not null
+            || (!reward.CardResolved && reward.CardBundles is not null))
         {
-            return orderedActions;
+            return GetOrderedRewardActions(state, reward);
         }
 
-        // Native RewardsSet displays separate selectable rewards and
-        // permits proceeding without claiming the remaining entries.
-        // Preserve the existing card/potion/relic ordered prototype flow,
-        // while exposing gold pickup and early exit at every ordinary stage.
-        var actions = orderedActions
-            .Where(action => !StringComparer.Ordinal.Equals(
-                action.Kind, "leave_reward"))
-            .ToList();
-        if (!reward.GoldResolved)
+        var actions = new List<GameAction>();
+        if (!reward.CardResolved
+            || reward.ExtraCardRewardsResolved
+                < (reward.ExtraCardOptions?.Length ?? 0))
+        {
+            actions.AddRange(
+                reward.CurrentCardOptions.Select((_, index) =>
+                    GameAction.Create(
+                        "take_reward_card",
+                        new ChooseCardPayload(index))));
+            actions.Add(GameAction.Empty("skip_reward_card"));
+        }
+
+        if (!reward.PotionResolved)
+        {
+            if (CanAcquirePotion(state.Player))
+            {
+                var freeSlot = Array.IndexOf(
+                    state.Player.PotionSlots, null);
+                if (freeSlot >= 0)
+                {
+                    actions.Add(GameAction.Empty("take_reward_potion"));
+                }
+                else
+                {
+                    actions.AddRange(
+                        state.Player.PotionSlots
+                            .Select((item, index) =>
+                                (Potion: item, Slot: index))
+                            .Where(item => item.Potion is not null)
+                            .Select(item => GameAction.Create(
+                                "replace_reward_potion",
+                                new ReplaceRewardPotionPayload(
+                                    item.Slot))));
+                }
+            }
+
+            actions.Add(GameAction.Empty("skip_reward_potion"));
+        }
+
+        if (!reward.RelicResolved)
+        {
+            var relics = reward.CurrentRelicOptions;
+            if (relics.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "Unresolved relic reward has no options.");
+            }
+            actions.AddRange(relics.Select((_, index) =>
+                GameAction.Create(
+                    "take_reward_relic",
+                    new ChooseRelicPayload(index))));
+        }
+        else if (reward.ExtraRelicsResolved
+                 < (reward.ExtraRelicRewardIds?.Length ?? 0))
+        {
+            actions.Add(GameAction.Create(
+                "take_reward_relic", new ChooseRelicPayload(0)));
+        }
+
+        if (reward.GoldOption is not null && !reward.GoldResolved)
         {
             actions.Add(GameAction.Empty("take_reward_gold"));
         }
+
         actions.Add(GameAction.Empty("leave_reward"));
         return actions;
     }
+
+    private static bool IsCardRewardAction(GameAction action) =>
+        action.Kind is "take_reward_card" or "skip_reward_card";
+
+    private static bool IsPotionRewardAction(GameAction action) =>
+        action.Kind is "take_reward_potion"
+            or "replace_reward_potion"
+            or "skip_reward_potion";
 
     private static IReadOnlyList<GameAction> GetOrderedRewardActions(
         RunState state, RewardState reward)
@@ -2526,6 +2591,8 @@ public sealed partial class PrototypeGameEngine
         var nextId = world.NextCardInstanceId;
 
         if (reward.GoldOption is { } goldOffer
+            && reward.PendingDeckChoice is null
+            && (reward.CardResolved || reward.CardBundles is null)
             && StringComparer.Ordinal.Equals(
                 action.Kind, "take_reward_gold"))
         {
@@ -2541,8 +2608,9 @@ public sealed partial class PrototypeGameEngine
             };
             reward = reward with { GoldResolved = true };
         }
-        else if (reward.GoldOption is not null
+        else if (reward.IndependentSelection
             && reward.PendingDeckChoice is null
+            && (reward.CardResolved || reward.CardBundles is null)
             && StringComparer.Ordinal.Equals(
                 action.Kind, "leave_reward"))
         {
@@ -2590,7 +2658,9 @@ public sealed partial class PrototypeGameEngine
             }
             reward = reward with { CardResolved = true };
         }
-        else if (!reward.CardResolved)
+        else if (!reward.CardResolved
+                 && (!reward.IndependentSelection
+                     || IsCardRewardAction(action)))
         {
             if (StringComparer.Ordinal.Equals(action.Kind, "take_reward_card"))
             {
@@ -2615,7 +2685,9 @@ public sealed partial class PrototypeGameEngine
             reward = reward with { CardResolved = true };
         }
         else if (reward.ExtraCardRewardsResolved
-                 < (reward.ExtraCardOptions?.Length ?? 0))
+                 < (reward.ExtraCardOptions?.Length ?? 0)
+                 && (!reward.IndependentSelection
+                     || IsCardRewardAction(action)))
         {
             var extraCardOptions =
                 reward.ExtraCardOptions
@@ -2656,7 +2728,9 @@ public sealed partial class PrototypeGameEngine
                     reward.ExtraCardRewardsResolved + 1
             };
         }
-        else if (!reward.PotionResolved)
+        else if (!reward.PotionResolved
+                 && (!reward.IndependentSelection
+                     || IsPotionRewardAction(action)))
         {
             if (StringComparer.Ordinal.Equals(
                     action.Kind,
@@ -2742,7 +2816,9 @@ public sealed partial class PrototypeGameEngine
                 PotionResolved = true
             };
         }
-        else if (!reward.RelicResolved)
+        else if (!reward.RelicResolved
+                 && (!reward.IndependentSelection
+                     || action.Kind == "take_reward_relic"))
         {
             RequireKind(action, "take_reward_relic");
             var options = reward.CurrentRelicOptions;
@@ -2787,7 +2863,9 @@ public sealed partial class PrototypeGameEngine
             };
         }
         else if (reward.ExtraRelicsResolved
-                 < (reward.ExtraRelicRewardIds?.Length ?? 0))
+                 < (reward.ExtraRelicRewardIds?.Length ?? 0)
+                 && (!reward.IndependentSelection
+                     || action.Kind == "take_reward_relic"))
         {
             RequireKind(action, "take_reward_relic");
             var payload = action.ReadPayload<ChooseRelicPayload>();
@@ -3059,7 +3137,8 @@ public sealed partial class PrototypeGameEngine
             CardOptionUpgradeFlags: cardUpgradeFlags,
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
             GoldOption: nativeGold,
-            GoldResolved: nativeGold is null);
+            GoldResolved: nativeGold is null,
+            IndependentSelection: nativeOvergrowth);
 
         world = world with
         {
