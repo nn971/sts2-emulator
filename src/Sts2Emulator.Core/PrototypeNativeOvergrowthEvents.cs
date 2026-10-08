@@ -388,7 +388,10 @@ public static class PrototypeNativeOvergrowthEvents
                     [new(PrototypeRunEffectKind.Heal, 9)],
                     new PrototypeEventDeckChoiceSpec(
                         PrototypePersistentDeckChoiceKind.Upgrade, 1)),
-                new("plant", "Plant Sown enchantment (not yet modeled)", [])
+                new("plant", "Enchant a card with Sown", [],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Enchant, 1,
+                        EnchantmentKind: PrototypeCardEnchantmentKind.Sown))
             ],
             MaxAct: 1),
         new(
@@ -465,15 +468,20 @@ public static class PrototypeNativeOvergrowthEvents
             "proto.native.event.wood_carvings",
             "Wood Carvings",
             [
-                new("bird", "Transform a basic card to Peck (random-transform approximation)",
-                    [],
+                new("bird", "Transform a basic card into Peck", [],
                     new PrototypeEventDeckChoiceSpec(
-                        PrototypePersistentDeckChoiceKind.Transform, 1)),
-                new("snake", "Apply Slither enchantment (not yet modeled)", []),
-                new("torus", "Transform a basic card to Toric Toughness (random-transform approximation)",
-                    [],
+                        PrototypePersistentDeckChoiceKind.Transform, 1,
+                        TransformToCardId: "proto.native.event.peck",
+                        BasicCardsOnly: true)),
+                new("snake", "Enchant a card with Slither", [],
                     new PrototypeEventDeckChoiceSpec(
-                        PrototypePersistentDeckChoiceKind.Transform, 1))
+                        PrototypePersistentDeckChoiceKind.Enchant, 1,
+                        EnchantmentKind: PrototypeCardEnchantmentKind.Slither)),
+                new("torus", "Transform a basic card into Toric Toughness", [],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Transform, 1,
+                        TransformToCardId: "proto.native.event.toric_toughness",
+                        BasicCardsOnly: true))
             ],
             MaxAct: 1)
     ];
