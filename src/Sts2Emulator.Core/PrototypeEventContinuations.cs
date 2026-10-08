@@ -186,15 +186,11 @@ public sealed partial class PrototypeGameEngine
             PrototypePendingEventDeckChoiceState requested)
     {
         var candidates = player.Deck
-            .Where(card => requested.Kind switch
-            {
-                PrototypePersistentDeckChoiceKind.Remove
-                    or PrototypePersistentDeckChoiceKind.Transform =>
-                        !PrototypeContent.Card(card.CardId).Eternal,
-                PrototypePersistentDeckChoiceKind.Upgrade =>
-                    card.UpgradeLevel == 0,
-                _ => false
-            })
+            .Where(card => CanSelectEventDeckCard(
+                card, requested.Kind,
+                requested.TransformToCardId,
+                requested.EnchantmentKind,
+                requested.BasicCardsOnly))
             .Select(card => card.InstanceId)
             .ToArray();
         var selections = Math.Min(
