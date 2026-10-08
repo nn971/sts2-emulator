@@ -1101,10 +1101,19 @@ static GameAction ChoosePrototypeAction(
     {
         if (state.Player.Hp * 2 < state.Player.MaxHp)
         {
-            return legal.First(action => action.Kind == "rest_heal");
+            var heal =
+                legal.FirstOrDefault(action =>
+                    action.Kind == "rest_heal");
+            if (heal is not null)
+            {
+                return heal;
+            }
         }
 
-        return legal.FirstOrDefault(action => action.Kind == "rest_upgrade")
+        return legal.FirstOrDefault(action =>
+                action.Kind == "rest_upgrade")
+            ?? legal.FirstOrDefault(action =>
+                action.Kind == "rest_train")
             ?? legal[0];
     }
 
