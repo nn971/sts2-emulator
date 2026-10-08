@@ -2,11 +2,20 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
-    private static RunState StartCombat(RunState state, PrototypeRoomType roomType)
+    private static RunState StartCombat(
+        RunState state,
+        PrototypeRoomType roomType,
+        PrototypeEncounterDefinition? forcedEncounter = null)
     {
         var world = RequireWorld(state);
         PrototypeEncounterDefinition encounter;
 
+        if (forcedEncounter is { } scriptedEncounter)
+        {
+            encounter = scriptedEncounter;
+        }
+        else
+        {
         var overgrowthBoss =
             TryPickOvergrowthBossEncounter(
                 world,
@@ -93,6 +102,8 @@ public sealed partial class PrototypeGameEngine
                 }
             }
         }
+        }
+
         }
 
         var combatRelics = state.Player.Relics
@@ -1082,6 +1093,18 @@ public sealed partial class PrototypeGameEngine
                 world.ActiveRoom,
                 state.Rng)
         };
+
+        if (world.Event is { } pendingEvent
+            && pendingEvent.EventId == PrototypeNativeDenseVegetation.EventId
+            && pendingEvent.NativePageIndex == 2)
+        {
+            // Native Dense Vegetation enters a four-Wriggler combat
+            // without offering any postcombat reward.
+            return CompleteRoomToMap(state with
+            {
+                World = RequireWorld(state) with { Combat = null }
+            });
+        }
 
         return EnterReward(state);
     }
