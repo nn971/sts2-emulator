@@ -452,13 +452,20 @@ public static class PrototypeStateInvariants
                 "Neow must offer exactly three distinct choices.");
         }
 
+        if (eventState.DeferredHpLoss < 0)
+        {
+            throw new InvalidOperationException(
+                "Event deferred HP loss cannot be negative.");
+        }
+
         if (eventState.ChosenChoiceId is null)
         {
             if (eventState.PendingDeckChoice is not null
                 || eventState.PendingPotionReplacement is not null
                 || eventState.RemainingPotionIds.Length > 0
                 || eventState.RemainingDeckChoices.Length > 0
-                || eventState.PendingReward is not null)
+                || eventState.PendingReward is not null
+                || eventState.DeferredHpLoss != 0)
             {
                 throw new InvalidOperationException(
                     "Pending event continuation has no chosen event option.");
