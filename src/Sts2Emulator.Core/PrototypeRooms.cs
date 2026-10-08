@@ -2206,6 +2206,14 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
+        if (reward.ExtraRelicsResolved
+            < (reward.ExtraRelicRewardIds?.Length ?? 0))
+        {
+            return [GameAction.Create(
+                "take_reward_relic",
+                new ChooseRelicPayload(0))];
+        }
+
         return [GameAction.Empty("leave_reward")];
     }
 
@@ -2445,6 +2453,41 @@ public sealed partial class PrototypeGameEngine
                     acquisitionDeckChoice
             };
         }
+        else if (reward.ExtraRelicsResolved
+                 < (reward.ExtraRelicRewardIds?.Length ?? 0))
+        {
+            RequireKind(action, "take_reward_relic");
+            var payload = action.ReadPayload<ChooseRelicPayload>();
+            if (payload.Index != 0)
+            {
+                throw new InvalidOperationException(
+                    "A single extra relic reward requires choice index zero.");
+            }
+
+            var relicId = reward.ExtraRelicRewardIds![
+                reward.ExtraRelicsResolved];
+            if (player.Relics.Any(relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, relicId)))
+            {
+                throw new InvalidOperationException(
+                    "Extra relic reward is already owned.");
+            }
+
+            player = player with
+            {
+                Relics = player.Relics.Append(
+                    new RelicInstance(relicId,
+                        PrototypeJson.EmptyObject())).ToArray()
+            };
+            player = ApplyRelicRunEvent(
+                player, PrototypeRunEventKind.RelicAcquired,
+                acquiredRelicId: relicId, rng: state.Rng);
+            reward = reward with
+            {
+                ExtraRelicsResolved = reward.ExtraRelicsResolved + 1,
+                PendingDeckChoice = CreateRelicDeckChoice(player, relicId)
+            };
+        }
         else
         {
             RequireKind(action, "leave_reward");
@@ -2551,6 +2594,10 @@ public sealed partial class PrototypeGameEngine
                     "reward")
                 : null;
 
+        var lavaRock = ApplyLavaRockBossRewards(
+            silverCrucible.Player, room, world.Act,
+            relicOptions, state.Rng);
+
         var reward = new RewardState(
             SourceRoom: room.ToString(),
             CardOptions: cardOptions,
@@ -2567,7 +2614,8 @@ public sealed partial class PrototypeGameEngine
             RelicOptions: relicOptions,
             CardOptionsUpgraded: silverCrucible.UpgradeGroups[0],
             ExtraCardOptionsUpgraded:
-                silverCrucible.UpgradeGroups.Skip(1).ToArray());
+                silverCrucible.UpgradeGroups.Skip(1).ToArray(),
+            ExtraRelicRewardIds: lavaRock.AdditionalRelicIds);
 
         world = world with
         {
@@ -2577,9 +2625,9 @@ public sealed partial class PrototypeGameEngine
 
         return state with
         {
-            Player = silverCrucible.Player with
+            Player = lavaRock.Player with
             {
-                Gold = silverCrucible.Player.Gold + gold
+                Gold = lavaRock.Player.Gold + gold
             },
             World = world,
             Phase = RunPhase.Reward
