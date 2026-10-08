@@ -897,6 +897,7 @@ public sealed partial class PrototypeGameEngine
             new List<PrototypePendingEventDeckChoiceState>();
         RewardState? deferredReward = null;
         var deferredHpLoss = 0;
+        string? deferredCardId = null;
 
         foreach (var effect in choice.Effects)
         {
@@ -1026,6 +1027,15 @@ public sealed partial class PrototypeGameEngine
                                 ? card with { UpgradeLevel = 1 }
                                 : card).ToArray()
                     };
+                    break;
+
+                case PrototypeRunEffectKind.AddCardAfterDeckChoices:
+                    if (effect.CardId is null || deferredCardId is not null)
+                    {
+                        throw new InvalidOperationException(
+                            "Deferred event card addition must have one card ID.");
+                    }
+                    deferredCardId = effect.CardId;
                     break;
 
                 case PrototypeRunEffectKind.AddCard:
@@ -1235,7 +1245,8 @@ public sealed partial class PrototypeGameEngine
                     QueuedPotionIds = queuedPotionIds.ToArray(),
                     QueuedDeckChoices = queuedDeckChoices.ToArray(),
                     PendingReward = deferredReward,
-                    DeferredHpLoss = deferredHpLoss
+                    DeferredHpLoss = deferredHpLoss,
+                    DeferredCardId = deferredCardId
                 }
             }
         };
