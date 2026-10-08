@@ -138,6 +138,60 @@ public sealed class PrototypeNativeNeowCustomRewardsTests
                 PrototypeNativeOvergrowthEvents.NeowRelicId("LostCoffer"));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void ScrollBoxesOffersTwoDistinctThreeCardBundles(int bundleIndex)
+    {
+        var state = OfferAndChoose("ScrollBoxes",
+            "neow-scroll-boxes-" + bundleIndex);
+        var bundles = Assert.IsType<string[][]>(
+            state.World!.Reward!.CardBundles);
+        Assert.Equal(2, bundles.Length);
+        Assert.All(bundles, bundle =>
+        {
+            Assert.Equal(3, bundle.Length);
+            Assert.All(bundle.Take(2), id => Assert.Equal(
+                PrototypeCardRarity.Common,
+                PrototypeContent.Card(id).Rarity));
+            Assert.Equal(PrototypeCardRarity.Uncommon,
+                PrototypeContent.Card(bundle[2]).Rarity);
+        });
+        Assert.Equal(6, bundles.SelectMany(bundle => bundle)
+            .Distinct(StringComparer.Ordinal).Count());
+
+        var fork = state.Fork();
+        Assert.NotSame(state.World!.Reward!.CardBundles,
+            fork.World!.Reward!.CardBundles);
+        Assert.Equal(CanonicalJson.Sha256(state), CanonicalJson.Sha256(fork));
+
+        var engine = new PrototypeGameEngine();
+        var legal = engine.GetLegalActions(state);
+        Assert.Equal(2, legal.Count);
+        Assert.All(legal, action =>
+            Assert.Equal("take_reward_bundle", action.Kind));
+        Assert.DoesNotContain(legal, action =>
+            action.Kind == "skip_reward_card");
+
+        var action = legal.Single(item =>
+            item.ReadPayload<ChooseBundlePayload>().Index == bundleIndex);
+        state = engine.Step(state, action).State;
+        Assert.Equal(RunPhase.Reward, state.Phase);
+        Assert.Equal(16, state.Player.Deck.Length);
+        Assert.Equal(bundles[bundleIndex],
+            state.Player.Deck.TakeLast(3).Select(card => card.CardId));
+        Assert.Equal(new long[] { 14, 15, 16 },
+            state.Player.Deck.TakeLast(3).Select(card => card.InstanceId));
+        Assert.Equal(17, state.World!.NextCardInstanceId);
+        PrototypeStateInvariants.Validate(state);
+
+        state = ResolveReward(state);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Contains(state.Player.Relics, relic => relic.RelicId ==
+            PrototypeNativeOvergrowthEvents.NeowRelicId("ScrollBoxes"));
+        Assert.Empty(state.World!.CompletedRooms);
+    }
+
     [Fact]
     public void SmallCapsuleRelicRewardResumesTheSameNeowOpening()
     {
