@@ -3303,7 +3303,7 @@ public sealed partial class PrototypeGameEngine
                         var selected = candidates[
                             PrototypeRng.NextInt(
                                 rng,
-                                "combat_card_selection",
+                                "combat",
                                 candidates.Length)];
                         combat = SetCardTemporaryEnergyCost(
                             combat,
