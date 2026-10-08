@@ -687,7 +687,8 @@ public sealed partial class PrototypeGameEngine
             .Where(choice =>
                 CanTakeEventChoice(
                     state.Player,
-                    choice))
+                    choice,
+                    RequireWorld(state)))
             .Select(choice => GameAction.Create(
                 "event_choice",
                 new EventChoicePayload(choice.Id)))
@@ -832,7 +833,10 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 $"Unknown event choice '{choicePayload.ChoiceId}'.");
 
-        if (!CanTakeEventChoice(player, choice))
+        if (!CanTakeEventChoice(
+                player,
+                choice,
+                world))
         {
             throw new InvalidOperationException(
                 $"Event choice '{choice.Id}' cannot currently be taken.");
@@ -1113,8 +1117,16 @@ public sealed partial class PrototypeGameEngine
 
     private static bool CanTakeEventChoice(
         PlayerState player,
-        PrototypeEventChoiceDefinition choice)
+        PrototypeEventChoiceDefinition choice,
+        RunWorldState world)
     {
+        if (!MatchesRouteCondition(
+                world,
+                choice.RouteCondition))
+        {
+            return false;
+        }
+
         var goldCost = choice.Effects
             .Where(effect =>
                 effect.Kind
@@ -2453,6 +2465,12 @@ public sealed partial class PrototypeGameEngine
         var reward = world.Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
 
+        if (reward.EndsAct)
+        {
+            state = RecordCompletedRoom(state);
+            world = RequireWorld(state);
+        }
+
         world = world with { Reward = null };
         state = state with { World = world };
 
@@ -2471,6 +2489,7 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState CompleteRoomToMap(RunState state)
     {
+        state = RecordCompletedRoom(state);
         var world = RequireWorld(state) with
         {
             ActiveRoom = null,
