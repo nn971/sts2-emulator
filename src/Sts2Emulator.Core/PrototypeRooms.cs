@@ -698,6 +698,13 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
+        if (eventState.EventId
+                == PrototypeNativeTabletOfTruth.EventId
+            && eventState.NativePageIndex > 0)
+        {
+            return GetNativeTabletFollowupActions(eventState);
+        }
+
         var definition =
             PrototypeContent.Event(
                 eventState.EventId);
@@ -853,6 +860,11 @@ public sealed partial class PrototypeGameEngine
                 }
             };
             return AdvanceEventContinuations(state);
+        }
+
+        if (eventState.EventId == PrototypeNativeTabletOfTruth.EventId)
+        {
+            return StepNativeTabletOfTruth(state, action);
         }
 
         RequireKind(action, "event_choice");
