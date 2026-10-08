@@ -1958,13 +1958,15 @@ public sealed partial class PrototypeGameEngine
             var amount = Math.Max(
                 1,
                 (state.Player.MaxHp * PrototypeContent.Rules.RestHealPercent) / 100);
-            state = state with
+            var player = state.Player with
             {
-                Player = state.Player with
-                {
-                    Hp = Math.Min(state.Player.MaxHp, state.Player.Hp + amount)
-                }
+                Hp = Math.Min(state.Player.MaxHp, state.Player.Hp + amount)
             };
+            player = ApplyRelicRunEvent(
+                player,
+                PrototypeRunEventKind.RestSiteHealed,
+                rng: state.Rng);
+            state = state with { Player = player };
             return CompleteRoomToMap(state);
         }
 
