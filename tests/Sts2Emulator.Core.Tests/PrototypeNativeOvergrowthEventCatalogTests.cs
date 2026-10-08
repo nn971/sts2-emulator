@@ -113,4 +113,24 @@ public sealed class PrototypeNativeOvergrowthEventCatalogTests
             Assert.DoesNotContain(id, PrototypeContent.RewardCardPool);
         }
     }
+    [Fact]
+    public void MorphicGroveRequiresTwoActuallyTransformableCards()
+    {
+        var player = PrototypeNativeOvergrowthRunFactory.Create(
+            "morphic-eligibility").Player;
+        var evt = PrototypeContent.Event("proto.native.event.morphic_grove");
+        var empty = PrototypeJson.EmptyObject();
+        var valid = new CardInstance(12345, "proto.silent.strike", 0, empty);
+        var eternal = new CardInstance(12346, "proto.native.neow.greed", 0, empty);
+        var egg = new CardInstance(12347, "proto.native.event.byrdonis_egg", 0, empty);
+        Assert.False(PrototypeNativeOvergrowthEvents.IsEligible(
+            evt, player with { Gold = 100, Deck = [valid, eternal] }));
+        Assert.False(PrototypeNativeOvergrowthEvents.IsEligible(
+            evt, player with { Gold = 100, Deck = [eternal, egg] }));
+        Assert.True(PrototypeNativeOvergrowthEvents.IsEligible(
+            evt, player with { Gold = 100, Deck = [valid, egg] }));
+        Assert.True(PrototypeNativeOvergrowthEvents.IsEligible(
+            evt, player with { Gold = 100, Deck = [valid, valid with { InstanceId = 12348 }] }));
+    }
+
 }
