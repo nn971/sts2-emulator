@@ -343,12 +343,12 @@ public static class PrototypeNativeOvergrowthEvents
             "proto.native.event.jungle_maze_adventure",
             "Jungle Maze Adventure",
             [
-                new("solo", "Lose 18 HP, gain gold (approximate)",
+                new("solo", "Lose 18 HP, gain 135–164 gold",
                     [
                         new(PrototypeRunEffectKind.LoseHp, 18),
                         new(PrototypeRunEffectKind.GainGold, 150)
                     ]),
-                new("join", "Gain gold (approximate)",
+                new("join", "Gain 35–64 gold",
                     [new(PrototypeRunEffectKind.GainGold, 50)])
             ],
             MaxAct: 1),

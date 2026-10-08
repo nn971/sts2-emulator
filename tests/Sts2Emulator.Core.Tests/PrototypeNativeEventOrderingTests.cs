@@ -5,7 +5,8 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class PrototypeNativeEventOrderingTests
 {
     private static RunState EnterEvent(
-        string eventId, string seed, int nativeEventGold = 0)
+        string eventId, string seed, int nativeEventGold = 0,
+        int nativeSecondaryGold = 0)
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeNativeOvergrowthRunFactory.Create(seed);
@@ -62,7 +63,9 @@ public sealed class PrototypeNativeEventOrderingTests
                 ActiveRoom = PrototypeRoomType.Event,
                 CompletedRoomHistory = completed,
                 Event = new EventState(
-                    eventId, NativeEventGold: nativeEventGold),
+                    eventId,
+                    NativeEventGold: nativeEventGold,
+                    NativeEventSecondaryGold: nativeSecondaryGold),
                 EventHistory = state.World.EventIds.Append(eventId).ToArray()
             }
         };
@@ -275,6 +278,87 @@ public sealed class PrototypeNativeEventOrderingTests
         Assert.Single(state.Player.Relics,
             relic => relic.RelicId == "proto.native.event.sword_of_stone");
         Assert.Null(state.World!.Event);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Theory]
+    [InlineData("solo", 135, 64, 135, 18)]
+    [InlineData("solo", 164, 35, 164, 18)]
+    [InlineData("join", 164, 35, 35, 0)]
+    [InlineData("join", 135, 64, 64, 0)]
+    public void JungleMazeUsesIndependentPersistedGoldRolls(
+        string choice, int soloGold, int joinGold,
+        int expectedGold, int expectedHpLoss)
+    {
+        var state = EnterEvent(
+            "proto.native.event.jungle_maze_adventure",
+            "jungle-" + choice + "-" + soloGold + "-" + joinGold,
+            nativeEventGold: soloGold,
+            nativeSecondaryGold: joinGold);
+        var beforeGold = state.Player.Gold;
+        var beforeHp = state.Player.Hp;
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(state.Fork()));
+
+        state = Take(state, choice);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(beforeGold + expectedGold, state.Player.Gold);
+        Assert.Equal(beforeHp - expectedHpLoss, state.Player.Hp);
+        Assert.Null(state.World!.Event);
+        Assert.Single(state.World.CompletedRooms,
+            room => room.RoomType == PrototypeRoomType.Event);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Theory]
+    [InlineData(134, 35)]
+    [InlineData(165, 35)]
+    [InlineData(150, 34)]
+    [InlineData(150, 65)]
+    [InlineData(150, 0)]
+    [InlineData(0, 50)]
+    public void JungleMazeRejectsInvalidOrUnpairedRolls(
+        int soloGold, int joinGold)
+    {
+        var state = EnterEvent(
+            "proto.native.event.jungle_maze_adventure",
+            "jungle-invalid-roll");
+        state = state with
+        {
+            World = state.World! with
+            {
+                Event = state.World.Event! with
+                {
+                    NativeEventGold = soloGold,
+                    NativeEventSecondaryGold = joinGold
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(state));
+    }
+
+    [Fact]
+    public void JungleMazeSoloRequiresSurvivableHp()
+    {
+        var state = EnterEvent(
+            "proto.native.event.jungle_maze_adventure",
+            "jungle-unsafe-solo",
+            nativeEventGold: 150,
+            nativeSecondaryGold: 50);
+        state = state with
+        {
+            Player = state.Player with { Hp = 18 }
+        };
+        var engine = new PrototypeGameEngine();
+        Assert.DoesNotContain(engine.GetLegalActions(state),
+            action => action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == "solo");
+        Assert.Contains(engine.GetLegalActions(state),
+            action => action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == "join");
         PrototypeStateInvariants.Validate(state);
     }
 }

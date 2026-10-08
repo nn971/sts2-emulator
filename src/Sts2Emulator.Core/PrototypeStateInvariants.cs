@@ -489,11 +489,29 @@ public static class PrototypeStateInvariants
                     eventState.NativeEventGold is >= 101 and <= 121,
                 "proto.native.event.luminous_choir" =>
                     eventState.NativeEventGold is >= 100 and <= 149,
+                "proto.native.event.jungle_maze_adventure" =>
+                    eventState.NativeEventGold is >= 135 and <= 164,
                 _ => false
             }) == false)
         {
             throw new InvalidOperationException(
                 "Native event gold roll is invalid.");
+        }
+
+        if (eventState.NativeEventSecondaryGold != 0
+            && (eventState.EventId != "proto.native.event.jungle_maze_adventure"
+                || eventState.NativeEventSecondaryGold is < 35 or > 64))
+        {
+            throw new InvalidOperationException(
+                "Native event secondary gold roll is invalid.");
+        }
+
+        if (eventState.EventId == "proto.native.event.jungle_maze_adventure"
+            && (eventState.NativeEventGold == 0)
+                != (eventState.NativeEventSecondaryGold == 0))
+        {
+            throw new InvalidOperationException(
+                "Jungle Maze must preserve both independent gold rolls.");
         }
 
         if (eventState.ChosenChoiceId is null)

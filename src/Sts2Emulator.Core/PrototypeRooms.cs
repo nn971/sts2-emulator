@@ -670,8 +670,18 @@ public sealed partial class PrototypeGameEngine
                             101 + PrototypeRng.NextInt(state.Rng, "event", 21),
                         "proto.native.event.luminous_choir" =>
                             100 + PrototypeRng.NextInt(state.Rng, "event", 50),
+                        // Source rolls two independent -15..15 floats:
+                        // 150 + solo roll, 50 + join roll, truncated to
+                        // integer gold by PlayerCmd.GainGold. The
+                        // prototype currently samples integer bins.
+                        "proto.native.event.jungle_maze_adventure" =>
+                            135 + PrototypeRng.NextInt(state.Rng, "event", 30),
                         _ => 0
-                    }),
+                    },
+                NativeEventSecondaryGold:
+                    selected.Id == "proto.native.event.jungle_maze_adventure"
+                        ? 35 + PrototypeRng.NextInt(state.Rng, "event", 30)
+                        : 0),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
@@ -1335,9 +1345,21 @@ public sealed partial class PrototypeGameEngine
             || (eventState.EventId == "proto.native.event.sunken_statue"
                 && choiceId == "dive"
                 && effect.Kind == PrototypeRunEffectKind.GainGold
-                && rolled is >= 101 and <= 121))
+                && rolled is >= 101 and <= 121)
+            || (eventState.EventId == "proto.native.event.jungle_maze_adventure"
+                && choiceId == "solo"
+                && effect.Kind == PrototypeRunEffectKind.GainGold
+                && rolled is >= 135 and <= 164))
         {
             return rolled;
+        }
+
+        if (eventState.EventId == "proto.native.event.jungle_maze_adventure"
+            && choiceId == "join"
+            && effect.Kind == PrototypeRunEffectKind.GainGold
+            && eventState.NativeEventSecondaryGold is >= 35 and <= 64)
+        {
+            return eventState.NativeEventSecondaryGold;
         }
 
         return effect.Amount;

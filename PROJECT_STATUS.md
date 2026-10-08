@@ -1244,3 +1244,14 @@ Tests cover action availability, multiple Eggs, card registration,
 persistent identity, canonical forking, rest completion, and blocked
 pet duplicate acquisition. Byrdpip's cosmetic idle pet is omitted,
 as it supplies no autonomous combat action.
+
+## Jungle Maze Adventure native-shaped dual gold draws (2026-10-08)
+
+Replaced fixed Solo/Join rewards with independently generated,
+persistent gold rolls: 135–164 after the 18 HP Solo cost, and
+35–64 for Join. The new canonical secondary gold field is
+deep-fork safe and range/pair validated. Choice settlement uses
+the stored roll and the original event-completion lifecycle.
+Tests cover both choice endpoints, invalid or unpaired rolls,
+and the surviving-HP precondition. Prototype integer RNG is
+a documented approximation to the pinned source float draws.
