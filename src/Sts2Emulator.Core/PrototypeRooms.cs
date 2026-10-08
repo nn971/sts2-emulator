@@ -21,10 +21,14 @@ public sealed partial class PrototypeGameEngine
             option => StringComparer.Ordinal.Equals(option.NodeId, payload.NodeId))
             ?? throw new InvalidOperationException($"Unknown map node '{payload.NodeId}'.");
 
+        var room = node.RoomType == PrototypeRoomType.Unknown
+            ? ResolveUnknownMapRoom(ref world, state.Rng)
+            : node.RoomType;
+
         world = world with
         {
             Floor = node.Floor,
-            ActiveRoom = node.RoomType,
+            ActiveRoom = room,
             Map = world.Map with { CurrentNodeId = node.NodeId },
             Combat = null,
             Reward = null,
@@ -33,7 +37,7 @@ public sealed partial class PrototypeGameEngine
         };
         state = state with { World = world };
 
-        return node.RoomType switch
+        return room switch
         {
             PrototypeRoomType.Combat => StartCombat(state, PrototypeRoomType.Combat),
             PrototypeRoomType.Elite => StartCombat(state, PrototypeRoomType.Elite),
@@ -41,6 +45,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeRoomType.Event => StartEvent(state),
             PrototypeRoomType.Shop => StartShop(state),
             PrototypeRoomType.Rest => state with { Phase = RunPhase.Rest },
+            PrototypeRoomType.Treasure => StartTreasureRoom(state),
             _ => throw new ArgumentOutOfRangeException()
         };
     }
