@@ -2471,7 +2471,11 @@ public sealed partial class PrototypeGameEngine
             world = RequireWorld(state);
         }
 
-        world = world with { Reward = null };
+        world = world with
+        {
+            Reward = null,
+            ActiveRoom = reward.EndsAct ? null : world.ActiveRoom
+        };
         state = state with { World = world };
 
         if (!reward.EndsAct)
