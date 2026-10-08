@@ -70,8 +70,10 @@ public sealed class PrototypeNativeOvergrowthEventCatalogTests
                     unknown.NodeId, StringComparer.Ordinal) == true);
             var ready = initial with
             {
+                Phase = RunPhase.MapChoice,
                 World = initial.World with
                 {
+                    Event = null,
                     Floor = predecessor.Floor,
                     Map = map with { CurrentNodeId = predecessor.NodeId }
                 }
