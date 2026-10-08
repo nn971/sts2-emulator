@@ -414,11 +414,8 @@ public static class PrototypeNativeOvergrowthEvents
             "proto.native.event.tablet_of_truth",
             "Tablet of Truth",
             [
-                new("decipher", "Lose 3 Max HP and upgrade a random card (first page only)",
-                    [
-                        new(PrototypeRunEffectKind.LoseMaxHp, 3),
-                        new(PrototypeRunEffectKind.UpgradeRandomCard)
-                    ]),
+                new("decipher", "Decipher Tablet of Truth",
+                    []),
                 new("smash", "Heal 20 HP",
                     [new(PrototypeRunEffectKind.Heal, 20)])
             ],
