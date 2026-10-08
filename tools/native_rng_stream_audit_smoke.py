@@ -45,6 +45,7 @@ def snapshot(seq, offsets_run=None, offsets_player=None):
 def main():
     assert xxhash64("") == 0xEF46DB3751D8E999
     assert xxhash64("abc") == 0x44BC2CF5AD770999
+    assert xxhash64("a" * 33) == 0x18F3FF0C21E3B24B
     # Actual A10 capture's string seed/hash pair. No private game
     # content, game state or trace data is stored in this test.
     assert xxhash64("WTAQ7JGMPLCH") == 12110187181724548864
