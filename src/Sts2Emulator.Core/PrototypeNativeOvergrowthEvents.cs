@@ -335,13 +335,8 @@ public static class PrototypeNativeOvergrowthEvents
             "proto.native.event.dense_vegetation",
             "Dense Vegetation",
             [
-                new("trudge", "Lose 8 HP, gain gold (approximate)",
-                    [
-                        new(PrototypeRunEffectKind.LoseHp, 8),
-                        new(PrototypeRunEffectKind.GainGold, 80)
-                    ]),
-                new("rest", "Rest (follow-up fight not yet simulated)",
-                    [new(PrototypeRunEffectKind.HealPercentMaxHp, 30)])
+                new("trudge", "Lose 8 HP, gain 61–99 gold", []),
+                new("rest", "Rest, then fight four Wrigglers", [])
             ],
             MaxAct: 1),
         new(
