@@ -337,10 +337,11 @@ public static class PrototypeStateInvariants
 
         if (eventState.ChosenChoiceId is null)
         {
-            if (eventState.PendingDeckChoice is not null)
+            if (eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null)
             {
                 throw new InvalidOperationException(
-                    "Pending event deck choice has no chosen event option.");
+                    "Pending event continuation has no chosen event option.");
             }
 
             return;
@@ -356,69 +357,151 @@ public static class PrototypeStateInvariants
 
         var pending =
             eventState.PendingDeckChoice;
-        if (pending is null)
+        var potionReplacement =
+            eventState.PendingPotionReplacement;
+        if (pending is null
+            && potionReplacement is null)
         {
             throw new InvalidOperationException(
-                "Resolved event choice should not remain in Event phase without a pending deck choice.");
+                "Resolved event choice should not remain in Event phase without a pending continuation.");
         }
 
-        var spec = choice.DeckChoice
-            ?? throw new InvalidOperationException(
-                "Pending event deck choice source option has no deck-choice specification.");
-        if (!StringComparer.Ordinal.Equals(
-                pending.ChoiceId,
-                choice.Id)
-            || pending.Kind != spec.Kind
-            || pending.UpgradeTransformedCards
-                != spec.UpgradeTransformedCards)
+        if (pending is not null)
         {
-            throw new InvalidOperationException(
-                "Pending event deck choice disagrees with its source option.");
-        }
+            PrototypePersistentDeckChoiceKind expectedKind;
+            bool expectedUpgradeTransformedCards;
 
-        if (pending.RemainingSelections <= 0
-            || pending.CandidateCardInstanceIds.Length
-                < pending.RemainingSelections)
-        {
-            throw new InvalidOperationException(
-                "Pending event deck choice has an invalid selection count.");
-        }
-
-        if (pending.CandidateCardInstanceIds.Length
-            != pending.CandidateCardInstanceIds
-                .Distinct()
-                .Count())
-        {
-            throw new InvalidOperationException(
-                "Pending event deck choice contains duplicate card instances.");
-        }
-
-        foreach (var cardInstanceId in
-                 pending.CandidateCardInstanceIds)
-        {
-            var card = player.Deck
-                .FirstOrDefault(item =>
-                    item.InstanceId
-                        == cardInstanceId)
-                ?? throw new InvalidOperationException(
-                    $"Pending event deck choice references missing card {cardInstanceId}.");
-
-            if (pending.Kind is
-                    PrototypePersistentDeckChoiceKind.Remove
-                    or PrototypePersistentDeckChoiceKind.Transform
-                && PrototypeContent.Card(card.CardId)
-                    .Eternal)
+            if (pending.SourceRelicId is { } sourceRelicId)
             {
-                throw new InvalidOperationException(
-                    "Pending event deck choice includes an Eternal card.");
+                if (!player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(
+                            relic.RelicId,
+                            sourceRelicId)))
+                {
+                    throw new InvalidOperationException(
+                        "Pending relic-sourced event deck choice references an unowned relic.");
+                }
+
+                var relicSpec =
+                    PrototypeContent.Relic(
+                        sourceRelicId)
+                        .AcquisitionDeckChoice
+                    ?? throw new InvalidOperationException(
+                        "Pending relic-sourced event deck choice has no source specification.");
+                expectedKind = relicSpec.Kind;
+                expectedUpgradeTransformedCards =
+                    relicSpec.UpgradeTransformedCards;
+            }
+            else
+            {
+                var spec = choice.DeckChoice
+                    ?? throw new InvalidOperationException(
+                        "Pending event deck choice source option has no deck-choice specification.");
+                expectedKind = spec.Kind;
+                expectedUpgradeTransformedCards =
+                    spec.UpgradeTransformedCards;
             }
 
-            if (pending.Kind
-                    == PrototypePersistentDeckChoiceKind.Upgrade
-                && card.UpgradeLevel != 0)
+            if (!StringComparer.Ordinal.Equals(
+                    pending.ChoiceId,
+                    choice.Id)
+                || pending.Kind != expectedKind
+                || pending.UpgradeTransformedCards
+                    != expectedUpgradeTransformedCards)
             {
                 throw new InvalidOperationException(
-                    "Pending event upgrade choice includes an already-upgraded card.");
+                    "Pending event deck choice disagrees with its source.");
+            }
+
+            if (pending.RemainingSelections <= 0
+                || pending.CandidateCardInstanceIds.Length
+                    < pending.RemainingSelections)
+            {
+                throw new InvalidOperationException(
+                    "Pending event deck choice has an invalid selection count.");
+            }
+
+            if (pending.CandidateCardInstanceIds.Length
+                != pending.CandidateCardInstanceIds
+                    .Distinct()
+                    .Count())
+            {
+                throw new InvalidOperationException(
+                    "Pending event deck choice contains duplicate card instances.");
+            }
+
+            foreach (var cardInstanceId in
+                     pending.CandidateCardInstanceIds)
+            {
+                var card = player.Deck
+                    .FirstOrDefault(item =>
+                        item.InstanceId
+                            == cardInstanceId)
+                    ?? throw new InvalidOperationException(
+                        $"Pending event deck choice references missing card {cardInstanceId}.");
+
+                if (pending.Kind is
+                        PrototypePersistentDeckChoiceKind.Remove
+                        or PrototypePersistentDeckChoiceKind.Transform
+                    && PrototypeContent.Card(card.CardId)
+                        .Eternal)
+                {
+                    throw new InvalidOperationException(
+                        "Pending event deck choice includes an Eternal card.");
+                }
+
+                if (pending.Kind
+                        == PrototypePersistentDeckChoiceKind.Upgrade
+                    && card.UpgradeLevel != 0)
+                {
+                    throw new InvalidOperationException(
+                        "Pending event upgrade choice includes an already-upgraded card.");
+                }
+            }
+        }
+
+        if (potionReplacement is not null)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    potionReplacement.ChoiceId,
+                    choice.Id))
+            {
+                throw new InvalidOperationException(
+                    "Pending event potion replacement disagrees with its source option.");
+            }
+
+            if (!choice.Effects.Any(effect =>
+                    effect.Kind
+                        == PrototypeRunEffectKind.GainPotion
+                    && StringComparer.Ordinal.Equals(
+                        effect.PotionId,
+                        potionReplacement.PotionId)))
+            {
+                throw new InvalidOperationException(
+                    "Pending event potion replacement has no matching acquisition effect.");
+            }
+
+            _ = PrototypeContent.Potion(
+                potionReplacement.PotionId);
+            if (potionReplacement.CandidateSlots.Length == 0
+                || potionReplacement.CandidateSlots.Length
+                    != potionReplacement.CandidateSlots
+                        .Distinct()
+                        .Count())
+            {
+                throw new InvalidOperationException(
+                    "Pending event potion replacement has invalid slot candidates.");
+            }
+
+            foreach (var slot in potionReplacement.CandidateSlots)
+            {
+                if (slot < 0
+                    || slot >= player.PotionSlots.Length
+                    || player.PotionSlots[slot] is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Pending event potion replacement references invalid slot {slot}.");
+                }
             }
         }
     }
