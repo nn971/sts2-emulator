@@ -186,6 +186,79 @@ public sealed class PrototypeEventItemTradeoffTests
     }
 
     [Fact]
+    public void EventCardAcquisitionAppliesExistingEggAndGoldRelics()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.collectors_annex",
+            act: 2,
+            hp: 70,
+            maxHp: 70,
+            gold: 30,
+            deck: [],
+            relicIds:
+            [
+                "proto.relic.toxic_egg",
+                "proto.relic.lucky_fysh"
+            ]);
+
+        state = ChooseEvent(engine, state, "late_card");
+
+        Assert.Equal(45, state.Player.Gold);
+        var card = Assert.Single(state.Player.Deck);
+        Assert.Equal("proto.silent.backflip", card.CardId);
+        Assert.Equal(1, card.UpgradeLevel);
+        Assert.Equal(
+            "proto.relic.empty_cage",
+            state.World!.Event!.PendingDeckChoice!.SourceRelicId);
+
+        state = ChooseDeckCard(engine, state, card.InstanceId);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Empty(state.Player.Deck);
+        Assert.Equal(45, state.Player.Gold);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void EntropicBrewRefillPreservesPendingReplacementValidity()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateEventState(
+            "proto.event.caged_vault",
+            act: 1,
+            hp: 70,
+            maxHp: 70,
+            gold: 100,
+            deck: [Card(1, "proto.silent.strike")],
+            potionSlots:
+            [
+                Potion("proto.potion.entropic_brew"),
+                Potion("proto.potion.block")
+            ]);
+
+        state = ChooseEvent(engine, state, "tonic");
+        var use = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "use_potion");
+        state = engine.Step(state, use).State;
+
+        // Entropic Brew refills the emptied slot immediately. The
+        // offered potion therefore still requires an explicit choice.
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.NotNull(state.Player.PotionSlots[0]);
+        Assert.Equal("proto.potion.strength",
+            state.World!.Event!.PendingPotionReplacement!.PotionId);
+        Assert.Equal(new[] { 0, 1 },
+            state.World.Event.PendingPotionReplacement.CandidateSlots);
+        PrototypeStateInvariants.Validate(state);
+
+        state = engine.Step(state, engine.GetLegalActions(state)
+            .Single(action => action.Kind == "skip_event_potion")).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(70, state.Player.Gold);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void CagedVaultCofferFiresRelicAcquiredHooks()
     {
         var engine = new PrototypeGameEngine();
