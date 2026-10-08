@@ -1264,3 +1264,14 @@ replacement choices when the potion belt is full. Multiple Whispering
 Hollow potions are independently resolvable, with the gold price
 charged only once. State, canonical forks and invalid action
 guardrails are tested. Unrelated direct potion grants are unchanged.
+
+## Nullable source event deck selections / Luminous Choir (2026-10-08)
+
+Fixed Luminous Choir reach order: remove 0–2 deck cards, then
+add Spore Mind. The curse cannot be removed as one of the chosen
+cards. Also implemented source-compatible no-op card-selection
+handling for Aroma of Chaos, Sapphire Seed, Wellspring,
+Luminous Choir, and Whispering Hollow; action lists no longer
+become empty solely because these optional card pickers have
+no valid cards. Multi-stage completion and empty-deck
+regressions added.

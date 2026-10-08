@@ -356,8 +356,8 @@ public static class PrototypeNativeOvergrowthEvents
             "proto.native.event.luminous_choir",
             "Luminous Choir",
             [
-                new("reach", "Remove two cards and gain Spore Mind",
-                    [new(PrototypeRunEffectKind.AddCard,
+                new("reach", "Remove two cards, then gain Spore Mind",
+                    [new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
                         CardId: "proto.native.event.spore_mind")],
                     new PrototypeEventDeckChoiceSpec(
                         PrototypePersistentDeckChoiceKind.Remove, 2)),
@@ -485,6 +485,16 @@ public static class PrototypeNativeOvergrowthEvents
             ],
             MaxAct: 1)
     ];
+
+    // These pinned source event handlers select a card with
+    // FirstOrDefault; an empty candidate pool is an allowed no-op,
+    // not a reason to suppress the event option.
+    public static bool AllowsEmptyDeckChoice(string eventId) =>
+        eventId is "proto.native.event.aroma_of_chaos"
+            or "proto.native.event.luminous_choir"
+            or "proto.native.event.sapphire_seed"
+            or "proto.native.event.wellspring"
+            or "proto.native.event.whispering_hollow";
 
     public static bool UsesNativePotionOffer(string eventId) =>
         eventId is "proto.native.event.wellspring"

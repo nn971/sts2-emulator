@@ -1493,13 +1493,15 @@ public sealed partial class PrototypeGameEngine
             return true;
         }
 
-        return player.Deck.Any(card =>
-            CanSelectEventDeckCard(
-                card,
-                deckChoice.Kind,
-                deckChoice.TransformToCardId,
-                deckChoice.EnchantmentKind,
-                deckChoice.BasicCardsOnly));
+        return PrototypeNativeOvergrowthEvents.AllowsEmptyDeckChoice(
+                   world.Event?.EventId ?? string.Empty)
+            || player.Deck.Any(card =>
+                CanSelectEventDeckCard(
+                    card,
+                    deckChoice.Kind,
+                    deckChoice.TransformToCardId,
+                    deckChoice.EnchantmentKind,
+                    deckChoice.BasicCardsOnly));
     }
 
     private static PrototypePendingEventDeckChoiceState?

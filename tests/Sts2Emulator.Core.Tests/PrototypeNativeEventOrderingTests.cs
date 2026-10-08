@@ -473,4 +473,100 @@ public sealed class PrototypeNativeEventOrderingTests
                 "replace_event_potion", new ReplaceEventPotionPayload(0))));
         PrototypeStateInvariants.Validate(state);
     }
+
+    [Fact]
+    public void LuminousChoirAddsSporeMindOnlyAfterBothRemovals()
+    {
+        var state = EnterEvent(
+            "proto.native.event.luminous_choir",
+            "luminous-reach-order", nativeEventGold: 100);
+        var originalDeck = state.Player.Deck.ToArray();
+        var nextCardId = state.World!.NextCardInstanceId;
+        state = Take(state, "reach");
+
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(13, state.Player.Deck.Length);
+        Assert.Equal(nextCardId, state.World!.NextCardInstanceId);
+        Assert.DoesNotContain(state.Player.Deck,
+            card => card.CardId == "proto.native.event.spore_mind");
+        Assert.Equal("proto.native.event.spore_mind",
+            state.World.Event!.DeferredCardId);
+
+        var engine = new PrototypeGameEngine();
+        var firstActions = engine.GetLegalActions(state);
+        Assert.DoesNotContain(firstActions, action =>
+            action.Kind == "choose_event_deck_card"
+            && action.ReadPayload<ChooseEventDeckCardPayload>()
+                .CardInstanceId == nextCardId);
+
+        var first = firstActions.Single(action =>
+            action.Kind == "choose_event_deck_card"
+            && action.ReadPayload<ChooseEventDeckCardPayload>()
+                .CardInstanceId == originalDeck[0].InstanceId);
+        state = engine.Step(state, first).State;
+        PrototypeStateInvariants.Validate(state);
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(12, state.Player.Deck.Length);
+        Assert.DoesNotContain(state.Player.Deck,
+            card => card.CardId == "proto.native.event.spore_mind");
+
+        var second = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "choose_event_deck_card"
+            && action.ReadPayload<ChooseEventDeckCardPayload>()
+                .CardInstanceId == originalDeck[1].InstanceId);
+        state = engine.Step(state, second).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(12, state.Player.Deck.Length);
+        Assert.DoesNotContain(state.Player.Deck,
+            card => card.InstanceId == originalDeck[0].InstanceId
+                || card.InstanceId == originalDeck[1].InstanceId);
+        Assert.Single(state.Player.Deck,
+            card => card.CardId == "proto.native.event.spore_mind"
+                && card.InstanceId == nextCardId);
+        Assert.Equal(nextCardId + 1, state.World!.NextCardInstanceId);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Theory]
+    [InlineData("proto.native.event.aroma_of_chaos", "let_go", null, 0)]
+    [InlineData("proto.native.event.aroma_of_chaos", "maintain_control", null, 0)]
+    [InlineData("proto.native.event.sapphire_seed", "eat", null, 0)]
+    [InlineData("proto.native.event.sapphire_seed", "plant", null, 0)]
+    [InlineData("proto.native.event.wellspring", "bathe", "proto.native.event.guilty", 0)]
+    [InlineData("proto.native.event.luminous_choir", "reach", "proto.native.event.spore_mind", 0)]
+    [InlineData("proto.native.event.whispering_hollow", "hug", null, 9)]
+    public void SourceOptionalEventCardPickerCanReturnNoSelection(
+        string eventId, string choice, string? expectedCard, int hpLoss)
+    {
+        var state = EnterEvent(
+            eventId, "empty-deck-picker-" + choice,
+            nativeEventGold: eventId == "proto.native.event.whispering_hollow"
+                ? 35 : eventId == "proto.native.event.luminous_choir"
+                ? 100 : 0);
+        var initialHp = state.Player.Hp;
+        state = state with
+        {
+            Player = state.Player with { Deck = [] }
+        };
+        PrototypeStateInvariants.Validate(state);
+        var engine = new PrototypeGameEngine();
+        Assert.Contains(engine.GetLegalActions(state),
+            action => action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId == choice);
+
+        state = Take(state, choice);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(initialHp - hpLoss, state.Player.Hp);
+        if (expectedCard is null)
+        {
+            Assert.Empty(state.Player.Deck);
+        }
+        else
+        {
+            var card = Assert.Single(state.Player.Deck);
+            Assert.Equal(expectedCard, card.CardId);
+        }
+        Assert.Null(state.World!.Event);
+        PrototypeStateInvariants.Validate(state);
+    }
 }
