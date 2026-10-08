@@ -320,7 +320,8 @@ public static class PrototypeStateInvariants
 
             if (visit.Act == world.Act
                 && world.Map.GenerationProfileId
-                    == PrototypeContent.MapGenerationProfileId)
+                    is PrototypeContent.MapGenerationProfileId
+                        or PrototypeNativeOvergrowthMap.GenerationProfileId)
             {
                 var node = world.Map.Nodes
                     .FirstOrDefault(candidate =>
@@ -343,7 +344,8 @@ public static class PrototypeStateInvariants
         }
 
         if (world.Map.GenerationProfileId
-            != PrototypeContent.MapGenerationProfileId)
+            is not (PrototypeContent.MapGenerationProfileId
+                or PrototypeNativeOvergrowthMap.GenerationProfileId))
         {
             return;
         }
@@ -1251,6 +1253,7 @@ public static class PrototypeStateInvariants
 
     private static bool TryNativeColumn(string id, out int column)
     {
+        column = -1;
         var parts = id.Split(':');
         return parts.Length == 3
             && parts[0] == "1"
