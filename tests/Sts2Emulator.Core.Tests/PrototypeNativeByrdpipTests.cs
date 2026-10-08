@@ -149,4 +149,30 @@ public sealed class PrototypeNativeByrdpipTests
         Assert.Equal(14, damage.Amount);
         Assert.Equal(4, damage.UpgradeDelta);
     }
+    [Theory]
+    [InlineData("proto.native.event.byrdonis_egg")]
+    [InlineData("proto.native.event.spore_mind")]
+    [InlineData("proto.native.event.poor_sleep")]
+    public void RestSiteNeverOffersUpgradeForNativeZeroUpgradeCard(string cardId)
+    {
+        var state = AtRest(hasEgg: true);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Select(card =>
+                    card.InstanceId == 2
+                        ? card with { CardId = cardId }
+                        : card).ToArray()
+            }
+        };
+        PrototypeStateInvariants.Validate(state);
+        var actions = new PrototypeGameEngine().GetLegalActions(state);
+        Assert.DoesNotContain(actions, action =>
+            action.Kind == "rest_upgrade"
+            && action.ReadPayload<UpgradeCardPayload>().CardInstanceId == 2);
+        Assert.Contains(actions, action => action.Kind == "rest_upgrade"
+            && action.ReadPayload<UpgradeCardPayload>().CardInstanceId == 1);
+    }
+
 }
