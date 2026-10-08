@@ -6102,6 +6102,20 @@ public static class PrototypeContent
 
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
+        // Event-only combat: four non-stunned Wrigglers. Never included
+        // in normal map-combat selection (Weight=0).
+        new(
+            "proto.native.encounter.dense_vegetation_event",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.wriggler",
+                "proto.enemy.wriggler",
+                "proto.enemy.wriggler",
+                "proto.enemy.wriggler"
+            ],
+            MinAct: 1,
+            MaxAct: 1,
+            Weight: 0),
         new(
             "proto.encounter.crawler",
             PrototypeRoomType.Combat,
