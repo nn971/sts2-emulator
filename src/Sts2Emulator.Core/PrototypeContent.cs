@@ -1909,6 +1909,17 @@ public static class PrototypeContent
     public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
         new[]
         {
+            // Neow's Sacrifice grants this event-only potion. The
+            // out-of-combat 50% max-HP heal is supported; its in-combat
+            // extra-turn power requires dedicated turn scheduling.
+            new PrototypePotionDefinition(
+                "proto.native.neow.ambergris",
+                "Ambergris",
+                PrototypeCardTarget.None,
+                [],
+                UsableOutsideCombat: true,
+                RunEffects: [new(
+                    PrototypeRunEffectKind.HealPercentMaxHp, 50)]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -6696,7 +6707,9 @@ public static class PrototypeContent
             ]
         };
 
-    public static string[] PotionPool { get; } = Potions.Keys.Order(StringComparer.Ordinal).ToArray();
+    public static string[] PotionPool { get; } = Potions.Keys
+        .Where(id => id != "proto.native.neow.ambergris")
+        .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [
         "proto.relic.lantern",
