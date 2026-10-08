@@ -698,7 +698,7 @@ public static class PrototypeStateInvariants
                     ?? throw new InvalidOperationException(
                         $"Pending event deck choice references missing card {cardInstanceId}.");
 
-                if (!CanSelectEventDeckCard(
+                if (!PrototypeGameEngine.CanSelectEventDeckCard(
                         card, pending.Kind,
                         pending.TransformToCardId,
                         pending.EnchantmentKind,
