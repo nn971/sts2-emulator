@@ -38,6 +38,68 @@ public sealed class PrototypeNativeNeowsBonesTests
         return state;
     }
 
+    [Fact]
+    public void PomanderGrantedAsARewardCanUpgradePersistentCards()
+    {
+        var state = ChooseNeowsBones("bones-pomander-reward");
+        var pomander = PrototypeNativeOvergrowthEvents.NeowRelicId(
+            "Pomander");
+        var goldenPearl = PrototypeNativeOvergrowthEvents.NeowRelicId(
+            "GoldenPearl");
+        state = state with
+        {
+            World = state.World! with
+            {
+                Reward = state.World.Reward! with
+                {
+                    ExtraRelicRewardIds = [pomander, goldenPearl]
+                }
+            }
+        };
+        PrototypeStateInvariants.Validate(state);
+
+        var engine = new PrototypeGameEngine();
+        var first = engine.GetLegalActions(state).Single();
+        Assert.Equal("take_reward_relic", first.Kind);
+        state = engine.Step(state, first).State;
+        var pending = Assert.IsType<PrototypePendingDeckChoiceState>(
+            state.World!.Reward!.PendingDeckChoice);
+        Assert.Equal(PrototypePersistentDeckChoiceKind.Upgrade,
+            pending.Kind);
+        Assert.Contains(1L, pending.CandidateCardInstanceIds);
+        PrototypeStateInvariants.Validate(state);
+
+        var upgrade = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "choose_relic_deck_card"
+            && action.ReadPayload<ChooseDeckCardPayload>()
+                .CardInstanceId == 1L);
+        state = engine.Step(state, upgrade).State;
+        Assert.Equal(1, state.Player.Deck.Single(card =>
+            card.InstanceId == 1L).UpgradeLevel);
+        Assert.Equal(1, state.World!.Reward!.ExtraRelicsResolved);
+        Assert.Null(state.World.Reward.PendingDeckChoice);
+        PrototypeStateInvariants.Validate(state);
+
+        var second = engine.GetLegalActions(state).Single();
+        Assert.Equal("take_reward_relic", second.Kind);
+        state = engine.Step(state, second).State;
+        Assert.Equal(2, state.World!.Reward!.ExtraRelicsResolved);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == goldenPearl);
+        Assert.Equal(249, state.Player.Gold);
+        PrototypeStateInvariants.Validate(state);
+
+        var leave = engine.GetLegalActions(state).Single();
+        Assert.Equal("leave_reward", leave.Kind);
+        state = engine.Step(state, leave).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(1, state.Player.Deck.Single(card =>
+            card.InstanceId == 1L).UpgradeLevel);
+        Assert.Equal("proto.native.neow.injury",
+            state.Player.Deck[^1].CardId);
+        PrototypeStateInvariants.Validate(state);
+    }
+
     [Theory]
     [InlineData("bones-000")]
     [InlineData("bones-001")]
