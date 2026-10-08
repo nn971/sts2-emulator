@@ -1,6 +1,6 @@
 # Project status
 
-**Stage:** Natural-run Overgrowth oracle pass, then parent AI prototype integration.
+**Stage:** Single-player mechanics expansion, with Overgrowth as the initial high-coverage act; native-oracle fidelity is a separate follow-up.
 
 **Project scope constraint:** this emulator targets **single-player STS2 only**. Multiplayer-only
 cards and mechanics may remain in the pinned catalog as metadata, but they are not implementation,
@@ -768,3 +768,40 @@ cards still represented in PlayPile; resolving the choice resumes the remaining 
 and finally the potion's PotionUsed event. The AI combat observation now exposes PlayPile explicitly.
 Tagged zone autoplay was routed through the same staged-card primitive, removing its former nested-
 choice limitation.
+
+
+## Mechanics-expansion pass: composable event reward continuations
+
+Event reward effects can now produce **multiple suspended decisions** without rejecting
+their combination. Canonical `EventState` stores the currently active prompt alongside
+queued potion IDs and requested deck-choice continuations. Resolution consumes all pending
+potion replacements in acquisition order, followed by relic-acquisition deck choices in
+effect order, followed by any explicit event deck choice. Immediate effects, HP/gold
+costs, relic acquisition hooks, and preexisting available-slot potion pickups are
+applied only once when the event option is chosen.
+
+A queued deck request records the *requested* number of selections and the source
+relic/option, but calculates its eligible persistent card instance IDs only when the
+prompt activates. This means earlier removal, transform, upgrade, or card-add effects
+cannot leave stale candidate IDs or prematurely suppress a later deck decision. If the
+deck no longer contains eligible cards, that request is skipped automatically.
+At every interactive step, the event offers exactly one prompt type with a linear
+number of legal actions.
+
+The chosen-event invariant checks queued reward provenance, source ownership and
+specification agreement, prompt exclusivity, and valid potion candidates. Forking
+deep-copies all queued continuations, and the player-facing event observation includes
+queued potion IDs and compact deck-choice descriptions without exposing stale
+candidate sets.
+
+Collector's Annex is a deliberately synthetic Act 2+ mechanics test event:
+one option purchases two deck-shaping relics, two potions and an explicit upgrade
+in a single payment, and another grants a deck-choice relic *before* a new card is
+added. Regression tests cover full-belt double replacement, empty-slot pickup
+followed by replacement, the source order of Empty Cage/Astrolabe/upgrade,
+post-removal candidate refresh, exhausted requests, state fork isolation,
+and legal-action suppression for unaffordable or duplicate-relic options.
+
+This is a generic event state-machine improvement, not a native-v0.111.0 event
+fidelity claim. Neither the emulator's AI training parent nor its code is changed
+as part of this pass.
