@@ -48,6 +48,7 @@ public static class PrototypeNativeOvergrowthEvents
             .Select(name => new PrototypeRelicDefinition(
                 NeowRelicId(name),
                 name,
+                ExtraPotionSlots: name == "PhialHolster" ? 1 : 0,
                 AcquisitionDeckChoice: name switch
                 {
                     "Pomander" => new PrototypeRelicDeckChoiceSpec(
@@ -142,6 +143,34 @@ public static class PrototypeNativeOvergrowthEvents
                                 RelicId: NeowRelicId(name)),
                             new(PrototypeRunEffectKind.AddCard,
                                 CardId: "proto.native.neow.dowsing")
+                        ],
+                        "PhialHolster" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.GainPotionSlots, 1),
+                            new(PrototypeRunEffectKind.GainRandomPotion),
+                            new(PrototypeRunEffectKind.GainRandomPotion)
+                        ],
+                        "LargeCapsule" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.GainRandomRelic),
+                            new(PrototypeRunEffectKind.GainRandomRelic),
+                            new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.silent.strike"),
+                            new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.silent.defend")
+                        ],
+                        "NeowsSacrifice" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.GainPotion,
+                                PotionId: "proto.native.neow.ambergris"),
+                            new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.native.event.guilty")
                         ],
                         "PrecariousShears" =>
                         [
