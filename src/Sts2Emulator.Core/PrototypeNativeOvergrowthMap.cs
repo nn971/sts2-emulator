@@ -129,13 +129,13 @@ public static class PrototypeNativeOvergrowthMap
             }
         }
 
-        // The native Overgrowth type-count distributions have fixed shop/elite
-        // quotas and Gaussian rest/unknown quotas. The bounded sampling below
-        // approximates the shape, but is not a port of Rng.NextGaussianInt.
-        var restCount = 6 + PrototypeRng.NextInt(rng, "map", 2);
-        var unknownCount = Math.Clamp(
-            12 + PrototypeRng.NextInt(rng, "map", 5) - 2,
-            10, 14);
+        // Native Overgrowth requests two truncated, rounded Gaussian
+        // samples: rest (mean 7, sigma 1, clamp [6,7]) and unknown
+        // (mean 12, sigma 1, clamp [10,14]). Use the same rejection
+        // algorithm; output draws remain non-native until the map RNG
+        // codec and source call-order are translated.
+        var restCount = SampleTruncatedGaussian(rng, 7, 1, 6, 7);
+        var unknownCount = SampleTruncatedGaussian(rng, 12, 1, 10, 14);
         var quotas = new (PrototypeRoomType Type, int Count)[]
         {
             (PrototypeRoomType.Rest, restCount),
@@ -196,6 +196,30 @@ public static class PrototypeNativeOvergrowthMap
             EntryNodeIds: nodes.Where(node => node.Floor == 1)
                 .Select(node => node.NodeId).ToArray(),
             GenerationProfileId: GenerationProfileId);
+    }
+
+    private static int SampleTruncatedGaussian(
+        RngBundle rng,
+        int mean,
+        int standardDeviation,
+        int min,
+        int max)
+    {
+        while (true)
+        {
+            var a = 1.0 - (PrototypeRng.NextInt(
+                rng, "map", int.MaxValue) / (double)int.MaxValue);
+            var b = 1.0 - (PrototypeRng.NextInt(
+                rng, "map", int.MaxValue) / (double)int.MaxValue);
+            var standardNormal = Math.Sqrt(-2.0 * Math.Log(a))
+                * Math.Sin(2.0 * Math.PI * b);
+            var result = (int)Math.Round(
+                mean + standardDeviation * standardNormal);
+            if (result >= min && result <= max)
+            {
+                return result;
+            }
+        }
     }
 
     private static bool CanAssign(PrototypeRoomType type, Point point)
