@@ -87,7 +87,7 @@ public sealed class PrototypeNativeCardRarityOddsTests
         Assert.Equal(3, a.Cards.Distinct(StringComparer.Ordinal).Count());
         Assert.All(a.Cards, id =>
             Assert.Contains(id, PrototypeContent.RewardCardPool));
-        Assert.Equal(9,
+        Assert.Equal((ulong?)9,
             left.Streams.Single(s => s.StreamId == "reward").CallCount);
     }
 
@@ -101,9 +101,9 @@ public sealed class PrototypeNativeCardRarityOddsTests
         var b = PrototypeNativeCardRarityOdds.GenerateMerchantCards(
             5, 0, PrototypeCardType.Attack, 2500, right);
         Assert.Equal(a, b);
-        Assert.Equal(5, left.Streams.Single(
+        Assert.Equal((ulong?)5, left.Streams.Single(
             s => s.StreamId == "reward").CallCount);
-        Assert.Equal(10, left.Streams.Single(
+        Assert.Equal((ulong?)10, left.Streams.Single(
             s => s.StreamId == "shop").CallCount);
         Assert.All(a, id => Assert.Equal(PrototypeCardType.Attack,
             PrototypeContent.Card(id).Type));
