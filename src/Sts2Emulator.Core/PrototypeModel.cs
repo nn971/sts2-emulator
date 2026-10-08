@@ -220,7 +220,8 @@ public enum PrototypeEffectSourceKind
 public enum PrototypeCombatPredicateKind
 {
     DrawPileEmpty,
-    TargetHasStatus
+    TargetHasStatus,
+    HandEmptyAtEnqueue
 }
 
 public enum PrototypeCombatCountKind
