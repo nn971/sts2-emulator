@@ -71,10 +71,10 @@ def xxhash64(text: str) -> int:
         value = round64(0, read(8))
         result = (rotate(result ^ value, 27) * P1 + P4) & MASK
     if at + 4 <= size:
-        result ^= (read(4) * P1) & MASK
+        result = (result ^ ((read(4) * P1) & MASK)) & MASK
         result = (rotate(result, 23) * P2 + P3) & MASK
     while at < size:
-        result ^= read(1) * P5
+        result = (result ^ ((read(1) * P5) & MASK)) & MASK
         result = rotate(result, 11) * P1 & MASK
     result ^= result >> 33
     result = result * P2 & MASK
