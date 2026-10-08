@@ -1088,3 +1088,16 @@ Added focused boss-combat completion and reward tests plus a
 300-seed regression that Kaleidoscope never appears among Silent
 opening offers. Cross-character implementation and fidelity
 testing remain postponed.
+
+
+## Precarious Shears continuation ordering (2026-10-08)
+
+Precarious Shears now defers its 16 HP penalty until the last
+persistent deck removal choice resolves. Intermediate states
+preserve the original 70 HP; the event resumes and applies
+the penalty only after both cards have been removed. The
+run state's explicit `DeferredHpLoss` field is fork-safe,
+validated, and still checked for lethal consequences.
+Event-cost legality prevents choosing the effect at
+insufficient HP. The exact native damage-command details
+remain a later fidelity task.
