@@ -7927,11 +7927,14 @@ public sealed partial class PrototypeGameEngine
             Hp = nextHp
         };
 
+        var defeated = enemy.Hp > 0 && nextHp == 0;
+        var nextCombat = combat with { Enemies = enemies };
+        if (defeated)
+        {
+            nextCombat = ResolveAllyDeathPowers(nextCombat, enemyId);
+        }
         return new PrototypeDamageResult(
-            combat with { Enemies = enemies },
-            damageDealt,
-            Defeated:
-                enemy.Hp > 0 && nextHp == 0);
+            nextCombat, damageDealt, Defeated: defeated);
     }
 
     private static PrototypeDamageResult DamageEnemy(
@@ -7966,10 +7969,74 @@ public sealed partial class PrototypeGameEngine
             Hp = nextHp
         };
 
+        var defeated = enemy.Hp > 0 && nextHp == 0;
+        var nextCombat = combat with { Enemies = enemies };
+        if (defeated)
+        {
+            nextCombat = ResolveAllyDeathPowers(nextCombat, enemyId);
+        }
         return new PrototypeDamageResult(
-            combat with { Enemies = enemies },
-            damageDealt,
-            Defeated: enemy.Hp > 0 && nextHp == 0);
+            nextCombat, damageDealt, Defeated: defeated);
+    }
+
+    /// <summary>
+    /// Dispatch source-backed powers that react to a different ally's
+    /// death. This runs for both powered attacks and raw HP loss (e.g.,
+    /// poison), before removal of defeated creatures. Only a living
+    /// owner may react, and the owner never reacts to its own death.
+    /// </summary>
+    private static CombatState ResolveAllyDeathPowers(
+        CombatState combat, int defeatedEnemyId)
+    {
+        foreach (var owner in combat.Enemies
+            .Where(item => item.Hp > 0
+                && item.InstanceId != defeatedEnemyId)
+            .OrderBy(item => item.InstanceId))
+        {
+            var reactions = owner.PowerStates
+                .OrderBy(power => power.ApplicationOrder)
+                .Where(power => power.Stacks > 0)
+                .Select(power => (
+                    Definition: PrototypeContent.Power(power.PowerId),
+                    power.Stacks))
+                .Where(pair =>
+                    pair.Definition.AllyDeathStrengthPerStack > 0
+                    || pair.Definition.StunOnAllyDeath)
+                .ToArray();
+            foreach (var reaction in reactions)
+            {
+                if (reaction.Definition.AllyDeathStrengthPerStack > 0)
+                {
+                    combat = ApplyEnemyPower(
+                        combat, owner.InstanceId, "proto.power.strength",
+                        checked(reaction.Stacks
+                            * reaction.Definition.AllyDeathStrengthPerStack));
+                }
+                if (reaction.Definition.StunOnAllyDeath)
+                {
+                    var enemies = combat.Enemies
+                        .Select(item => item.Fork())
+                        .ToArray();
+                    var index = Array.FindIndex(enemies,
+                        item => item.InstanceId == owner.InstanceId);
+                    if (index < 0 || enemies[index].Hp <= 0)
+                    {
+                        continue;
+                    }
+                    // Native CreatureCmd.Stun replaces the pending move
+                    // for one turn; repeated applications before that turn
+                    // must not stack multiple skipped turns.
+                    enemies[index] = enemies[index] with
+                    {
+                        EnemyActionSkipsRemaining =
+                            Math.Max(1,
+                                enemies[index].EnemyActionSkipsRemaining)
+                    };
+                    combat = combat with { Enemies = enemies };
+                }
+            }
+        }
+        return combat;
     }
 
     private sealed record PrototypeEnemyHpLossResult(
