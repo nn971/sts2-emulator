@@ -19,7 +19,10 @@ public sealed class PrototypeCombatStartChoiceRelicTests
         var world = state.World
             ?? throw new InvalidOperationException(
                 "Expected initialized run world.");
-        var entryNodeId = world.Map.EntryNodeIds[0];
+        var entryNodeIds = world.Map.EntryNodeIds
+            ?? throw new InvalidOperationException(
+                "Expected initialized map entry nodes.");
+        var entryNodeId = entryNodeIds[0];
         state = state with
         {
             Player = state.Player with
@@ -127,7 +130,10 @@ public sealed class PrototypeCombatStartChoiceRelicTests
         var world = state.World
             ?? throw new InvalidOperationException(
                 "Expected initialized run world.");
-        var entryNodeId = world.Map.EntryNodeIds[0];
+        var entryNodeIds = world.Map.EntryNodeIds
+            ?? throw new InvalidOperationException(
+                "Expected initialized map entry nodes.");
+        var entryNodeId = entryNodeIds[0];
         state = state with
         {
             Player = state.Player with
