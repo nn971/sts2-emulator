@@ -201,9 +201,15 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
         PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
 
+        var boomingConchAtElite = roomType == PrototypeRoomType.Elite
+            && state.Player.Relics.Any(relic =>
+                relic.RelicId ==
+                    PrototypeNativeOvergrowthEvents.NeowRelicId(
+                        "BoomingConch"));
         var combat = new CombatState(
             Turn: 1,
-            Energy: EnergyPerTurn(state.Player),
+            Energy: EnergyPerTurn(state.Player)
+                + (boomingConchAtElite ? 1 : 0),
             PlayerBlock: 0,
             Hand: innateCards,
             DrawPile: drawPile,
@@ -221,6 +227,7 @@ public sealed partial class PrototypeGameEngine
 
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
+            + (boomingConchAtElite ? 2 : 0)
             + FirstTurnDrawBonus(state.Player)
             + state.Player.Relics.Sum(relic =>
                 PrototypeContent.Relic(relic.RelicId)
@@ -1066,6 +1073,14 @@ public sealed partial class PrototypeGameEngine
             {
                 Combat = won.Combat
             }
+        };
+
+        state = state with
+        {
+            Player = ApplyNativePersistentCombatEnd(
+                state.Player,
+                world.ActiveRoom,
+                state.Rng)
         };
 
         return EnterReward(state);
