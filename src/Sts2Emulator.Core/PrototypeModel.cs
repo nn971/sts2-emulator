@@ -357,8 +357,26 @@ public enum PrototypeRunEventKind
 {
     RelicAcquired,
     ShopEntered,
-    CardAdded
+    CardAdded,
+    RoomCompleted
 }
+
+public sealed record PrototypeCompletedRoomRecord(
+    int Act,
+    int Floor,
+    string NodeId,
+    PrototypeRoomType RoomType);
+
+public sealed record PrototypeRouteConditionSpec(
+    PrototypeRoomType? RoomType = null,
+    int MinimumCompletedVisits = 0,
+    int MinimumConsecutiveCompleted = 0,
+    int EveryNthMatchingVisit = 0,
+    bool CurrentActOnly = false,
+    int MinAct = 1,
+    int MaxAct = int.MaxValue,
+    int MinFloor = 0,
+    int MaxFloor = int.MaxValue);
 
 public sealed record PrototypeCardSelectionSpec(
     PrototypeCardZone SourceZone,
@@ -586,7 +604,8 @@ public sealed record PrototypeRelicTriggerSpec(
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
     PrototypeRunEffectSpec[] Effects,
-    PrototypeCardType? RequiredCardType = null);
+    PrototypeCardType? RequiredCardType = null,
+    PrototypeRouteConditionSpec? RouteCondition = null);
 
 public enum PrototypePersistentDeckChoiceKind
 {
@@ -1103,7 +1122,8 @@ public sealed record PrototypeEventChoiceDefinition(
     string Id,
     string Label,
     PrototypeRunEffectSpec[] Effects,
-    PrototypeEventDeckChoiceSpec? DeckChoice = null);
+    PrototypeEventDeckChoiceSpec? DeckChoice = null,
+    PrototypeRouteConditionSpec? RouteCondition = null);
 
 public sealed record PrototypeEventDefinition(
     string Id,
@@ -1625,7 +1645,8 @@ public sealed record RunWorldState(
     string[]? EncounterHistory = null,
     string[]? EventHistory = null,
     PrototypeActOneRegion? ActOneRegion = null,
-    PrototypeActOneEncounterPoolState? ActOneEncounterPool = null)
+    PrototypeActOneEncounterPoolState? ActOneEncounterPool = null,
+    PrototypeCompletedRoomRecord[]? CompletedRoomHistory = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -1640,6 +1661,9 @@ public sealed record RunWorldState(
         EventHistory = EventHistory is null
             ? null
             : (string[])EventHistory.Clone(),
+        CompletedRoomHistory = CompletedRoomHistory is null
+            ? null
+            : (PrototypeCompletedRoomRecord[])CompletedRoomHistory.Clone(),
         ActOneEncounterPool = ActOneEncounterPool?.Fork()
     };
 
@@ -1648,6 +1672,9 @@ public sealed record RunWorldState(
 
     public string[] EventIds =>
         EventHistory ?? Array.Empty<string>();
+
+    public PrototypeCompletedRoomRecord[] CompletedRooms =>
+        CompletedRoomHistory ?? Array.Empty<PrototypeCompletedRoomRecord>();
 }
 
 public sealed record ChooseMapNodePayload(string NodeId);
