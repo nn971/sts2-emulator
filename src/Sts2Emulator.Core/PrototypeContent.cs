@@ -5468,6 +5468,72 @@ public static class PrototypeContent
                 MinAct: 2,
                 Weight: 2),
             new PrototypeEventDefinition(
+                "proto.event.caged_vault",
+                "Caged Vault",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "open",
+                        "Lose 5 Max HP and take the cage",
+                        [
+                            new(
+                                PrototypeRunEffectKind.LoseMaxHp,
+                                5),
+                            new(
+                                PrototypeRunEffectKind.GainRelic,
+                                RelicId: "proto.relic.empty_cage")
+                        ]),
+                    new PrototypeEventChoiceDefinition(
+                        "tonic",
+                        "Pay 30 gold for a Strength Potion",
+                        [
+                            new(
+                                PrototypeRunEffectKind.LoseGold,
+                                30),
+                            new(
+                                PrototypeRunEffectKind.GainPotion,
+                                PotionId: "proto.potion.strength")
+                        ]),
+                    new PrototypeEventChoiceDefinition(
+                        "leave",
+                        "Take loose change and leave",
+                        [
+                            new(
+                                PrototypeRunEffectKind.GainGold,
+                                20)
+                        ])
+                ],
+                Weight: 2),
+            new PrototypeEventDefinition(
+                "proto.event.forbidden_archive",
+                "Forbidden Archive",
+                [
+                    new PrototypeEventChoiceDefinition(
+                        "read",
+                        "Take Wraith Form and an Infection",
+                        [
+                            new(
+                                PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.silent.wraith_form"),
+                            new(
+                                PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.status.infection")
+                        ]),
+                    new PrototypeEventChoiceDefinition(
+                        "sell",
+                        "Sell the sealed folio",
+                        [
+                            new(
+                                PrototypeRunEffectKind.GainGold,
+                                70)
+                        ]),
+                    new PrototypeEventChoiceDefinition(
+                        "leave",
+                        "Leave the archive untouched",
+                        [])
+                ],
+                MinAct: 2,
+                Weight: 2),
+            new PrototypeEventDefinition(
                 "proto.event.gambling_den",
                 "Gambling Den",
                 [
