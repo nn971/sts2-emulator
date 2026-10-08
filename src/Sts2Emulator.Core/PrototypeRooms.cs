@@ -2862,8 +2862,30 @@ public sealed partial class PrototypeGameEngine
             && world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId;
 
-        // Source RewardsSet creates GoldReward before card rewards.
-        // Roll the offer now; player gold changes only upon collection.
+        // RewardsSet.GenerateRewardsFor rolls the potion pity check
+        // before rewards are populated; GoldReward.Populate runs first,
+        // then PotionReward.Populate, then the base CardReward.
+        // Forced potion rewards do not consume a pity RNG draw.
+        var nativePotionOffered = false;
+        if (nativeOvergrowth)
+        {
+            var forced = state.Player.Relics.Any(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .ForceCombatPotionReward);
+            var (offered, nextOdds) = PrototypeNativePotionRewardOdds.Roll(
+                world.PotionRewardOddsThousandths,
+                room == PrototypeRoomType.Elite,
+                state.Rng,
+                forced: forced);
+            nativePotionOffered = offered;
+            world = world with
+            {
+                PotionRewardOddsThousandths = nextOdds
+            };
+        }
+
+        // GoldReward.Populate is the first reward population RNG draw.
+        // Its amount is only credited if the player claims the offer.
         var nativeGold = nativeOvergrowth
             ? PrototypeNativeCombatGoldReward.Roll(
                 room, state.Ascension, state.Rng)
@@ -2877,16 +2899,24 @@ public sealed partial class PrototypeGameEngine
                 _ => 20 + (world.Act * 5)
             };
 
+        // PotionReward.Populate precedes CardReward.Populate.
+        string? potion = nativeOvergrowth
+            && nativePotionOffered
+            && CanAcquirePotion(state.Player)
+                ? PrototypeNativePotionShop.PickWeighted(
+                    state.Rng, "reward")
+                : null;
+
         var cardChoiceCount =
             RewardCardChoiceCount(state.Player);
+        var prayerWheelGroups = room == PrototypeRoomType.Combat
+            ? ExtraNormalCombatCardRewardGroups(state.Player)
+            : 0;
         var extraCardRewardGroups =
             Math.Max(
                 0,
                 combat.ExtraCardRewardsEarned)
-            + (room == PrototypeRoomType.Combat
-                ? ExtraNormalCombatCardRewardGroups(
-                    state.Player)
-                : 0);
+            + prayerWheelGroups;
         string[] cardOptions;
         string[][] extraCardOptions;
         bool[]? cardUpgradeFlags = null;
@@ -2902,7 +2932,9 @@ public sealed partial class PrototypeGameEngine
             offset = first.NextOffsetBasisPoints;
             var extras = new List<string[]>();
             var extraUpgrades = new List<bool[]>();
-            for (var i = 0; i < extraCardRewardGroups; i++)
+            // Extra combat-earned rewards belong to the initial list.
+            // Prayer Wheel adds its CardReward later, from ModifyRewards.
+            for (var i = 0; i < Math.Max(0, combat.ExtraCardRewardsEarned); i++)
             {
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                     cardChoiceCount, state.Ascension, room, offset, state.Rng,
@@ -2926,34 +2958,9 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
-        var silverCrucible = ApplySilverCrucibleToCardRewardGeneration(
-            state.Player,
-            1 + extraCardOptions.Length);
-        string? potion;
-        if (nativeOvergrowth)
+        if (!nativeOvergrowth)
         {
-            var forcePotion = silverCrucible.Player.Relics.Any(relic =>
-                PrototypeContent.Relic(relic.RelicId)
-                    .ForceCombatPotionReward);
-            var (offered, nextOdds) =
-                PrototypeNativePotionRewardOdds.Roll(
-                    world.PotionRewardOddsThousandths,
-                    room == PrototypeRoomType.Elite,
-                    state.Rng,
-                    forced: forcePotion);
-            world = world with
-            {
-                PotionRewardOddsThousandths = nextOdds
-            };
-            potion = offered
-                && CanAcquirePotion(silverCrucible.Player)
-                ? PrototypeNativePotionShop.PickWeighted(
-                    state.Rng, "reward")
-                : null;
-        }
-        else
-        {
-            potion = CanAcquirePotion(silverCrucible.Player)
+            potion = CanAcquirePotion(state.Player)
                 && PrototypeRng.NextBool(
                     state.Rng, "reward", 1, 2)
                 ? PrototypeContent.PotionPool[
@@ -2985,6 +2992,33 @@ public sealed partial class PrototypeGameEngine
                         PrototypeContent.RelicPool.Length)];
             }
         }
+        if (nativeOvergrowth && prayerWheelGroups > 0)
+        {
+            // Hook.ModifyRewards happens after the original reward
+            // list has been populated. Prayer Wheel appends a separate
+            // normal-combat CardReward, so its RNG rolls come after
+            // the base reward and (for elites) relic population.
+            var extras = extraCardOptions.ToList();
+            var upgrades = extraCardUpgradeFlags!.ToList();
+            var offset = world.CardRarityOffsetBasisPoints;
+            for (var i = 0; i < prayerWheelGroups; i++)
+            {
+                var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+                    cardChoiceCount, state.Ascension,
+                    PrototypeRoomType.Combat, offset, state.Rng,
+                    act: world.Act);
+                extras.Add(next.Cards);
+                upgrades.Add(next.UpgradeFlags);
+                offset = next.NextOffsetBasisPoints;
+            }
+            extraCardOptions = extras.ToArray();
+            extraCardUpgradeFlags = upgrades.ToArray();
+            world = world with { CardRarityOffsetBasisPoints = offset };
+        }
+
+        var silverCrucible = ApplySilverCrucibleToCardRewardGeneration(
+            state.Player, 1 + extraCardOptions.Length);
+
         var relicOptions =
             room == PrototypeRoomType.Boss
                 ? PickDistinct(
