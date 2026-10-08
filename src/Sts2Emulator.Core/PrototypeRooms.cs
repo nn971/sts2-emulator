@@ -740,9 +740,7 @@ public sealed partial class PrototypeGameEngine
                     Event = eventState
                 }
             };
-            return eventState.PendingDeckChoice is null
-                ? CompleteRoomToMap(state)
-                : state;
+            return AdvanceEventContinuations(state);
         }
 
         if (eventState.PendingDeckChoice is { } pending)
@@ -815,9 +813,7 @@ public sealed partial class PrototypeGameEngine
                     Event = eventState
                 }
             };
-            return eventState.PendingPotionReplacement is null
-                ? CompleteRoomToMap(state)
-                : state;
+            return AdvanceEventContinuations(state);
         }
 
         RequireKind(action, "event_choice");
@@ -842,10 +838,9 @@ public sealed partial class PrototypeGameEngine
                 $"Event choice '{choice.Id}' cannot currently be taken.");
         }
 
-        PrototypePendingEventPotionReplacementState?
-            pendingPotionReplacement = null;
-        PrototypePendingEventDeckChoiceState?
-            relicAcquisitionDeckChoice = null;
+        var queuedPotionIds = new List<string>();
+        var queuedDeckChoices =
+            new List<PrototypePendingEventDeckChoiceState>();
 
         foreach (var effect in choice.Effects)
         {
@@ -989,14 +984,7 @@ public sealed partial class PrototypeGameEngine
                             relicDefinition);
                     if (relicChoice is not null)
                     {
-                        if (relicAcquisitionDeckChoice is not null)
-                        {
-                            throw new InvalidOperationException(
-                                "An event choice cannot currently grant multiple relics that each require deck choices.");
-                        }
-
-                        relicAcquisitionDeckChoice =
-                            relicChoice;
+                        queuedDeckChoices.Add(relicChoice);
                     }
 
                     break;
@@ -1015,45 +1003,7 @@ public sealed partial class PrototypeGameEngine
                             "Player cannot acquire potions.");
                     }
 
-                    var emptySlot =
-                        Array.IndexOf(
-                            player.PotionSlots,
-                            null);
-                    if (emptySlot >= 0)
-                    {
-                        var slots =
-                            (PotionInstance?[])
-                            player.PotionSlots.Clone();
-                        slots[emptySlot] =
-                            new PotionInstance(
-                                potionId,
-                                PrototypeJson.EmptyObject());
-                        player = player with
-                        {
-                            PotionSlots = slots
-                        };
-                    }
-                    else
-                    {
-                        if (pendingPotionReplacement is not null)
-                        {
-                            throw new InvalidOperationException(
-                                "An event choice cannot currently queue multiple full-belt potion replacements.");
-                        }
-
-                        pendingPotionReplacement =
-                            new PrototypePendingEventPotionReplacementState(
-                                choice.Id,
-                                potionId,
-                                player.PotionSlots
-                                    .Select((potion, slot) =>
-                                        (Potion: potion, Slot: slot))
-                                    .Where(item =>
-                                        item.Potion is not null)
-                                    .Select(item =>
-                                        item.Slot)
-                                    .ToArray());
-                    }
+                    queuedPotionIds.Add(potionId);
 
                     break;
                 }
@@ -1074,16 +1024,10 @@ public sealed partial class PrototypeGameEngine
             CreateEventDeckChoice(
                 player,
                 choice);
-        if (explicitDeckChoice is not null
-            && relicAcquisitionDeckChoice is not null)
+        if (explicitDeckChoice is not null)
         {
-            throw new InvalidOperationException(
-                "An event choice cannot currently combine an explicit deck choice with a relic acquisition deck choice.");
+            queuedDeckChoices.Add(explicitDeckChoice);
         }
-
-        var pendingChoice =
-            explicitDeckChoice
-            ?? relicAcquisitionDeckChoice;
 
         state = state with
         {
@@ -1094,10 +1038,10 @@ public sealed partial class PrototypeGameEngine
                 Event = eventState with
                 {
                     ChosenChoiceId = choice.Id,
-                    PendingDeckChoice =
-                        pendingChoice,
-                    PendingPotionReplacement =
-                        pendingPotionReplacement
+                    PendingDeckChoice = null,
+                    PendingPotionReplacement = null,
+                    QueuedPotionIds = queuedPotionIds.ToArray(),
+                    QueuedDeckChoices = queuedDeckChoices.ToArray()
                 }
             }
         };
@@ -1109,10 +1053,7 @@ public sealed partial class PrototypeGameEngine
                 "defeat");
         }
 
-        return pendingChoice is null
-            && pendingPotionReplacement is null
-            ? CompleteRoomToMap(state)
-            : state;
+        return AdvanceEventContinuations(state);
     }
 
     private static bool CanTakeEventChoice(
