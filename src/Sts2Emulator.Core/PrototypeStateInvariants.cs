@@ -893,6 +893,14 @@ public static class PrototypeStateInvariants
         PlayerState player,
         RewardState reward)
     {
+        if (reward.ExtraCardOptionsUpgraded is { } upgrades
+            && upgrades.Length !=
+                (reward.ExtraCardOptions?.Length ?? 0))
+        {
+            throw new InvalidOperationException(
+                "Reward card-upgrade metadata does not match reward groups.");
+        }
+
         if (reward.CardOptions.Length != reward.CardOptions.Distinct(StringComparer.Ordinal).Count())
         {
             throw new InvalidOperationException("Reward card options contain duplicates.");
