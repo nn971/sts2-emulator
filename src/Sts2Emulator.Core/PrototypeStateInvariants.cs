@@ -473,9 +473,10 @@ public static class PrototypeStateInvariants
         {
             _ = PrototypeContent.Potion(queuedPotionId);
             if (!choice.Effects.Any(effect =>
-                    effect.Kind == PrototypeRunEffectKind.GainPotion
-                    && StringComparer.Ordinal.Equals(
-                        effect.PotionId, queuedPotionId)))
+                    (effect.Kind == PrototypeRunEffectKind.GainPotion
+                        && StringComparer.Ordinal.Equals(
+                            effect.PotionId, queuedPotionId))
+                    || effect.Kind == PrototypeRunEffectKind.GainRandomPotion))
             {
                 throw new InvalidOperationException(
                     "Queued event potion has no matching source effect.");
@@ -630,11 +631,13 @@ public static class PrototypeStateInvariants
             }
 
             if (!choice.Effects.Any(effect =>
-                    effect.Kind
+                    (effect.Kind
                         == PrototypeRunEffectKind.GainPotion
-                    && StringComparer.Ordinal.Equals(
-                        effect.PotionId,
-                        potionReplacement.PotionId)))
+                        && StringComparer.Ordinal.Equals(
+                            effect.PotionId,
+                            potionReplacement.PotionId))
+                    || effect.Kind
+                        == PrototypeRunEffectKind.GainRandomPotion))
             {
                 throw new InvalidOperationException(
                     "Pending event potion replacement has no matching acquisition effect.");
