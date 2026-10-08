@@ -334,6 +334,32 @@ public sealed class PrototypeNativeNeowGenerationTests
     }
 
     [Fact]
+    public void ArcaneScrollAddsExactlyOneRareCardToTheStartingDeck()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = ForceNeowOption("arcane-scroll", "ArcaneScroll");
+        var initial = state.Player.Deck;
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.ReadPayload<EventChoicePayload>().ChoiceId
+                == OptionId("ArcaneScroll"))).State;
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(initial.Length + 1, state.Player.Deck.Length);
+        Assert.Equal(initial.Select(card => card.InstanceId),
+            state.Player.Deck.Take(initial.Length)
+                .Select(card => card.InstanceId));
+        var gained = state.Player.Deck[^1];
+        Assert.Equal(PrototypeCardRarity.Rare,
+            PrototypeContent.Card(gained.CardId).Rarity);
+        Assert.Equal(14, gained.InstanceId);
+        Assert.Equal(15, state.World!.NextCardInstanceId);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == PrototypeNativeOvergrowthEvents
+                .NeowRelicId("ArcaneScroll"));
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void StoneHumidifierTriggersAfterRestHealButNotRestTraining()
     {
         var initial = PrototypeNativeOvergrowthRunFactory.Create(
