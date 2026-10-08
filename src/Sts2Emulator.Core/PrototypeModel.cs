@@ -1680,7 +1680,8 @@ public sealed record EventState(
     RewardState? PendingReward = null,
     int DeferredHpLoss = 0,
     int NativePageIndex = 0,
-    string? DeferredCardId = null)
+    string? DeferredCardId = null,
+    int NativeEventGold = 0)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
