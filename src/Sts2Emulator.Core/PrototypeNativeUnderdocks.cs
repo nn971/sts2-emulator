@@ -2,9 +2,9 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// v0.111.0 Underdocks single-player Act 1 content inventory.
-/// The entire native weak encounter set is now playable. Normal,
-/// elite and boss content remains explicitly gated rather than replaced
-/// with Overgrowth content.
+/// All four native weak encounters and a restricted normal-encounter
+/// subset are playable. Other normals, elites and bosses remain gated
+/// rather than replaced with Overgrowth content.
 /// </summary>
 public static class PrototypeNativeUnderdocks
 {
@@ -54,6 +54,14 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.seapunk_weak",
         "proto.encounter.sludge_spinner_weak",
         "proto.encounter.toadpoles_weak"
+    ];
+
+    // Initial native-shaped normal slice. This is *not* the full ten-
+    // encounter normal distribution; unsupported entries remain cataloged.
+    public static string[] SupportedNormalEncounterIds { get; } =
+    [
+        "proto.encounter.corpse_slugs_normal",
+        "proto.encounter.punch_construct_normal"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
@@ -198,6 +206,28 @@ public static class PrototypeNativeUnderdocks
             ],
             CyclicOpeningAiStateIds: ["whip", "glomp", "goop"]),
         new(
+            "proto.encounter.corpse_slugs_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.corpse_slug",
+                "proto.enemy.corpse_slug",
+                "proto.enemy.corpse_slug"
+            ],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation:
+            [
+                new("proto.enemy.corpse_slug", 0),
+                new("proto.enemy.corpse_slug", 1),
+                new("proto.enemy.corpse_slug", 2)
+            ],
+            CyclicOpeningAiStateIds: ["whip", "glomp", "goop"]),
+        new(
+            "proto.encounter.punch_construct_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.punch_construct"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.punch_construct", 0)]),
+        new(
             "proto.encounter.seapunk_weak",
             PrototypeRoomType.Combat,
             ["proto.enemy.seapunk"],
@@ -277,7 +307,9 @@ public static class PrototypeNativeUnderdocksRunFactory
                     RemainingWeakEncounterIds:
                         (string[])PrototypeNativeUnderdocks
                             .SupportedWeakEncounterIds.Clone(),
-                    RemainingNormalEncounterIds: [],
+                    RemainingNormalEncounterIds:
+                        (string[])PrototypeNativeUnderdocks
+                            .SupportedNormalEncounterIds.Clone(),
                     RemainingEliteEncounterIds: [],
                     BossEncounterId: boss),
                 Map = map
