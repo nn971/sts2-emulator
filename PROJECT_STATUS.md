@@ -834,3 +834,40 @@ empty prompts and rejection of stale candidate IDs.
 
 This is a targeted consistency improvement in the single-player
 emulator; no parent AI repository was modified.
+
+
+## Mechanics-expansion pass: event potion inventory and card-added hook interactions
+
+Full-belt potion rewards from events now offer three ways to resolve the
+currently offered potion: replace an occupied belt slot, decline that
+individual potion without forfeiting subsequent event rewards, or consume
+an existing out-of-combat-usable potion to create an empty slot. In the
+last case, the offered potion enters the vacated slot automatically and
+the event proceeds to its next queued reward. This eliminates a
+previously possible inconsistent pending-replacement state referring to
+a slot that an out-of-combat potion action had emptied. If a consumed
+potion has an immediate refill effect (e.g. Entropic Brew), the belt
+remains full and the original replacement/decline choice stays active.
+
+All of these transitions preserve the one-time payment and acquisition
+semantics of compound event choices, do not replay relic hooks, and
+ultimately flow through the existing event continuation state machine.
+The choice is modeled as a semantic `skip_event_potion` legal action
+in addition to `replace_event_potion`; it does not silently discard
+an incoming potion.
+
+Card gains from events, shops and rewards now explicitly forward the
+canonical run RNG to `CardAdded` relic hooks. Existing deterministic
+triggers remain unchanged, but future triggers whose generic run
+effects require RNG (e.g. filling potion slots) can safely fire after
+card acquisition without an absent-RNG failure. Regression tests
+exercise card-acquisition effects from Lucky Fysh and Toxic Egg,
+out-of-combat Blood Potion use while a full-belt event reward is
+pending, Entropic Brew's refill during the same continuation, declining
+sequential potions while preserving subsequent relic deck choices,
+and state invariant validity throughout.
+
+These are prototype mechanics and interaction-consistency checks rather
+than independently oracle-verified assertions about native StS2 UI
+availability of potion actions during event dialogs. No `sts2-ai`
+repository modifications are part of this pass.
