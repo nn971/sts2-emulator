@@ -5830,6 +5830,15 @@ public static class PrototypeContent
                         DeckChoice: new PrototypeEventDeckChoiceSpec(
                             PrototypePersistentDeckChoiceKind.Upgrade, 1)),
                     new PrototypeEventChoiceDefinition(
+                        "late_card",
+                        "Receive a relic before a new card is added",
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: "proto.relic.empty_cage"),
+                            new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.silent.backflip")
+                        ]),
+                    new PrototypeEventChoiceDefinition(
                         "leave",
                         "Leave the annex",
                         [])
