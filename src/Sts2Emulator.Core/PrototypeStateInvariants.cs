@@ -52,7 +52,10 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException($"Invalid floor {world.Floor}.");
         }
 
-        if (state.Player.PotionSlots.Length != PrototypeContent.Rules.PotionSlots)
+        if (state.Player.PotionSlots.Length
+            != PrototypeContent.Rules.PotionSlots
+                + state.Player.Relics.Sum(relic =>
+                    PrototypeContent.Relic(relic.RelicId).ExtraPotionSlots))
         {
             throw new InvalidOperationException("Potion slot count differs from the active ruleset.");
         }
