@@ -133,4 +133,17 @@ public sealed class PrototypeNativeOvergrowthEventCatalogTests
             evt, player with { Gold = 100, Deck = [valid, valid with { InstanceId = 12348 }] }));
     }
 
+    [Theory]
+    [InlineData("proto.native.event.byrdonis_egg")]
+    [InlineData("proto.native.event.spore_mind")]
+    [InlineData("proto.native.event.poor_sleep")]
+    public void NativeZeroUpgradeCardsCannotBeSelectedForUpgrade(string cardId)
+    {
+        var definition = PrototypeContent.Card(cardId);
+        Assert.Equal(0, definition.MaxUpgradeLevel);
+        Assert.False(PrototypeGameEngine.CanSelectEventDeckCard(
+            new CardInstance(10, cardId, 0, PrototypeJson.EmptyObject()),
+            PrototypePersistentDeckChoiceKind.Upgrade, null, null, false));
+    }
+
 }
