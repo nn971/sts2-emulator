@@ -93,6 +93,9 @@ public sealed class PrototypePhrogParasiteTests
 
         var wrigglers = Wrigglers(state);
         Assert.Equal(4, wrigglers.Length);
+        Assert.Equal(
+            new[] { "wriggler1", "wriggler2", "wriggler3", "wriggler4" },
+            wrigglers.Select(wriggler => wriggler.SlotName).ToArray());
         Assert.All(
             wrigglers,
             wriggler => Assert.Equal(

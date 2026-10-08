@@ -4229,16 +4229,30 @@ public static class PrototypeContent
                             PrototypeEnemyAiStateKind.Conditional,
                             ConditionalBranches:
                             [
+                                // Native Wriggler.INIT_MOVE branches on the
+                                // actual encounter slot names, not abstract
+                                // move labels. Odd slots bite first; even
+                                // slots wriggle first.
                                 new(
                                     "bite_move",
                                     PrototypeEnemyAiConditionKind
                                         .SlotNameEquals,
-                                    "bite"),
+                                    "wriggler1"),
                                 new(
                                     "wriggle_move",
                                     PrototypeEnemyAiConditionKind
                                         .SlotNameEquals,
-                                    "wriggle")
+                                    "wriggler2"),
+                                new(
+                                    "bite_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    "wriggler3"),
+                                new(
+                                    "wriggle_move",
+                                    PrototypeEnemyAiConditionKind
+                                        .SlotNameEquals,
+                                    "wriggler4")
                             ])
                     ])),
             new PrototypeEnemyDefinition(
@@ -4286,19 +4300,19 @@ public static class PrototypeContent
                     new(
                         "proto.enemy.wriggler",
                         0,
-                        "bite"),
+                        "wriggler1"),
                     new(
                         "proto.enemy.wriggler",
                         1,
-                        "wriggle"),
+                        "wriggler2"),
                     new(
                         "proto.enemy.wriggler",
                         2,
-                        "bite"),
+                        "wriggler3"),
                     new(
                         "proto.enemy.wriggler",
                         3,
-                        "wriggle")
+                        "wriggler4")
                 ]),
             new PrototypeEnemyDefinition(
                 "proto.enemy.bygone_effigy",
@@ -6186,7 +6200,16 @@ public static class PrototypeContent
             ],
             MinAct: 1,
             MaxAct: 1,
-            Weight: 0),
+            Weight: 0,
+            // DenseVegetationEventEncounter.GenerateMonsters creates
+            // four non-stunned Wrigglers, one in each native slot.
+            Formation:
+            [
+                new("proto.enemy.wriggler", 0, "wriggler1"),
+                new("proto.enemy.wriggler", 1, "wriggler2"),
+                new("proto.enemy.wriggler", 2, "wriggler3"),
+                new("proto.enemy.wriggler", 3, "wriggler4")
+            ]),
         new(
             "proto.encounter.crawler",
             PrototypeRoomType.Combat,
