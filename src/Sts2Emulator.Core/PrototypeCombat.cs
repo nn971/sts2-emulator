@@ -2511,6 +2511,20 @@ public sealed partial class PrototypeGameEngine
         PrototypeCombatCardSnapshot? powerCardPayload = null,
         int? sourcePowerEnemyId = null)
     {
+        // Snapshot hand-sensitive card conditions when their operations are
+        // queued. Restlessness first draws cards and then gains energy, but
+        // both effects depend on the hand at the moment the card is played.
+        if (effect.Condition?.Kind
+                == PrototypeCombatPredicateKind.HandEmptyAtEnqueue
+            && combat.Hand.Length != 0)
+        {
+            return;
+        }
+
+        var queuedCondition = effect.Condition?.Kind
+                == PrototypeCombatPredicateKind.HandEmptyAtEnqueue
+            ? null
+            : effect.Condition;
         var count = effect.CountKind is null
             ? 0
             : ResolveCombatCount(effect.CountKind.Value, combat);
@@ -2585,7 +2599,7 @@ public sealed partial class PrototypeGameEngine
                         && effect.Kind is
                             PrototypeCombatEffectKind.DamageEnemy
                             or PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill,
-                    Condition: effect.Condition,
+                    Condition: queuedCondition,
                     SelectedCardPower: effect.SelectedCardPower is null
                         ? null
                         : new PrototypeSelectedCardPowerAction(
