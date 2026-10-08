@@ -1714,6 +1714,31 @@ public sealed partial class PrototypeGameEngine
             })
             .ToArray();
 
+        // Native MerchantInventory has two dedicated ColorlessCardPool
+        // slots, one Uncommon and one Rare, after the five character
+        // slots. Use only implemented single-player cards until more
+        // mechanics are added. The legacy six-floor prototype is unchanged.
+        if (nativeMerchant)
+        {
+            var colorless = new[]
+            {
+                PrototypeColorlessCards.PickMerchantCard(
+                    PrototypeCardRarity.Uncommon, state.Rng),
+                PrototypeColorlessCards.PickMerchantCard(
+                    PrototypeCardRarity.Rare, state.Rng)
+            };
+            offers = offers.Concat(colorless.Select((cardId, index) =>
+            {
+                var price = NativeMerchantCardPrice(cardId, state.Rng);
+                return new ShopOffer(
+                    6 + index,
+                    cardId,
+                    price,
+                    false,
+                    BasePrice: price);
+            })).ToArray();
+        }
+
         var potionIds = nativeMerchant
             ? PrototypeNativePotionShop.PickWeightedDistinct(
                 state.Rng, "shop", 3)
@@ -3416,6 +3441,13 @@ public sealed partial class PrototypeGameEngine
             _ => throw new InvalidOperationException(
                 "Native shop character cards must have a purchasable rarity.")
         };
+        // MerchantCardEntry applies a 15% premium to cards from
+        // ColorlessCardPool, before rolling its price modifier.
+        if (PrototypeColorlessCards.ImplementedShopPool.Contains(
+                cardId, StringComparer.Ordinal))
+        {
+            baseCost = (int)Math.Round(baseCost * 1.15);
+        }
         // Native CalcCost uses Shops.NextFloat(0.95, 1.05)
         // followed by Mathf.RoundToInt. Integer percentage samples
         // approximate that distribution without claiming RNG parity.

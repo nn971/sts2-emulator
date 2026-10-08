@@ -943,10 +943,13 @@ public static class PrototypeStateInvariants
 
         foreach (var offer in shop.CardOffers)
         {
+            var characterCard = PrototypeContent.RewardCardPool.Contains(
+                offer.ItemId, StringComparer.Ordinal);
+            var colorlessCard = PrototypeColorlessCards.ImplementedShopPool.Contains(
+                offer.ItemId, StringComparer.Ordinal);
             if (offer.Price <= 0
-                || !PrototypeContent.RewardCardPool.Contains(
-                    offer.ItemId,
-                    StringComparer.Ordinal)
+                || !(characterCard || colorlessCard)
+                || (colorlessCard && offer.OnSale)
                 || PrototypeContent.Card(offer.ItemId).Rarity == PrototypeCardRarity.Basic)
             {
                 throw new InvalidOperationException("Shop contains an invalid card offer.");

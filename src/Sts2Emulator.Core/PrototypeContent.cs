@@ -1859,7 +1859,8 @@ public static class PrototypeContent
                 ],
                 Rarity: PrototypeCardRarity.Ancient,
                 Type: PrototypeCardType.Power)
-        }.ToDictionary(card => card.Id, StringComparer.Ordinal);
+        }.Concat(PrototypeColorlessCards.Implemented)
+            .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
     // Exact SilentCardPool.GenerateAllCards() inventory from the pinned

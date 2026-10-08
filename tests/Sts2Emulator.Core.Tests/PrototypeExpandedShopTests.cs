@@ -357,7 +357,19 @@ public sealed class PrototypeExpandedShopTests
             new ChooseMapNodePayload(shopNode.NodeId))).State;
         Assert.Equal(RunPhase.Shop, state.Phase);
         var shop = state.World!.Shop!;
-        Assert.Equal(5, shop.CardOffers.Length);
+        Assert.Equal(7, shop.CardOffers.Length);
+        Assert.All(shop.CardOffers.Take(5), offer =>
+            Assert.DoesNotContain(offer.ItemId,
+                PrototypeColorlessCards.ImplementedShopPool));
+        Assert.All(shop.CardOffers.Skip(5), offer =>
+        {
+            Assert.Contains(offer.ItemId, PrototypeColorlessCards.ImplementedShopPool);
+            Assert.False(offer.OnSale);
+        });
+        Assert.Equal(PrototypeCardRarity.Uncommon,
+            PrototypeContent.Card(shop.CardOffers[5].ItemId).Rarity);
+        Assert.Equal(PrototypeCardRarity.Rare,
+            PrototypeContent.Card(shop.CardOffers[6].ItemId).Rarity);
         var sale = Assert.Single(shop.CardOffers, offer => offer.OnSale);
         Assert.All(shop.PotionOffers, offer => Assert.False(offer.OnSale));
         Assert.All(shop.RelicOffers, offer => Assert.False(offer.OnSale));
@@ -374,6 +386,11 @@ public sealed class PrototypeExpandedShopTests
                 PrototypeCardRarity.Rare => 150,
                 _ => throw new InvalidOperationException()
             };
+            if (PrototypeColorlessCards.ImplementedShopPool.Contains(
+                    offer.ItemId, StringComparer.Ordinal))
+            {
+                baseCost = (int)Math.Round(baseCost * 1.15);
+            }
             var minimum = (int)Math.Round(baseCost * 0.95);
             var maximum = (int)Math.Round(baseCost * 1.05);
             Assert.InRange(offer.Price,
@@ -394,6 +411,21 @@ public sealed class PrototypeExpandedShopTests
             offer.OfferId == sale.OfferId).Sold);
         Assert.True(state.World.Shop.CardOffers.Single(offer =>
             offer.OfferId == sale.OfferId).OnSale);
+        PrototypeStateInvariants.Validate(state);
+
+        // A colorless offer uses the ordinary buy-card action and enters
+        // the persistent deck without entering the Silent reward pool.
+        var colorless = shop.CardOffers[5];
+        var buyColorless = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "buy_card"
+            && action.ReadPayload<BuyOfferPayload>()
+                .OfferId == colorless.OfferId);
+        state = engine.Step(state, buyColorless).State;
+        Assert.Equal(999 - sale.Price - colorless.Price,
+            state.Player.Gold);
+        Assert.Contains(state.Player.Deck,
+            card => card.CardId == colorless.ItemId);
+        Assert.True(state.World!.Shop!.CardOffers[5].Sold);
         PrototypeStateInvariants.Validate(state);
     }
 
