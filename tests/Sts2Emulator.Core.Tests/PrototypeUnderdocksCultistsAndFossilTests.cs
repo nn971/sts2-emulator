@@ -66,6 +66,29 @@ public sealed class PrototypeUnderdocksCultistsAndFossilTests
                 power.PowerId == "proto.power.ritual")
                 .SkipNextEnemySideTurnEnd));
 
+        // Side-turn-end powers also trigger when the owner is stunned:
+        // movement/action skips must not suppress Ritual's later gains.
+        var stunned = state.Fork();
+        var skipped = stunned.World!.Combat!;
+        stunned = stunned with
+        {
+            World = stunned.World with
+            {
+                Combat = skipped with
+                {
+                    Enemies = skipped.Enemies.Select(enemy => enemy with
+                    {
+                        EnemyActionSkipsRemaining = 1
+                    }).ToArray()
+                }
+            }
+        };
+        stunned = EndTurn(engine, stunned);
+        Assert.Equal(initialHp, stunned.Player.Hp);
+        Assert.Equal(new[] { 2, 5 },
+            stunned.World!.Combat!.Enemies.Select(enemy =>
+                PowerStacks(enemy, "proto.power.strength")));
+
         state = EndTurn(engine, state);
         cultists = state.World!.Combat!.Enemies;
         Assert.Equal(2, PowerStacks(cultists[0], "proto.power.strength"));
@@ -73,6 +96,12 @@ public sealed class PrototypeUnderdocksCultistsAndFossilTests
         Assert.Equal(initialHp - 10, state.Player.Hp);
         Assert.Equal(CanonicalJson.Sha256(state),
             CanonicalJson.Sha256(state.Fork()));
+
+        state = EndTurn(engine, state);
+        cultists = state.World!.Combat!.Enemies;
+        Assert.Equal(4, PowerStacks(cultists[0], "proto.power.strength"));
+        Assert.Equal(10, PowerStacks(cultists[1], "proto.power.strength"));
+        Assert.Equal(initialHp - 10 - 17, state.Player.Hp);
     }
 
     [Theory]
