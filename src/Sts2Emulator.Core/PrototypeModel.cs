@@ -1151,7 +1151,8 @@ public sealed record MapNodeState(
 public sealed record MapState(
     MapNodeState[] Nodes,
     string? CurrentNodeId = null,
-    string[]? EntryNodeIds = null)
+    string[]? EntryNodeIds = null,
+    string? GenerationProfileId = null)
 {
     public MapState Fork() => this with
     {
