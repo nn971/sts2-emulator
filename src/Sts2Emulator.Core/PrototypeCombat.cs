@@ -3088,6 +3088,28 @@ public sealed partial class PrototypeGameEngine
                             .ToArray();
                     }
 
+                    if (selection.RequireEnergyCostingCard)
+                    {
+                        candidates = candidates
+                            .Where(instanceId =>
+                            {
+                                var card =
+                                    RequireCombatCard(
+                                        combat,
+                                        instanceId);
+                                var definition =
+                                    PrototypeContent.Card(
+                                        card.CardId);
+                                return !definition.Unplayable
+                                    && (definition.Cost.Kind
+                                            == PrototypeCardCostKind.X
+                                        || (definition.Cost.Kind
+                                                == PrototypeCardCostKind.Fixed
+                                            && definition.Cost.Amount >= 0));
+                            })
+                            .ToArray();
+                    }
+
                     if (candidates.Length == 0 || selection.MaxSelections <= 0)
                     {
                         break;
@@ -3330,6 +3352,42 @@ public sealed partial class PrototypeGameEngine
                             selected.InstanceId,
                             new PrototypeTemporaryCardCost(
                                 Math.Max(0, operation.Amount),
+                                PrototypeTemporaryCardCostExpiry.EndOfTurn
+                                | PrototypeTemporaryCardCostExpiry.WhenPlayed));
+                    }
+
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed:
+                {
+                    var upperBound = Math.Max(
+                        1,
+                        operation.Amount);
+                    foreach (var cardInstanceId in combat.Hand)
+                    {
+                        var card = RequireCombatCard(
+                            combat,
+                            cardInstanceId);
+                        var definition =
+                            PrototypeContent.Card(
+                                card.CardId);
+                        if (definition.Unplayable
+                            || definition.Cost.Kind
+                                != PrototypeCardCostKind.Fixed
+                            || definition.Cost.Amount < 0)
+                        {
+                            continue;
+                        }
+
+                        combat = SetCardTemporaryEnergyCost(
+                            combat,
+                            cardInstanceId,
+                            new PrototypeTemporaryCardCost(
+                                PrototypeRng.NextInt(
+                                    rng,
+                                    "combat",
+                                    upperBound),
                                 PrototypeTemporaryCardCostExpiry.EndOfTurn
                                 | PrototypeTemporaryCardCostExpiry.WhenPlayed));
                     }

@@ -1996,6 +1996,35 @@ public static class PrototypeContent
                         PrototypeCombatEffectKind.ApplyPlayerPower,
                         2,
                         PowerId: "proto.power.retain_hand")
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.touch_of_insanity",
+                "Touch of Insanity",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            1,
+                            1,
+                            PrototypeCardSelectionResolutionKind.Preserve,
+                            RequireEnergyCostingCard: true),
+                        SelectedCardTemporaryCost:
+                            new PrototypeTemporaryCardCost(
+                                0,
+                                PrototypeTemporaryCardCostExpiry.None))
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.snecko_oil",
+                "Snecko Oil",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.DrawCards, 7),
+                    new(
+                        PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
+                        4)
                 ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 

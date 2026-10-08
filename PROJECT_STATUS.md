@@ -693,3 +693,15 @@ Floor rules now support width bounds, required room types, and special-room pred
 Generated maps carry their profile ID canonically, while hand-authored test maps remain unprofiled so small fixtures stay convenient. The state invariant layer applies strict profile-specific width, room, connectivity, branch, convergence, and reachability checks to generated maps. The AI observation continues to expose the complete graph and now also exposes the map generation profile ID. Map regression coverage checks topology persistence after route selection, room/edge constraints, at least ten distinct maps across thirty seeds, and boss reachability for every node across one hundred seeds.
 
 The broader route distribution exposed an old CLI sweep-policy assumption: it attempted to heal whenever below half HP even when Coffee Dripper removed the heal action. The prototype sweep policy is now capability-aware and falls back to upgrade/train/other legal rest actions rather than assuming a specific rest option exists.
+
+
+## Mechanics-expansion pass: persistent card-cost and hand-randomization potions
+
+Touch of Insanity now uses the generic combat card-choice continuation with an energy-costing-card
+filter. The selected card receives a zero temporary cost with no expiry flags, so it remains free for
+the rest of the combat while still living in ordinary canonical card state.
+
+Snecko Oil now draws up to seven cards and then randomizes every fixed-cost playable card currently
+in hand to 0..3 until end of turn or until played. X-cost and unplayable cards are left untouched.
+The whole-hand randomization is a reusable combat effect and shares the combat RNG stream with other
+combat-local random effects.

@@ -222,6 +222,94 @@ public sealed class PrototypePotionInteractionTests
     }
 
     [Fact]
+    public void TouchOfInsanityMakesChosenCardFreeForCombat()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend")
+            ],
+            hand: [1, 2],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.touch_of_insanity");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        var choice = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "select_cards"
+                && action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.SequenceEqual([1L]));
+        state = engine.Step(state, choice).State;
+
+        var combat = state.World!.Combat!;
+        var strike = combat.Cards.Single(
+            card => card.InstanceId == 1);
+        Assert.NotNull(strike.TemporaryEnergyCost);
+        Assert.Equal(0, strike.TemporaryEnergyCost!.Cost);
+        Assert.Equal(
+            PrototypeTemporaryCardCostExpiry.None,
+            strike.TemporaryEnergyCost.Expiry);
+
+        var play = engine.GetLegalActions(state)
+            .Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>()
+                    .CardInstanceId == 1);
+        state = engine.Step(state, play).State;
+
+        strike = state.World!.Combat!.Cards.Single(
+            card => card.InstanceId == 1);
+        Assert.NotNull(strike.TemporaryEnergyCost);
+        Assert.Equal(0, strike.TemporaryEnergyCost!.Cost);
+    }
+
+    [Fact]
+    public void SneckoOilDrawsThenRandomizesWholeHandButSkipsXCost()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.skewer"),
+                Card(3, "proto.silent.defend"),
+                Card(4, "proto.silent.backflip")
+            ],
+            hand: [1, 2],
+            drawPile: [3, 4],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.snecko_oil");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.Empty(combat.DrawPile);
+        Assert.Equal(4, combat.Hand.Length);
+
+        foreach (var instanceId in new long[] { 1, 3, 4 })
+        {
+            var card = combat.Cards.Single(
+                item => item.InstanceId == instanceId);
+            Assert.NotNull(card.TemporaryEnergyCost);
+            Assert.InRange(
+                card.TemporaryEnergyCost!.Cost,
+                0,
+                3);
+            Assert.Equal(
+                PrototypeTemporaryCardCostExpiry.EndOfTurn
+                    | PrototypeTemporaryCardCostExpiry.WhenPlayed,
+                card.TemporaryEnergyCost.Expiry);
+        }
+
+        Assert.Null(
+            combat.Cards.Single(
+                    card => card.InstanceId == 2)
+                .TemporaryEnergyCost);
+    }
+
+    [Fact]
     public void ReptileTrinketTriggersAfterPotionIsConsumed()
     {
         var state = CreateState(

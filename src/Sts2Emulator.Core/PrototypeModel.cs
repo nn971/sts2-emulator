@@ -100,6 +100,7 @@ public enum PrototypeCombatEffectKind
     ModifySourceCardEnergyCost,
     SetHandCardsEnergyCostUntilTurnEndOrPlayed,
     SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
+    RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
     ModifyEventSourceCardKeyword,
     GainPlayerBlockFromEnemyStatusTotal
 }
@@ -366,7 +367,8 @@ public sealed record PrototypeCardSelectionSpec(
     PrototypeCardSelectionResolutionKind Resolution,
     PrototypeCardType? RequiredCardType = null,
     int SelectionsPerPowerStack = 0,
-    bool RemoveUnselectedFromSource = false);
+    bool RemoveUnselectedFromSource = false,
+    bool RequireEnergyCostingCard = false);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
