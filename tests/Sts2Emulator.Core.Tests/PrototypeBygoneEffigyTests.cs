@@ -85,6 +85,49 @@ public sealed class PrototypeBygoneEffigyTests
     }
 
     [Fact]
+    public void CapturedA10WeakSlashesDealsOneHpThroughSeventeenBlock()
+    {
+        // Oracle combat #6, round 3: the Effigy wakes with 10 Strength;
+        // A10 Slashes has 15 base damage, reduced by Weak to 18.
+        // With 17 block, Silent loses exactly one HP: 34 -> 33.
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(ascension: 10);
+        state = EndTurn(engine, state); // Sleep
+        state = EndTurn(engine, state); // Wake
+        Assert.Equal(10, Assert.Single(
+            state.World!.Combat!.Enemies).PowerStates.Single(power =>
+                power.PowerId == "proto.power.strength").Stacks);
+
+        var combat = state.World.Combat!;
+        state = state with
+        {
+            Player = state.Player with { Hp = 34 },
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    PlayerBlock = 17,
+                    Enemies = combat.Enemies.Select(enemy => enemy with
+                    {
+                        Statuses = new Dictionary<string, int>(
+                            StringComparer.Ordinal)
+                        {
+                            ["proto.status.weak"] = 1
+                        }
+                    }).ToArray()
+                }
+            }
+        };
+        PrototypeStateInvariants.Validate(state);
+        state = EndTurn(engine, state);
+        Assert.Equal("slashes", Assert.Single(
+            state.World!.Combat!.Enemies).LastMoveId);
+        Assert.Equal(33, state.Player.Hp);
+        Assert.Equal(0, state.World.Combat.PlayerBlock);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void SlowCountsOnlyCompletedCardPlaysBeforeAttackDamage()
     {
         var dash = Card(

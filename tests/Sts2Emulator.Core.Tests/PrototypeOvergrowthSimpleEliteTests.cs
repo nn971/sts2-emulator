@@ -106,8 +106,9 @@ public sealed class PrototypeOvergrowthSimpleEliteTests
                 state.World!.Combat!.Enemies).Hp);
 
         state = PlayCard(engine, state, 2, 1);
+        // The second Slice sees just one previously completed play.
         Assert.Equal(
-            114,
+            115,
             Assert.Single(
                 state.World!.Combat!.Enemies).Hp);
     }

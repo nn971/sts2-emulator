@@ -71,6 +71,39 @@ public sealed class PrototypePhrogParasiteTests
     }
 
     [Fact]
+    public void CapturedA10LashConsumesTenBlockThenTenHp()
+    {
+        // Oracle combat #5, A10: first Infect grants three Infection
+        // statuses; then four five-damage Lash hits consume 10 block
+        // and lower player HP from 41 to 31.
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(hp: 66) with { Ascension = 10 };
+        state = EndTurn(engine, state);
+        Assert.Equal("infect", Phrog(state).LastMoveId);
+        Assert.Equal(3, state.World!.Combat!.Cards.Count(card =>
+            card.CardId == "proto.status.infection"));
+
+        state = state with
+        {
+            Player = state.Player with { Hp = 41 },
+            World = state.World with
+            {
+                Combat = state.World.Combat! with
+                {
+                    Ascension = 10,
+                    PlayerBlock = 10
+                }
+            }
+        };
+        PrototypeStateInvariants.Validate(state);
+        state = EndTurn(engine, state);
+        Assert.Equal("lash", Phrog(state).LastMoveId);
+        Assert.Equal(31, state.Player.Hp);
+        Assert.Equal(0, state.World!.Combat!.PlayerBlock);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void PlayerTurnDeathStunsWrigglersForUpcomingEnemyTurnOnly()
     {
         var engine = new PrototypeGameEngine();
