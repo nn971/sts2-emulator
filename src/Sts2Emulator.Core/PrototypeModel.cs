@@ -362,7 +362,8 @@ public enum PrototypeRunEffectKind
     GainRandomRelic,
     GainRandomPotion,
     UpgradeRandomCard,
-    UpgradeAllCards
+    UpgradeAllCards,
+    UpgradeLastCardOfId
 }
 
 public enum PrototypeRunEventKind
