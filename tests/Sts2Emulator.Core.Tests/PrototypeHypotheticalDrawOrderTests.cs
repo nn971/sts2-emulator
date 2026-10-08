@@ -82,7 +82,7 @@ public sealed class PrototypeHypotheticalDrawOrderTests
             .ToArray();
         Assert.Equal(order, actualFirstDrawn);
         Assert.Equal(
-            original.World!.Combat.Hand,
+            original.World!.Combat!.Hand,
             modified.World.Combat.Hand);
     }
 
