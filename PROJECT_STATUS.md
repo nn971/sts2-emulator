@@ -1041,3 +1041,28 @@ capacity changes, out-of-combat Ambergris healing, Guilty expiration,
 Fishing Rod's normal/elite distinction, Booming Conch's elite-only
 opening, Silver Crucible's reward-group counts and skip semantics,
 and the treasure-room visit lifecycle.
+
+
+## Neow custom reward continuations and Scroll Boxes (2026-10-08)
+
+Added event-owned `RewardState` transitions that temporarily suspend
+Neow acquisition without advancing the map or counting a spurious
+room visit. Reward completion resumes event continuations in the
+correct run phase. Source-event identity is retained and validated,
+including deep forking and canonical serialization.
+
+Hefty Tablet now offers three distinct Rare cards (take one or
+skip) and appends the mandatory Injury afterward. Small Capsule
+offers a random unowned relic via the shared pickup and relic
+deck-choice pipeline. Lost Coffer offers the normal three-card
+selection and a potion reward with existing replace/skip paths.
+Scroll Boxes now generates two selectable, globally disjoint
+two-Common/one-Uncommon bundles, and a mandatory selection
+adds three persistent cards in order. Rarity and uniqueness
+invariants cover the new bundle model. Native RNG and unlock
+filters are approximated by the prototype pools.
+
+This extends executable single-player Silent Act 1 opening
+generation; it does not yet implement Neow's Bones, all
+Kaleidoscope cross-character offers, or multi-page regional
+events.
