@@ -657,7 +657,12 @@ public sealed partial class PrototypeGameEngine
 
         world = world with
         {
-            Event = new EventState(selected.Id),
+            Event = new EventState(
+                selected.Id,
+                NativeEventGold:
+                    selected.Id == PrototypeNativeDenseVegetation.EventId
+                        ? 61 + PrototypeRng.NextInt(state.Rng, "event", 39)
+                        : 0),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
@@ -696,6 +701,16 @@ public sealed partial class PrototypeGameEngine
                         new ChooseEventDeckCardPayload(
                             cardInstanceId)))
                 .ToArray();
+        }
+
+        if (eventState.EventId == PrototypeNativeDenseVegetation.EventId
+            && eventState.NativePageIndex == 1)
+        {
+            return
+            [
+                GameAction.Create("event_choice",
+                    new EventChoicePayload("fight"))
+            ];
         }
 
         if (eventState.EventId
@@ -865,6 +880,11 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == PrototypeNativeTabletOfTruth.EventId)
         {
             return StepNativeTabletOfTruth(state, action);
+        }
+
+        if (eventState.EventId == PrototypeNativeDenseVegetation.EventId)
+        {
+            return StepNativeDenseVegetation(state, action);
         }
 
         RequireKind(action, "event_choice");
