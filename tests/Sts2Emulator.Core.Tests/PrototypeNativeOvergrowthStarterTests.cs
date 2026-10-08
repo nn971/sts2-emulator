@@ -118,6 +118,58 @@ public sealed class PrototypeNativeOvergrowthStarterTests
     }
 
     [Fact]
+    public void CapturedA10OpeningReachesCombatWith56HpAndBane()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeNativeOvergrowthRunFactory.Create(
+            "oracle-a10-neows-talisman", ascension: 10);
+        var neow = PrototypeNativeOvergrowthEvents.NeowRelicId(
+            "NeowsTalisman");
+        var oldWorld = state.World!;
+        state = state with
+        {
+            World = oldWorld with
+            {
+                Event = oldWorld.Event! with
+                {
+                    OfferedChoiceIds =
+                    [
+                        "take_" + neow,
+                        "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
+                            "GoldenPearl"),
+                        "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
+                            "DowsingRod")
+                    ]
+                }
+            }
+        };
+        var chooseNeow = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "event_choice"
+            && action.ReadPayload<EventChoicePayload>().ChoiceId
+                == "take_" + neow);
+        state = engine.Step(state, chooseNeow).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(56, state.Player.Hp);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == neow);
+
+        var firstFloor = engine.GetLegalActions(state)[0];
+        state = engine.Step(state, firstFloor).State;
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        Assert.Equal(1, state.World!.Floor);
+        Assert.Equal(56, state.Player.Hp);
+        Assert.Equal(2, state.Player.PotionSlots.Length);
+        Assert.Equal(13, state.Player.Deck.Length);
+        Assert.Single(state.World.Combat!.Cards,
+            card => card.CardId == "proto.curse.ascenders_bane");
+        Assert.DoesNotContain(state.World.Combat.Cards,
+            card => card.CardId == "proto.common.restlessness");
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(state.Fork()));
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void BaneIsNativeEternalUnplayableAndEthereal()
     {
         var bane = PrototypeContent.Card("proto.curse.ascenders_bane");
