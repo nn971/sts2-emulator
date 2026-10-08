@@ -1532,7 +1532,9 @@ public static class PrototypeStateInvariants
     private static void ValidateMap(RunWorldState world)
     {
         if (world.Map.GenerationProfileId
-            == PrototypeNativeOvergrowthMap.GenerationProfileId)
+                == PrototypeNativeOvergrowthMap.GenerationProfileId
+            || world.Map.GenerationProfileId
+                == PrototypeNativeUnderdocks.GenerationProfileId)
         {
             ValidateNativeOvergrowthMap(world);
             return;
