@@ -104,6 +104,25 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (eventState.DeferredCardId is { } deferredCardId)
+            {
+                var player = AppendCard(
+                    state.Player,
+                    world.NextCardInstanceId,
+                    deferredCardId,
+                    state.Rng);
+                state = state with
+                {
+                    Player = player,
+                    World = world with
+                    {
+                        NextCardInstanceId = world.NextCardInstanceId + 1,
+                        Event = eventState with { DeferredCardId = null }
+                    }
+                };
+                continue;
+            }
+
             if (eventState.DeferredHpLoss > 0)
             {
                 var hp = Math.Max(
