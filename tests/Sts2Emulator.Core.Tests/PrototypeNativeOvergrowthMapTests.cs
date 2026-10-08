@@ -59,6 +59,12 @@ public sealed class PrototypeNativeOvergrowthMapTests
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeNativeOvergrowthRunFactory.Create("native-entry");
+        Assert.Equal(RunPhase.Event, state.Phase);
+        var neowChoices = engine.GetLegalActions(state);
+        Assert.Equal(3, neowChoices.Count(action =>
+            action.Kind == "event_choice"));
+        state = engine.Step(state, neowChoices[0]).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
         var legal = engine.GetLegalActions(state);
         Assert.All(legal, action =>
             Assert.Equal("choose_map_node", action.Kind));
