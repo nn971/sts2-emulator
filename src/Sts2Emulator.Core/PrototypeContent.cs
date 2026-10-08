@@ -2740,7 +2740,8 @@ public static class PrototypeContent
                                     DrawEqualToSelectionsOnCompletion: true))
                         ])
                 ])
-        }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
+        }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
+            .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
         new[]
@@ -5964,6 +5965,7 @@ public static class PrototypeContent
                 Weight: 2,
                 OncePerRun: false)
         }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
+            .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
     public static string[] OvergrowthWeakEncounterPool { get; } =
