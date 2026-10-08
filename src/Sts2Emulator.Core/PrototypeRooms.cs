@@ -1757,8 +1757,10 @@ public sealed partial class PrototypeGameEngine
         var relicOffers = relicIds
             .Select((relicId, index) =>
             {
-                var basePrice =
-                    100 + PrototypeRng.NextInt(
+                var basePrice = nativeMerchant
+                    ? PrototypeNativeRelicGrabBag.MerchantPrice(
+                        relicId, state.Rng)
+                    : 100 + PrototypeRng.NextInt(
                         state.Rng,
                         "shop",
                         41);
