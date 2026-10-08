@@ -28,7 +28,7 @@ public sealed class PrototypeNativeOvergrowthMapTests
             Assert.All(map.Nodes.Where(node => node.Floor == 15),
                 node => Assert.Equal(PrototypeRoomType.Rest, node.RoomType));
             var boss = Assert.Single(
-                map.Nodes.Where(node => node.RoomType == PrototypeRoomType.Boss));
+                map.Nodes, node => node.RoomType == PrototypeRoomType.Boss);
             Assert.Equal(16, boss.Floor);
             Assert.Equal(16, map.Nodes.Select(node => node.Floor).Max());
             Assert.All(Enumerable.Range(1, 16), floor =>
