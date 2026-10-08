@@ -60,6 +60,12 @@ public static class PrototypeNativeOvergrowthEvents
                             PrototypeRunEventKind.RelicAcquired,
                             [new(PrototypeRunEffectKind.GainGold, 150)])
                     ],
+                    "StoneHumidifier" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RestSiteHealed,
+                            [new(PrototypeRunEffectKind.GainMaxHp, 5)])
+                    ],
                     "NutritiousOyster" =>
                     [
                         new PrototypeRelicRunTriggerSpec(
