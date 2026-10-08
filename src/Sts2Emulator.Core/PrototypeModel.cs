@@ -361,6 +361,7 @@ public enum PrototypeRunEffectKind
     OfferThreeCardsAndPotion,
     OfferCardBundles,
     OfferRandomRelic,
+    OfferNeowsBonesRelics,
     GainPotionSlots,
     TransformFirstCardOfId,
     GainRelic,
