@@ -1049,6 +1049,7 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.OfferThreeRareCards:
                 case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
                 case PrototypeRunEffectKind.OfferCardBundles:
+                case PrototypeRunEffectKind.OfferNeowsBonesRelics:
                 case PrototypeRunEffectKind.OfferRandomRelic:
                     if (deferredReward is not null)
                     {
