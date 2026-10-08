@@ -457,7 +457,8 @@ public static class PrototypeStateInvariants
             if (eventState.PendingDeckChoice is not null
                 || eventState.PendingPotionReplacement is not null
                 || eventState.RemainingPotionIds.Length > 0
-                || eventState.RemainingDeckChoices.Length > 0)
+                || eventState.RemainingDeckChoices.Length > 0
+                || eventState.PendingReward is not null)
             {
                 throw new InvalidOperationException(
                     "Pending event continuation has no chosen event option.");
@@ -473,6 +474,16 @@ public static class PrototypeStateInvariants
                     eventState.ChosenChoiceId))
             ?? throw new InvalidOperationException(
                 "Event state references an unknown chosen option.");
+
+        if (eventState.PendingReward is { } deferred)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    deferred.SourceRoom, "Event:" + eventState.EventId))
+            {
+                throw new InvalidOperationException(
+                    "Deferred event reward references a foreign source event.");
+            }
+        }
 
         var pending =
             eventState.PendingDeckChoice;
