@@ -91,7 +91,14 @@ public sealed class PrototypePhrogParasiteTests
                 Combat = state.World.Combat! with
                 {
                     Ascension = 10,
-                    PlayerBlock = 10
+                    PlayerBlock = 10,
+                    // This tiny combat fixture has no ordinary deck.
+                    // All three Infection statuses are drawn next turn,
+                    // otherwise causing 9 end-turn HP loss unrelated to Lash.
+                    // Isolate the oracle's four-hit Lash/block calculation.
+                    Hand = [],
+                    DiscardPile = state.World.Combat.DiscardPile
+                        .Concat(state.World.Combat.Hand).ToArray()
                 }
             }
         };
