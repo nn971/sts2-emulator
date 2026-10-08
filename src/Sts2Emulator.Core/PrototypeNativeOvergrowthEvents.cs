@@ -9,6 +9,60 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class PrototypeNativeOvergrowthEvents
 {
+    public const string NeowEventId = "proto.native.event.neow";
+
+    // The default Neow positive/curse subsets from v0.111.0 Neow.cs.
+    // This intentionally excludes conditionally-added special choices
+    // and unlock-filtering; their exact logic is still pending.
+    public static string[] NeowPositiveRelicNames { get; } =
+    [
+        "ArcaneScroll", "BoomingConch", "FishingRod", "GoldenPearl",
+        "Kaleidoscope", "LeadPaperweight", "LostCoffer", "MassiveScroll",
+        "NeowsTorment", "NewLeaf", "PhialHolster", "PreciseScissors",
+        "ScrollBoxes", "WingedBoots"
+    ];
+
+    public static string[] NeowCursedRelicNames { get; } =
+    [
+        "CursedPearl", "DowsingRod", "HeftyTablet", "LargeCapsule",
+        "LeafyPoultice", "NeowsBones", "NeowsSacrifice",
+        "PrecariousShears", "SilkenTress", "SilverCrucible"
+    ];
+
+    public static string NeowRelicId(string nativeClass) =>
+        "proto.native.neow." + nativeClass.ToLowerInvariant();
+
+    public static PrototypeRelicDefinition[] NeowRelicDefinitions { get; } =
+        NeowPositiveRelicNames
+            .Concat(NeowCursedRelicNames)
+            .Select(name => new PrototypeRelicDefinition(
+                NeowRelicId(name), name))
+            .ToArray();
+
+    public static PrototypeEventDefinition NeowDefinition { get; } =
+        new(
+            NeowEventId,
+            "Neow",
+            NeowPositiveRelicNames.Concat(NeowCursedRelicNames)
+                .Select(name => new PrototypeEventChoiceDefinition(
+                    "take_" + NeowRelicId(name),
+                    "Choose " + name + " (mechanics not yet implemented)",
+                    [new(PrototypeRunEffectKind.GainRelic,
+                        RelicId: NeowRelicId(name))]))
+                .ToArray(),
+            MaxAct: 1);
+
+    public static string[] GenerateNeowOfferedChoiceIds(RngBundle rng)
+    {
+        var positive = (string[])NeowPositiveRelicNames.Clone();
+        PrototypeRng.Shuffle(rng, "event", positive);
+        var cursed = NeowCursedRelicNames[
+            PrototypeRng.NextInt(rng, "event", NeowCursedRelicNames.Length)];
+        return positive.Take(2).Append(cursed)
+            .Select(name => "take_" + NeowRelicId(name))
+            .ToArray();
+    }
+
     public static string[] RegionEventIds { get; } =
     [
         "proto.native.event.aroma_of_chaos",
