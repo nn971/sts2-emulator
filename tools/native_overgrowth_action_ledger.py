@@ -13,7 +13,8 @@ from pathlib import Path
 
 
 def runtime_leaf(obj):
-    return str((obj or {}).get("runtime_type", "")).rsplit(".", 1)[-1]
+    return str((obj or {}).get("runtime_type") or
+               (obj or {}).get("type") or "").rsplit(".", 1)[-1]
 
 
 def model_id(obj):
@@ -46,7 +47,9 @@ def summarize(state):
         },
         "enemies": [
             {
-                "name": runtime_leaf(e.get("monster") or {}),
+                "combat_id": e.get("combat_id"),
+                # Passive enemy snapshots may not include monster names.
+                "name": runtime_leaf(e.get("monster")) if e.get("monster") else None,
                 "hp": e.get("current_hp"),
                 "block": e.get("block"),
                 "slot": e.get("slot_name"),
@@ -72,7 +75,8 @@ def event_of(record):
         return {"kind": "card_finished", "card": runtime_leaf(cp.get("card") or {})}
     if name == "MonsterPerformedMoveEntry":
         return {"kind": "enemy_move", "monster": runtime_leaf(h.get("monster") or {}),
-                "move": (h.get("move") or {}).get("id") or
+                "move": (h.get("move") or {}).get("state_id") or
+                        (h.get("move") or {}).get("id") or
                         (h.get("move") or {}).get("name")}
     if name == "CardGeneratedEntry":
         return {"kind": "card_generated", "card": runtime_leaf(h.get("card") or {})}

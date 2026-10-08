@@ -110,6 +110,8 @@ jobs:
           process.wait(timeout=5)
           assert process.returncode == 0
           PY
+      - name: Passive oracle action-ledger smoke
+        run: python tools/native_overgrowth_action_ledger_smoke.py
       - name: Native Overgrowth training-reset JSONL contract
         run: python tools/native_overgrowth_reset_smoke.py
       - name: Hypothetical draw-order JSONL integration
