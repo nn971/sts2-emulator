@@ -111,18 +111,28 @@ public static class PrototypeNativeOvergrowthEvents
                 .Select(name => new PrototypeEventChoiceDefinition(
                     "take_" + NeowRelicId(name),
                     "Choose " + name,
-                    name == "CursedPearl"
-                        ? [
+                    name switch
+                    {
+                        "CursedPearl" =>
+                        [
                             new(PrototypeRunEffectKind.GainRelic,
                                 RelicId: NeowRelicId(name)),
                             new(PrototypeRunEffectKind.AddCard,
                                 CardId: "proto.native.neow.greed"),
                             new(PrototypeRunEffectKind.GainGold, 333)
-                        ]
-                        : [
+                        ],
+                        "ArcaneScroll" =>
+                        [
+                            new(PrototypeRunEffectKind.GainRelic,
+                                RelicId: NeowRelicId(name)),
+                            new(PrototypeRunEffectKind.GainRandomRareCard)
+                        ],
+                        _ =>
+                        [
                             new(PrototypeRunEffectKind.GainRelic,
                                 RelicId: NeowRelicId(name))
-                        ]))
+                        ]
+                    }))
                 .ToArray(),
             MaxAct: 1);
 
