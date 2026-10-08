@@ -356,6 +356,7 @@ public enum PrototypeRunEffectKind
     LoseGold,
     AddCard,
     GainRandomRareCard,
+    TransformFirstCardOfId,
     GainRelic,
     GainPotion,
     FillPotionSlots,
@@ -403,7 +404,8 @@ public sealed record PrototypeCardSelectionSpec(
     bool RemoveUnselectedFromSource = false,
     bool RequireEnergyCostingCard = false,
     bool SequentialOptional = false,
-    bool DrawEqualToSelectionsOnCompletion = false);
+    bool DrawEqualToSelectionsOnCompletion = false,
+    int MaxSelectionsUpgradeDelta = 0);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
