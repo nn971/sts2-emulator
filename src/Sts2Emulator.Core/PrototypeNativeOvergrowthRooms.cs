@@ -43,6 +43,15 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StartTreasureRoom(RunState state)
     {
+        var treasure = ApplySilverCrucibleTreasureEntry(state.Player);
+        state = state with { Player = treasure.Player };
+        if (treasure.SkipTreasure)
+        {
+            // The first chest entered with Silver Crucible contains
+            // no treasure; the room is still visited and recorded.
+            return CompleteRoomToMap(state);
+        }
+
         var world = RequireWorld(state);
         var available = PrototypeContent.RelicPool
             .Where(relicId => !state.Player.Relics.Any(relic =>
