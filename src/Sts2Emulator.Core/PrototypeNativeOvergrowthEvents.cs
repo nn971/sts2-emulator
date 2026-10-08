@@ -200,9 +200,9 @@ public static class PrototypeNativeOvergrowthEvents
                         [
                             new(PrototypeRunEffectKind.GainRelic,
                                 RelicId: NeowRelicId(name)),
-                            // The native damage occurs after both removals;
-                            // intermediate HP timing is still approximate.
-                            new(PrototypeRunEffectKind.LoseHp, 16)
+                            // Native damage is resolved after both
+                            // persistent-deck removal selections.
+                            new(PrototypeRunEffectKind.LoseHpAfterDeckChoices, 16)
                         ],
                         "LeafyPoultice" =>
                         [
