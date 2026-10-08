@@ -29,25 +29,31 @@ public sealed class PrototypeCombatStartChoiceRelicTests
             },
             World = state.World! with
             {
-                Map = new MapState(
-                    [
-                        new MapNodeState(
-                            "combat",
-                            1,
-                            1,
-                            PrototypeRoomType.Combat,
-                            [])
-                    ],
-                    EntryNodeIds: ["combat"])
+                Map = state.World!.Map with
+                {
+                    Nodes = state.World.Map.Nodes
+                        .Select(node =>
+                            node.NodeId
+                                == state.World.Map.EntryNodeIds[0]
+                                ? node with
+                                {
+                                    RoomType =
+                                        PrototypeRoomType.Combat
+                                }
+                                : node)
+                        .ToArray()
+                }
             }
         };
 
+        var entryNodeId =
+            state.World!.Map.EntryNodeIds[0];
         state = engine.Step(
             state,
             GameAction.Create(
                 "choose_map_node",
                 new ChooseMapNodePayload(
-                    "combat"))).State;
+                    entryNodeId))).State;
 
         var combat = state.World!.Combat!;
         var pending =
@@ -131,25 +137,31 @@ public sealed class PrototypeCombatStartChoiceRelicTests
             },
             World = state.World! with
             {
-                Map = new MapState(
-                    [
-                        new MapNodeState(
-                            "combat",
-                            1,
-                            1,
-                            PrototypeRoomType.Combat,
-                            [])
-                    ],
-                    EntryNodeIds: ["combat"])
+                Map = state.World!.Map with
+                {
+                    Nodes = state.World.Map.Nodes
+                        .Select(node =>
+                            node.NodeId
+                                == state.World.Map.EntryNodeIds[0]
+                                ? node with
+                                {
+                                    RoomType =
+                                        PrototypeRoomType.Combat
+                                }
+                                : node)
+                        .ToArray()
+                }
             }
         };
 
+        var entryNodeId =
+            state.World!.Map.EntryNodeIds[0];
         state = engine.Step(
             state,
             GameAction.Create(
                 "choose_map_node",
                 new ChooseMapNodePayload(
-                    "combat"))).State;
+                    entryNodeId))).State;
 
         var before =
             state.World!.Combat!;

@@ -3536,6 +3536,23 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
+        var sourceExhaustEvent =
+            sourceCardInstanceId is not null
+            && moveSourceCardOnCompletion
+            && !sourceCardAlreadyMoved
+            && !removeSourceCardOnCompletion
+            && sourceCardDestination
+                == PrototypeCardZone.ExhaustPile
+                ? new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardExhausted,
+                    SourceCardInstanceId:
+                        sourceCardInstanceId.Value,
+                    CardId: RequireCombatCard(
+                        combat,
+                        sourceCardInstanceId.Value)
+                        .CardId)
+                : null;
+
         if (sourceCardInstanceId is not null
             && moveSourceCardOnCompletion)
         {
@@ -3553,7 +3570,14 @@ public sealed partial class PrototypeGameEngine
         }
 
         var completionEventArray =
-            completionEvents ?? Array.Empty<PrototypeCombatEvent>();
+            sourceExhaustEvent is null
+                ? completionEvents
+                    ?? Array.Empty<PrototypeCombatEvent>()
+                : new[] { sourceExhaustEvent }
+                    .Concat(
+                        completionEvents
+                        ?? Array.Empty<PrototypeCombatEvent>())
+                    .ToArray();
         for (var completionEventIndex = 0;
              completionEventIndex < completionEventArray.Length;
              completionEventIndex++)
