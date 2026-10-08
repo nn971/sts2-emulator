@@ -6519,6 +6519,36 @@ public sealed partial class PrototypeGameEngine
         }
 
         var actions = new List<GameAction>();
+        if (pending.Selection.SequentialOptional)
+        {
+            var selectedCount =
+                pending.SequentialSelectedCardInstanceIds?.Length
+                ?? 0;
+            foreach (var candidate in
+                     pending.CandidateCardInstanceIds)
+            {
+                if (selectedCount
+                    >= pending.Selection.MaxSelections)
+                {
+                    break;
+                }
+
+                actions.Add(GameAction.Create(
+                    "select_cards",
+                    new SelectCardsPayload([candidate])));
+            }
+
+            if (selectedCount
+                >= pending.Selection.MinSelections)
+            {
+                actions.Add(GameAction.Create(
+                    "select_cards",
+                    new SelectCardsPayload([])));
+            }
+
+            return actions;
+        }
+
         for (var count = pending.Selection.MinSelections;
              count <= pending.Selection.MaxSelections;
              count++)
@@ -6554,7 +6584,74 @@ public sealed partial class PrototypeGameEngine
         var selected = payload.CardInstanceIds;
         if (selected.Length != selected.Distinct().Count())
         {
-            throw new InvalidOperationException("Card selection contains duplicate instance IDs.");
+            throw new InvalidOperationException(
+                "Card selection contains duplicate instance IDs.");
+        }
+
+        if (pending.Selection.SequentialOptional)
+        {
+            if (selected.Length > 1)
+            {
+                throw new InvalidOperationException(
+                    "Sequential card selection accepts one card or the finish action.");
+            }
+
+            var accumulated =
+                pending.SequentialSelectedCardInstanceIds
+                ?? Array.Empty<long>();
+            if (selected.Length == 1)
+            {
+                var selectedId = selected[0];
+                if (!pending.CandidateCardInstanceIds
+                        .Contains(selectedId))
+                {
+                    throw new InvalidOperationException(
+                        "Sequential selection contains a card outside the pending candidate set.");
+                }
+
+                var nextAccumulated =
+                    accumulated.Append(selectedId).ToArray();
+                var remainingCandidates =
+                    pending.CandidateCardInstanceIds
+                        .Where(id => id != selectedId)
+                        .ToArray();
+
+                if (nextAccumulated.Length
+                        < pending.Selection.MaxSelections
+                    && remainingCandidates.Length > 0)
+                {
+                    combat = combat with
+                    {
+                        PendingChoice = pending with
+                        {
+                            CandidateCardInstanceIds =
+                                remainingCandidates,
+                            SequentialSelectedCardInstanceIds =
+                                nextAccumulated
+                        }
+                    };
+                    return state with
+                    {
+                        World = world with
+                        {
+                            Combat = combat
+                        }
+                    };
+                }
+
+                selected = nextAccumulated;
+            }
+            else
+            {
+                if (accumulated.Length
+                    < pending.Selection.MinSelections)
+                {
+                    throw new InvalidOperationException(
+                        "Sequential selection cannot finish before its minimum selection count.");
+                }
+
+                selected = accumulated;
+            }
         }
 
         if (selected.Length < pending.Selection.MinSelections
@@ -6565,10 +6662,16 @@ public sealed partial class PrototypeGameEngine
                 $"{pending.Selection.MinSelections}..{pending.Selection.MaxSelections}.");
         }
 
-        var candidates = pending.CandidateCardInstanceIds.ToHashSet();
-        if (selected.Any(cardId => !candidates.Contains(cardId)))
+        if (!pending.Selection.SequentialOptional)
         {
-            throw new InvalidOperationException("Selection contains a card outside the pending candidate set.");
+            var candidates =
+                pending.CandidateCardInstanceIds.ToHashSet();
+            if (selected.Any(cardId =>
+                    !candidates.Contains(cardId)))
+            {
+                throw new InvalidOperationException(
+                    "Selection contains a card outside the pending candidate set.");
+            }
         }
 
         var slyCards = pending.Selection.SourceZone == PrototypeCardZone.Hand
@@ -6638,6 +6741,24 @@ public sealed partial class PrototypeGameEngine
                 }).ToArray()
                 : Array.Empty<PrototypeCombatEvent>();
 
+        var continuationOperations =
+            (PrototypeQueuedOperation[])
+            pending.Continuation.Clone();
+        if (pending.Selection
+                .DrawEqualToSelectionsOnCompletion
+            && selected.Length > 0)
+        {
+            continuationOperations =
+                new[]
+                {
+                    new PrototypeQueuedOperation(
+                        PrototypeCombatEffectKind.DrawCards,
+                        selected.Length)
+                }
+                .Concat(continuationOperations)
+                .ToArray();
+        }
+
         var resolutionContinuation =
             new PrototypeChoiceResolutionContinuationState(
                 SourceCardInstanceId:
@@ -6645,8 +6766,7 @@ public sealed partial class PrototypeGameEngine
                 SourceCardDestination:
                     pending.SourceCardDestination,
                 Operations:
-                    (PrototypeQueuedOperation[])
-                    pending.Continuation.Clone(),
+                    continuationOperations,
                 PendingDiscardEvents: discardEvents,
                 PendingSlyCardInstanceIds:
                     (long[])slyCards.Clone(),

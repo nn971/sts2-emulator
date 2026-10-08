@@ -2032,7 +2032,23 @@ public static class PrototypeContent
                 PrototypeCardTarget.None,
                 [],
                 AutomaticUsage: true,
-                DeathPreventionHealPercent: 30)
+                DeathPreventionHealPercent: 30),
+            new PrototypePotionDefinition(
+                "proto.potion.gamblers_brew",
+                "Gambler's Brew",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseCards,
+                        0,
+                        Selection: new(
+                            PrototypeCardZone.Hand,
+                            0,
+                            999999999,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard,
+                            SequentialOptional: true,
+                            DrawEqualToSelectionsOnCompletion: true))
+                ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =

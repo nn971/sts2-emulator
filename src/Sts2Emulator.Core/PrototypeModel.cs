@@ -368,7 +368,9 @@ public sealed record PrototypeCardSelectionSpec(
     PrototypeCardType? RequiredCardType = null,
     int SelectionsPerPowerStack = 0,
     bool RemoveUnselectedFromSource = false,
-    bool RequireEnergyCostingCard = false);
+    bool RequireEnergyCostingCard = false,
+    bool SequentialOptional = false,
+    bool DrawEqualToSelectionsOnCompletion = false);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
@@ -1333,6 +1335,7 @@ public sealed record PendingCombatChoiceState(
     PrototypeSelectedCardPowerAction? SelectedCardPower = null,
     PrototypeCardKeywordOverrideSpec? SelectedCardKeyword = null,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
+    long[]? SequentialSelectedCardInstanceIds = null,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
     PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null)
 {
@@ -1344,6 +1347,10 @@ public sealed record PendingCombatChoiceState(
         SelectedCardTemporaryCost = SelectedCardTemporaryCost is null
             ? null
             : SelectedCardTemporaryCost with { },
+        SequentialSelectedCardInstanceIds =
+            SequentialSelectedCardInstanceIds is null
+                ? null
+                : (long[])SequentialSelectedCardInstanceIds.Clone(),
         EventDispatchContinuation = EventDispatchContinuation?.Fork(),
         OuterChoiceContinuation = OuterChoiceContinuation?.Fork()
     };

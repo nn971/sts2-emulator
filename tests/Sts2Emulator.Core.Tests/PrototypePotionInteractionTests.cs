@@ -310,6 +310,75 @@ public sealed class PrototypePotionInteractionTests
     }
 
     [Fact]
+    public void GamblersBrewUsesLinearSequentialChoiceAndDrawsDiscardCount()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend"),
+                Card(3, "proto.silent.backflip"),
+                Card(4, "proto.silent.neutralize"),
+                Card(5, "proto.silent.survivor")
+            ],
+            hand: [1, 2, 3],
+            drawPile: [4, 5],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.gamblers_brew");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var legal = engine.GetLegalActions(state);
+        Assert.Equal(4, legal.Count);
+        Assert.Equal(
+            3,
+            legal.Count(action =>
+                action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.Length == 1));
+        Assert.Single(
+            legal,
+            action =>
+                action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.Length == 0);
+
+        var chooseOne = legal.Single(action =>
+            action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.SequenceEqual([1L]));
+        state = engine.Step(state, chooseOne).State;
+        Assert.Contains(1L, state.World!.Combat!.Hand);
+
+        legal = engine.GetLegalActions(state);
+        Assert.Equal(3, legal.Count);
+        var chooseTwo = legal.Single(action =>
+            action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.SequenceEqual([2L]));
+        state = engine.Step(state, chooseTwo).State;
+
+        legal = engine.GetLegalActions(state);
+        Assert.Equal(2, legal.Count);
+        var finish = legal.Single(action =>
+            action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.Length == 0);
+        state = engine.Step(state, finish).State;
+
+        var combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Contains(1L, combat.DiscardPile);
+        Assert.Contains(2L, combat.DiscardPile);
+        Assert.DoesNotContain(1L, combat.Hand);
+        Assert.DoesNotContain(2L, combat.Hand);
+        Assert.Contains(3L, combat.Hand);
+        Assert.Contains(4L, combat.Hand);
+        Assert.Contains(5L, combat.Hand);
+        Assert.Empty(combat.DrawPile);
+        Assert.Equal(
+            2,
+            combat.CounterState.CardsDiscardedThisTurn);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void ReptileTrinketTriggersAfterPotionIsConsumed()
     {
         var state = CreateState(

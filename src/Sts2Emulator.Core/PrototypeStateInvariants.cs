@@ -1496,11 +1496,48 @@ public static class PrototypeStateInvariants
                 throw new InvalidOperationException("Pending choice candidate left its declared source zone.");
             }
 
-            if (pending.Selection.MinSelections < 0
-                || pending.Selection.MaxSelections < pending.Selection.MinSelections
-                || pending.Selection.MaxSelections > pending.CandidateCardInstanceIds.Length)
+            var sequentialSelected =
+                pending.SequentialSelectedCardInstanceIds
+                ?? Array.Empty<long>();
+            if (!pending.Selection.SequentialOptional
+                && sequentialSelected.Length > 0)
             {
-                throw new InvalidOperationException("Pending choice has an invalid selection range.");
+                throw new InvalidOperationException(
+                    "Non-sequential pending choice carries sequential selections.");
+            }
+
+            if (sequentialSelected.Length
+                != sequentialSelected.Distinct().Count())
+            {
+                throw new InvalidOperationException(
+                    "Sequential pending choice contains duplicate accumulated selections.");
+            }
+
+            if (sequentialSelected.Any(cardId =>
+                    !sourceZone.Contains(cardId))
+                || sequentialSelected.Any(cardId =>
+                    pending.CandidateCardInstanceIds.Contains(cardId)))
+            {
+                throw new InvalidOperationException(
+                    "Sequential pending choice has an invalid accumulated selection.");
+            }
+
+            var availableSelectionCapacity =
+                pending.CandidateCardInstanceIds.Length
+                + sequentialSelected.Length;
+            if (pending.Selection.MinSelections < 0
+                || pending.Selection.MaxSelections
+                    < pending.Selection.MinSelections
+                || pending.Selection.MaxSelections
+                    > availableSelectionCapacity
+                || sequentialSelected.Length
+                    > pending.Selection.MaxSelections
+                || (!pending.Selection.SequentialOptional
+                    && pending.Selection.MaxSelections
+                        > pending.CandidateCardInstanceIds.Length))
+            {
+                throw new InvalidOperationException(
+                    "Pending choice has an invalid selection range.");
             }
 
 

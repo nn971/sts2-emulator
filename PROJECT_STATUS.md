@@ -719,3 +719,17 @@ Fairy in a Bottle exercises this path and restores 30% of max HP (with a minimum
 card-effect and attack-retaliation damage use the death-prevention path inside operation resolution;
 the automatic end-turn pipeline also applies it before declaring defeat. Exact native animation and
 multi-enemy timing are intentionally outside this strategic prototype.
+
+
+## Mechanics-expansion pass: sequential optional combat choices
+
+Combat card selections now support an AI-friendly sequential optional mode. Instead of materializing
+every subset of a hand, the pending choice exposes one action per remaining card plus a finish action;
+selected cards remain in their source zone until the sequence is finalized. The accumulated selection
+is canonical state and is covered by combat invariants and forking.
+
+Gambler's Brew uses this mode for its choose-any-number discard. Once the player finishes, all chosen
+cards are discarded together and the emulator draws the same number. This keeps the branching factor
+linear in hand size (11 actions at a ten-card hand rather than 1,024 subset actions). Sly discard
+autoplay still follows the prototype's existing generic discard-continuation order; exact native hook
+ordering remains a later fidelity refinement.
