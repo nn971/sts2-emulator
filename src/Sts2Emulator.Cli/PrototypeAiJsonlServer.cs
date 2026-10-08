@@ -87,7 +87,8 @@ internal static class PrototypeAiJsonlServer
                             aiSchemaId = PrototypeAiEnvironment.SchemaId,
                             rulesetId = PrototypeContent.RulesetId,
                             fairPolicyId = FairPolicyId,
-                            hypotheticalDrawOrderId = PrototypeHypotheticalDrawOrder.SchemaId
+                            hypotheticalDrawOrderId = PrototypeHypotheticalDrawOrder.SchemaId,
+                            conditionalCombatEntryId = PrototypeConditionedCombatEntry.SchemaId
                         });
                         break;
 
@@ -191,6 +192,60 @@ internal static class PrototypeAiJsonlServer
                             // this operation's response.
                             policyId = FairPolicyId,
                             observationHash = environment.Observe(branch).ObservationHash
+                        });
+                        break;
+                    }
+
+                    case "condition_combat_entry":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var state = RequireState(request);
+                        if (!hypotheticalHandles.Contains(parentHandle))
+                        {
+                            throw new InvalidOperationException(
+                                "Only independent hypothetical source handles "
+                                + "may condition a combat-entry stream.");
+                        }
+
+                        var actionId = RequiredString(request, "action_id");
+                        var publicObservationHash = RequiredString(
+                            request, "expected_observation_hash");
+                        var searchSeed = RequiredString(request, "search_seed");
+                        var budget = OptionalInt(request, "max_candidates") ?? 256;
+                        if (!request.TryGetProperty(
+                                "expected_legal_action_ids", out var legalIds)
+                            || legalIds.ValueKind != JsonValueKind.Array)
+                        {
+                            throw new ArgumentException(
+                                "Expected public legal action IDs must be an array.");
+                        }
+                        var expectedActions = legalIds.EnumerateArray().Select(item =>
+                        {
+                            if (item.ValueKind != JsonValueKind.String)
+                            {
+                                throw new ArgumentException(
+                                    "Every expected legal action ID must be a string.");
+                            }
+                            return item.GetString()!;
+                        }).ToArray();
+
+                        var conditioned = PrototypeConditionedCombatEntry.Sample(
+                            state,
+                            actionId,
+                            publicObservationHash,
+                            expectedActions,
+                            searchSeed,
+                            budget);
+                        var child = Store(conditioned.State, parentHandle);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            child,
+                            schemaId = PrototypeConditionedCombatEntry.SchemaId,
+                            policyId = FairPolicyId,
+                            observationHash = publicObservationHash,
+                            candidates = conditioned.Candidates
                         });
                         break;
                     }
