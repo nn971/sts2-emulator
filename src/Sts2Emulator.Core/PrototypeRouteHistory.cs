@@ -85,7 +85,8 @@ public sealed partial class PrototypeGameEngine
             // Hand-authored test worlds may omit a map or active room.
             // Generated worlds always carry both; validate those strictly.
             if (world.Map.GenerationProfileId
-                == PrototypeContent.MapGenerationProfileId)
+                is PrototypeContent.MapGenerationProfileId
+                or PrototypeNativeOvergrowthMap.GenerationProfileId)
             {
                 throw new InvalidOperationException(
                     "Generated room completion has no active map node.");
@@ -99,7 +100,12 @@ public sealed partial class PrototypeGameEngine
         if (node is null
             || node.Act != world.Act
             || node.Floor != world.Floor
-            || node.RoomType != roomType)
+            || (node.RoomType != roomType
+                && !(node.RoomType == PrototypeRoomType.Unknown
+                    && roomType is PrototypeRoomType.Combat
+                        or PrototypeRoomType.Event
+                        or PrototypeRoomType.Shop
+                        or PrototypeRoomType.Treasure)))
         {
             throw new InvalidOperationException(
                 "Completed room disagrees with its active map node.");
