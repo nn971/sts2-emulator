@@ -1012,13 +1012,20 @@ public static class PrototypeStateInvariants
                     encounter.Id,
                     StringComparer.Ordinal));
 
+        var promotedUnderdocksEncounter =
+            world.Act == 1
+            && world.ActOneRegion == PrototypeActOneRegion.Underdocks
+            && PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
+                encounter.Id, StringComparer.Ordinal);
+
         if (encounter.RoomType != world.ActiveRoom
             || world.Act < encounter.MinAct
             || world.Act > encounter.MaxAct
             || world.Floor < encounter.MinFloor
             || world.Floor > encounter.MaxFloor
             || (encounter.Weight <= 0
-                && !promotedOvergrowthEncounter))
+                && !promotedOvergrowthEncounter
+                && !promotedUnderdocksEncounter))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");
