@@ -24,7 +24,7 @@ public sealed class PrototypeUnderdocksOpeningTests
             Assert.Equal(0, encounter.Weight);
         });
         Assert.Equal(10, PrototypeNativeUnderdocks.NativeNormalEncounterIds.Length);
-        Assert.Equal(2, PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Length);
+        Assert.Equal(4, PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Length);
         Assert.All(PrototypeNativeUnderdocks.SupportedNormalEncounterIds, id =>
         {
             Assert.Contains(id,
@@ -113,7 +113,7 @@ public sealed class PrototypeUnderdocksOpeningTests
     }
 
     [Fact]
-    public void NormalEncounterBagDrawsTwoDistinctSupportedFights()
+    public void NormalEncounterBagDrawsFourDistinctSupportedFights()
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeNativeUnderdocksRunFactory.Create(
@@ -129,7 +129,7 @@ public sealed class PrototypeUnderdocksOpeningTests
             state.World.ActOneEncounterPool.RemainingNormalEncounterIds);
 
         var selected = new List<string>();
-        for (var floor = 4; floor <= 5; floor++)
+        for (var floor = 4; floor <= 7; floor++)
         {
             var before = CanonicalJson.Sha256(state);
             var replay = state.Fork();
@@ -148,7 +148,7 @@ public sealed class PrototypeUnderdocksOpeningTests
                 PrototypeNativeUnderdocks.SupportedNormalEncounterIds);
             Assert.Equal(floor,
                 state.World.ActOneEncounterPool!.OrdinaryCombatsStarted);
-            Assert.Equal(5 - floor,
+            Assert.Equal(7 - floor,
                 state.World.ActOneEncounterPool.RemainingNormalEncounterIds!.Length);
 
             var combat = state.World.Combat!;
@@ -161,24 +161,41 @@ public sealed class PrototypeUnderdocksOpeningTests
                     combat.Enemies.Select(enemy => enemy.AiStateId)
                         .Distinct().Count());
             }
-            else
+            else if (encounterId == "proto.encounter.punch_construct_normal")
             {
-                Assert.Equal("proto.encounter.punch_construct_normal",
-                    encounterId);
                 Assert.Equal("proto.enemy.punch_construct",
                     Assert.Single(combat.Enemies).EnemyId);
                 Assert.Single(Assert.Single(combat.Enemies).PowerStates,
                     power => power.PowerId == "proto.power.artifact");
             }
+            else if (encounterId == "proto.encounter.cultists_normal")
+            {
+                Assert.Equal(new[]
+                {
+                    "proto.enemy.calcified_cultist",
+                    "proto.enemy.damp_cultist"
+                }, combat.Enemies.Select(enemy => enemy.EnemyId));
+                Assert.All(combat.Enemies, enemy =>
+                    Assert.Empty(enemy.PowerStates));
+            }
+            else
+            {
+                Assert.Equal("proto.encounter.fossil_stalker_normal",
+                    encounterId);
+                Assert.Equal("proto.enemy.fossil_stalker",
+                    Assert.Single(combat.Enemies).EnemyId);
+                Assert.Single(Assert.Single(combat.Enemies).PowerStates,
+                    power => power.PowerId == "proto.power.suck");
+            }
         }
 
-        Assert.Equal(2, selected.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(4, selected.Distinct(StringComparer.Ordinal).Count());
         Assert.Empty(state.World!.ActOneEncounterPool!
             .RemainingNormalEncounterIds!);
         Assert.Single(state.World.ActOneEncounterPool.RemainingWeakEncounterIds);
         var finalHash = CanonicalJson.Sha256(state);
         Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, state, PrototypeRoomType.Combat, 6));
+            StartRoom(engine, state, PrototypeRoomType.Combat, 8));
         Assert.Equal(finalHash, CanonicalJson.Sha256(state));
     }
 

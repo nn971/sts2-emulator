@@ -766,14 +766,18 @@ public sealed record PrototypePowerDefinition(
     string? AllEnemyTargetCardTag = null,
     bool OwnerDeathTriggersFatal = true,
     int AllyDeathStrengthPerStack = 0,
-    bool StunOnAllyDeath = false);
+    bool StunOnAllyDeath = false,
+    int EnemyStrengthAtSideTurnEndPerStack = 0,
+    bool SkipInitialEnemySideTurnEnd = false,
+    int StrengthPerUnblockedAttackHitPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
     int Stacks,
     long ApplicationOrder,
     PrototypeCombatCardSnapshot? CardPayload = null,
-    int? SourceEnemyInstanceId = null)
+    int? SourceEnemyInstanceId = null,
+    bool SkipNextEnemySideTurnEnd = false)
 {
     public PrototypePowerInstanceState Fork() => this with
     {

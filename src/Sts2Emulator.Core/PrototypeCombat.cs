@@ -1779,12 +1779,30 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
-            var powers = stage
-                    == PrototypeTurnStage.EnemyTurnEnd
+            var strengthAtSideTurnEnd = 0;
+            var powers = stage == PrototypeTurnStage.EnemyTurnEnd
                 ? enemy.PowerStates
                     .Where(power =>
                         !PrototypeContent.Power(power.PowerId)
                             .RemoveAtEnemyTurnEnd)
+                    .Select(power =>
+                    {
+                        var definition = PrototypeContent.Power(power.PowerId);
+                        if (power.SkipNextEnemySideTurnEnd)
+                        {
+                            // Newly applied enemy Ritual must not activate
+                            // on the same enemy turn it was applied.
+                            return power with
+                            {
+                                SkipNextEnemySideTurnEnd = false
+                            };
+                        }
+
+                        strengthAtSideTurnEnd +=
+                            power.Stacks
+                            * definition.EnemyStrengthAtSideTurnEndPerStack;
+                        return power;
+                    })
                     .ToArray()
                 : enemy.PowerStates;
 
@@ -1793,6 +1811,15 @@ public sealed partial class PrototypeGameEngine
                 Statuses = statuses,
                 Powers = powers
             };
+
+            if (enemy.Hp > 0 && strengthAtSideTurnEnd > 0)
+            {
+                var strengthened = ApplyEnemyPowerToState(
+                    combat, enemies[enemyIndex],
+                    "proto.power.strength", strengthAtSideTurnEnd);
+                combat = strengthened.Combat;
+                enemies[enemyIndex] = strengthened.Enemy;
+            }
             if (wasAlive && enemies[enemyIndex].Hp <= 0)
             {
                 // Scheduled poison damage is processed directly in this
@@ -2239,6 +2266,7 @@ public sealed partial class PrototypeGameEngine
                     ascension);
                 var repetitions =
                     effect.RepetitionsAt(ascension);
+                var unblockedAttackHits = 0;
                 for (var repetition = 0; repetition < repetitions; repetition++)
                 {
                     switch (effect.Kind)
@@ -2290,7 +2318,12 @@ public sealed partial class PrototypeGameEngine
                                 block,
                                 Math.Max(0, damage));
                             block -= absorbed;
-                            hp = Math.Max(0, hp - Math.Max(0, damage - absorbed));
+                            var unblocked = Math.Max(0, damage - absorbed);
+                            if (effect.IsAttack && unblocked > 0 && hp > 0)
+                            {
+                                unblockedAttackHits++;
+                            }
+                            hp = Math.Max(0, hp - unblocked);
                             break;
                         }
 
@@ -2433,6 +2466,26 @@ public sealed partial class PrototypeGameEngine
                     if (hp <= 0 || enemy.Hp <= 0)
                     {
                         break;
+                    }
+                }
+
+                if (unblockedAttackHits > 0 && enemy.Hp > 0)
+                {
+                    // The native Suck hook fires after a powered attack
+                    // command and counts hits which dealt unblocked HP
+                    // damage, not blocked hits or non-attack HP loss.
+                    var strengthGain = enemy.PowerStates.Sum(power =>
+                        power.Stacks
+                        * PrototypeContent.Power(power.PowerId)
+                            .StrengthPerUnblockedAttackHitPerStack)
+                        * unblockedAttackHits;
+                    if (strengthGain > 0)
+                    {
+                        var strengthened = ApplyEnemyPowerToState(
+                            combat, enemy, "proto.power.strength",
+                            strengthGain);
+                        combat = strengthened.Combat;
+                        enemy = strengthened.Enemy;
                     }
                 }
 
@@ -6349,7 +6402,11 @@ public sealed partial class PrototypeGameEngine
                 powers[powerIndex] =
                     powers[powerIndex] with
                     {
-                        Stacks = nextStacks
+                        Stacks = nextStacks,
+                        SkipNextEnemySideTurnEnd =
+                            definition.SkipInitialEnemySideTurnEnd
+                                && stacks > 0
+                            || powers[powerIndex].SkipNextEnemySideTurnEnd
                     };
             }
 
@@ -6367,7 +6424,9 @@ public sealed partial class PrototypeGameEngine
         powers.Add(new PrototypePowerInstanceState(
             powerId,
             stacks,
-            combat.NextPowerApplicationOrder));
+            combat.NextPowerApplicationOrder,
+            SkipNextEnemySideTurnEnd:
+                definition.SkipInitialEnemySideTurnEnd));
 
         return (
             combat with
