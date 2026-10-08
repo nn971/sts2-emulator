@@ -1521,7 +1521,9 @@ public sealed record RewardState(
     string[][]? ExtraCardOptions = null,
     int ExtraCardRewardsResolved = 0,
     string[]? RelicOptions = null,
-    PrototypePendingDeckChoiceState? PendingDeckChoice = null)
+    PrototypePendingDeckChoiceState? PendingDeckChoice = null,
+    bool CardOptionsUpgraded = false,
+    bool[]? ExtraCardOptionsUpgraded = null)
 {
     public string[] CurrentCardOptions
     {
@@ -1558,6 +1560,9 @@ public sealed record RewardState(
         RelicOptions = RelicOptions is null
             ? null
             : (string[])RelicOptions.Clone(),
+        ExtraCardOptionsUpgraded = ExtraCardOptionsUpgraded is null
+            ? null
+            : (bool[])ExtraCardOptionsUpgraded.Clone(),
         PendingDeckChoice = PendingDeckChoice?.Fork()
     };
 }
