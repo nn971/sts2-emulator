@@ -1107,6 +1107,156 @@ public static class PrototypeStateInvariants
         }
     }
 
+    private static void ValidateNativeOvergrowthMap(RunWorldState world)
+    {
+        if (world.Act != 1)
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth map profile is only valid in Act 1.");
+        }
+
+        var map = world.Map;
+        var nodes = map.Nodes;
+        if (nodes.Length == 0
+            || nodes.Select(node => node.NodeId)
+                .Distinct(StringComparer.Ordinal).Count() != nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth map is empty or contains duplicate nodes.");
+        }
+
+        var byId = nodes.ToDictionary(
+            node => node.NodeId, StringComparer.Ordinal);
+        var entries = map.EntryNodeIds ?? Array.Empty<string>();
+        if (entries.Length < 2
+            || entries.Distinct(StringComparer.Ordinal).Count()
+                != entries.Length
+            || entries.Any(id => !byId.TryGetValue(id, out var node)
+                || node.Floor != 1))
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth map must have distinct first-row entries.");
+        }
+
+        for (var floor = 1;
+             floor <= PrototypeNativeOvergrowthMap.BossFloor;
+             floor++)
+        {
+            var layer = nodes.Where(node => node.Floor == floor).ToArray();
+            if (layer.Length == 0
+                || layer.Length > PrototypeNativeOvergrowthMap.MapWidth)
+            {
+                throw new InvalidOperationException(
+                    $"Native Overgrowth floor {floor} has an invalid node count.");
+            }
+
+            if (floor == 1
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Combat)
+                || floor == PrototypeNativeOvergrowthMap.FirstTreasureFloor
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Treasure)
+                || floor == PrototypeNativeOvergrowthMap.PreBossRestFloor
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Rest))
+            {
+                throw new InvalidOperationException(
+                    "Native Overgrowth map has an invalid fixed room row.");
+            }
+
+            if (floor == PrototypeNativeOvergrowthMap.BossFloor
+                && (layer.Length != 1
+                    || layer[0].RoomType != PrototypeRoomType.Boss
+                    || (layer[0].NextNodeIds?.Length ?? 0) != 0))
+            {
+                throw new InvalidOperationException(
+                    "Native Overgrowth map does not terminate at one boss.");
+            }
+        }
+
+        foreach (var node in nodes)
+        {
+            if (node.Act != 1
+                || node.Floor is < 1 or > PrototypeNativeOvergrowthMap.BossFloor
+                || !TryNativeColumn(node.NodeId, out var column)
+                || column is < 0 or >= PrototypeNativeOvergrowthMap.MapWidth)
+            {
+                throw new InvalidOperationException(
+                    "Native Overgrowth map has an invalid node coordinate.");
+            }
+
+            var children = node.NextNodeIds ?? Array.Empty<string>();
+            if (children.Distinct(StringComparer.Ordinal).Count() != children.Length
+                || (node.Floor < PrototypeNativeOvergrowthMap.BossFloor
+                    && children.Length == 0))
+            {
+                throw new InvalidOperationException(
+                    "Native Overgrowth map has duplicate or missing outgoing edges.");
+            }
+
+            foreach (var id in children)
+            {
+                if (!byId.TryGetValue(id, out var child)
+                    || child.Floor != node.Floor + 1
+                    || (node.Floor < PrototypeNativeOvergrowthMap.RoomRows
+                        && (!TryNativeColumn(id, out var targetColumn)
+                            || Math.Abs(targetColumn - column) > 1)))
+                {
+                    throw new InvalidOperationException(
+                        "Native Overgrowth map has an invalid path edge.");
+                }
+            }
+        }
+
+        var reachable = new HashSet<string>(entries, StringComparer.Ordinal);
+        var queue = new Queue<string>(entries);
+        while (queue.Count > 0)
+        {
+            foreach (var id in byId[queue.Dequeue()].NextNodeIds
+                     ?? Array.Empty<string>())
+            {
+                if (reachable.Add(id))
+                {
+                    queue.Enqueue(id);
+                }
+            }
+        }
+
+        if (reachable.Count != nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth map has unreachable nodes.");
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+            {
+                throw new InvalidOperationException(
+                    "Unentered native Overgrowth map must be at floor zero.");
+            }
+        }
+        else if (!byId.TryGetValue(map.CurrentNodeId, out var current)
+            || current.Floor != world.Floor)
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth current position disagrees with run floor.");
+        }
+
+        if (world.UnknownRoomOdds is { } odds
+            && (odds.MonsterWeight < 0 || odds.ShopWeight < 0
+                || odds.TreasureWeight < 0))
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth unknown-room weights must be nonnegative.");
+        }
+    }
+
+    private static bool TryNativeColumn(string id, out int column)
+    {
+        var parts = id.Split(':');
+        return parts.Length == 3
+            && parts[0] == "1"
+            && int.TryParse(parts[2], out column);
+    }
+
     private static void ValidateMap(RunWorldState world)
     {
         if (world.Map.GenerationProfileId
