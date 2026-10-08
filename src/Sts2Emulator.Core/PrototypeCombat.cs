@@ -3385,6 +3385,41 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.CreateEventSourceCardCopyInHand:
+                {
+                    if (eventSourceCardInstanceId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Event-source card copy requires a source card.");
+                    }
+
+                    var source = RequireCombatCard(
+                        combat,
+                        eventSourceCardInstanceId.Value);
+                    combat = AddGeneratedCardCopies(
+                        combat,
+                        new PrototypeCombatCardSnapshot(
+                            source.CardId,
+                            source.UpgradeLevel,
+                            source.State.Clone(),
+                            source.CombatEnergyCostDelta,
+                            source.TemporaryEnergyCost is null
+                                ? null
+                                : source.TemporaryEnergyCost with { },
+                            source.KeywordOverrides is null
+                                ? null
+                                : source.KeywordOverrides
+                                    .Select(item => item with { })
+                                    .ToArray(),
+                            source.ReplayCount,
+                            source.Enchantment,
+                            source.EnchantmentTriggeredThisCombat,
+                            source.Affliction,
+                            source.SuppressedUpgradeLevels),
+                        operation.Amount);
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.AutoPlayTaggedCardsFromZone:
                 {
                     if (operation.AutoPlaySourceZone is null

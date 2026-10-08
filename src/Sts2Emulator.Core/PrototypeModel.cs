@@ -86,6 +86,7 @@ public enum PrototypeCombatEffectKind
     ChooseGeneratedCards,
     CreateCardsInHand,
     CreateCardsInHandFromPowerCardPayload,
+    CreateEventSourceCardCopyInHand,
     AutoPlayTaggedCardsFromZone,
     ApplyPlayerPower,
     ApplyEnemyPower,

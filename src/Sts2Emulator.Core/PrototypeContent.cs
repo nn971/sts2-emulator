@@ -2447,7 +2447,59 @@ public static class PrototypeContent
                 "proto.relic.snecko_eye",
                 "Snecko Eye",
                 HandDrawBonus: 2,
-                RandomizeDrawnCardCostMaxExclusive: 4)
+                RandomizeDrawnCardCostMaxExclusive: 4),
+            new PrototypeRelicDefinition(
+                "proto.relic.charons_ashes",
+                "Charon's Ashes",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardExhausted,
+                        [new(
+                            PrototypeCombatEffectKind.DamageEnemy,
+                            3,
+                            Target:
+                                PrototypeEffectTarget.AllEnemies)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.joss_paper",
+                "Joss Paper",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardExhausted,
+                        [new(
+                            PrototypeCombatEffectKind.DrawCards,
+                            1)],
+                        EveryNth: 5)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.burning_sticks",
+                "Burning Sticks",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardExhausted,
+                        [new(
+                            PrototypeCombatEffectKind.CreateEventSourceCardCopyInHand,
+                            1)],
+                        RequiredSourceCardType:
+                            PrototypeCardType.Skill,
+                        MaxTriggersPerCounterWindow: 1)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.forgotten_soul",
+                "Forgotten Soul",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardExhausted,
+                        [new(
+                            PrototypeCombatEffectKind.DamageEnemy,
+                            1,
+                            Target:
+                                PrototypeEffectTarget.RandomEnemy)])
+                ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -6299,7 +6351,11 @@ public static class PrototypeContent
         "proto.relic.prayer_wheel",
         "proto.relic.membership_card",
         "proto.relic.smiling_mask",
-        "proto.relic.art_of_war"
+        "proto.relic.art_of_war",
+        "proto.relic.charons_ashes",
+        "proto.relic.joss_paper",
+        "proto.relic.burning_sticks",
+        "proto.relic.forgotten_soul"
     ];
 
     public static string[] BossRelicPool { get; } =

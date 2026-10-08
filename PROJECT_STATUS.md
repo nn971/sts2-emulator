@@ -644,3 +644,15 @@ absolute energy-cost assignment when cards are drawn. Draw-time cost mutation us
 combat RNG, skips X/unplayable negative-cost cards, and persists with the card until a later draw
 overwrites it. This keeps randomized costs visible in canonical combat state and therefore directly
 usable by AI/search code.
+
+
+## Mechanics-expansion pass: exhaust-driven relics
+
+CardExhausted now supports a generic event-source cloning effect, allowing relics to create a
+temporary copy of the exact exhausted card instance while preserving upgrades, enchantments,
+afflictions, replay state, and combat-local cost/keyword mutations. Burning Sticks uses this once per
+combat for exhausted Skills.
+
+Charon's Ashes, Joss Paper, and Forgotten Soul now exercise the existing CardExhausted event with
+all-enemy damage, thresholded draw, and random-target damage respectively. Exact ethereal deferral
+timing is intentionally postponed; the strategic exhaust-trigger behavior is represented now.
