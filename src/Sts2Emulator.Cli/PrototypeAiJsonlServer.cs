@@ -88,7 +88,8 @@ internal static class PrototypeAiJsonlServer
                             rulesetId = PrototypeContent.RulesetId,
                             fairPolicyId = FairPolicyId,
                             hypotheticalDrawOrderId = PrototypeHypotheticalDrawOrder.SchemaId,
-                            conditionalCombatEntryId = PrototypeConditionedCombatEntry.SchemaId
+                            conditionalCombatEntryId = PrototypeConditionedCombatEntry.SchemaId,
+                            factorizedInitialStreamsId = PrototypeFactorizedRunFactory.SchemaId
                         });
                         break;
 
@@ -118,6 +119,43 @@ internal static class PrototypeAiJsonlServer
                             stateHandle = handle,
                             exactHash = CanonicalJson.Sha256(state),
                             terminal = state.Phase == RunPhase.Terminal
+                        });
+                        break;
+                    }
+
+                    case "reset_factorized_hypothetical":
+                    {
+                        if (!request.TryGetProperty("initial_streams", out var streams)
+                            || streams.ValueKind != JsonValueKind.Object)
+                        {
+                            throw new ArgumentException(
+                                "initial_streams must contain six named hexadecimal states.");
+                        }
+
+                        var initialStreams = new Dictionary<string, string>(
+                            StringComparer.Ordinal);
+                        foreach (var property in streams.EnumerateObject())
+                        {
+                            if (property.Value.ValueKind != JsonValueKind.String
+                                || !initialStreams.TryAdd(
+                                    property.Name, property.Value.GetString()!))
+                            {
+                                throw new ArgumentException(
+                                    "Invalid or duplicated factorized RNG stream field.");
+                            }
+                        }
+
+                        var ascension = OptionalInt(request, "ascension") ?? 0;
+                        var state = PrototypeFactorizedRunFactory.Create(
+                            initialStreams, ascension);
+                        var handle = Store(state, rootHypothetical: true);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            stateHandle = handle,
+                            hypothetical = true,
+                            schemaId = PrototypeFactorizedRunFactory.SchemaId
                         });
                         break;
                     }

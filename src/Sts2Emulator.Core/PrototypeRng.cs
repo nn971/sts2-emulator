@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -27,6 +28,50 @@ public static class PrototypeRng
                     SeedBytes(seed, streamId),
                     0))
                 .ToArray());
+    }
+
+    /// <summary>
+    /// Creates six independently selected SplitMix64 states for a separate
+    /// synthetic prior. Exactly six initial stream states are required.
+    /// This is deliberately NOT the native game seed distribution.
+    /// </summary>
+    public static RngBundle CreateFactorizedInitialBundle(
+        IReadOnlyDictionary<string, string> initialStateHex)
+    {
+        if (initialStateHex is null)
+        {
+            throw new ArgumentNullException(nameof(initialStateHex));
+        }
+
+        var expected = new[]
+        {
+            "map", "combat", "combat_targets", "reward", "shop", "event"
+        };
+        if (initialStateHex.Count != expected.Length
+            || expected.Any(id => !initialStateHex.ContainsKey(id)))
+        {
+            throw new ArgumentException(
+                "A factorized prior requires exactly six named RNG streams.",
+                nameof(initialStateHex));
+        }
+
+        var streams = new RngStreamState[expected.Length];
+        for (var i = 0; i < expected.Length; i++)
+        {
+            var hex = initialStateHex[expected[i]];
+            if (hex is null || hex.Length != 16
+                || !ulong.TryParse(hex, NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture, out var raw))
+            {
+                throw new ArgumentException(
+                    $"Stream '{expected[i]}' requires a 16-character hexadecimal state.",
+                    nameof(initialStateHex));
+            }
+            var bytes = new byte[sizeof(ulong)];
+            BinaryPrimitives.WriteUInt64LittleEndian(bytes, raw);
+            streams[i] = new RngStreamState(expected[i], Codec, bytes, 0);
+        }
+        return new RngBundle(streams);
     }
 
     public static int NextInt(RngBundle bundle, string streamId, int maxExclusive)

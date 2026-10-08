@@ -421,7 +421,12 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RequireKind(action, "start_run");
 
         var rules = PrototypeContent.Rules;
-        var rng = PrototypeRng.CreateBundle(state.RunSeed);
+        // Ordinary starts use the historical correlated run-seed streams.
+        // A distinct, hypothetical factorized prior may instead supply
+        // all six independent stream states *before* the first RNG event.
+        var rng = state.Rng.Streams.Length == 0
+            ? PrototypeRng.CreateBundle(state.RunSeed)
+            : state.Rng.Fork();
         var actOneBossEncounterId =
             PrototypeContent.OvergrowthBossEncounterPool[
                 PrototypeRng.NextInt(
