@@ -1642,7 +1642,8 @@ public sealed record EventState(
     PrototypePendingEventDeckChoiceState? PendingDeckChoice = null,
     PrototypePendingEventPotionReplacementState? PendingPotionReplacement = null,
     string[]? QueuedPotionIds = null,
-    PrototypePendingEventDeckChoiceState[]? QueuedDeckChoices = null)
+    PrototypePendingEventDeckChoiceState[]? QueuedDeckChoices = null,
+    string[]? OfferedChoiceIds = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -1663,7 +1664,11 @@ public sealed record EventState(
         QueuedDeckChoices =
             QueuedDeckChoices is null
                 ? null
-                : QueuedDeckChoices.Select(choice => choice.Fork()).ToArray()
+                : QueuedDeckChoices.Select(choice => choice.Fork()).ToArray(),
+        OfferedChoiceIds =
+            OfferedChoiceIds is null
+                ? null
+                : (string[])OfferedChoiceIds.Clone()
     };
 }
 
