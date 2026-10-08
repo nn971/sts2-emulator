@@ -240,6 +240,16 @@ public static class PrototypeContent
                 CanBeGeneratedInCombat: false,
                 Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
+                "proto.native.neow.injury",
+                "Injury",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Unplayable: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse),
+            new PrototypeCardDefinition(
                 "proto.native.event.guilty",
                 "Guilty",
                 0,
