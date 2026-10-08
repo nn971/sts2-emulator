@@ -949,7 +949,19 @@ public static class PrototypeStateInvariants
                     $"Room {node.RoomType} is not allowed on floor {node.Floor}.");
             }
 
-            foreach (var nextId in node.NextNodeIds ?? Array.Empty<string>())
+            var nextNodeIds =
+                node.NextNodeIds
+                ?? Array.Empty<string>();
+            if (nextNodeIds.Length
+                != nextNodeIds
+                    .Distinct(StringComparer.Ordinal)
+                    .Count())
+            {
+                throw new InvalidOperationException(
+                    $"Map node '{node.NodeId}' contains duplicate outgoing edges.");
+            }
+
+            foreach (var nextId in nextNodeIds)
             {
                 if (!nodesById.TryGetValue(nextId, out var next))
                 {
@@ -990,6 +1002,15 @@ public static class PrototypeStateInvariants
             }
         }
 
+        if (StringComparer.Ordinal.Equals(
+                map.GenerationProfileId,
+                PrototypeContent.MapGenerationProfileId))
+        {
+            ValidateGeneratedStrategicMap(
+                map,
+                nodesById);
+        }
+
         var bosses = map.Nodes
             .Where(node => node.RoomType == PrototypeRoomType.Boss)
             .ToArray();
@@ -1018,6 +1039,190 @@ public static class PrototypeStateInvariants
             {
                 throw new InvalidOperationException("World floor disagrees with current map node.");
             }
+        }
+    }
+
+    private static void ValidateGeneratedStrategicMap(
+        MapState map,
+        IReadOnlyDictionary<string, MapNodeState> nodesById)
+    {
+        var rules = PrototypeContent.Rules;
+        for (var floor = 1;
+             floor <= rules.FloorsPerAct;
+             floor++)
+        {
+            var floorRule =
+                rules.MapFloorRules.Single(rule =>
+                    floor >= rule.MinFloor
+                    && floor <= rule.MaxFloor);
+            var nodes = map.Nodes
+                .Where(node =>
+                    node.Floor == floor)
+                .ToArray();
+
+            if (nodes.Length < floorRule.MinNodes
+                || nodes.Length > floorRule.MaxNodes)
+            {
+                throw new InvalidOperationException(
+                    $"Generated map floor {floor} width {nodes.Length} is outside [{floorRule.MinNodes}, {floorRule.MaxNodes}].");
+            }
+
+            foreach (var requiredRoom in
+                     floorRule.RequiredRooms)
+            {
+                if (!nodes.Any(node =>
+                        node.RoomType
+                            == requiredRoom))
+                {
+                    throw new InvalidOperationException(
+                        $"Generated map floor {floor} is missing required room {requiredRoom}.");
+                }
+            }
+
+            if (floorRule
+                .AvoidMatchingSpecialPredecessors)
+            {
+                var previous = map.Nodes
+                    .Where(node =>
+                        node.Floor == floor - 1)
+                    .ToArray();
+                foreach (var node in nodes.Where(node =>
+                             node.RoomType
+                                 != PrototypeRoomType.Combat))
+                {
+                    if (previous.Any(predecessor =>
+                            predecessor.RoomType
+                                == node.RoomType
+                            && (predecessor.NextNodeIds
+                                    ?? Array.Empty<string>())
+                                .Contains(
+                                    node.NodeId,
+                                    StringComparer.Ordinal)))
+                    {
+                        throw new InvalidOperationException(
+                            $"Generated map repeats special room {node.RoomType} across an edge into floor {floor}.");
+                    }
+                }
+            }
+        }
+
+        var incoming = map.Nodes.ToDictionary(
+            node => node.NodeId,
+            _ => 0,
+            StringComparer.Ordinal);
+        foreach (var node in map.Nodes)
+        {
+            var next =
+                node.NextNodeIds
+                ?? Array.Empty<string>();
+            if (node.Floor
+                < rules.FloorsPerAct
+                && (next.Length < 1
+                    || next.Length > 2))
+            {
+                throw new InvalidOperationException(
+                    $"Generated map node '{node.NodeId}' must have one or two outgoing edges.");
+            }
+
+            foreach (var nextId in next)
+            {
+                incoming[nextId]++;
+            }
+        }
+
+        var entryIds =
+            map.EntryNodeIds
+            ?? Array.Empty<string>();
+        var entrySet = entryIds.ToHashSet(
+            StringComparer.Ordinal);
+        foreach (var node in map.Nodes.Where(node =>
+                     node.Floor > 1))
+        {
+            if (incoming[node.NodeId] == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Generated map node '{node.NodeId}' has no incoming route.");
+            }
+        }
+
+        var reachable =
+            new HashSet<string>(
+                entryIds,
+                StringComparer.Ordinal);
+        var queue =
+            new Queue<string>(
+                entryIds);
+        while (queue.Count > 0)
+        {
+            var node =
+                nodesById[queue.Dequeue()];
+            foreach (var nextId in
+                     node.NextNodeIds
+                     ?? Array.Empty<string>())
+            {
+                if (reachable.Add(nextId))
+                {
+                    queue.Enqueue(nextId);
+                }
+            }
+        }
+
+        if (reachable.Count != map.Nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Generated map contains a node that is unreachable from every entry.");
+        }
+
+        var boss = map.Nodes.Single(node =>
+            node.RoomType
+                == PrototypeRoomType.Boss);
+        var canReachBoss =
+            new HashSet<string>(
+                [boss.NodeId],
+                StringComparer.Ordinal);
+        for (var floor =
+                 rules.FloorsPerAct - 1;
+             floor >= 1;
+             floor--)
+        {
+            foreach (var node in map.Nodes.Where(node =>
+                         node.Floor == floor))
+            {
+                if ((node.NextNodeIds
+                        ?? Array.Empty<string>())
+                    .Any(canReachBoss.Contains))
+                {
+                    canReachBoss.Add(
+                        node.NodeId);
+                }
+            }
+        }
+
+        if (canReachBoss.Count
+            != map.Nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Generated map contains a dead-end route that cannot reach the boss.");
+        }
+
+        if (!map.Nodes.Any(node =>
+                node.Floor
+                    < rules.FloorsPerAct - 1
+                && (node.NextNodeIds?.Length ?? 0)
+                    == 2))
+        {
+            throw new InvalidOperationException(
+                "Generated map contains no meaningful pre-boss branch.");
+        }
+
+        if (!map.Nodes.Any(node =>
+                node.Floor > 1
+                && node.Floor
+                    < rules.FloorsPerAct
+                && incoming[node.NodeId] > 1))
+        {
+            throw new InvalidOperationException(
+                "Generated map contains no pre-boss route convergence.");
         }
     }
 
