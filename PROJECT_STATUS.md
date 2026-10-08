@@ -1011,3 +1011,33 @@ leaves the hand, and skips the retrieval when the hand is already
 full. This cap also covers other discard/choice-to-hand effects.
 A targeted regression verifies one-card offer legality, the final
 ten-card hand, card exhaustion, and invariants.
+
+
+## Neow items, combat completion and reward modifiers (2026-10-08)
+
+Expanded single-player Neow acquisition effects from pinned v0.111.0:
+Phial Holster (+1 capacity; 2 random potions), Large Capsule (2
+distinct unowned relics and one Strike/Defend), Neow's Sacrifice
+(Ambergris potion and Guilty curse). Ambergris is not in the ordinary
+potion pool and heals 50% of maximum HP, although its native in-combat
+extra turn remains unsupported. Guilty counts all completed combat
+victories and leaves the deck after five; Fishing Rod counts only
+normal victories and upgrades an eligible card on every third one.
+Booming Conch adds 2 opening cards and 1 opening energy to elite
+combats only. Relic/card progress lives in canonical persistent
+JSON state, rather than global counters.
+
+Silver Crucible now tracks the number of generated card-reward
+groups (up to three), upgrades the offered choices before selection,
+persists per-group upgrade flags in `RewardState`, and suppresses the
+first treasure reward while still completing the map room. Subsequent
+treasure entries give normal rewards. RewardState metadata is
+forkable and checked by invariants. Generated reward mechanics use
+prototype pools and RNG; special non-combat reward group hooks are
+not yet native.
+
+Dedicated integration regressions cover Neow acquisitions and
+capacity changes, out-of-combat Ambergris healing, Guilty expiration,
+Fishing Rod's normal/elite distinction, Booming Conch's elite-only
+opening, Silver Crucible's reward-group counts and skip semantics,
+and the treasure-room visit lifecycle.
