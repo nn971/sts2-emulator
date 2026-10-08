@@ -89,7 +89,8 @@ internal static class PrototypeAiJsonlServer
                             fairPolicyId = FairPolicyId,
                             hypotheticalDrawOrderId = PrototypeHypotheticalDrawOrder.SchemaId,
                             conditionalCombatEntryId = PrototypeConditionedCombatEntry.SchemaId,
-                            factorizedInitialStreamsId = PrototypeFactorizedRunFactory.SchemaId
+                            factorizedInitialStreamsId = PrototypeFactorizedRunFactory.SchemaId,
+                            pristineRewardProposalId = PrototypePristineRewardProposal.SchemaId
                         });
                         break;
 
@@ -284,6 +285,33 @@ internal static class PrototypeAiJsonlServer
                             policyId = FairPolicyId,
                             observationHash = publicObservationHash,
                             candidates = conditioned.Candidates
+                        });
+                        break;
+                    }
+
+                    case "propose_pristine_reward":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var state = RequireState(request);
+                        if (!hypotheticalHandles.Contains(parentHandle))
+                        {
+                            throw new InvalidOperationException(
+                                "Only independently created hypothetical handles "
+                                + "may branch the pristine reward stream.");
+                        }
+
+                        var actionId = RequiredString(request, "action_id");
+                        var initialHex = RequiredString(request, "reward_initial_state_hex");
+                        var next = PrototypePristineRewardProposal.Branch(
+                            state, actionId, initialHex);
+                        var child = Store(next, parentHandle);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            child,
+                            schemaId = PrototypePristineRewardProposal.SchemaId,
+                            policyId = FairPolicyId
                         });
                         break;
                     }
