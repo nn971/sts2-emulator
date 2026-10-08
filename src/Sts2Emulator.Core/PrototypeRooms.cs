@@ -601,9 +601,17 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartEvent(RunState state)
     {
         var world = RequireWorld(state);
+        var nativeOvergrowth = world.Act == 1
+            && world.Map.GenerationProfileId
+                == PrototypeNativeOvergrowthMap.GenerationProfileId;
         var eligible = PrototypeContent.Events.Values
             .Where(evt =>
-                world.Act >= evt.MinAct
+                PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(evt.Id)
+                    == nativeOvergrowth
+                && (!nativeOvergrowth
+                    || PrototypeNativeOvergrowthEvents.IsEligible(
+                        evt, state.Player))
+                && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
                 && evt.Weight > 0
                 && (!evt.OncePerRun
