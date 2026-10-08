@@ -102,6 +102,7 @@ public enum PrototypeCombatEffectKind
     GainEnergy,
     MultiplyEnemyStatus,
     GainPlayerBlockAndApplyPowerFromActualGain,
+    GainToricToughnessBlock,
     ModifySourceCardEnergyCost,
     SetHandCardsEnergyCostUntilTurnEndOrPlayed,
     SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
@@ -1436,6 +1437,10 @@ public sealed record PrototypeCombatCounters(
     };
 }
 
+public sealed record PrototypeToricShield(
+    int BlockAmount,
+    int ClearsRemaining);
+
 public sealed record CombatState(
     int Turn,
     int Energy,
@@ -1459,7 +1464,8 @@ public sealed record CombatState(
     int Ascension = 0,
     int ExtraCardRewardsEarned = 0,
     long[]? ChoicePool = null,
-    long[]? PlayPile = null)
+    long[]? PlayPile = null,
+    PrototypeToricShield[]? ToricShields = null)
 {
     public CombatState Fork() => this with
     {
@@ -1482,6 +1488,9 @@ public sealed record CombatState(
         PlayPile = PlayPile is null
             ? null
             : (long[])PlayPile.Clone(),
+        ToricShields = ToricShields is null
+            ? null
+            : (PrototypeToricShield[])ToricShields.Clone(),
         PendingChoice = PendingChoice?.Fork(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
