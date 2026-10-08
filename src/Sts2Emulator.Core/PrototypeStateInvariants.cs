@@ -479,9 +479,14 @@ public static class PrototypeStateInvariants
         }
 
         if (eventState.NativeEventGold != 0
-            && (eventState.EventId
-                    != PrototypeNativeDenseVegetation.EventId
-                || eventState.NativeEventGold is < 61 or > 99))
+            && (eventState.EventId switch
+            {
+                PrototypeNativeDenseVegetation.EventId =>
+                    eventState.NativeEventGold is >= 61 and <= 99,
+                "proto.native.event.whispering_hollow" =>
+                    eventState.NativeEventGold is >= 26 and <= 44,
+                _ => false
+            }) == false)
         {
             throw new InvalidOperationException(
                 "Native event gold roll is invalid.");
