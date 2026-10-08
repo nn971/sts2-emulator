@@ -1121,3 +1121,14 @@ and the random curse placeholder is Injury. Kaleidoscope and
 other cross-character mechanics remain postponed, as requested.
 Regressions cover seeded diversity, eligibility, correct
 two-stage acquisition, curse ordering, and map resumption.
+
+## Reward-acquired deck upgrades (2026-10-08)
+
+Neow's Bones exposed a missing upgrade branch in the shared
+persistent relic-deck choice resolver: Pomander can be obtained
+through a normal relic reward, not only as the directly selected
+Neow event option. Both shop/reward acquisition continuations
+now support `Upgrade`, preserving instance identity and filtering
+already-upgraded candidates. A dedicated Neow's Bones regression
+exercises receiving Pomander, upgrading a starter Strike, acquiring
+Golden Pearl second, and adding Injury only on final reward exit.
