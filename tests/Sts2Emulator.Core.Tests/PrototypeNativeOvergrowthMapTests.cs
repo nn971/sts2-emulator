@@ -89,7 +89,7 @@ public sealed class PrototypeNativeOvergrowthMapTests
         Assert.Equal(40, missed.TreasureWeight);
         Assert.Equal(60, missed.ShopWeight);
         Assert.Equal(100, missed.After(PrototypeRoomType.Combat).MonsterWeight);
-        Assert.Equal(60, missed.After(PrototypeRoomType.Combat).ShopWeight);
+        Assert.Equal(90, missed.After(PrototypeRoomType.Combat).ShopWeight);
         Assert.Equal(20, missed.After(PrototypeRoomType.Treasure).TreasureWeight);
 
         var copy = state.Fork();
