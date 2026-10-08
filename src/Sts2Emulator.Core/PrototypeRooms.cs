@@ -1413,18 +1413,12 @@ public sealed partial class PrototypeGameEngine
         }
 
         return player.Deck.Any(card =>
-            deckChoice.Kind switch
-            {
-                PrototypePersistentDeckChoiceKind.Remove =>
-                    !PrototypeContent.Card(
-                        card.CardId).Eternal,
-                PrototypePersistentDeckChoiceKind.Upgrade =>
-                    card.UpgradeLevel == 0,
-                PrototypePersistentDeckChoiceKind.Transform =>
-                    !PrototypeContent.Card(
-                        card.CardId).Eternal,
-                _ => false
-            });
+            CanSelectEventDeckCard(
+                card,
+                deckChoice.Kind,
+                deckChoice.TransformToCardId,
+                deckChoice.EnchantmentKind,
+                deckChoice.BasicCardsOnly));
     }
 
     private static PrototypePendingEventDeckChoiceState?
@@ -1456,7 +1450,10 @@ public sealed partial class PrototypeGameEngine
                 spec.Kind,
                 spec.Selections,
                 Array.Empty<long>(),
-                spec.UpgradeTransformedCards);
+                spec.UpgradeTransformedCards,
+                TransformToCardId: spec.TransformToCardId,
+                EnchantmentKind: spec.EnchantmentKind,
+                BasicCardsOnly: spec.BasicCardsOnly);
     }
 
     private static PlayerState ResolveEventDeckChoice(
@@ -1496,11 +1493,21 @@ public sealed partial class PrototypeGameEngine
                         .ToArray()
                 },
             PrototypePersistentDeckChoiceKind.Transform =>
-                TransformPersistentDeckCard(
+                pending.TransformToCardId is { } resultId
+                    ? ApplyFixedEventTransformation(
+                        player, selected.InstanceId, resultId)
+                    : TransformPersistentDeckCard(
+                        player,
+                        selected.InstanceId,
+                        pending.UpgradeTransformedCards,
+                        rng),
+            PrototypePersistentDeckChoiceKind.Enchant =>
+                ApplyEventEnchantment(
                     player,
                     selected.InstanceId,
-                    pending.UpgradeTransformedCards,
-                    rng),
+                    pending.EnchantmentKind
+                        ?? throw new InvalidOperationException(
+                            "Event enchant selection is missing its type.")),
             _ => throw new ArgumentOutOfRangeException()
         };
     }
