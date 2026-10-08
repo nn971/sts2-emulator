@@ -56,6 +56,7 @@ public sealed class PrototypeNativeNeowCustomRewardsTests
                 ?? legal.FirstOrDefault(a => a.Kind ==
                     (takePotion ? "take_reward_potion" : "skip_reward_potion"))
                 ?? legal.FirstOrDefault(a => a.Kind == "take_reward_relic")
+                ?? legal.FirstOrDefault(a => a.Kind == "choose_relic_deck_card")
                 ?? legal.Single(a => a.Kind == "leave_reward");
             state = engine.Step(state, action).State;
             PrototypeStateInvariants.Validate(state);
