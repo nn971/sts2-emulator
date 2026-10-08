@@ -104,6 +104,22 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (eventState.PendingReward is { } pendingReward)
+            {
+                // A selected event choice can temporarily enter the
+                // ordinary reward phase without losing the event
+                // continuation or counting an extra map room.
+                return state with
+                {
+                    World = world with
+                    {
+                        Event = eventState with { PendingReward = null },
+                        Reward = pendingReward
+                    },
+                    Phase = RunPhase.Reward
+                };
+            }
+
             if (StringComparer.Ordinal.Equals(
                     eventState.EventId,
                     PrototypeNativeOvergrowthEvents.NeowEventId)
