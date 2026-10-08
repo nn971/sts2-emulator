@@ -73,6 +73,10 @@ public sealed class PrototypeCeremonialBeastTests
         Assert.True(ringing.IsDebuff);
         Assert.True(ringing.DecrementAtPlayerTurnEnd);
         Assert.Equal(1, ringing.MaxCardsPlayablePerTurn);
+        Assert.Equal(PrototypeCardAfflictionKind.Ringing,
+            ringing.AppliedCardAffliction);
+        Assert.True(ringing.SkipCardsWithExistingAffliction);
+        Assert.True(ringing.ClearAppliedCardAfflictionWhenRemoved);
     }
 
     [Fact]
@@ -140,6 +144,9 @@ public sealed class PrototypeCeremonialBeastTests
         Assert.Single(
             state.World!.Combat!.PlayerPowers,
             power => power.PowerId == "proto.power.ringing");
+        Assert.All(state.World.Combat.Cards, card =>
+            Assert.Equal(PrototypeCardAfflictionKind.Ringing,
+                card.Affliction?.Kind));
 
         Assert.Equal(
             2,
@@ -159,9 +166,117 @@ public sealed class PrototypeCeremonialBeastTests
         Assert.DoesNotContain(
             state.World!.Combat!.PlayerPowers,
             power => power.PowerId == "proto.power.ringing");
+        Assert.All(state.World.Combat.Cards,
+            card => Assert.Null(card.Affliction));
         Assert.Contains(
             engine.GetLegalActions(state),
             action => action.Kind == "play_card");
+    }
+
+
+    [Fact]
+    public void RingingAfflictsGeneratedShivsAndPreventsTheirPlay()
+    {
+        var cards = new[]
+        {
+            Slice(1),
+            new CombatCardInstance(
+                2, null, "proto.silent.blade_dance",
+                0, true, PrototypeJson.EmptyObject())
+        };
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(cards);
+
+        state = EndTurn(engine, state); // Stamp
+        state = EndTurn(engine, state); // Plow
+        state = SetBeastHp(state, 156);
+        state = PlayCard(engine, state, 1); // Trigger phase change
+        state = EndTurn(engine, state); // Stunned
+        state = EndTurn(engine, state); // Beast Cry
+
+        var dance = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == 2);
+        state = engine.Step(state, dance).State;
+
+        var combat = state.World!.Combat!;
+        var shivs = combat.Cards.Where(card =>
+            card.CardId == "proto.silent.shiv").ToArray();
+        Assert.Equal(3, shivs.Length);
+        Assert.All(shivs, shiv =>
+        {
+            Assert.Contains(shiv.InstanceId, combat.Hand);
+            Assert.Equal(PrototypeCardAfflictionKind.Ringing,
+                shiv.Affliction?.Kind);
+        });
+        Assert.Equal(1, combat.CounterState.CardsPlayedThisTurn);
+        Assert.DoesNotContain(engine.GetLegalActions(state), action =>
+            action.Kind == "play_card");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void RingingDoesNotBlockCardsWithAnotherAffliction()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = CreateState([Slice(1), Slice(2), Slice(3)]);
+
+        state = EndTurn(engine, state);
+        state = EndTurn(engine, state);
+        state = SetBeastHp(state, 156);
+        state = PlayCard(engine, state, 1);
+        state = EndTurn(engine, state); // Stunned
+
+        // Native RingingPower.AfterApplied skips cards already afflicted.
+        // Mark the second card before Beast Cry; the card continues to
+        // be playable despite a Ringing-afflicted card having been played.
+        var combat = state.World!.Combat!;
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Cards = combat.Cards.Select(card =>
+                        card.InstanceId == 2
+                            ? card with
+                            {
+                                Affliction = new PrototypeCardAffliction(
+                                    PrototypeCardAfflictionKind.Smog)
+                            }
+                            : card).ToArray()
+                }
+            }
+        };
+        state = EndTurn(engine, state); // Beast Cry
+
+        var cry = state.World!.Combat!;
+        Assert.Equal(PrototypeCardAfflictionKind.Ringing,
+            cry.Cards.Single(card => card.InstanceId == 1).Affliction?.Kind);
+        Assert.Equal(PrototypeCardAfflictionKind.Smog,
+            cry.Cards.Single(card => card.InstanceId == 2).Affliction?.Kind);
+        Assert.Equal(PrototypeCardAfflictionKind.Ringing,
+            cry.Cards.Single(card => card.InstanceId == 3).Affliction?.Kind);
+
+        state = PlayCard(engine, state, 1);
+        Assert.Contains(engine.GetLegalActions(state), action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == 2);
+        Assert.DoesNotContain(engine.GetLegalActions(state), action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == 3);
+        Assert.Throws<InvalidOperationException>(
+            () => PlayCard(engine, state, 3));
+
+        state = PlayCard(engine, state, 2);
+        Assert.Equal(2, state.World!.Combat!.CounterState.CardsPlayedThisTurn);
+        state = EndTurn(engine, state);
+        Assert.Null(state.World!.Combat!.Cards.Single(
+            card => card.InstanceId == 1).Affliction);
+        Assert.Equal(PrototypeCardAfflictionKind.Smog,
+            state.World.Combat.Cards.Single(
+                card => card.InstanceId == 2).Affliction?.Kind);
+        PrototypeStateInvariants.Validate(state);
     }
 
     [Fact]

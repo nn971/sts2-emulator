@@ -632,14 +632,14 @@ public sealed partial class PrototypeGameEngine
 
         var actions = new List<GameAction>();
 
-        var canPlayCard =
-            CanPlayAnotherCardThisTurn(state.Player, combat);
-        if (canPlayCard)
-        {
         foreach (var instanceId in combat.Hand)
         {
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
+            if (!CanPlayAnotherCardThisTurn(state.Player, combat, card))
+            {
+                continue;
+            }
             var isFreeByPower = IsCardFreeByPower(combat, definition);
             if (!definition.MechanicsImplemented
                 || definition.Unplayable
@@ -674,7 +674,6 @@ public sealed partial class PrototypeGameEngine
                     "play_card",
                     new PlayCardPayload(instanceId, null)));
             }
-        }
         }
 
         for (var slot = 0; slot < state.Player.PotionSlots.Length; slot++)
@@ -757,13 +756,12 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException($"Card {payload.CardInstanceId} is not in hand.");
         }
 
-        if (!CanPlayAnotherCardThisTurn(state.Player, combat))
+        var card = RequireCombatCard(combat, payload.CardInstanceId);
+        if (!CanPlayAnotherCardThisTurn(state.Player, combat, card))
         {
             throw new InvalidOperationException(
-                "A player effect prevents playing another card this turn.");
+                "A player effect prevents playing this card this turn.");
         }
-
-        var card = RequireCombatCard(combat, payload.CardInstanceId);
         var definition = PrototypeContent.Card(card.CardId);
         if (!definition.MechanicsImplemented)
         {
@@ -5005,10 +5003,18 @@ public sealed partial class PrototypeGameEngine
 
     private static bool CanPlayAnotherCardThisTurn(
         PlayerState player,
-        CombatState combat)
+        CombatState combat,
+        CombatCardInstance card)
     {
+        // Native RingingPower.ShouldPlay checks the Ringing affliction
+        // on the candidate card. A card already afflicted by something
+        // else never receives Ringing and remains playable even after
+        // the first card played that turn. Other cap powers still apply.
         var powerCaps = combat.PlayerPowers
-            .Where(power => power.Stacks > 0)
+            .Where(power => power.Stacks > 0
+                && (power.PowerId != "proto.power.ringing"
+                    || card.Affliction?.Kind
+                        == PrototypeCardAfflictionKind.Ringing))
             .Select(power =>
                 PrototypeContent.Power(power.PowerId)
                     .MaxCardsPlayablePerTurn);

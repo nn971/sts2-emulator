@@ -3331,7 +3331,13 @@ public static class PrototypeContent
                 DoesNotStack: true,
                 IsDebuff: true,
                 DecrementAtPlayerTurnEnd: true,
-                MaxCardsPlayablePerTurn: 1),
+                MaxCardsPlayablePerTurn: 1,
+                // RingingPower.AfterApplied/AfterCardEnteredCombat
+                // afflicts otherwise-unafflicted combat cards; its
+                // AfterRemoved clears only its own afflictions.
+                AppliedCardAffliction: PrototypeCardAfflictionKind.Ringing,
+                SkipCardsWithExistingAffliction: true,
+                ClearAppliedCardAfflictionWhenRemoved: true),
             new PrototypePowerDefinition(
                 "proto.power.plow",
                 "Plow",
