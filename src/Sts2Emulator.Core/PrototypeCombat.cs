@@ -813,6 +813,20 @@ public sealed partial class PrototypeGameEngine
             Hand = combat.Hand.Where(id => id != payload.CardInstanceId).ToArray()
         };
 
+        if (card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Sown } sown
+            && !card.EnchantmentTriggeredThisCombat)
+        {
+            combat = combat with
+            {
+                Energy = combat.Energy + Math.Max(0, sown.Amount),
+                Cards = combat.Cards.Select(item =>
+                    item.InstanceId == card.InstanceId
+                        ? item with { EnchantmentTriggeredThisCombat = true }
+                        : item).ToArray()
+            };
+        }
+
         if (isFreeByPower)
         {
             combat = ConsumeMatchingFreeCardPower(combat, definition.Type);
@@ -1535,6 +1549,22 @@ public sealed partial class PrototypeGameEngine
                 {
                     combat = combat with { PlayerBlock = 0 };
                 }
+
+                var toricShields = combat.ToricShields
+                    ?? Array.Empty<PrototypeToricShield>();
+                var toricBlock = toricShields.Sum(item =>
+                    item.BlockAmount);
+                combat = combat with
+                {
+                    ToricShields = toricShields
+                        .Where(item => item.ClearsRemaining > 1)
+                        .Select(item => item with
+                        {
+                            ClearsRemaining = item.ClearsRemaining - 1
+                        })
+                        .ToArray(),
+                    PlayerBlock = combat.PlayerBlock + toricBlock
+                };
 
                 var delayedBlock = combat.PlayerPowers.Sum(power =>
                     PrototypeContent.Power(power.PowerId)
@@ -3093,6 +3123,27 @@ public sealed partial class PrototypeGameEngine
                         PlayerBlock = combat.PlayerBlock
                             + Math.Max(0, modifiedAmount)
                     };
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.GainToricToughnessBlock:
+                {
+                    var amount = Math.Max(0, ModifyPlayerBlockGain(
+                        combat,
+                        operation.Amount,
+                        operation.SourceKind
+                            == PrototypeEffectSourceKind.Card));
+                    if (amount > 0)
+                    {
+                        combat = combat with
+                        {
+                            PlayerBlock = combat.PlayerBlock + amount,
+                            ToricShields = (combat.ToricShields
+                                ?? Array.Empty<PrototypeToricShield>())
+                                .Append(new PrototypeToricShield(amount, 2))
+                                .ToArray()
+                        };
+                    }
                     break;
                 }
 
@@ -8225,6 +8276,20 @@ public sealed partial class PrototypeGameEngine
                 card = RequireCombatCard(
                     combat,
                     cardInstanceId);
+            }
+
+            if (card.Enchantment is
+                    { Kind: PrototypeCardEnchantmentKind.Slither })
+            {
+                // Slither rerolls this combat's cost every time its
+                // card is drawn, including after pile recycling.
+                combat = SetCardTemporaryEnergyCost(
+                    combat,
+                    cardInstanceId,
+                    new PrototypeTemporaryCardCost(
+                        PrototypeRng.NextInt(rng, "combat", 4),
+                        PrototypeTemporaryCardCostExpiry.None));
+                card = RequireCombatCard(combat, cardInstanceId);
             }
 
             var dispatched = DispatchCombatEvent(
