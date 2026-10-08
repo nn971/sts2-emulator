@@ -309,7 +309,7 @@ public static class PrototypeNativeOvergrowthRunFactory
                     PrototypeNativeOvergrowthEvents.NeowEventId,
                     OfferedChoiceIds:
                         PrototypeNativeOvergrowthEvents.GenerateNeowOfferedChoiceIds(rng)),
-                EventHistory:
+                EventHistory =
                 [
                     PrototypeNativeOvergrowthEvents.NeowEventId
                 ]
