@@ -192,6 +192,24 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     break;
                 }
 
+                case PrototypeRunEffectKind.LoseMaxHp:
+                {
+                    var amount = Math.Max(
+                        0,
+                        effect.Amount);
+                    var maxHp = Math.Max(
+                        1,
+                        player.MaxHp - amount);
+                    player = player with
+                    {
+                        MaxHp = maxHp,
+                        Hp = Math.Min(
+                            player.Hp,
+                            maxHp)
+                    };
+                    break;
+                }
+
                 case PrototypeRunEffectKind.FillPotionSlots:
                 {
                     if (!CanAcquirePotion(player))
@@ -267,6 +285,11 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 case PrototypeRunEffectKind.AddCard:
                     throw new NotSupportedException(
                         "Generic run effects do not currently create persistent cards directly.");
+
+                case PrototypeRunEffectKind.GainRelic:
+                case PrototypeRunEffectKind.GainPotion:
+                    throw new NotSupportedException(
+                        "Item acquisition run effects require run-state context.");
 
                 default:
                     throw new ArgumentOutOfRangeException();
