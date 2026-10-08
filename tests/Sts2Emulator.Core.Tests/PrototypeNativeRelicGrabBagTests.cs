@@ -4,6 +4,49 @@ namespace Sts2Emulator.Core.Tests;
 
 public sealed class PrototypeNativeRelicGrabBagTests
 {
+
+    [Theory]
+    [InlineData("proto.relic.anchor", 175)]
+    [InlineData("proto.relic.blood_vial", 175)]
+    [InlineData("proto.relic.nunchaku", 225)]
+    [InlineData("proto.relic.lucky_fysh", 225)]
+    [InlineData("proto.relic.old_coin", 275)]
+    [InlineData("proto.relic.kunai", 275)]
+    [InlineData("proto.relic.lees_waffle", 200)]
+    [InlineData("proto.relic.membership_card", 200)]
+    public void NativeMerchantUsesSourceRarityBaseCost(
+        string relicId, int expectedCost)
+    {
+        Assert.Equal(expectedCost,
+            PrototypeNativeRelicGrabBag.MerchantBaseCost(relicId));
+    }
+
+    [Fact]
+    public void NativeMerchantPriceRollsStayWithinRarityBounds()
+    {
+        var rng = PrototypeRng.CreateBundle("native-merchant-price");
+        foreach (var id in new[]
+        {
+            "proto.relic.anchor", "proto.relic.nunchaku",
+            "proto.relic.kunai", "proto.relic.membership_card"
+        })
+        {
+            var baseCost = PrototypeNativeRelicGrabBag.MerchantBaseCost(id);
+            var minimum = (int)Math.Round(baseCost * 0.85);
+            var maximum = (int)Math.Round(baseCost * 1.15);
+            for (var i = 0; i < 128; i++)
+            {
+                Assert.InRange(
+                    PrototypeNativeRelicGrabBag.MerchantPrice(id, rng),
+                    minimum, maximum);
+            }
+        }
+
+        Assert.Throws<InvalidOperationException>(() =>
+            PrototypeNativeRelicGrabBag.MerchantBaseCost(
+                "proto.relic.darkstone_periapt"));
+    }
+
     [Fact]
     public void NativeBagContainsOnlyPinnedSourceClassifiedRelics()
     {
@@ -130,6 +173,15 @@ public sealed class PrototypeNativeRelicGrabBagTests
             offer => PrototypeNativeRelicGrabBag.TryGetRarity(
                 offer.ItemId, out var rarity)
                 && rarity == PrototypeRelicRarity.Shop);
+        foreach (var offer in offers)
+        {
+            var baseCost =
+                PrototypeNativeRelicGrabBag.MerchantBaseCost(offer.ItemId);
+            Assert.InRange(offer.Price,
+                (int)Math.Round(baseCost * 0.85),
+                (int)Math.Round(baseCost * 1.15));
+            Assert.Equal(offer.Price, offer.UndiscountedPrice);
+        }
         PrototypeStateInvariants.Validate(state);
 
         var fork = state.Fork();
