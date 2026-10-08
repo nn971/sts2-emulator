@@ -968,3 +968,34 @@ character card pool and different RNG state. Regression coverage checks
 the Rare rarity, exactly one added card, card identity, relic ownership,
 post-Neow routing, and invariants. This is a native-shaped acquisition,
 not an exact seeded parity claim.
+
+
+## Neow acquisition and Dowsing lifecycle expansion (2026-10-08)
+
+Four further Neow relic outcomes now affect persistent canonical state:
+Precarious Shears removes two selected deck cards and costs 16 HP;
+Leafy Poultice loses 12 max HP and transforms the first Strike and
+Defend; Neow's Torment adds Neow's Fury; and Dowsing Rod adds the
+Dowsing quest card. Neow's Fury applies 10 (14) damage and optionally
+returns up to 2 (3) discard cards to hand, including a new reusable
+upgrade-sensitive card selection maximum.
+
+A persistent deck-card room-entry hook now counts **visible map Unknown
+nodes** for Dowsing. Its fifth Unknown entry transforms the same deck
+card into Abundance before the destination room begins. Abundance
+uses the generalized generated-card choice effect: three upgraded
+Power offers, exactly one selected, free until the current turn ends,
+and Exhaust on play. These additions reuse the normal run state,
+deck identity, combat choices, and canonical fork machinery.
+
+The prototype card/relic selection pools and RNG still differ from
+the native implementation. Neow's Fury's hand-size cap and
+Precarious Shears' deferred damage timing remain specific
+fidelity gaps. Regressions cover card and item gains, HP/deck identity,
+two-step removal, first-match transforms, optional discard retrieval,
+per-card quest progress and transformation, upgraded mandatory
+Power choices, and state invariants.
+
+Do not mistake this for full native Neow completion or validated
+seed parity. Further Neow effect families, Overgrowth event
+continuations, and native reward/shop economy remain.
