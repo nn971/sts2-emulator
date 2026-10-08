@@ -656,3 +656,15 @@ combat for exhausted Skills.
 Charon's Ashes, Joss Paper, and Forgotten Soul now exercise the existing CardExhausted event with
 all-enemy damage, thresholded draw, and random-target damage respectively. Exact ethereal deferral
 timing is intentionally postponed; the strategic exhaust-trigger behavior is represented now.
+
+
+## Mechanics-expansion pass: combat-start generated choices
+
+CombatStarted event dispatch can now suspend on a player choice and resume its remaining subscriber
+chain afterward. Generated-card choices can draw from the full implemented single-player reward pool
+instead of requiring a specific card type, and the "free this turn" modifier is now an independent
+option rather than hard-wired into every generated choice.
+
+Toolbox exercises this path by offering three temporary cards at combat start and adding the chosen
+card to hand at its normal cost. The current prototype places this choice after the opening hand draw;
+exact pre-draw native timing remains intentionally deferred.

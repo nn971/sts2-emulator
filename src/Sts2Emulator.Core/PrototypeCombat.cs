@@ -239,7 +239,8 @@ public sealed partial class PrototypeGameEngine
             combat,
             new PrototypeCombatEvent(
                 PrototypeCombatEventKind.CombatStarted),
-            state.Rng);
+            state.Rng,
+            allowSuspension: true);
         state = state with { Player = combatStarted.Player };
         combat = combatStarted.Combat;
 
@@ -2485,6 +2486,8 @@ public sealed partial class PrototypeGameEngine
                         effect.PlayerPowerOnFatalAmount,
                     GeneratedChoiceCardType:
                         effect.GeneratedChoiceCardType,
+                    GeneratedChoiceCardsFreeThisTurn:
+                        effect.GeneratedChoiceCardsFreeThisTurn,
                     SelectedCardTemporaryCost:
                         effect.SelectedCardTemporaryCost is null
                             ? null
@@ -3013,16 +3016,11 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.ChooseGeneratedCards:
                 {
-                    if (operation.GeneratedChoiceCardType is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Generated-card choice requires a card type.");
-                    }
-
                     var generated = AddGeneratedChoiceCards(
                         combat,
-                        operation.GeneratedChoiceCardType.Value,
+                        operation.GeneratedChoiceCardType,
                         operation.Amount,
+                        operation.GeneratedChoiceCardsFreeThisTurn,
                         rng);
                     combat = generated.Combat;
                     if (generated.CardInstanceIds.Length == 0)
@@ -3668,15 +3666,17 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypeGeneratedChoiceResult AddGeneratedChoiceCards(
         CombatState combat,
-        PrototypeCardType cardType,
+        PrototypeCardType? cardType,
         int count,
+        bool freeThisTurn,
         RngBundle rng)
     {
         var candidates = PrototypeContent.RewardCardPool
             .Where(cardId =>
             {
                 var definition = PrototypeContent.Card(cardId);
-                return definition.Type == cardType
+                return (cardType is null
+                        || definition.Type == cardType.Value)
                     && definition.CanBeGeneratedInCombat
                     && definition.MechanicsImplemented
                     && !definition.MultiplayerOnly;
@@ -3705,10 +3705,12 @@ public sealed partial class PrototypeGameEngine
                 IsTemporary: true,
                 State: PrototypeJson.EmptyObject(),
                 TemporaryEnergyCost:
-                    new PrototypeTemporaryCardCost(
-                        0,
-                        PrototypeTemporaryCardCostExpiry.EndOfTurn
-                        | PrototypeTemporaryCardCostExpiry.WhenPlayed));
+                    freeThisTurn
+                        ? new PrototypeTemporaryCardCost(
+                            0,
+                            PrototypeTemporaryCardCostExpiry.EndOfTurn
+                            | PrototypeTemporaryCardCostExpiry.WhenPlayed)
+                        : null);
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat,
                 instance);

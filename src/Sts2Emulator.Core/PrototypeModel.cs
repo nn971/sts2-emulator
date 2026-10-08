@@ -477,6 +477,7 @@ public sealed record PrototypeCombatEffectSpec(
     string? PlayerPowerOnFatalId = null,
     int PlayerPowerOnFatalAmount = 0,
     PrototypeCardType? GeneratedChoiceCardType = null,
+    bool GeneratedChoiceCardsFreeThisTurn = true,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
@@ -516,6 +517,7 @@ public sealed record PrototypeQueuedOperation(
     string? PlayerPowerOnFatalId = null,
     int PlayerPowerOnFatalAmount = 0,
     PrototypeCardType? GeneratedChoiceCardType = null,
+    bool GeneratedChoiceCardsFreeThisTurn = true,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null);
 
 public sealed record PrototypeRunEffectSpec(

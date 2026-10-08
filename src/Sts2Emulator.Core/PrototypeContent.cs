@@ -2499,6 +2499,19 @@ public static class PrototypeContent
                             1,
                             Target:
                                 PrototypeEffectTarget.RandomEnemy)])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.toolbox",
+                "Toolbox",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [new(
+                            PrototypeCombatEffectKind.ChooseGeneratedCards,
+                            3,
+                            GeneratedChoiceCardsFreeThisTurn:
+                                false)])
                 ])
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
@@ -6355,7 +6368,8 @@ public static class PrototypeContent
         "proto.relic.charons_ashes",
         "proto.relic.joss_paper",
         "proto.relic.burning_sticks",
-        "proto.relic.forgotten_soul"
+        "proto.relic.forgotten_soul",
+        "proto.relic.toolbox"
     ];
 
     public static string[] BossRelicPool { get; } =
