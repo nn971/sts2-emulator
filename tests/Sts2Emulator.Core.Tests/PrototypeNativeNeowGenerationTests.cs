@@ -244,6 +244,56 @@ public sealed class PrototypeNativeNeowGenerationTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void StoneHumidifierTriggersAfterRestHealButNotRestTraining()
+    {
+        var initial = PrototypeNativeOvergrowthRunFactory.Create(
+            "stone-humidifier-rest");
+        var world = initial.World!;
+        var restNode = world.Map.Nodes.First(node =>
+            node.Floor == PrototypeNativeOvergrowthMap.PreBossRestFloor);
+        var prepared = initial with
+        {
+            Phase = RunPhase.Rest,
+            Player = initial.Player with
+            {
+                Hp = 35,
+                Relics = initial.Player.Relics
+                    .Append(new RelicInstance(
+                        PrototypeNativeOvergrowthEvents
+                            .NeowRelicId("StoneHumidifier"),
+                        PrototypeJson.EmptyObject()))
+                    .ToArray()
+            },
+            World = world with
+            {
+                Floor = restNode.Floor,
+                ActiveRoom = PrototypeRoomType.Rest,
+                Event = null,
+                Map = world.Map with
+                {
+                    CurrentNodeId = restNode.NodeId
+                }
+            }
+        };
+
+        var engine = new PrototypeGameEngine();
+        PrototypeStateInvariants.Validate(prepared);
+        var healed = engine.Step(prepared,
+            GameAction.Empty("rest_heal")).State;
+        Assert.Equal(75, healed.Player.MaxHp);
+        Assert.Equal(61, healed.Player.Hp);
+        Assert.Equal(RunPhase.MapChoice, healed.Phase);
+        PrototypeStateInvariants.Validate(healed);
+
+        var trained = engine.Step(prepared,
+            GameAction.Empty("rest_train")).State;
+        Assert.Equal(74, trained.Player.MaxHp);
+        Assert.Equal(39, trained.Player.Hp);
+        Assert.Equal(RunPhase.MapChoice, trained.Phase);
+        PrototypeStateInvariants.Validate(trained);
+    }
+
     private static RunState ForceNeowOption(string seed, string name)
     {
         var state = PrototypeNativeOvergrowthRunFactory.Create(
