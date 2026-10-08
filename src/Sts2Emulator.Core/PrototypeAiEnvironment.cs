@@ -12,7 +12,10 @@ public sealed record PrototypeAiCard(
     string CardId,
     int UpgradeLevel,
     bool IsTemporary,
-    JsonElement State);
+    JsonElement State,
+    // The native UI reveals an affliction on each visible card.
+    // Never expose draw-pile order through this field.
+    PrototypeCardAffliction? Affliction = null);
 
 public sealed record PrototypeAiRelic(
     string RelicId,
@@ -46,7 +49,9 @@ public sealed record PrototypeAiCombat(
     PrototypeAiCard[] ExhaustPile,
     PrototypeAiCard[] PlayPile,
     PrototypeAiEnemy[] Enemies,
-    string? PendingChoiceId);
+    string? PendingChoiceId,
+    // Active player powers are visible on the combat HUD.
+    PrototypeAiPower[]? PlayerPowers = null);
 
 public sealed record PrototypeAiMapNode(
     string NodeId,
@@ -485,7 +490,10 @@ public sealed class PrototypeAiEnvironment
                 card.CardId,
                 card.UpgradeLevel,
                 card.IsTemporary,
-                card.State.Clone());
+                card.State.Clone(),
+                card.Affliction is null
+                    ? null
+                    : card.Affliction with { });
         }
 
         return new PrototypeAiCombat(
@@ -518,6 +526,10 @@ public sealed class PrototypeAiEnvironment
                     enemy.PowerStates.Select(power =>
                         new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray());
             }).ToArray(),
-            PendingChoiceId: combat.PendingChoice?.ChoiceId);
+            PendingChoiceId: combat.PendingChoice?.ChoiceId,
+            PlayerPowers: combat.PlayerPowers
+                .Select(power => new PrototypeAiPower(
+                    power.PowerId, power.Stacks))
+                .ToArray());
     }
 }

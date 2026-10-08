@@ -212,6 +212,18 @@ public sealed class PrototypeCeremonialBeastTests
         Assert.Equal(1, combat.CounterState.CardsPlayedThisTurn);
         Assert.DoesNotContain(engine.GetLegalActions(state), action =>
             action.Kind == "play_card");
+
+        var publicCombat = new PrototypeAiEnvironment()
+            .Observe(state).Observation.Combat!;
+        Assert.Contains(publicCombat.PlayerPowers!, power =>
+            power.PowerId == "proto.power.ringing");
+        var visibleShivs = publicCombat.Hand.Where(card =>
+            card.CardId == "proto.silent.shiv").ToArray();
+        Assert.Equal(3, visibleShivs.Length);
+        Assert.All(visibleShivs, card =>
+            Assert.Equal(PrototypeCardAfflictionKind.Ringing,
+                card.Affliction?.Kind));
+        Assert.Equal(combat.DrawPile.Length, publicCombat.DrawPileCount);
         PrototypeStateInvariants.Validate(state);
     }
 
@@ -257,6 +269,15 @@ public sealed class PrototypeCeremonialBeastTests
             cry.Cards.Single(card => card.InstanceId == 2).Affliction?.Kind);
         Assert.Equal(PrototypeCardAfflictionKind.Ringing,
             cry.Cards.Single(card => card.InstanceId == 3).Affliction?.Kind);
+
+        var visible = new PrototypeAiEnvironment().Observe(state)
+            .Observation.Combat!;
+        Assert.Equal(PrototypeCardAfflictionKind.Smog,
+            visible.Hand.Single(card => card.InstanceId == 2)
+                .Affliction?.Kind);
+        Assert.Equal(PrototypeCardAfflictionKind.Ringing,
+            visible.Hand.Single(card => card.InstanceId == 3)
+                .Affliction?.Kind);
 
         state = PlayCard(engine, state, 1);
         Assert.Contains(engine.GetLegalActions(state), action =>
