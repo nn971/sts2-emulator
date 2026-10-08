@@ -955,3 +955,16 @@ Regressions cover the source relic identity, single-player offer filtering,
 selected-card preservation/removal, continuation completion, and state
 invariants. CI status must be checked separately; this pass does not
 claim finished Neow or full Act 1 native generation.
+
+
+## Native-shaped Arcane Scroll acquisition (2026-10-08)
+
+Neow's Arcane Scroll now generates and adds exactly one Rare card using
+the existing persistent-card acquisition path, preserving canonical
+instance IDs and CardAdded hooks. The reusable `GainRandomRareCard` event
+effect draws only from the current single-player prototype reward pool,
+whereas the pinned native reward uses uniform Rare selection from the
+character card pool and different RNG state. Regression coverage checks
+the Rare rarity, exactly one added card, card identity, relic ownership,
+post-Neow routing, and invariants. This is a native-shaped acquisition,
+not an exact seeded parity claim.
