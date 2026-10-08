@@ -1694,6 +1694,7 @@ public sealed partial class PrototypeGameEngine
         for (var enemyIndex = 0; enemyIndex < enemies.Length; enemyIndex++)
         {
             var enemy = enemies[enemyIndex];
+            var wasAlive = enemy.Hp > 0;
             if (enemy.Hp <= 0)
             {
                 continue;
@@ -1782,6 +1783,17 @@ public sealed partial class PrototypeGameEngine
                 Statuses = statuses,
                 Powers = powers
             };
+            if (wasAlive && enemies[enemyIndex].Hp <= 0)
+            {
+                // Scheduled poison damage is processed directly in this
+                // stage rather than through LoseEnemyHp. It must still
+                // dispatch ally-death powers before other enemies act.
+                combat = ResolveAllyDeathPowers(
+                    combat with { Enemies = enemies }, enemy.InstanceId);
+                enemies = combat.Enemies
+                    .Select(item => item.Fork())
+                    .ToArray();
+            }
         }
 
         combat = combat with { Enemies = enemies };
