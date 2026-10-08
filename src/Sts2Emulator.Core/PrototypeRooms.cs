@@ -1679,11 +1679,15 @@ public sealed partial class PrototypeGameEngine
                 (Type: PrototypeCardType.Power, Count: 1)
             }
             .SelectMany(group =>
-                PickShopCards(
-                    world.Act,
-                    group.Count,
-                    state.Rng,
-                    group.Type))
+                nativeMerchant
+                    ? PrototypeNativeCardRarityOdds.GenerateMerchantCards(
+                        group.Count, state.Ascension, group.Type,
+                        world.CardRarityOffsetBasisPoints, state.Rng)
+                    : PickShopCards(
+                        world.Act,
+                        group.Count,
+                        state.Rng,
+                        group.Type))
             .ToArray();
 
         var offers = cardIds
@@ -2804,10 +2808,9 @@ public sealed partial class PrototypeGameEngine
 
         var cardChoiceCount =
             RewardCardChoiceCount(state.Player);
-        var cardOptions = PickRewardCards(
-            world.Act,
-            cardChoiceCount,
-            state.Rng);
+        var nativeOvergrowth = world.Act == 1
+            && world.Map.GenerationProfileId
+                == PrototypeNativeOvergrowthMap.GenerationProfileId;
         var extraCardRewardGroups =
             Math.Max(
                 0,
@@ -2816,22 +2819,40 @@ public sealed partial class PrototypeGameEngine
                 ? ExtraNormalCombatCardRewardGroups(
                     state.Player)
                 : 0);
-        var extraCardOptions = Enumerable.Range(
-                0,
-                extraCardRewardGroups)
-            .Select(_ => PickRewardCards(
-                world.Act,
-                cardChoiceCount,
-                state.Rng))
-            .ToArray();
+        string[] cardOptions;
+        string[][] extraCardOptions;
+        if (nativeOvergrowth)
+        {
+            var offset = world.CardRarityOffsetBasisPoints;
+            var first = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+                cardChoiceCount, state.Ascension, room, offset, state.Rng);
+            cardOptions = first.Cards;
+            offset = first.NextOffsetBasisPoints;
+            var extras = new List<string[]>();
+            for (var i = 0; i < extraCardRewardGroups; i++)
+            {
+                var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+                    cardChoiceCount, state.Ascension, room, offset, state.Rng);
+                extras.Add(next.Cards);
+                offset = next.NextOffsetBasisPoints;
+            }
+            extraCardOptions = extras.ToArray();
+            world = world with { CardRarityOffsetBasisPoints = offset };
+        }
+        else
+        {
+            cardOptions = PickRewardCards(
+                world.Act, cardChoiceCount, state.Rng);
+            extraCardOptions = Enumerable.Range(
+                    0, extraCardRewardGroups)
+                .Select(_ => PickRewardCards(
+                    world.Act, cardChoiceCount, state.Rng))
+                .ToArray();
+        }
 
         var silverCrucible = ApplySilverCrucibleToCardRewardGeneration(
             state.Player,
             1 + extraCardOptions.Length);
-
-        var nativeOvergrowth = world.Act == 1
-            && world.Map.GenerationProfileId
-                == PrototypeNativeOvergrowthMap.GenerationProfileId;
         string? potion;
         if (nativeOvergrowth)
         {

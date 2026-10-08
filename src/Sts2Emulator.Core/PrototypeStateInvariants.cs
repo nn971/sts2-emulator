@@ -51,6 +51,16 @@ public static class PrototypeStateInvariants
                 "Potion reward odds must preserve native 10-percent increments.");
         }
 
+        if (world.CardRarityOffsetBasisPoints <
+                PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints
+            || world.CardRarityOffsetBasisPoints >
+                PrototypeNativeCardRarityOdds.MaximumOffsetBasisPoints
+            || world.CardRarityOffsetBasisPoints % 50 != 0)
+        {
+            throw new InvalidOperationException(
+                "Native card-rarity offset is outside the source-shaped pity grid.");
+        }
+
         if (world.RelicBag is { } bag)
         {
             var remaining = bag.Remaining;

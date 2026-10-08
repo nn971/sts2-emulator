@@ -1771,7 +1771,9 @@ public sealed record RunWorldState(
     int ShopRemovalsUsed = 0,
     PrototypeRelicBagState? RelicBag = null,
     int PotionRewardOddsThousandths =
-        PrototypeNativePotionRewardOdds.InitialThousandths)
+        PrototypeNativePotionRewardOdds.InitialThousandths,
+    int CardRarityOffsetBasisPoints =
+        PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints)
 {
     public RunWorldState Fork() => this with
     {
