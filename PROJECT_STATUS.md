@@ -1308,4 +1308,21 @@ purchase settlement and sold/sale identity.
 Still missing from the native merchant inventory: two colorless
 card offers, relic rarity-class draw order / back-of-deque
 selection, native potion rarity prices, and exact float/RNG
-call order. Those are separate future increments.
+call order. The colorless offers are **explicitly postponed**;
+the other native merchant mechanics remain planned.
+
+## Explicitly deferred: colorless cards and offers (2026-10-08)
+
+The initial Silent/Overgrowth emulator does not implement a
+dedicated colorless-card pool. Therefore native merchants deliberately
+expose only their five character-card slots; the two native
+colorless-card slots are omitted, not filled with substitute Silent
+cards. Do not implement colorless cards, colorless merchant slots,
+or colorless reward generation in this development phase unless
+the user explicitly revisits this decision.
+
+Continue the single-player Silent/Overgrowth run-generation work
+on native relic rarity selection and pool ordering, potion
+generation/pricing, reward mechanics, and shop behavior without
+adding colorless content. Cross-character rewards and multiplayer
+mechanics remain out of scope for this milestone.
