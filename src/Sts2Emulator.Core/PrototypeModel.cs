@@ -97,6 +97,7 @@ public enum PrototypeCombatEffectKind
     GainPlayerBlockAndApplyPowerFromActualGain,
     ModifySourceCardEnergyCost,
     SetHandCardsEnergyCostUntilTurnEndOrPlayed,
+    SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
     ModifyEventSourceCardKeyword,
     GainPlayerBlockFromEnemyStatusTotal
 }
@@ -569,7 +570,8 @@ public sealed record PrototypeRelicTriggerSpec(
     PrototypeCardType? RequiredSourceCardType = null,
     bool ResetCounterEachTurn = false,
     int? MaxTriggersPerCounterWindow = null,
-    int? MaxAttacksPlayedLastTurn = null);
+    int? MaxAttacksPlayedLastTurn = null,
+    bool RequiresEmptyHand = false);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
@@ -607,7 +609,9 @@ public sealed record PrototypeRelicDefinition(
     bool PreventRestUpgrade = false,
     int MaxCardsPlayablePerTurn = 0,
     bool HideEnemyIntents = false,
-    PrototypeRelicDeckChoiceSpec? AcquisitionDeckChoice = null);
+    PrototypeRelicDeckChoiceSpec? AcquisitionDeckChoice = null,
+    bool PreventsHandDiscard = false,
+    int XValueBonus = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

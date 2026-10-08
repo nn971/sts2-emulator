@@ -788,11 +788,19 @@ public sealed partial class PrototypeGameEngine
             ? PrototypeCardZone.ExhaustPile
             : PrototypeCardZone.DiscardPile;
 
+        var effectEnergySpent =
+            definition.Cost.Kind == PrototypeCardCostKind.X
+                ? energySpent
+                    + state.Player.Relics.Sum(relic =>
+                        PrototypeContent.Relic(relic.RelicId)
+                            .XValueBonus)
+                : energySpent;
+
         var series = new PrototypeCardPlaySeriesState(
             SourceCardInstanceId: payload.CardInstanceId,
             SourceCardDestination: sourceDestination,
             TargetEnemyId: payload.TargetEnemyId,
-            EnergySpent: energySpent,
+            EnergySpent: effectEnergySpent,
             PlayCount: playCountResult.PlayCount,
             NextPlayIndex: 0,
             RemoveSourceCardOnCompletion:
@@ -1220,10 +1228,14 @@ public sealed partial class PrototypeGameEngine
                             PrototypeCardKeyword.Ethereal))
                     .ToArray();
                 var etherealSet = ethereal.ToHashSet();
-                var preserveHand = combat.PlayerPowers.Any(power =>
-                    power.Stacks > 0
-                    && PrototypeContent.Power(power.PowerId)
-                        .PreventsHandDiscard);
+                var preserveHand =
+                    combat.PlayerPowers.Any(power =>
+                        power.Stacks > 0
+                        && PrototypeContent.Power(power.PowerId)
+                            .PreventsHandDiscard)
+                    || player.Relics.Any(relic =>
+                        PrototypeContent.Relic(relic.RelicId)
+                            .PreventsHandDiscard);
                 var retained = combat.Hand
                     .Where(instanceId =>
                         !etherealSet.Contains(instanceId)
@@ -3263,6 +3275,47 @@ public sealed partial class PrototypeGameEngine
                         combat,
                         operation.Amount);
                     break;
+
+                case PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed:
+                {
+                    var candidates = combat.Hand
+                        .Select(instanceId =>
+                            RequireCombatCard(
+                                combat,
+                                instanceId))
+                        .Where(card =>
+                        {
+                            var definition =
+                                PrototypeContent.Card(
+                                    card.CardId);
+                            return !definition.Unplayable
+                                && definition.Cost.Kind
+                                    == PrototypeCardCostKind.Fixed
+                                && ResolveFixedCardEnergyCost(
+                                    combat,
+                                    card,
+                                    definition) > 0;
+                        })
+                        .ToArray();
+
+                    if (candidates.Length > 0)
+                    {
+                        var selected = candidates[
+                            PrototypeRng.NextInt(
+                                rng,
+                                "combat_card_selection",
+                                candidates.Length)];
+                        combat = SetCardTemporaryEnergyCost(
+                            combat,
+                            selected.InstanceId,
+                            new PrototypeTemporaryCardCost(
+                                Math.Max(0, operation.Amount),
+                                PrototypeTemporaryCardCostExpiry.EndOfTurn
+                                | PrototypeTemporaryCardCostExpiry.WhenPlayed));
+                    }
+
+                    break;
+                }
 
                 case PrototypeCombatEffectKind.ModifyEventSourceCardKeyword:
                     if (eventSourceCardInstanceId is null
@@ -5844,6 +5897,8 @@ public sealed partial class PrototypeGameEngine
                             || PrototypeContent.Card(
                                 combatEvent.CardId).Type
                                 != trigger.RequiredSourceCardType.Value))
+                    || (trigger.RequiresEmptyHand
+                        && combat.Hand.Length != 0)
                     || !RelicTriggerMatchesPlayer(
                         trigger,
                         player,

@@ -2409,7 +2409,40 @@ public static class PrototypeContent
                             1)],
                         MinTurn: 2,
                         MaxAttacksPlayedLastTurn: 0)
-                ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.chemical_x",
+                "Chemical X",
+                XValueBonus: 2),
+            new PrototypeRelicDefinition(
+                "proto.relic.mummified_hand",
+                "Mummified Hand",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [new(
+                            PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
+                            0)],
+                        RequiredSourceCardType:
+                            PrototypeCardType.Power)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.unceasing_top",
+                "Unceasing Top",
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [new(
+                            PrototypeCombatEffectKind.DrawCards,
+                            1)],
+                        RequiresEmptyHand: true)
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.runic_pyramid",
+                "Runic Pyramid",
+                PreventsHandDiscard: true)
         }.ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =

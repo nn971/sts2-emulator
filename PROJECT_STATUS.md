@@ -622,3 +622,16 @@ Event run effects now cover max-HP loss, relic acquisition, and named potion acq
 Named potion acquisition uses an empty slot immediately when available. On a full belt, the event suspends on a canonical potion-replacement continuation containing the offered potion and eligible occupied slots; the player/AI then explicitly chooses which potion to replace. Sozu suppresses potion-acquisition event branches. Event state can carry both a potion replacement and a deck continuation, and each continuation completes without reapplying the original event costs.
 
 Caged Vault exercises max-HP-for-Empty-Cage, HP-for-Old-Coin, gold-for-Strength-Potion, and a safe gold exit. Forbidden Archive exercises paired persistent card acquisition by offering Wraith Form together with an Infection downside card. Regression coverage verifies relic-sourced Empty Cage removals, Old Coin's acquisition trigger, full-belt potion replacement and AI exposure, empty-slot potion acquisition, Sozu legality filtering, and paired card addition with stable persistent IDs.
+
+
+## Mechanics-expansion pass: stateful strategic relics
+
+The emulator now supports four additional reusable relic mechanics. Chemical X contributes a
+relic-level X-value bonus without changing the actual energy paid. Mummified Hand uses a generic
+random-hand temporary-cost mutation after Power plays. Unceasing Top exercises a state-dependent
+relic trigger that draws after a card play leaves the hand empty. Runic Pyramid extends the generic
+end-turn hand-preservation policy from powers to relics while still resolving Ethereal first.
+
+These are intentionally mechanics-first implementations: exact native RNG stream details and edge
+timing remain deferred, but the strategic state transitions are represented through reusable fields
+and effects rather than relic-ID branches.
