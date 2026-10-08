@@ -45,94 +45,552 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static MapState GenerateActMap(int act, RngBundle rng)
+    private static MapState GenerateActMap(
+        int act,
+        RngBundle rng)
     {
         var rules = PrototypeContent.Rules;
-        var layers = new List<MapNodeState[]>();
+        var layers =
+            new List<MapNodeState[]>();
 
-        for (var floor = 1; floor <= rules.FloorsPerAct; floor++)
+        for (var floor = 1;
+             floor <= rules.FloorsPerAct;
+             floor++)
         {
-            var width = floor switch
-            {
-                var value when value == rules.FloorsPerAct => 1,
-                1 => 2,
-                var value when value == rules.FloorsPerAct - 1 => 2,
-                _ => 3
-            };
-
-            var floorRule = rules.MapFloorRules.SingleOrDefault(rule =>
-                floor >= rule.MinFloor && floor <= rule.MaxFloor)
-                ?? throw new InvalidOperationException(
-                    $"No prototype map rule covers floor {floor}.");
-
+            var floorRule =
+                GetMapFloorRule(floor);
             if (floorRule.RoomPool.Length == 0)
             {
                 throw new InvalidOperationException(
                     $"Prototype map rule for floor {floor} has an empty room pool.");
             }
 
-            var nodes = new MapNodeState[width];
-            var usedSpecialRooms = new HashSet<PrototypeRoomType>();
-            for (var index = 0; index < width; index++)
+            if (floorRule.MinNodes <= 0
+                || floorRule.MaxNodes
+                    < floorRule.MinNodes)
             {
-                var candidates = floorRule.RoomPool;
-                if (!floorRule.AllowDuplicateSpecialRooms)
-                {
-                    var filtered = candidates
-                        .Where(room =>
-                            room == PrototypeRoomType.Combat
-                            || !usedSpecialRooms.Contains(room))
-                        .ToArray();
-                    if (filtered.Length > 0)
-                    {
-                        candidates = filtered;
-                    }
-                }
-
-                var room = candidates[
-                    PrototypeRng.NextInt(rng, "map", candidates.Length)];
-                if (room != PrototypeRoomType.Combat)
-                {
-                    usedSpecialRooms.Add(room);
-                }
-
-                nodes[index] = new MapNodeState(
-                    NodeId: $"{act}:{floor}:{index}:{room}",
-                    Act: act,
-                    Floor: floor,
-                    RoomType: room,
-                    NextNodeIds: Array.Empty<string>());
+                throw new InvalidOperationException(
+                    $"Prototype map rule for floor {floor} has invalid width bounds.");
             }
 
+            var width = floorRule.MinNodes;
+            if (floorRule.MaxNodes
+                > floorRule.MinNodes)
+            {
+                width += PrototypeRng.NextInt(
+                    rng,
+                    "map",
+                    floorRule.MaxNodes
+                        - floorRule.MinNodes
+                        + 1);
+            }
+
+            var nodes = Enumerable.Range(
+                    0,
+                    width)
+                .Select(index =>
+                    new MapNodeState(
+                        NodeId:
+                            $"{act}:{floor}:{index}",
+                        Act: act,
+                        Floor: floor,
+                        RoomType:
+                            PrototypeRoomType.Combat,
+                        NextNodeIds:
+                            Array.Empty<string>()))
+                .ToArray();
             layers.Add(nodes);
         }
 
-        for (var layerIndex = 0; layerIndex < layers.Count - 1; layerIndex++)
+        for (var layerIndex = 0;
+             layerIndex < layers.Count - 1;
+             layerIndex++)
         {
-            var current = layers[layerIndex];
-            var next = layers[layerIndex + 1];
-
-            for (var nodeIndex = 0; nodeIndex < current.Length; nodeIndex++)
-            {
-                var targets = next.Length == 1
-                    ? new[] { next[0].NodeId }
-                    : new[]
-                    {
-                        next[nodeIndex % next.Length].NodeId,
-                        next[(nodeIndex + 1) % next.Length].NodeId
-                    }
-                    .Distinct(StringComparer.Ordinal)
-                    .ToArray();
-
-                current[nodeIndex] = current[nodeIndex] with { NextNodeIds = targets };
-            }
+            ConnectMapLayers(
+                layers[layerIndex],
+                layers[layerIndex + 1],
+                rng);
         }
 
-        var allNodes = layers.SelectMany(layer => layer).ToArray();
+        for (var layerIndex = 0;
+             layerIndex < layers.Count;
+             layerIndex++)
+        {
+            AssignMapRooms(
+                layers,
+                layerIndex,
+                GetMapFloorRule(
+                    layerIndex + 1),
+                rng);
+        }
+
+        var allNodes = layers
+            .SelectMany(layer => layer)
+            .ToArray();
         return new MapState(
             Nodes: allNodes,
             CurrentNodeId: null,
-            EntryNodeIds: layers[0].Select(node => node.NodeId).ToArray());
+            EntryNodeIds: layers[0]
+                .Select(node => node.NodeId)
+                .ToArray(),
+            GenerationProfileId:
+                PrototypeContent
+                    .MapGenerationProfileId);
+    }
+
+    private static PrototypeMapFloorRule
+        GetMapFloorRule(int floor) =>
+        PrototypeContent.Rules.MapFloorRules
+            .SingleOrDefault(rule =>
+                floor >= rule.MinFloor
+                && floor <= rule.MaxFloor)
+        ?? throw new InvalidOperationException(
+            $"No prototype map rule covers floor {floor}.");
+
+    private static void ConnectMapLayers(
+        MapNodeState[] current,
+        MapNodeState[] next,
+        RngBundle rng)
+    {
+        if (current.Length == 0
+            || next.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Prototype map layers cannot be empty.");
+        }
+
+        var targets = Enumerable.Range(
+                0,
+                current.Length)
+            .Select(_ =>
+                new List<string>())
+            .ToArray();
+        var incoming =
+            new int[next.Length];
+
+        if (next.Length == 1)
+        {
+            for (var sourceIndex = 0;
+                 sourceIndex < current.Length;
+                 sourceIndex++)
+            {
+                targets[sourceIndex].Add(
+                    next[0].NodeId);
+                incoming[0]++;
+            }
+        }
+        else
+        {
+            for (var nextIndex = 0;
+                 nextIndex < next.Length;
+                 nextIndex++)
+            {
+                var candidates =
+                    Enumerable.Range(
+                            0,
+                            current.Length)
+                        .Where(index =>
+                            targets[index].Count < 2)
+                        .ToArray();
+                var minTargetCount =
+                    candidates.Min(index =>
+                        targets[index].Count);
+                var balanced = candidates
+                    .Where(index =>
+                        targets[index].Count
+                            == minTargetCount)
+                    .ToArray();
+                var sourceIndex =
+                    balanced[
+                        PrototypeRng.NextInt(
+                            rng,
+                            "map",
+                            balanced.Length)];
+                targets[sourceIndex].Add(
+                    next[nextIndex].NodeId);
+                incoming[nextIndex]++;
+            }
+
+            for (var sourceIndex = 0;
+                 sourceIndex < current.Length;
+                 sourceIndex++)
+            {
+                if (targets[sourceIndex].Count > 0)
+                {
+                    continue;
+                }
+
+                var minIncoming =
+                    incoming.Min();
+                var candidates =
+                    Enumerable.Range(
+                            0,
+                            next.Length)
+                        .Where(index =>
+                            incoming[index]
+                                == minIncoming)
+                        .ToArray();
+                var nextIndex =
+                    candidates[
+                        PrototypeRng.NextInt(
+                            rng,
+                            "map",
+                            candidates.Length)];
+                targets[sourceIndex].Add(
+                    next[nextIndex].NodeId);
+                incoming[nextIndex]++;
+            }
+
+            if (targets.All(items =>
+                    items.Count == 1))
+            {
+                AddRandomSecondTarget(
+                    targets,
+                    current,
+                    next,
+                    incoming,
+                    rng);
+            }
+
+            if (incoming.All(count =>
+                    count <= 1))
+            {
+                AddRandomConvergence(
+                    targets,
+                    current,
+                    next,
+                    incoming,
+                    rng);
+            }
+
+            for (var sourceIndex = 0;
+                 sourceIndex < current.Length;
+                 sourceIndex++)
+            {
+                if (targets[sourceIndex].Count != 1
+                    || PrototypeRng.NextInt(
+                        rng,
+                        "map",
+                        100) >= 35)
+                {
+                    continue;
+                }
+
+                AddSecondTargetForSource(
+                    targets,
+                    sourceIndex,
+                    next,
+                    incoming,
+                    rng);
+            }
+        }
+
+        for (var sourceIndex = 0;
+             sourceIndex < current.Length;
+             sourceIndex++)
+        {
+            current[sourceIndex] =
+                current[sourceIndex] with
+                {
+                    NextNodeIds =
+                        targets[sourceIndex]
+                            .OrderBy(
+                                id => id,
+                                StringComparer.Ordinal)
+                            .ToArray()
+                };
+        }
+    }
+
+    private static void AddRandomSecondTarget(
+        List<string>[] targets,
+        MapNodeState[] current,
+        MapNodeState[] next,
+        int[] incoming,
+        RngBundle rng)
+    {
+        var candidates =
+            Enumerable.Range(
+                    0,
+                    current.Length)
+                .Where(index =>
+                    targets[index].Count < 2)
+                .ToArray();
+        if (candidates.Length == 0)
+        {
+            return;
+        }
+
+        var sourceIndex =
+            candidates[
+                PrototypeRng.NextInt(
+                    rng,
+                    "map",
+                    candidates.Length)];
+        AddSecondTargetForSource(
+            targets,
+            sourceIndex,
+            next,
+            incoming,
+            rng);
+    }
+
+    private static void AddRandomConvergence(
+        List<string>[] targets,
+        MapNodeState[] current,
+        MapNodeState[] next,
+        int[] incoming,
+        RngBundle rng)
+    {
+        var nextOrder =
+            Enumerable.Range(
+                    0,
+                    next.Length)
+                .OrderBy(_ =>
+                    PrototypeRng.NextInt(
+                        rng,
+                        "map",
+                        int.MaxValue))
+                .ToArray();
+
+        foreach (var nextIndex in nextOrder)
+        {
+            var sources =
+                Enumerable.Range(
+                        0,
+                        current.Length)
+                    .Where(sourceIndex =>
+                        targets[sourceIndex].Count < 2
+                        && !targets[sourceIndex]
+                            .Contains(
+                                next[nextIndex].NodeId,
+                                StringComparer.Ordinal))
+                    .ToArray();
+            if (sources.Length == 0)
+            {
+                continue;
+            }
+
+            var sourceIndex =
+                sources[
+                    PrototypeRng.NextInt(
+                        rng,
+                        "map",
+                        sources.Length)];
+            targets[sourceIndex].Add(
+                next[nextIndex].NodeId);
+            incoming[nextIndex]++;
+            return;
+        }
+    }
+
+    private static void AddSecondTargetForSource(
+        List<string>[] targets,
+        int sourceIndex,
+        MapNodeState[] next,
+        int[] incoming,
+        RngBundle rng)
+    {
+        if (targets[sourceIndex].Count >= 2)
+        {
+            return;
+        }
+
+        var available =
+            Enumerable.Range(
+                    0,
+                    next.Length)
+                .Where(index =>
+                    !targets[sourceIndex]
+                        .Contains(
+                            next[index].NodeId,
+                            StringComparer.Ordinal))
+                .ToArray();
+        if (available.Length == 0)
+        {
+            return;
+        }
+
+        var minIncoming =
+            available.Min(index =>
+                incoming[index]);
+        var balanced = available
+            .Where(index =>
+                incoming[index]
+                    == minIncoming)
+            .ToArray();
+        var nextIndex =
+            balanced[
+                PrototypeRng.NextInt(
+                    rng,
+                    "map",
+                    balanced.Length)];
+        targets[sourceIndex].Add(
+            next[nextIndex].NodeId);
+        incoming[nextIndex]++;
+    }
+
+    private static void AssignMapRooms(
+        List<MapNodeState[]> layers,
+        int layerIndex,
+        PrototypeMapFloorRule floorRule,
+        RngBundle rng)
+    {
+        var nodes = layers[layerIndex];
+        if (floorRule.RequiredRooms.Length
+            > nodes.Length)
+        {
+            throw new InvalidOperationException(
+                $"Floor {layerIndex + 1} requires more room types than it has nodes.");
+        }
+
+        if (floorRule.RequiredRooms.Any(room =>
+                !floorRule.RoomPool.Contains(room)))
+        {
+            throw new InvalidOperationException(
+                $"Floor {layerIndex + 1} requires a room outside its room pool.");
+        }
+
+        if (!floorRule.AllowDuplicateSpecialRooms
+            && floorRule.RequiredRooms
+                .Where(room =>
+                    room != PrototypeRoomType.Combat)
+                .GroupBy(room => room)
+                .Any(group =>
+                    group.Count() > 1))
+        {
+            throw new InvalidOperationException(
+                $"Floor {layerIndex + 1} requires duplicate special rooms.");
+        }
+
+        var assigned =
+            new PrototypeRoomType?[nodes.Length];
+        var usedSpecialRooms =
+            new HashSet<PrototypeRoomType>();
+
+        foreach (var requiredRoom in
+                 floorRule.RequiredRooms)
+        {
+            var candidateIndices =
+                Enumerable.Range(
+                        0,
+                        nodes.Length)
+                    .Where(index =>
+                        assigned[index] is null
+                        && CanAssignMapRoom(
+                            layers,
+                            layerIndex,
+                            index,
+                            requiredRoom,
+                            floorRule))
+                    .ToArray();
+            if (candidateIndices.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No valid node can host required room {requiredRoom} on floor {layerIndex + 1}.");
+            }
+
+            var index =
+                candidateIndices[
+                    PrototypeRng.NextInt(
+                        rng,
+                        "map",
+                        candidateIndices.Length)];
+            assigned[index] =
+                requiredRoom;
+            if (requiredRoom
+                != PrototypeRoomType.Combat)
+            {
+                usedSpecialRooms.Add(
+                    requiredRoom);
+            }
+        }
+
+        for (var index = 0;
+             index < nodes.Length;
+             index++)
+        {
+            if (assigned[index] is not null)
+            {
+                continue;
+            }
+
+            var candidates =
+                floorRule.RoomPool
+                    .Where(room =>
+                        (floorRule
+                            .AllowDuplicateSpecialRooms
+                         || room
+                            == PrototypeRoomType.Combat
+                         || !usedSpecialRooms
+                            .Contains(room))
+                        && CanAssignMapRoom(
+                            layers,
+                            layerIndex,
+                            index,
+                            room,
+                            floorRule))
+                    .ToArray();
+            if (candidates.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No room candidate is valid for floor {layerIndex + 1}, node {index}.");
+            }
+
+            var room =
+                candidates[
+                    PrototypeRng.NextInt(
+                        rng,
+                        "map",
+                        candidates.Length)];
+            assigned[index] = room;
+            if (room
+                != PrototypeRoomType.Combat)
+            {
+                usedSpecialRooms.Add(room);
+            }
+        }
+
+        for (var index = 0;
+             index < nodes.Length;
+             index++)
+        {
+            nodes[index] =
+                nodes[index] with
+                {
+                    RoomType =
+                        assigned[index]!.Value
+                };
+        }
+    }
+
+    private static bool CanAssignMapRoom(
+        List<MapNodeState[]> layers,
+        int layerIndex,
+        int nodeIndex,
+        PrototypeRoomType room,
+        PrototypeMapFloorRule floorRule)
+    {
+        if (!floorRule
+                .AvoidMatchingSpecialPredecessors
+            || room
+                == PrototypeRoomType.Combat
+            || layerIndex == 0)
+        {
+            return true;
+        }
+
+        var nodeId =
+            layers[layerIndex][nodeIndex]
+                .NodeId;
+        return !layers[layerIndex - 1]
+            .Any(predecessor =>
+                predecessor.RoomType == room
+                && (predecessor.NextNodeIds
+                        ?? Array.Empty<string>())
+                    .Contains(
+                        nodeId,
+                        StringComparer.Ordinal));
     }
 
     private static RunState StartEvent(RunState state)
