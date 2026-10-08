@@ -1214,3 +1214,12 @@ long-lived custom relic/card mechanics, source RNG parity,
 and ultimately a native Act 1 full-clear generation audit.
 Cross-character reward mechanics and sts2-ai changes remain
 out of scope.
+
+## Overgrowth event gold-roll expansion (2026-10-08)
+
+Luminous Choir tribute now has a generated 100–149 gold price and
+Sunken Statue dive a generated 101–121 gold reward, both sampled once
+on event entry and persisted in canonical event state. A single
+gold-value resolver serves legal-action filtering and effect settlement.
+Range invariants and event-level endpoint/rejection/fork regressions
+were added. Source-seeded RNG parity remains future work.

@@ -175,4 +175,90 @@ public sealed class PrototypeNativeEventOrderingTests
         Assert.Equal(13, state.Player.Deck.Length);
         PrototypeStateInvariants.Validate(state);
     }
+
+    [Theory]
+    [InlineData(101)]
+    [InlineData(121)]
+    public void SunkenStatueDiveUsesPersistedGoldRoll(int reward)
+    {
+        var state = EnterEvent("proto.native.event.sunken_statue",
+            "statue-gold-" + reward, nativeEventGold: reward);
+        var goldBefore = state.Player.Gold;
+        var hpBefore = state.Player.Hp;
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(state.Fork()));
+
+        state = Take(state, "dive");
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(goldBefore + reward, state.Player.Gold);
+        Assert.Equal(hpBefore - 7, state.Player.Hp);
+        Assert.Null(state.World!.Event);
+        Assert.Single(state.World.CompletedRooms,
+            room => room.RoomType == PrototypeRoomType.Event);
+    }
+
+    [Theory]
+    [InlineData(100)]
+    [InlineData(149)]
+    public void LuminousChoirPriceGovernsLegalActionsAndPayment(int price)
+    {
+        var state = EnterEvent("proto.native.event.luminous_choir",
+            "choir-price-" + price, nativeEventGold: price);
+        var engine = new PrototypeGameEngine();
+        var relicCount = state.Player.Relics.Length;
+        var tribute = GameAction.Create("event_choice",
+            new EventChoicePayload("tribute"));
+
+        state = state with
+        {
+            Player = state.Player with { Gold = price - 1 }
+        };
+        Assert.DoesNotContain(engine.GetLegalActions(state),
+            action => action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == "tribute");
+        Assert.Throws<InvalidOperationException>(
+            () => engine.Step(state, tribute));
+        PrototypeStateInvariants.Validate(state);
+
+        state = state with
+        {
+            Player = state.Player with { Gold = price }
+        };
+        Assert.Contains(engine.GetLegalActions(state),
+            action => action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == "tribute");
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(state.Fork()));
+        state = Take(state, "tribute");
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(0, state.Player.Gold);
+        Assert.Equal(relicCount + 1, state.Player.Relics.Length);
+        Assert.Null(state.World!.Event);
+    }
+
+    [Theory]
+    [InlineData("proto.native.event.sunken_statue", 100)]
+    [InlineData("proto.native.event.sunken_statue", 122)]
+    [InlineData("proto.native.event.luminous_choir", 99)]
+    [InlineData("proto.native.event.luminous_choir", 150)]
+    public void EventRollInvariantRejectsOutOfRangeValues(
+        string eventId, int invalidRoll)
+    {
+        var state = EnterEvent(eventId, "invalid-gold-roll");
+        state = state with
+        {
+            World = state.World! with
+            {
+                Event = state.World.Event! with
+                {
+                    NativeEventGold = invalidRoll
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => PrototypeStateInvariants.Validate(state));
+    }
 }

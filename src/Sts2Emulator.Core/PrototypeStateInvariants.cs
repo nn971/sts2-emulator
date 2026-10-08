@@ -485,6 +485,10 @@ public static class PrototypeStateInvariants
                     eventState.NativeEventGold is >= 61 and <= 99,
                 "proto.native.event.whispering_hollow" =>
                     eventState.NativeEventGold is >= 26 and <= 44,
+                "proto.native.event.sunken_statue" =>
+                    eventState.NativeEventGold is >= 101 and <= 121,
+                "proto.native.event.luminous_choir" =>
+                    eventState.NativeEventGold is >= 100 and <= 149,
                 _ => false
             }) == false)
         {

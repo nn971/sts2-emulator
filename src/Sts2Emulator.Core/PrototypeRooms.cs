@@ -666,6 +666,10 @@ public sealed partial class PrototypeGameEngine
                             61 + PrototypeRng.NextInt(state.Rng, "event", 39),
                         "proto.native.event.whispering_hollow" =>
                             26 + PrototypeRng.NextInt(state.Rng, "event", 19),
+                        "proto.native.event.sunken_statue" =>
+                            101 + PrototypeRng.NextInt(state.Rng, "event", 21),
+                        "proto.native.event.luminous_choir" =>
+                            100 + PrototypeRng.NextInt(state.Rng, "event", 50),
                         _ => 0
                     }),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
@@ -1006,19 +1010,15 @@ public sealed partial class PrototypeGameEngine
                     player = player with
                     {
                         Gold =
-                            player.Gold + effect.Amount
+                            player.Gold + ResolveEventGoldAmount(
+                                eventState, choice.Id, effect)
                     };
                     break;
 
                 case PrototypeRunEffectKind.LoseGold:
                 {
-                    var price =
-                        eventState.EventId ==
-                            "proto.native.event.whispering_hollow"
-                        && choice.Id == "gold"
-                        && eventState.NativeEventGold is >= 26 and <= 44
-                            ? eventState.NativeEventGold
-                            : effect.Amount;
+                    var price = ResolveEventGoldAmount(
+                        eventState, choice.Id, effect);
                     player = player with
                     {
                         Gold = player.Gold - price
@@ -1311,6 +1311,38 @@ public sealed partial class PrototypeGameEngine
             rng, "event", available.Length)];
     }
 
+    // Persisted event rolls determine both choice legality and settlement.
+    // Definitions supply a base amount for synthetic fixtures.
+    private static int ResolveEventGoldAmount(
+        EventState? eventState,
+        string choiceId,
+        PrototypeRunEffectSpec effect)
+    {
+        if (eventState is null)
+        {
+            return effect.Amount;
+        }
+
+        var rolled = eventState.NativeEventGold;
+        if ((eventState.EventId == "proto.native.event.whispering_hollow"
+                && choiceId == "gold"
+                && effect.Kind == PrototypeRunEffectKind.LoseGold
+                && rolled is >= 26 and <= 44)
+            || (eventState.EventId == "proto.native.event.luminous_choir"
+                && choiceId == "tribute"
+                && effect.Kind == PrototypeRunEffectKind.LoseGold
+                && rolled is >= 100 and <= 149)
+            || (eventState.EventId == "proto.native.event.sunken_statue"
+                && choiceId == "dive"
+                && effect.Kind == PrototypeRunEffectKind.GainGold
+                && rolled is >= 101 and <= 121))
+        {
+            return rolled;
+        }
+
+        return effect.Amount;
+    }
+
     private static bool CanTakeEventChoice(
         PlayerState player,
         PrototypeEventChoiceDefinition choice,
@@ -1328,7 +1360,8 @@ public sealed partial class PrototypeGameEngine
                 effect.Kind
                     == PrototypeRunEffectKind.LoseGold)
             .Sum(effect =>
-                Math.Max(0, effect.Amount));
+                Math.Max(0, ResolveEventGoldAmount(
+                    world.Event, choice.Id, effect)));
         if (goldCost > player.Gold)
         {
             return false;

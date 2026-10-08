@@ -361,9 +361,9 @@ public static class PrototypeNativeOvergrowthEvents
                         CardId: "proto.native.event.spore_mind")],
                     new PrototypeEventDeckChoiceSpec(
                         PrototypePersistentDeckChoiceKind.Remove, 2)),
-                new("tribute", "Pay gold, gain a relic (price approximate)",
+                new("tribute", "Pay 100–149 gold, gain a relic",
                     [
-                        new(PrototypeRunEffectKind.LoseGold, 120),
+                        new(PrototypeRunEffectKind.LoseGold, 149),
                         new(PrototypeRunEffectKind.GainRandomRelic)
                     ])
             ],
@@ -401,7 +401,7 @@ public static class PrototypeNativeOvergrowthEvents
                 new("grab", "Gain Sword of Stone (counter not yet modeled)",
                     [new(PrototypeRunEffectKind.GainRelic,
                         RelicId: "proto.native.event.sword_of_stone")]),
-                new("dive", "Lose 7 HP, gain gold (approximate)",
+                new("dive", "Lose 7 HP, gain 101–121 gold",
                     [
                         new(PrototypeRunEffectKind.LoseHp, 7),
                         new(PrototypeRunEffectKind.GainGold, 111)
