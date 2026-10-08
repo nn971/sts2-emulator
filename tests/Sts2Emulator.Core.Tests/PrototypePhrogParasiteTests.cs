@@ -40,10 +40,10 @@ public sealed class PrototypePhrogParasiteTests
 
         Assert.Collection(
             phrog.DeathSummons!,
-            first => AssertWrigglerSummon(first, 0, "bite"),
-            second => AssertWrigglerSummon(second, 1, "wriggle"),
-            third => AssertWrigglerSummon(third, 2, "bite"),
-            fourth => AssertWrigglerSummon(fourth, 3, "wriggle"));
+            first => AssertWrigglerSummon(first, 0, "wriggler1"),
+            second => AssertWrigglerSummon(second, 1, "wriggler2"),
+            third => AssertWrigglerSummon(third, 2, "wriggler3"),
+            fourth => AssertWrigglerSummon(fourth, 3, "wriggler4"));
     }
 
     [Fact]
