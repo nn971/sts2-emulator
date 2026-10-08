@@ -805,3 +805,32 @@ and legal-action suppression for unaffordable or duplicate-relic options.
 This is a generic event state-machine improvement, not a native-v0.111.0 event
 fidelity claim. Neither the emulator's AI training parent nor its code is changed
 as part of this pass.
+
+
+## Mechanics-expansion pass: acquisition-driven deck choices in shops
+
+Buying a relic with an `AcquisitionDeckChoice` (notably Empty Cage or
+Astrolabe) now suspends the shop on a canonical persistent-card selection
+prompt, just as acquiring the same relic from a combat reward does.
+The shop purchase is paid and marked sold once; the relic and its
+acquisition run hooks are applied once; subsequent deck-choice actions
+change only the persistent deck. The shop remains open when the last
+selection is resolved, with its remaining offers and prices intact.
+
+Shop/reward relic selections share the same reusable resolver to prevent
+divergence in eligibility checks, persistent instance ID retention, random
+transformation, upgrade outcome and remaining-candidate handling.
+The pending choice is deeply forked in `ShopState`, validated against
+the owned relic, its sold offer, the source specification and live deck,
+and projected into the existing `PrototypeAiDeckChoice` observation
+shape. While the prompt is pending, further shop purchases/removal/exit
+are blocked. If no eligible cards exist, acquiring the relic leaves the
+shop interactive without a spurious empty prompt.
+
+Regression tests cover Empty Cage's two removals, Astrolabe's three
+upgraded transforms, cost charged only once, the restoration of normal
+shop actions, observation visibility, fork isolation, absence of
+empty prompts and rejection of stale candidate IDs.
+
+This is a targeted consistency improvement in the single-player
+emulator; no parent AI repository was modified.
