@@ -86,7 +86,8 @@ internal static class PrototypeAiJsonlServer
                             wireSchemaId = WireSchemaId,
                             aiSchemaId = PrototypeAiEnvironment.SchemaId,
                             rulesetId = PrototypeContent.RulesetId,
-                            fairPolicyId = FairPolicyId
+                            fairPolicyId = FairPolicyId,
+                            hypotheticalDrawOrderId = PrototypeHypotheticalDrawOrder.SchemaId
                         });
                         break;
 
