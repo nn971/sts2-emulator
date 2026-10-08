@@ -1003,7 +1003,22 @@ public sealed partial class PrototypeGameEngine
                             "Player cannot acquire potions.");
                     }
 
-                    queuedPotionIds.Add(potionId);
+                    var emptySlot = Array.IndexOf(
+                        player.PotionSlots,
+                        null);
+                    if (emptySlot >= 0)
+                    {
+                        var slots = (PotionInstance?[])
+                            player.PotionSlots.Clone();
+                        slots[emptySlot] = new PotionInstance(
+                            potionId,
+                            PrototypeJson.EmptyObject());
+                        player = player with { PotionSlots = slots };
+                    }
+                    else
+                    {
+                        queuedPotionIds.Add(potionId);
+                    }
 
                     break;
                 }
