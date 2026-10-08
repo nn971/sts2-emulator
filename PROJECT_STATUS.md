@@ -668,3 +668,15 @@ option rather than hard-wired into every generated choice.
 Toolbox exercises this path by offering three temporary cards at combat start and adding the chosen
 card to hand at its normal cost. The current prototype places this choice after the opening hand draw;
 exact pre-draw native timing remains intentionally deferred.
+
+
+## Mechanics-expansion pass: utility combat potions
+
+Three additional shared potions are modeled from the pinned v0.111 source snapshot. Cure All combines
+the existing energy and draw primitives. Fortifier uses a reusable block multiplier and triples the
+player's current Block without applying card/Dexterity block modifiers.
+
+Stable Serum introduces a reusable post-hand-cleanup power timer. Its Retain Hand power preserves all
+non-Ethereal cards during hand cleanup, then decrements only after that cleanup has used the power.
+Applying two stacks therefore retains the hand across exactly two end-of-turn cleanups instead of
+using an off-by-one PlayerTurnEnded decrement or a potion-specific branch.

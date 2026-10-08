@@ -122,6 +122,106 @@ public sealed class PrototypePotionInteractionTests
     }
 
     [Fact]
+    public void CureAllGainsEnergyAndDrawsTwoCards()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend"),
+                Card(3, "proto.silent.backflip")
+            ],
+            hand: [1],
+            drawPile: [2, 3],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.cure_all",
+            energy: 0);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(1, combat.Energy);
+        Assert.Empty(combat.DrawPile);
+        Assert.Equal(3, combat.Hand.Length);
+        Assert.Contains(2, combat.Hand);
+        Assert.Contains(3, combat.Hand);
+    }
+
+    [Fact]
+    public void FortifierTriplesCurrentBlock()
+    {
+        var state = CreateState(
+            cards: [Card(1, "proto.silent.strike")],
+            hand: [1],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.fortifier",
+            playerBlock: 7);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(
+            21,
+            state.World!.Combat!.PlayerBlock);
+    }
+
+    [Fact]
+    public void StableSerumRetainsHandForExactlyTwoCleanups()
+    {
+        var state = CreateState(
+            cards:
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend")
+            ],
+            hand: [1, 2],
+            enemies: [Enemy(1, 100)],
+            potionId: "proto.potion.stable_serum",
+            playerBlock: 999);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        Assert.Equal(
+            2,
+            Assert.Single(
+                state.World!.Combat!.PlayerPowers,
+                power =>
+                    power.PowerId
+                        == "proto.power.retain_hand")
+                .Stacks);
+
+        for (var cleanup = 1; cleanup <= 2; cleanup++)
+        {
+            state = engine.Step(
+                state,
+                engine.GetLegalActions(state)
+                    .Single(action =>
+                        action.Kind == "end_turn")).State;
+
+            Assert.Contains(1, state.World!.Combat!.Hand);
+            Assert.Contains(2, state.World.Combat.Hand);
+            if (cleanup == 1)
+            {
+                Assert.Equal(
+                    1,
+                    Assert.Single(
+                        state.World.Combat.PlayerPowers,
+                        power =>
+                            power.PowerId
+                                == "proto.power.retain_hand")
+                        .Stacks);
+            }
+        }
+
+        Assert.DoesNotContain(
+            state.World!.Combat!.PlayerPowers,
+            power =>
+                power.PowerId
+                    == "proto.power.retain_hand");
+    }
+
+    [Fact]
     public void ReptileTrinketTriggersAfterPotionIsConsumed()
     {
         var state = CreateState(
@@ -201,7 +301,9 @@ public sealed class PrototypePotionInteractionTests
         EnemyCombatState[] enemies,
         string potionId,
         string? relicId = null,
-        int playerBlock = 0)
+        int playerBlock = 0,
+        long[]? drawPile = null,
+        int energy = 3)
     {
         var empty = PrototypeJson.EmptyObject();
         var potionSlots =
@@ -248,10 +350,10 @@ public sealed class PrototypePotionInteractionTests
             potionSlots);
         var combat = new CombatState(
             Turn: 1,
-            Energy: 3,
+            Energy: energy,
             PlayerBlock: playerBlock,
             Hand: hand,
-            DrawPile: [],
+            DrawPile: drawPile ?? [],
             DiscardPile: [],
             ExhaustPile: [],
             Enemies: enemies,

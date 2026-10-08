@@ -1969,7 +1969,34 @@ public static class PrototypeContent
                 PrototypeCardTarget.None,
                 [],
                 UsableOutsideCombat: true,
-                RunEffects: [new(PrototypeRunEffectKind.FillPotionSlots)])
+                RunEffects: [new(PrototypeRunEffectKind.FillPotionSlots)]),
+            new PrototypePotionDefinition(
+                "proto.potion.cure_all",
+                "Cure All",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainEnergy, 1),
+                    new(PrototypeCombatEffectKind.DrawCards, 2)
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.fortifier",
+                "Fortifier",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.MultiplyPlayerBlock,
+                        3)
+                ]),
+            new PrototypePotionDefinition(
+                "proto.potion.stable_serum",
+                "Stable Serum",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        2,
+                        PowerId: "proto.power.retain_hand")
+                ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
@@ -2783,6 +2810,13 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 AllowNegative: true,
                 RemoveAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.retain_hand",
+                "Retain Hand",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                PreventsHandDiscard: true,
+                DecrementAfterHandCleanup: true),
             new PrototypePowerDefinition(
                 "proto.power.tools_of_the_trade",
                 "Tools of the Trade",

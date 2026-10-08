@@ -1282,6 +1282,10 @@ public sealed partial class PrototypeGameEngine
                 combat = ClearTemporaryCardKeywordOverrides(
                     combat,
                     PrototypeCardKeywordOverrideExpiry.EndOfTurn);
+                combat = DecrementPlayerPowers(
+                    combat,
+                    definition =>
+                        definition.DecrementAfterHandCleanup);
 
                 break;
             }
@@ -2843,6 +2847,15 @@ public sealed partial class PrototypeGameEngine
                     };
                     break;
                 }
+
+                case PrototypeCombatEffectKind.MultiplyPlayerBlock:
+                    combat = combat with
+                    {
+                        PlayerBlock =
+                            combat.PlayerBlock
+                            * Math.Max(0, operation.Amount)
+                    };
+                    break;
 
                 case PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal:
                 {
