@@ -199,6 +199,17 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 "Event phase has no event state.");
 
+        if (eventState.PendingPotionReplacement is { } potionReplacement)
+        {
+            return potionReplacement.CandidateSlots
+                .Select(slot =>
+                    GameAction.Create(
+                        "replace_event_potion",
+                        new ReplaceEventPotionPayload(
+                            slot)))
+                .ToArray();
+        }
+
         if (eventState.PendingDeckChoice is { } pending)
         {
             return pending.CandidateCardInstanceIds
@@ -235,6 +246,45 @@ public sealed partial class PrototypeGameEngine
                 "Event phase has no event state.");
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
+
+        if (eventState.PendingPotionReplacement is { } potionReplacement)
+        {
+            RequireKind(
+                action,
+                "replace_event_potion");
+            var payload =
+                action.ReadPayload<
+                    ReplaceEventPotionPayload>();
+            if (!potionReplacement.CandidateSlots
+                    .Contains(payload.Slot))
+            {
+                throw new InvalidOperationException(
+                    $"Potion slot {payload.Slot} is not eligible for the event replacement.");
+            }
+
+            player = player with
+            {
+                PotionSlots = ReplacePotionSlot(
+                    player.PotionSlots,
+                    payload.Slot,
+                    potionReplacement.PotionId)
+            };
+            eventState = eventState with
+            {
+                PendingPotionReplacement = null
+            };
+            state = state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Event = eventState
+                }
+            };
+            return eventState.PendingDeckChoice is null
+                ? CompleteRoomToMap(state)
+                : state;
+        }
 
         if (eventState.PendingDeckChoice is { } pending)
         {
@@ -294,18 +344,21 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
+            eventState = eventState with
+            {
+                PendingDeckChoice = null
+            };
             state = state with
             {
                 Player = player,
                 World = world with
                 {
-                    Event = eventState with
-                    {
-                        PendingDeckChoice = null
-                    }
+                    Event = eventState
                 }
             };
-            return CompleteRoomToMap(state);
+            return eventState.PendingPotionReplacement is null
+                ? CompleteRoomToMap(state)
+                : state;
         }
 
         RequireKind(action, "event_choice");
@@ -326,6 +379,11 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 $"Event choice '{choice.Id}' cannot currently be taken.");
         }
+
+        PrototypePendingEventPotionReplacementState?
+            pendingPotionReplacement = null;
+        PrototypePendingEventDeckChoiceState?
+            relicAcquisitionDeckChoice = null;
 
         foreach (var effect in choice.Effects)
         {
@@ -374,6 +432,24 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeRunEffectKind.LoseMaxHp:
+                {
+                    var amount = Math.Max(
+                        0,
+                        effect.Amount);
+                    var maxHp = Math.Max(
+                        1,
+                        player.MaxHp - amount);
+                    player = player with
+                    {
+                        MaxHp = maxHp,
+                        Hp = Math.Min(
+                            player.Hp,
+                            maxHp)
+                    };
+                    break;
+                }
+
                 case PrototypeRunEffectKind.LoseHp:
                     player = player with
                     {
@@ -412,6 +488,114 @@ public sealed partial class PrototypeGameEngine
                         effect.CardId);
                     break;
 
+                case PrototypeRunEffectKind.GainRelic:
+                {
+                    var relicId = effect.RelicId
+                        ?? throw new InvalidOperationException(
+                            "Gain-relic event effect is missing a relic ID.");
+                    var relicDefinition =
+                        PrototypeContent.Relic(
+                            relicId);
+                    if (player.Relics.Any(relic =>
+                            StringComparer.Ordinal.Equals(
+                                relic.RelicId,
+                                relicId)))
+                    {
+                        throw new InvalidOperationException(
+                            $"Player already owns relic '{relicId}'.");
+                    }
+
+                    player = player with
+                    {
+                        Relics = player.Relics
+                            .Append(
+                                new RelicInstance(
+                                    relicId,
+                                    PrototypeJson.EmptyObject()))
+                            .ToArray()
+                    };
+                    player = ApplyRelicRunEvent(
+                        player,
+                        PrototypeRunEventKind.RelicAcquired,
+                        acquiredRelicId: relicId,
+                        rng: state.Rng);
+
+                    var relicChoice =
+                        CreateRelicEventDeckChoice(
+                            player,
+                            choice.Id,
+                            relicDefinition);
+                    if (relicChoice is not null)
+                    {
+                        if (relicAcquisitionDeckChoice is not null)
+                        {
+                            throw new InvalidOperationException(
+                                "An event choice cannot currently grant multiple relics that each require deck choices.");
+                        }
+
+                        relicAcquisitionDeckChoice =
+                            relicChoice;
+                    }
+
+                    break;
+                }
+
+                case PrototypeRunEffectKind.GainPotion:
+                {
+                    var potionId = effect.PotionId
+                        ?? throw new InvalidOperationException(
+                            "Gain-potion event effect is missing a potion ID.");
+                    _ = PrototypeContent.Potion(
+                        potionId);
+                    if (!CanAcquirePotion(player))
+                    {
+                        throw new InvalidOperationException(
+                            "Player cannot acquire potions.");
+                    }
+
+                    var emptySlot =
+                        Array.IndexOf(
+                            player.PotionSlots,
+                            null);
+                    if (emptySlot >= 0)
+                    {
+                        var slots =
+                            (PotionInstance?[])
+                            player.PotionSlots.Clone();
+                        slots[emptySlot] =
+                            new PotionInstance(
+                                potionId,
+                                PrototypeJson.EmptyObject());
+                        player = player with
+                        {
+                            PotionSlots = slots
+                        };
+                    }
+                    else
+                    {
+                        if (pendingPotionReplacement is not null)
+                        {
+                            throw new InvalidOperationException(
+                                "An event choice cannot currently queue multiple full-belt potion replacements.");
+                        }
+
+                        pendingPotionReplacement =
+                            new PrototypePendingEventPotionReplacementState(
+                                choice.Id,
+                                potionId,
+                                player.PotionSlots
+                                    .Select((potion, slot) =>
+                                        (Potion: potion, Slot: slot))
+                                    .Where(item =>
+                                        item.Potion is not null)
+                                    .Select(item =>
+                                        item.Slot)
+                                    .ToArray());
+                    }
+
+                    break;
+                }
+
                 case PrototypeRunEffectKind.FillPotionSlots:
                     player =
                         FillEmptyPotionSlots(
@@ -424,10 +608,20 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
-        var pendingChoice =
+        var explicitDeckChoice =
             CreateEventDeckChoice(
                 player,
                 choice);
+        if (explicitDeckChoice is not null
+            && relicAcquisitionDeckChoice is not null)
+        {
+            throw new InvalidOperationException(
+                "An event choice cannot currently combine an explicit deck choice with a relic acquisition deck choice.");
+        }
+
+        var pendingChoice =
+            explicitDeckChoice
+            ?? relicAcquisitionDeckChoice;
 
         state = state with
         {
@@ -439,7 +633,9 @@ public sealed partial class PrototypeGameEngine
                 {
                     ChosenChoiceId = choice.Id,
                     PendingDeckChoice =
-                        pendingChoice
+                        pendingChoice,
+                    PendingPotionReplacement =
+                        pendingPotionReplacement
                 }
             }
         };
@@ -452,6 +648,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         return pendingChoice is null
+            && pendingPotionReplacement is null
             ? CompleteRoomToMap(state)
             : state;
     }
@@ -482,6 +679,46 @@ public sealed partial class PrototypeGameEngine
             return false;
         }
 
+        foreach (var effect in choice.Effects)
+        {
+            if (effect.Kind
+                == PrototypeRunEffectKind.GainPotion)
+            {
+                if (effect.PotionId is null)
+                {
+                    throw new InvalidOperationException(
+                        "Gain-potion event effect is missing a potion ID.");
+                }
+
+                _ = PrototypeContent.Potion(
+                    effect.PotionId);
+                if (!CanAcquirePotion(player))
+                {
+                    return false;
+                }
+            }
+
+            if (effect.Kind
+                == PrototypeRunEffectKind.GainRelic)
+            {
+                if (effect.RelicId is null)
+                {
+                    throw new InvalidOperationException(
+                        "Gain-relic event effect is missing a relic ID.");
+                }
+
+                _ = PrototypeContent.Relic(
+                    effect.RelicId);
+                if (player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(
+                            relic.RelicId,
+                            effect.RelicId)))
+                {
+                    return false;
+                }
+            }
+        }
+
         if (choice.DeckChoice is not { } deckChoice)
         {
             return true;
@@ -500,6 +737,51 @@ public sealed partial class PrototypeGameEngine
                         card.CardId).Eternal,
                 _ => false
             });
+    }
+
+    private static PrototypePendingEventDeckChoiceState?
+        CreateRelicEventDeckChoice(
+            PlayerState player,
+            string choiceId,
+            PrototypeRelicDefinition relic)
+    {
+        var spec =
+            relic.AcquisitionDeckChoice;
+        if (spec is null
+            || spec.Selections <= 0)
+        {
+            return null;
+        }
+
+        var candidates = player.Deck
+            .Where(card =>
+                spec.Kind switch
+                {
+                    PrototypePersistentDeckChoiceKind.Remove =>
+                        !PrototypeContent.Card(
+                            card.CardId).Eternal,
+                    PrototypePersistentDeckChoiceKind.Upgrade =>
+                        card.UpgradeLevel == 0,
+                    PrototypePersistentDeckChoiceKind.Transform =>
+                        !PrototypeContent.Card(
+                            card.CardId).Eternal,
+                    _ => false
+                })
+            .Select(card =>
+                card.InstanceId)
+            .ToArray();
+        var selections = Math.Min(
+            spec.Selections,
+            candidates.Length);
+        return selections <= 0
+            ? null
+            : new PrototypePendingEventDeckChoiceState(
+                choiceId,
+                spec.Kind,
+                selections,
+                candidates,
+                spec.UpgradeTransformedCards,
+                SourceRelicId: relic.Id);
     }
 
     private static PrototypePendingEventDeckChoiceState?
