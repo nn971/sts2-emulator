@@ -429,6 +429,26 @@ public static class PrototypeStateInvariants
             PrototypeContent.Event(
                 eventState.EventId);
 
+        if (eventState.OfferedChoiceIds is { } offered
+            && (offered.Length == 0
+                || offered.Distinct(StringComparer.Ordinal).Count()
+                    != offered.Length
+                || offered.Any(id =>
+                    !definition.Choices.Any(choice =>
+                        StringComparer.Ordinal.Equals(choice.Id, id)))))
+        {
+            throw new InvalidOperationException(
+                "Event option offer list is empty, duplicated or unknown.");
+        }
+
+        if (eventState.EventId
+                == PrototypeNativeOvergrowthEvents.NeowEventId
+            && eventState.OfferedChoiceIds is { Length: not 3 })
+        {
+            throw new InvalidOperationException(
+                "Neow must offer exactly three distinct choices.");
+        }
+
         if (eventState.ChosenChoiceId is null)
         {
             if (eventState.PendingDeckChoice is not null
