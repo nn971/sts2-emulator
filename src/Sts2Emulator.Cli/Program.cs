@@ -10,6 +10,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
     Console.WriteLine("  prototype-native-overgrowth-map [seed] [ascension]");
     Console.WriteLine("                          Print source-shaped 15-row Act 1 map (not native RNG-exact)");
+    Console.WriteLine("  prototype-native-overgrowth-sweep [n] [ascension]");
+    Console.WriteLine("                          Validate native-shaped Act 1 generation across seeds");
     Console.WriteLine("  prototype-native-overgrowth-run [seed] [ascension]");
     Console.WriteLine("                          Run the opt-in native-shaped Act 1 in the prototype engine");
     Console.WriteLine("  prototype-run [seed] [ascension]");
@@ -563,6 +565,101 @@ switch (args[0])
             Console.WriteLine($"Floor {floor,2}: {string.Join(" | ", layer.Select(node =>
                 $"{node.NodeId} {node.RoomType} -> {string.Join(",", node.NextNodeIds ?? [])}"))}");
         }
+        break;
+    }
+
+    case "prototype-native-overgrowth-sweep":
+    {
+        var count = args.Length >= 2 ? int.Parse(args[1]) : 64;
+        var ascension = args.Length >= 3 ? int.Parse(args[2]) : 0;
+        if (count < 1 || ascension < 0)
+        {
+            throw new ArgumentException(
+                "Native Overgrowth sweep requires a positive count and nonnegative ascension.");
+        }
+
+        var engine = new PrototypeGameEngine();
+        var completed = 0;
+        var defeated = 0;
+        var encounteredRooms = new Dictionary<PrototypeRoomType, int>();
+        var reachedFloors = new Dictionary<int, int>();
+        var bossIds = new HashSet<string>(StringComparer.Ordinal);
+        for (var run = 0; run < count; run++)
+        {
+            var state = PrototypeNativeOvergrowthRunFactory.Create(
+                $"native-generation-sweep-{ascension}-{run}", ascension);
+            PrototypeStateInvariants.Validate(state);
+            var map = state.World!.Map;
+            if (map.GenerationProfileId
+                    != PrototypeNativeOvergrowthMap.GenerationProfileId
+                || map.Nodes.Select(node => node.Floor).Max()
+                    != PrototypeNativeOvergrowthMap.BossFloor)
+            {
+                throw new InvalidOperationException(
+                    $"Native Overgrowth generated invalid floor structure for run {run}.");
+            }
+
+            if (state.World.ActOneBossEncounterId is { } boss)
+            {
+                bossIds.Add(boss);
+            }
+
+            var settled = false;
+            for (var step = 0; step < 5000; step++)
+            {
+                if (state.Phase == RunPhase.Terminal
+                    || state.Phase == RunPhase.ActTransition
+                        && state.World?.Act == 1)
+                {
+                    settled = true;
+                    break;
+                }
+
+                var actions = engine.GetLegalActions(state);
+                if (actions.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Native Overgrowth run {run} stuck in phase {state.Phase}.");
+                }
+
+                state = engine.Step(
+                    state,
+                    ChoosePrototypeAction(state, actions)).State;
+                PrototypeStateInvariants.Validate(state);
+            }
+
+            if (!settled)
+            {
+                throw new InvalidOperationException(
+                    $"Native Overgrowth run {run} exceeded 5000 decisions.");
+            }
+
+            if (state.Phase == RunPhase.ActTransition)
+            {
+                completed++;
+            }
+            else
+            {
+                defeated++;
+            }
+
+            foreach (var room in state.World!.CompletedRooms)
+            {
+                encounteredRooms[room.RoomType] =
+                    encounteredRooms.GetValueOrDefault(room.RoomType) + 1;
+                reachedFloors[room.Floor] =
+                    reachedFloors.GetValueOrDefault(room.Floor) + 1;
+            }
+        }
+
+        Console.WriteLine($"Native-shaped Overgrowth sweep: {count} seeds / A{ascension}");
+        Console.WriteLine($"Act 1 cleared: {completed}; defeated: {defeated}");
+        Console.WriteLine($"Boss IDs observed: {string.Join(", ", bossIds.Order(StringComparer.Ordinal))}");
+        Console.WriteLine($"Completed rooms: {string.Join(", ",
+            encounteredRooms.OrderBy(pair => pair.Key).Select(pair =>
+                $"{pair.Key}={pair.Value}"))}");
+        Console.WriteLine($"Floors with completed rooms: {string.Join(", ",
+            reachedFloors.Keys.Order())}");
         break;
     }
 
