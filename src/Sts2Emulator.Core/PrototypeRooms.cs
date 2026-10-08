@@ -1040,6 +1040,20 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeRunEffectKind.GainPotionSlots:
+                    if (effect.Amount <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Potion slot increase must be positive.");
+                    }
+                    player = player with
+                    {
+                        PotionSlots = player.PotionSlots
+                            .Concat(new PotionInstance?[effect.Amount])
+                            .ToArray()
+                    };
+                    break;
+
                 case PrototypeRunEffectKind.GainRandomRareCard:
                 {
                     // Source-shaped Arcane Scroll reward: one Rare from the
