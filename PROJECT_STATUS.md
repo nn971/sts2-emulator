@@ -1182,3 +1182,35 @@ reroll its cost. Native-event invariants distinguish this
 price interval from Dense Vegetation's 61–99 gold reward.
 Targeted tests exercise both extreme prices with two generated
 potion rewards and normal room completion.
+
+
+## Sapphire Seed / Wood Carvings native effects (2026-10-08)
+
+Implemented persistent Sown and Slither card enchantments using
+the existing canonical CardInstance/CombatCardInstance models.
+Sown grants one energy on the first play per combat; Slither
+reassigns temporary combat energy cost to 0–3 on each draw.
+
+Wood Carvings now has exact **Basic-only** selected
+transformations to event-only Peck (1 energy, 2 damage x3,
+x4 upgraded) or Toric Toughness (2 energy, gain 5/7 block
+and two future renewals of the same amount). Snake now
+offers a real Slither selection screen. Sapphire Seed Plant
+now offers a real Sown selection screen. All selected
+transformations preserve persistent instance IDs and reset
+upgrade/runtime state.
+
+The generic event deck-choice model now records exact target
+card IDs, enchant types, and Basic-only eligibility, with
+consistent option filtering, pending choices, and invariants.
+Combat holds canonical per-card Sown trigger flags and
+Toric's remaining per-instance block renewals, with
+deep-forking and automated tests for persistence, choice
+eligibility, transformation, energy, cost rolls, and damage.
+See docs/reference-builds/v0.111.0-overgrowth-event-pages.md.
+
+Remaining work: region event-specific special rewards and
+long-lived custom relic/card mechanics, source RNG parity,
+and ultimately a native Act 1 full-clear generation audit.
+Cross-character reward mechanics and sts2-ai changes remain
+out of scope.
