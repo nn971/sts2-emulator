@@ -2838,9 +2838,7 @@ public sealed partial class PrototypeGameEngine
                         damageAmount = ModifyIncomingAttackDamage(
                             combat,
                             targetEnemyId.Value,
-                            damageAmount,
-                            includeCurrentCard:
-                                sourceCardInstanceId is not null);
+                            damageAmount);
                     }
 
                     var damageResult = DamageEnemy(
@@ -2986,9 +2984,7 @@ public sealed partial class PrototypeGameEngine
                                 echoDamageAmount = ModifyIncomingAttackDamage(
                                     combat,
                                     enemyId,
-                                    echoDamageAmount,
-                                    includeCurrentCard:
-                                        sourceCardInstanceId is not null);
+                                    echoDamageAmount);
                             }
 
                             var echoDamageResult = DamageEnemy(
@@ -5598,8 +5594,7 @@ public sealed partial class PrototypeGameEngine
     private static int ModifyIncomingAttackDamage(
         CombatState combat,
         int enemyId,
-        int damage,
-        bool includeCurrentCard = false)
+        int damage)
     {
         var enemy = combat.Enemies.SingleOrDefault(item => item.InstanceId == enemyId)
             ?? throw new InvalidOperationException($"Enemy {enemyId} is missing.");
@@ -5612,8 +5607,10 @@ public sealed partial class PrototypeGameEngine
                 / definition.IncomingAttackDamageDenominator;
         }
 
-        var cardsPlayed = combat.CounterState.CardsPlayedThisTurn
-            + (includeCurrentCard ? 1 : 0);
+        // Native SlowPower increments SlowAmount in AfterCardPlayed.
+        // Damage during a card's resolution therefore observes only
+        // previously completed plays, not the current card.
+        var cardsPlayed = combat.CounterState.CardsPlayedThisTurn;
         var percentBonus = enemy.PowerStates.Sum(power =>
             PrototypeContent.Power(power.PowerId)
                 .EnemyIncomingAttackDamagePercentPerCardPlayed

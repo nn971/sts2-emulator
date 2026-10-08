@@ -85,7 +85,7 @@ public sealed class PrototypeBygoneEffigyTests
     }
 
     [Fact]
-    public void SlowCountsCurrentCardBeforeAttackDamage()
+    public void SlowCountsOnlyCompletedCardPlaysBeforeAttackDamage()
     {
         var dash = Card(
             1,
@@ -106,7 +106,7 @@ public sealed class PrototypeBygoneEffigyTests
 
         var enemy = Assert.Single(
             state.World!.Combat!.Enemies);
-        Assert.Equal(116, enemy.Hp);
+        Assert.Equal(117, enemy.Hp);
         Assert.Equal(
             1,
             state.World.Combat.CounterState
@@ -145,11 +145,64 @@ public sealed class PrototypeBygoneEffigyTests
 
         var enemy = Assert.Single(
             state.World!.Combat!.Enemies);
-        Assert.Equal(118, enemy.Hp);
+        Assert.Equal(119, enemy.Hp);
         Assert.Equal(
             2,
             state.World.Combat.CounterState
                 .CardsPlayedThisTurn);
+    }
+
+    [Theory]
+    [InlineData(0, 8)]
+    [InlineData(2, 8)]
+    [InlineData(3, 10)]
+    public void CapturedA10SlowDaggerSprayHitsUsePreviouslyCompletedPlays(
+        int previousDefends, int expectedDamage)
+    {
+        // Oracle combat #6, Bygone Effigy, A10: Dagger Spray hits
+        // 4+4 when the 1st or 3rd card played, 5+5 when the 4th.
+        // Native SlowPower increments on AfterCardPlayed rather
+        // than before the current card's attack resolves.
+        var cards = new[]
+        {
+            Card(1, "proto.silent.defend"),
+            Card(2, "proto.silent.defend"),
+            Card(3, "proto.silent.defend"),
+            Card(4, "proto.silent.dagger_spray")
+        };
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(
+            ascension: 10,
+            cards: cards,
+            hand: cards.Select(card => card.InstanceId).ToArray());
+        state = state with
+        {
+            World = state.World! with
+            {
+                Combat = state.World.Combat! with { Energy = 4 }
+            }
+        };
+        for (var i = 0; i < previousDefends; i++)
+        {
+            var id = cards[i].InstanceId;
+            var defend = engine.GetLegalActions(state).Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>()
+                    .CardInstanceId == id);
+            state = engine.Step(state, defend).State;
+        }
+
+        var before = Assert.Single(state.World!.Combat!.Enemies).Hp;
+        var spray = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == 4);
+        state = engine.Step(state, spray).State;
+
+        var after = Assert.Single(state.World!.Combat!.Enemies).Hp;
+        Assert.Equal(expectedDamage, before - after);
+        Assert.Equal(previousDefends + 1,
+            state.World.Combat.CounterState.CardsPlayedThisTurn);
+        PrototypeStateInvariants.Validate(state);
     }
 
     [Fact]
