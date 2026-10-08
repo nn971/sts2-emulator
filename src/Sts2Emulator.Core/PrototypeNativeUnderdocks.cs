@@ -61,7 +61,9 @@ public static class PrototypeNativeUnderdocks
     public static string[] SupportedNormalEncounterIds { get; } =
     [
         "proto.encounter.corpse_slugs_normal",
-        "proto.encounter.punch_construct_normal"
+        "proto.encounter.punch_construct_normal",
+        "proto.encounter.cultists_normal",
+        "proto.encounter.fossil_stalker_normal"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
@@ -75,7 +77,24 @@ public static class PrototypeNativeUnderdocks
             BlockBonusPerStack: 0,
             Triggers: [],
             AllyDeathStrengthPerStack: 1,
-            StunOnAllyDeath: true)
+            StunOnAllyDeath: true),
+        // Ritual: gain Strength after each own side turn, except the turn
+        // on which the enemy first applies it.
+        new(
+            "proto.power.ritual",
+            "Ritual",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnemyStrengthAtSideTurnEndPerStack: 1,
+            SkipInitialEnemySideTurnEnd: true),
+        // Suck: Strength per unblocked powered attack hit, including
+        // multiple hits in a single monster attack command.
+        new(
+            "proto.power.suck",
+            "Suck",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            StrengthPerUnblockedAttackHitPerStack: 1)
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
@@ -124,6 +143,99 @@ public static class PrototypeNativeUnderdocks
                     new PrototypeEnemyAiStateDefinition(
                         "goop", PrototypeEnemyAiStateKind.Move,
                         MoveIndex: 2, NextStateId: "whip")
+                ])),
+        // CultistsNormal consists of one Calcified and one Damp Cultist.
+        // Both begin with Incantation and then repeat Dark Strike.
+        new(
+            "proto.enemy.calcified_cultist",
+            "Calcified Cultist",
+            41,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "incantation",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                        PowerId: "proto.power.ritual")]),
+                new PrototypeEnemyMoveDefinition(
+                    "dark_strike",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 9,
+                        AscensionDeltas: [new(9, 2)])])
+            ],
+            MoveLoopStartIndex: 1,
+            MinHp: 38,
+            HpAscensionDeltas: [new(8, 1)]),
+        new(
+            "proto.enemy.damp_cultist",
+            "Damp Cultist",
+            53,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "incantation",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyEnemyPower, 5,
+                        PowerId: "proto.power.ritual",
+                        AscensionDeltas: [new(9, 1)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "dark_strike",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 1,
+                        AscensionDeltas: [new(9, 2)])])
+            ],
+            MoveLoopStartIndex: 1,
+            MinHp: 51,
+            HpAscensionDeltas: [new(8, 1)]),
+        // Fossil Stalker opens with Latch; subsequently selects among
+        // Tackle, Latch and Lash at equal weights, including repeats.
+        new(
+            "proto.enemy.fossil_stalker",
+            "Fossil Stalker",
+            53,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "tackle",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 9,
+                            AscensionDeltas: [new(9, 2)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, 1,
+                            PowerId: "proto.power.frail")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "latch",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 12,
+                        AscensionDeltas: [new(9, 2)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "lash",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 3,
+                        Repetitions: 2,
+                        AscensionDeltas: [new(9, 1)])])
+            ],
+            StartingPowers: [new("proto.power.suck", 3)],
+            MinHp: 51,
+            HpAscensionDeltas: [new(8, 3)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "latch",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "latch", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "random"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "tackle", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "random"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "lash", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "random"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "random", PrototypeEnemyAiStateKind.Random,
+                        Branches: [new("tackle", 2), new("latch", 2), new("lash", 2)])
                 ])),
         // Native SludgeSpinner: 37–39 HP (A8: 41–42).
         // Forced Oil Spray, then uniform no-immediate-repeat branch
@@ -221,6 +333,22 @@ public static class PrototypeNativeUnderdocks
                 new("proto.enemy.corpse_slug", 2)
             ],
             CyclicOpeningAiStateIds: ["whip", "glomp", "goop"]),
+        new(
+            "proto.encounter.cultists_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.calcified_cultist", "proto.enemy.damp_cultist"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation:
+            [
+                new("proto.enemy.calcified_cultist", 0),
+                new("proto.enemy.damp_cultist", 1)
+            ]),
+        new(
+            "proto.encounter.fossil_stalker_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.fossil_stalker"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.fossil_stalker", 0)]),
         new(
             "proto.encounter.punch_construct_normal",
             PrototypeRoomType.Combat,
