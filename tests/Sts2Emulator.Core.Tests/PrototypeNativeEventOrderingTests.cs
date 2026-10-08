@@ -120,8 +120,9 @@ public sealed class PrototypeNativeEventOrderingTests
 
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(2, state.Player.PotionSlots.Count(p => p is not null));
-        Assert.All(state.Player.PotionSlots,
+        Assert.All(state.Player.PotionSlots.Where(p => p is not null),
             p => Assert.Contains(p!.PotionId, PrototypeContent.PotionPool));
+        Assert.Equal(3, state.Player.PotionSlots.Length);
         Assert.Null(state.World!.Event);
         PrototypeStateInvariants.Validate(state);
     }

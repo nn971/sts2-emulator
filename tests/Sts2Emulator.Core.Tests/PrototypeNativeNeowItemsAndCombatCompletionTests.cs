@@ -45,7 +45,7 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
     {
         var state = Pick("PhialHolster");
         Assert.Equal(RunPhase.MapChoice, state.Phase);
-        Assert.Equal(3, state.Player.PotionSlots.Length);
+        Assert.Equal(4, state.Player.PotionSlots.Length);
         Assert.Equal(2, state.Player.PotionSlots.Count(p => p is not null));
         Assert.All(state.Player.PotionSlots.Where(p => p is not null),
             p => Assert.Contains(p!.PotionId, PrototypeContent.PotionPool));
