@@ -449,7 +449,7 @@ public static class PrototypeNativeOvergrowthEvents
             "proto.native.event.whispering_hollow",
             "Whispering Hollow",
             [
-                new("gold", "Pay gold for two potions (price approximate)",
+                new("gold", "Pay 26–44 gold for two potions",
                     [
                         new(PrototypeRunEffectKind.LoseGold, 35),
                         new(PrototypeRunEffectKind.GainRandomPotion),
