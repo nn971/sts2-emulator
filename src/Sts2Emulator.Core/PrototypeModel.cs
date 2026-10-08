@@ -641,7 +641,8 @@ public enum PrototypePersistentDeckChoiceKind
 {
     Remove,
     Upgrade,
-    Transform
+    Transform,
+    Enchant
 }
 
 public sealed record PrototypeRelicDeckChoiceSpec(
@@ -1147,7 +1148,10 @@ public sealed record PrototypeStatusDefinition(
 public sealed record PrototypeEventDeckChoiceSpec(
     PrototypePersistentDeckChoiceKind Kind,
     int Selections,
-    bool UpgradeTransformedCards = false);
+    bool UpgradeTransformedCards = false,
+    string? TransformToCardId = null,
+    PrototypeCardEnchantmentKind? EnchantmentKind = null,
+    bool BasicCardsOnly = false);
 
 public sealed record PrototypeEventChoiceDefinition(
     string Id,
@@ -1649,7 +1653,10 @@ public sealed record PrototypePendingEventDeckChoiceState(
     int RemainingSelections,
     long[] CandidateCardInstanceIds,
     bool UpgradeTransformedCards = false,
-    string? SourceRelicId = null)
+    string? SourceRelicId = null,
+    string? TransformToCardId = null,
+    PrototypeCardEnchantmentKind? EnchantmentKind = null,
+    bool BasicCardsOnly = false)
 {
     public PrototypePendingEventDeckChoiceState Fork() => this with
     {
