@@ -85,11 +85,18 @@ public sealed record PrototypeAiEventPotionReplacement(
     string PotionId,
     int[] CandidateSlots);
 
+public sealed record PrototypeAiEventQueuedDeckChoice(
+    PrototypePersistentDeckChoiceKind Kind,
+    int RequestedSelections,
+    string? SourceRelicId);
+
 public sealed record PrototypeAiEvent(
     string EventId,
     string? ChosenChoiceId,
     PrototypeAiEventDeckChoice? PendingDeckChoice,
-    PrototypeAiEventPotionReplacement? PendingPotionReplacement = null);
+    PrototypeAiEventPotionReplacement? PendingPotionReplacement = null,
+    string[]? QueuedPotionIds = null,
+    PrototypeAiEventQueuedDeckChoice[]? QueuedDeckChoices = null);
 
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
@@ -392,7 +399,14 @@ public sealed class PrototypeAiEnvironment
                             world.Event.PendingPotionReplacement.ChoiceId,
                             world.Event.PendingPotionReplacement.PotionId,
                             (int[])world.Event.PendingPotionReplacement
-                                .CandidateSlots.Clone())),
+                                .CandidateSlots.Clone()),
+                    (string[])world.Event.RemainingPotionIds.Clone(),
+                    world.Event.RemainingDeckChoices
+                        .Select(request => new PrototypeAiEventQueuedDeckChoice(
+                            request.Kind,
+                            request.RemainingSelections,
+                            request.SourceRelicId))
+                        .ToArray()),
             MapGenerationProfileId:
                 world?.Map.GenerationProfileId,
             CompletedRooms: world is null
