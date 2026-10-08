@@ -3,10 +3,11 @@ namespace Sts2Emulator.Core;
 public sealed partial class PrototypeGameEngine
 {
     /// <summary>
-    /// Underdocks native-shaped weak selection. Only the explicitly
-    /// implemented weak encounter subset is playable. The first three
-    /// ordinary combats draw without replacement; unsupported room types
-    /// throw instead of using Overgrowth or unrelated prototype encounters.
+    /// Underdocks native-shaped ordinary selection. The first three
+    /// combats draw from all four weak encounters without replacement.
+    /// Later ordinary fights draw from a restricted implemented normal bag
+    /// without replacement. Unsupported region content does not fall back
+    /// to Overgrowth or legacy prototype encounters.
     /// </summary>
     private static (
         PrototypeEncounterDefinition Encounter,
@@ -31,42 +32,53 @@ public sealed partial class PrototypeGameEngine
                 "Do not substitute Overgrowth or legacy prototype enemies.");
         }
 
-        if (pool.OrdinaryCombatsStarted >= 3)
-        {
-            throw new NotSupportedException(
-                "Underdocks normal encounters are not implemented yet. " +
-                "The first three weak fights are the current supported scope.");
-        }
-
-        var remaining = pool.RemainingWeakEncounterIds;
+        var isWeak = pool.OrdinaryCombatsStarted < 3;
+        var remaining = isWeak
+            ? pool.RemainingWeakEncounterIds
+            : pool.RemainingNormalEncounterIds
+                ?? throw new InvalidOperationException(
+                    "Underdocks normal encounter bag is missing.");
         if (remaining.Length == 0)
         {
+            if (!isWeak)
+            {
+                throw new NotSupportedException(
+                    "The implemented Underdocks normal encounter bag is " +
+                    "exhausted. Remaining native normal encounters are " +
+                    "not implemented; refusing foreign encounter fallback.");
+            }
+
             throw new InvalidOperationException(
                 "Underdocks weak encounter pool was exhausted too early.");
+        }
+
+        var supportedPool = isWeak
+            ? PrototypeNativeUnderdocks.SupportedWeakEncounterIds
+            : PrototypeNativeUnderdocks.SupportedNormalEncounterIds;
+        if (remaining.Any(id =>
+                !supportedPool.Contains(id, StringComparer.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                $"Underdocks {(isWeak ? "weak" : "normal")} encounter " +
+                "bag contains an unsupported encounter.");
         }
 
         var selected = PrototypeRng.NextInt(
             state.Rng, "combat", remaining.Length);
         var encounterId = remaining[selected];
-        if (!PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
-                encounterId, StringComparer.Ordinal))
+        var nextRemaining = remaining
+            .Where((_, index) => index != selected)
+            .ToArray();
+        var nextPool = pool with
         {
-            throw new InvalidOperationException(
-                $"Unsupported Underdocks weak encounter '{encounterId}'.");
-        }
-
+            OrdinaryCombatsStarted = pool.OrdinaryCombatsStarted + 1,
+            RemainingWeakEncounterIds = isWeak
+                ? nextRemaining : pool.RemainingWeakEncounterIds,
+            RemainingNormalEncounterIds = isWeak
+                ? pool.RemainingNormalEncounterIds : nextRemaining
+        };
         return (
             PrototypeContent.Encounter(encounterId),
-            world with
-            {
-                ActOneEncounterPool = pool with
-                {
-                    OrdinaryCombatsStarted =
-                        pool.OrdinaryCombatsStarted + 1,
-                    RemainingWeakEncounterIds = remaining
-                        .Where((_, index) => index != selected)
-                        .ToArray()
-                }
-            });
+            world with { ActOneEncounterPool = nextPool });
     }
 }
