@@ -205,8 +205,8 @@ public static class PrototypeContent
                 CanBeGeneratedInCombat: false,
                 Type: PrototypeCardType.Attack),
             // Dowsing Rod adds the native Dowsing quest card.
-            // Its five-unknown-room Abundance transformation is
-            // explicitly deferred pending persistent-card room hooks.
+            // Visits to visible Unknown nodes persist as card state;
+            // the fifth visit transforms it into Abundance.
             new PrototypeCardDefinition(
                 "proto.native.neow.dowsing",
                 "Dowsing",
@@ -218,6 +218,27 @@ public static class PrototypeContent
                 RewardEligible: false,
                 MechanicsImplemented: false,
                 Type: PrototypeCardType.Quest),
+            // Dowsing's quest completion transforms into Abundance:
+            // choose one of three upgraded, free-this-turn Powers, Exhaust.
+            new PrototypeCardDefinition(
+                "proto.native.neow.abundance",
+                "Abundance",
+                new PrototypeCardCostSpec(
+                    PrototypeCardCostKind.Fixed, 1, UpgradeDelta: -1),
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ChooseGeneratedCards,
+                        3,
+                        GeneratedChoiceCardType: PrototypeCardType.Power,
+                        GeneratedChoiceCardsUpgraded: true,
+                        GeneratedChoiceMustPick: true)
+                ],
+                ExhaustOnUse: true,
+                Rarity: PrototypeCardRarity.Ancient,
+                RewardEligible: false,
+                CanBeGeneratedInCombat: false,
+                Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.native.event.guilty",
                 "Guilty",
