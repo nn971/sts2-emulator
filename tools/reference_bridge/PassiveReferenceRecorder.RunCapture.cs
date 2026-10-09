@@ -238,13 +238,20 @@ internal static partial class PassiveReferenceRecorder
 
         result["available"] = true;
         result["boundary"] = boundary;
-        result["current_room"] = SummarizeOpaque(
+        // RunState itself does not expose the input seed. The pinned
+        // RunRngSet.StringSeed does; ToSerializable() also retains it.
+        var rng = GetProperty(run, "Rng");
+        result["run_seed"] = rng is null
+            ? null : GetProperty(rng, "StringSeed");
+        result["current_map_coord"] = ProjectSerializable(
+            GetProperty(run, "CurrentMapCoord"), depth: 2);
+        result["current_room"] = SummarizeRoom(
             GetProperty(run, "CurrentRoom"));
-        result["base_room"] = SummarizeOpaque(
+        result["base_room"] = SummarizeRoom(
             GetProperty(run, "BaseRoom"));
         result["current_map_point"] = SummarizeMapPoint(
             GetProperty(run, "CurrentMapPoint"));
-        result["run_rng"] = CaptureRngSet(GetProperty(run, "Rng"));
+        result["run_rng"] = CaptureRngSet(rng);
         result["run_odds"] = ReadOptionalNamed(
             GetProperty(run, "Odds"),
             "UnknownMapPoint", "CardRarity", "Potion",
@@ -319,8 +326,14 @@ internal static partial class PassiveReferenceRecorder
         {
             var result = ReadNamed(nativeEvent,
                 "Id", "IsFinished", "LayoutType");
-            result["options"] = Enumerate(
-                    GetProperty(nativeEvent, "CurrentOptions"))
+            // EventModel.CurrentOptions lazily allocates its backing
+            // list. Reading the private field avoids even that nominal
+            // mutation in the observer; null means options not created.
+            var rawOptions = nativeEvent.GetType().GetField(
+                "_currentOptions",
+                BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.GetValue(nativeEvent);
+            result["options"] = Enumerate(rawOptions)
                 .Select(option => ReadNamed(option,
                     "TextKey", "IsLocked", "IsProceed", "WasChosen"))
                 .ToArray();
@@ -328,6 +341,21 @@ internal static partial class PassiveReferenceRecorder
                 GetProperty(nativeEvent, "Rng"));
             return (object)result;
         }).ToArray();
+    }
+
+    private static object? SummarizeRoom(object? room)
+    {
+        if (room is null)
+        {
+            return null;
+        }
+
+        // AbstractRoom.Id is a room-instance integer, whereas ModelId
+        // identifies the event/encounter model. Preserve both, plus room
+        // type and the parent event for nested event combats.
+        return ReadNamed(room,
+            "Id", "RoomType", "ModelId", "ParentEventId",
+            "ShouldResumeParentEventAfterCombat");
     }
 
     private static object? SummarizeMapPoint(object? point)
