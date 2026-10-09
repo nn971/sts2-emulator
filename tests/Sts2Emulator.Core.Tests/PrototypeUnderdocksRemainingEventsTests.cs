@@ -190,7 +190,7 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         {
             Assert.Equal("proto.enemy.punch_construct", enemy.EnemyId);
             Assert.InRange(enemy.Hp, 46, 53);
-            Assert.Contains(enemy.Powers, power =>
+            Assert.Contains(enemy.Powers!, power =>
                 power.PowerId == "proto.power.artifact");
         });
         Assert.Equal(1, combat.Enemies[0].MoveIndex);
