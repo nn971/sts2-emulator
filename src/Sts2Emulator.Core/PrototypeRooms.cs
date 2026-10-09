@@ -622,6 +622,9 @@ public sealed partial class PrototypeGameEngine
                 && (!nativeOvergrowth
                     || PrototypeNativeOvergrowthEvents.IsEligible(
                         evt, state.Player))
+                && (!nativeUnderdocks
+                    || PrototypeNativeUnderdocksEvents.IsEligible(
+                        evt, state.Player))
                 && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
                 && evt.Weight > 0
