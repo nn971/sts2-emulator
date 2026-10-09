@@ -42,6 +42,10 @@ public static class PrototypeNativeUnderdocksTrashHeap
         new("proto.native.trash_heap.the_boot", "The Boot")
     ];
 
+    // All seven Ironclad/Defect event cards are present for source-accurate
+    // rewards, but none is executable in this Silent-only implementation.
+    // Their card mechanics are intentionally postponed; do not replace a
+    // cross-character reward with a Silent card.
     public static PrototypeCardDefinition[] Cards { get; } =
     [
         new(
@@ -51,11 +55,9 @@ public static class PrototypeNativeUnderdocksTrashHeap
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
             Type: PrototypeCardType.Power),
         new(
-            CardIds[1], "Clash", 0, PrototypeCardTarget.Enemy,
-            [new(PrototypeCombatEffectKind.DamageEnemy, 14, 4)],
+            CardIds[1], "Clash", 0, PrototypeCardTarget.Enemy, [],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Attack,
-            PlayCondition: new(PrototypeCombatPredicateKind.OnlyAttacksInHand)),
+            Type: PrototypeCardType.Attack, MechanicsImplemented: false),
         new(
             CardIds[2], "Distraction",
             new(PrototypeCardCostKind.Fixed, 1, -1),
@@ -70,10 +72,9 @@ public static class PrototypeNativeUnderdocksTrashHeap
         new(
             CardIds[4], "Entrench",
             new(PrototypeCardCostKind.Fixed, 2, -1),
-            PrototypeCardTarget.None,
-            [new(PrototypeCombatEffectKind.MultiplyPlayerBlock, 2)],
+            PrototypeCardTarget.None, [],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Skill),
+            Type: PrototypeCardType.Skill, MechanicsImplemented: false),
         new(
             CardIds[5], "Hello World", 1, PrototypeCardTarget.None, [],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
@@ -86,24 +87,17 @@ public static class PrototypeNativeUnderdocksTrashHeap
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
             Type: PrototypeCardType.Skill),
         new(
-            CardIds[7], "Rebound", 1, PrototypeCardTarget.Enemy,
-            [new(PrototypeCombatEffectKind.DamageEnemy, 9, 3)],
+            CardIds[7], "Rebound", 1, PrototypeCardTarget.Enemy, [],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Attack,
-            MechanicsImplemented: false),
+            Type: PrototypeCardType.Attack, MechanicsImplemented: false),
         new(
-            CardIds[8], "Rip and Tear", 1, PrototypeCardTarget.None,
-            [new(PrototypeCombatEffectKind.DamageEnemy, 7, 2,
-                Target: PrototypeEffectTarget.RandomEnemy, Repetitions: 2)],
+            CardIds[8], "Rip and Tear", 1, PrototypeCardTarget.None, [],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Attack),
+            Type: PrototypeCardType.Attack, MechanicsImplemented: false),
         new(
-            CardIds[9], "Stack", 1, PrototypeCardTarget.None,
-            [new(PrototypeCombatEffectKind.GainPlayerBlock, 0, 3,
-                CountKind: PrototypeCombatCountKind.DiscardPileSize,
-                AmountPerCount: 1)],
+            CardIds[9], "Stack", 1, PrototypeCardTarget.None, [],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Skill)
+            Type: PrototypeCardType.Skill, MechanicsImplemented: false)
     ];
 }
 
