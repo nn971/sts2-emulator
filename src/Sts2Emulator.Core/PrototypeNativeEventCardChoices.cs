@@ -39,7 +39,17 @@ public sealed partial class PrototypeGameEngine
                     != PrototypeCardEnchantmentKind.Slither
                     || definition.Cost.Kind
                         == PrototypeCardCostKind.Fixed
-                    && definition.Cost.Amount >= 0),
+                    && definition.Cost.Amount >= 0)
+                // Source: Spiral.CanEnchant requires basic Strike/Defend
+                // tags. Other basic cards (e.g., Neutralize/Survivor)
+                // are deliberately excluded.
+                && (enchantmentKind
+                    != PrototypeCardEnchantmentKind.Spiral
+                    || definition.Rarity == PrototypeCardRarity.Basic
+                    && (definition.Tags?.Contains(
+                            "Strike", StringComparer.Ordinal) == true
+                        || definition.Tags?.Contains(
+                            "Defend", StringComparer.Ordinal) == true)),
             _ => false
         };
     }
