@@ -123,7 +123,9 @@ public sealed class PrototypeNativeUnderdocksEventsTests
         var state = PrototypeNativeUnderdocksRunFactory.Create(seed);
         var node = new MapNodeState(
             "test-underdocks-event", 1, 1,
-            PrototypeRoomType.Event, []);
+            PrototypeRoomType.Event, ["next-room"]);
+        var next = new MapNodeState(
+            "next-room", 1, 2, PrototypeRoomType.Combat, []);
         state = state with
         {
             Phase = RunPhase.MapChoice,
@@ -132,7 +134,7 @@ public sealed class PrototypeNativeUnderdocksEventsTests
                 Floor = 0,
                 ActiveRoom = null,
                 Map = new MapState(
-                    [node], CurrentNodeId: null,
+                    [node, next], CurrentNodeId: null,
                     EntryNodeIds: [node.NodeId],
                     GenerationProfileId:
                         PrototypeNativeUnderdocks.GenerationProfileId),
