@@ -1151,6 +1151,13 @@ public sealed partial class PrototypeGameEngine
                 state.Rng)
         };
 
+        if (world.Event is { } punchOff
+            && punchOff.EventId == PrototypeNativePunchOff.EventId
+            && punchOff.NativePageIndex == 2)
+        {
+            return EnterPunchOffReward(state);
+        }
+
         if (world.Event is { } pendingEvent
             && pendingEvent.EventId == PrototypeNativeDenseVegetation.EventId
             && pendingEvent.NativePageIndex == 2)
