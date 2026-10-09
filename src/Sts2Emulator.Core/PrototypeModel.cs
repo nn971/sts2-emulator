@@ -769,7 +769,13 @@ public sealed record PrototypePowerDefinition(
     bool StunOnAllyDeath = false,
     int EnemyStrengthAtSideTurnEndPerStack = 0,
     bool SkipInitialEnemySideTurnEnd = false,
-    int StrengthPerUnblockedAttackHitPerStack = 0);
+    int StrengthPerUnblockedAttackHitPerStack = 0,
+    int EnemyStartingBlockPerStack = 0,
+    int EnemyBlockAtSideTurnEndPerStack = 0,
+    int EnemyStacksDecayAtSideTurnStartAfterFirst = 0,
+    PrototypeCardAfflictionKind? SkillPlayAffliction = null,
+    bool BlockPlayOfMatchingAffliction = false,
+    bool ClearMatchingAfflictionAtPlayerTurnEnd = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -792,7 +798,8 @@ public enum PrototypeEnemyEffectKind
     ApplyPlayerPower,
     ApplyEnemyPower,
     AddCardsToDiscard,
-    SummonEnemy
+    SummonEnemy,
+    KillSelf
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -809,7 +816,8 @@ public sealed record PrototypeEnemyEffectSpec(
     bool IsAttack = true,
     PrototypeAscensionDelta[]? RepetitionAscensionDeltas = null,
     string? CardId = null,
-    string? EnemyId = null)
+    string? EnemyId = null,
+    string[]? SummonSlotNames = null)
 {
     public int AmountAt(
         int act,
