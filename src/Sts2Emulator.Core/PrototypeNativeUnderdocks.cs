@@ -74,7 +74,8 @@ public static class PrototypeNativeUnderdocks
 
     public static string[] SupportedEliteEncounterIds { get; } =
     [
-        "proto.encounter.skulking_colony_elite"
+        "proto.encounter.skulking_colony_elite",
+        "proto.encounter.phantasmal_gardeners_elite"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
@@ -141,7 +142,13 @@ public static class PrototypeNativeUnderdocks
             "Hardened Shell",
             BlockBonusPerStack: 0,
             Triggers: [],
-            EnemyHpLossLimitedPerSideTurnByStacks: true)
+            EnemyHpLossLimitedPerSideTurnByStacks: true),
+        new(
+            "proto.power.skittish",
+            "Skittish",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnemyBlockAfterFirstUnblockedCardAttackPerStack: 1)
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
@@ -640,6 +647,68 @@ public static class PrototypeNativeUnderdocks
             ],
             HpAscensionDeltas: [new(8, 5)],
             StartingPowers: [new("proto.power.hardened_shell", 20)]),
+        // Four native Phantasmal Gardeners are identical in stats but
+        // use their slot names for distinct opening moves, then each
+        // rotates Flail -> Enlarge -> Bite -> Lash -> Flail.
+        new(
+            "proto.enemy.phantasmal_gardener",
+            "Phantasmal Gardener",
+            31,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "bite",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 5)]),
+                new PrototypeEnemyMoveDefinition(
+                    "lash",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 7)]),
+                new PrototypeEnemyMoveDefinition(
+                    "flail",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 1,
+                        Repetitions: 3)]),
+                new PrototypeEnemyMoveDefinition(
+                    "enlarge",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                        PowerId: "proto.power.strength",
+                        AscensionDeltas: [new(9, 1)])])
+            ],
+            MinHp: 26,
+            HpAscensionDeltas: [new(8, 1)],
+            StartingPowers: [new("proto.power.skittish", 6, [new(8, 1)])],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "opening",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "opening", PrototypeEnemyAiStateKind.Conditional,
+                        ConditionalBranches:
+                        [
+                            new("flail", PrototypeEnemyAiConditionKind.SlotNameEquals,
+                                "first"),
+                            new("bite", PrototypeEnemyAiConditionKind.SlotNameEquals,
+                                "second"),
+                            new("lash", PrototypeEnemyAiConditionKind.SlotNameEquals,
+                                "third"),
+                            new("enlarge", PrototypeEnemyAiConditionKind.SlotNameEquals,
+                                "fourth")
+                        ]),
+                    new PrototypeEnemyAiStateDefinition(
+                        "bite", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "lash"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "lash", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "flail"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "flail", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "enlarge"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "enlarge", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 3, NextStateId: "bite")
+                ])),
         // Native SludgeSpinner: 37–39 HP (A8: 41–42).
         // Forced Oil Spray, then uniform no-immediate-repeat branch
         // between Oil Spray, Slam and Rage.
@@ -802,6 +871,23 @@ public static class PrototypeNativeUnderdocks
             ["proto.enemy.gremlin_merc"],
             MinAct: 1, MaxAct: 1, Weight: 0,
             Formation: [new("proto.enemy.gremlin_merc", 0, "merc")]),
+        new(
+            "proto.encounter.phantasmal_gardeners_elite",
+            PrototypeRoomType.Elite,
+            [
+                "proto.enemy.phantasmal_gardener",
+                "proto.enemy.phantasmal_gardener",
+                "proto.enemy.phantasmal_gardener",
+                "proto.enemy.phantasmal_gardener"
+            ],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation:
+            [
+                new("proto.enemy.phantasmal_gardener", 0, "first"),
+                new("proto.enemy.phantasmal_gardener", 1, "second"),
+                new("proto.enemy.phantasmal_gardener", 2, "third"),
+                new("proto.enemy.phantasmal_gardener", 3, "fourth")
+            ]),
         new(
             "proto.encounter.skulking_colony_elite",
             PrototypeRoomType.Elite,
