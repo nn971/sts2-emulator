@@ -201,7 +201,9 @@ public sealed partial class PrototypeGameEngine
                     InstanceId: index + 1,
                     EnemyId: enemySpec.EnemyId,
                     Hp: hp,
-                    Block: 0,
+                    Block: powers.Sum(power =>
+                        power.Stacks * PrototypeContent.Power(power.PowerId)
+                            .EnemyStartingBlockPerStack),
                     MoveIndex: 0,
                     Statuses: new Dictionary<string, int>(StringComparer.Ordinal),
                     Powers: powers,
@@ -212,6 +214,8 @@ public sealed partial class PrototypeGameEngine
                         ? null
                         : openingAiStates[(openingOffset + index)
                             % openingAiStates.Length],
+                    NonSummonMovesUntilEligible:
+                        definition.NonSummonMovesBeforeEligible,
                     LeaderEnemyInstanceId:
                         enemySpec.LeaderFormationPosition is
                             { } leaderFormationPosition
@@ -1780,6 +1784,7 @@ public sealed partial class PrototypeGameEngine
             }
 
             var strengthAtSideTurnEnd = 0;
+            var blockAtSideTurnEnd = 0;
             var powers = stage == PrototypeTurnStage.EnemyTurnEnd
                 ? enemy.PowerStates
                     .Where(power =>
@@ -1801,15 +1806,35 @@ public sealed partial class PrototypeGameEngine
                         strengthAtSideTurnEnd +=
                             power.Stacks
                             * definition.EnemyStrengthAtSideTurnEndPerStack;
+                        blockAtSideTurnEnd +=
+                            power.Stacks
+                            * definition.EnemyBlockAtSideTurnEndPerStack;
                         return power;
                     })
                     .ToArray()
-                : enemy.PowerStates;
+                : stage == PrototypeTurnStage.EnemyTurnStart
+                  && combat.Turn > 1
+                    ? enemy.PowerStates
+                        .Select(power => power with
+                        {
+                            Stacks = power.Stacks -
+                                PrototypeContent.Power(power.PowerId)
+                                    .EnemyStacksDecayAtSideTurnStartAfterFirst
+                        })
+                        .Where(power => power.Stacks > 0
+                            || PrototypeContent.Power(power.PowerId)
+                                .AllowNegative)
+                        .ToArray()
+                    : enemy.PowerStates;
 
             enemies[enemyIndex] = enemy with
             {
                 Statuses = statuses,
-                Powers = powers
+                Powers = powers,
+                Block = enemy.Block + blockAtSideTurnEnd,
+                SharedSummonUsedThisTurn =
+                    stage == PrototypeTurnStage.EnemyTurnStart
+                        ? false : enemy.SharedSummonUsedThisTurn
             };
 
             if (enemy.Hp > 0 && strengthAtSideTurnEnd > 0)
@@ -2026,7 +2051,8 @@ public sealed partial class PrototypeGameEngine
                                 definition,
                                 enemy,
                                 states,
-                                branch))
+                                branch,
+                                formation))
                         .ToArray();
                     if (legal.Length == 0)
                     {
@@ -2138,7 +2164,8 @@ public sealed partial class PrototypeGameEngine
         IReadOnlyDictionary<
             string,
             PrototypeEnemyAiStateDefinition> states,
-        PrototypeEnemyAiBranch branch)
+        PrototypeEnemyAiBranch branch,
+        IReadOnlyList<EnemyCombatState> formation)
     {
         if (!states.TryGetValue(
                 branch.TargetStateId,
@@ -2156,6 +2183,24 @@ public sealed partial class PrototypeGameEngine
 
         var move = definition.Moves[
             target.MoveIndex.Value];
+
+        if (branch.RequiresAvailableSummon)
+        {
+            var summon = move.Effects.FirstOrDefault(effect =>
+                effect.Kind == PrototypeEnemyEffectKind.SummonEnemy);
+            var slots = summon?.SummonSlotNames;
+            if (definition.MaxCoordinatedSummons <= 0
+                || enemy.NonSummonMovesUntilEligible > 0
+                || enemy.SharedSummonsUsed >= definition.MaxCoordinatedSummons
+                || enemy.SharedSummonUsedThisTurn
+                || slots is not { Length: > 0 }
+                || !slots.Any(slot => !formation.Any(candidate =>
+                    candidate.Hp > 0
+                    && StringComparer.Ordinal.Equals(candidate.SlotName, slot))))
+            {
+                return false;
+            }
+        }
 
         return branch.RepeatRule switch
         {
@@ -2327,6 +2372,10 @@ public sealed partial class PrototypeGameEngine
                             break;
                         }
 
+                        case PrototypeEnemyEffectKind.KillSelf:
+                            enemy = enemy with { Hp = 0, Block = 0 };
+                            break;
+
                         case PrototypeEnemyEffectKind.GainBlock:
                             enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
                             break;
@@ -2423,12 +2472,30 @@ public sealed partial class PrototypeGameEngine
                                 .Where(power =>
                                     power.Stacks > 0)
                                 .ToArray();
+                            var summonSlots = effect.SummonSlotNames;
+                            string? selectedSlot = null;
+                            if (summonSlots is { Length: > 0 })
+                            {
+                                selectedSlot = summonSlots
+                                    .Reverse()
+                                    .FirstOrDefault(slot =>
+                                        !enemies.Any(item =>
+                                            item.Hp > 0
+                                            && StringComparer.Ordinal.Equals(
+                                                item.SlotName, slot)));
+                                if (selectedSlot is null)
+                                {
+                                    break;
+                                }
+                            }
+
                             var nextFormationPosition =
-                                enemies.Count == 0
-                                    ? 0
-                                    : enemies.Max(item =>
-                                        item.FormationPosition)
-                                      + 1;
+                                selectedSlot is null
+                                    ? (enemies.Count == 0
+                                        ? 0
+                                        : enemies.Max(item =>
+                                            item.FormationPosition) + 1)
+                                    : Array.IndexOf(summonSlots!, selectedSlot);
 
                             enemies.Add(
                                 new EnemyCombatState(
@@ -2443,11 +2510,44 @@ public sealed partial class PrototypeGameEngine
                                     Powers: powers,
                                     FormationPosition:
                                         nextFormationPosition,
+                                    SlotName: selectedSlot,
                                     LeaderEnemyInstanceId:
                                         summonedDefinition.IsMinion
                                             ? enemy.InstanceId
                                             : null,
-                                    SkipNextEnemyAction: true));
+                                    SkipNextEnemyAction: true,
+                                    NonSummonMovesUntilEligible:
+                                        summonedDefinition.NonSummonMovesBeforeEligible,
+                                    SharedSummonsUsed:
+                                        definition.MaxCoordinatedSummons > 0
+                                            ? enemy.SharedSummonsUsed + 1
+                                            : 0));
+                            if (definition.MaxCoordinatedSummons > 0)
+                            {
+                                // Coordinated summons share a global
+                                // squad budget and reserve this turn.
+                                var used = enemy.SharedSummonsUsed + 1;
+                                enemy = enemy with
+                                {
+                                    SharedSummonsUsed = used,
+                                    SharedSummonUsedThisTurn = true
+                                };
+                                for (var otherIndex = 0;
+                                     otherIndex < enemies.Count;
+                                     otherIndex++)
+                                {
+                                    if (StringComparer.Ordinal.Equals(
+                                            enemies[otherIndex].EnemyId,
+                                            enemy.EnemyId))
+                                    {
+                                        enemies[otherIndex] = enemies[otherIndex] with
+                                        {
+                                            SharedSummonsUsed = used,
+                                            SharedSummonUsedThisTurn = true
+                                        };
+                                    }
+                                }
+                            }
                             combat = combat with
                             {
                                 NextPowerApplicationOrder =
@@ -2531,6 +2631,10 @@ public sealed partial class PrototypeGameEngine
             enemies[index] = enemy with
             {
                 MoveIndex = enemy.MoveIndex + 1,
+                NonSummonMovesUntilEligible = move.Effects.Any(effect =>
+                    effect.Kind == PrototypeEnemyEffectKind.SummonEnemy)
+                    ? enemy.NonSummonMovesUntilEligible
+                    : Math.Max(0, enemy.NonSummonMovesUntilEligible - 1),
                 LastMoveId = move.Id,
                 ConsecutiveMoveUses = consecutiveUses,
                 AiStateId = selection.NextAiStateId,
@@ -5112,6 +5216,19 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         CombatCardInstance card)
     {
+        // Smoggy disallows playing a Skill while the card carries Smog.
+        // Its affliction is cleared at the end of the player's turn.
+        if (card.Affliction is { } affliction
+            && combat.PlayerPowers.Any(power =>
+                power.Stacks > 0
+                && PrototypeContent.Power(power.PowerId)
+                    .BlockPlayOfMatchingAffliction
+                && PrototypeContent.Power(power.PowerId)
+                    .SkillPlayAffliction == affliction.Kind))
+        {
+            return false;
+        }
+
         // Native RingingPower.ShouldPlay checks the Ringing affliction
         // on the candidate card. A card already afflicted by something
         // else never receives Ringing and remains playable even after
@@ -6183,6 +6300,20 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
+            if (definition.SkillPlayAffliction is
+                    { } skillAffliction
+                && combat.CounterState.SkillsPlayedThisTurn > 0
+                && PrototypeContent.Card(card.CardId).Type
+                    == PrototypeCardType.Skill
+                && card.Affliction is null)
+            {
+                return card with
+                {
+                    Affliction = new PrototypeCardAffliction(
+                        skillAffliction)
+                };
+            }
+
             if (definition.AppliedCardAffliction is
                     { } appliedAfflictionKind)
             {
@@ -6602,6 +6733,57 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
+        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
+            && combatEvent.CardId is { } playedCardId
+            && PrototypeContent.Card(playedCardId).Type
+                == PrototypeCardType.Skill)
+        {
+            foreach (var power in combat.PlayerPowers)
+            {
+                var definition = PrototypeContent.Power(power.PowerId);
+                if (power.Stacks > 0
+                    && definition.SkillPlayAffliction is { } kind)
+                {
+                    combat = combat with
+                    {
+                        Cards = combat.Cards.Select(card =>
+                            PrototypeContent.Card(card.CardId).Type
+                                == PrototypeCardType.Skill
+                            && card.Affliction is null
+                                ? card with
+                                {
+                                    Affliction = new PrototypeCardAffliction(kind)
+                                }
+                                : card).ToArray()
+                    };
+                }
+            }
+        }
+
+        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
+        {
+            var clearKinds = combat.PlayerPowers
+                .Where(power => power.Stacks > 0
+                    && PrototypeContent.Power(power.PowerId)
+                        .ClearMatchingAfflictionAtPlayerTurnEnd)
+                .Select(power => PrototypeContent.Power(power.PowerId)
+                    .SkillPlayAffliction)
+                .OfType<PrototypeCardAfflictionKind>()
+                .ToHashSet();
+            if (clearKinds.Count > 0)
+            {
+                combat = combat with
+                {
+                    Cards = combat.Cards.Select(card =>
+                        card.Affliction is { SourceEnemyInstanceId: null }
+                            affliction
+                        && clearKinds.Contains(affliction.Kind)
+                            ? card with { Affliction = null }
+                            : card).ToArray()
+                };
+            }
+        }
+
         var subscribers = new List<PrototypeEventSubscriberState>();
 
         foreach (var power in combat.PlayerPowers)

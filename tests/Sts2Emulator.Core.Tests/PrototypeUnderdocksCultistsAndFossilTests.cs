@@ -182,7 +182,7 @@ public sealed class PrototypeUnderdocksCultistsAndFossilTests
         {
             var state = PrototypeNativeUnderdocksRunFactory.Create(
                 seed + "-" + attempt);
-            for (var floor = 1; floor <= 7; floor++)
+            for (var floor = 1; floor <= 12; floor++)
             {
                 state = StartRoom(engine, state, floor);
                 if (state.World!.EncounterIds[^1] == encounterId)

@@ -769,7 +769,13 @@ public sealed record PrototypePowerDefinition(
     bool StunOnAllyDeath = false,
     int EnemyStrengthAtSideTurnEndPerStack = 0,
     bool SkipInitialEnemySideTurnEnd = false,
-    int StrengthPerUnblockedAttackHitPerStack = 0);
+    int StrengthPerUnblockedAttackHitPerStack = 0,
+    int EnemyStartingBlockPerStack = 0,
+    int EnemyBlockAtSideTurnEndPerStack = 0,
+    int EnemyStacksDecayAtSideTurnStartAfterFirst = 0,
+    PrototypeCardAfflictionKind? SkillPlayAffliction = null,
+    bool BlockPlayOfMatchingAffliction = false,
+    bool ClearMatchingAfflictionAtPlayerTurnEnd = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -792,7 +798,8 @@ public enum PrototypeEnemyEffectKind
     ApplyPlayerPower,
     ApplyEnemyPower,
     AddCardsToDiscard,
-    SummonEnemy
+    SummonEnemy,
+    KillSelf
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -809,7 +816,8 @@ public sealed record PrototypeEnemyEffectSpec(
     bool IsAttack = true,
     PrototypeAscensionDelta[]? RepetitionAscensionDeltas = null,
     string? CardId = null,
-    string? EnemyId = null)
+    string? EnemyId = null,
+    string[]? SummonSlotNames = null)
 {
     public int AmountAt(
         int act,
@@ -866,7 +874,8 @@ public sealed record PrototypeEnemyAiBranch(
     int Weight = 1,
     PrototypeEnemyAiRepeatRule RepeatRule =
         PrototypeEnemyAiRepeatRule.CanRepeatForever,
-    int MaxTimes = 0);
+    int MaxTimes = 0,
+    bool RequiresAvailableSummon = false);
 
 public sealed record PrototypeEnemyAiConditionalBranch(
     string TargetStateId,
@@ -928,7 +937,9 @@ public sealed record PrototypeEnemyDefinition(
     PrototypeEnemyAiDefinition? Ai = null,
     bool IsMinion = false,
     bool RevivesOnEnemyTurn = false,
-    PrototypeEnemyDeathSummonSpec[]? DeathSummons = null)
+    PrototypeEnemyDeathSummonSpec[]? DeathSummons = null,
+    int NonSummonMovesBeforeEligible = 0,
+    int MaxCoordinatedSummons = 0)
 {
     public (int Min, int Max) HpRangeAt(
         int act,
@@ -1277,7 +1288,10 @@ public sealed record EnemyCombatState(
     int? LeaderEnemyInstanceId = null,
     bool SkipNextEnemyAction = false,
     int EnemyActionSkipsRemaining = 0,
-    bool DeathEffectsResolved = false)
+    bool DeathEffectsResolved = false,
+    int NonSummonMovesUntilEligible = 0,
+    int SharedSummonsUsed = 0,
+    bool SharedSummonUsedThisTurn = false)
 {
     public EnemyCombatState Fork() => this with
     {
