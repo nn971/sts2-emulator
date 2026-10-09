@@ -72,8 +72,8 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
             action.Kind == "replace_event_potion");
         var result = engine.Step(pending, replace).State;
         Assert.Equal(RunPhase.MapChoice, result.Phase);
-        Assert.Single(result.Player.PotionSlots.Where(
-            potion => potion?.PotionId == PotionId));
+        Assert.Single(result.Player.PotionSlots,
+            potion => potion?.PotionId == PotionId);
     }
 
     [Fact]
@@ -91,8 +91,8 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         Assert.Equal(wounded.Player.MaxHp - 13, result.Player.MaxHp);
         Assert.Equal(Math.Min(wounded.Player.Hp, result.Player.MaxHp),
             result.Player.Hp);
-        Assert.Single(result.Player.Relics.Where(relic =>
-            relic.RelicId == RelicId));
+        Assert.Single(result.Player.Relics,
+            relic => relic.RelicId == RelicId);
         Assert.Equal(rngHash, CanonicalJson.Sha256(result.Rng));
         Assert.DoesNotContain(result.Player.PotionSlots,
             potion => potion?.PotionId == PotionId);
