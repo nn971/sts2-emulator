@@ -75,7 +75,8 @@ public static class PrototypeNativeUnderdocks
     public static string[] SupportedEliteEncounterIds { get; } =
     [
         "proto.encounter.skulking_colony_elite",
-        "proto.encounter.phantasmal_gardeners_elite"
+        "proto.encounter.phantasmal_gardeners_elite",
+        "proto.encounter.terror_eel_elite"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
@@ -148,7 +149,23 @@ public static class PrototypeNativeUnderdocks
             "Skittish",
             BlockBonusPerStack: 0,
             Triggers: [],
-            EnemyBlockAfterFirstUnblockedCardAttackPerStack: 1)
+            EnemyBlockAfterFirstUnblockedCardAttackPerStack: 1),
+        new(
+            "proto.power.shriek",
+            "Shriek",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            IsDebuff: true,
+            AllowNegative: true,
+            TriggerOwnerAtHpAtOrBelowStacks: true,
+            OwnerAiStateOnHpThresholdTrigger: "stun"),
+        new(
+            "proto.power.vigor",
+            "Vigor",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnemyAttackDamageBonusPerStack: 1,
+            ConsumeAfterEnemyAttack: true)
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
@@ -709,6 +726,58 @@ public static class PrototypeNativeUnderdocks
                         "enlarge", PrototypeEnemyAiStateKind.Move,
                         MoveIndex: 3, NextStateId: "bite")
                 ])),
+        // Terror Eel: 140 HP (A8: 150) with Shriek 70 (A8: 75).
+        // After receiving unblocked HP damage at or below Shriek's
+        // threshold, its pending action changes to Stun, then Terror
+        // (99 Vulnerable), before returning to Crash/Thrash.
+        new(
+            "proto.enemy.terror_eel",
+            "Terror Eel",
+            140,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "crash",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 16,
+                        AscensionDeltas: [new(9, 2)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "thrash",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 3,
+                            Repetitions: 3,
+                            AscensionDeltas: [new(9, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 6,
+                            PowerId: "proto.power.vigor")
+                    ]),
+                new PrototypeEnemyMoveDefinition("stun", []),
+                new PrototypeEnemyMoveDefinition(
+                    "terror",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyPlayerPower, 99,
+                        PowerId: "proto.power.vulnerable")])
+            ],
+            HpAscensionDeltas: [new(8, 10)],
+            StartingPowers: [new("proto.power.shriek", 70, [new(8, 5)])],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "crash",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "crash", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "thrash"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "thrash", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "crash"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "stun", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "terror"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "terror", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 3, NextStateId: "crash")
+                ])),
         // Native SludgeSpinner: 37–39 HP (A8: 41–42).
         // Forced Oil Spray, then uniform no-immediate-repeat branch
         // between Oil Spray, Slam and Rage.
@@ -894,6 +963,12 @@ public static class PrototypeNativeUnderdocks
             ["proto.enemy.skulking_colony"],
             MinAct: 1, MaxAct: 1, Weight: 0,
             Formation: [new("proto.enemy.skulking_colony", 0)]),
+        new(
+            "proto.encounter.terror_eel_elite",
+            PrototypeRoomType.Elite,
+            ["proto.enemy.terror_eel"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.terror_eel", 0)]),
         new(
             "proto.encounter.punch_construct_normal",
             PrototypeRoomType.Combat,
