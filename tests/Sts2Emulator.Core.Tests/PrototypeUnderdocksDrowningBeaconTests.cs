@@ -145,6 +145,38 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
                     card.InstanceId == original.InstanceId).Enchantment));
         Assert.Equal(CanonicalJson.Sha256(obtained),
             CanonicalJson.Sha256(obtained.Fork()));
+
+        // Check the persistent enchantment's actual combat contribution:
+        // Backflip grants 5 base Block and Nimble adds 2 before powers.
+        var entered = engine.Step(obtained,
+            Assert.Single(engine.GetLegalActions(obtained))).State;
+        Assert.Equal(RunPhase.Combat, entered.Phase);
+        var combat = entered.World!.Combat!;
+        var backflip = combat.Cards.Single(card =>
+            card.PersistentCardInstanceId == added.InstanceId);
+        var otherIds = combat.Cards
+            .Where(card => card.InstanceId != backflip.InstanceId)
+            .Select(card => card.InstanceId)
+            .ToArray();
+        combat = combat with
+        {
+            Hand = [backflip.InstanceId],
+            DrawPile = otherIds,
+            DiscardPile = [],
+            ExhaustPile = [],
+            PlayPile = [],
+            Energy = 3
+        };
+        entered = entered with
+        {
+            World = entered.World with { Combat = combat }
+        };
+        var play = engine.GetLegalActions(entered).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == backflip.InstanceId);
+        var played = engine.Step(entered, play).State;
+        Assert.Equal(7, played.World!.Combat!.PlayerBlock);
     }
 
     [Fact]
