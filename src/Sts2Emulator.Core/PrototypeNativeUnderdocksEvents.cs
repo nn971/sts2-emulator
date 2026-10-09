@@ -24,13 +24,47 @@ public static class PrototypeNativeUnderdocksEvents
     public static string[] SupportedRegionEventIds { get; } =
     [
         "proto.native.underdocks.abyssal_baths",
+        "proto.native.underdocks.spiraling_whirlpool",
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
         "proto.native.underdocks.sunken_statue"
     ];
 
+    /// <summary>
+    /// Each native event supplies its own eligibility when it has
+    /// prerequisites. Spiral requires an enchantable basic Strike/Defend.
+    /// </summary>
+    public static bool IsEligible(
+        PrototypeEventDefinition evt, PlayerState player) =>
+        evt.Id switch
+        {
+            "proto.native.underdocks.spiraling_whirlpool" =>
+                player.Deck.Any(card =>
+                    PrototypeGameEngine.CanSelectEventDeckCard(
+                        card, PrototypePersistentDeckChoiceKind.Enchant,
+                        null, PrototypeCardEnchantmentKind.Spiral, true)),
+            _ => true
+        };
+
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Source: SpiralingWhirlpool.cs. The native Spiral enchantment
+        // targets basic Strike- or Defend-tagged cards. The common event
+        // deck-choice continuation handles player selection.
+        new(
+            "proto.native.underdocks.spiraling_whirlpool",
+            "Spiraling Whirlpool",
+            [
+                new("observe", "Enchant a basic Strike or Defend with Spiral",
+                    [],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Enchant, 1,
+                        EnchantmentKind: PrototypeCardEnchantmentKind.Spiral,
+                        BasicCardsOnly: true)),
+                new("drink", "Heal 33% of maximum HP",
+                    [new(PrototypeRunEffectKind.HealPercentMaxHp, 33)])
+            ],
+            MaxAct: 1),
         // Source: AbyssalBaths.cs. These describe the initial page;
         // the engine's staged handler generates Linger/Exit afterward,
         // with progressively increasing unblockable damage.
