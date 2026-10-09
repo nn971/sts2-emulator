@@ -12,15 +12,12 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
     public void MawBankGainsTwelveOnRoomEntryAndExpiresOnPositiveShopPurchase()
     {
         var engine = new PrototypeGameEngine();
-        var root = BuildMapRun("maw-bank-room", 
+        var root = BuildMapRun("maw-bank-room",
             [PrototypeRoomType.Shop, PrototypeRoomType.Rest,
-             PrototypeRoomType.Rest],
-            relics: [Relic(MawBank)]) with
+             PrototypeRoomType.Rest], relics: [Relic(MawBank)]);
+        root = root with
         {
-            Player = BuildMapRun("maw-bank-room",
-                [PrototypeRoomType.Shop, PrototypeRoomType.Rest,
-                 PrototypeRoomType.Rest],
-                relics: [Relic(MawBank)]).Player with { Gold = 500 }
+            Player = root.Player with { Gold = 500 }
         };
 
         var entered = EnterNext(engine, root);
@@ -35,7 +32,14 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
         Assert.Equal(512 - entered.World!.Shop!.RemovalPrice,
             purchased.Player.Gold);
         Assert.True(purchased.Player.Relics[0].PersistentState
-            .GetProperty("purchased").GetBoolean() == false);
+            .GetProperty("Purchased").GetBoolean());
+        Assert.Equal(CanonicalJson.Sha256(purchased),
+            CanonicalJson.Sha256(purchased.Fork()));
+        var left = engine.Step(
+            purchased, GameAction.Empty("leave_shop")).State;
+        var next = EnterNext(engine, left);
+        Assert.Equal(RunPhase.Rest, next.Phase);
+        Assert.Equal(purchased.Player.Gold, next.Player.Gold);
     }
 
     [Fact]
@@ -94,44 +98,28 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
     }
 
     [Theory]
-    [InlineData(0, 94, 0)]  // 6 unblocked HP damage, Boot has no effect
-    [InlineData(3, 95, 0)]  // 3 HP loss is raised to 5
-    [InlineData(3, 100, 3)] // entire attack blocked
-    [InlineData(2, 95, 1)]  // 1 HP loss raised to 5, partial block
+    [InlineData(0, 94)]  // 6 HP damage remains 6
+    [InlineData(3, 95)]  // 3 HP loss is raised to 5
+    [InlineData(6, 100)] // entire attack blocked
+    [InlineData(5, 95)]  // 1 HP loss raised to 5
     public void BootRaisesOnlyPositivePoweredAttackHpLoss(
-        int attackDamage, int expectedHp, int initialBlock)
+        int initialBlock, int expectedHp)
     {
-        // Use a card that deals exactly 3 by exercising a low-damage
-        // attack against existing Block.
         var engine = new PrototypeGameEngine();
         var card = new CombatCardInstance(
             1, 1, "proto.silent.strike", 0, false,
             PrototypeJson.EmptyObject());
-        var actualBlock = initialBlock == 0
-            ? (attackDamage == 3 ? 3 : 0)
-            : 6;
         var state = BuildCombatRun(
-            "boot-" + attackDamage + "-" + initialBlock,
+            "boot-" + initialBlock,
             card,
-            actualBlock,
+            initialBlock,
             [Relic(TheBoot)]);
         var action = engine.GetLegalActions(state).First(a =>
             a.Kind == "play_card");
         state = engine.Step(state, action).State;
         var enemy = Assert.Single(state.World!.Combat!.Enemies);
-        if (attackDamage == 3 && initialBlock == 0)
-        {
-            Assert.Equal(95, enemy.Hp);
-        }
-        else if (attackDamage == 3)
-        {
-            Assert.Equal(100, enemy.Hp);
-        }
-        else
-        {
-            Assert.Equal(95, enemy.Hp);
-        }
-        Assert.Equal(Math.Max(0, actualBlock - 6), enemy.Block);
+        Assert.Equal(expectedHp, enemy.Hp);
+        Assert.Equal(Math.Max(0, initialBlock - 6), enemy.Block);
         PrototypeStateInvariants.Validate(state);
     }
 
