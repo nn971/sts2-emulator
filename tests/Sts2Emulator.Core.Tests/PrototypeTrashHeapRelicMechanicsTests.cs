@@ -193,7 +193,7 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
         return new RunState("prototype-unbound", "prototype-0.1",
             seed, seed, 0, RunPhase.Combat,
             new PlayerState(70, 70, 100, deck, relics,
-                new PotionInstance?[3]),
+                new PotionInstance?[PrototypeContent.Rules.PotionSlots]),
             PrototypeRng.CreateBundle(seed), empty,
             new RunWorldState(PrototypeContent.RulesetId,
                 PrototypeContent.CharacterId, 1, 1, 2,
