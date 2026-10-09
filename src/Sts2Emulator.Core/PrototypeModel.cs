@@ -50,6 +50,7 @@ public enum PrototypeCardRarity
     Uncommon,
     Rare,
     Ancient,
+    Event,
     Curse,
     Status,
     Token,
@@ -224,7 +225,8 @@ public enum PrototypeCombatPredicateKind
 {
     DrawPileEmpty,
     TargetHasStatus,
-    HandEmptyAtEnqueue
+    HandEmptyAtEnqueue,
+    OnlyAttacksInHand
 }
 
 public enum PrototypeCombatCountKind
@@ -234,7 +236,8 @@ public enum PrototypeCombatCountKind
     AttacksPlayedThisTurn,
     CardsDiscardedThisTurn,
     CardsDrawnThisCombat,
-    OtherCardsInHand
+    OtherCardsInHand,
+    DiscardPileSize
 }
 
 public sealed record PrototypeCombatPredicateSpec(
