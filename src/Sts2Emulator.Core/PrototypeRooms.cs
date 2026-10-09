@@ -3099,6 +3099,26 @@ public sealed partial class PrototypeGameEngine
                 _ => 20 + (world.Act * 5)
             };
 
+        // Source-backed escaped-enemy reward proportions, independently
+        // of the existing prototype reward amount approximation.
+        // A surviving carrier returns stolen gold only when defeated:
+        // escaped carriers neither refund stolen coins nor keep full
+        // normal-combat gold rewards.
+        foreach (var escaped in combat.Enemies.Where(enemy => enemy.Escaped))
+        {
+            var definition = PrototypeContent.Enemy(escaped.EnemyId);
+            var proportion = escaped.StolenGold > 0
+                ? definition.EscapedRewardProportionWithGold
+                : definition.EscapedRewardProportionWithoutGold;
+            gold = (int)Math.Round(gold * proportion);
+        }
+
+        var recoveredGold = combat.Enemies
+            .Where(enemy => enemy.Hp <= 0 && !enemy.Escaped
+                && PrototypeContent.Enemy(enemy.EnemyId)
+                    .RecoverCarriedGoldOnDeath)
+            .Sum(enemy => enemy.StolenGold);
+
         // PotionReward.Populate precedes CardReward.Populate.
         string? potion = nativeOvergrowth
             && nativePotionOffered
@@ -3258,9 +3278,10 @@ public sealed partial class PrototypeGameEngine
             ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
             CardOptionUpgradeFlags: cardUpgradeFlags,
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
-            GoldOption: nativeGold,
-            GoldResolved: nativeGold is null,
-            IndependentSelection: nativeOvergrowth,
+            GoldOption: nativeGold ?? (recoveredGold > 0
+                ? recoveredGold : null),
+            GoldResolved: nativeGold is null && recoveredGold == 0,
+            IndependentSelection: nativeOvergrowth || recoveredGold > 0,
             ExtraCardGroupsResolved: nativeOvergrowth
                 ? new bool[extraCardOptions.Length]
                 : null,
