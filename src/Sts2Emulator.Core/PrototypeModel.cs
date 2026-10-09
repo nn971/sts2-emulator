@@ -776,7 +776,9 @@ public sealed record PrototypePowerDefinition(
     PrototypeCardAfflictionKind? SkillPlayAffliction = null,
     bool BlockPlayOfMatchingAffliction = false,
     bool ClearMatchingAfflictionAtPlayerTurnEnd = false,
-    bool EnemyHpLossLimitedPerSideTurnByStacks = false);
+    bool EnemyHpLossLimitedPerSideTurnByStacks = false,
+    int EnemyBlockAfterFirstUnblockedCardAttackPerStack = 0,
+    bool ConsumeAfterEnemyAttack = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -1302,7 +1304,8 @@ public sealed record EnemyCombatState(
     bool SharedSummonUsedThisTurn = false,
     int StolenGold = 0,
     bool Escaped = false,
-    int HpLossBudgetUsed = 0)
+    int HpLossBudgetUsed = 0,
+    bool GainedReactiveBlockThisTurn = false)
 {
     public EnemyCombatState Fork() => this with
     {
