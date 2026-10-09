@@ -10,7 +10,7 @@ public sealed class PrototypeNativeUnderdocksEventsTests
         Assert.Equal(10, PrototypeNativeUnderdocksEvents.NativeRegionEventIds.Length);
         Assert.Equal(10, PrototypeNativeUnderdocksEvents.NativeRegionEventIds
             .Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(8, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
+        Assert.Equal(10, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
         Assert.All(PrototypeNativeUnderdocksEvents.SupportedRegionEventIds, id =>
         {
             Assert.Contains(id, PrototypeNativeUnderdocksEvents.NativeRegionEventIds);

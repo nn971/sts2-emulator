@@ -624,7 +624,9 @@ public sealed partial class PrototypeGameEngine
                         evt, state.Player))
                 && (!nativeUnderdocks
                     || PrototypeNativeUnderdocksEvents.IsEligible(
-                        evt, state.Player))
+                        evt, state.Player)
+                    && PrototypeNativeUnderdocksEvents.IsFloorEligible(
+                        evt, world))
                 && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
                 && evt.Weight > 0
@@ -705,6 +707,15 @@ public sealed partial class PrototypeGameEngine
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
+        if (selected.Id == PrototypeNativeEndlessConveyor.EventId)
+        {
+            world = world with
+            {
+                Event = PrototypeNativeEndlessConveyor.RollNextDish(
+                    world.Event!, state.Player, state.Rng)
+            };
+        }
+
         return state with
         {
             World = world,
@@ -742,6 +753,16 @@ public sealed partial class PrototypeGameEngine
                         new ChooseEventDeckCardPayload(
                             cardInstanceId)))
                 .ToArray();
+        }
+
+        if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
+        {
+            return GetEndlessConveyorActions(state, eventState);
+        }
+
+        if (eventState.EventId == PrototypeNativePunchOff.EventId)
+        {
+            return GetPunchOffActions(eventState);
         }
 
         if (eventState.EventId == AbyssalBathsEventId)
@@ -941,6 +962,16 @@ public sealed partial class PrototypeGameEngine
                 }
             };
             return AdvanceEventContinuations(state);
+        }
+
+        if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
+        {
+            return StepEndlessConveyor(state, action);
+        }
+
+        if (eventState.EventId == PrototypeNativePunchOff.EventId)
+        {
+            return StepPunchOff(state, action);
         }
 
         if (eventState.EventId == AbyssalBathsEventId)

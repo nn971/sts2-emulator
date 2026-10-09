@@ -183,6 +183,14 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
+            if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId
+                && eventState.ChosenChoiceId == "grab")
+            {
+                // After a grab (and its optional card/potion decision),
+                // the conveyor offers the freshly rolled next dish.
+                return state;
+            }
+
             return CompleteRoomToMap(state);
         }
     }

@@ -1885,6 +1885,7 @@ public static class PrototypeContent
                 Type: PrototypeCardType.Power)
         }.Concat(PrototypeColorlessCards.Implemented)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Cards)
+            .Concat(PrototypeNativeEndlessConveyor.EventCards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
