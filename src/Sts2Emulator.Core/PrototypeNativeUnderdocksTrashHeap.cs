@@ -32,14 +32,17 @@ public static class PrototypeNativeUnderdocksTrashHeap
         "proto.native.trash_heap.stack"
     ];
 
-    // Exact source item identities, but the non-Darkstone relic hooks need
-    // separate implementation. They are excluded from ordinary relic bags.
+    // Event-only relics remain excluded from ordinary relic bags.
+    // Hand Drill still awaits the generic enemy-block-broken hook.
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
-        new("proto.native.trash_heap.dream_catcher", "Dream Catcher"),
+        new("proto.native.trash_heap.dream_catcher", "Dream Catcher",
+            RestHealCardRewardCount: 3),
         new("proto.native.trash_heap.hand_drill", "Hand Drill"),
-        new("proto.native.trash_heap.maw_bank", "Maw Bank"),
-        new("proto.native.trash_heap.the_boot", "The Boot")
+        new("proto.native.trash_heap.maw_bank", "Maw Bank",
+            GoldOnRoomEntryUntilPurchase: 12),
+        new("proto.native.trash_heap.the_boot", "The Boot",
+            MinPoweredAttackHpLoss: 5)
     ];
 
     // All seven Ironclad/Defect event cards are present for source-accurate
