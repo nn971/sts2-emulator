@@ -266,6 +266,7 @@ public enum PrototypeCombatEventKind
     PotionUsed,
     PlayerTurnStarted,
     PlayerTurnEnded,
+    AutoPrePlayPhaseEntered,
     BeforeHandDraw,
     CardPlayed,
     CardDrawn,
@@ -296,7 +297,10 @@ public sealed record PrototypeEventSubscriberState(
     int? RelicStateIndex = null,
     int? RelicTriggerIndex = null,
     int EveryNth = 1,
-    int? MaxTriggersPerCounterWindow = null)
+    int? MaxTriggersPerCounterWindow = null,
+    int? PowerTriggerIndex = null,
+    bool CountdownBeforeTrigger = false,
+    int SourcePowerStoredValue = 0)
 {
     public PrototypeEventSubscriberState Fork() => this with
     {
@@ -536,7 +540,10 @@ public sealed record PrototypeCombatEffectSpec(
     bool GeneratedChoiceMustPick = false,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     int GoldOnFatal = 0,
-    int GoldOnFatalUpgradeDelta = 0)
+    int GoldOnFatalUpgradeDelta = 0,
+    int PowerStoredValue = 0,
+    int PowerStoredValueUpgradeDelta = 0,
+    bool UseSourcePowerStoredValue = false)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -580,6 +587,7 @@ public sealed record PrototypeQueuedOperation(
     bool GeneratedChoiceMustPick = false,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     int GoldOnFatal = 0,
+    int PowerStoredValue = 0,
     long? CardInstanceId = null);
 
 public sealed record PrototypeRunEffectSpec(
@@ -700,7 +708,9 @@ public sealed record PrototypePowerTriggerSpec(
     bool ExcludeHandDraw = false,
     bool RequiresPlayerTurn = false,
     bool RemoveSourcePowerAfterTrigger = false,
-    PrototypeCardType? RequiredSourceCardType = null);
+    PrototypeCardType? RequiredSourceCardType = null,
+    int EveryNth = 1,
+    bool CountdownBeforeTrigger = false);
 
 public sealed record PrototypePowerDefinition(
     string Id,
@@ -801,7 +811,8 @@ public sealed record PrototypePowerDefinition(
     string? OwnerAiStateOnPowerExpiry = null,
     string[]? RemoveOwnerPowersOnPowerExpiry = null,
     string? LastStandAiStateId = null,
-    int LastStandHp = 0);
+    int LastStandHp = 0,
+    bool ResetTriggerCountersAtPlayerTurnEnd = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -809,11 +820,16 @@ public sealed record PrototypePowerInstanceState(
     long ApplicationOrder,
     PrototypeCombatCardSnapshot? CardPayload = null,
     int? SourceEnemyInstanceId = null,
-    bool SkipNextEnemySideTurnEnd = false)
+    bool SkipNextEnemySideTurnEnd = false,
+    int StoredValue = 0,
+    int[]? TriggerCounts = null)
 {
     public PrototypePowerInstanceState Fork() => this with
     {
-        CardPayload = CardPayload?.Fork()
+        CardPayload = CardPayload?.Fork(),
+        TriggerCounts = TriggerCounts is null
+            ? null
+            : (int[])TriggerCounts.Clone()
     };
 }
 

@@ -2945,7 +2945,8 @@ public sealed partial class PrototypeGameEngine
         PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System,
         bool isPoweredAttack = false,
         PrototypeCombatCardSnapshot? powerCardPayload = null,
-        int? sourcePowerEnemyId = null)
+        int? sourcePowerEnemyId = null,
+        int sourcePowerStoredValue = 0)
     {
         // Snapshot hand-sensitive card conditions when their operations are
         // queued. Restlessness first draws cards and then gains energy, but
@@ -3005,7 +3006,9 @@ public sealed partial class PrototypeGameEngine
             {
                 operations.Enqueue(new PrototypeQueuedOperation(
                     effect.Kind,
-                    effect.AmountAt(upgradeLevel, energySpent)
+                    (effect.UseSourcePowerStoredValue
+                        ? sourcePowerStoredValue
+                        : effect.AmountAt(upgradeLevel, energySpent))
                         + (effect.AmountPerPowerStack * powerStacks)
                         + ((effect.AmountPerCount
                             + (effect.AmountPerCountUpgradeDelta * upgradeLevel))
@@ -3067,6 +3070,9 @@ public sealed partial class PrototypeGameEngine
                     GoldOnFatal:
                         effect.GoldOnFatal
                         + (effect.GoldOnFatalUpgradeDelta * upgradeLevel),
+                    PowerStoredValue:
+                        effect.PowerStoredValue
+                        + (effect.PowerStoredValueUpgradeDelta * upgradeLevel),
                     PlayerPowerOnFatalId:
                         effect.PlayerPowerOnFatalId,
                     PlayerPowerOnFatalAmount:
@@ -3923,7 +3929,9 @@ public sealed partial class PrototypeGameEngine
                         throw new InvalidOperationException("Apply-power operation is missing a power ID.");
                     }
 
-                    combat = ApplyPlayerPower(combat, operation.PowerId, operation.Amount);
+                    combat = ApplyPlayerPower(
+                        combat, operation.PowerId, operation.Amount,
+                        storedValue: operation.PowerStoredValue);
                     break;
 
                 case PrototypeCombatEffectKind.ApplyEnemyPower:
@@ -6197,7 +6205,8 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         string powerId,
         int stacks,
-        int? sourceEnemyInstanceId = null)
+        int? sourceEnemyInstanceId = null,
+        int storedValue = 0)
     {
         var definition = PrototypeContent.Power(powerId);
         if (definition.SourceBoundToEnemy
@@ -6239,7 +6248,8 @@ public sealed partial class PrototypeGameEngine
                 powerId,
                 stacks,
                 null,
-                sourceEnemyInstanceId);
+                sourceEnemyInstanceId,
+                storedValue);
         }
 
         var powers = combat.PlayerPowers.ToList();
@@ -6353,7 +6363,8 @@ public sealed partial class PrototypeGameEngine
         string powerId,
         int stacks,
         PrototypeCombatCardSnapshot? cardPayload,
-        int? sourceEnemyInstanceId = null)
+        int? sourceEnemyInstanceId = null,
+        int storedValue = 0)
     {
         var definition = PrototypeContent.Power(powerId);
         if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
@@ -6382,7 +6393,9 @@ public sealed partial class PrototypeGameEngine
                     stacks,
                     combat.NextPowerApplicationOrder,
                     cardPayload?.Fork(),
-                    sourceEnemyInstanceId)).ToArray(),
+                    sourceEnemyInstanceId,
+                    StoredValue: storedValue,
+                    TriggerCounts: new int[definition.Triggers.Length])).ToArray(),
             NextPowerApplicationOrder =
                 combat.NextPowerApplicationOrder + 1
         };
@@ -6987,6 +7000,75 @@ public sealed partial class PrototypeGameEngine
         return (combat with { Relics = relics }, counts[triggerIndex]);
     }
 
+    // This is keyed by power application order, so multiple Panaches or
+    // separate countdowns remain independent and fork deterministically.
+    private static (CombatState Combat, bool ShouldTrigger)
+        CheckPowerSubscriberTrigger(
+            CombatState combat,
+            PrototypeEventSubscriberState subscriber)
+    {
+        if (subscriber.SourcePowerApplicationOrder is not { } order)
+        {
+            return (combat, false);
+        }
+
+        var index = Array.FindIndex(combat.PlayerPowers,
+            power => power.ApplicationOrder == order);
+        if (index < 0)
+        {
+            return (combat, false);
+        }
+
+        var current = combat.PlayerPowers[index];
+        if (subscriber.CountdownBeforeTrigger)
+        {
+            if (current.Stacks > 1)
+            {
+                var powers = (PrototypePowerInstanceState[])combat.PlayerPowers.Clone();
+                powers[index] = current with { Stacks = current.Stacks - 1 };
+                return (combat with { PlayerPowers = powers }, false);
+            }
+
+            return (combat, true);
+        }
+
+        if (subscriber.EveryNth <= 1)
+        {
+            return (combat, true);
+        }
+
+        if (subscriber.PowerTriggerIndex is not { } triggerIndex)
+        {
+            throw new InvalidOperationException("Power trigger counter has no index.");
+        }
+
+        var counts = current.TriggerCounts is null
+            ? new int[PrototypeContent.Power(current.PowerId).Triggers.Length]
+            : (int[])current.TriggerCounts.Clone();
+        var nextCount = checked(counts[triggerIndex] + 1);
+        // Counter-style native powers restart at zero after their Nth
+        // trigger; saving the residue also bounds the persisted state.
+        counts[triggerIndex] = nextCount % subscriber.EveryNth;
+        var updated = (PrototypePowerInstanceState[])combat.PlayerPowers.Clone();
+        updated[index] = current with { TriggerCounts = counts };
+        return (combat with { PlayerPowers = updated },
+            counts[triggerIndex] == 0);
+    }
+
+    private static CombatState ResetPlayerPowerTriggerCounters(CombatState combat) =>
+        combat with
+        {
+            PlayerPowers = combat.PlayerPowers.Select(power =>
+                PrototypeContent.Power(power.PowerId)
+                    .ResetTriggerCountersAtPlayerTurnEnd
+                    && power.TriggerCounts is not null
+                        ? power with
+                        {
+                            TriggerCounts = new int[power.TriggerCounts.Length]
+                        }
+                        : power).ToArray()
+        };
+
     private static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
         PlayerState player,
         CombatState combat,
@@ -7066,30 +7148,35 @@ public sealed partial class PrototypeGameEngine
             var definition = PrototypeContent.Power(power.PowerId);
             subscribers.AddRange(
                 definition.Triggers
-                    .Where(trigger =>
-                        trigger.EventKind == combatEvent.Kind
-                        && (!trigger.ExcludeHandDraw
+                    .Select((trigger, index) => new { Trigger = trigger, Index = index })
+                    .Where(item =>
+                        item.Trigger.EventKind == combatEvent.Kind
+                        && (!item.Trigger.ExcludeHandDraw
                             || !combatEvent.FromHandDraw)
-                        && (!trigger.RequiresPlayerTurn
+                        && (!item.Trigger.RequiresPlayerTurn
                             || combat.IsPlayerTurn)
-                        && (trigger.RequiredSourceCardType is null
+                        && (item.Trigger.RequiredSourceCardType is null
                             || (combatEvent.CardId is not null
                                 && PrototypeContent.Card(
                                     combatEvent.CardId).Type
-                                    == trigger.RequiredSourceCardType.Value))
-                        && !trigger.RequiresOwnerTarget
+                                    == item.Trigger.RequiredSourceCardType.Value))
+                        && !item.Trigger.RequiresOwnerTarget
                         && (combatEvent.PowerApplicationOrderCeiling is null
                             || power.ApplicationOrder
                                 <= combatEvent.PowerApplicationOrderCeiling.Value))
-                    .Select(trigger => new PrototypeEventSubscriberState(
+                    .Select(item => new PrototypeEventSubscriberState(
                         power.ApplicationOrder,
-                        trigger.Effects,
+                        item.Trigger.Effects,
                         power.Stacks,
                         PrototypeEffectSourceKind.Power,
                         SourcePowerApplicationOrder: power.ApplicationOrder,
                         PowerCardPayload: power.CardPayload?.Fork(),
                         RemoveSourcePowerAfterTrigger:
-                            trigger.RemoveSourcePowerAfterTrigger)));
+                            item.Trigger.RemoveSourcePowerAfterTrigger,
+                        EveryNth: item.Trigger.EveryNth,
+                        PowerTriggerIndex: item.Index,
+                        CountdownBeforeTrigger: item.Trigger.CountdownBeforeTrigger,
+                        SourcePowerStoredValue: power.StoredValue)));
         }
 
         foreach (var enemy in combat.Enemies)
@@ -7177,6 +7264,16 @@ public sealed partial class PrototypeGameEngine
              subscriberIndex++)
         {
             var subscriber = orderedSubscribers[subscriberIndex];
+            if (subscriber.PowerTriggerIndex is not null)
+            {
+                var checkedPower = CheckPowerSubscriberTrigger(combat, subscriber);
+                combat = checkedPower.Combat;
+                if (!checkedPower.ShouldTrigger)
+                {
+                    continue;
+                }
+            }
+
             if (subscriber.RelicStateIndex is not null)
             {
                 if (subscriber.RelicTriggerIndex is null || subscriber.EveryNth <= 0)
@@ -7216,7 +7313,9 @@ public sealed partial class PrototypeGameEngine
                     sourceKind: subscriber.SourceKind,
                     powerCardPayload: subscriber.PowerCardPayload,
                     sourcePowerEnemyId:
-                        subscriber.SourcePowerEnemyId);
+                        subscriber.SourcePowerEnemyId,
+                    sourcePowerStoredValue:
+                        subscriber.SourcePowerStoredValue);
             }
 
             var continuation =
@@ -7270,6 +7369,7 @@ public sealed partial class PrototypeGameEngine
             combat = DecrementPlayerPowers(
                 combat,
                 definition => definition.DecrementAtPlayerTurnEnd);
+            combat = ResetPlayerPowerTriggerCounters(combat);
         }
 
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnStarted)
@@ -7297,6 +7397,16 @@ public sealed partial class PrototypeGameEngine
         for (var index = 0; index < remaining.Length; index++)
         {
             var subscriber = remaining[index];
+            if (subscriber.PowerTriggerIndex is not null)
+            {
+                var checkedPower = CheckPowerSubscriberTrigger(combat, subscriber);
+                combat = checkedPower.Combat;
+                if (!checkedPower.ShouldTrigger)
+                {
+                    continue;
+                }
+            }
+
             if (subscriber.RelicStateIndex is not null)
             {
                 if (subscriber.RelicTriggerIndex is null
@@ -7339,7 +7449,9 @@ public sealed partial class PrototypeGameEngine
                     sourceKind: subscriber.SourceKind,
                     powerCardPayload: subscriber.PowerCardPayload,
                     sourcePowerEnemyId:
-                        subscriber.SourcePowerEnemyId);
+                        subscriber.SourcePowerEnemyId,
+                    sourcePowerStoredValue:
+                        subscriber.SourcePowerStoredValue);
             }
 
             var nextContinuation =
@@ -7388,6 +7500,7 @@ public sealed partial class PrototypeGameEngine
             combat = DecrementPlayerPowers(
                 combat,
                 definition => definition.DecrementAtPlayerTurnEnd);
+            combat = ResetPlayerPowerTriggerCounters(combat);
         }
 
         if (continuation.CombatEvent.Kind
