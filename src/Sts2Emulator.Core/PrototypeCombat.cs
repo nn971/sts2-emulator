@@ -3214,7 +3214,9 @@ public sealed partial class PrototypeGameEngine
                     var damageResult = DamageEnemy(
                         combat,
                         targetEnemyId.Value,
-                        damageAmount);
+                        damageAmount,
+                        operation.IsPoweredAttack
+                            ? MinimumPoweredAttackHpLoss(player) : 0);
                     combat = damageResult.Combat;
                     if (operation.IsPoweredAttack
                         && sourceCardInstanceId is not null
@@ -3390,7 +3392,9 @@ public sealed partial class PrototypeGameEngine
                             var echoDamageResult = DamageEnemy(
                                 combat,
                                 enemyId,
-                                echoDamageAmount);
+                                echoDamageAmount,
+                                operation.IsPoweredAttack
+                                    ? MinimumPoweredAttackHpLoss(player) : 0);
                             combat = echoDamageResult.Combat;
                             if (echoDamageResult.Defeated)
                             {
@@ -8453,7 +8457,8 @@ public sealed partial class PrototypeGameEngine
     private static PrototypeDamageResult DamageEnemy(
         CombatState combat,
         int enemyId,
-        int damage)
+        int damage,
+        int minPoweredAttackHpLoss = 0)
     {
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var index = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
@@ -8469,9 +8474,15 @@ public sealed partial class PrototypeGameEngine
         }
 
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
+        var unblocked = Math.Max(0, damage - absorbed);
+        // The Boot modifies attack HP loss AFTER Block absorption.
+        // A fully blocked hit or non-attack HP loss does not trigger.
+        // Native enemy HP-loss caps are applied afterwards.
         var hpDamage = ModifyEnemyHpLoss(
             enemy,
-            Math.Max(0, damage - absorbed));
+            unblocked > 0
+                ? Math.Max(unblocked, minPoweredAttackHpLoss)
+                : 0);
         enemy = hpDamage.Enemy;
         var nextHp = Math.Max(0, enemy.Hp - hpDamage.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
