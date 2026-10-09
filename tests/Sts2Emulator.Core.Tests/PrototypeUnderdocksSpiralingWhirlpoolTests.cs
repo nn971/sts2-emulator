@@ -107,9 +107,8 @@ public sealed class PrototypeUnderdocksSpiralingWhirlpoolTests
             var eligible = card.CardId is
                 "proto.silent.strike" or "proto.silent.defend";
             Assert.Equal(eligible,
-                PrototypeGameEngine.CanSelectEventDeckCard(
-                    card, PrototypePersistentDeckChoiceKind.Enchant,
-                    null, PrototypeCardEnchantmentKind.Spiral, true));
+                PrototypeNativeUnderdocksEvents.IsEligible(
+                    evt, starting.Player with { Deck = [card] }));
         }
 
         var removed = starting with
