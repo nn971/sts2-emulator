@@ -24,11 +24,28 @@ public static class PrototypeNativeUnderdocksEvents
     public static string[] SupportedRegionEventIds { get; } =
     [
         "proto.native.underdocks.sunken_treasury",
-        "proto.native.underdocks.doors_of_light_and_dark"
+        "proto.native.underdocks.doors_of_light_and_dark",
+        "proto.native.underdocks.sunken_statue"
     ];
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Source: SunkenStatue.cs. The gold roll is 111 + [-10,10]
+        // and is captured once when the event is selected.
+        new(
+            "proto.native.underdocks.sunken_statue",
+            "Sunken Statue",
+            [
+                new("sword", "Take Sword of Stone",
+                    [new(PrototypeRunEffectKind.GainRelic,
+                        RelicId: "proto.native.event.sword_of_stone")]),
+                new("dive", "Dive for gold (lose 7 HP)",
+                    [
+                        new(PrototypeRunEffectKind.GainGold, 111),
+                        new(PrototypeRunEffectKind.LoseHp, 7)
+                    ])
+            ],
+            MaxAct: 1),
         new(
             "proto.native.underdocks.sunken_treasury",
             "Sunken Treasury",
