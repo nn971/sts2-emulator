@@ -319,8 +319,21 @@ internal static partial class PassiveReferenceRecorder
         {
             var result = ReadNamed(nativeEvent,
                 "Id", "IsFinished", "LayoutType");
-            result["options"] = Enumerate(
-                    GetProperty(nativeEvent, "CurrentOptions"))
+            // EventModel.CurrentOptions is NOT a passive getter in
+            // v0.111.0: it asserts mutability and initializes
+            // _currentOptions if null. Reading that property from
+            // the recorder would change the oracle. Inspect its
+            // backing field instead, including a null initial page.
+            var options = nativeEvent.GetType()
+                .GetField("_currentOptions",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+            // The field lives in the EventModel base class.
+            options ??= nativeEvent.GetType().BaseType?.GetField(
+                "_currentOptions",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var backingOptions = options?.GetValue(nativeEvent);
+            result["options_initialized"] = backingOptions is not null;
+            result["options"] = Enumerate(backingOptions)
                 .Select(option => ReadNamed(option,
                     "TextKey", "IsLocked", "IsProceed", "WasChosen"))
                 .ToArray();
