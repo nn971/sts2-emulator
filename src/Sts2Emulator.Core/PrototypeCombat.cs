@@ -1392,9 +1392,9 @@ public sealed partial class PrototypeGameEngine
                         continue;
                     }
 
-                    var absorbed = Math.Min(
-                        combat.PlayerBlock,
-                        damage);
+                    var absorbed = definition.EndTurnDamageUnblockable
+                        ? 0
+                        : Math.Min(combat.PlayerBlock, damage);
                     combat = combat with
                     {
                         PlayerBlock =
@@ -1809,8 +1809,15 @@ public sealed partial class PrototypeGameEngine
                         blockAtSideTurnEnd +=
                             power.Stacks
                             * definition.EnemyBlockAtSideTurnEndPerStack;
-                        return power;
+                        return power with
+                        {
+                            Stacks = power.Stacks -
+                                definition.EnemyStacksDecayAtSideTurnEnd
+                        };
                     })
+                    .Where(power => power.Stacks > 0
+                        || PrototypeContent.Power(power.PowerId)
+                            .AllowNegative)
                     .ToArray()
                 : stage == PrototypeTurnStage.EnemyTurnStart
                   && combat.Turn > 1
@@ -2461,6 +2468,32 @@ public sealed partial class PrototypeGameEngine
                                 combat,
                                 effect.CardId,
                                 amount);
+                            break;
+
+                        case PrototypeEnemyEffectKind.AddCardsToRandomDraw:
+                            if (effect.CardId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Enemy draw-card effect is missing card ID.");
+                            }
+
+                            for (var generated = 0; generated < amount; generated++)
+                            {
+                                var instance = new CombatCardInstance(
+                                    combat.NextCardInstanceId,
+                                    null, effect.CardId, 0, true,
+                                    PrototypeJson.EmptyObject());
+                                var insertion = PrototypeRng.NextInt(
+                                    rng, "combat", combat.DrawPile.Length + 1);
+                                var draw = combat.DrawPile.ToList();
+                                draw.Insert(insertion, instance.InstanceId);
+                                combat = combat with
+                                {
+                                    Cards = combat.Cards.Append(instance).ToArray(),
+                                    DrawPile = draw.ToArray(),
+                                    NextCardInstanceId = combat.NextCardInstanceId + 1
+                                };
+                            }
                             break;
 
                         case PrototypeEnemyEffectKind.SummonEnemy:
