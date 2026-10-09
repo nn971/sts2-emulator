@@ -1890,7 +1890,10 @@ public sealed record EventState(
     int NativePageIndex = 0,
     string? DeferredCardId = null,
     int NativeEventGold = 0,
-    int NativeEventSecondaryGold = 0)
+    int NativeEventSecondaryGold = 0,
+    string? NativeDishId = null,
+    string? NativeLastDishId = null,
+    int NativeDishCount = 0)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
