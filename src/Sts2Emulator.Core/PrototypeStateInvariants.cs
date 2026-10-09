@@ -1022,6 +1022,8 @@ public static class PrototypeStateInvariants
                 || PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal)
                 || PrototypeNativeUnderdocks.SupportedEliteEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal));
 
         if (encounter.RoomType != world.ActiveRoom
