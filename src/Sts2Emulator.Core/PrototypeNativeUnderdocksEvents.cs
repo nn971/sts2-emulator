@@ -26,6 +26,7 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.abyssal_baths",
         "proto.native.underdocks.drowning_beacon",
         "proto.native.underdocks.trash_heap",
+        "proto.native.underdocks.waterlogged_scriptorium",
         "proto.native.underdocks.spiraling_whirlpool",
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
@@ -40,6 +41,8 @@ public static class PrototypeNativeUnderdocksEvents
         PrototypeEventDefinition evt, PlayerState player) =>
         evt.Id switch
         {
+            "proto.native.underdocks.waterlogged_scriptorium" =>
+                player.Gold >= 55,
             PrototypeNativeUnderdocksTrashHeap.EventId =>
                 player.Hp > 5,
             "proto.native.underdocks.spiraling_whirlpool" =>
@@ -50,8 +53,35 @@ public static class PrototypeNativeUnderdocksEvents
             _ => true
         };
 
+    public static bool AllowsEmptyDeckChoice(string eventId) =>
+        StringComparer.Ordinal.Equals(
+            eventId, "proto.native.underdocks.waterlogged_scriptorium");
+
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Source: WaterloggedScriptorium.cs + Steady.cs (v0.111.0).
+        // The initial event requires 55 gold, but Bloody Ink does
+        // not spend any. Both paid choices use the shared deck
+        // enchantment continuation, including fewer eligible cards
+        // than the selected count (native auto-selects all of them).
+        new(
+            "proto.native.underdocks.waterlogged_scriptorium",
+            "Waterlogged Scriptorium",
+            [
+                new("bloody_ink", "Gain 6 maximum HP",
+                    [new(PrototypeRunEffectKind.GainMaxHp, 6)]),
+                new("tentacle_quill", "Spend 55 gold to enchant one card with Steady",
+                    [new(PrototypeRunEffectKind.LoseGold, 55)],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Enchant, 1,
+                        EnchantmentKind: PrototypeCardEnchantmentKind.Steady)),
+                new("prickly_sponge", "Spend 99 gold to enchant two cards with Steady",
+                    [new(PrototypeRunEffectKind.LoseGold, 99)],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Enchant, 2,
+                        EnchantmentKind: PrototypeCardEnchantmentKind.Steady))
+            ],
+            MaxAct: 1),
         // Source: TrashHeap.cs; random acquisition is routed through the
         // source-backed specialized handler rather than fixed Effects.
         new(

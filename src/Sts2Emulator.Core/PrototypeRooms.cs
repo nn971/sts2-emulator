@@ -1576,6 +1576,8 @@ public sealed partial class PrototypeGameEngine
 
         return PrototypeNativeOvergrowthEvents.AllowsEmptyDeckChoice(
                    world.Event?.EventId ?? string.Empty)
+            || PrototypeNativeUnderdocksEvents.AllowsEmptyDeckChoice(
+                   world.Event?.EventId ?? string.Empty)
             || player.Deck.Any(card =>
                 CanSelectEventDeckCard(
                     card,
