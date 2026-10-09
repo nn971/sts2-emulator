@@ -1783,13 +1783,41 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
+            // Expiring an enemy-side countdown can wake its owner and
+            // remove companion protection *before* other powers contribute
+            // end-of-turn Block (native Asleep/Plating ordering).
+            string? aiAfterExpiry = null;
+            var powersToRemoveOnExpiry = new HashSet<string>(
+                StringComparer.Ordinal);
+            if (stage == PrototypeTurnStage.EnemyTurnEnd)
+            {
+                foreach (var power in enemy.PowerStates)
+                {
+                    var definition = PrototypeContent.Power(power.PowerId);
+                    if (definition.EnemyStacksDecayAtSideTurnEnd > 0
+                        && power.Stacks <=
+                            definition.EnemyStacksDecayAtSideTurnEnd)
+                    {
+                        aiAfterExpiry ??=
+                            definition.OwnerAiStateOnPowerExpiry;
+                        foreach (var id in definition
+                            .RemoveOwnerPowersOnPowerExpiry
+                            ?? Array.Empty<string>())
+                        {
+                            powersToRemoveOnExpiry.Add(id);
+                        }
+                    }
+                }
+            }
+
             var strengthAtSideTurnEnd = 0;
             var blockAtSideTurnEnd = 0;
             var powers = stage == PrototypeTurnStage.EnemyTurnEnd
                 ? enemy.PowerStates
                     .Where(power =>
                         !PrototypeContent.Power(power.PowerId)
-                            .RemoveAtEnemyTurnEnd)
+                            .RemoveAtEnemyTurnEnd
+                        && !powersToRemoveOnExpiry.Contains(power.PowerId))
                     .Select(power =>
                     {
                         var definition = PrototypeContent.Power(power.PowerId);
@@ -1838,6 +1866,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Statuses = statuses,
                 Powers = powers,
+                AiStateId = aiAfterExpiry ?? enemy.AiStateId,
                 Block = enemy.Block + blockAtSideTurnEnd,
                 SharedSummonUsedThisTurn =
                     stage == PrototypeTurnStage.EnemyTurnStart
@@ -8349,6 +8378,33 @@ public sealed partial class PrototypeGameEngine
         enemy = hpDamage.Enemy;
         var nextHp = Math.Max(0, enemy.Hp - hpDamage.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
+
+        // Some buffs (e.g. native Asleep) react only to unblocked
+        // attack HP damage, not to blocked attacks or poison HP loss.
+        // Stun the pending enemy action and explicitly select its
+        // waking AI state, without making the rule monster-ID-specific.
+        var wake = hpDamage.HpLoss > 0 && nextHp > 0
+            ? enemy.PowerStates
+                .Select(power => PrototypeContent.Power(power.PowerId))
+                .FirstOrDefault(power =>
+                    power.WakeOwnerOnUnblockedAttackDamage)
+            : null;
+        if (wake is not null)
+        {
+            var remove = (wake.RemoveOwnerPowersOnWake
+                    ?? Array.Empty<string>())
+                .ToHashSet(StringComparer.Ordinal);
+            enemy = enemy with
+            {
+                Powers = enemy.PowerStates
+                    .Where(power => !remove.Contains(power.PowerId))
+                    .ToArray(),
+                AiStateId = wake.OwnerAiStateOnWake ?? enemy.AiStateId,
+                EnemyActionSkipsRemaining = wake.StunOwnerOnWake
+                    ? Math.Max(1, enemy.EnemyActionSkipsRemaining)
+                    : enemy.EnemyActionSkipsRemaining
+            };
+        }
 
         enemies[index] = enemy with
         {
