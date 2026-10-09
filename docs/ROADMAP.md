@@ -74,6 +74,7 @@ central dispatch branches.
 - [x] preserve the exact pinned v0.111.0 65-card ColorlessCardPool inventory, with multiplayer constraints tracked separately
 - [x] playable first merchant batch: Finesse, Flash of Steel, Dramatic Entrance, Ultimate Strike, Ultimate Defend, Master of Strategy
 - [x] source-backed second batch: Shockwave, Impatience, Mind Blast, Secret Technique and Secret Weapon
+- [x] source-backed third batch: Purity, Thinking Ahead and Hand of Greed; generalized selection exhaustion, draw-top placement and fatal gold
 - [ ] implement further single-player colorless cards in mechanic-dependency batches (powers, generated choices, delayed effects, conditional damage, source-backed triggers)
 - [ ] model native solo unlock/epoch constraints and the actual colorless reward/merchant generation rules
 - [ ] provide card-specific native oracle differentials for complex choice, trigger, and RNG semantics
