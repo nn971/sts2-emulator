@@ -3064,6 +3064,9 @@ public sealed partial class PrototypeGameEngine
                         && upgradeLevel > 0,
                     ExtraCardRewardsOnFatal:
                         effect.ExtraCardRewardsOnFatal,
+                    GoldOnFatal:
+                        effect.GoldOnFatal
+                        + (effect.GoldOnFatalUpgradeDelta * upgradeLevel),
                     PlayerPowerOnFatalId:
                         effect.PlayerPowerOnFatalId,
                     PlayerPowerOnFatalAmount:
@@ -3142,6 +3145,7 @@ public sealed partial class PrototypeGameEngine
 
                     var fatalEligible =
                         (operation.ExtraCardRewardsOnFatal > 0
+                            || operation.GoldOnFatal > 0
                             || (operation.PlayerPowerOnFatalId is not null
                                 && operation.PlayerPowerOnFatalAmount != 0))
                         && ShouldEnemyDeathTriggerFatal(
@@ -3289,6 +3293,14 @@ public sealed partial class PrototypeGameEngine
 
                         if (fatalEligible)
                         {
+                            if (operation.GoldOnFatal > 0)
+                            {
+                                player = player with
+                                {
+                                    Gold = checked(player.Gold + operation.GoldOnFatal)
+                                };
+                            }
+
                             if (operation.ExtraCardRewardsOnFatal > 0)
                             {
                                 combat = combat with
@@ -7660,18 +7672,24 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
+        // Resolve selection-induced exhaust and discard using the normal
+        // ordered event-dispatch continuation (including nested choices).
         var discardEvents =
             pending.Selection.SourceZone == PrototypeCardZone.Hand
-            && pending.Selection.Resolution
-                == PrototypeCardSelectionResolutionKind.MoveToDiscard
+            && (pending.Selection.Resolution
+                    == PrototypeCardSelectionResolutionKind.MoveToDiscard
+                || pending.Selection.Resolution
+                    == PrototypeCardSelectionResolutionKind.MoveToExhaust)
                 ? selected.Select(cardId =>
                 {
-                    var discardedCard =
-                        RequireCombatCard(combat, cardId);
+                    var movedCard = RequireCombatCard(combat, cardId);
                     return new PrototypeCombatEvent(
-                        PrototypeCombatEventKind.CardDiscarded,
+                        pending.Selection.Resolution
+                            == PrototypeCardSelectionResolutionKind.MoveToExhaust
+                                ? PrototypeCombatEventKind.CardExhausted
+                                : PrototypeCombatEventKind.CardDiscarded,
                         SourceCardInstanceId: cardId,
-                        CardId: discardedCard.CardId);
+                        CardId: movedCard.CardId);
                 }).ToArray()
                 : Array.Empty<PrototypeCombatEvent>();
 
@@ -8073,6 +8091,9 @@ public sealed partial class PrototypeGameEngine
                 PrototypeCardZone.DiscardPile,
             PrototypeCardSelectionResolutionKind.MoveToExhaust =>
                 PrototypeCardZone.ExhaustPile,
+            // DrawCards pops the last draw-pile entry: append means top.
+            PrototypeCardSelectionResolutionKind.MoveToDrawTop =>
+                PrototypeCardZone.DrawPile,
             _ => throw new ArgumentOutOfRangeException()
         };
 
