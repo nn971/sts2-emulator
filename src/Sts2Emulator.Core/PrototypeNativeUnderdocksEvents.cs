@@ -25,6 +25,8 @@ public static class PrototypeNativeUnderdocksEvents
     [
         "proto.native.underdocks.abyssal_baths",
         "proto.native.underdocks.drowning_beacon",
+        "proto.native.underdocks.endless_conveyor",
+        "proto.native.underdocks.punch_off",
         "proto.native.underdocks.trash_heap",
         "proto.native.underdocks.waterlogged_scriptorium",
         "proto.native.underdocks.spiraling_whirlpool",
@@ -41,6 +43,8 @@ public static class PrototypeNativeUnderdocksEvents
         PrototypeEventDefinition evt, PlayerState player) =>
         evt.Id switch
         {
+            PrototypeNativeEndlessConveyor.EventId =>
+                player.Gold >= 120,
             "proto.native.underdocks.waterlogged_scriptorium" =>
                 player.Gold >= 55,
             PrototypeNativeUnderdocksTrashHeap.EventId =>
@@ -53,12 +57,37 @@ public static class PrototypeNativeUnderdocksEvents
             _ => true
         };
 
+    public static bool IsFloorEligible(
+        PrototypeEventDefinition evt, RunWorldState world) =>
+        evt.Id != PrototypeNativePunchOff.EventId || world.Floor >= 6;
+
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         StringComparer.Ordinal.Equals(
             eventId, "proto.native.underdocks.waterlogged_scriptorium");
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Specialized handlers resolve the native staged choices and
+        // source-ordered weighted/random items.
+        new(
+            PrototypeNativeEndlessConveyor.EventId,
+            "Endless Conveyor",
+            [
+                new("grab", "Take the current conveyor dish", []),
+                new("observe", "Observe the chef (upgrade one random card)",
+                    []),
+                new("leave", "Leave the conveyor", [])
+            ],
+            MaxAct: 1),
+        new(
+            PrototypeNativePunchOff.EventId,
+            "Punch Off",
+            [
+                new("nab", "Take an Injury and offer one relic", []),
+                new("take_them", "Challenge the Punch Constructs", []),
+                new("fight", "Fight both Punch Constructs", [])
+            ],
+            MaxAct: 1),
         // Source: WaterloggedScriptorium.cs + Steady.cs (v0.111.0).
         // The initial event requires 55 gold, but Bloody Ink does
         // not spend any. Both paid choices use the shared deck
@@ -194,7 +223,9 @@ public static class PrototypeNativeUnderdocksEvents
 
     public static bool UsesNativePotionOffer(string eventId) =>
         StringComparer.Ordinal.Equals(
-            eventId, "proto.native.underdocks.drowning_beacon");
+            eventId, "proto.native.underdocks.drowning_beacon")
+        || StringComparer.Ordinal.Equals(
+            eventId, PrototypeNativeEndlessConveyor.EventId);
 
     public static bool IsSupported(string eventId) =>
         SupportedRegionEventIds.Contains(eventId, StringComparer.Ordinal);
