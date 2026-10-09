@@ -125,7 +125,11 @@ public static class PrototypeContent
             new(PrototypeAutomaticStepKind.DrawPlayerHand),
             new(
                 PrototypeAutomaticStepKind.DispatchCombatEvent,
-                EventKind: PrototypeCombatEventKind.PlayerTurnStarted)
+                EventKind: PrototypeCombatEventKind.PlayerTurnStarted),
+            // Native auto-preplay occurs after energy/hand-draw/start hooks.
+            new(
+                PrototypeAutomaticStepKind.DispatchCombatEvent,
+                EventKind: PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
         ]);
 
     public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
@@ -2949,6 +2953,61 @@ public static class PrototypeContent
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
         new[]
         {
+            // Panache instances independently count five cards during each
+            // turn, ignoring the card which originally applied the power.
+            new PrototypePowerDefinition(
+                "proto.power.panache",
+                "Panache",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy,
+                                0,
+                                AmountPerPowerStack: 1,
+                                Target: PrototypeEffectTarget.AllEnemies)
+                        ],
+                        EveryNth: 5)
+                ],
+                IsInstanced: true,
+                ResetTriggerCountersAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.the_bomb",
+                "The Bomb",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnEnded,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy,
+                                0,
+                                Target: PrototypeEffectTarget.AllEnemies,
+                                UseSourcePowerStoredValue: true)
+                        ],
+                        RemoveSourcePowerAfterTrigger: true,
+                        CountdownBeforeTrigger: true)
+                ],
+                IsInstanced: true),
+            new PrototypePowerDefinition(
+                "proto.power.mayhem",
+                "Mayhem",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.AutoPrePlayPhaseEntered,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.AutoPlayTopDrawCards,
+                                0,
+                                AmountPerPowerStack: 1)
+                        ])
+                ]),
             new PrototypePowerDefinition(
                 "proto.power.dexterity",
                 "Dexterity",
