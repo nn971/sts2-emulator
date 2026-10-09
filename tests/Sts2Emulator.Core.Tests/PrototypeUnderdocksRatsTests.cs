@@ -29,9 +29,9 @@ public sealed class PrototypeUnderdocksRatsTests
         var random = rat.Ai!.States.Single(state => state.Id == "random");
         Assert.Equal(new[] { 1, 1, 3, 9 },
             random.Branches!.Select(branch => branch.Weight));
-        Assert.True(random.Branches[^1].RequiresAvailableSummon);
+        Assert.True(random.Branches![^1].RequiresAvailableSummon);
         Assert.Equal(PrototypeEnemyAiRepeatRule.UseOnlyOnce,
-            random.Branches[^1].RepeatRule);
+            random.Branches![^1].RepeatRule);
     }
 
     [Fact]
