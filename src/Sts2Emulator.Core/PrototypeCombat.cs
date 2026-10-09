@@ -2240,6 +2240,7 @@ public sealed partial class PrototypeGameEngine
             .ToList();
         var block = combat.PlayerBlock;
         var hp = player.Hp;
+        var gold = player.Gold;
 
         for (var index = 0; index < enemies.Count; index++)
         {
@@ -2374,6 +2375,26 @@ public sealed partial class PrototypeGameEngine
 
                         case PrototypeEnemyEffectKind.KillSelf:
                             enemy = enemy with { Hp = 0, Block = 0 };
+                            break;
+
+                        case PrototypeEnemyEffectKind.StealPlayerGold:
+                        {
+                            var stolen = Math.Min(Math.Max(0, amount), gold);
+                            gold -= stolen;
+                            enemy = enemy with
+                            {
+                                StolenGold = checked(enemy.StolenGold + stolen)
+                            };
+                            break;
+                        }
+
+                        case PrototypeEnemyEffectKind.EscapeEnemy:
+                            enemy = enemy with
+                            {
+                                Hp = 0,
+                                Block = 0,
+                                Escaped = true
+                            };
                             break;
 
                         case PrototypeEnemyEffectKind.GainBlock:
@@ -2658,7 +2679,7 @@ public sealed partial class PrototypeGameEngine
             rng);
 
         return (
-            player with { Hp = hp },
+            player with { Hp = hp, Gold = gold },
             combat);
     }
 
@@ -2753,12 +2774,22 @@ public sealed partial class PrototypeGameEngine
                         Statuses:
                             new Dictionary<string, int>(
                                 StringComparer.Ordinal),
-                        Powers: powers,
+                        Powers: summon.TransferStolenGold
+                            && source.StolenGold > 0
+                            ? powers.Append(new PrototypePowerInstanceState(
+                                "proto.power.heist",
+                                source.StolenGold,
+                                nextPowerOrder++)).ToArray()
+                            : powers,
                         FormationPosition:
                             summon.FormationPosition,
                         SlotName: summon.SlotName,
+                        StolenGold: summon.TransferStolenGold
+                            ? source.StolenGold : 0,
                         EnemyActionSkipsRemaining:
-                            Math.Max(0, enemyActionSkips)));
+                            summon.SkipEnemyActions == 1
+                                ? Math.Max(0, enemyActionSkips)
+                                : Math.Max(0, summon.SkipEnemyActions)));
             }
         }
 
