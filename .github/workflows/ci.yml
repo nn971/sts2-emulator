@@ -110,6 +110,8 @@ jobs:
           process.wait(timeout=5)
           assert process.returncode == 0
           PY
+      - name: Native one-run capture preflight and audit smoke
+        run: python tools/native_one_run_audit_smoke.py
       - name: Passive oracle action-ledger smoke
         run: python tools/native_overgrowth_action_ledger_smoke.py
       - name: Native action-frame identity and callback smoke
