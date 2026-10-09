@@ -324,13 +324,15 @@ internal static partial class PassiveReferenceRecorder
             // _currentOptions if null. Reading that property from
             // the recorder would change the oracle. Inspect its
             // backing field instead, including a null initial page.
-            var options = nativeEvent.GetType()
-                .GetField("_currentOptions",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
-            // The field lives in the EventModel base class.
-            options ??= nativeEvent.GetType().BaseType?.GetField(
-                "_currentOptions",
-                BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo? options = null;
+            for (var type = nativeEvent.GetType();
+                 type is not null && options is null;
+                 type = type.BaseType)
+            {
+                options = type.GetField("_currentOptions",
+                    BindingFlags.DeclaredOnly
+                    | BindingFlags.Instance | BindingFlags.NonPublic);
+            }
             var backingOptions = options?.GetValue(nativeEvent);
             result["options_initialized"] = backingOptions is not null;
             result["options"] = Enumerate(backingOptions)
