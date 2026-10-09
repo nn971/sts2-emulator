@@ -1819,6 +1819,19 @@ public sealed partial class PrototypeGameEngine
 
             enemy = InterceptEnemyLethalDeath(enemy);
             var strengthAtSideTurnEnd = 0;
+            // Expiring temporary debuffs restore their original Strength
+            // *after* the enemy has acted, even though the source power
+            // itself is removed at this stage.
+            var temporaryStrengthRestoration =
+                stage == PrototypeTurnStage.EnemyTurnEnd
+                    ? enemy.PowerStates
+                        .Where(power =>
+                            PrototypeContent.Power(power.PowerId)
+                                .RemoveAtEnemyTurnEnd)
+                        .Sum(power => power.Stacks
+                            * PrototypeContent.Power(power.PowerId)
+                                .EnemyStrengthRestoreAtSideTurnEndPerStack)
+                    : 0;
             var blockAtSideTurnEnd = 0;
             var powers = stage == PrototypeTurnStage.EnemyTurnEnd
                 ? enemy.PowerStates
@@ -1887,11 +1900,14 @@ public sealed partial class PrototypeGameEngine
                         ? false : enemy.GainedReactiveBlockThisTurn
             };
 
-            if (enemy.Hp > 0 && strengthAtSideTurnEnd > 0)
+            var totalStrengthRestoration =
+                strengthAtSideTurnEnd + temporaryStrengthRestoration;
+            if (enemy.Hp > 0 && totalStrengthRestoration != 0)
             {
                 var strengthened = ApplyEnemyPowerToState(
                     combat, enemies[enemyIndex],
-                    "proto.power.strength", strengthAtSideTurnEnd);
+                    "proto.power.strength", totalStrengthRestoration,
+                    ignoreDebuffPrevention: true);
                 combat = strengthened.Combat;
                 enemies[enemyIndex] = strengthened.Enemy;
             }
@@ -5273,6 +5289,13 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         int amount)
     {
+        if (combat.PlayerPowers.Any(power =>
+            power.Stacks > 0
+            && PrototypeContent.Power(power.PowerId).PreventsCardBlock))
+        {
+            return 0;
+        }
+
         var modified = amount + PlayerBlockBonus(combat);
         foreach (var power in combat.PlayerPowers.Where(power => power.Stacks > 0))
         {
@@ -6768,7 +6791,8 @@ public sealed partial class PrototypeGameEngine
             CombatState combat,
             EnemyCombatState enemy,
             string powerId,
-            int stacks)
+            int stacks,
+            bool ignoreDebuffPrevention = false)
     {
         var definition = PrototypeContent.Power(powerId);
         if (definition.IsInstanced
@@ -6787,7 +6811,7 @@ public sealed partial class PrototypeGameEngine
             (definition.IsDebuff && stacks > 0)
             || (definition.NegativeApplicationIsDebuff
                 && stacks < 0);
-        if (isDebuffApplication)
+        if (isDebuffApplication && !ignoreDebuffPrevention)
         {
             var blocked =
                 TryBlockIncomingEnemyDebuff(enemy);
@@ -6829,9 +6853,14 @@ public sealed partial class PrototypeGameEngine
                     };
             }
 
-            return (
-                combat,
-                enemy with { Powers = powers.ToArray() });
+            var changedEnemy = enemy with { Powers = powers.ToArray() };
+            var strengthDelta =
+                stacks * definition.EnemyStrengthOnApplyPerStack;
+            return strengthDelta == 0
+                ? (combat, changedEnemy)
+                : ApplyEnemyPowerToState(
+                    combat, changedEnemy, "proto.power.strength",
+                    strengthDelta, ignoreDebuffPrevention: true);
         }
 
         if (stacks == 0
@@ -6847,13 +6876,19 @@ public sealed partial class PrototypeGameEngine
             SkipNextEnemySideTurnEnd:
                 definition.SkipInitialEnemySideTurnEnd));
 
-        return (
-            combat with
-            {
-                NextPowerApplicationOrder =
-                    combat.NextPowerApplicationOrder + 1
-            },
-            enemy with { Powers = powers.ToArray() });
+        var nextCombat = combat with
+        {
+            NextPowerApplicationOrder =
+                combat.NextPowerApplicationOrder + 1
+        };
+        var nextEnemy = enemy with { Powers = powers.ToArray() };
+        var appliedStrengthDelta =
+            stacks * definition.EnemyStrengthOnApplyPerStack;
+        return appliedStrengthDelta == 0
+            ? (nextCombat, nextEnemy)
+            : ApplyEnemyPowerToState(
+                nextCombat, nextEnemy, "proto.power.strength",
+                appliedStrengthDelta, ignoreDebuffPrevention: true);
     }
 
     private static CombatState ApplyEnemyPower(
