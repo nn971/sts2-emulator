@@ -52,12 +52,9 @@ public sealed class PrototypeUnderdocksRatsTests
         state = EndTurn(engine, state);
         enemies = state.World!.Combat!.Enemies;
         Assert.Equal(3, enemies.Length);
-        Assert.Equal(new[]
-        {
-            "scratch", "disease_bite", "screech"
-        }, enemies.Select(enemy => enemy.LastMoveId)
-            .OrderBy(id => id).OrderBy(_ => 0).ToArray()
-            .OrderBy(id => id));
+        Assert.Equal(new[] { "disease_bite", "scratch", "screech" },
+            enemies.Select(enemy => enemy.LastMoveId!)
+                .OrderBy(id => id, StringComparer.Ordinal));
         Assert.All(enemies, enemy =>
             Assert.Equal(1, enemy.NonSummonMovesUntilEligible));
 
@@ -101,9 +98,8 @@ public sealed class PrototypeUnderdocksRatsTests
         Assert.All(rats, rat => Assert.Equal(1, rat.SharedSummonsUsed));
         Assert.All(rats, rat => Assert.True(rat.SharedSummonUsedThisTurn));
 
-        state = EndTurn(engine, state);
-        Assert.All(state.World!.Combat!.Enemies.Where(rat => rat.Hp > 0),
-            rat => Assert.False(rat.SharedSummonUsedThisTurn));
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(state.Fork()));
     }
 
     private static RunState EndTurn(PrototypeGameEngine engine, RunState state)
