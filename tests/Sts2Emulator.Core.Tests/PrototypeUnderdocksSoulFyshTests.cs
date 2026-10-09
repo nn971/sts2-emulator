@@ -118,26 +118,26 @@ public sealed class PrototypeUnderdocksSoulFyshTests
     }
 
     [Fact]
-    public void UnimplementedSelectedBossIsNotSubstituted()
+    public void SelectingWaterfallGiantNeverSubstitutesAnotherBoss()
     {
         var engine = new PrototypeGameEngine();
         var initial = PrototypeNativeUnderdocksRunFactory.Create(
             "underdocks-other-boss");
-        var unsupported = PrototypeNativeUnderdocks.NativeBossEncounterIds
-            .Single(id => id == "proto.encounter.waterfall_giant_boss");
+        var selected = "proto.encounter.waterfall_giant_boss";
         var state = initial with
         {
-            Phase = RunPhase.MapChoice,
             World = initial.World! with
             {
                 ActOneEncounterPool = initial.World.ActOneEncounterPool! with
                 {
-                    BossEncounterId = unsupported
+                    BossEncounterId = selected
                 }
             }
         };
-        Assert.Throws<NotSupportedException>(() =>
-            StartBoss(engine, state));
+        state = StartBoss(engine, state);
+        Assert.Equal(selected, state.World!.EncounterIds[^1]);
+        Assert.Equal("proto.enemy.waterfall_giant",
+            Assert.Single(state.World.Combat!.Enemies).EnemyId);
     }
 
     private static RunState EndTurn(
