@@ -10,7 +10,7 @@ public sealed class PrototypeColorlessCardTests
         Assert.Equal(65, PrototypeColorlessCards.NativePoolIds.Length);
         Assert.Equal(65, PrototypeColorlessCards.NativePoolIds
             .Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(6, PrototypeColorlessCards.ImplementedShopPool.Length);
+        Assert.Equal(11, PrototypeColorlessCards.ImplementedShopPool.Length);
         Assert.All(PrototypeColorlessCards.ImplementedShopPool, id =>
         {
             Assert.Contains(id, PrototypeColorlessCards.NativePoolIds);
@@ -21,10 +21,10 @@ public sealed class PrototypeColorlessCardTests
                 or PrototypeCardRarity.Rare);
             Assert.DoesNotContain(id, PrototypeContent.RewardCardPool);
         });
-        Assert.Equal(5, PrototypeColorlessCards.Implemented.Count(
+        Assert.Equal(8, PrototypeColorlessCards.Implemented.Count(
             card => card.Rarity == PrototypeCardRarity.Uncommon));
-        Assert.Single(PrototypeColorlessCards.Implemented,
-            card => card.Rarity == PrototypeCardRarity.Rare);
+        Assert.Equal(3, PrototypeColorlessCards.Implemented.Count(
+            card => card.Rarity == PrototypeCardRarity.Rare));
     }
 
     [Fact]
@@ -41,13 +41,17 @@ public sealed class PrototypeColorlessCardTests
 
         var rare = PrototypeColorlessCards.PickMerchantCard(
             PrototypeCardRarity.Rare, rng);
-        Assert.Equal("proto.colorless.master_of_strategy", rare);
+        Assert.Equal(PrototypeCardRarity.Rare, PrototypeContent.Card(rare).Rarity);
+        Assert.Contains(rare, PrototypeColorlessCards.ImplementedShopPool);
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             PrototypeColorlessCards.PickMerchantCard(
                 PrototypeCardRarity.Common, rng));
         Assert.Throws<InvalidOperationException>(() =>
             PrototypeColorlessCards.PickMerchantCard(
-                PrototypeCardRarity.Rare, rng, [rare]));
+                PrototypeCardRarity.Rare, rng,
+                PrototypeColorlessCards.Implemented
+                    .Where(card => card.Rarity == PrototypeCardRarity.Rare)
+                    .Select(card => card.Id).ToArray()));
     }
 
     [Theory]
