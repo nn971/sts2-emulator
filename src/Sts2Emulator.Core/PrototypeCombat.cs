@@ -5718,7 +5718,9 @@ public sealed partial class PrototypeGameEngine
                 PrototypeContent.Card(card.CardId).Retain
                 || (card.UpgradeLevel > 0
                     && PrototypeContent.Card(card.CardId)
-                        .RetainOnUpgrade),
+                        .RetainOnUpgrade)
+                || card.Enchantment?.Kind
+                    == PrototypeCardEnchantmentKind.Steady,
             PrototypeCardKeyword.Sly =>
                 PrototypeContent.Card(card.CardId).Sly,
             PrototypeCardKeyword.Ethereal =>
