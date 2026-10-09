@@ -221,7 +221,56 @@ public static class PrototypeColorlessCards
             ExhaustOnUse: true,
             LoseExhaustOnUpgrade: true,
             Rarity: PrototypeCardRarity.Rare,
-            Type: PrototypeCardType.Skill)
+            Type: PrototypeCardType.Skill),
+        // Native Purity may select zero through 3 (5 upgraded) cards from
+        // hand; each selected card is exhausted with the normal hooks.
+        new(
+            "proto.colorless.purity",
+            "Purity",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.Hand, 0, 3,
+                        PrototypeCardSelectionResolutionKind.MoveToExhaust,
+                        MaxSelectionsUpgradeDelta: 2))
+            ],
+            ExhaustOnUse: true,
+            Retain: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.thinking_ahead",
+            "Thinking Ahead",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.DrawCards, 2),
+                new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.Hand, 1, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToDrawTop))
+            ],
+            ExhaustOnUse: true,
+            LoseExhaustOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // The native card disallows combat generation and awards gold only
+        // for a target-killing Fatal attack, not for ordinary damage.
+        new(
+            "proto.colorless.hand_of_greed",
+            "Hand of Greed",
+            2,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 20, 5,
+                    GoldOnFatal: 20,
+                    GoldOnFatalUpgradeDelta: 5)
+            ],
+            CanBeGeneratedInCombat: false,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack)
     ];
 
     public static string[] ImplementedShopPool { get; } =

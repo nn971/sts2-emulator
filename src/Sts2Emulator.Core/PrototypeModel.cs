@@ -201,7 +201,8 @@ public enum PrototypeCardSelectionResolutionKind
     Preserve,
     MoveToHand,
     MoveToDiscard,
-    MoveToExhaust
+    MoveToExhaust,
+    MoveToDrawTop
 }
 
 public enum PrototypeEffectTarget
@@ -533,7 +534,9 @@ public sealed record PrototypeCombatEffectSpec(
     bool GeneratedChoiceCardsFreeThisTurn = true,
     bool GeneratedChoiceCardsUpgraded = false,
     bool GeneratedChoiceMustPick = false,
-    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null)
+    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
+    int GoldOnFatal = 0,
+    int GoldOnFatalUpgradeDelta = 0)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -576,6 +579,7 @@ public sealed record PrototypeQueuedOperation(
     bool GeneratedChoiceCardsUpgraded = false,
     bool GeneratedChoiceMustPick = false,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
+    int GoldOnFatal = 0,
     long? CardInstanceId = null);
 
 public sealed record PrototypeRunEffectSpec(
