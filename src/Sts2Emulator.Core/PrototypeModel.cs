@@ -812,7 +812,14 @@ public sealed record PrototypePowerDefinition(
     string[]? RemoveOwnerPowersOnPowerExpiry = null,
     string? LastStandAiStateId = null,
     int LastStandHp = 0,
-    bool ResetTriggerCountersAtPlayerTurnEnd = false);
+    bool ResetTriggerCountersAtPlayerTurnEnd = false,
+    // Native NoBlockPower applies only to card-sourced Block, not
+    // unpowered effects from relics or other powers.
+    bool PreventsCardBlock = false,
+    // Reversible enemy strength effects; changes are applied after
+    // debuff prevention, then restored at enemy side-turn end.
+    int EnemyStrengthOnApplyPerStack = 0,
+    int EnemyStrengthRestoreAtSideTurnEndPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
