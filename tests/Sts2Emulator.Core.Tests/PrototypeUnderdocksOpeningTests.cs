@@ -108,13 +108,17 @@ public sealed class PrototypeUnderdocksOpeningTests
             .RemainingWeakEncounterIds);
 
         var elite = StartRoom(engine, state, PrototypeRoomType.Elite, 5);
-        Assert.Equal("proto.encounter.skulking_colony_elite",
-            elite.World!.EncounterIds[^1]);
-        Assert.Equal("proto.enemy.skulking_colony",
-            Assert.Single(elite.World.Combat!.Enemies).EnemyId);
-        Assert.Empty(elite.World.ActOneEncounterPool!.RemainingEliteEncounterIds!);
+        Assert.Contains(elite.World!.EncounterIds[^1],
+            PrototypeNativeUnderdocks.SupportedEliteEncounterIds);
+        Assert.Single(elite.World.ActOneEncounterPool!.RemainingEliteEncounterIds!);
+        var nextElite = StartRoom(engine, elite, PrototypeRoomType.Elite, 6);
+        Assert.Contains(nextElite.World!.EncounterIds[^1],
+            PrototypeNativeUnderdocks.SupportedEliteEncounterIds);
+        Assert.NotEqual(elite.World.EncounterIds[^1],
+            nextElite.World.EncounterIds[^1]);
+        Assert.Empty(nextElite.World.ActOneEncounterPool!.RemainingEliteEncounterIds!);
         Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, elite, PrototypeRoomType.Elite, 6));
+            StartRoom(engine, nextElite, PrototypeRoomType.Elite, 7));
         Assert.Throws<NotSupportedException>(() =>
             StartRoom(engine, state, PrototypeRoomType.Boss, 16));
     }
