@@ -7045,11 +7045,14 @@ public sealed partial class PrototypeGameEngine
         var counts = current.TriggerCounts is null
             ? new int[PrototypeContent.Power(current.PowerId).Triggers.Length]
             : (int[])current.TriggerCounts.Clone();
-        counts[triggerIndex] = checked(counts[triggerIndex] + 1);
+        var nextCount = checked(counts[triggerIndex] + 1);
+        // Counter-style native powers restart at zero after their Nth
+        // trigger; saving the residue also bounds the persisted state.
+        counts[triggerIndex] = nextCount % subscriber.EveryNth;
         var updated = (PrototypePowerInstanceState[])combat.PlayerPowers.Clone();
         updated[index] = current with { TriggerCounts = counts };
         return (combat with { PlayerPowers = updated },
-            counts[triggerIndex] % subscriber.EveryNth == 0);
+            counts[triggerIndex] == 0);
     }
 
     private static CombatState ResetPlayerPowerTriggerCounters(CombatState combat) =>
