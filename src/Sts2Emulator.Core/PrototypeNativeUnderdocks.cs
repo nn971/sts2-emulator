@@ -31,8 +31,7 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.punch_construct_normal",
         "proto.encounter.seapunk_normal",
         "proto.encounter.sewer_clam_normal",
-        "proto.encounter.two_tailed_rats_normal",
-        "proto.encounter.gremlin_merc_normal"
+        "proto.encounter.two_tailed_rats_normal"
     ];
 
     public static string[] NativeEliteEncounterIds { get; } =
@@ -69,7 +68,8 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.haunted_ship_normal",
         "proto.encounter.sewer_clam_normal",
         "proto.encounter.living_fog_normal",
-        "proto.encounter.two_tailed_rats_normal"
+        "proto.encounter.two_tailed_rats_normal",
+        "proto.encounter.gremlin_merc_normal"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
