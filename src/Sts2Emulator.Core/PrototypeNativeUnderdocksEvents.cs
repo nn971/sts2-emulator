@@ -23,6 +23,7 @@ public static class PrototypeNativeUnderdocksEvents
 
     public static string[] SupportedRegionEventIds { get; } =
     [
+        "proto.native.underdocks.abyssal_baths",
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
         "proto.native.underdocks.sunken_statue"
@@ -30,6 +31,22 @@ public static class PrototypeNativeUnderdocksEvents
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Source: AbyssalBaths.cs. These describe the initial page;
+        // the engine's staged handler generates Linger/Exit afterward,
+        // with progressively increasing unblockable damage.
+        new(
+            "proto.native.underdocks.abyssal_baths",
+            "Abyssal Baths",
+            [
+                new("immerse", "Immerse (+2 max HP; take 3 damage)",
+                    [
+                        new(PrototypeRunEffectKind.GainMaxHp, 2),
+                        new(PrototypeRunEffectKind.LoseHp, 3)
+                    ]),
+                new("abstain", "Abstain (heal 10)",
+                    [new(PrototypeRunEffectKind.Heal, 10)])
+            ],
+            MaxAct: 1),
         // Source: SunkenStatue.cs. The gold roll is 111 + [-10,10]
         // and is captured once when the event is selected.
         new(
