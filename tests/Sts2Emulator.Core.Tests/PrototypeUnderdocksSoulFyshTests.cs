@@ -51,7 +51,7 @@ public sealed class PrototypeUnderdocksSoulFyshTests
         var beckons = combat.Cards.Where(card =>
             card.CardId == "proto.status.beckon").ToArray();
         Assert.Equal(2, beckons.Length);
-        Assert.Single(combat.DrawPile, id =>
+        Assert.Single(combat.DrawPile.Concat(combat.Hand), id =>
             beckons.Any(card => card.InstanceId == id));
         Assert.Single(combat.DiscardPile, id =>
             beckons.Any(card => card.InstanceId == id));
