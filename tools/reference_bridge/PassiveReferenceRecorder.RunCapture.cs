@@ -329,9 +329,8 @@ internal static partial class PassiveReferenceRecorder
             // EventModel.CurrentOptions lazily allocates its backing
             // list. Reading the private field avoids even that nominal
             // mutation in the observer; null means options not created.
-            var rawOptions = nativeEvent.GetType().GetField(
-                "_currentOptions",
-                BindingFlags.Instance | BindingFlags.NonPublic)
+            var rawOptions = GetFieldInHierarchy(
+                nativeEvent.GetType(), "_currentOptions")
                 ?.GetValue(nativeEvent);
             result["options"] = Enumerate(rawOptions)
                 .Select(option => ReadNamed(option,
@@ -341,6 +340,27 @@ internal static partial class PassiveReferenceRecorder
                 GetProperty(nativeEvent, "Rng"));
             return (object)result;
         }).ToArray();
+    }
+
+    private static FieldInfo? GetFieldInHierarchy(
+        Type type, string fieldName)
+    {
+        // GetField on a derived type does not find private fields of
+        // EventModel. Inspect each declaring type explicitly.
+        for (Type? current = type;
+             current is not null;
+             current = current.BaseType)
+        {
+            var field = current.GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic
+                | BindingFlags.Public | BindingFlags.DeclaredOnly);
+            if (field is not null)
+            {
+                return field;
+            }
+        }
+        return null;
     }
 
     private static object? SummarizeRoom(object? room)
