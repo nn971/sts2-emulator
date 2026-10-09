@@ -285,7 +285,7 @@ internal static partial class PassiveReferenceRecorder
         object player)
     {
         var result = ReadNamed(player,
-            "Gold", "Character", "NetId", "MaxEnergy",
+            "Gold", "Character", "MaxEnergy",
             "MaxPotionCount", "HasOpenPotionSlots");
         var creature = GetProperty(player, "Creature");
         if (creature is not null)
@@ -343,6 +343,11 @@ internal static partial class PassiveReferenceRecorder
             ?.GetValue(point);
         result["coord"] = ProjectSerializable(coordinate, depth: 2);
         result["children"] = Enumerate(GetProperty(point, "Children"))
+            // HashSet enumeration is process-dependent: canonicalize
+            // edge ordering for later semantic diffing.
+            .OrderBy(child => child.GetType().GetField(
+                "coord", BindingFlags.Public | BindingFlags.Instance)
+                ?.GetValue(child)?.ToString(), StringComparer.Ordinal)
             .Take(12)
             .Select(child =>
                 ProjectSerializable(child.GetType().GetField(
