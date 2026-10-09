@@ -171,7 +171,12 @@ public sealed class PrototypeColorlessThirdBatchTests
                     new Dictionary<string, int>(StringComparer.Ordinal))
             ],
             NextCardInstanceId: cards.Length + 1, Cards: cards,
-            PlayerPowers: [], NextPowerApplicationOrder: 1);
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1 + (relics?.Length ?? 0),
+            Relics: relics?.Select((relic, index) =>
+                new CombatRelicState(index, relic.RelicId, index + 1L,
+                    new int[(PrototypeContent.Relic(relic.RelicId).Triggers
+                        ?? []).Length])).ToArray());
         return new RunState(
             "prototype-unbound", "prototype-0.1", seed, seed, 0,
             RunPhase.Combat,
