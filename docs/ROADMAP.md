@@ -76,6 +76,7 @@ central dispatch branches.
 - [x] source-backed second batch: Shockwave, Impatience, Mind Blast, Secret Technique and Secret Weapon
 - [x] source-backed third batch: Purity, Thinking Ahead and Hand of Greed; generalized selection exhaustion, draw-top placement and fatal gold
 - [x] source-backed fourth batch: Panache, The Bomb and Mayhem; per-instance event counters, turn-end countdown damage and post-draw auto-preplay hooks
+- [x] source-backed fifth batch: Panic Button and Dark Shackles; card-only Block prevention, enemy-side countdown expiration and reversible Strength reduction
 - [ ] implement further single-player colorless cards in mechanic-dependency batches (powers, generated choices, delayed effects, conditional damage, source-backed triggers)
 - [ ] model native solo unlock/epoch constraints and the actual colorless reward/merchant generation rules
 - [ ] provide card-specific native oracle differentials for complex choice, trigger, and RNG semantics
