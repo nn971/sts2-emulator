@@ -189,7 +189,13 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
             ],
             NextCardInstanceId: 2,
             Cards: [card], PlayerPowers: [],
-            NextPowerApplicationOrder: 2);
+            NextPowerApplicationOrder: 2,
+            Relics: relics.Select((relic, index) =>
+                new CombatRelicState(
+                    index, relic.RelicId, index + 1,
+                    new int[(PrototypeContent.Relic(relic.RelicId)
+                        .Triggers ?? []).Length]))
+                .ToArray());
         return new RunState("prototype-unbound", "prototype-0.1",
             seed, seed, 0, RunPhase.Combat,
             new PlayerState(70, 70, 100, deck, relics,
