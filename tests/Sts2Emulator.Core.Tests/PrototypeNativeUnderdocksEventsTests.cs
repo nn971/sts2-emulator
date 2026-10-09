@@ -10,7 +10,7 @@ public sealed class PrototypeNativeUnderdocksEventsTests
         Assert.Equal(10, PrototypeNativeUnderdocksEvents.NativeRegionEventIds.Length);
         Assert.Equal(10, PrototypeNativeUnderdocksEvents.NativeRegionEventIds
             .Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(2, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
+        Assert.Equal(3, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
         Assert.All(PrototypeNativeUnderdocksEvents.SupportedRegionEventIds, id =>
         {
             Assert.Contains(id, PrototypeNativeUnderdocksEvents.NativeRegionEventIds);
@@ -94,6 +94,41 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             return;
         }
         throw new InvalidOperationException("Doors never drawn.");
+    }
+
+    [Fact]
+    public void StatueGoldRollIsPersistedAndSwordIsAnAlternativeReward()
+    {
+        var engine = new PrototypeGameEngine();
+        for (var i = 0; i < 32; i++)
+        {
+            var state = StartUnderdocksEvent(engine, "statue-" + i);
+            if (state.World!.Event!.EventId
+                != "proto.native.underdocks.sunken_statue")
+            {
+                continue;
+            }
+
+            var original = state.Player;
+            var rolled = state.World.Event.NativeEventGold;
+            Assert.InRange(rolled, 101, 121);
+            var sword = Select(engine, state, "sword");
+            Assert.Equal(original.Hp, sword.Player.Hp);
+            Assert.Equal(original.Gold, sword.Player.Gold);
+            Assert.Contains(sword.Player.Relics, relic =>
+                relic.RelicId == "proto.native.event.sword_of_stone");
+
+            var dive = Select(engine, state, "dive");
+            Assert.Equal(original.Gold + rolled, dive.Player.Gold);
+            Assert.Equal(original.Hp - 7, dive.Player.Hp);
+            Assert.DoesNotContain(dive.Player.Relics, relic =>
+                relic.RelicId == "proto.native.event.sword_of_stone");
+            Assert.Equal(CanonicalJson.Sha256(state),
+                CanonicalJson.Sha256(state.Fork()));
+            return;
+        }
+
+        throw new InvalidOperationException("Sunken Statue was never selected.");
     }
 
     [Fact]
