@@ -1837,7 +1837,10 @@ public sealed partial class PrototypeGameEngine
                         ? false : enemy.SharedSummonUsedThisTurn,
                 HpLossBudgetUsed =
                     stage == PrototypeTurnStage.EnemyTurnStart
-                        ? 0 : enemy.HpLossBudgetUsed
+                        ? 0 : enemy.HpLossBudgetUsed,
+                GainedReactiveBlockThisTurn =
+                    stage == PrototypeTurnStage.EnemyTurnEnd
+                        ? false : enemy.GainedReactiveBlockThisTurn
             };
 
             if (enemy.Hp > 0 && strengthAtSideTurnEnd > 0)
@@ -3090,6 +3093,36 @@ public sealed partial class PrototypeGameEngine
                         targetEnemyId.Value,
                         damageAmount);
                     combat = damageResult.Combat;
+                    if (operation.IsPoweredAttack
+                        && sourceCardInstanceId is not null
+                        && damageResult.DamageDealt > 0)
+                    {
+                        var reactiveEnemies = combat.Enemies
+                            .Select(item => item.Fork()).ToArray();
+                        var reactiveIndex = Array.FindIndex(
+                            reactiveEnemies,
+                            item => item.InstanceId == targetEnemyId.Value);
+                        if (reactiveIndex >= 0)
+                        {
+                            var target = reactiveEnemies[reactiveIndex];
+                            if (target.Hp > 0
+                                && !target.GainedReactiveBlockThisTurn)
+                            {
+                                var reactiveBlock = target.PowerStates.Sum(power =>
+                                    power.Stacks * PrototypeContent.Power(power.PowerId)
+                                        .EnemyBlockAfterFirstUnblockedCardAttackPerStack);
+                                if (reactiveBlock > 0)
+                                {
+                                    reactiveEnemies[reactiveIndex] = target with
+                                    {
+                                        Block = target.Block + reactiveBlock,
+                                        GainedReactiveBlockThisTurn = true
+                                    };
+                                    combat = combat with { Enemies = reactiveEnemies };
+                                }
+                            }
+                        }
+                    }
                     if (damageResult.Defeated)
                     {
                         combat =
