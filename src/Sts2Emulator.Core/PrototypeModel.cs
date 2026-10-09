@@ -681,7 +681,11 @@ public sealed record PrototypeRelicDefinition(
     int HandDrawBonus = 0,
     int RandomizeDrawnCardCostMaxExclusive = 0,
     bool ForceCombatPotionReward = false,
-    int EnchantNewBlockCardsNimble = 0);
+    int EnchantNewBlockCardsNimble = 0,
+    // General run/combat modifier hooks, including event-only relics.
+    int GoldOnRoomEntryUntilPurchase = 0,
+    int RestHealCardRewardCount = 0,
+    int MinPoweredAttackHpLoss = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

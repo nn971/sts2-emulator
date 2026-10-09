@@ -38,7 +38,8 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             World = world,
-            Player = ApplyPersistentCardRoomEntry(state.Player, node)
+            Player = ApplyRelicRoomEntryGold(
+                ApplyPersistentCardRoomEntry(state.Player, node))
         };
 
         return room switch
@@ -2056,6 +2057,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var player = state.Player;
+        var goldBeforePurchase = player.Gold;
         var nextId = world.NextCardInstanceId;
 
         if (StringComparer.Ordinal.Equals(action.Kind, "remove_card"))
@@ -2225,6 +2227,11 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException($"Unknown shop action '{action.Kind}'.");
         }
+
+        // Native Maw Bank ceases room-entry gold on the FIRST
+        // positive-gold merchant purchase, including card removal.
+        player = ApplyFirstPositiveShopPurchase(
+            player, Math.Max(0, goldBeforePurchase - player.Gold));
 
         world = world with
         {
@@ -2428,7 +2435,7 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEventKind.RestSiteHealed,
                 rng: state.Rng);
             state = state with { Player = player };
-            return CompleteRoomToMap(state);
+            return EnterRestHealRelicReward(state);
         }
 
         if (StringComparer.Ordinal.Equals(action.Kind, "rest_train"))
