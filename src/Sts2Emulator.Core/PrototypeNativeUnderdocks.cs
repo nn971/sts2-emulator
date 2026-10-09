@@ -63,7 +63,9 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.corpse_slugs_normal",
         "proto.encounter.punch_construct_normal",
         "proto.encounter.cultists_normal",
-        "proto.encounter.fossil_stalker_normal"
+        "proto.encounter.fossil_stalker_normal",
+        "proto.encounter.seapunk_normal",
+        "proto.encounter.haunted_ship_normal"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
@@ -237,6 +239,53 @@ public static class PrototypeNativeUnderdocks
                         "random", PrototypeEnemyAiStateKind.Random,
                         Branches: [new("tackle", 2), new("latch", 2), new("lash", 2)])
                 ])),
+        // Haunted Ship: forced Haunt, then Swipe / Stomp alternation.
+        // Haunt applies 3 Weak and deposits 5 Ethereal Dazed status
+        // cards in the discard pile. The state machine never repeats
+        // the opener or returns to it after the first turn.
+        new(
+            "proto.enemy.haunted_ship",
+            "Haunted Ship",
+            63,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "haunt",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, 3,
+                            PowerId: "proto.power.weak"),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.AddCardsToDiscard, 5,
+                            CardId: "proto.status.dazed")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "swipe",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 13,
+                        AscensionDeltas: [new(9, 1)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "stomp",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 4,
+                        Repetitions: 3,
+                        AscensionDeltas: [new(9, 1)])])
+            ],
+            HpAscensionDeltas: [new(8, 4)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "haunt",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "haunt", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "swipe"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "swipe", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "stomp"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "stomp", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "swipe")
+                ])),
         // Native SludgeSpinner: 37–39 HP (A8: 41–42).
         // Forced Oil Spray, then uniform no-immediate-repeat branch
         // between Oil Spray, Slam and Rage.
@@ -349,6 +398,22 @@ public static class PrototypeNativeUnderdocks
             ["proto.enemy.fossil_stalker"],
             MinAct: 1, MaxAct: 1, Weight: 0,
             Formation: [new("proto.enemy.fossil_stalker", 0)]),
+        new(
+            "proto.encounter.seapunk_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.calcified_cultist", "proto.enemy.seapunk"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation:
+            [
+                new("proto.enemy.calcified_cultist", 0),
+                new("proto.enemy.seapunk", 1)
+            ]),
+        new(
+            "proto.encounter.haunted_ship_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.haunted_ship"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.haunted_ship", 0)]),
         new(
             "proto.encounter.punch_construct_normal",
             PrototypeRoomType.Combat,
