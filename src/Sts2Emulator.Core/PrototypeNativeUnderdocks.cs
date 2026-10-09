@@ -45,8 +45,7 @@ public static class PrototypeNativeUnderdocks
     [
         "proto.encounter.waterfall_giant_boss",
         "proto.encounter.soul_fysh_boss",
-        "proto.encounter.lagavulin_matriarch_boss",
-        "proto.encounter.waterfall_giant_boss"
+        "proto.encounter.lagavulin_matriarch_boss"
     ];
 
     public static string[] SupportedWeakEncounterIds { get; } =
@@ -83,7 +82,8 @@ public static class PrototypeNativeUnderdocks
     public static string[] SupportedBossEncounterIds { get; } =
     [
         "proto.encounter.soul_fysh_boss",
-        "proto.encounter.lagavulin_matriarch_boss"
+        "proto.encounter.lagavulin_matriarch_boss",
+        "proto.encounter.waterfall_giant_boss"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
