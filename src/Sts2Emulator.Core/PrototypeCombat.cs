@@ -1810,6 +1810,7 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
+            enemy = InterceptEnemyLethalDeath(enemy);
             var strengthAtSideTurnEnd = 0;
             var blockAtSideTurnEnd = 0;
             var powers = stage == PrototypeTurnStage.EnemyTurnEnd
@@ -2362,9 +2363,11 @@ public sealed partial class PrototypeGameEngine
 
             foreach (var effect in move.Effects)
             {
-                var amount = effect.AmountAt(
-                    act,
-                    ascension);
+                var amount = effect.UseStoredEnemyDamage
+                    ? enemy.StoredEnemyDamage
+                    : checked(effect.AmountAt(act, ascension)
+                        + effect.ExtraAmountPerPriorMoveUse
+                        * (enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0));
                 var repetitions =
                     effect.RepetitionsAt(ascension);
                 var unblockedAttackHits = 0;
@@ -2454,6 +2457,32 @@ public sealed partial class PrototypeGameEngine
 
                         case PrototypeEnemyEffectKind.GainBlock:
                             enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
+                            break;
+
+                        case PrototypeEnemyEffectKind.HealSelf:
+                            enemy = enemy with
+                            {
+                                Hp = Math.Min(
+                                    definition.HpRangeAt(act, ascension).Max,
+                                    enemy.Hp + Math.Max(0, amount))
+                            };
+                            break;
+
+                        case PrototypeEnemyEffectKind.StoreEnemyPowerAsDamage:
+                            if (effect.PowerId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Stored-damage effect requires a power ID.");
+                            }
+                            enemy = enemy with
+                            {
+                                StoredEnemyDamage = enemy.PowerStates
+                                    .Where(power => power.PowerId == effect.PowerId)
+                                    .Sum(power => power.Stacks),
+                                Powers = enemy.PowerStates
+                                    .Where(power => power.PowerId != effect.PowerId)
+                                    .ToArray()
+                            };
                             break;
 
                         case PrototypeEnemyEffectKind.ApplyPlayerPower:
@@ -2741,6 +2770,7 @@ public sealed partial class PrototypeGameEngine
                 moveUseCounts.GetValueOrDefault(
                     move.Id) + 1;
 
+            enemy = InterceptEnemyLethalDeath(enemy);
             enemies[index] = enemy with
             {
                 MoveIndex = enemy.MoveIndex + 1,
@@ -8338,12 +8368,10 @@ public sealed partial class PrototypeGameEngine
             enemy.Hp - modified.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
 
-        enemies[index] = enemy with
-        {
-            Hp = nextHp
-        };
+        enemies[index] = InterceptEnemyLethalDeath(
+            enemy with { Hp = nextHp });
 
-        var defeated = enemy.Hp > 0 && nextHp == 0;
+        var defeated = enemy.Hp > 0 && enemies[index].Hp == 0;
         var nextCombat = combat with { Enemies = enemies };
         if (defeated)
         {
@@ -8406,13 +8434,14 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        enemies[index] = enemy with
-        {
-            Block = enemy.Block - absorbed,
-            Hp = nextHp
-        };
+        enemies[index] = InterceptEnemyLethalDeath(
+            enemy with
+            {
+                Block = enemy.Block - absorbed,
+                Hp = nextHp
+            });
 
-        var defeated = enemy.Hp > 0 && nextHp == 0;
+        var defeated = enemy.Hp > 0 && enemies[index].Hp == 0;
         var nextCombat = combat with { Enemies = enemies };
         if (defeated)
         {
@@ -8420,6 +8449,41 @@ public sealed partial class PrototypeGameEngine
         }
         return new PrototypeDamageResult(
             nextCombat, damageDealt, Defeated: defeated);
+    }
+
+    /// <summary>
+    /// A last-stand power can turn lethal enemy HP loss into a separate
+    /// scripted combat phase. The intercept is one-shot so the eventual
+    /// scripted self-death is not intercepted again.
+    /// </summary>
+    private static EnemyCombatState InterceptEnemyLethalDeath(
+        EnemyCombatState enemy)
+    {
+        if (enemy.Hp > 0 || enemy.LastStandTriggered)
+        {
+            return enemy;
+        }
+
+        foreach (var power in enemy.PowerStates)
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (power.Stacks <= 0
+                || definition.LastStandHp <= 0
+                || definition.LastStandAiStateId is not { } nextState)
+            {
+                continue;
+            }
+
+            return enemy with
+            {
+                Hp = definition.LastStandHp,
+                Block = 0,
+                LastStandTriggered = true,
+                AiStateId = nextState
+            };
+        }
+
+        return enemy;
     }
 
     /// <summary>
