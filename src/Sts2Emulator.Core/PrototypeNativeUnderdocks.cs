@@ -81,11 +81,39 @@ public static class PrototypeNativeUnderdocks
 
     public static string[] SupportedBossEncounterIds { get; } =
     [
-        "proto.encounter.soul_fysh_boss"
+        "proto.encounter.soul_fysh_boss",
+        "proto.encounter.lagavulin_matriarch_boss",
+        "proto.encounter.waterfall_giant_boss"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
     [
+        // Steam Eruption survives the first lethal blow, replacing it
+        // with a protected telegraph followed by a lethal explosion.
+        new(
+            "proto.power.steam_eruption",
+            "Steam Eruption",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            LastStandAiStateId: "about_to_blow",
+            LastStandHp: 999999999),
+        // Native Lagavulin Matriarch wakes either on the first
+        // unblocked attack hit or after three asleep enemy turns. Waking
+        // removes Plating; premature attack wake stuns one upcoming
+        // action and preserves Slash as the first real intent.
+        new(
+            "proto.power.asleep",
+            "Asleep",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnemyStacksDecayAtSideTurnEnd: 1,
+            WakeOwnerOnUnblockedAttackDamage: true,
+            OwnerAiStateOnWake: "slash",
+            RemoveOwnerPowersOnWake:
+                ["proto.power.asleep", "proto.power.plating"],
+            StunOwnerOnWake: true,
+            OwnerAiStateOnPowerExpiry: "slash",
+            RemoveOwnerPowersOnPowerExpiry: ["proto.power.plating"]),
         // Intangible limits each HP-loss event to one and expires
         // once per enemy-side turn, including the turn it is applied.
         new(
@@ -185,6 +213,194 @@ public static class PrototypeNativeUnderdocks
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
     [
+        // Waterfall Giant pressures through a predictable six-stage
+        // sequence. Its Pressure Gun increases damage by five each use;
+        // Steam Eruption accumulates the eventual death-blow damage.
+        // When first killed, the last-stand power preserves the boss
+        // for a telegraphed About to Blow turn before its explosion.
+        new(
+            "proto.enemy.waterfall_giant",
+            "Waterfall Giant",
+            240,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "pressurize",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyEnemyPower, 15,
+                        PowerId: "proto.power.steam_eruption",
+                        AscensionDeltas: [new(9, 5)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "stomp",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 15,
+                            AscensionDeltas: [new(9, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, 1,
+                            PowerId: "proto.power.weak"),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 3,
+                            PowerId: "proto.power.steam_eruption")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "ram",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 10,
+                            AscensionDeltas: [new(9, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 3,
+                            PowerId: "proto.power.steam_eruption")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "siphon",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.HealSelf, 10,
+                            AscensionDeltas: [new(8, 5)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 3,
+                            PowerId: "proto.power.steam_eruption")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "pressure_gun",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 20,
+                            AscensionDeltas: [new(9, 3)],
+                            ExtraAmountPerPriorMoveUse: 5),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 3,
+                            PowerId: "proto.power.steam_eruption")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "pressure_up",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 13,
+                            AscensionDeltas: [new(9, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 3,
+                            PowerId: "proto.power.steam_eruption")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "about_to_blow",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.StoreEnemyPowerAsDamage, 0,
+                        PowerId: "proto.power.steam_eruption")]),
+                new PrototypeEnemyMoveDefinition(
+                    "explode",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 0,
+                            UseStoredEnemyDamage: true),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.KillSelf, 0)
+                    ])
+            ],
+            HpAscensionDeltas: [new(8, 10)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "pressurize",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "pressurize", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "stomp"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "stomp", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "ram"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "ram", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "siphon"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "siphon", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 3, NextStateId: "pressure_gun"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "pressure_gun", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 4, NextStateId: "pressure_up"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "pressure_up", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 5, NextStateId: "stomp"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "about_to_blow", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 6, NextStateId: "explode"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "explode", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 7, NextStateId: "explode")
+                ])),
+        // Source Lagavulin Matriarch: asleep for at most three turns,
+        // starting with Plating 12; wakes on an unblocked attack.
+        // Awake move cycle: Slash -> Disembowel -> Slash2 -> Soul
+        // Siphon -> Slash. Both powers and the AI cycle are declarative.
+        new(
+            "proto.enemy.lagavulin_matriarch",
+            "Lagavulin Matriarch",
+            222,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition("sleep", []),
+                new PrototypeEnemyMoveDefinition(
+                    "slash",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 19,
+                        AscensionDeltas: [new(9, 2)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "disembowel",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 9,
+                        Repetitions: 2,
+                        AscensionDeltas: [new(9, 1)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "slash2",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 12,
+                            AscensionDeltas: [new(9, 2)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.GainBlock, 12,
+                            AscensionDeltas: [new(8, 2)])
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "soul_siphon",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, -2,
+                            PowerId: "proto.power.strength"),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, -2,
+                            PowerId: "proto.power.dexterity"),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                            PowerId: "proto.power.strength")
+                    ])
+            ],
+            HpAscensionDeltas: [new(8, 11)],
+            StartingPowers:
+            [
+                new("proto.power.plating", 12),
+                new("proto.power.asleep", 3)
+            ],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "sleep",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "sleep", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "sleep"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "slash", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "disembowel"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "disembowel", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "slash2"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "slash2", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 3, NextStateId: "soul_siphon"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "soul_siphon", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 4, NextStateId: "slash")
+                ])),
         // Source SoulFysh: five-turn loop. Beckon deposits one status
         // randomly in the draw pile and one in discard, Gaze deposits
         // another in discard. Fade grants Intangible for two enemy side
@@ -914,6 +1130,18 @@ public static class PrototypeNativeUnderdocks
     // have Weight=0 outside the opt-in Underdocks pool.
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
+        new(
+            "proto.encounter.waterfall_giant_boss",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.waterfall_giant"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.waterfall_giant", 0)]),
+        new(
+            "proto.encounter.lagavulin_matriarch_boss",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.lagavulin_matriarch"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.lagavulin_matriarch", 0)]),
         new(
             "proto.encounter.soul_fysh_boss",
             PrototypeRoomType.Boss,

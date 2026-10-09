@@ -1783,13 +1783,42 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
+            // Expiring an enemy-side countdown can wake its owner and
+            // remove companion protection *before* other powers contribute
+            // end-of-turn Block (native Asleep/Plating ordering).
+            string? aiAfterExpiry = null;
+            var powersToRemoveOnExpiry = new HashSet<string>(
+                StringComparer.Ordinal);
+            if (stage == PrototypeTurnStage.EnemyTurnEnd)
+            {
+                foreach (var power in enemy.PowerStates)
+                {
+                    var definition = PrototypeContent.Power(power.PowerId);
+                    if (definition.EnemyStacksDecayAtSideTurnEnd > 0
+                        && power.Stacks <=
+                            definition.EnemyStacksDecayAtSideTurnEnd)
+                    {
+                        aiAfterExpiry ??=
+                            definition.OwnerAiStateOnPowerExpiry;
+                        foreach (var id in definition
+                            .RemoveOwnerPowersOnPowerExpiry
+                            ?? Array.Empty<string>())
+                        {
+                            powersToRemoveOnExpiry.Add(id);
+                        }
+                    }
+                }
+            }
+
+            enemy = InterceptEnemyLethalDeath(enemy);
             var strengthAtSideTurnEnd = 0;
             var blockAtSideTurnEnd = 0;
             var powers = stage == PrototypeTurnStage.EnemyTurnEnd
                 ? enemy.PowerStates
                     .Where(power =>
                         !PrototypeContent.Power(power.PowerId)
-                            .RemoveAtEnemyTurnEnd)
+                            .RemoveAtEnemyTurnEnd
+                        && !powersToRemoveOnExpiry.Contains(power.PowerId))
                     .Select(power =>
                     {
                         var definition = PrototypeContent.Power(power.PowerId);
@@ -1838,6 +1867,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Statuses = statuses,
                 Powers = powers,
+                AiStateId = aiAfterExpiry ?? enemy.AiStateId,
                 Block = enemy.Block + blockAtSideTurnEnd,
                 SharedSummonUsedThisTurn =
                     stage == PrototypeTurnStage.EnemyTurnStart
@@ -2333,9 +2363,11 @@ public sealed partial class PrototypeGameEngine
 
             foreach (var effect in move.Effects)
             {
-                var amount = effect.AmountAt(
-                    act,
-                    ascension);
+                var amount = effect.UseStoredEnemyDamage
+                    ? enemy.StoredEnemyDamage
+                    : checked(effect.AmountAt(act, ascension)
+                        + effect.ExtraAmountPerPriorMoveUse
+                        * (enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0));
                 var repetitions =
                     effect.RepetitionsAt(ascension);
                 var unblockedAttackHits = 0;
@@ -2425,6 +2457,32 @@ public sealed partial class PrototypeGameEngine
 
                         case PrototypeEnemyEffectKind.GainBlock:
                             enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
+                            break;
+
+                        case PrototypeEnemyEffectKind.HealSelf:
+                            enemy = enemy with
+                            {
+                                Hp = Math.Min(
+                                    definition.HpRangeAt(act, ascension).Max,
+                                    enemy.Hp + Math.Max(0, amount))
+                            };
+                            break;
+
+                        case PrototypeEnemyEffectKind.StoreEnemyPowerAsDamage:
+                            if (effect.PowerId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Stored-damage effect requires a power ID.");
+                            }
+                            enemy = enemy with
+                            {
+                                StoredEnemyDamage = enemy.PowerStates
+                                    .Where(power => power.PowerId == effect.PowerId)
+                                    .Sum(power => power.Stacks),
+                                Powers = enemy.PowerStates
+                                    .Where(power => power.PowerId != effect.PowerId)
+                                    .ToArray()
+                            };
                             break;
 
                         case PrototypeEnemyEffectKind.ApplyPlayerPower:
@@ -2712,6 +2770,7 @@ public sealed partial class PrototypeGameEngine
                 moveUseCounts.GetValueOrDefault(
                     move.Id) + 1;
 
+            enemy = InterceptEnemyLethalDeath(enemy);
             enemies[index] = enemy with
             {
                 MoveIndex = enemy.MoveIndex + 1,
@@ -8309,12 +8368,10 @@ public sealed partial class PrototypeGameEngine
             enemy.Hp - modified.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
 
-        enemies[index] = enemy with
-        {
-            Hp = nextHp
-        };
+        enemies[index] = InterceptEnemyLethalDeath(
+            enemy with { Hp = nextHp });
 
-        var defeated = enemy.Hp > 0 && nextHp == 0;
+        var defeated = enemy.Hp > 0 && enemies[index].Hp == 0;
         var nextCombat = combat with { Enemies = enemies };
         if (defeated)
         {
@@ -8350,13 +8407,41 @@ public sealed partial class PrototypeGameEngine
         var nextHp = Math.Max(0, enemy.Hp - hpDamage.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
 
-        enemies[index] = enemy with
+        // Some buffs (e.g. native Asleep) react only to unblocked
+        // attack HP damage, not to blocked attacks or poison HP loss.
+        // Stun the pending enemy action and explicitly select its
+        // waking AI state, without making the rule monster-ID-specific.
+        var wake = hpDamage.HpLoss > 0 && nextHp > 0
+            ? enemy.PowerStates
+                .Select(power => PrototypeContent.Power(power.PowerId))
+                .FirstOrDefault(power =>
+                    power.WakeOwnerOnUnblockedAttackDamage)
+            : null;
+        if (wake is not null)
         {
-            Block = enemy.Block - absorbed,
-            Hp = nextHp
-        };
+            var remove = (wake.RemoveOwnerPowersOnWake
+                    ?? Array.Empty<string>())
+                .ToHashSet(StringComparer.Ordinal);
+            enemy = enemy with
+            {
+                Powers = enemy.PowerStates
+                    .Where(power => !remove.Contains(power.PowerId))
+                    .ToArray(),
+                AiStateId = wake.OwnerAiStateOnWake ?? enemy.AiStateId,
+                EnemyActionSkipsRemaining = wake.StunOwnerOnWake
+                    ? Math.Max(1, enemy.EnemyActionSkipsRemaining)
+                    : enemy.EnemyActionSkipsRemaining
+            };
+        }
 
-        var defeated = enemy.Hp > 0 && nextHp == 0;
+        enemies[index] = InterceptEnemyLethalDeath(
+            enemy with
+            {
+                Block = enemy.Block - absorbed,
+                Hp = nextHp
+            });
+
+        var defeated = enemy.Hp > 0 && enemies[index].Hp == 0;
         var nextCombat = combat with { Enemies = enemies };
         if (defeated)
         {
@@ -8364,6 +8449,41 @@ public sealed partial class PrototypeGameEngine
         }
         return new PrototypeDamageResult(
             nextCombat, damageDealt, Defeated: defeated);
+    }
+
+    /// <summary>
+    /// A last-stand power can turn lethal enemy HP loss into a separate
+    /// scripted combat phase. The intercept is one-shot so the eventual
+    /// scripted self-death is not intercepted again.
+    /// </summary>
+    private static EnemyCombatState InterceptEnemyLethalDeath(
+        EnemyCombatState enemy)
+    {
+        if (enemy.Hp > 0 || enemy.LastStandTriggered)
+        {
+            return enemy;
+        }
+
+        foreach (var power in enemy.PowerStates)
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (power.Stacks <= 0
+                || definition.LastStandHp <= 0
+                || definition.LastStandAiStateId is not { } nextState)
+            {
+                continue;
+            }
+
+            return enemy with
+            {
+                Hp = definition.LastStandHp,
+                Block = 0,
+                LastStandTriggered = true,
+                AiStateId = nextState
+            };
+        }
+
+        return enemy;
     }
 
     /// <summary>

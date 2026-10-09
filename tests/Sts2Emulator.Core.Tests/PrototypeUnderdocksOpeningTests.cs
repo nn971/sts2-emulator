@@ -132,8 +132,10 @@ public sealed class PrototypeUnderdocksOpeningTests
             .RemainingEliteEncounterIds!);
         Assert.Throws<NotSupportedException>(() =>
             StartRoom(engine, finalElite, PrototypeRoomType.Elite, 8));
-        Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, state, PrototypeRoomType.Boss, 16));
+        var selectedBoss = StartRoom(
+            engine, state, PrototypeRoomType.Boss, 16);
+        Assert.Contains(selectedBoss.World!.EncounterIds[^1],
+            PrototypeNativeUnderdocks.SupportedBossEncounterIds);
     }
 
     [Fact]
