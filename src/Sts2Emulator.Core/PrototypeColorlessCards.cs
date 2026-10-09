@@ -270,7 +270,46 @@ public static class PrototypeColorlessCards
             ],
             CanBeGeneratedInCombat: false,
             Rarity: PrototypeCardRarity.Rare,
-            Type: PrototypeCardType.Attack)
+            Type: PrototypeCardType.Attack),
+        // Each Panache is an independent five-card counter that resets
+        // after the player's turn; its own play does not count.
+        new(
+            "proto.colorless.panache",
+            "Panache",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 10, 4,
+                    PowerId: "proto.power.panache")
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power),
+        // The native Bomb has an instanced three-turn timer and 40/50
+        // unpowered all-enemy damage when the timer expires.
+        new(
+            "proto.colorless.the_bomb",
+            "The Bomb",
+            2,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 3,
+                    PowerId: "proto.power.the_bomb",
+                    PowerStoredValue: 40,
+                    PowerStoredValueUpgradeDelta: 10)
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.mayhem",
+            "Mayhem",
+            new(PrototypeCardCostKind.Fixed, 2, -1),
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                    PowerId: "proto.power.mayhem")
+            ],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Power)
     ];
 
     public static string[] ImplementedShopPool { get; } =
