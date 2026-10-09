@@ -11,7 +11,8 @@ public sealed class PrototypeUnderdocksMatriarchTests
         Assert.Equal(new[]
         {
             "proto.encounter.soul_fysh_boss",
-            "proto.encounter.lagavulin_matriarch_boss"
+            "proto.encounter.lagavulin_matriarch_boss",
+            "proto.encounter.waterfall_giant_boss"
         }, PrototypeNativeUnderdocks.SupportedBossEncounterIds);
         var encounter = PrototypeContent.Encounter(
             "proto.encounter.lagavulin_matriarch_boss");
