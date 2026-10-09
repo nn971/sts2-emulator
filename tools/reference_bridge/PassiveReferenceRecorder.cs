@@ -1017,9 +1017,9 @@ internal static partial class PassiveReferenceRecorder
             ["runtime_type"] = projectedType.FullName,
             ["type"] = projectedType.FullName
         };
-        if (RecorderCardId(value) is { } cardId)
+        if (RecorderCardId(value) is { } rootRecorderCardId)
         {
-            result["recorder_card_id"] = cardId;
+            result["recorder_card_id"] = rootRecorderCardId;
         }
 
         foreach (var property in value.GetType().GetProperties(
