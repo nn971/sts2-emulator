@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from datetime import datetime, timezone
 import json
 from pathlib import Path
 import sys
@@ -93,6 +92,24 @@ def assess(records: list[dict], *, preflight: bool = False) -> dict:
             errors.append(
                 f"Recorder reported {code} ({codes[code]} occurrence(s))"
             )
+
+    # Recorder attach diagnostics alone do not prove all individual
+    # subscriptions succeeded. Fail preflight for missing lifecycle hooks
+    # that make the entire one-run capture unusable.
+    for entry in diagnostics:
+        if entry.get("code") not in (
+            "event_missing", "event_subscribe_failed"
+        ):
+            continue
+        message = str(entry.get("message", ""))
+        if any(f"RunManager.{name}" in message for name in
+               ("RunStarted", "RoomEntered", "RoomExited", "ActEntered")):
+            errors.append(f"Critical run lifecycle subscription: {message}")
+        elif "CombatManager.CombatSetUp" in message or \\
+             "CombatManager.CombatEnded" in message:
+            errors.append(f"Critical combat subscription: {message}")
+        else:
+            warnings.append(f"Optional native signal unavailable: {message}")
 
     boundaries = [
         row for row in records if row.get("type") == "boundary"
