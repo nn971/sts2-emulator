@@ -16,6 +16,10 @@ internal static partial class PassiveReferenceRecorder
         new(ReferenceEqualityComparer.Instance);
     private static readonly HashSet<object> ObservedSynchronizers =
         new(ReferenceEqualityComparer.Instance);
+    private static readonly HashSet<object> ObservedDeckPiles =
+        new(ReferenceEqualityComparer.Instance);
+    private static readonly HashSet<object> ObservedDeckCards =
+        new(ReferenceEqualityComparer.Instance);
 
     private static bool ShouldCaptureRunObservation(string boundary) =>
         StringComparer.OrdinalIgnoreCase.Equals(
@@ -26,6 +30,8 @@ internal static partial class PassiveReferenceRecorder
             || boundary.StartsWith("run_rest.", StringComparison.Ordinal)
             || boundary.StartsWith("run_map.", StringComparison.Ordinal)
             || boundary.StartsWith("run_rewards.", StringComparison.Ordinal)
+            || boundary.StartsWith("run_deck.", StringComparison.Ordinal)
+            || boundary.StartsWith("run_deck_card.", StringComparison.Ordinal)
             || boundary is
                 "combat_manager.CombatSetUp"
                 or "combat_manager.CombatBegan"
@@ -117,6 +123,66 @@ internal static partial class PassiveReferenceRecorder
             {
                 SubscribeIfPresent(
                     player, signal, "run_player." + signal);
+            }
+        }
+    }
+
+    private static void AttachPersistentDeckSignals()
+    {
+        var manager = _runManager;
+        var run = manager is null
+            ? null : TryInvokeNoArg(manager, "DebugOnlyGetState");
+        if (run is null)
+        {
+            return;
+        }
+
+        foreach (var player in Enumerate(GetProperty(run, "Players")))
+        {
+            var deck = GetProperty(player, "Deck");
+            if (deck is null)
+            {
+                continue;
+            }
+
+            bool firstPile;
+            lock (Gate)
+            {
+                firstPile = ObservedDeckPiles.Add(deck);
+            }
+            if (firstPile)
+            {
+                foreach (var signal in new[]
+                {
+                    "CardAdded", "CardRemoved", "ContentsChanged"
+                })
+                {
+                    SubscribeIfPresent(
+                        deck, signal, "run_deck." + signal);
+                }
+            }
+
+            foreach (var card in Enumerate(GetProperty(deck, "Cards")))
+            {
+                bool firstCard;
+                lock (Gate)
+                {
+                    firstCard = ObservedDeckCards.Add(card);
+                }
+                if (!firstCard)
+                {
+                    continue;
+                }
+
+                foreach (var signal in new[]
+                {
+                    "Upgraded", "EnchantmentChanged",
+                    "AfflictionChanged"
+                })
+                {
+                    SubscribeIfPresent(
+                        card, signal, "run_deck_card." + signal);
+                }
             }
         }
     }
@@ -217,7 +283,16 @@ internal static partial class PassiveReferenceRecorder
         {
             AttachRunPlayerSignals();
             AttachRunSynchronizerSignals();
+            AttachPersistentDeckSignals();
             AttachActiveEventSignals();
+        }
+
+        if (boundary is "run_deck.CardAdded"
+            or "run_deck.ContentsChanged")
+        {
+            // A newly added persistent card may subsequently upgrade or
+            // gain an enchantment before the next room boundary.
+            AttachPersistentDeckSignals();
         }
 
         var run = TryInvokeNoArg(manager, "DebugOnlyGetState");
@@ -238,13 +313,20 @@ internal static partial class PassiveReferenceRecorder
 
         result["available"] = true;
         result["boundary"] = boundary;
-        result["current_room"] = SummarizeOpaque(
+        // RunState itself does not expose the input seed. The pinned
+        // RunRngSet.StringSeed does; ToSerializable() also retains it.
+        var rng = GetProperty(run, "Rng");
+        result["run_seed"] = rng is null
+            ? null : GetProperty(rng, "StringSeed");
+        result["current_map_coord"] = ProjectSerializable(
+            GetProperty(run, "CurrentMapCoord"), depth: 2);
+        result["current_room"] = SummarizeRoom(
             GetProperty(run, "CurrentRoom"));
-        result["base_room"] = SummarizeOpaque(
+        result["base_room"] = SummarizeRoom(
             GetProperty(run, "BaseRoom"));
         result["current_map_point"] = SummarizeMapPoint(
             GetProperty(run, "CurrentMapPoint"));
-        result["run_rng"] = CaptureRngSet(GetProperty(run, "Rng"));
+        result["run_rng"] = CaptureRngSet(rng);
         result["run_odds"] = ReadOptionalNamed(
             GetProperty(run, "Odds"),
             "UnknownMapPoint", "CardRarity", "Potion",
@@ -319,8 +401,13 @@ internal static partial class PassiveReferenceRecorder
         {
             var result = ReadNamed(nativeEvent,
                 "Id", "IsFinished", "LayoutType");
-            result["options"] = Enumerate(
-                    GetProperty(nativeEvent, "CurrentOptions"))
+            // EventModel.CurrentOptions lazily allocates its backing
+            // list. Reading the private field avoids even that nominal
+            // mutation in the observer; null means options not created.
+            var rawOptions = GetFieldInHierarchy(
+                nativeEvent.GetType(), "_currentOptions")
+                ?.GetValue(nativeEvent);
+            result["options"] = Enumerate(rawOptions)
                 .Select(option => ReadNamed(option,
                     "TextKey", "IsLocked", "IsProceed", "WasChosen"))
                 .ToArray();
@@ -328,6 +415,42 @@ internal static partial class PassiveReferenceRecorder
                 GetProperty(nativeEvent, "Rng"));
             return (object)result;
         }).ToArray();
+    }
+
+    private static FieldInfo? GetFieldInHierarchy(
+        Type type, string fieldName)
+    {
+        // GetField on a derived type does not find private fields of
+        // EventModel. Inspect each declaring type explicitly.
+        for (Type? current = type;
+             current is not null;
+             current = current.BaseType)
+        {
+            var field = current.GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic
+                | BindingFlags.Public | BindingFlags.DeclaredOnly);
+            if (field is not null)
+            {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    private static object? SummarizeRoom(object? room)
+    {
+        if (room is null)
+        {
+            return null;
+        }
+
+        // AbstractRoom.Id is a room-instance integer, whereas ModelId
+        // identifies the event/encounter model. Preserve both, plus room
+        // type and the parent event for nested event combats.
+        return ReadNamed(room,
+            "Id", "RoomType", "ModelId", "ParentEventId",
+            "ShouldResumeParentEventAfterCombat");
     }
 
     private static object? SummarizeMapPoint(object? point)
