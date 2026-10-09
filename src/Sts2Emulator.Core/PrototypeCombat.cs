@@ -2945,7 +2945,8 @@ public sealed partial class PrototypeGameEngine
         PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System,
         bool isPoweredAttack = false,
         PrototypeCombatCardSnapshot? powerCardPayload = null,
-        int? sourcePowerEnemyId = null)
+        int? sourcePowerEnemyId = null,
+        int sourcePowerStoredValue = 0)
     {
         // Snapshot hand-sensitive card conditions when their operations are
         // queued. Restlessness first draws cards and then gains energy, but
@@ -3005,7 +3006,9 @@ public sealed partial class PrototypeGameEngine
             {
                 operations.Enqueue(new PrototypeQueuedOperation(
                     effect.Kind,
-                    effect.AmountAt(upgradeLevel, energySpent)
+                    (effect.UseSourcePowerStoredValue
+                        ? sourcePowerStoredValue
+                        : effect.AmountAt(upgradeLevel, energySpent))
                         + (effect.AmountPerPowerStack * powerStacks)
                         + ((effect.AmountPerCount
                             + (effect.AmountPerCountUpgradeDelta * upgradeLevel))
@@ -3067,6 +3070,9 @@ public sealed partial class PrototypeGameEngine
                     GoldOnFatal:
                         effect.GoldOnFatal
                         + (effect.GoldOnFatalUpgradeDelta * upgradeLevel),
+                    PowerStoredValue:
+                        effect.PowerStoredValue
+                        + (effect.PowerStoredValueUpgradeDelta * upgradeLevel),
                     PlayerPowerOnFatalId:
                         effect.PlayerPowerOnFatalId,
                     PlayerPowerOnFatalAmount:
@@ -3923,7 +3929,9 @@ public sealed partial class PrototypeGameEngine
                         throw new InvalidOperationException("Apply-power operation is missing a power ID.");
                     }
 
-                    combat = ApplyPlayerPower(combat, operation.PowerId, operation.Amount);
+                    combat = ApplyPlayerPower(
+                        combat, operation.PowerId, operation.Amount,
+                        storedValue: operation.PowerStoredValue);
                     break;
 
                 case PrototypeCombatEffectKind.ApplyEnemyPower:
@@ -6197,7 +6205,8 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         string powerId,
         int stacks,
-        int? sourceEnemyInstanceId = null)
+        int? sourceEnemyInstanceId = null,
+        int storedValue = 0)
     {
         var definition = PrototypeContent.Power(powerId);
         if (definition.SourceBoundToEnemy
@@ -6239,7 +6248,8 @@ public sealed partial class PrototypeGameEngine
                 powerId,
                 stacks,
                 null,
-                sourceEnemyInstanceId);
+                sourceEnemyInstanceId,
+                storedValue);
         }
 
         var powers = combat.PlayerPowers.ToList();
@@ -6353,7 +6363,8 @@ public sealed partial class PrototypeGameEngine
         string powerId,
         int stacks,
         PrototypeCombatCardSnapshot? cardPayload,
-        int? sourceEnemyInstanceId = null)
+        int? sourceEnemyInstanceId = null,
+        int storedValue = 0)
     {
         var definition = PrototypeContent.Power(powerId);
         if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
@@ -6382,7 +6393,9 @@ public sealed partial class PrototypeGameEngine
                     stacks,
                     combat.NextPowerApplicationOrder,
                     cardPayload?.Fork(),
-                    sourceEnemyInstanceId)).ToArray(),
+                    sourceEnemyInstanceId,
+                    StoredValue: storedValue,
+                    TriggerCounts: new int[definition.Triggers.Length])).ToArray(),
             NextPowerApplicationOrder =
                 combat.NextPowerApplicationOrder + 1
         };
