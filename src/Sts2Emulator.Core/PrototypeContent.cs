@@ -481,6 +481,18 @@ public static class PrototypeContent
                 RewardEligible: false,
                 Type: PrototypeCardType.Status),
             new PrototypeCardDefinition(
+                "proto.status.beckon",
+                "Beckon",
+                1,
+                PrototypeCardTarget.None,
+                [],
+                Rarity: PrototypeCardRarity.Status,
+                RewardEligible: false,
+                Type: PrototypeCardType.Status,
+                EndTurnDamageIfInHand: 6,
+                EndTurnDamageUnblockable: true,
+                MaxUpgradeLevel: 0),
+            new PrototypeCardDefinition(
                 "proto.status.dazed",
                 "Dazed",
                 -1,
