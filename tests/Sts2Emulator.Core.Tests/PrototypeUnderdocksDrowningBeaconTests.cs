@@ -110,7 +110,24 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
             Phase = RunPhase.Event,
             World = climbed.World! with
             {
+                Floor = 2,
                 ActiveRoom = PrototypeRoomType.Event,
+                Map = new MapState(
+                    [
+                        new MapNodeState(
+                            "test-underdocks-event", 1, 1,
+                            PrototypeRoomType.Event, ["next-room"]),
+                        new MapNodeState(
+                            "next-room", 1, 2,
+                            PrototypeRoomType.Event, ["third-room"]),
+                        new MapNodeState(
+                            "third-room", 1, 3,
+                            PrototypeRoomType.Combat, [])
+                    ],
+                    CurrentNodeId: "next-room",
+                    EntryNodeIds: ["test-underdocks-event"],
+                    GenerationProfileId:
+                        PrototypeNativeUnderdocks.GenerationProfileId),
                 Event = new EventState("proto.event.cache")
             }
         };
