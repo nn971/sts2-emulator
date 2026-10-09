@@ -741,6 +741,11 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
+        if (eventState.EventId == AbyssalBathsEventId)
+        {
+            return GetAbyssalBathsActions(eventState);
+        }
+
         if (eventState.EventId == PrototypeNativeDenseVegetation.EventId
             && eventState.NativePageIndex == 1)
         {
@@ -928,6 +933,11 @@ public sealed partial class PrototypeGameEngine
                 }
             };
             return AdvanceEventContinuations(state);
+        }
+
+        if (eventState.EventId == AbyssalBathsEventId)
+        {
+            return StepAbyssalBaths(state, action);
         }
 
         if (eventState.EventId == PrototypeNativeTabletOfTruth.EventId)
