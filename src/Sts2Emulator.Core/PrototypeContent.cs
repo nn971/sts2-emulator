@@ -1993,6 +1993,16 @@ public static class PrototypeContent
             // Neow's Sacrifice grants this event-only potion. The
             // out-of-combat 50% max-HP heal is supported; its in-combat
             // extra-turn power requires dedicated turn scheduling.
+            // Native Drowning Beacon event potion: exhaust the whole
+            // current hand, then draw ten through the common draw pipeline.
+            new PrototypePotionDefinition(
+                "proto.native.underdocks.glowwater_potion",
+                "Glowwater Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.ExhaustHand, 0),
+                    new(PrototypeCombatEffectKind.DrawCards, 10)
+                ]),
             new PrototypePotionDefinition(
                 "proto.native.neow.ambergris",
                 "Ambergris",
@@ -2521,6 +2531,12 @@ public static class PrototypeContent
                         [new(PrototypeRunEffectKind.GainMaxHp, 6)],
                         RequiredCardType: PrototypeCardType.Curse)
                 ]),
+            // Fresnel Lens passively grants Nimble +2 to eligible block
+            // cards newly obtained during this run.
+            new PrototypeRelicDefinition(
+                "proto.native.underdocks.fresnel_lens",
+                "Fresnel Lens",
+                EnchantNewBlockCardsNimble: 2),
             new PrototypeRelicDefinition(
                 "proto.native.event.byrdpip",
                 "Byrdpip"),
