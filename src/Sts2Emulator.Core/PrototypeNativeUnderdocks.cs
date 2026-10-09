@@ -65,7 +65,9 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.cultists_normal",
         "proto.encounter.fossil_stalker_normal",
         "proto.encounter.seapunk_normal",
-        "proto.encounter.haunted_ship_normal"
+        "proto.encounter.haunted_ship_normal",
+        "proto.encounter.sewer_clam_normal",
+        "proto.encounter.living_fog_normal"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
@@ -96,7 +98,31 @@ public static class PrototypeNativeUnderdocks
             "Suck",
             BlockBonusPerStack: 0,
             Triggers: [],
-            StrengthPerUnblockedAttackHitPerStack: 1)
+            StrengthPerUnblockedAttackHitPerStack: 1),
+        // Single-player Plating: begin with Block, gain remaining stacks
+        // as Block at each enemy turn end, lose 1 stack at the beginning
+        // of enemy turns after the first.
+        new(
+            "proto.power.plating",
+            "Plating",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnemyStartingBlockPerStack: 1,
+            EnemyBlockAtSideTurnEndPerStack: 1,
+            EnemyStacksDecayAtSideTurnStartAfterFirst: 1),
+        // Smoggy: after a Skill play, afflict all otherwise-unafflicted
+        // Skills with Smog until the player's turn ends. Such Skills
+        // cannot be played while the debuff is active.
+        new(
+            "proto.power.smoggy",
+            "Smoggy",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            IsDebuff: true,
+            DoesNotStack: true,
+            SkillPlayAffliction: PrototypeCardAfflictionKind.Smog,
+            BlockPlayOfMatchingAffliction: true,
+            ClearMatchingAfflictionAtPlayerTurnEnd: true)
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
@@ -286,6 +312,110 @@ public static class PrototypeNativeUnderdocks
                         "stomp", PrototypeEnemyAiStateKind.Move,
                         MoveIndex: 2, NextStateId: "swipe")
                 ])),
+        // Native Sewer Clam opens with Jet, then alternates Pressurize
+        // (+4 Strength) and Jet. Starting Plating: 8 (A8: 9).
+        new(
+            "proto.enemy.sewer_clam",
+            "Sewer Clam",
+            56,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "jet",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 10,
+                        AscensionDeltas: [new(9, 1)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "pressurize",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyEnemyPower, 4,
+                        PowerId: "proto.power.strength")])
+            ],
+            StartingPowers: [new("proto.power.plating", 8, [new(8, 1)])],
+            HpAscensionDeltas: [new(8, 2)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "jet",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "jet", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "pressurize"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "pressurize", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "jet")
+                ])),
+        // Living Fog opens with Advanced Gas (+Smoggy 1), then
+        // alternates Bloat (one Gas Bomb plus attack) and Super Gas Blast.
+        // Bombs occupy the last available named bomb slot and explode
+        // (attack then self-kill) on their next enemy turn.
+        new(
+            "proto.enemy.living_fog",
+            "Living Fog",
+            80,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "advanced_gas",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 8,
+                            AscensionDeltas: [new(9, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, 1,
+                            PowerId: "proto.power.smoggy")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "bloat",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.SummonEnemy, 1,
+                            EnemyId: "proto.enemy.gas_bomb",
+                            SummonSlotNames:
+                            ["bomb1", "bomb2", "bomb3", "bomb4", "bomb5"]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 5,
+                            AscensionDeltas: [new(9, 1)])
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "super_gas_blast",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 8,
+                        AscensionDeltas: [new(9, 1)])])
+            ],
+            HpAscensionDeltas: [new(8, 2)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "advanced",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "advanced", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "bloat"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "bloat", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "blast"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "blast", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "bloat")
+                ])),
+        new(
+            "proto.enemy.gas_bomb",
+            "Gas Bomb",
+            7,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "explode",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 8,
+                            AscensionDeltas: [new(9, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.KillSelf, 0)
+                    ])
+            ],
+            HpAscensionDeltas: [new(8, 1)],
+            StartingPowers: [new("proto.power.minion", 1)],
+            IsMinion: true),
         // Native SludgeSpinner: 37–39 HP (A8: 41–42).
         // Forced Oil Spray, then uniform no-immediate-repeat branch
         // between Oil Spray, Slam and Rage.
@@ -414,6 +544,18 @@ public static class PrototypeNativeUnderdocks
             ["proto.enemy.haunted_ship"],
             MinAct: 1, MaxAct: 1, Weight: 0,
             Formation: [new("proto.enemy.haunted_ship", 0)]),
+        new(
+            "proto.encounter.sewer_clam_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.sewer_clam"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.sewer_clam", 0)]),
+        new(
+            "proto.encounter.living_fog_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.living_fog"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.living_fog", 5, "livingFog")]),
         new(
             "proto.encounter.punch_construct_normal",
             PrototypeRoomType.Combat,
