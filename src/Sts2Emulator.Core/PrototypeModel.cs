@@ -874,7 +874,8 @@ public sealed record PrototypeEnemyAiBranch(
     int Weight = 1,
     PrototypeEnemyAiRepeatRule RepeatRule =
         PrototypeEnemyAiRepeatRule.CanRepeatForever,
-    int MaxTimes = 0);
+    int MaxTimes = 0,
+    bool RequiresAvailableSummon = false);
 
 public sealed record PrototypeEnemyAiConditionalBranch(
     string TargetStateId,
@@ -936,7 +937,9 @@ public sealed record PrototypeEnemyDefinition(
     PrototypeEnemyAiDefinition? Ai = null,
     bool IsMinion = false,
     bool RevivesOnEnemyTurn = false,
-    PrototypeEnemyDeathSummonSpec[]? DeathSummons = null)
+    PrototypeEnemyDeathSummonSpec[]? DeathSummons = null,
+    int NonSummonMovesBeforeEligible = 0,
+    int MaxCoordinatedSummons = 0)
 {
     public (int Min, int Max) HpRangeAt(
         int act,
@@ -1285,7 +1288,10 @@ public sealed record EnemyCombatState(
     int? LeaderEnemyInstanceId = null,
     bool SkipNextEnemyAction = false,
     int EnemyActionSkipsRemaining = 0,
-    bool DeathEffectsResolved = false)
+    bool DeathEffectsResolved = false,
+    int NonSummonMovesUntilEligible = 0,
+    int SharedSummonsUsed = 0,
+    bool SharedSummonUsedThisTurn = false)
 {
     public EnemyCombatState Fork() => this with
     {
