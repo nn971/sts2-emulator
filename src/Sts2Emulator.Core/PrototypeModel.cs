@@ -786,7 +786,9 @@ public sealed record PrototypePowerDefinition(
     string[]? RemoveOwnerPowersOnWake = null,
     bool StunOwnerOnWake = false,
     string? OwnerAiStateOnPowerExpiry = null,
-    string[]? RemoveOwnerPowersOnPowerExpiry = null);
+    string[]? RemoveOwnerPowersOnPowerExpiry = null,
+    string? LastStandAiStateId = null,
+    int LastStandHp = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -813,7 +815,9 @@ public enum PrototypeEnemyEffectKind
     SummonEnemy,
     KillSelf,
     StealPlayerGold,
-    EscapeEnemy
+    EscapeEnemy,
+    HealSelf,
+    StoreEnemyPowerAsDamage
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -831,7 +835,9 @@ public sealed record PrototypeEnemyEffectSpec(
     PrototypeAscensionDelta[]? RepetitionAscensionDeltas = null,
     string? CardId = null,
     string? EnemyId = null,
-    string[]? SummonSlotNames = null)
+    string[]? SummonSlotNames = null,
+    int ExtraAmountPerPriorMoveUse = 0,
+    bool UseStoredEnemyDamage = false)
 {
     public int AmountAt(
         int act,
@@ -1314,7 +1320,9 @@ public sealed record EnemyCombatState(
     int StolenGold = 0,
     bool Escaped = false,
     int HpLossBudgetUsed = 0,
-    bool GainedReactiveBlockThisTurn = false)
+    bool GainedReactiveBlockThisTurn = false,
+    bool LastStandTriggered = false,
+    int StoredEnemyDamage = 0)
 {
     public EnemyCombatState Fork() => this with
     {
