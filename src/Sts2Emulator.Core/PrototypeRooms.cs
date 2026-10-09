@@ -688,6 +688,8 @@ public sealed partial class PrototypeGameEngine
                         // eventual choice never changes the RNG outcome.
                         "proto.native.underdocks.sunken_treasury" =>
                             52 + PrototypeRng.NextInt(state.Rng, "event", 16),
+                        "proto.native.underdocks.sunken_statue" =>
+                            101 + PrototypeRng.NextInt(state.Rng, "event", 21),
                         _ => 0
                     },
                 NativeEventSecondaryGold:
@@ -1421,7 +1423,9 @@ public sealed partial class PrototypeGameEngine
                 && choiceId == "tribute"
                 && effect.Kind == PrototypeRunEffectKind.LoseGold
                 && rolled is >= 100 and <= 149)
-            || (eventState.EventId == "proto.native.event.sunken_statue"
+            || ((eventState.EventId == "proto.native.event.sunken_statue"
+                    || eventState.EventId
+                        == "proto.native.underdocks.sunken_statue")
                 && choiceId == "dive"
                 && effect.Kind == PrototypeRunEffectKind.GainGold
                 && rolled is >= 101 and <= 121)
