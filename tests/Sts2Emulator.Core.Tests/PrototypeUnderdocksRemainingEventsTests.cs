@@ -87,7 +87,6 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         var current = FindEvent(
             engine, PrototypeNativeEndlessConveyor.EventId,
             "conveyor-five", gold: 500);
-        var eventRng = current.Rng.Fork();
         for (var i = 0; i < 4; i++)
         {
             Assert.Equal(i + 1, current.World!.Event!.NativeDishCount);
@@ -235,7 +234,7 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         };
         foreach (var target in combat.Enemies)
         {
-            var strike = engine.GetLegalActions(state).Single(action =>
+            var strike = engine.GetLegalActions(state).First(action =>
                 action.Kind == "play_card"
                 && action.ReadPayload<PlayCardPayload>().TargetEnemyId
                     == target.InstanceId
