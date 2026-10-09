@@ -110,6 +110,8 @@ jobs:
           process.wait(timeout=5)
           assert process.returncode == 0
           PY
+      - name: Native recorder source compile and reflection smoke
+        run: dotnet run --project tests/NativeBridgeSmoke/NativeBridgeSmoke.csproj -c Release
       - name: Native one-run capture preflight and audit smoke
         run: python tools/native_one_run_audit_smoke.py
       - name: Passive oracle action-ledger smoke
