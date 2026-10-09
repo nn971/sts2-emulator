@@ -1834,7 +1834,10 @@ public sealed partial class PrototypeGameEngine
                 Block = enemy.Block + blockAtSideTurnEnd,
                 SharedSummonUsedThisTurn =
                     stage == PrototypeTurnStage.EnemyTurnStart
-                        ? false : enemy.SharedSummonUsedThisTurn
+                        ? false : enemy.SharedSummonUsedThisTurn,
+                HpLossBudgetUsed =
+                    stage == PrototypeTurnStage.EnemyTurnStart
+                        ? 0 : enemy.HpLossBudgetUsed
             };
 
             if (enemy.Hp > 0 && strengthAtSideTurnEnd > 0)
@@ -8389,6 +8392,23 @@ public sealed partial class PrototypeGameEngine
                     };
                 }
             }
+        }
+
+        var hpLossBudget = powers
+            .Where(power => power.Stacks > 0
+                && PrototypeContent.Power(power.PowerId)
+                    .EnemyHpLossLimitedPerSideTurnByStacks)
+            .Select(power => power.Stacks)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+        if (hpLossBudget != int.MaxValue)
+        {
+            hpLoss = Math.Min(hpLoss,
+                Math.Max(0, hpLossBudget - enemy.HpLossBudgetUsed));
+            enemy = enemy with
+            {
+                HpLossBudgetUsed = enemy.HpLossBudgetUsed + hpLoss
+            };
         }
 
         var nextHp = Math.Max(0, enemy.Hp - hpLoss);
