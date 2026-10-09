@@ -178,7 +178,7 @@ public sealed class PrototypeUnderdocksClamFogTests
     {
         var state = PrototypeNativeUnderdocksRunFactory.Create(
             "clam-fog-normal-tests");
-        for (var floor = 1; floor <= 12; floor++)
+        for (var floor = 1; floor <= 13; floor++)
         {
             var node = new MapNodeState(
                 "clam-fog-test:" + floor,
