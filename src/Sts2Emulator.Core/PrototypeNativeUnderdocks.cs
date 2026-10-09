@@ -81,11 +81,29 @@ public static class PrototypeNativeUnderdocks
 
     public static string[] SupportedBossEncounterIds { get; } =
     [
-        "proto.encounter.soul_fysh_boss"
+        "proto.encounter.soul_fysh_boss",
+        "proto.encounter.lagavulin_matriarch_boss"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
     [
+        // Native Lagavulin Matriarch wakes either on the first
+        // unblocked attack hit or after three asleep enemy turns. Waking
+        // removes Plating; premature attack wake stuns one upcoming
+        // action and preserves Slash as the first real intent.
+        new(
+            "proto.power.asleep",
+            "Asleep",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnemyStacksDecayAtSideTurnEnd: 1,
+            WakeOwnerOnUnblockedAttackDamage: true,
+            OwnerAiStateOnWake: "slash",
+            RemoveOwnerPowersOnWake:
+                ["proto.power.asleep", "proto.power.plating"],
+            StunOwnerOnWake: true,
+            OwnerAiStateOnPowerExpiry: "slash",
+            RemoveOwnerPowersOnPowerExpiry: ["proto.power.plating"]),
         // Intangible limits each HP-loss event to one and expires
         // once per enemy-side turn, including the turn it is applied.
         new(
@@ -185,6 +203,78 @@ public static class PrototypeNativeUnderdocks
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
     [
+        // Source Lagavulin Matriarch: asleep for at most three turns,
+        // starting with Plating 12; wakes on an unblocked attack.
+        // Awake move cycle: Slash -> Disembowel -> Slash2 -> Soul
+        // Siphon -> Slash. Both powers and the AI cycle are declarative.
+        new(
+            "proto.enemy.lagavulin_matriarch",
+            "Lagavulin Matriarch",
+            222,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition("sleep", []),
+                new PrototypeEnemyMoveDefinition(
+                    "slash",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 19,
+                        AscensionDeltas: [new(9, 2)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "disembowel",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 9,
+                        Repetitions: 2,
+                        AscensionDeltas: [new(9, 1)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "slash2",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 12,
+                            AscensionDeltas: [new(9, 2)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.GainBlock, 12,
+                            AscensionDeltas: [new(8, 2)])
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "soul_siphon",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, -2,
+                            PowerId: "proto.power.strength"),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, -2,
+                            PowerId: "proto.power.dexterity"),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                            PowerId: "proto.power.strength")
+                    ])
+            ],
+            HpAscensionDeltas: [new(8, 11)],
+            StartingPowers:
+            [
+                new("proto.power.plating", 12),
+                new("proto.power.asleep", 3)
+            ],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new PrototypeEnemyAiDefinition(
+                "sleep",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "sleep", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "sleep"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "slash", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "disembowel"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "disembowel", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "slash2"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "slash2", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 3, NextStateId: "soul_siphon"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "soul_siphon", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 4, NextStateId: "slash")
+                ])),
         // Source SoulFysh: five-turn loop. Beckon deposits one status
         // randomly in the draw pile and one in discard, Gaze deposits
         // another in discard. Fade grants Intangible for two enemy side
@@ -914,6 +1004,12 @@ public static class PrototypeNativeUnderdocks
     // have Weight=0 outside the opt-in Underdocks pool.
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
+        new(
+            "proto.encounter.lagavulin_matriarch_boss",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.lagavulin_matriarch"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.lagavulin_matriarch", 0)]),
         new(
             "proto.encounter.soul_fysh_boss",
             PrototypeRoomType.Boss,
