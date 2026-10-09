@@ -105,8 +105,8 @@ def assess(records: list[dict], *, preflight: bool = False) -> dict:
         if any(f"RunManager.{name}" in message for name in
                ("RunStarted", "RoomEntered", "RoomExited", "ActEntered")):
             errors.append(f"Critical run lifecycle subscription: {message}")
-        elif "CombatManager.CombatSetUp" in message or \\
-             "CombatManager.CombatEnded" in message:
+        elif ("CombatManager.CombatSetUp" in message
+              or "CombatManager.CombatEnded" in message):
             errors.append(f"Critical combat subscription: {message}")
         else:
             warnings.append(f"Optional native signal unavailable: {message}")
