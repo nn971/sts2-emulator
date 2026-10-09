@@ -37,7 +37,7 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
             {
                 "bloody_ink", "tentacle_quill", "prickly_sponge"
             }, ChoiceIds(engine, rich));
-        Assert.Equal(8,
+        Assert.Equal(10,
             PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
     }
 
