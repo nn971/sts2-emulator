@@ -79,8 +79,23 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.terror_eel_elite"
     ];
 
+    public static string[] SupportedBossEncounterIds { get; } =
+    [
+        "proto.encounter.soul_fysh_boss"
+    ];
+
     public static PrototypePowerDefinition[] Powers { get; } =
     [
+        // Intangible limits each HP-loss event to one and expires
+        // once per enemy-side turn, including the turn it is applied.
+        new(
+            "proto.power.enemy_intangible",
+            "Intangible",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnemyHpLossCapPerTrigger: 1,
+            EnemyStacksDecayAtSideTurnEnd: 1),
+
         // Native RavenousPower.AfterDeath: when another ally dies, gain
         // Strength equal to Ravenous stacks and replace the next action
         // with one stunned turn. Death of the owner never triggers itself.
@@ -170,6 +185,58 @@ public static class PrototypeNativeUnderdocks
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
     [
+        // Source SoulFysh: five-turn loop. Beckon deposits one status
+        // randomly in the draw pile and one in discard, Gaze deposits
+        // another in discard. Fade grants Intangible for two enemy side
+        // turns, then Scream ends its final protected turn.
+        new(
+            "proto.enemy.soul_fysh",
+            "Soul Fysh",
+            211,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "beckon",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.AddCardsToRandomDraw,
+                            1, CardId: "proto.status.beckon"),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.AddCardsToDiscard,
+                            1, CardId: "proto.status.beckon")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "de_gas",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 16,
+                        AscensionDeltas: [new(9, 2)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "gaze",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 7,
+                            AscensionDeltas: [new(9, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.AddCardsToDiscard,
+                            1, CardId: "proto.status.beckon")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "fade",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyEnemyPower,
+                        2, PowerId: "proto.power.enemy_intangible")]),
+                new PrototypeEnemyMoveDefinition(
+                    "scream",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 13,
+                            AscensionDeltas: [new(9, 2)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, 3,
+                            PowerId: "proto.power.vulnerable")
+                    ])
+            ],
+            HpAscensionDeltas: [new(8, 10)]),
         // Native CorpseSlug: 25–27 HP (A8: 27–29), rotating
         // whip/slap, glomp, goop. The encounter coordinates openers.
         new(
@@ -847,6 +914,13 @@ public static class PrototypeNativeUnderdocks
     // have Weight=0 outside the opt-in Underdocks pool.
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
+        new(
+            "proto.encounter.soul_fysh_boss",
+            PrototypeRoomType.Boss,
+            ["proto.enemy.soul_fysh"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.soul_fysh", 0)]),
+
         new(
             "proto.encounter.corpse_slugs_weak",
             PrototypeRoomType.Combat,

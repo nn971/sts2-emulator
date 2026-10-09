@@ -25,6 +25,20 @@ public sealed partial class PrototypeGameEngine
                 "Underdocks region and encounter pool disagree.");
         }
 
+        if (roomType == PrototypeRoomType.Boss)
+        {
+            if (pool.BossEncounterId is null
+                || !PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
+                    pool.BossEncounterId, StringComparer.Ordinal))
+            {
+                throw new NotSupportedException(
+                    "The selected Underdocks boss is not implemented. " +
+                    "Do not replace it with a different boss.");
+            }
+
+            return (PrototypeContent.Encounter(pool.BossEncounterId), world);
+        }
+
         if (roomType == PrototypeRoomType.Elite)
         {
             var elites = pool.RemainingEliteEncounterIds
