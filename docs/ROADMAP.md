@@ -69,6 +69,20 @@ central dispatch branches.
 - [x] deterministic multi-run sweep report
 - [x] parent `sts2-ai` integration against this adapter via the versioned JSONL bridge
 
+## Milestone 3b — native colorless cards for single-player runs
+
+- [x] preserve the exact pinned v0.111.0 65-card ColorlessCardPool inventory, with multiplayer constraints tracked separately
+- [x] playable first merchant batch: Finesse, Flash of Steel, Dramatic Entrance, Ultimate Strike, Ultimate Defend, Master of Strategy
+- [x] source-backed second batch: Shockwave, Impatience, Mind Blast, Secret Technique and Secret Weapon
+- [ ] implement further single-player colorless cards in mechanic-dependency batches (powers, generated choices, delayed effects, conditional damage, source-backed triggers)
+- [ ] model native solo unlock/epoch constraints and the actual colorless reward/merchant generation rules
+- [ ] provide card-specific native oracle differentials for complex choice, trigger, and RNG semantics
+
+Colorless shop cards are sampled separately from ordinary Silent combat rewards. Catalog
+membership and playable semantics are tracked separately: other colorless models
+must remain unavailable until their mechanics are implemented. Multiplayer-only
+and cross-character mechanics remain deferred.
+
 ## Milestone 4 — native-data and fidelity convergence
 
 - [x] pin a reference STS2 build — v0.111.0 / 41cef1ea, fingerprint `3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`
