@@ -134,7 +134,7 @@ public sealed class PrototypeUnderdocksSeapunkHauntedShipTests
     {
         var state = PrototypeNativeUnderdocksRunFactory.Create(
             "seapunk-haunted-regression");
-        for (var floor = 1; floor <= 11; floor++)
+        for (var floor = 1; floor <= 12; floor++)
         {
             var node = new MapNodeState(
                 "underdocks-new-normal:" + floor,
