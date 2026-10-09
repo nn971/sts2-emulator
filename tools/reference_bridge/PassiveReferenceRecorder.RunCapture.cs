@@ -14,6 +14,8 @@ internal static partial class PassiveReferenceRecorder
         new(ReferenceEqualityComparer.Instance);
     private static readonly HashSet<object> ObservedPlayers =
         new(ReferenceEqualityComparer.Instance);
+    private static readonly HashSet<object> ObservedSynchronizers =
+        new(ReferenceEqualityComparer.Instance);
 
     private static bool ShouldCaptureRunObservation(string boundary) =>
         StringComparer.OrdinalIgnoreCase.Equals(
@@ -21,6 +23,9 @@ internal static partial class PassiveReferenceRecorder
         && (boundary.StartsWith("run_manager.", StringComparison.Ordinal)
             || boundary.StartsWith("run_event.", StringComparison.Ordinal)
             || boundary.StartsWith("run_player.", StringComparison.Ordinal)
+            || boundary.StartsWith("run_rest.", StringComparison.Ordinal)
+            || boundary.StartsWith("run_map.", StringComparison.Ordinal)
+            || boundary.StartsWith("run_rewards.", StringComparison.Ordinal)
             || boundary is
                 "combat_manager.CombatSetUp"
                 or "combat_manager.CombatBegan"
@@ -116,6 +121,49 @@ internal static partial class PassiveReferenceRecorder
         }
     }
 
+    private static void AttachRunSynchronizerSignals()
+    {
+        var manager = _runManager;
+        if (manager is null)
+        {
+            return;
+        }
+
+        foreach (var (name, prefix, signals) in new[]
+        {
+            ("RestSiteSynchronizer", "run_rest.",
+                new[] { "BeforePlayerOptionChosen",
+                        "AfterPlayerOptionChosen" }),
+            ("MapSelectionSynchronizer", "run_map.",
+                new[] { "PlayerVoteChanged" }),
+            ("RewardsSetSynchronizer", "run_rewards.",
+                new[] { "RewardsSkippedDuringRoomExit" })
+        })
+        {
+            var synchronizer = GetProperty(manager, name);
+            if (synchronizer is null)
+            {
+                continue;
+            }
+
+            bool firstObservation;
+            lock (Gate)
+            {
+                firstObservation = ObservedSynchronizers.Add(synchronizer);
+            }
+            if (!firstObservation)
+            {
+                continue;
+            }
+
+            foreach (var signal in signals)
+            {
+                SubscribeIfPresent(
+                    synchronizer, signal, prefix + signal);
+            }
+        }
+    }
+
     private static void AttachActiveEventSignals()
     {
         var manager = _runManager;
@@ -168,6 +216,7 @@ internal static partial class PassiveReferenceRecorder
             or "combat_manager.CombatSetUp")
         {
             AttachRunPlayerSignals();
+            AttachRunSynchronizerSignals();
             AttachActiveEventSignals();
         }
 
