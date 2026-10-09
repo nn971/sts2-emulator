@@ -296,6 +296,16 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Curse,
                 Type: PrototypeCardType.Curse),
             new PrototypeCardDefinition(
+                "proto.native.underdocks.greed",
+                "Greed",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Unplayable: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse),
+            new PrototypeCardDefinition(
                 "proto.native.event.guilty",
                 "Guilty",
                 0,
@@ -6161,6 +6171,7 @@ public static class PrototypeContent
                 Weight: 2,
                 OncePerRun: false)
         }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
+            .Concat(PrototypeNativeUnderdocksEvents.Definitions)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 

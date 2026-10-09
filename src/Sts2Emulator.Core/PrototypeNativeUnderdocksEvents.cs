@@ -1,0 +1,67 @@
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// First source-backed v0.111.0 Underdocks event slice.
+/// Unimplemented region events remain excluded rather than being
+/// represented by unrelated Overgrowth or synthetic prototype events.
+/// </summary>
+public static class PrototypeNativeUnderdocksEvents
+{
+    public static string[] NativeRegionEventIds { get; } =
+    [
+        "proto.native.underdocks.abyssal_baths",
+        "proto.native.underdocks.drowning_beacon",
+        "proto.native.underdocks.endless_conveyor",
+        "proto.native.underdocks.punch_off",
+        "proto.native.underdocks.spiraling_whirlpool",
+        "proto.native.underdocks.sunken_statue",
+        "proto.native.underdocks.sunken_treasury",
+        "proto.native.underdocks.doors_of_light_and_dark",
+        "proto.native.underdocks.trash_heap",
+        "proto.native.underdocks.waterlogged_scriptorium"
+    ];
+
+    public static string[] SupportedRegionEventIds { get; } =
+    [
+        "proto.native.underdocks.sunken_treasury",
+        "proto.native.underdocks.doors_of_light_and_dark"
+    ];
+
+    public static PrototypeEventDefinition[] Definitions { get; } =
+    [
+        new(
+            "proto.native.underdocks.sunken_treasury",
+            "Sunken Treasury",
+            [
+                new("first_chest", "Open the first chest (52–67 gold)",
+                    [new(PrototypeRunEffectKind.GainGold, 60)]),
+                new("second_chest", "Open the second chest (303–363 gold and Greed)",
+                    [
+                        new(PrototypeRunEffectKind.GainGold, 333),
+                        new(PrototypeRunEffectKind.AddCard,
+                            CardId: "proto.native.underdocks.greed")
+                    ])
+            ],
+            MaxAct: 1),
+        new(
+            "proto.native.underdocks.doors_of_light_and_dark",
+            "Doors of Light and Dark",
+            [
+                new("light", "Upgrade up to two random cards",
+                    [
+                        new(PrototypeRunEffectKind.UpgradeRandomCard),
+                        new(PrototypeRunEffectKind.UpgradeRandomCard)
+                    ]),
+                new("dark", "Remove one card from the deck", [],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Remove, 1))
+            ],
+            MaxAct: 1)
+    ];
+
+    public static bool IsNativeRegionEvent(string eventId) =>
+        NativeRegionEventIds.Contains(eventId, StringComparer.Ordinal);
+
+    public static bool IsSupported(string eventId) =>
+        SupportedRegionEventIds.Contains(eventId, StringComparer.Ordinal);
+}
