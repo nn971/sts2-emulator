@@ -134,7 +134,7 @@ public sealed class PrototypeUnderdocksSeapunkHauntedShipTests
     {
         var state = PrototypeNativeUnderdocksRunFactory.Create(
             "seapunk-haunted-regression");
-        for (var floor = 1; floor <= 9; floor++)
+        for (var floor = 1; floor <= 11; floor++)
         {
             var node = new MapNodeState(
                 "underdocks-new-normal:" + floor,
@@ -165,6 +165,6 @@ public sealed class PrototypeUnderdocksSeapunkHauntedShipTests
             }
         }
         throw new InvalidOperationException(
-            "The encounter was not drawn from the six-entry normal bag.");
+            "The encounter was not drawn from the supported normal bag.");
     }
 }
