@@ -67,7 +67,8 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.seapunk_normal",
         "proto.encounter.haunted_ship_normal",
         "proto.encounter.sewer_clam_normal",
-        "proto.encounter.living_fog_normal"
+        "proto.encounter.living_fog_normal",
+        "proto.encounter.two_tailed_rats_normal"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
@@ -416,6 +417,76 @@ public static class PrototypeNativeUnderdocks
             HpAscensionDeltas: [new(8, 1)],
             StartingPowers: [new("proto.power.minion", 1)],
             IsMinion: true),
+        // Two-Tailed Rats have staggered first moves and then choose
+        // weighted no-repeat Scratch/Bite/Screech attacks. Backup is
+        // eligible only after two non-summoning actions, a free slot,
+        // no other squad summons that turn and fewer than three prior
+        // coordinated summons. The native random-branch weights,
+        // normalized to integers, are 1:1:3:9 when summonable.
+        new(
+            "proto.enemy.two_tailed_rat",
+            "Two-Tailed Rat",
+            21,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "scratch",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 8,
+                        AscensionDeltas: [new(9, 1)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "disease_bite",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 6,
+                        AscensionDeltas: [new(9, 1)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "screech",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.ApplyPlayerPower, 1,
+                        PowerId: "proto.power.frail")]),
+                new PrototypeEnemyMoveDefinition(
+                    "call_for_backup",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.SummonEnemy, 1,
+                        EnemyId: "proto.enemy.two_tailed_rat",
+                        SummonSlotNames:
+                            ["first", "second", "third", "fourth", "fifth"])])
+            ],
+            MinHp: 17,
+            HpAscensionDeltas: [new(8, 1)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            NonSummonMovesBeforeEligible: 2,
+            MaxCoordinatedSummons: 3,
+            Ai: new PrototypeEnemyAiDefinition(
+                "random",
+                [
+                    new PrototypeEnemyAiStateDefinition(
+                        "scratch", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "random"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "bite", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "random"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "screech", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "random"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "backup", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 3, NextStateId: "random"),
+                    new PrototypeEnemyAiStateDefinition(
+                        "random", PrototypeEnemyAiStateKind.Random,
+                        Branches:
+                        [
+                            new("scratch", 1,
+                                PrototypeEnemyAiRepeatRule.CannotRepeat),
+                            new("bite", 1,
+                                PrototypeEnemyAiRepeatRule.CannotRepeat),
+                            new("screech", 3,
+                                PrototypeEnemyAiRepeatRule.CannotRepeat),
+                            new("backup", 9,
+                                PrototypeEnemyAiRepeatRule.UseOnlyOnce,
+                                RequiresAvailableSummon: true)
+                        ])
+                ])),
         // Native SludgeSpinner: 37–39 HP (A8: 41–42).
         // Forced Oil Spray, then uniform no-immediate-repeat branch
         // between Oil Spray, Slam and Rage.
@@ -556,6 +627,22 @@ public static class PrototypeNativeUnderdocks
             ["proto.enemy.living_fog"],
             MinAct: 1, MaxAct: 1, Weight: 0,
             Formation: [new("proto.enemy.living_fog", 5, "livingFog")]),
+        new(
+            "proto.encounter.two_tailed_rats_normal",
+            PrototypeRoomType.Combat,
+            [
+                "proto.enemy.two_tailed_rat",
+                "proto.enemy.two_tailed_rat",
+                "proto.enemy.two_tailed_rat"
+            ],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation:
+            [
+                new("proto.enemy.two_tailed_rat", 2, "third"),
+                new("proto.enemy.two_tailed_rat", 3, "fourth"),
+                new("proto.enemy.two_tailed_rat", 4, "fifth")
+            ],
+            CyclicOpeningAiStateIds: ["scratch", "bite", "screech"]),
         new(
             "proto.encounter.punch_construct_normal",
             PrototypeRoomType.Combat,
