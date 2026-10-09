@@ -6872,8 +6872,11 @@ public static class PrototypeContent
             ]
         };
 
+    // Named event-only potions can be owned and consumed, but are excluded
+    // from ordinary rewards, merchant inventories and native rarity rolls.
     public static string[] PotionPool { get; } = Potions.Keys
-        .Where(id => id != "proto.native.neow.ambergris")
+        .Where(id => id != "proto.native.neow.ambergris"
+            && id != "proto.native.underdocks.glowwater_potion")
         .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [
