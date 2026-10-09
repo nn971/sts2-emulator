@@ -101,8 +101,8 @@ public sealed class PrototypeColorlessPowerBatchTests
             }
             else
             {
-                Assert.Empty(combat.PlayerPowers.Where(p =>
-                    p.PowerId == "proto.power.the_bomb"));
+                Assert.DoesNotContain(combat.PlayerPowers,
+                    p => p.PowerId == "proto.power.the_bomb");
                 Assert.Equal(100 - damage, combat.Enemies[0].Hp);
                 Assert.Equal(100 - damage, combat.Enemies[1].Hp);
             }
