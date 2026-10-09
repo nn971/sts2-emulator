@@ -31,7 +31,11 @@ public sealed partial class PrototypeGameEngine
                 eventState = eventState with { QueuedPotionIds = remaining };
 
                 var emptySlot = Array.IndexOf(state.Player.PotionSlots, null);
-                var nativeOffer = PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId);
+                var nativeOffer =
+                    PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(
+                        eventState.EventId)
+                    || PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(
+                        eventState.EventId);
                 if (emptySlot >= 0 && !nativeOffer)
                 {
                     var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
