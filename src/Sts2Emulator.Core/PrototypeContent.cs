@@ -1884,6 +1884,7 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Ancient,
                 Type: PrototypeCardType.Power)
         }.Concat(PrototypeColorlessCards.Implemented)
+            .Concat(PrototypeNativeUnderdocksTrashHeap.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -2941,6 +2942,7 @@ public static class PrototypeContent
                         ])
                 ])
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
+            .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
