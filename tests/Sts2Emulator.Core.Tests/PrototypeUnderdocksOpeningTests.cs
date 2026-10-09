@@ -110,15 +110,28 @@ public sealed class PrototypeUnderdocksOpeningTests
         var elite = StartRoom(engine, state, PrototypeRoomType.Elite, 5);
         Assert.Contains(elite.World!.EncounterIds[^1],
             PrototypeNativeUnderdocks.SupportedEliteEncounterIds);
-        Assert.Single(elite.World.ActOneEncounterPool!.RemainingEliteEncounterIds!);
+        Assert.Equal(2,
+            elite.World.ActOneEncounterPool!.RemainingEliteEncounterIds!.Length);
         var nextElite = StartRoom(engine, elite, PrototypeRoomType.Elite, 6);
         Assert.Contains(nextElite.World!.EncounterIds[^1],
             PrototypeNativeUnderdocks.SupportedEliteEncounterIds);
         Assert.NotEqual(elite.World.EncounterIds[^1],
             nextElite.World.EncounterIds[^1]);
-        Assert.Empty(nextElite.World.ActOneEncounterPool!.RemainingEliteEncounterIds!);
+        Assert.Single(nextElite.World.ActOneEncounterPool!.RemainingEliteEncounterIds!);
+        var finalElite = StartRoom(
+            engine, nextElite, PrototypeRoomType.Elite, 7);
+        Assert.Contains(finalElite.World!.EncounterIds[^1],
+            PrototypeNativeUnderdocks.SupportedEliteEncounterIds);
+        Assert.Equal(3, new[]
+        {
+            elite.World.EncounterIds[^1],
+            nextElite.World.EncounterIds[^1],
+            finalElite.World.EncounterIds[^1]
+        }.Distinct(StringComparer.Ordinal).Count());
+        Assert.Empty(finalElite.World.ActOneEncounterPool!
+            .RemainingEliteEncounterIds!);
         Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, nextElite, PrototypeRoomType.Elite, 7));
+            StartRoom(engine, finalElite, PrototypeRoomType.Elite, 8));
         Assert.Throws<NotSupportedException>(() =>
             StartRoom(engine, state, PrototypeRoomType.Boss, 16));
     }

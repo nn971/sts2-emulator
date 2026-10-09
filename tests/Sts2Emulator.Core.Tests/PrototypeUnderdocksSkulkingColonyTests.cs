@@ -115,7 +115,12 @@ public sealed class PrototypeUnderdocksSkulkingColonyTests
                 Combat = null,
                 Reward = null,
                 Shop = null,
-                Event = null
+                Event = null,
+                ActOneEncounterPool = state.World.ActOneEncounterPool! with
+                {
+                    RemainingEliteEncounterIds =
+                        ["proto.encounter.skulking_colony_elite"]
+                }
             }
         };
         return engine.Step(state,
