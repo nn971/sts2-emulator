@@ -608,10 +608,17 @@ public sealed partial class PrototypeGameEngine
         var nativeOvergrowth = world.Act == 1
             && world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId;
+        var nativeUnderdocks = world.Act == 1
+            && world.Map.GenerationProfileId
+                == PrototypeNativeUnderdocks.GenerationProfileId;
         var eligible = PrototypeContent.Events.Values
             .Where(evt =>
-                PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(evt.Id)
-                    == nativeOvergrowth
+                (nativeUnderdocks
+                    ? PrototypeNativeUnderdocksEvents.IsSupported(evt.Id)
+                    : PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(evt.Id)
+                        == nativeOvergrowth
+                      && !PrototypeNativeUnderdocksEvents
+                          .IsNativeRegionEvent(evt.Id))
                 && (!nativeOvergrowth
                     || PrototypeNativeOvergrowthEvents.IsEligible(
                         evt, state.Player))
@@ -676,12 +683,20 @@ public sealed partial class PrototypeGameEngine
                         // prototype currently samples integer bins.
                         "proto.native.event.jungle_maze_adventure" =>
                             135 + PrototypeRng.NextInt(state.Rng, "event", 30),
+                        // Native Sunken Treasury rolls small then large
+                        // independently; both rolls are persisted so the
+                        // eventual choice never changes the RNG outcome.
+                        "proto.native.underdocks.sunken_treasury" =>
+                            52 + PrototypeRng.NextInt(state.Rng, "event", 16),
                         _ => 0
                     },
                 NativeEventSecondaryGold:
                     selected.Id == "proto.native.event.jungle_maze_adventure"
                         ? 35 + PrototypeRng.NextInt(state.Rng, "event", 30)
-                        : 0),
+                        : selected.Id == "proto.native.underdocks.sunken_treasury"
+                            ? 303 + PrototypeRng.NextInt(
+                                state.Rng, "event", 61)
+                            : 0),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
@@ -1387,6 +1402,17 @@ public sealed partial class PrototypeGameEngine
         }
 
         var rolled = eventState.NativeEventGold;
+        if (eventState.EventId
+                == "proto.native.underdocks.sunken_treasury"
+            && effect.Kind == PrototypeRunEffectKind.GainGold)
+        {
+            return choiceId switch
+            {
+                "first_chest" => rolled,
+                "second_chest" => eventState.NativeEventSecondaryGold,
+                _ => effect.Amount
+            };
+        }
         if ((eventState.EventId == "proto.native.event.whispering_hollow"
                 && choiceId == "gold"
                 && effect.Kind == PrototypeRunEffectKind.LoseGold
