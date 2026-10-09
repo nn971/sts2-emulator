@@ -10,7 +10,7 @@ public sealed class PrototypeNativeUnderdocksEventsTests
         Assert.Equal(10, PrototypeNativeUnderdocksEvents.NativeRegionEventIds.Length);
         Assert.Equal(10, PrototypeNativeUnderdocksEvents.NativeRegionEventIds
             .Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(5, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
+        Assert.Equal(6, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
         Assert.All(PrototypeNativeUnderdocksEvents.SupportedRegionEventIds, id =>
         {
             Assert.Contains(id, PrototypeNativeUnderdocksEvents.NativeRegionEventIds);
@@ -37,7 +37,7 @@ public sealed class PrototypeNativeUnderdocksEventsTests
     public void TreasuryPersistsBothRollsAndChoicesSettleOneRolledAmount()
     {
         var engine = new PrototypeGameEngine();
-        for (var iteration = 0; iteration < 12; iteration++)
+        for (var iteration = 0; iteration < 128; iteration++)
         {
             var state = StartUnderdocksEvent(engine,
                 "treasury-seed-" + iteration);
@@ -71,7 +71,7 @@ public sealed class PrototypeNativeUnderdocksEventsTests
     public void LightUpgradesTwoDistinctCardsAndDarkOffersRemoval()
     {
         var engine = new PrototypeGameEngine();
-        for (var iteration = 0; iteration < 12; iteration++)
+        for (var iteration = 0; iteration < 128; iteration++)
         {
             var state = StartUnderdocksEvent(engine,
                 "doors-seed-" + iteration);
@@ -100,7 +100,7 @@ public sealed class PrototypeNativeUnderdocksEventsTests
     public void StatueGoldRollIsPersistedAndSwordIsAnAlternativeReward()
     {
         var engine = new PrototypeGameEngine();
-        for (var i = 0; i < 32; i++)
+        for (var i = 0; i < 128; i++)
         {
             var state = StartUnderdocksEvent(engine, "statue-" + i);
             if (state.World!.Event!.EventId

@@ -1312,7 +1312,8 @@ public sealed partial class PrototypeGameEngine
                     // receiving a reward is a player decision even when a
                     // potion slot is empty. Other prototype direct-grant
                     // events retain their historical acquisition behavior.
-                    if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId))
+                    if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)
+                        || PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(eventState.EventId))
                     {
                         queuedPotionIds.Add(potionId);
                     }

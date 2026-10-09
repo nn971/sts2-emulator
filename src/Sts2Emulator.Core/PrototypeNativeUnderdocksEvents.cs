@@ -24,6 +24,7 @@ public static class PrototypeNativeUnderdocksEvents
     public static string[] SupportedRegionEventIds { get; } =
     [
         "proto.native.underdocks.abyssal_baths",
+        "proto.native.underdocks.drowning_beacon",
         "proto.native.underdocks.spiraling_whirlpool",
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
@@ -48,6 +49,24 @@ public static class PrototypeNativeUnderdocksEvents
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Source: DrowningBeacon.cs. Bottle offers a fixed potion
+        // through a native-style optional potion reward prompt;
+        // climb loses 13 max HP before granting the Fresnel Lens.
+        new(
+            "proto.native.underdocks.drowning_beacon",
+            "Drowning Beacon",
+            [
+                new("bottle", "Bottle the water (offer Glowwater Potion)",
+                    [new(PrototypeRunEffectKind.GainPotion,
+                        PotionId: "proto.native.underdocks.glowwater_potion")]),
+                new("climb", "Climb (-13 max HP, gain Fresnel Lens)",
+                    [
+                        new(PrototypeRunEffectKind.LoseMaxHp, 13),
+                        new(PrototypeRunEffectKind.GainRelic,
+                            RelicId: "proto.native.underdocks.fresnel_lens")
+                    ])
+            ],
+            MaxAct: 1),
         // Source: SpiralingWhirlpool.cs. The native Spiral enchantment
         // targets basic Strike- or Defend-tagged cards. The common event
         // deck-choice continuation handles player selection.
@@ -129,6 +148,10 @@ public static class PrototypeNativeUnderdocksEvents
 
     public static bool IsNativeRegionEvent(string eventId) =>
         NativeRegionEventIds.Contains(eventId, StringComparer.Ordinal);
+
+    public static bool UsesNativePotionOffer(string eventId) =>
+        StringComparer.Ordinal.Equals(
+            eventId, "proto.native.underdocks.drowning_beacon");
 
     public static bool IsSupported(string eventId) =>
         SupportedRegionEventIds.Contains(eventId, StringComparer.Ordinal);

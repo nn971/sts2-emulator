@@ -3602,6 +3602,49 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.ExhaustHand:
+                {
+                    // Glowwater exhausts the entire current hand before its
+                    // draw begins. Reuse the ordered event-continuation
+                    // dispatcher so CardExhausted hooks run in hand order,
+                    // including hooks which suspend for a player choice.
+                    var exhausted = (long[])combat.Hand.Clone();
+                    combat = combat with
+                    {
+                        Hand = Array.Empty<long>(),
+                        ExhaustPile = combat.ExhaustPile
+                            .Concat(exhausted).ToArray()
+                    };
+                    if (exhausted.Length == 0)
+                    {
+                        break;
+                    }
+
+                    var exhaustEvents = exhausted.Select(id =>
+                        new PrototypeCombatEvent(
+                            PrototypeCombatEventKind.CardExhausted,
+                            SourceCardInstanceId: id,
+                            CardId: RequireCombatCard(combat, id).CardId))
+                        .ToArray();
+                    return ResumeChoiceResolutionContinuation(
+                        player, combat, rng,
+                        new PrototypeChoiceResolutionContinuationState(
+                            SourceCardInstanceId: sourceCardInstanceId,
+                            SourceCardDestination: sourceCardDestination,
+                            Operations: operations.ToArray(),
+                            PendingDiscardEvents: exhaustEvents,
+                            PendingSlyCardInstanceIds: Array.Empty<long>(),
+                            CompletionEvents: completionEvents
+                                ?? Array.Empty<PrototypeCombatEvent>(),
+                            CardPlaySeries: cardPlaySeries,
+                            MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                            RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                            SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                            EventDispatchContinuation:
+                                eventDispatchContinuation?.Fork()),
+                        resumeCardPlaySeries: false);
+                }
+
                 case PrototypeCombatEffectKind.DiscardHand:
                 {
                     var discarded = (long[])combat.Hand.Clone();
@@ -4927,6 +4970,21 @@ public sealed partial class PrototypeGameEngine
                         Target = PrototypeEffectTarget.AllEnemies
                     }
                     : effect;
+            // Native Nimble adds its amount to a block-granting
+            // card's base Block before player-wide multipliers.
+            if (card.Enchantment is
+                    { Kind: PrototypeCardEnchantmentKind.Nimble } nimble
+                && effectiveEffect.Kind is
+                    PrototypeCombatEffectKind.GainPlayerBlock
+                    or PrototypeCombatEffectKind.GainToricToughnessBlock
+                    or PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal
+                    or PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain)
+            {
+                effectiveEffect = effectiveEffect with
+                {
+                    Amount = checked(effectiveEffect.Amount + nimble.Amount)
+                };
+            }
             EnqueueEffectOperations(
                 operations,
                 effectiveEffect,

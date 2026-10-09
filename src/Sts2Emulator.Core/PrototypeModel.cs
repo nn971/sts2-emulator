@@ -79,6 +79,7 @@ public enum PrototypeCombatEffectKind
     DamageAllEnemiesRepeatPerKill,
     LoseEnemyHp,
     DiscardHand,
+    ExhaustHand,
     RemoveEnemyBlock,
     RemoveEnemyPower,
     TriggerEnemyStatus,
@@ -678,7 +679,8 @@ public sealed record PrototypeRelicDefinition(
     int XValueBonus = 0,
     int HandDrawBonus = 0,
     int RandomizeDrawnCardCostMaxExclusive = 0,
-    bool ForceCombatPotionReward = false);
+    bool ForceCombatPotionReward = false,
+    int EnchantNewBlockCardsNimble = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

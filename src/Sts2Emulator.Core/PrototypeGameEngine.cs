@@ -710,11 +710,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             ? 1
             : 0;
 
-        var card = new CardInstance(
-            instanceId,
-            cardId,
-            upgradeLevel,
-            PrototypeJson.EmptyObject());
+        var card = ApplyNewCardEnchantments(
+            player,
+            new CardInstance(
+                instanceId,
+                cardId,
+                upgradeLevel,
+                PrototypeJson.EmptyObject()));
         player = player with
         {
             Deck = player.Deck.Append(card).ToArray()
@@ -725,6 +727,43 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             PrototypeRunEventKind.CardAdded,
             addedCard: card,
             rng: rng);
+    }
+
+    /// <summary>
+    /// Apply acquisition-time relic enchantments to persistent cards.
+    /// Cards that already carry a persistent enchantment preserve it.
+    /// Source: FresnelLens.TryModifyCardBeingAddedToDeck.
+    /// </summary>
+    private static CardInstance ApplyNewCardEnchantments(
+        PlayerState player, CardInstance card)
+    {
+        if (card.Enchantment is not null)
+        {
+            return card;
+        }
+
+        var definition = PrototypeContent.Card(card.CardId);
+        var gainsBlock = definition.Effects.Any(effect =>
+            effect.Kind is
+                PrototypeCombatEffectKind.GainPlayerBlock
+                or PrototypeCombatEffectKind.GainToricToughnessBlock
+                or PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal
+                or PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain);
+        if (!gainsBlock)
+        {
+            return card;
+        }
+
+        var amount = player.Relics.Sum(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .EnchantNewBlockCardsNimble);
+        return amount > 0
+            ? card with
+            {
+                Enchantment = new PrototypeCardEnchantment(
+                    PrototypeCardEnchantmentKind.Nimble, amount)
+            }
+            : card;
     }
 
     private static RunState EndRun(RunState state, string outcome)
