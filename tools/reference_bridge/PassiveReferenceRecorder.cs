@@ -896,6 +896,18 @@ internal static partial class PassiveReferenceRecorder
         out object? projected)
     {
         var type = value.GetType();
+
+        // Native ModelId is a record object, not a string/enum. Without
+        // this projection, cards, relics, events and encounters are reduced
+        // to the uninformative type name "ModelId" in compact snapshots.
+        // Its pinned ToString() returns the canonical CATEGORY.ENTRY.
+        if (StringComparer.Ordinal.Equals(
+                type.FullName, "MegaCrit.Sts2.Core.Models.ModelId"))
+        {
+            projected = value.ToString();
+            return true;
+        }
+
         if (type.IsEnum)
         {
             projected = value.ToString();
