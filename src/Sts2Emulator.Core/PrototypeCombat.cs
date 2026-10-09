@@ -2310,6 +2310,19 @@ public sealed partial class PrototypeGameEngine
                 enemies,
                 rng);
             var move = selection.Move;
+            // Vigor applies to every hit of one attack command, then
+            // consumes the stacks that existed when the command began.
+            // Vigor gained by this move is never consumed by that move.
+            var consumeOnAttackOrders = move.Effects.Any(effect =>
+                    effect.Kind == PrototypeEnemyEffectKind.DamagePlayer
+                    && effect.IsAttack)
+                ? enemy.PowerStates
+                    .Where(power => power.Stacks > 0
+                        && PrototypeContent.Power(power.PowerId)
+                            .ConsumeAfterEnemyAttack)
+                    .Select(power => power.ApplicationOrder)
+                    .ToHashSet()
+                : new HashSet<long>();
 
             foreach (var effect in move.Effects)
             {
@@ -2620,6 +2633,17 @@ public sealed partial class PrototypeGameEngine
                 {
                     break;
                 }
+            }
+
+            if (consumeOnAttackOrders.Count > 0)
+            {
+                enemy = enemy with
+                {
+                    Powers = enemy.PowerStates
+                        .Where(power => !consumeOnAttackOrders.Contains(
+                            power.ApplicationOrder))
+                        .ToArray()
+                };
             }
 
             var turnEndStrength =
