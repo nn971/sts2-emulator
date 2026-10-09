@@ -225,8 +225,7 @@ public enum PrototypeCombatPredicateKind
 {
     DrawPileEmpty,
     TargetHasStatus,
-    HandEmptyAtEnqueue,
-    OnlyAttacksInHand
+    HandEmptyAtEnqueue
 }
 
 public enum PrototypeCombatCountKind
@@ -236,8 +235,7 @@ public enum PrototypeCombatCountKind
     AttacksPlayedThisTurn,
     CardsDiscardedThisTurn,
     CardsDrawnThisCombat,
-    OtherCardsInHand,
-    DiscardPileSize
+    OtherCardsInHand
 }
 
 public sealed record PrototypeCombatPredicateSpec(
