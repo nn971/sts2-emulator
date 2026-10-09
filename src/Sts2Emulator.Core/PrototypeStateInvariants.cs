@@ -254,7 +254,7 @@ public static class PrototypeStateInvariants
             : PrototypeNativeUnderdocks.SupportedNormalEncounterIds;
         var elitePool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthEliteEncounterPool
-            : Array.Empty<string>();
+            : PrototypeNativeUnderdocks.SupportedEliteEncounterIds;
         var bossPool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthBossEncounterPool
             : PrototypeNativeUnderdocks.NativeBossEncounterIds;
@@ -1020,6 +1020,8 @@ public static class PrototypeStateInvariants
             && (PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal)
                 || PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedEliteEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal));
 
         if (encounter.RoomType != world.ActiveRoom

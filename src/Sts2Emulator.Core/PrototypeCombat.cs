@@ -1834,7 +1834,10 @@ public sealed partial class PrototypeGameEngine
                 Block = enemy.Block + blockAtSideTurnEnd,
                 SharedSummonUsedThisTurn =
                     stage == PrototypeTurnStage.EnemyTurnStart
-                        ? false : enemy.SharedSummonUsedThisTurn
+                        ? false : enemy.SharedSummonUsedThisTurn,
+                HpLossBudgetUsed =
+                    stage == PrototypeTurnStage.EnemyTurnStart
+                        ? 0 : enemy.HpLossBudgetUsed
             };
 
             if (enemy.Hp > 0 && strengthAtSideTurnEnd > 0)
@@ -2240,6 +2243,7 @@ public sealed partial class PrototypeGameEngine
             .ToList();
         var block = combat.PlayerBlock;
         var hp = player.Hp;
+        var gold = player.Gold;
 
         for (var index = 0; index < enemies.Count; index++)
         {
@@ -2374,6 +2378,26 @@ public sealed partial class PrototypeGameEngine
 
                         case PrototypeEnemyEffectKind.KillSelf:
                             enemy = enemy with { Hp = 0, Block = 0 };
+                            break;
+
+                        case PrototypeEnemyEffectKind.StealPlayerGold:
+                        {
+                            var stolen = Math.Min(Math.Max(0, amount), gold);
+                            gold -= stolen;
+                            enemy = enemy with
+                            {
+                                StolenGold = checked(enemy.StolenGold + stolen)
+                            };
+                            break;
+                        }
+
+                        case PrototypeEnemyEffectKind.EscapeEnemy:
+                            enemy = enemy with
+                            {
+                                Hp = 0,
+                                Block = 0,
+                                Escaped = true
+                            };
                             break;
 
                         case PrototypeEnemyEffectKind.GainBlock:
@@ -2658,7 +2682,7 @@ public sealed partial class PrototypeGameEngine
             rng);
 
         return (
-            player with { Hp = hp },
+            player with { Hp = hp, Gold = gold },
             combat);
     }
 
@@ -2753,12 +2777,22 @@ public sealed partial class PrototypeGameEngine
                         Statuses:
                             new Dictionary<string, int>(
                                 StringComparer.Ordinal),
-                        Powers: powers,
+                        Powers: summon.TransferStolenGold
+                            && source.StolenGold > 0
+                            ? powers.Append(new PrototypePowerInstanceState(
+                                "proto.power.heist",
+                                source.StolenGold,
+                                nextPowerOrder++)).ToArray()
+                            : powers,
                         FormationPosition:
                             summon.FormationPosition,
                         SlotName: summon.SlotName,
+                        StolenGold: summon.TransferStolenGold
+                            ? source.StolenGold : 0,
                         EnemyActionSkipsRemaining:
-                            Math.Max(0, enemyActionSkips)));
+                            summon.SkipEnemyActions == 1
+                                ? Math.Max(0, enemyActionSkips)
+                                : Math.Max(0, summon.SkipEnemyActions)));
             }
         }
 
@@ -8358,6 +8392,23 @@ public sealed partial class PrototypeGameEngine
                     };
                 }
             }
+        }
+
+        var hpLossBudget = powers
+            .Where(power => power.Stacks > 0
+                && PrototypeContent.Power(power.PowerId)
+                    .EnemyHpLossLimitedPerSideTurnByStacks)
+            .Select(power => power.Stacks)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+        if (hpLossBudget != int.MaxValue)
+        {
+            hpLoss = Math.Min(hpLoss,
+                Math.Max(0, hpLossBudget - enemy.HpLossBudgetUsed));
+            enemy = enemy with
+            {
+                HpLossBudgetUsed = enemy.HpLossBudgetUsed + hpLoss
+            };
         }
 
         var nextHp = Math.Max(0, enemy.Hp - hpLoss);

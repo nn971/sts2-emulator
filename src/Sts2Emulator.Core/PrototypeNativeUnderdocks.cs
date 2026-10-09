@@ -68,7 +68,13 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.haunted_ship_normal",
         "proto.encounter.sewer_clam_normal",
         "proto.encounter.living_fog_normal",
-        "proto.encounter.two_tailed_rats_normal"
+        "proto.encounter.two_tailed_rats_normal",
+        "proto.encounter.gremlin_merc_normal"
+    ];
+
+    public static string[] SupportedEliteEncounterIds { get; } =
+    [
+        "proto.encounter.skulking_colony_elite"
     ];
 
     public static PrototypePowerDefinition[] Powers { get; } =
@@ -123,7 +129,19 @@ public static class PrototypeNativeUnderdocks
             DoesNotStack: true,
             SkillPlayAffliction: PrototypeCardAfflictionKind.Smog,
             BlockPlayOfMatchingAffliction: true,
-            ClearMatchingAfflictionAtPlayerTurnEnd: true)
+            ClearMatchingAfflictionAtPlayerTurnEnd: true),
+        new("proto.power.surprise", "Surprise",
+            BlockBonusPerStack: 0, Triggers: []),
+        new("proto.power.thievery", "Thievery",
+            BlockBonusPerStack: 0, Triggers: [], IsInstanced: true),
+        new("proto.power.heist", "Heist",
+            BlockBonusPerStack: 0, Triggers: [], IsInstanced: true),
+        new(
+            "proto.power.hardened_shell",
+            "Hardened Shell",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnemyHpLossLimitedPerSideTurnByStacks: true)
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
@@ -487,6 +505,141 @@ public static class PrototypeNativeUnderdocks
                                 RequiresAvailableSummon: true)
                         ])
                 ])),
+        // Gremlin Merc: opens alone with Surprise and Thievery 20.
+        // Steal happens once per completed move, not once per hit.
+        // At death it summons a Fat and Sneaky Gremlin; the Fat
+        // receives any stolen gold and returns it if defeated before
+        // escaping. This is modeled through general death summons.
+        new(
+            "proto.enemy.gremlin_merc",
+            "Gremlin Merc",
+            49,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "gimme",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 7,
+                            Repetitions: 2,
+                            AscensionDeltas: [new(8, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.StealPlayerGold, 20)
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "double_smash",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 6,
+                            Repetitions: 2,
+                            AscensionDeltas: [new(8, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.StealPlayerGold, 20),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyPlayerPower, 2,
+                            PowerId: "proto.power.weak")
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "hehe",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 8,
+                            AscensionDeltas: [new(8, 1)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.StealPlayerGold, 20),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                            PowerId: "proto.power.strength")
+                    ])
+            ],
+            MinHp: 47,
+            HpAscensionDeltas: [new(8, 4)],
+            StartingPowers:
+            [
+                new("proto.power.surprise", 1),
+                new("proto.power.thievery", 20)
+            ],
+            DeathSummons:
+            [
+                new("proto.enemy.sneaky_gremlin", 1, "sneaky",
+                    SkipEnemyActions: 0),
+                new("proto.enemy.fat_gremlin", 2, "fat",
+                    TransferStolenGold: true, SkipEnemyActions: 0)
+            ]),
+        new(
+            "proto.enemy.sneaky_gremlin",
+            "Sneaky Gremlin",
+            14,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "spawned", []),
+                new PrototypeEnemyMoveDefinition(
+                    "tackle",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 9,
+                        AscensionDeltas: [new(9, 1)])])
+            ],
+            MoveLoopStartIndex: 1,
+            MinHp: 10,
+            HpAscensionDeltas: [new(8, 1)]),
+        new(
+            "proto.enemy.fat_gremlin",
+            "Fat Gremlin",
+            17,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "spawned", []),
+                new PrototypeEnemyMoveDefinition(
+                    "flee",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.EscapeEnemy, 0)])
+            ],
+            MoveLoopStartIndex: 1,
+            MinHp: 13,
+            HpAscensionDeltas: [new(8, 1)],
+            RecoverCarriedGoldOnDeath: true,
+            EscapedRewardProportionWithGold: 0f,
+            EscapedRewardProportionWithoutGold: 0.5f),
+        // Elite Skulking Colony: 75 HP (A8: 80), Hardened Shell 20
+        // caps HP loss per enemy side turn, and a four-move cycle.
+        new(
+            "proto.enemy.skulking_colony",
+            "Skulking Colony",
+            75,
+            0,
+            [
+                new PrototypeEnemyMoveDefinition(
+                    "zoom",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 14,
+                        AscensionDeltas: [new(9, 2)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "zoom_2",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 14,
+                        AscensionDeltas: [new(9, 2)])]),
+                new PrototypeEnemyMoveDefinition(
+                    "inertia",
+                    [
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.DamagePlayer, 9,
+                            AscensionDeltas: [new(9, 2)]),
+                        new PrototypeEnemyEffectSpec(
+                            PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                            PowerId: "proto.power.strength",
+                            AscensionDeltas: [new(9, 2)])
+                    ]),
+                new PrototypeEnemyMoveDefinition(
+                    "piercing_stabs",
+                    [new PrototypeEnemyEffectSpec(
+                        PrototypeEnemyEffectKind.DamagePlayer, 7,
+                        Repetitions: 2,
+                        AscensionDeltas: [new(9, 1)])])
+            ],
+            HpAscensionDeltas: [new(8, 5)],
+            StartingPowers: [new("proto.power.hardened_shell", 20)]),
         // Native SludgeSpinner: 37–39 HP (A8: 41–42).
         // Forced Oil Spray, then uniform no-immediate-repeat branch
         // between Oil Spray, Slam and Rage.
@@ -644,6 +797,18 @@ public static class PrototypeNativeUnderdocks
             ],
             CyclicOpeningAiStateIds: ["scratch", "bite", "screech"]),
         new(
+            "proto.encounter.gremlin_merc_normal",
+            PrototypeRoomType.Combat,
+            ["proto.enemy.gremlin_merc"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.gremlin_merc", 0, "merc")]),
+        new(
+            "proto.encounter.skulking_colony_elite",
+            PrototypeRoomType.Elite,
+            ["proto.enemy.skulking_colony"],
+            MinAct: 1, MaxAct: 1, Weight: 0,
+            Formation: [new("proto.enemy.skulking_colony", 0)]),
+        new(
             "proto.encounter.punch_construct_normal",
             PrototypeRoomType.Combat,
             ["proto.enemy.punch_construct"],
@@ -732,7 +897,9 @@ public static class PrototypeNativeUnderdocksRunFactory
                     RemainingNormalEncounterIds:
                         (string[])PrototypeNativeUnderdocks
                             .SupportedNormalEncounterIds.Clone(),
-                    RemainingEliteEncounterIds: [],
+                    RemainingEliteEncounterIds:
+                        (string[])PrototypeNativeUnderdocks
+                            .SupportedEliteEncounterIds.Clone(),
                     BossEncounterId: boss),
                 Map = map
             }

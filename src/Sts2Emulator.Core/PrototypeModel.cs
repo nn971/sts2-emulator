@@ -775,7 +775,8 @@ public sealed record PrototypePowerDefinition(
     int EnemyStacksDecayAtSideTurnStartAfterFirst = 0,
     PrototypeCardAfflictionKind? SkillPlayAffliction = null,
     bool BlockPlayOfMatchingAffliction = false,
-    bool ClearMatchingAfflictionAtPlayerTurnEnd = false);
+    bool ClearMatchingAfflictionAtPlayerTurnEnd = false,
+    bool EnemyHpLossLimitedPerSideTurnByStacks = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -799,7 +800,9 @@ public enum PrototypeEnemyEffectKind
     ApplyEnemyPower,
     AddCardsToDiscard,
     SummonEnemy,
-    KillSelf
+    KillSelf,
+    StealPlayerGold,
+    EscapeEnemy
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -916,7 +919,9 @@ public sealed record PrototypeStartingPowerSpec(
 public sealed record PrototypeEnemyDeathSummonSpec(
     string EnemyId,
     int FormationPosition,
-    string? SlotName = null);
+    string? SlotName = null,
+    bool TransferStolenGold = false,
+    int SkipEnemyActions = 1);
 
 public sealed record PrototypeEnemyDefinition(
     string Id,
@@ -939,7 +944,10 @@ public sealed record PrototypeEnemyDefinition(
     bool RevivesOnEnemyTurn = false,
     PrototypeEnemyDeathSummonSpec[]? DeathSummons = null,
     int NonSummonMovesBeforeEligible = 0,
-    int MaxCoordinatedSummons = 0)
+    int MaxCoordinatedSummons = 0,
+    bool RecoverCarriedGoldOnDeath = false,
+    float EscapedRewardProportionWithGold = 1f,
+    float EscapedRewardProportionWithoutGold = 1f)
 {
     public (int Min, int Max) HpRangeAt(
         int act,
@@ -1291,7 +1299,10 @@ public sealed record EnemyCombatState(
     bool DeathEffectsResolved = false,
     int NonSummonMovesUntilEligible = 0,
     int SharedSummonsUsed = 0,
-    bool SharedSummonUsedThisTurn = false)
+    bool SharedSummonUsedThisTurn = false,
+    int StolenGold = 0,
+    bool Escaped = false,
+    int HpLossBudgetUsed = 0)
 {
     public EnemyCombatState Fork() => this with
     {

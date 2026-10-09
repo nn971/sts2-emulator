@@ -113,7 +113,7 @@ public sealed class PrototypeUnderdocksRatsTests
     {
         var state = PrototypeNativeUnderdocksRunFactory.Create(
             "rats-native-normal-test");
-        for (var floor = 1; floor <= 12; floor++)
+        for (var floor = 1; floor <= 13; floor++)
         {
             var node = new MapNodeState(
                 "rats-test:" + floor, 1, floor,
