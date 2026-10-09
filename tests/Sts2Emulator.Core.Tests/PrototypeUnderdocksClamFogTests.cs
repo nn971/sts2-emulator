@@ -96,8 +96,8 @@ public sealed class PrototypeUnderdocksClamFogTests
         combat = state.World!.Combat!;
         Assert.Equal(57, state.Player.Hp);
         Assert.Equal("bloat", combat.Enemies[0].LastMoveId);
-        var bomb = Assert.Single(combat.Enemies.Where(enemy =>
-            enemy.EnemyId == "proto.enemy.gas_bomb"));
+        var bomb = Assert.Single(combat.Enemies, enemy =>
+            enemy.EnemyId == "proto.enemy.gas_bomb");
         Assert.Equal("bomb5", bomb.SlotName);
         Assert.Equal(7, bomb.Hp);
         Assert.Null(bomb.LastMoveId);
@@ -107,8 +107,8 @@ public sealed class PrototypeUnderdocksClamFogTests
         combat = state.World!.Combat!;
         Assert.Equal(41, state.Player.Hp);
         Assert.Equal("super_gas_blast", combat.Enemies[0].LastMoveId);
-        bomb = Assert.Single(combat.Enemies.Where(enemy =>
-            enemy.EnemyId == "proto.enemy.gas_bomb"));
+        bomb = Assert.Single(combat.Enemies, enemy =>
+            enemy.EnemyId == "proto.enemy.gas_bomb");
         Assert.Equal("explode", bomb.LastMoveId);
         Assert.Equal(0, bomb.Hp);
         Assert.Equal(CanonicalJson.Sha256(state),
