@@ -749,6 +749,11 @@ public sealed partial class PrototypeGameEngine
             return GetAbyssalBathsActions(eventState);
         }
 
+        if (eventState.EventId == PrototypeNativeUnderdocksTrashHeap.EventId)
+        {
+            return GetTrashHeapActions();
+        }
+
         if (eventState.EventId == PrototypeNativeDenseVegetation.EventId
             && eventState.NativePageIndex == 1)
         {
@@ -941,6 +946,11 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == AbyssalBathsEventId)
         {
             return StepAbyssalBaths(state, action);
+        }
+
+        if (eventState.EventId == PrototypeNativeUnderdocksTrashHeap.EventId)
+        {
+            return StepTrashHeap(state, action);
         }
 
         if (eventState.EventId == PrototypeNativeTabletOfTruth.EventId)

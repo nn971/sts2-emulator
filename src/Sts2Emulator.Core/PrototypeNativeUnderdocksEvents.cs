@@ -25,6 +25,7 @@ public static class PrototypeNativeUnderdocksEvents
     [
         "proto.native.underdocks.abyssal_baths",
         "proto.native.underdocks.drowning_beacon",
+        "proto.native.underdocks.trash_heap",
         "proto.native.underdocks.spiraling_whirlpool",
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
@@ -39,6 +40,8 @@ public static class PrototypeNativeUnderdocksEvents
         PrototypeEventDefinition evt, PlayerState player) =>
         evt.Id switch
         {
+            PrototypeNativeUnderdocksTrashHeap.EventId =>
+                player.Hp > 5,
             "proto.native.underdocks.spiraling_whirlpool" =>
                 player.Deck.Any(card =>
                     PrototypeGameEngine.CanSelectEventDeckCard(
@@ -49,6 +52,16 @@ public static class PrototypeNativeUnderdocksEvents
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Source: TrashHeap.cs; random acquisition is routed through the
+        // source-backed specialized handler rather than fixed Effects.
+        new(
+            PrototypeNativeUnderdocksTrashHeap.EventId,
+            "Trash Heap",
+            [
+                new("dive", "Lose 8 HP and find one of five relics", []),
+                new("grab", "Gain 100 gold and one of ten event cards", [])
+            ],
+            MaxAct: 1),
         // Source: DrowningBeacon.cs. Bottle offers a fixed potion
         // through a native-style optional potion reward prompt;
         // climb loses 13 max HP before granting the Fresnel Lens.

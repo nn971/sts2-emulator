@@ -5845,6 +5845,8 @@ public sealed partial class PrototypeGameEngine
                 combat.CounterState.CardsDrawnThisCombat,
             PrototypeCombatCountKind.OtherCardsInHand =>
                 combat.Hand.Length,
+            PrototypeCombatCountKind.DiscardPileSize =>
+                combat.DiscardPile.Length,
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
 
@@ -5935,6 +5937,11 @@ public sealed partial class PrototypeGameEngine
         {
             PrototypeCombatPredicateKind.DrawPileEmpty =>
                 combat.DrawPile.Length == 0,
+            PrototypeCombatPredicateKind.OnlyAttacksInHand =>
+                combat.Hand.All(instanceId =>
+                    PrototypeContent.Card(
+                        RequireCombatCard(combat, instanceId).CardId).Type
+                        == PrototypeCardType.Attack),
             PrototypeCombatPredicateKind.TargetHasStatus =>
                 TargetHasStatus(
                     combat,
