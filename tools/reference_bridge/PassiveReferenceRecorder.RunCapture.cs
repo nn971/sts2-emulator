@@ -12,12 +12,15 @@ internal static partial class PassiveReferenceRecorder
     private static object? _runManager;
     private static readonly HashSet<object> ObservedEvents =
         new(ReferenceEqualityComparer.Instance);
+    private static readonly HashSet<object> ObservedPlayers =
+        new(ReferenceEqualityComparer.Instance);
 
     private static bool ShouldCaptureRunObservation(string boundary) =>
         StringComparer.OrdinalIgnoreCase.Equals(
             _corpusMode, "underdocks-silent-act1")
         && (boundary.StartsWith("run_manager.", StringComparison.Ordinal)
             || boundary.StartsWith("run_event.", StringComparison.Ordinal)
+            || boundary.StartsWith("run_player.", StringComparison.Ordinal)
             || boundary is
                 "combat_manager.CombatSetUp"
                 or "combat_manager.CombatBegan"
@@ -74,6 +77,45 @@ internal static partial class PassiveReferenceRecorder
             "RunManager singleton unavailable within 120 seconds.");
     }
 
+    private static void AttachRunPlayerSignals()
+    {
+        var manager = _runManager;
+        var run = manager is null
+            ? null : TryInvokeNoArg(manager, "DebugOnlyGetState");
+        if (run is null)
+        {
+            return;
+        }
+
+        foreach (var player in Enumerate(GetProperty(run, "Players")))
+        {
+            bool firstObservation;
+            lock (Gate)
+            {
+                firstObservation = ObservedPlayers.Add(player);
+            }
+            if (!firstObservation)
+            {
+                continue;
+            }
+
+            foreach (var signal in new[]
+            {
+                "GoldChanged",
+                "RelicObtained",
+                "RelicRemoved",
+                "PotionProcured",
+                "PotionDiscarded",
+                "UsedPotionRemoved",
+                "MaxPotionCountChanged"
+            })
+            {
+                SubscribeIfPresent(
+                    player, signal, "run_player." + signal);
+            }
+        }
+    }
+
     private static void AttachActiveEventSignals()
     {
         var manager = _runManager;
@@ -125,6 +167,7 @@ internal static partial class PassiveReferenceRecorder
             or "run_manager.ActEntered"
             or "combat_manager.CombatSetUp")
         {
+            AttachRunPlayerSignals();
             AttachActiveEventSignals();
         }
 
