@@ -40,6 +40,11 @@ assert not mod.assess(
     [session, run_attached, combat_attached,
      {"type": "diagnostic", "code": "capture_failed"}],
     preflight=True)["ok"]
+assert not mod.assess(
+    [session, run_attached, combat_attached,
+     {"type": "diagnostic", "code": "event_missing",
+      "message": "MegaCrit.Sts2.Core.Runs.RunManager.RoomEntered"}],
+    preflight=True)["ok"]
 
 boundary = {
     "type": "boundary",
