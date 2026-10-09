@@ -369,7 +369,8 @@ public static class PrototypeContent
                 PrototypeCardTarget.Enemy,
                 [new(PrototypeCombatEffectKind.DamageEnemy, 6, 3)],
                 Rarity: PrototypeCardRarity.Basic,
-                Type: PrototypeCardType.Attack),
+                Type: PrototypeCardType.Attack,
+                Tags: ["Strike"]),
             new PrototypeCardDefinition(
                 "proto.silent.defend",
                 "Defend",
@@ -377,7 +378,8 @@ public static class PrototypeContent
                 PrototypeCardTarget.None,
                 [new(PrototypeCombatEffectKind.GainPlayerBlock, 5, 3)],
                 Rarity: PrototypeCardRarity.Basic,
-                Type: PrototypeCardType.Skill),
+                Type: PrototypeCardType.Skill,
+                Tags: ["Defend"]),
             new PrototypeCardDefinition(
                 "proto.silent.neutralize",
                 "Neutralize",
