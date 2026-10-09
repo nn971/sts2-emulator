@@ -3008,6 +3008,27 @@ public static class PrototypeContent
                                 AmountPerPowerStack: 1)
                         ])
                 ]),
+            // Native Panic Button: non-card sources can still grant Block;
+            // the debuff expires after two enemy side-turn endings.
+            new PrototypePowerDefinition(
+                "proto.power.no_block",
+                "No Block",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                DecrementAtEnemyTurnEnd: true,
+                PreventsCardBlock: true),
+            // Native Dark Shackles immediately reduces enemy Strength and
+            // restores exactly that amount after the affected enemy acts.
+            new PrototypePowerDefinition(
+                "proto.power.dark_shackles",
+                "Dark Shackles",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                RemoveAtEnemyTurnEnd: true,
+                EnemyStrengthOnApplyPerStack: -1,
+                EnemyStrengthRestoreAtSideTurnEndPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.dexterity",
                 "Dexterity",

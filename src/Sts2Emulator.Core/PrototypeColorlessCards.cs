@@ -309,7 +309,36 @@ public static class PrototypeColorlessCards
                     PowerId: "proto.power.mayhem")
             ],
             Rarity: PrototypeCardRarity.Rare,
-            Type: PrototypeCardType.Power)
+            Type: PrototypeCardType.Power),
+        // The initial Block precedes No Block, and the latter only
+        // suppresses subsequently card-sourced Block for two enemy turns.
+        new(
+            "proto.colorless.panic_button",
+            "Panic Button",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.GainPlayerBlock, 30, 10),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 2,
+                    PowerId: "proto.power.no_block")
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // The target temporarily loses Strength, recovered when its
+        // side turn ends. Upgrade changes 9 -> 15.
+        new(
+            "proto.colorless.dark_shackles",
+            "Dark Shackles",
+            0,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.ApplyEnemyPower, 9, 6,
+                    PowerId: "proto.power.dark_shackles")
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill)
     ];
 
     public static string[] ImplementedShopPool { get; } =
