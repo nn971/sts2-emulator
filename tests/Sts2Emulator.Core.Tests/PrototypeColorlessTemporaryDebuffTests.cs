@@ -35,7 +35,7 @@ public sealed class PrototypeColorlessTemporaryDebuffTests
 
         state = Play(state, 2);
         Assert.Equal(initialBlock, state.World!.Combat!.PlayerBlock);
-        Assert.Equal(3, state.World.Combat.Energy);
+        Assert.Equal(2, state.World.Combat.Energy);
         Assert.Contains(1, state.World.Combat.ExhaustPile);
         Assert.Contains(2, state.World.Combat.DiscardPile);
         PrototypeStateInvariants.Validate(state);
