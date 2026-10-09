@@ -780,7 +780,13 @@ public sealed record PrototypePowerDefinition(
     bool ClearMatchingAfflictionAtPlayerTurnEnd = false,
     bool EnemyHpLossLimitedPerSideTurnByStacks = false,
     int EnemyBlockAfterFirstUnblockedCardAttackPerStack = 0,
-    bool ConsumeAfterEnemyAttack = false);
+    bool ConsumeAfterEnemyAttack = false,
+    bool WakeOwnerOnUnblockedAttackDamage = false,
+    string? OwnerAiStateOnWake = null,
+    string[]? RemoveOwnerPowersOnWake = null,
+    bool StunOwnerOnWake = false,
+    string? OwnerAiStateOnPowerExpiry = null,
+    string[]? RemoveOwnerPowersOnPowerExpiry = null);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
