@@ -120,22 +120,33 @@ public sealed class PrototypeUnderdocksTrashHeapTests
     }
 
     [Fact]
-    public void SimpleEventCardDefinitionsKeepNativeCombatNumbers()
+    public void NativeSilentItemsAreSeparateFromExplicitlyUnsupportedCrossCharacterCards()
     {
         var cards = PrototypeNativeUnderdocksTrashHeap.CardIds
             .Select(PrototypeContent.Card).ToArray();
+        // The two simple Silent event cards remain executable.
+        Assert.True(cards[0].MechanicsImplemented); // Caltrops
         Assert.Equal(3, cards[0].Effects.Single().Amount);
         Assert.Equal(2, cards[0].Effects.Single().UpgradeDelta);
-        Assert.Equal(14, cards[1].Effects.Single().Amount);
-        Assert.Equal(4, cards[1].Effects.Single().UpgradeDelta);
-        Assert.Equal(2, cards[4].Effects.Single().Amount);
+        Assert.True(cards[6].MechanicsImplemented); // Outmaneuver
         Assert.Equal(2, cards[6].Effects.Single().Amount);
         Assert.Equal(1, cards[6].Effects.Single().UpgradeDelta);
-        Assert.Equal(2, cards[8].Effects.Single().Repetitions);
-        Assert.Equal(PrototypeCombatCountKind.DiscardPileSize,
-            cards[9].Effects.Single().CountKind);
-        Assert.All(new[] { 2, 3, 5, 7 },
-            index => Assert.False(cards[index].MechanicsImplemented));
+
+        // Ironclad: Clash, Dual Wield, Entrench.
+        // Defect: Hello World, Rebound, Rip and Tear, Stack.
+        // All seven keep their exact reward identities but have no
+        // executable gameplay effects until cross-character support is
+        // deliberately enabled in a later development phase.
+        foreach (var index in new[] { 1, 3, 4, 5, 7, 8, 9 })
+        {
+            Assert.False(cards[index].MechanicsImplemented);
+            Assert.Empty(cards[index].Effects);
+        }
+
+        // Distraction is a native Silent card; it remains unsupported
+        // for its own generated-card mechanics, not for its character.
+        Assert.False(cards[2].MechanicsImplemented);
+        Assert.Empty(cards[2].Effects);
     }
 
     private static RunState Choose(
