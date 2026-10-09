@@ -63,14 +63,16 @@ public sealed class PrototypeUnderdocksSeapunkHauntedShipTests
         Assert.Equal("haunt", Assert.Single(combat.Enemies).LastMoveId);
         Assert.Equal(3, combat.PlayerPowers.Single(power =>
             power.PowerId == "proto.power.weak").Stacks);
-        Assert.Equal(5, combat.DiscardPile.Length);
-        Assert.All(combat.DiscardPile, instanceId =>
-        {
-            var card = combat.Cards.Single(item =>
-                item.InstanceId == instanceId);
-            Assert.Equal("proto.status.dazed", card.CardId);
-            Assert.True(PrototypeContent.Card(card.CardId).Ethereal);
-        });
+        var dazed = combat.DiscardPile
+            .Select(instanceId => combat.Cards.Single(item =>
+                item.InstanceId == instanceId))
+            .Where(card => card.CardId == "proto.status.dazed")
+            .ToArray();
+        // The player's cleaned-up hand also moves to discard at end turn.
+        // Count generated Dazed cards, not the entire mixed discard pile.
+        Assert.Equal(5, dazed.Length);
+        Assert.All(dazed, card =>
+            Assert.True(PrototypeContent.Card(card.CardId).Ethereal));
 
         state = EndTurn(engine, state);
         Assert.Equal("swipe",
