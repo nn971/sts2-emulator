@@ -57,6 +57,7 @@ jobs:
           hello = call({"request_id": "hello", "op": "hello"})
           assert hello["wireSchemaId"] == "prototype-ai-jsonl-v0"
           assert hello["aiSchemaId"] == "prototype-ai-v0"
+          assert hello["publicEnemyIntentId"] == "prototype-committed-public-enemy-intents-v1"
 
           reset = call({"request_id": "reset", "op": "reset", "seed": "ci-bridge"})
           root = reset["stateHandle"]
@@ -110,6 +111,8 @@ jobs:
           process.wait(timeout=5)
           assert process.returncode == 0
           PY
+      - name: Native one-run capture preflight and audit smoke
+        run: python tools/native_one_run_audit_smoke.py
       - name: Passive oracle action-ledger smoke
         run: python tools/native_overgrowth_action_ledger_smoke.py
       - name: Native action-frame identity and callback smoke

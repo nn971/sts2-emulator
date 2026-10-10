@@ -50,6 +50,7 @@ public enum PrototypeCardRarity
     Uncommon,
     Rare,
     Ancient,
+    Event,
     Curse,
     Status,
     Token,
@@ -79,15 +80,24 @@ public enum PrototypeCombatEffectKind
     DamageAllEnemiesRepeatPerKill,
     LoseEnemyHp,
     DiscardHand,
+    ExhaustHand,
     RemoveEnemyBlock,
     RemoveEnemyPower,
     TriggerEnemyStatus,
     GainPlayerBlock,
     MultiplyPlayerBlock,
     DrawCards,
+    MoveRandomRareDrawCardsToHand,
+    AddRandomZeroCostCardsToHand,
+    EmpowerRandomDrawCardReplay,
+    AcquireRandomCombatPotion,
+    CreateRandomCharacterAttackCardsInHand,
+    AutoPlayRandomCardsFromZone,
+    IncreaseSourcePowerStacks,
     ApplyEnemyStatus,
     ChooseCards,
     ChooseGeneratedCards,
+    CreateDistinctColorlessCardsInHand,
     CreateCardsInHand,
     CreateCardsInHandFromPowerCardPayload,
     CreateEventSourceCardCopyInHand,
@@ -199,7 +209,9 @@ public enum PrototypeCardSelectionResolutionKind
     Preserve,
     MoveToHand,
     MoveToDiscard,
-    MoveToExhaust
+    MoveToExhaust,
+    MoveToDrawTop,
+    TransformRandom
 }
 
 public enum PrototypeEffectTarget
@@ -223,7 +235,8 @@ public enum PrototypeCombatPredicateKind
 {
     DrawPileEmpty,
     TargetHasStatus,
-    HandEmptyAtEnqueue
+    HandEmptyAtEnqueue,
+    HandHasNoAttacks
 }
 
 public enum PrototypeCombatCountKind
@@ -233,7 +246,11 @@ public enum PrototypeCombatCountKind
     AttacksPlayedThisTurn,
     CardsDiscardedThisTurn,
     CardsDrawnThisCombat,
-    OtherCardsInHand
+    CardsPlayedThisCombat,
+    OtherCardsInHand,
+    DrawPileCards,
+    PlayerBlock,
+    TargetDebuffs
 }
 
 public sealed record PrototypeCombatPredicateSpec(
@@ -261,6 +278,7 @@ public enum PrototypeCombatEventKind
     PotionUsed,
     PlayerTurnStarted,
     PlayerTurnEnded,
+    AutoPrePlayPhaseEntered,
     BeforeHandDraw,
     CardPlayed,
     CardDrawn,
@@ -291,7 +309,10 @@ public sealed record PrototypeEventSubscriberState(
     int? RelicStateIndex = null,
     int? RelicTriggerIndex = null,
     int EveryNth = 1,
-    int? MaxTriggersPerCounterWindow = null)
+    int? MaxTriggersPerCounterWindow = null,
+    int? PowerTriggerIndex = null,
+    bool CountdownBeforeTrigger = false,
+    int SourcePowerStoredValue = 0)
 {
     public PrototypeEventSubscriberState Fork() => this with
     {
@@ -414,7 +435,10 @@ public sealed record PrototypeCardSelectionSpec(
     bool RequireEnergyCostingCard = false,
     bool SequentialOptional = false,
     bool DrawEqualToSelectionsOnCompletion = false,
-    int MaxSelectionsUpgradeDelta = 0);
+    int MaxSelectionsUpgradeDelta = 0,
+    // Offer a random subset of the matching source pile without moving
+    // unchosen cards. Native Seeker Strike offers up to three options.
+    int RandomCandidateCount = 0);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
@@ -528,8 +552,18 @@ public sealed record PrototypeCombatEffectSpec(
     PrototypeCardType? GeneratedChoiceCardType = null,
     bool GeneratedChoiceCardsFreeThisTurn = true,
     bool GeneratedChoiceCardsUpgraded = false,
+    bool GeneratedChoiceCardsUpgradeWithSource = false,
     bool GeneratedChoiceMustPick = false,
-    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null)
+    PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
+    int GoldOnFatal = 0,
+    int GoldOnFatalUpgradeDelta = 0,
+    int PowerStoredValue = 0,
+    int PowerStoredValueUpgradeDelta = 0,
+    bool UseSourcePowerStoredValue = false,
+    bool GainBlockEqualToAttackDamage = false,
+    bool SplashUnpoweredAttackToOtherEnemies = false,
+    PrototypeCardType? AutoPlayRequiredCardType = null,
+    bool AutoPlayFallbackToUnplayable = false)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -572,7 +606,14 @@ public sealed record PrototypeQueuedOperation(
     bool GeneratedChoiceCardsUpgraded = false,
     bool GeneratedChoiceMustPick = false,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
-    long? CardInstanceId = null);
+    int GoldOnFatal = 0,
+    int PowerStoredValue = 0,
+    long? CardInstanceId = null,
+    bool GainBlockEqualToAttackDamage = false,
+    bool SplashUnpoweredAttackToOtherEnemies = false,
+    PrototypeCardType? AutoPlayRequiredCardType = null,
+    bool AutoPlayFallbackToUnplayable = false,
+    long? SourcePowerApplicationOrder = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -602,6 +643,7 @@ public sealed record PrototypeCardDefinition(
     PrototypeCombatPredicateSpec? PlayCondition = null,
     string[]? Tags = null,
     int EndTurnDamageIfInHand = 0,
+    bool EndTurnDamageUnblockable = false,
     bool MechanicsImplemented = true,
     bool MultiplayerOnly = false,
     bool RetainOnUpgrade = false,
@@ -677,7 +719,12 @@ public sealed record PrototypeRelicDefinition(
     int XValueBonus = 0,
     int HandDrawBonus = 0,
     int RandomizeDrawnCardCostMaxExclusive = 0,
-    bool ForceCombatPotionReward = false);
+    bool ForceCombatPotionReward = false,
+    int EnchantNewBlockCardsNimble = 0,
+    // General run/combat modifier hooks, including event-only relics.
+    int GoldOnRoomEntryUntilPurchase = 0,
+    int RestHealCardRewardCount = 0,
+    int MinPoweredAttackHpLoss = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -686,7 +733,9 @@ public sealed record PrototypePowerTriggerSpec(
     bool ExcludeHandDraw = false,
     bool RequiresPlayerTurn = false,
     bool RemoveSourcePowerAfterTrigger = false,
-    PrototypeCardType? RequiredSourceCardType = null);
+    PrototypeCardType? RequiredSourceCardType = null,
+    int EveryNth = 1,
+    bool CountdownBeforeTrigger = false);
 
 public sealed record PrototypePowerDefinition(
     string Id,
@@ -697,6 +746,7 @@ public sealed record PrototypePowerDefinition(
     bool AllowNegative = false,
     bool RemoveAtPlayerTurnEnd = false,
     int BlockAfterClearPerStack = 0,
+    int PlayerBlockAtTurnEndPerStack = 0,
     int EnergyAfterResetPerStack = 0,
     int HandDrawBonusPerStack = 0,
     int DiscardAfterPlayerTurnStartPerStack = 0,
@@ -766,18 +816,56 @@ public sealed record PrototypePowerDefinition(
     string? AllEnemyTargetCardTag = null,
     bool OwnerDeathTriggersFatal = true,
     int AllyDeathStrengthPerStack = 0,
-    bool StunOnAllyDeath = false);
+    bool StunOnAllyDeath = false,
+    int EnemyStrengthAtSideTurnEndPerStack = 0,
+    bool SkipInitialEnemySideTurnEnd = false,
+    int StrengthPerUnblockedAttackHitPerStack = 0,
+    int EnemyStartingBlockPerStack = 0,
+    int EnemyBlockAtSideTurnEndPerStack = 0,
+    int EnemyStacksDecayAtSideTurnStartAfterFirst = 0,
+    int EnemyStacksDecayAtSideTurnEnd = 0,
+    PrototypeCardAfflictionKind? SkillPlayAffliction = null,
+    bool BlockPlayOfMatchingAffliction = false,
+    bool ClearMatchingAfflictionAtPlayerTurnEnd = false,
+    bool EnemyHpLossLimitedPerSideTurnByStacks = false,
+    int EnemyBlockAfterFirstUnblockedCardAttackPerStack = 0,
+    bool ConsumeAfterEnemyAttack = false,
+    bool WakeOwnerOnUnblockedAttackDamage = false,
+    string? OwnerAiStateOnWake = null,
+    string[]? RemoveOwnerPowersOnWake = null,
+    bool StunOwnerOnWake = false,
+    string? OwnerAiStateOnPowerExpiry = null,
+    string[]? RemoveOwnerPowersOnPowerExpiry = null,
+    string? LastStandAiStateId = null,
+    int LastStandHp = 0,
+    bool ResetTriggerCountersAtPlayerTurnEnd = false,
+    // Native NoBlockPower applies only to card-sourced Block, not
+    // unpowered effects from relics or other powers.
+    bool PreventsCardBlock = false,
+    string? BlockBonusRequiredCardTag = null,
+    bool PlayedAttacksAndSkillsReturnToDraw = false,
+    bool LethalAfterUnblockedPoweredAttack = false,
+    // Reversible enemy strength effects; changes are applied after
+    // debuff prevention, then restored at enemy side-turn end.
+    int EnemyStrengthOnApplyPerStack = 0,
+    int EnemyStrengthRestoreAtSideTurnEndPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
     int Stacks,
     long ApplicationOrder,
     PrototypeCombatCardSnapshot? CardPayload = null,
-    int? SourceEnemyInstanceId = null)
+    int? SourceEnemyInstanceId = null,
+    bool SkipNextEnemySideTurnEnd = false,
+    int StoredValue = 0,
+    int[]? TriggerCounts = null)
 {
     public PrototypePowerInstanceState Fork() => this with
     {
-        CardPayload = CardPayload?.Fork()
+        CardPayload = CardPayload?.Fork(),
+        TriggerCounts = TriggerCounts is null
+            ? null
+            : (int[])TriggerCounts.Clone()
     };
 }
 
@@ -788,7 +876,13 @@ public enum PrototypeEnemyEffectKind
     ApplyPlayerPower,
     ApplyEnemyPower,
     AddCardsToDiscard,
-    SummonEnemy
+    AddCardsToRandomDraw,
+    SummonEnemy,
+    KillSelf,
+    StealPlayerGold,
+    EscapeEnemy,
+    HealSelf,
+    StoreEnemyPowerAsDamage
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -805,7 +899,10 @@ public sealed record PrototypeEnemyEffectSpec(
     bool IsAttack = true,
     PrototypeAscensionDelta[]? RepetitionAscensionDeltas = null,
     string? CardId = null,
-    string? EnemyId = null)
+    string? EnemyId = null,
+    string[]? SummonSlotNames = null,
+    int ExtraAmountPerPriorMoveUse = 0,
+    bool UseStoredEnemyDamage = false)
 {
     public int AmountAt(
         int act,
@@ -862,7 +959,8 @@ public sealed record PrototypeEnemyAiBranch(
     int Weight = 1,
     PrototypeEnemyAiRepeatRule RepeatRule =
         PrototypeEnemyAiRepeatRule.CanRepeatForever,
-    int MaxTimes = 0);
+    int MaxTimes = 0,
+    bool RequiresAvailableSummon = false);
 
 public sealed record PrototypeEnemyAiConditionalBranch(
     string TargetStateId,
@@ -903,7 +1001,9 @@ public sealed record PrototypeStartingPowerSpec(
 public sealed record PrototypeEnemyDeathSummonSpec(
     string EnemyId,
     int FormationPosition,
-    string? SlotName = null);
+    string? SlotName = null,
+    bool TransferStolenGold = false,
+    int SkipEnemyActions = 1);
 
 public sealed record PrototypeEnemyDefinition(
     string Id,
@@ -924,7 +1024,12 @@ public sealed record PrototypeEnemyDefinition(
     PrototypeEnemyAiDefinition? Ai = null,
     bool IsMinion = false,
     bool RevivesOnEnemyTurn = false,
-    PrototypeEnemyDeathSummonSpec[]? DeathSummons = null)
+    PrototypeEnemyDeathSummonSpec[]? DeathSummons = null,
+    int NonSummonMovesBeforeEligible = 0,
+    int MaxCoordinatedSummons = 0,
+    bool RecoverCarriedGoldOnDeath = false,
+    float EscapedRewardProportionWithGold = 1f,
+    float EscapedRewardProportionWithoutGold = 1f)
 {
     public (int Min, int Max) HpRangeAt(
         int act,
@@ -1273,7 +1378,19 @@ public sealed record EnemyCombatState(
     int? LeaderEnemyInstanceId = null,
     bool SkipNextEnemyAction = false,
     int EnemyActionSkipsRemaining = 0,
-    bool DeathEffectsResolved = false)
+    bool DeathEffectsResolved = false,
+    int NonSummonMovesUntilEligible = 0,
+    int SharedSummonsUsed = 0,
+    bool SharedSummonUsedThisTurn = false,
+    int StolenGold = 0,
+    bool Escaped = false,
+    int HpLossBudgetUsed = 0,
+    bool GainedReactiveBlockThisTurn = false,
+    bool LastStandTriggered = false,
+    int StoredEnemyDamage = 0,
+    // Committed at combat entry / the player-turn boundary, never on Observe.
+    int? PlannedMoveIndex = null,
+    string? PlannedNextAiStateId = null)
 {
     public EnemyCombatState Fork() => this with
     {
@@ -1424,7 +1541,10 @@ public sealed record PrototypeCombatCounters(
     int CardsDiscardedThisTurn = 0,
     int CardsDrawnThisCombat = 0,
     string[]? PlayedCardTagsThisTurn = null,
-    int AttacksPlayedLastTurn = 0)
+    int AttacksPlayedLastTurn = 0,
+    int CardsPlayedThisCombat = 0,
+    long[]? PlayedCardIdsThisTurn = null,
+    long[]? PlayedCardIdsLastTurn = null)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();
@@ -1435,10 +1555,12 @@ public sealed record PrototypeCombatCounters(
 
     public PrototypeCombatCounters Fork() => this with
     {
-        PlayedCardTagsThisTurn =
-            PlayedCardTagsThisTurn is null
-                ? null
-                : (string[])PlayedCardTagsThisTurn.Clone()
+        PlayedCardTagsThisTurn = PlayedCardTagsThisTurn is null
+            ? null : (string[])PlayedCardTagsThisTurn.Clone(),
+        PlayedCardIdsThisTurn = PlayedCardIdsThisTurn is null
+            ? null : (long[])PlayedCardIdsThisTurn.Clone(),
+        PlayedCardIdsLastTurn = PlayedCardIdsLastTurn is null
+            ? null : (long[])PlayedCardIdsLastTurn.Clone()
     };
 }
 
@@ -1470,7 +1592,8 @@ public sealed record CombatState(
     int ExtraCardRewardsEarned = 0,
     long[]? ChoicePool = null,
     long[]? PlayPile = null,
-    PrototypeToricShield[]? ToricShields = null)
+    PrototypeToricShield[]? ToricShields = null,
+    long[]? TransformedPersistentCardIds = null)
 {
     public CombatState Fork() => this with
     {
@@ -1496,6 +1619,9 @@ public sealed record CombatState(
         ToricShields = ToricShields is null
             ? null
             : (PrototypeToricShield[])ToricShields.Clone(),
+        TransformedPersistentCardIds = TransformedPersistentCardIds is null
+            ? null
+            : (long[])TransformedPersistentCardIds.Clone(),
         PendingChoice = PendingChoice?.Fork(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
@@ -1838,7 +1964,10 @@ public sealed record EventState(
     int NativePageIndex = 0,
     string? DeferredCardId = null,
     int NativeEventGold = 0,
-    int NativeEventSecondaryGold = 0)
+    int NativeEventSecondaryGold = 0,
+    string? NativeDishId = null,
+    string? NativeLastDishId = null,
+    int NativeDishCount = 0)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();

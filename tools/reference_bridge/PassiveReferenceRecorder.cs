@@ -8,7 +8,7 @@ using MegaCrit.Sts2.Core.Modding;
 
 namespace Sts2ReferenceBridge;
 
-internal static class PassiveReferenceRecorder
+internal static partial class PassiveReferenceRecorder
 {
     private static readonly object Gate = new();
     private static readonly List<(object Source, EventInfo Event, Delegate Handler)> Subscriptions = [];
@@ -64,15 +64,24 @@ internal static class PassiveReferenceRecorder
                 if (bridgeDirectory is not null
                     && File.Exists(Path.Combine(
                         bridgeDirectory,
+                        "underdocks-silent-act1.mode")))
+                {
+                    _corpusMode = "underdocks-silent-act1";
+                }
+                else if (bridgeDirectory is not null
+                    && File.Exists(Path.Combine(
+                        bridgeDirectory,
                         "overgrowth-silent-act1.mode")))
                 {
                     _corpusMode = "overgrowth-silent-act1";
                 }
             }
 
-            _emitTypeCatalogs = !StringComparer.OrdinalIgnoreCase.Equals(
-                _corpusMode,
-                "overgrowth-silent-act1");
+            _emitTypeCatalogs =
+                !StringComparer.OrdinalIgnoreCase.Equals(
+                    _corpusMode, "overgrowth-silent-act1")
+                && !StringComparer.OrdinalIgnoreCase.Equals(
+                    _corpusMode, "underdocks-silent-act1");
 
             var traceDirectory =
                 Environment.GetEnvironmentVariable("STS2_REFERENCE_TRACE_DIR");
@@ -82,10 +91,9 @@ internal static class PassiveReferenceRecorder
             }
 
             Directory.CreateDirectory(traceDirectory);
-            var filePrefix = StringComparer.OrdinalIgnoreCase.Equals(
-                    _corpusMode,
-                    "overgrowth-silent-act1")
-                ? "overgrowth-silent-act1"
+            var filePrefix = _corpusMode is
+                "overgrowth-silent-act1" or "underdocks-silent-act1"
+                ? _corpusMode
                 : "probe";
             var outputPath = Path.Combine(
                 traceDirectory,
@@ -126,6 +134,7 @@ internal static class PassiveReferenceRecorder
                 $"[Sts2ReferenceBridge] pinned build verified; recorder output: {outputPath}");
 
             _ = Task.Run(() => AttachWhenReadyAsync(sts2Assembly));
+            _ = Task.Run(() => AttachRunWhenReadyAsync(sts2Assembly));
         }
         catch (Exception ex)
         {
@@ -449,6 +458,12 @@ internal static class PassiveReferenceRecorder
             // assigning the sequence earlier would make file order disagree with
             // sequence order on the first occurrence of a runtime type.
             var arguments = args.Select(SummarizeOpaque).ToArray();
+            // Full run observations are expensive relative to CombatHistory
+            // callbacks. Capture them only on run/room/event transitions and
+            // key combat milestones, not on every card-history entry.
+            var runObservation = ShouldCaptureRunObservation(boundary)
+                ? CaptureRunObservation(boundary)
+                : null;
             object? historyEntry = null;
             if (StringComparer.Ordinal.Equals(
                     boundary,
@@ -474,6 +489,10 @@ internal static class PassiveReferenceRecorder
             if (historyEntry is not null)
             {
                 record["history_entry"] = historyEntry;
+            }
+            if (runObservation is not null)
+            {
+                record["run_observation"] = runObservation;
             }
 
             WriteRecord(record);

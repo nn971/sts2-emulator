@@ -1,8 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Native v0.111.0 ColorlessCardPool metadata and the first independently
-/// playable single-player batch. Catalog membership is NOT a claim that all
+/// Native v0.111.0 ColorlessCardPool metadata and source-backed
+/// playable single-player batches. Catalog membership is NOT a claim that all
 /// 65 native cards have implemented mechanics or are solo-unlocked.
 /// </summary>
 public static class PrototypeColorlessCards
@@ -78,7 +78,7 @@ public static class PrototypeColorlessCards
         "proto.colorless.volley",
     ];
 
-    // A small source-backed batch, deliberately NOT added to the ordinary
+    // Source-backed playable batches, deliberately NOT added to the ordinary
     // Silent combat reward pool. Native merchants expose separate colorless
     // Uncommon and Rare slots; the remaining models require future work.
     public static PrototypeCardDefinition[] Implemented { get; } =
@@ -144,11 +144,645 @@ public static class PrototypeColorlessCards
             [new(PrototypeCombatEffectKind.DrawCards, 3, 1)],
             ExhaustOnUse: true,
             Rarity: PrototypeCardRarity.Rare,
-            Type: PrototypeCardType.Skill)
+            Type: PrototypeCardType.Skill),
+        // Pinned v0.111.0: all enemy targets receive Weak and Vulnerable.
+        new(
+            "proto.colorless.shockwave",
+            "Shockwave",
+            2,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyEnemyStatus, 3, 2,
+                    StatusId: "proto.status.weak",
+                    Target: PrototypeEffectTarget.AllEnemies),
+                new(PrototypeCombatEffectKind.ApplyEnemyStatus, 3, 2,
+                    StatusId: "proto.status.vulnerable",
+                    Target: PrototypeEffectTarget.AllEnemies)
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // Its hand condition is tested after Impatience enters play.
+        new(
+            "proto.colorless.impatience",
+            "Impatience",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.DrawCards, 2, 1,
+                    Condition: new(
+                        PrototypeCombatPredicateKind.HandHasNoAttacks))
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // Native Mind Blast counts cards in the combat draw pile at play.
+        new(
+            "proto.colorless.mind_blast",
+            "Mind Blast",
+            new(PrototypeCardCostKind.Fixed, 1, -1),
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 0,
+                    CountKind: PrototypeCombatCountKind.DrawPileCards,
+                    AmountPerCount: 1)
+            ],
+            Innate: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        // Draw-pile card selection resumes the normal generic effect queue.
+        new(
+            "proto.colorless.secret_technique",
+            "Secret Technique",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.DrawPile, 1, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand,
+                        RequiredCardType: PrototypeCardType.Skill))
+            ],
+            ExhaustOnUse: true,
+            LoseExhaustOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.secret_weapon",
+            "Secret Weapon",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.DrawPile, 1, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand,
+                        RequiredCardType: PrototypeCardType.Attack))
+            ],
+            ExhaustOnUse: true,
+            LoseExhaustOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // Native Purity may select zero through 3 (5 upgraded) cards from
+        // hand; each selected card is exhausted with the normal hooks.
+        new(
+            "proto.colorless.purity",
+            "Purity",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.Hand, 0, 3,
+                        PrototypeCardSelectionResolutionKind.MoveToExhaust,
+                        MaxSelectionsUpgradeDelta: 2))
+            ],
+            ExhaustOnUse: true,
+            Retain: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.thinking_ahead",
+            "Thinking Ahead",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.DrawCards, 2),
+                new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.Hand, 1, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToDrawTop))
+            ],
+            ExhaustOnUse: true,
+            LoseExhaustOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // The native card disallows combat generation and awards gold only
+        // for a target-killing Fatal attack, not for ordinary damage.
+        new(
+            "proto.colorless.hand_of_greed",
+            "Hand of Greed",
+            2,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 20, 5,
+                    GoldOnFatal: 20,
+                    GoldOnFatalUpgradeDelta: 5)
+            ],
+            CanBeGeneratedInCombat: false,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack),
+        // Each Panache is an independent five-card counter that resets
+        // after the player's turn; its own play does not count.
+        new(
+            "proto.colorless.panache",
+            "Panache",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 10, 4,
+                    PowerId: "proto.power.panache")
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power),
+        // The native Bomb has an instanced three-turn timer and 40/50
+        // unpowered all-enemy damage when the timer expires.
+        new(
+            "proto.colorless.the_bomb",
+            "The Bomb",
+            2,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 3,
+                    PowerId: "proto.power.the_bomb",
+                    PowerStoredValue: 40,
+                    PowerStoredValueUpgradeDelta: 10)
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.mayhem",
+            "Mayhem",
+            new(PrototypeCardCostKind.Fixed, 2, -1),
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                    PowerId: "proto.power.mayhem")
+            ],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Power),
+        // The initial Block precedes No Block, and the latter only
+        // suppresses subsequently card-sourced Block for two enemy turns.
+        new(
+            "proto.colorless.panic_button",
+            "Panic Button",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.GainPlayerBlock, 30, 10),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 2,
+                    PowerId: "proto.power.no_block")
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // The target temporarily loses Strength, recovered when its
+        // side turn ends. Upgrade changes 9 -> 15.
+        new(
+            "proto.colorless.dark_shackles",
+            "Dark Shackles",
+            0,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.ApplyEnemyPower, 9, 6,
+                    PowerId: "proto.power.dark_shackles")
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // Source: Discovery.cs. Optional choice of three distinct unlocked
+        // character cards, chosen copy free for the remainder of this turn.
+        new(
+            "proto.colorless.discovery",
+            "Discovery",
+            1,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+                    GeneratedChoiceCardsFreeThisTurn: true,
+                    GeneratedChoiceMustPick: false)
+            ],
+            ExhaustOnUse: true,
+            LoseExhaustOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // Source: JackOfAllTrades.cs. Add distinct colorless copies, not
+        // a choice; native combat-generation and unlock gates apply.
+        new(
+            "proto.colorless.jack_of_all_trades",
+            "Jack of All Trades",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand,
+                    1, 1)
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.scrawl",
+            "Scrawl",
+            1,
+            PrototypeCardTarget.None,
+            [
+                // Draw's normal hand capacity of 10 bounds this request.
+                new(PrototypeCombatEffectKind.DrawCards, 10)
+            ],
+            ExhaustOnUse: true,
+            RetainOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.restlessness",
+            "Restlessness",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.DrawCards, 2, 1,
+                    Condition: new(
+                        PrototypeCombatPredicateKind.HandEmptyAtEnqueue)),
+                new(PrototypeCombatEffectKind.GainEnergy, 2, 1,
+                    Condition: new(
+                        PrototypeCombatPredicateKind.HandEmptyAtEnqueue))
+            ],
+            Retain: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.prowess",
+            "Prowess",
+            1,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1, 1,
+                    PowerId: "proto.power.strength"),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1, 1,
+                    PowerId: "proto.power.dexterity")
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power),
+        new(
+            "proto.colorless.equilibrium",
+            "Equilibrium",
+            2,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.GainPlayerBlock, 13, 3),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                    PowerId: "proto.power.retain_hand")
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.production",
+            "Production",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.GainEnergy, 2, 1)
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.prolong",
+            "Prolong",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 0,
+                    CountKind: PrototypeCombatCountKind.PlayerBlock,
+                    AmountPerCount: 1,
+                    PowerId: "proto.power.block_next_turn")
+            ],
+            ExhaustOnUse: true,
+            LoseExhaustOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.salvo",
+            "Salvo",
+            1,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 12, 4),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                    PowerId: "proto.power.retain_hand")
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        new(
+            "proto.colorless.seeker_strike",
+            "Seeker Strike",
+            1,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 9, 3),
+                new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.DrawPile, 1, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand,
+                        RandomCandidateCount: 3))
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack,
+            Tags: ["Strike"]),
+        // Native Volley is an untargeted X-cost attack: each X point
+        // generates an independent hit with a fresh random enemy target.
+        new(
+            "proto.colorless.volley",
+            "Volley",
+            new(PrototypeCardCostKind.X),
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 10, 4,
+                    Target: PrototypeEffectTarget.RandomEnemy,
+                    Repetitions: 0,
+                    RepetitionsPerEnergySpent: 1)
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        // Native Splash is an optional three-attack discovery. The
+        // generated card becomes free this turn; Splash+ upgrades it.
+        new(
+            "proto.colorless.splash",
+            "Splash",
+            1,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+                    GeneratedChoiceCardType: PrototypeCardType.Attack,
+                    GeneratedChoiceCardsFreeThisTurn: true,
+                    GeneratedChoiceCardsUpgradeWithSource: true)
+            ],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // Native Anointed moves randomly chosen Rare cards straight from
+        // draw pile into hand, bounded by remaining hand capacity.
+        new(
+            "proto.colorless.anointed",
+            "Anointed",
+            1,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand,
+                    10)
+            ],
+            ExhaustOnUse: true,
+            RetainOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // Native Gold Axe counts completed card plays over the *entire*
+        // combat, including earlier turns. Its own play counts afterward.
+        new(
+            "proto.colorless.gold_axe",
+            "Gold Axe",
+            1,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 0,
+                    CountKind: PrototypeCombatCountKind.CardsPlayedThisCombat,
+                    AmountPerCount: 1)
+            ],
+            RetainOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack),
+        // Fisticuffs gains Block equal to resolved attack damage,
+        // including blocked and overkill portions of a successful hit.
+        new(
+            "proto.colorless.fisticuffs", "Fisticuffs", 1,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 7, 2,
+                GainBlockEqualToAttackDamage: true)],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        // These two attacks return from their current piles at the next
+        // BeforeHandDraw if that physical card was played last turn.
+        new(
+            "proto.colorless.bolas", "Bolas", 0,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 3, 1)],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack),
+        new(
+            "proto.colorless.thrumming_hatchet", "Thrumming Hatchet", 1,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 11, 3)],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        // Randomly grant a draw-pile card two (three upgraded) extra replays.
+        new(
+            "proto.colorless.hidden_gem", "Hidden Gem", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay, 2, 1)],
+            CanBeGeneratedInCombat: false,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // For every current non-temporary enemy debuff, Rend gains
+        // five damage (+three per debuff after upgrade), atop its base.
+        new(
+            "proto.colorless.rend", "Rend", 1,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 10, 2,
+                CountKind: PrototypeCombatCountKind.TargetDebuffs,
+                AmountPerCount: 5,
+                AmountPerCountUpgradeDelta: 3)],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack),
+        // Native Jackpot creates three zero-cost character cards
+        // (with replacement), upgraded when Jackpot itself is upgraded.
+        new(
+            "proto.colorless.jackpot", "Jackpot", 3,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 25, 5),
+                new(PrototypeCombatEffectKind.AddRandomZeroCostCardsToHand, 3,
+                    GeneratedCardUpgradePerSourceUpgrade: 1)
+            ],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack),
+        new(
+            "proto.colorless.fasten", "Fasten", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 4, 2,
+                PowerId: "proto.power.fasten")],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power),
+        new(
+            "proto.colorless.prep_time", "Prep Time", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 4, 2,
+                PowerId: "proto.power.prep_time")],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power),
+        // Alchemize makes an actual potion and tries to procure it into a
+        // free slot; it is excluded from native in-combat generation.
+        new("proto.colorless.alchemize", "Alchemize",
+            new(PrototypeCardCostKind.Fixed, 1, -1),
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.AcquireRandomCombatPotion, 1)],
+            ExhaustOnUse: true,
+            CanBeGeneratedInCombat: false,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // Automation pays one energy for every ten card draws, including
+        // turn-opening draws; each instance keeps an independent counter.
+        new("proto.colorless.automation", "Automation",
+            new(PrototypeCardCostKind.Fixed, 1, -1),
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.automation")],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power),
+        new("proto.colorless.beat_down", "Beat Down", 3,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone, 3, 1,
+                AutoPlaySourceZone: PrototypeCardZone.DiscardPile,
+                AutoPlayRequiredCardType: PrototypeCardType.Attack)],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        new("proto.colorless.calamity", "Calamity",
+            new(PrototypeCardCostKind.Fixed, 3, -1),
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.calamity")],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Power),
+        new("proto.colorless.catastrophe", "Catastrophe", 2,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone, 2, 1,
+                AutoPlaySourceZone: PrototypeCardZone.DrawPile,
+                AutoPlayFallbackToUnplayable: true)],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new("proto.colorless.eternal_armor", "Eternal Armor", 3,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 9, 3,
+                PowerId: "proto.power.plating")],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Power),
+        new("proto.colorless.nostalgia", "Nostalgia",
+            new(PrototypeCardCostKind.Fixed, 1, -1),
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.nostalgia")],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Power),
+        new("proto.colorless.omnislice", "Omnislice", 0,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 8, 3,
+                SplashUnpoweredAttackToOtherEnemies: true)],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        new("proto.colorless.rolling_boulder", "Rolling Boulder", 3,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 5, 5,
+                PowerId: "proto.power.rolling_boulder")],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Power),
+        new("proto.colorless.the_gambit", "The Gambit", 0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.GainPlayerBlock, 50, 25),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                    PowerId: "proto.power.the_gambit")
+            ],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // Entropy triggers at player-turn start AFTER the new hand is drawn.
+        // Each stack chooses a card from hand to transform in place.
+        new(
+            "proto.colorless.entropy", "Entropy", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.entropy")],
+            InnateOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Power),
+        // Stratagem makes an interactive draw-pile selection immediately
+        // after every combat reshuffle, before the next card is drawn.
+        new(
+            "proto.colorless.stratagem", "Stratagem",
+            new(PrototypeCardCostKind.Fixed, 1, -1),
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.stratagem")],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power)
     ];
+
+    // These twelve native cards explicitly have
+    // CardMultiplayerConstraint.MultiplayerOnly in the pinned source.
+    // They are catalogued as unsupported, not silently absent or
+    // treated as single-player playables.
+    public static PrototypeCardDefinition[] UnsupportedMultiplayer { get; } =
+    [
+        MultiplayerOnly("beacon_of_hope", "Beacon of Hope", 2,
+            PrototypeCardRarity.Rare, PrototypeCardType.Power),
+        MultiplayerOnly("believe_in_you", "Believe in You", 0,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("coordinate", "Coordinate", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("gang_up", "Gang Up", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Attack),
+        MultiplayerOnly("huddle_up", "Huddle Up", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("intercept", "Intercept", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("knockdown", "Knockdown", 3,
+            PrototypeCardRarity.Rare, PrototypeCardType.Attack),
+        MultiplayerOnly("lift", "Lift", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("mimic", "Mimic", 1,
+            PrototypeCardRarity.Rare, PrototypeCardType.Skill),
+        MultiplayerOnly("rally", "Rally", 2,
+            PrototypeCardRarity.Rare, PrototypeCardType.Skill),
+        MultiplayerOnly("tag_team", "Tag Team", 2,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Attack),
+        MultiplayerOnly("the_ball", "The Ball", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Attack)
+    ];
+
+    private static PrototypeCardDefinition MultiplayerOnly(
+        string slug, string name, int cost,
+        PrototypeCardRarity rarity, PrototypeCardType type) =>
+        new(
+            "proto.colorless." + slug, name, cost,
+            // Native ally-target types are outside the solo target enum.
+            PrototypeCardTarget.None, [],
+            Rarity: rarity, Type: type,
+            MechanicsImplemented: false, MultiplayerOnly: true,
+            CanBeGeneratedInCombat: false, RewardEligible: false);
+
+    public static string[] UnsupportedMultiplayerIds { get; } =
+        UnsupportedMultiplayer.Select(card => card.Id).ToArray();
 
     public static string[] ImplementedShopPool { get; } =
         Implemented.Select(c => c.Id).ToArray();
+
+    // Native Colorless1..5Epoch.Cards (pinned v0.111.0).
+    // Until unlock state is available, combat generation deliberately
+    // uses the conservative base-pool subset. This does not reproduce a
+    // fully-unlocked game and should not be used for RNG parity tests.
+    public static string[] EpochGatedIds { get; } =
+    [
+        "proto.colorless.automation",
+        "proto.colorless.entropy",
+        "proto.colorless.catastrophe",
+        "proto.colorless.eternal_armor",
+        "proto.colorless.jackpot",
+        "proto.colorless.prep_time",
+        "proto.colorless.rend",
+        "proto.colorless.beat_down",
+        "proto.colorless.prowess",
+        "proto.colorless.alchemize",
+        "proto.colorless.nostalgia",
+        "proto.colorless.scrawl",
+        "proto.colorless.splash",
+        "proto.colorless.anointed",
+        "proto.colorless.calamity"
+    ];
+
+    public static string[] ImplementedCombatGenerationPool { get; } =
+        NativePoolIds.Where(id =>
+            Implemented.Any(card => card.Id == id
+                && card.CanBeGeneratedInCombat
+                && card.MechanicsImplemented
+                && !card.MultiplayerOnly
+                && card.Rarity is
+                    PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare)
+            && !EpochGatedIds.Contains(id, StringComparer.Ordinal))
+        .ToArray();
 
     public static string PickMerchantCard(
         PrototypeCardRarity rarity,

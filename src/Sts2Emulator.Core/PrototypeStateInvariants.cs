@@ -254,7 +254,7 @@ public static class PrototypeStateInvariants
             : PrototypeNativeUnderdocks.SupportedNormalEncounterIds;
         var elitePool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthEliteEncounterPool
-            : Array.Empty<string>();
+            : PrototypeNativeUnderdocks.SupportedEliteEncounterIds;
         var bossPool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthBossEncounterPool
             : PrototypeNativeUnderdocks.NativeBossEncounterIds;
@@ -1020,6 +1020,10 @@ public static class PrototypeStateInvariants
             && (PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal)
                 || PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedEliteEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal));
 
         if (encounter.RoomType != world.ActiveRoom
@@ -1956,14 +1960,28 @@ public static class PrototypeStateInvariants
         }
 
         var representedPersistentSet = representedPersistentIds.ToHashSet();
+        var transformedPersistentIds = combat.TransformedPersistentCardIds
+            ?? Array.Empty<long>();
+        if (transformedPersistentIds.Length
+                != transformedPersistentIds.Distinct().Count()
+            || transformedPersistentIds.Any(id =>
+                !persistentIds.Contains(id)
+                || representedPersistentSet.Contains(id)))
+        {
+            throw new InvalidOperationException(
+                "Combat card transformation provenance is inconsistent.");
+        }
+
+        var transformedPersistentSet = transformedPersistentIds.ToHashSet();
         foreach (var persistent in player.Deck.Where(card =>
-                     !representedPersistentSet.Contains(card.InstanceId)))
+                     !representedPersistentSet.Contains(card.InstanceId)
+                     && !transformedPersistentSet.Contains(card.InstanceId)))
         {
             if (PrototypeContent.Card(persistent.CardId).Type
                 != PrototypeCardType.Power)
             {
                 throw new InvalidOperationException(
-                    "Only resolved Power cards may leave the combat card scope.");
+                    "Only resolved Power or transformed cards may leave the combat card scope.");
             }
         }
 

@@ -31,7 +31,11 @@ public sealed partial class PrototypeGameEngine
                 eventState = eventState with { QueuedPotionIds = remaining };
 
                 var emptySlot = Array.IndexOf(state.Player.PotionSlots, null);
-                var nativeOffer = PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId);
+                var nativeOffer =
+                    PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(
+                        eventState.EventId)
+                    || PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(
+                        eventState.EventId);
                 if (emptySlot >= 0 && !nativeOffer)
                 {
                     var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
@@ -177,6 +181,14 @@ public sealed partial class PrototypeGameEngine
                     World = world with { Event = null },
                     Phase = RunPhase.MapChoice
                 };
+            }
+
+            if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId
+                && eventState.ChosenChoiceId == "grab")
+            {
+                // After a grab (and its optional card/potion decision),
+                // the conveyor offers the freshly rolled next dish.
+                return state;
             }
 
             return CompleteRoomToMap(state);

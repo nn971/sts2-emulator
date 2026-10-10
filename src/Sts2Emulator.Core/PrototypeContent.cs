@@ -125,7 +125,11 @@ public static class PrototypeContent
             new(PrototypeAutomaticStepKind.DrawPlayerHand),
             new(
                 PrototypeAutomaticStepKind.DispatchCombatEvent,
-                EventKind: PrototypeCombatEventKind.PlayerTurnStarted)
+                EventKind: PrototypeCombatEventKind.PlayerTurnStarted),
+            // Native auto-preplay occurs after energy/hand-draw/start hooks.
+            new(
+                PrototypeAutomaticStepKind.DispatchCombatEvent,
+                EventKind: PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
         ]);
 
     public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
@@ -296,6 +300,16 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Curse,
                 Type: PrototypeCardType.Curse),
             new PrototypeCardDefinition(
+                "proto.native.underdocks.greed",
+                "Greed",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Unplayable: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse),
+            new PrototypeCardDefinition(
                 "proto.native.event.guilty",
                 "Guilty",
                 0,
@@ -359,7 +373,8 @@ public static class PrototypeContent
                 PrototypeCardTarget.Enemy,
                 [new(PrototypeCombatEffectKind.DamageEnemy, 6, 3)],
                 Rarity: PrototypeCardRarity.Basic,
-                Type: PrototypeCardType.Attack),
+                Type: PrototypeCardType.Attack,
+                Tags: ["Strike"]),
             new PrototypeCardDefinition(
                 "proto.silent.defend",
                 "Defend",
@@ -367,7 +382,8 @@ public static class PrototypeContent
                 PrototypeCardTarget.None,
                 [new(PrototypeCombatEffectKind.GainPlayerBlock, 5, 3)],
                 Rarity: PrototypeCardRarity.Basic,
-                Type: PrototypeCardType.Skill),
+                Type: PrototypeCardType.Skill,
+                Tags: ["Defend"]),
             new PrototypeCardDefinition(
                 "proto.silent.neutralize",
                 "Neutralize",
@@ -480,6 +496,18 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Type: PrototypeCardType.Status),
+            new PrototypeCardDefinition(
+                "proto.status.beckon",
+                "Beckon",
+                1,
+                PrototypeCardTarget.None,
+                [],
+                Rarity: PrototypeCardRarity.Status,
+                RewardEligible: false,
+                Type: PrototypeCardType.Status,
+                EndTurnDamageIfInHand: 6,
+                EndTurnDamageUnblockable: true,
+                MaxUpgradeLevel: 0),
             new PrototypeCardDefinition(
                 "proto.status.dazed",
                 "Dazed",
@@ -1860,6 +1888,9 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Ancient,
                 Type: PrototypeCardType.Power)
         }.Concat(PrototypeColorlessCards.Implemented)
+            .Concat(PrototypeColorlessCards.UnsupportedMultiplayer)
+            .Concat(PrototypeNativeUnderdocksTrashHeap.Cards)
+            .Concat(PrototypeNativeEndlessConveyor.EventCards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -1969,6 +2000,16 @@ public static class PrototypeContent
             // Neow's Sacrifice grants this event-only potion. The
             // out-of-combat 50% max-HP heal is supported; its in-combat
             // extra-turn power requires dedicated turn scheduling.
+            // Native Drowning Beacon event potion: exhaust the whole
+            // current hand, then draw ten through the common draw pipeline.
+            new PrototypePotionDefinition(
+                "proto.native.underdocks.glowwater_potion",
+                "Glowwater Potion",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.ExhaustHand, 0),
+                    new(PrototypeCombatEffectKind.DrawCards, 10)
+                ]),
             new PrototypePotionDefinition(
                 "proto.native.neow.ambergris",
                 "Ambergris",
@@ -2497,6 +2538,12 @@ public static class PrototypeContent
                         [new(PrototypeRunEffectKind.GainMaxHp, 6)],
                         RequiredCardType: PrototypeCardType.Curse)
                 ]),
+            // Fresnel Lens passively grants Nimble +2 to eligible block
+            // cards newly obtained during this run.
+            new PrototypeRelicDefinition(
+                "proto.native.underdocks.fresnel_lens",
+                "Fresnel Lens",
+                EnchantNewBlockCardsNimble: 2),
             new PrototypeRelicDefinition(
                 "proto.native.event.byrdpip",
                 "Byrdpip"),
@@ -2901,11 +2948,175 @@ public static class PrototypeContent
                         ])
                 ])
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
+            .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
         new[]
         {
+            new PrototypePowerDefinition(
+                "proto.power.fasten", "Fasten", 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                BlockBonusRequiredCardTag: "Defend"),
+            new PrototypePowerDefinition(
+                "proto.power.prep_time", "Prep Time", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyPlayerPower,
+                                0, AmountPerPowerStack: 1,
+                                PowerId: "proto.power.vigor")
+                        ])
+                ]),
+
+            new PrototypePowerDefinition(
+                "proto.power.automation", "Automation", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardDrawn,
+                        [new PrototypeCombatEffectSpec(
+                            PrototypeCombatEffectKind.GainEnergy, 0,
+                            AmountPerPowerStack: 1)],
+                        EveryNth: 10)
+                ],
+                IsInstanced: true),
+            new PrototypePowerDefinition(
+                "proto.power.calamity", "Calamity", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [new PrototypeCombatEffectSpec(
+                            PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand,
+                            0, AmountPerPowerStack: 1)],
+                        RequiredSourceCardType: PrototypeCardType.Attack)
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.nostalgia", "Nostalgia", 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                PlayedAttacksAndSkillsReturnToDraw: true),
+            new PrototypePowerDefinition(
+                "proto.power.rolling_boulder", "Rolling Boulder", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy, 0,
+                                AmountPerPowerStack: 1,
+                                Target: PrototypeEffectTarget.AllEnemies),
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.IncreaseSourcePowerStacks,
+                                5)
+                        ])
+                ],
+                IsInstanced: true),
+            new PrototypePowerDefinition(
+                "proto.power.the_gambit", "The Gambit", 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                DoesNotStack: true,
+                LethalAfterUnblockedPoweredAttack: true),
+
+            new PrototypePowerDefinition(
+                "proto.power.entropy", "Entropy", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ChooseCards, 0,
+                                Selection: new PrototypeCardSelectionSpec(
+                                    PrototypeCardZone.Hand, 0, 0,
+                                    PrototypeCardSelectionResolutionKind.TransformRandom,
+                                    SelectionsPerPowerStack: 1))
+                        ])
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.stratagem", "Stratagem", 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>()),
+            // Panache instances independently count five cards during each
+            // turn, ignoring the card which originally applied the power.
+            new PrototypePowerDefinition(
+                "proto.power.panache",
+                "Panache",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy,
+                                0,
+                                AmountPerPowerStack: 1,
+                                Target: PrototypeEffectTarget.AllEnemies)
+                        ],
+                        EveryNth: 5)
+                ],
+                IsInstanced: true,
+                ResetTriggerCountersAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.the_bomb",
+                "The Bomb",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnEnded,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy,
+                                0,
+                                Target: PrototypeEffectTarget.AllEnemies,
+                                UseSourcePowerStoredValue: true)
+                        ],
+                        RemoveSourcePowerAfterTrigger: true,
+                        CountdownBeforeTrigger: true)
+                ],
+                IsInstanced: true),
+            new PrototypePowerDefinition(
+                "proto.power.mayhem",
+                "Mayhem",
+                BlockBonusPerStack: 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.AutoPrePlayPhaseEntered,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.AutoPlayTopDrawCards,
+                                0,
+                                AmountPerPowerStack: 1)
+                        ])
+                ]),
+            // Native Panic Button: non-card sources can still grant Block;
+            // the debuff expires after two enemy side-turn endings.
+            new PrototypePowerDefinition(
+                "proto.power.no_block",
+                "No Block",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                DecrementAtEnemyTurnEnd: true,
+                PreventsCardBlock: true),
+            // Native Dark Shackles immediately reduces enemy Strength and
+            // restores exactly that amount after the affected enemy acts.
+            new PrototypePowerDefinition(
+                "proto.power.dark_shackles",
+                "Dark Shackles",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                RemoveAtEnemyTurnEnd: true,
+                EnemyStrengthOnApplyPerStack: -1,
+                EnemyStrengthRestoreAtSideTurnEndPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.dexterity",
                 "Dexterity",
@@ -6149,6 +6360,7 @@ public static class PrototypeContent
                 Weight: 2,
                 OncePerRun: false)
         }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
+            .Concat(PrototypeNativeUnderdocksEvents.Definitions)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
@@ -6831,8 +7043,11 @@ public static class PrototypeContent
             ]
         };
 
+    // Named event-only potions can be owned and consumed, but are excluded
+    // from ordinary rewards, merchant inventories and native rarity rolls.
     public static string[] PotionPool { get; } = Potions.Keys
-        .Where(id => id != "proto.native.neow.ambergris")
+        .Where(id => id != "proto.native.neow.ambergris"
+            && id != "proto.native.underdocks.glowwater_potion")
         .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [

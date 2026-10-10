@@ -38,7 +38,8 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             World = world,
-            Player = ApplyPersistentCardRoomEntry(state.Player, node)
+            Player = ApplyRelicRoomEntryGold(
+                ApplyPersistentCardRoomEntry(state.Player, node))
         };
 
         return room switch
@@ -608,13 +609,25 @@ public sealed partial class PrototypeGameEngine
         var nativeOvergrowth = world.Act == 1
             && world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId;
+        var nativeUnderdocks = world.Act == 1
+            && world.Map.GenerationProfileId
+                == PrototypeNativeUnderdocks.GenerationProfileId;
         var eligible = PrototypeContent.Events.Values
             .Where(evt =>
-                PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(evt.Id)
-                    == nativeOvergrowth
+                (nativeUnderdocks
+                    ? PrototypeNativeUnderdocksEvents.IsSupported(evt.Id)
+                    : PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(evt.Id)
+                        == nativeOvergrowth
+                      && !PrototypeNativeUnderdocksEvents
+                          .IsNativeRegionEvent(evt.Id))
                 && (!nativeOvergrowth
                     || PrototypeNativeOvergrowthEvents.IsEligible(
                         evt, state.Player))
+                && (!nativeUnderdocks
+                    || PrototypeNativeUnderdocksEvents.IsEligible(
+                        evt, state.Player)
+                    && PrototypeNativeUnderdocksEvents.IsFloorEligible(
+                        evt, world))
                 && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
                 && evt.Weight > 0
@@ -676,14 +689,33 @@ public sealed partial class PrototypeGameEngine
                         // prototype currently samples integer bins.
                         "proto.native.event.jungle_maze_adventure" =>
                             135 + PrototypeRng.NextInt(state.Rng, "event", 30),
+                        // Native Sunken Treasury rolls small then large
+                        // independently; both rolls are persisted so the
+                        // eventual choice never changes the RNG outcome.
+                        "proto.native.underdocks.sunken_treasury" =>
+                            52 + PrototypeRng.NextInt(state.Rng, "event", 16),
+                        "proto.native.underdocks.sunken_statue" =>
+                            101 + PrototypeRng.NextInt(state.Rng, "event", 21),
                         _ => 0
                     },
                 NativeEventSecondaryGold:
                     selected.Id == "proto.native.event.jungle_maze_adventure"
                         ? 35 + PrototypeRng.NextInt(state.Rng, "event", 30)
-                        : 0),
+                        : selected.Id == "proto.native.underdocks.sunken_treasury"
+                            ? 303 + PrototypeRng.NextInt(
+                                state.Rng, "event", 61)
+                            : 0),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
+
+        if (selected.Id == PrototypeNativeEndlessConveyor.EventId)
+        {
+            world = world with
+            {
+                Event = PrototypeNativeEndlessConveyor.RollNextDish(
+                    world.Event!, state.Player, state.Rng)
+            };
+        }
 
         return state with
         {
@@ -722,6 +754,26 @@ public sealed partial class PrototypeGameEngine
                         new ChooseEventDeckCardPayload(
                             cardInstanceId)))
                 .ToArray();
+        }
+
+        if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
+        {
+            return GetEndlessConveyorActions(state, eventState);
+        }
+
+        if (eventState.EventId == PrototypeNativePunchOff.EventId)
+        {
+            return GetPunchOffActions(eventState);
+        }
+
+        if (eventState.EventId == AbyssalBathsEventId)
+        {
+            return GetAbyssalBathsActions(eventState);
+        }
+
+        if (eventState.EventId == PrototypeNativeUnderdocksTrashHeap.EventId)
+        {
+            return GetTrashHeapActions();
         }
 
         if (eventState.EventId == PrototypeNativeDenseVegetation.EventId
@@ -911,6 +963,26 @@ public sealed partial class PrototypeGameEngine
                 }
             };
             return AdvanceEventContinuations(state);
+        }
+
+        if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
+        {
+            return StepEndlessConveyor(state, action);
+        }
+
+        if (eventState.EventId == PrototypeNativePunchOff.EventId)
+        {
+            return StepPunchOff(state, action);
+        }
+
+        if (eventState.EventId == AbyssalBathsEventId)
+        {
+            return StepAbyssalBaths(state, action);
+        }
+
+        if (eventState.EventId == PrototypeNativeUnderdocksTrashHeap.EventId)
+        {
+            return StepTrashHeap(state, action);
         }
 
         if (eventState.EventId == PrototypeNativeTabletOfTruth.EventId)
@@ -1282,7 +1354,8 @@ public sealed partial class PrototypeGameEngine
                     // receiving a reward is a player decision even when a
                     // potion slot is empty. Other prototype direct-grant
                     // events retain their historical acquisition behavior.
-                    if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId))
+                    if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)
+                        || PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(eventState.EventId))
                     {
                         queuedPotionIds.Add(potionId);
                     }
@@ -1387,6 +1460,17 @@ public sealed partial class PrototypeGameEngine
         }
 
         var rolled = eventState.NativeEventGold;
+        if (eventState.EventId
+                == "proto.native.underdocks.sunken_treasury"
+            && effect.Kind == PrototypeRunEffectKind.GainGold)
+        {
+            return choiceId switch
+            {
+                "first_chest" => rolled,
+                "second_chest" => eventState.NativeEventSecondaryGold,
+                _ => effect.Amount
+            };
+        }
         if ((eventState.EventId == "proto.native.event.whispering_hollow"
                 && choiceId == "gold"
                 && effect.Kind == PrototypeRunEffectKind.LoseGold
@@ -1395,7 +1479,9 @@ public sealed partial class PrototypeGameEngine
                 && choiceId == "tribute"
                 && effect.Kind == PrototypeRunEffectKind.LoseGold
                 && rolled is >= 100 and <= 149)
-            || (eventState.EventId == "proto.native.event.sunken_statue"
+            || ((eventState.EventId == "proto.native.event.sunken_statue"
+                    || eventState.EventId
+                        == "proto.native.underdocks.sunken_statue")
                 && choiceId == "dive"
                 && effect.Kind == PrototypeRunEffectKind.GainGold
                 && rolled is >= 101 and <= 121)
@@ -1521,6 +1607,8 @@ public sealed partial class PrototypeGameEngine
         }
 
         return PrototypeNativeOvergrowthEvents.AllowsEmptyDeckChoice(
+                   world.Event?.EventId ?? string.Empty)
+            || PrototypeNativeUnderdocksEvents.AllowsEmptyDeckChoice(
                    world.Event?.EventId ?? string.Empty)
             || player.Deck.Any(card =>
                 CanSelectEventDeckCard(
@@ -1969,6 +2057,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var player = state.Player;
+        var goldBeforePurchase = player.Gold;
         var nextId = world.NextCardInstanceId;
 
         if (StringComparer.Ordinal.Equals(action.Kind, "remove_card"))
@@ -2138,6 +2227,11 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException($"Unknown shop action '{action.Kind}'.");
         }
+
+        // Native Maw Bank ceases room-entry gold on the FIRST
+        // positive-gold merchant purchase, including card removal.
+        player = ApplyFirstPositiveShopPurchase(
+            player, Math.Max(0, goldBeforePurchase - player.Gold));
 
         world = world with
         {
@@ -2341,7 +2435,7 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEventKind.RestSiteHealed,
                 rng: state.Rng);
             state = state with { Player = player };
-            return CompleteRoomToMap(state);
+            return EnterRestHealRelicReward(state);
         }
 
         if (StringComparer.Ordinal.Equals(action.Kind, "rest_train"))
@@ -3099,6 +3193,26 @@ public sealed partial class PrototypeGameEngine
                 _ => 20 + (world.Act * 5)
             };
 
+        // Source-backed escaped-enemy reward proportions, independently
+        // of the existing prototype reward amount approximation.
+        // A surviving carrier returns stolen gold only when defeated:
+        // escaped carriers neither refund stolen coins nor keep full
+        // normal-combat gold rewards.
+        foreach (var escaped in combat.Enemies.Where(enemy => enemy.Escaped))
+        {
+            var definition = PrototypeContent.Enemy(escaped.EnemyId);
+            var proportion = escaped.StolenGold > 0
+                ? definition.EscapedRewardProportionWithGold
+                : definition.EscapedRewardProportionWithoutGold;
+            gold = (int)Math.Round(gold * proportion);
+        }
+
+        var recoveredGold = combat.Enemies
+            .Where(enemy => enemy.Hp <= 0 && !enemy.Escaped
+                && PrototypeContent.Enemy(enemy.EnemyId)
+                    .RecoverCarriedGoldOnDeath)
+            .Sum(enemy => enemy.StolenGold);
+
         // PotionReward.Populate precedes CardReward.Populate.
         string? potion = nativeOvergrowth
             && nativePotionOffered
@@ -3258,9 +3372,10 @@ public sealed partial class PrototypeGameEngine
             ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
             CardOptionUpgradeFlags: cardUpgradeFlags,
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
-            GoldOption: nativeGold,
-            GoldResolved: nativeGold is null,
-            IndependentSelection: nativeOvergrowth,
+            GoldOption: nativeGold ?? (recoveredGold > 0
+                ? recoveredGold : null),
+            GoldResolved: nativeGold is null && recoveredGold == 0,
+            IndependentSelection: nativeOvergrowth || recoveredGold > 0,
             ExtraCardGroupsResolved: nativeOvergrowth
                 ? new bool[extraCardOptions.Length]
                 : null,
