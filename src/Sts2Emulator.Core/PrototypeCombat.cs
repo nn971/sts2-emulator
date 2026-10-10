@@ -1692,8 +1692,26 @@ public sealed partial class PrototypeGameEngine
                     state.Rng,
                     fromHandDraw: true);
                 player = drawn.Player;
+                combat = drawn.Combat;
+                if (drawn.ShuffleSelectionPending)
+                {
+                    var pendingDraw = new Queue<PrototypeQueuedOperation>(
+                        new[]
+                        {
+                            StratagemChoiceOperation(combat),
+                            new PrototypeQueuedOperation(
+                                PrototypeCombatEffectKind.DrawCards,
+                                drawn.RemainingCount)
+                        });
+                    var resumed = ResolveOperations(
+                        player, combat, pendingDraw, state.Rng,
+                        moveSourceCardOnCompletion: false);
+                    player = resumed.Player;
+                    combat = resumed.Combat;
+                }
+
                 combat = RemovePlayerPowers(
-                    drawn.Combat,
+                    combat,
                     definition => definition.RemoveAfterHandDraw);
                 break;
             }
@@ -1707,6 +1725,20 @@ public sealed partial class PrototypeGameEngine
             Player = player,
             World = world with { Combat = combat }
         };
+    }
+
+    private static PrototypeQueuedOperation StratagemChoiceOperation(
+        CombatState combat)
+    {
+        var amount = combat.PlayerPowers
+            .Where(power => power.PowerId == "proto.power.stratagem")
+            .Sum(power => Math.Max(0, power.Stacks));
+        return new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.ChooseCards, 0,
+            Selection: new PrototypeCardSelectionSpec(
+                PrototypeCardZone.DrawPile,
+                amount, amount,
+                PrototypeCardSelectionResolutionKind.MoveToHand));
     }
 
     private static CombatState ReturnLastTurnReboundCardsToHand(
@@ -3729,6 +3761,19 @@ public sealed partial class PrototypeGameEngine
                         eventDepth: eventDepth + 1);
                     player = drawn.Player;
                     combat = drawn.Combat;
+                    if (drawn.ShuffleSelectionPending)
+                    {
+                        // Suspend this draw at the exact post-shuffle point.
+                        // A chosen card moves to hand before any of the
+                        // remaining cards are drawn.
+                        operations = new Queue<PrototypeQueuedOperation>(
+                            new[]
+                            {
+                                StratagemChoiceOperation(combat),
+                                operation with { Amount = drawn.RemainingCount }
+                            }.Concat(operations));
+                    }
+
                     if (operation.DrawnCardKeyword is not null)
                     {
                         foreach (var cardInstanceId in drawn.DrawnCardInstanceIds)
@@ -8283,7 +8328,8 @@ public sealed partial class PrototypeGameEngine
                     .ToArray()
                 : Array.Empty<long>();
 
-        combat = ApplyCardSelection(combat, pending.Selection, selected);
+        combat = ApplyCardSelection(
+            combat, pending.Selection, selected, state.Rng);
         combat = combat with { PendingChoice = null };
 
         if (pending.SelectedCardTemporaryCost is not null)
@@ -8713,7 +8759,8 @@ public sealed partial class PrototypeGameEngine
     private static CombatState ApplyCardSelection(
         CombatState combat,
         PrototypeCardSelectionSpec selection,
-        long[] selected)
+        long[] selected,
+        RngBundle rng)
     {
         var source = GetZone(combat, selection.SourceZone);
         var selectedSet = selected.ToHashSet();
@@ -8722,6 +8769,61 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException(
                 "Selected card is no longer in the requested source zone.");
+        }
+
+        if (selection.Resolution
+                == PrototypeCardSelectionResolutionKind.TransformRandom)
+        {
+            foreach (var instanceId in selected)
+            {
+                var original = RequireCombatCard(combat, instanceId);
+                var definition = PrototypeContent.Card(original.CardId);
+                if (definition.Eternal)
+                {
+                    throw new InvalidOperationException(
+                        "Eternal combat cards cannot be transformed.");
+                }
+
+                // Native combat transforms into a different eligible
+                // card from the ORIGINAL card's own generation pool.
+                var pool = original.CardId.StartsWith(
+                        "proto.colorless.", StringComparison.Ordinal)
+                    ? PrototypeColorlessCards.ImplementedCombatGenerationPool
+                    : PrototypeContent.RewardCardPool;
+                var eligible = pool.Where(id =>
+                {
+                    var candidate = PrototypeContent.Card(id);
+                    return id != original.CardId
+                        && candidate.CanBeGeneratedInCombat
+                        && candidate.MechanicsImplemented
+                        && candidate.Rarity is
+                            PrototypeCardRarity.Common
+                            or PrototypeCardRarity.Uncommon
+                            or PrototypeCardRarity.Rare;
+                }).ToArray();
+                if (eligible.Length == 0)
+                {
+                    throw new NotSupportedException(
+                        "No eligible native-pool solo transform targets.");
+                }
+
+                var replacement = eligible[PrototypeRng.NextInt(
+                    rng, "combat", eligible.Length)];
+                combat = combat with
+                {
+                    Cards = combat.Cards.Select(card =>
+                        card.InstanceId == instanceId
+                            ? new CombatCardInstance(
+                                instanceId,
+                                PersistentCardInstanceId: null,
+                                CardId: replacement,
+                                UpgradeLevel: 0,
+                                IsTemporary: true,
+                                State: PrototypeJson.EmptyObject())
+                            : card).ToArray()
+                };
+            }
+            return combat;
         }
 
         if (selection.Resolution
@@ -9580,7 +9682,9 @@ public sealed partial class PrototypeGameEngine
     private sealed record PrototypeDrawCardsResult(
         PlayerState Player,
         CombatState Combat,
-        long[] DrawnCardInstanceIds);
+        long[] DrawnCardInstanceIds,
+        int RemainingCount = 0,
+        bool ShuffleSelectionPending = false);
 
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
@@ -9622,6 +9726,23 @@ public sealed partial class PrototypeGameEngine
                 discard.Clear();
                 PrototypeRng.Shuffle(rng, "combat", recycled);
                 draw.AddRange(recycled);
+                var stratagem = combat.PlayerPowers.Sum(power =>
+                    power.PowerId == "proto.power.stratagem"
+                        ? Math.Max(0, power.Stacks) : 0);
+                if (stratagem > 0 && combat.Hand.Length < maxHandSize)
+                {
+                    // Persist the recycled draw pile before prompting.
+                    // The suspended draw resumes after this choice.
+                    combat = combat with
+                    {
+                        DrawPile = draw.ToArray(),
+                        DiscardPile = discard.ToArray()
+                    };
+                    return new PrototypeDrawCardsResult(
+                        player, combat, drawnCardInstanceIds.ToArray(),
+                        RemainingCount: count - drawNumber,
+                        ShuffleSelectionPending: true);
+                }
             }
 
             var index = draw.Count - 1;
