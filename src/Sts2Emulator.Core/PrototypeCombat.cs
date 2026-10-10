@@ -2303,15 +2303,18 @@ public sealed partial class PrototypeGameEngine
 
                     if (!states.TryGetValue(
                             selected.TargetStateId,
-                            out var target)
-                        || target.Kind
-                            != PrototypeEnemyAiStateKind.Move)
+                            out var target))
                     {
                         throw new InvalidOperationException(
-                            $"Enemy '{definition.Id}' AI conditional branch targets invalid move state '{selected.TargetStateId}'.");
+                            $"Enemy '{definition.Id}' AI conditional branch targets missing state '{selected.TargetStateId}'.");
                     }
 
-                    stateId = selected.TargetStateId;
+                    // The native Exoskeleton fourth slot branches to
+                    // RAND rather than directly to a MoveState.
+                    // Continue resolving the graph until a concrete
+                    // move is committed, using the same RNG and without
+                    // sampling anything during Observe().
+                    stateId = target.Id;
                     break;
                 }
 
