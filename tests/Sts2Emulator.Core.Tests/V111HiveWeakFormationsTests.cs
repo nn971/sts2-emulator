@@ -194,7 +194,7 @@ public sealed class V111HiveWeakFormationsTests
         const string id = "proto.native.hive.tunneler";
         const string encounterId = "proto.native.hive.encounter.tunneler_weak";
         var encounter = PrototypeContent.Encounter(encounterId);
-        Assert.Equal([id], encounter.EnemyIds);
+        Assert.Equal(new[] { id }, encounter.EnemyIds);
         Assert.Equal(0, encounter.Weight);
         var model = PrototypeContent.Enemy(id);
         Assert.Equal((87, 87), model.HpRangeAt(2, 0));
