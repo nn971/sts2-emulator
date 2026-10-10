@@ -278,6 +278,18 @@ This is an intermediate implementation. Final release gates remain open.
   remain explicitly unverified. All encounters remain Weight=0.
   The ordinary 41-encounter normal roster now has executable
   registrations, but later-act pool integration is still gated.
+- Added two **gated Glory elite combat fixtures**, Soul Nexus and
+  Mecha Knight. Soul Nexus begins with Soul Burn, then commits uniformly
+  sampled nonrepeating attacks (including four-hit Maelstrom) and
+  Vulnerable/Weak Drain Life. Mecha Knight starts with Artifact 3,
+  cycles Charge → Flamethrower → Windup → Heavy Cleave, and creates
+  four independent, unplayable Burn instances; each held Burn deals
+  2 unpowered end-of-turn damage. A0/A8/A9 data and deterministic
+  fork, intent, generation and hand-effect regressions are included.
+  All encounters remain Weight=0 forced-test-only; native Glory
+  selection, MonsterAi RNG ownership and live-game parity are
+  unverified. Knights Elite remains outstanding. Evidence:
+  [Glory elite slice](reference-builds/v0.111.0-glory-elites-soul-mecha.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
