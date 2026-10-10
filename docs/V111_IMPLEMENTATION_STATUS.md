@@ -315,6 +315,18 @@ This is an intermediate implementation. Final release gates remain open.
   benchmarks for forks, allocations, stepping, batches, hashing, snapshots and
   retained branch memory; whole-run benchmarks explicitly use the prototype.
 
+
+- Added the pinned ten-entry Hive event catalogue and an executable,
+  deterministic **Infested Automaton** forced-event fixture. The `Study`
+  branch draws an implemented character Power; `Touch Core` draws an
+  implemented character card whose canonical cost is fixed zero. Both add
+  a new persistent card instance, preserve fork/hash determinism and reject
+  invalid choices. The native CardFactory uses unlocked character pools,
+  noncombat rarity odds, and card-generation RNG: these remain **provisional**
+  here because only the supported Silent reward pool and the prototype event
+  RNG stream are used. Both Hive event registrations remain Weight=0, with
+  map/event integration and live oracle replay outstanding.
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

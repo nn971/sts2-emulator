@@ -970,6 +970,11 @@ public sealed partial class PrototypeGameEngine
             return AdvanceEventContinuations(state);
         }
 
+        if (eventState.EventId == PrototypeNativeHiveEvents.InfestedAutomatonId)
+        {
+            return StepNativeInfestedAutomaton(state, action);
+        }
+
         if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
         {
             return StepEndlessConveyor(state, action);

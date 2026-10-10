@@ -6397,6 +6397,7 @@ public static class PrototypeContent
         }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
             .Concat(PrototypeNativeUnderdocksEvents.Definitions)
             .Concat(PrototypeNativeLaterActs.Events)
+            .Concat(PrototypeNativeHiveEvents.Definitions)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
