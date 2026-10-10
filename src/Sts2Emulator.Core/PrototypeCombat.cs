@@ -4454,9 +4454,18 @@ public sealed partial class PrototypeGameEngine
                             continue;
                         }
 
-                        slots[firstEmpty] = new PotionInstance(
+                        var potion = new PotionInstance(
                             generated, PrototypeJson.EmptyObject());
+                        slots[firstEmpty] = potion;
                         player = player with { PotionSlots = slots };
+                        combat = combat with
+                        {
+                            Potions = combat.PotionStates
+                                .Append(new CombatPotionState(
+                                    firstEmpty, generated,
+                                    potion.PersistentState.Clone()))
+                                .ToArray()
+                        };
                     }
                     break;
                 }
