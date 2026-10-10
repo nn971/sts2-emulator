@@ -150,6 +150,14 @@ This is an intermediate implementation. Final release gates remain open.
   persist through forks. Native Hive normal encounters now have
   six guarded entries; native Act 2 map and selection remain disabled.
   Exotic nonattack Slumber wake triggers require later source audit.
+- Implemented **two further gated Hive normal encounters**:
+  Hunter Killer with its source-weighted/nonrepeating Bite/Puncture branch
+  and Tender's reversible card-completion Strength/Dexterity penalties;
+  Louse Progenitor with fixed Web/Curl/Pounce cycle, Frail and
+  Curl Up's first powered-card-hit completion Block trigger (including
+  fully blocked hits). Both preserve exact source-pinned A8/A9 numbers,
+  occupy independent enemy instances and retain Weight=0 pending
+  native Hive region generation.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

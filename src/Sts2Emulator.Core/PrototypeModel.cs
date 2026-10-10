@@ -866,7 +866,11 @@ public sealed record PrototypePowerDefinition(
     bool SnapshotGenerationStacksAtTurnStart = false,
     // Tunneler's BurrowedPower vetoes ordinary block clearing at
     // the enemy-side turn boundary until its Block is broken.
-    bool PreventsEnemyBlockClear = false);
+    bool PreventsEnemyBlockClear = false,
+    // Tender: temporary Strength/Dexterity penalties for each completed card.
+    int PlayerStrengthDexterityLossPerCardPlayedPerStack = 0,
+    // Curl Up: grant Block only after the triggering attack card finishes.
+    int EnemyBlockAfterAttackingCardPlayedPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -876,7 +880,8 @@ public sealed record PrototypePowerInstanceState(
     int? SourceEnemyInstanceId = null,
     bool SkipNextEnemySideTurnEnd = false,
     int StoredValue = 0,
-    int[]? TriggerCounts = null)
+    int[]? TriggerCounts = null,
+    long? PendingAttackingCardInstanceId = null)
 {
     public PrototypePowerInstanceState Fork() => this with
     {
