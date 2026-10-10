@@ -2072,7 +2072,7 @@ public sealed partial class PrototypeGameEngine
             $"Enemy '{definition.Id}' AI exceeded the state-resolution depth limit.");
     }
 
-    private static bool EnemyAiConditionMatches(
+    internal static bool EnemyAiConditionMatches(
         EnemyCombatState enemy,
         IReadOnlyList<EnemyCombatState> formation,
         PrototypeEnemyAiConditionalBranch branch)
