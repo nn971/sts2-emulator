@@ -1417,6 +1417,8 @@ public sealed record EnemyCombatState(
     bool IsOffBalance = false,
     // Each Swipe carries the original persistent card, not merely its
     // type. Preserve its instance ID, upgrade and persistent state.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     CardInstance[]? StolenCards = null)
 {
     public EnemyCombatState Fork() => this with
@@ -1726,6 +1728,8 @@ public sealed record RewardState(
     // Native Swipe.BeforeDeath restores the deck version and adds a
     // special card reward; the card is already in the deck and must
     // not be duplicated when this reward is inspected.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     CardInstance[]? ReturnedStolenCards = null)
 {
     /// <summary>
