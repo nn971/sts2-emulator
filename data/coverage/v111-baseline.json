@@ -1797,11 +1797,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.status.burn"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Burn.cs#4793b73fd68b92958152f4bf2eddbf2785fc1d7b86979201ec8e61828d914de6"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -1809,7 +1811,7 @@
           "base"
         ],
         "native_id": "BURN",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13223,17 +13225,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.mecha_knight_elite"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/MechaKnightElite.cs#b28383e224ffd976b9179321b6be5c66f5ce42726aa604466c3cd257a05da6ad"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MECHA_KNIGHT_ELITE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13737,17 +13741,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.soul_nexus_elite"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/SoulNexusElite.cs#2cbd4b0d80faa7420d68f29ceb0d4b000aa2b129a9ca629193657729b1e6d0d5"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SOUL_NEXUS_ELITE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17779,17 +17785,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.mecha_knight"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/MechaKnight.cs#a1d4ddb845a2464546ffc654a598b41cab7838b2324216a0af6a4d0652eae01a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MECHA_KNIGHT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -18255,17 +18263,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.soul_nexus"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/SoulNexus.cs#7b30b1db0adbf736c71c4121d5ebf0fc6e1597f5be434a7017b0d1e3a204f8a3"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SOUL_NEXUS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29509,7 +29519,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 172,
+        "implemented": 173,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
