@@ -125,7 +125,7 @@ public sealed class V111AllNormalEncountersTests
         Assert.Equal(8992, after.Player.Hp);
         Assert.Equal(9000, state.Player.Hp);
         Assert.Equal(PrototypeCardAfflictionKind.Galvanized,
-            Assert.Single(state.World.Combat.Cards).Affliction?.Kind);
+            Assert.Single(state.World!.Combat!.Cards).Affliction?.Kind);
     }
 
     [Fact]
