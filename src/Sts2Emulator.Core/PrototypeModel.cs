@@ -958,7 +958,9 @@ public enum PrototypeEnemyAiConditionKind
     IsAlone,
     IsFront,
     IsNotFront,
-    SlotNameEquals
+    SlotNameEquals,
+    IsOffBalance,
+    IsNotOffBalance
 }
 
 public enum PrototypeEnemyAiRepeatRule
@@ -1405,7 +1407,10 @@ public sealed record EnemyCombatState(
     int StoredEnemyDamage = 0,
     // Committed at combat entry / the player-turn boundary, never on Observe.
     int? PlannedMoveIndex = null,
-    string? PlannedNextAiStateId = null)
+    string? PlannedNextAiStateId = null,
+    // BowlbugRock.Imbalanced tracks whether its prior attack was fully
+    // blocked; survives intent commitment and deterministic snapshots.
+    bool IsOffBalance = false)
 {
     public EnemyCombatState Fork() => this with
     {
