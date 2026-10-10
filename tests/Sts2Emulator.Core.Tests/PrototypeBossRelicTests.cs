@@ -180,6 +180,25 @@ public sealed class PrototypeBossRelicTests
         var visible = SevenShivCombat(
             relicId: null,
             shivCount: 1);
+        // Synthetic combat fixtures do not pass through StartCombat.
+        // Initialize their public intent explicitly, just as the normal
+        // engine does before exposing the first player decision.
+        hidden = hidden with
+        {
+            World = hidden.World! with
+            {
+                Combat = PrototypeGameEngine.CommitEnemyIntents(
+                    hidden.World.Combat!, hidden.Rng)
+            }
+        };
+        visible = visible with
+        {
+            World = visible.World! with
+            {
+                Combat = PrototypeGameEngine.CommitEnemyIntents(
+                    visible.World.Combat!, visible.Rng)
+            }
+        };
         var environment = new PrototypeAiEnvironment();
 
         Assert.Null(

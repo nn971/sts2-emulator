@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
@@ -37,7 +38,13 @@ public sealed record PrototypeAiEnemy(
     int Block,
     string? MoveId,
     IReadOnlyDictionary<string, int> Statuses,
-    PrototypeAiPower[] Powers);
+    PrototypeAiPower[] Powers,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? IntentDamage = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? IntentHits = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? IntentBaseDamage = null);
 
 public sealed record PrototypeAiCombat(
     int Turn,
@@ -356,6 +363,8 @@ public sealed class PrototypeAiEnvironment
                 ? null
                 : CreateCombatObservation(
                     world.Combat,
+                    world.Act,
+                    state.Ascension,
                     state.Player.Relics.Any(relic =>
                         PrototypeContent.Relic(
                             relic.RelicId)
@@ -472,8 +481,98 @@ public sealed class PrototypeAiEnvironment
                 : (PrototypeCompletedRoomRecord[])world.CompletedRooms.Clone());
     }
 
+    // Only an action already stored by the combat engine can be public.
+    // Never perform enemy AI selection from an observation: that would
+    // consume hidden RNG and reveal a future rather than a chosen intent.
+    private static PrototypeEnemyMoveDefinition? PlannedMove(
+        EnemyCombatState enemy,
+        bool hideEnemyIntents)
+    {
+        if (hideEnemyIntents
+            || enemy.Hp <= 0
+            || enemy.SkipNextEnemyAction
+            || enemy.EnemyActionSkipsRemaining > 0
+            || enemy.PlannedMoveIndex is not { } index)
+        {
+            return null;
+        }
+
+        var definition = PrototypeContent.Enemy(enemy.EnemyId);
+        return index >= 0 && index < definition.Moves.Length
+            ? definition.Moves[index]
+            : null;
+    }
+
+    private static (int? BaseDamage, int? Damage, int? Hits) VisibleAttackIntent(
+        CombatState combat,
+        EnemyCombatState enemy,
+        PrototypeEnemyMoveDefinition move,
+        int act,
+        int ascension)
+    {
+        int? perHitDamage = null;
+        int? perHitBaseDamage = null;
+        var hits = 0;
+        var earlierSelfBuff = false;
+        foreach (var effect in move.Effects)
+        {
+            if (effect.Kind != PrototypeEnemyEffectKind.DamagePlayer)
+            {
+                // A self-buff AFTER all attacks does not change the HUD
+                // attack damage. A buff BEFORE a later attack might.
+                earlierSelfBuff |=
+                    effect.Kind == PrototypeEnemyEffectKind.ApplyEnemyPower;
+                continue;
+            }
+
+            if (earlierSelfBuff)
+            {
+                return (null, null, null);
+            }
+
+            // The v1 interface represents a homogeneous attack as one
+            // per-hit damage value and one hit count. Mixed attack/nonattack
+            // damage and nonuniform attack amounts cannot fit this shape.
+            if (!effect.IsAttack)
+            {
+                return (null, null, null);
+            }
+
+            var repetitions = effect.RepetitionsAt(ascension);
+            if (repetitions <= 0)
+            {
+                continue;
+            }
+
+            // Base damage includes the public act/ascension scaling, but
+            // no dynamic Strength/Weak/Vulnerable or damage caps.
+            var baseDamage = Math.Max(0, effect.AmountAt(act, ascension));
+            var damage = Math.Max(0,
+                PrototypeGameEngine.EnemyHitDamage(
+                    enemy, combat, effect, act, ascension));
+            if ((perHitDamage is not null && perHitDamage != damage)
+                || (perHitBaseDamage is not null
+                    && perHitBaseDamage != baseDamage))
+            {
+                return (null, null, null);
+            }
+
+            perHitBaseDamage = baseDamage;
+            perHitDamage = damage;
+            hits += repetitions;
+        }
+
+        return hits > 0
+            && perHitDamage is not null
+            && perHitBaseDamage is not null
+            ? (perHitBaseDamage, perHitDamage, hits)
+            : (null, null, null);
+    }
+
     private static PrototypeAiCombat CreateCombatObservation(
         CombatState combat,
+        int act,
+        int ascension,
         bool hideEnemyIntents)
     {
         var byId = combat.Cards.ToDictionary(card => card.InstanceId);
@@ -507,24 +606,24 @@ public sealed class PrototypeAiEnvironment
             PlayPile: combat.PlayCardIds.Select(Card).ToArray(),
             Enemies: combat.Enemies.Select(enemy =>
             {
-                var definition = PrototypeContent.Enemy(enemy.EnemyId);
-                var moveId =
-                    hideEnemyIntents
-                    || definition.Moves.Length == 0
-                        ? null
-                        : definition.Moves[
-                            enemy.MoveIndex
-                            % definition.Moves.Length].Id;
-
+                var move = PlannedMove(enemy, hideEnemyIntents);
+                var threat = move is null
+                    ? (BaseDamage: (int?)null,
+                       Damage: (int?)null,
+                       Hits: (int?)null)
+                    : VisibleAttackIntent(combat, enemy, move, act, ascension);
                 return new PrototypeAiEnemy(
                     enemy.InstanceId,
                     enemy.EnemyId,
                     enemy.Hp,
                     enemy.Block,
-                    moveId,
+                    move?.Id,
                     new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal),
                     enemy.PowerStates.Select(power =>
-                        new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray());
+                        new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray(),
+                    threat.Damage,
+                    threat.Hits,
+                    threat.BaseDamage);
             }).ToArray(),
             PendingChoiceId: combat.PendingChoice?.ChoiceId,
             PlayerPowers: combat.PlayerPowers
