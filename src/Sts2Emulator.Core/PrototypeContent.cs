@@ -1905,6 +1905,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryBosses.Cards)
             .Concat(PrototypeNativeLaterActEvents.Cards)
             .Concat(PrototypeNativeLaterActEventExpansion.Cards)
+            .Concat(PrototypeNativeLaterActEventExpansionV3.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -2964,6 +2965,7 @@ public static class PrototypeContent
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .Concat(PrototypeNativeLaterActEventExpansion.Relics)
+            .Concat(PrototypeNativeLaterActEventExpansionV3.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -6402,6 +6404,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeLaterActs.Events)
             .Concat(PrototypeNativeLaterActEvents.Events)
             .Concat(PrototypeNativeLaterActEventExpansion.Events)
+            .Concat(PrototypeNativeLaterActEventExpansionV3.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
