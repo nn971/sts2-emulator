@@ -544,6 +544,7 @@ public sealed record PrototypeCombatEffectSpec(
     PrototypeCardType? GeneratedChoiceCardType = null,
     bool GeneratedChoiceCardsFreeThisTurn = true,
     bool GeneratedChoiceCardsUpgraded = false,
+    bool GeneratedChoiceCardsUpgradeWithSource = false,
     bool GeneratedChoiceMustPick = false,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     int GoldOnFatal = 0,

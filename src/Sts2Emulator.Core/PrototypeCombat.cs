@@ -3098,7 +3098,9 @@ public sealed partial class PrototypeGameEngine
                     GeneratedChoiceCardsFreeThisTurn:
                         effect.GeneratedChoiceCardsFreeThisTurn,
                     GeneratedChoiceCardsUpgraded:
-                        effect.GeneratedChoiceCardsUpgraded,
+                        effect.GeneratedChoiceCardsUpgraded
+                        || (effect.GeneratedChoiceCardsUpgradeWithSource
+                            && upgradeLevel > 0),
                     GeneratedChoiceMustPick:
                         effect.GeneratedChoiceMustPick,
                     SelectedCardTemporaryCost:

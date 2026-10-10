@@ -503,7 +503,7 @@ public static class PrototypeColorlessCards
                 new(PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
                     GeneratedChoiceCardType: PrototypeCardType.Attack,
                     GeneratedChoiceCardsFreeThisTurn: true,
-                    GeneratedChoiceCardsUpgraded: true)
+                    GeneratedChoiceCardsUpgradeWithSource: true)
             ],
             Rarity: PrototypeCardRarity.Rare,
             Type: PrototypeCardType.Skill),
