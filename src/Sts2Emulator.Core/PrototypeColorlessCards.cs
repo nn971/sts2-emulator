@@ -470,7 +470,7 @@ public static class PrototypeColorlessCards
                 new(PrototypeCombatEffectKind.DamageEnemy, 9, 3),
                 new(PrototypeCombatEffectKind.ChooseCards, 0,
                     Selection: new(
-                        PrototypeCardZone.DrawPile, 0, 1,
+                        PrototypeCardZone.DrawPile, 1, 1,
                         PrototypeCardSelectionResolutionKind.MoveToHand,
                         RandomCandidateCount: 3))
             ],
