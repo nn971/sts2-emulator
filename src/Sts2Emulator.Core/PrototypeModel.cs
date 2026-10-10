@@ -121,7 +121,9 @@ public enum PrototypeCombatEffectKind
     ModifyEventSourceCardKeyword,
     GainPlayerBlockFromEnemyStatusTotal,
     CreateRandomCharacterSkillCardsInHand,
-    CreateDistinctCharacterCommonCardsInHand
+    CreateDistinctCharacterCommonCardsInHand,
+    CreateRandomCharacterAttackCardsInDrawPile,
+    SetHandCardsEnergyCostMaxOne
 }
 
 public enum PrototypeCardKeyword
