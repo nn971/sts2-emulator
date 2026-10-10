@@ -41,6 +41,27 @@ public sealed class PrototypeColorlessEighthBatchTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void FisticuffsCountsOverkillTowardBlock()
+    {
+        var state = Setup("fisticuffs-overkill",
+            ["proto.colorless.fisticuffs"], [1], []);
+        var combat = state.World!.Combat!;
+        var enemies = combat.Enemies.Select(e => e.Fork()).ToArray();
+        enemies[0] = enemies[0] with { Hp = 2 };
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with { Enemies = enemies }
+            }
+        };
+        state = Play(state, 1, 1);
+        Assert.Equal(7, state.World!.Combat!.PlayerBlock);
+        Assert.Equal(0, state.World.Combat.Enemies[0].Hp);
+        PrototypeStateInvariants.Validate(state);
+    }
+
     [Theory]
     [InlineData("proto.colorless.bolas", 0, 3, 3)]
     [InlineData("proto.colorless.bolas", 1, 4, 3)]
@@ -190,6 +211,30 @@ public sealed class PrototypeColorlessEighthBatchTests
                 && power.Stacks == strength);
         Assert.Contains(state.World.Combat.PlayerPowers,
             power => power.PowerId == "proto.power.prep_time");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void PrepTimeVigorAppliesToOneAttackThenIsConsumed()
+    {
+        var state = Setup("prep-vigor-consumption",
+            ["proto.colorless.prep_time",
+             "proto.silent.strike", "proto.silent.strike"],
+            [1], [2, 3]);
+        state = Play(state, 1);
+        state = EndTurn(state);
+        Assert.Contains(state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.vigor"
+                && power.Stacks == 4);
+        Assert.Contains(2, state.World.Combat.Hand);
+        Assert.Contains(3, state.World.Combat.Hand);
+
+        state = Play(state, 2, 1);
+        Assert.Equal(90, state.World!.Combat!.Enemies[0].Hp);
+        Assert.DoesNotContain(state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.vigor");
+        state = Play(state, 3, 1);
+        Assert.Equal(84, state.World!.Combat!.Enemies[0].Hp);
         PrototypeStateInvariants.Validate(state);
     }
 
