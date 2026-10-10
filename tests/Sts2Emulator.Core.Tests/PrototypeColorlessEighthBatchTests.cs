@@ -55,6 +55,7 @@ public sealed class PrototypeColorlessEighthBatchTests
         state = Play(state, 1, 1);
         Assert.Equal(100 - damage, state.World!.Combat!.Enemies[0].Hp);
         Assert.Contains(1, state.World.Combat.DiscardPile);
+        Assert.Equal(energy, state.World.Combat.Energy);
         state = EndTurn(state);
         var combat = state.World!.Combat!;
         Assert.Contains(1, combat.Hand);
