@@ -590,18 +590,21 @@ public sealed class PrototypeAiEnvironment
     {
         int? perHitDamage = null;
         var hits = 0;
+        var earlierSelfBuff = false;
         foreach (var effect in move.Effects)
         {
             if (effect.Kind != PrototypeEnemyEffectKind.DamagePlayer)
             {
-                // A preceding self-buff could alter subsequent hit damage.
-                // Do not approximate it using the enemy's pre-move powers.
-                if (effect.Kind == PrototypeEnemyEffectKind.ApplyEnemyPower)
-                {
-                    return (null, null);
-                }
-
+                // A self-buff AFTER all attacks does not change the HUD
+                // attack damage. A buff BEFORE a later attack might.
+                earlierSelfBuff |=
+                    effect.Kind == PrototypeEnemyEffectKind.ApplyEnemyPower;
                 continue;
+            }
+
+            if (earlierSelfBuff)
+            {
+                return (null, null);
             }
 
             // The v1 interface represents a homogeneous attack as one
