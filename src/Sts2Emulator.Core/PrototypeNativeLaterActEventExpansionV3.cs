@@ -34,7 +34,8 @@ public static class PrototypeNativeLaterActEventExpansionV3
             PrototypeCardTarget.None,
             [
                 new(PrototypeCombatEffectKind
-                    .SetHandCardsEnergyCostMaxOne, 1)
+                    .SetHandCardsEnergyCostMaxOne, 1,
+                    GeneratedCardUpgradePerSourceUpgrade: 1)
             ], Rarity: PrototypeCardRarity.Event,
             Type: PrototypeCardType.Skill,
             ExhaustOnUse: true, RewardEligible: false,
