@@ -3039,6 +3039,17 @@ public sealed partial class PrototypeGameEngine
                             enemy = selfPower.Enemy;
                             break;
 
+                        case PrototypeEnemyEffectKind.RemoveEnemyPower:
+                            if (effect.PowerId is null)
+                                throw new InvalidOperationException(
+                                    "Enemy remove-power effect requires a power ID.");
+                            enemy = enemy with
+                            {
+                                Powers = enemy.PowerStates.Where(power =>
+                                    power.PowerId != effect.PowerId).ToArray()
+                            };
+                            break;
+
                         case PrototypeEnemyEffectKind.ApplyAllEnemyPower:
                         {
                             if (effect.PowerId is null)
@@ -10242,6 +10253,22 @@ public sealed partial class PrototypeGameEngine
         if (isPoweredAttack && flutter is not null)
         {
             damage = (int)Math.Floor(damage * 0.5m);
+        }
+
+        if (isPoweredAttack)
+        {
+            foreach (var power in enemy.PowerStates.Where(power =>
+                power.Stacks > 0))
+            {
+                var definition = PrototypeContent.Power(power.PowerId);
+                if (definition.EnemyIncomingPoweredAttackDenominator <= 0)
+                    throw new InvalidOperationException(
+                        "Enemy powered-attack modifier has nonpositive denominator.");
+                damage = (int)Math.Floor(
+                    (decimal)damage
+                    * definition.EnemyIncomingPoweredAttackNumerator
+                    / definition.EnemyIncomingPoweredAttackDenominator);
+            }
         }
 
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));

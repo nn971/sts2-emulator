@@ -235,6 +235,12 @@ This is an intermediate implementation. Final release gates remain open.
   and two Cubex instances. Both fights remain Weight=0,
   synthetic fixtures only, and native Act 2/3 progression
   is not enabled. [Normal formation audit](reference-builds/v0.111.0-normal-formations.md).
+- Added source-backed **Owl Magistrate Normal** with
+  A0/A8/A9 attack and HP deltas, six-hit Peck, four-move loop,
+  Judicial Flight's Soar (halves incoming powered attack damage),
+  and Verdict's Vulnerable and Soar removal. It is `Weight=0`,
+  like the other test-only Glory models. The Soar modifier is
+  typed and reusable for future incoming-attack rules.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

@@ -879,7 +879,10 @@ public sealed record PrototypePowerDefinition(
     // Living Shield/Rampart: independently owned ally block grants
     // at the start of the player's side-turn.
     int AllyBlockAtPlayerTurnStartPerStack = 0,
-    string? AllyBlockTargetEnemyId = null);
+    string? AllyBlockTargetEnemyId = null,
+    // Soar: powered incoming attacks are multiplied by this fraction.
+    int EnemyIncomingPoweredAttackNumerator = 1,
+    int EnemyIncomingPoweredAttackDenominator = 1);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -924,7 +927,8 @@ public enum PrototypeEnemyEffectKind
     // Insatiable's Frantic Escapes enter draw/discard at random indices.
     AddCardsToRandomDiscard,
     // Knowledge Demon must ask the player to choose between curses.
-    RequireNativeChoice
+    RequireNativeChoice,
+    RemoveEnemyPower
 }
 
 public sealed record PrototypeAscensionDelta(

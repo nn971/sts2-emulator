@@ -3723,6 +3723,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeHiveBosses.Powers)
             .Concat(PrototypeNativeGloryScrolls.Powers)
             .Concat(PrototypeNativeGloryWeak.Powers)
+            .Concat(PrototypeNativeGloryNewNormals.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
@@ -6039,6 +6040,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryNormals.Enemies)
             .Concat(PrototypeNativeGloryScrolls.Enemies)
             .Concat(PrototypeNativeGloryWeak.Enemies)
+            .Concat(PrototypeNativeGloryNewNormals.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
@@ -7004,7 +7006,8 @@ public static class PrototypeContent
         ..PrototypeNativeGloryNormals.Encounters,
         ..PrototypeNativeGloryScrolls.Encounters,
         ..PrototypeNativeGloryWeak.Encounters,
-        ..PrototypeNativeAdditionalNormals.Encounters
+        ..PrototypeNativeAdditionalNormals.Encounters,
+        ..PrototypeNativeGloryNewNormals.Encounters
     ];
 
     public static string[] StartingDeck { get; } =
