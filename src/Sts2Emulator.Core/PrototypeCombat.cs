@@ -169,8 +169,10 @@ public sealed partial class PrototypeGameEngine
                 $"Encounter '{encounter.Id}' defines fixed trailing openings without a cyclic prefix.");
         }
         if (openingAiStates is not null
-            && enemySpecs.Length
-                != openingAiStates.Length + fixedTrailingOpenings.Length)
+            && (fixedTrailingOpenings.Length == 0
+                ? enemySpecs.Length > openingAiStates.Length
+                : enemySpecs.Length
+                    != openingAiStates.Length + fixedTrailingOpenings.Length))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' cyclic/fixed opening count does not match its formation.");
