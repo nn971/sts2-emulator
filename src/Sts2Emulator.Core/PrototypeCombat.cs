@@ -2788,6 +2788,17 @@ public sealed partial class PrototypeGameEngine
                             enemy = selfPower.Enemy;
                             break;
 
+                        case PrototypeEnemyEffectKind.AddCardsToHand:
+                            if (effect.CardId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Enemy hand-card effect is missing a card ID.");
+                            }
+
+                            combat = AddGeneratedEnemyCardsToHand(
+                                combat, effect.CardId, amount);
+                            break;
+
                         case PrototypeEnemyEffectKind.AddCardsToDiscard:
                             if (effect.CardId is null)
                             {
@@ -5375,6 +5386,46 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    /// <summary>
+    /// CardPileCmd.AddToCombatAndPreview(..., PileType.Hand) for enemy
+    /// status injection. Generated cards are temporary, have no persistent
+    /// deck version, and use stable combat instance identifiers.
+    /// A full hand cannot accept another card; excess cards are put
+    /// into discard by this emulator pending native overflow verification.
+    /// </summary>
+    private static CombatState AddGeneratedEnemyCardsToHand(
+        CombatState combat,
+        string cardId,
+        int count)
+    {
+        _ = PrototypeContent.Card(cardId);
+        const int maxHandSize = 10;
+        for (var index = 0; index < Math.Max(0, count); index++)
+        {
+            var instance = new CombatCardInstance(
+                InstanceId: combat.NextCardInstanceId,
+                PersistentCardInstanceId: null,
+                CardId: cardId,
+                UpgradeLevel: 0,
+                IsTemporary: true,
+                State: PrototypeJson.EmptyObject());
+            instance = ApplyActiveSourceBoundAfflictionToCard(
+                combat, instance);
+            var fits = combat.Hand.Length < maxHandSize;
+            combat = combat with
+            {
+                NextCardInstanceId = combat.NextCardInstanceId + 1,
+                Cards = combat.Cards.Append(instance).ToArray(),
+                Hand = fits ? combat.Hand.Append(instance.InstanceId).ToArray()
+                    : combat.Hand,
+                DiscardPile = fits ? combat.DiscardPile
+                    : combat.DiscardPile.Append(instance.InstanceId).ToArray()
+            };
+        }
+
+        return combat;
     }
 
     private static CombatState AddGeneratedCardsToDiscard(
