@@ -81,7 +81,7 @@ public static class PrototypeNativeLaterActs
     [
         // Source: BowlbugEgg.cs. Bite applies player damage THEN
         // self-block, and repeats with no RNG decision.
-        new("proto.native.hive.bowlbug_egg", "Bowlbug Egg", 24, 0,
+        new("proto.native.hive.bowlbug_egg", "Bowlbug Egg", 22, 0,
             [
                 new("bite",
                     [
@@ -95,7 +95,7 @@ public static class PrototypeNativeLaterActs
             HpAscensionDeltas: [new(8, 2)]),
         // Source: BowlbugNectar.cs. Thrash -> Strength 15/16 ->
         // Thrash forever, rather than repeating the Strength gain.
-        new("proto.native.hive.bowlbug_nectar", "Bowlbug Nectar", 39, 0,
+        new("proto.native.hive.bowlbug_nectar", "Bowlbug Nectar", 38, 0,
             [
                 new("thrash", [new(PrototypeEnemyEffectKind.DamagePlayer, 3)]),
                 new("buff",
