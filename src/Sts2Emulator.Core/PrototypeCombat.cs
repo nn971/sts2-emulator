@@ -2360,6 +2360,14 @@ public sealed partial class PrototypeGameEngine
                 enemy.IsOffBalance,
             PrototypeEnemyAiConditionKind.IsNotOffBalance =>
                 !enemy.IsOffBalance,
+            PrototypeEnemyAiConditionKind.HasEnemyPower =>
+                branch.Value is not null
+                && enemy.PowerStates.Any(power =>
+                    power.PowerId == branch.Value && power.Stacks > 0),
+            PrototypeEnemyAiConditionKind.LacksEnemyPower =>
+                branch.Value is not null
+                && !enemy.PowerStates.Any(power =>
+                    power.PowerId == branch.Value && power.Stacks > 0),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(branch.Condition))
         };
