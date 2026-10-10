@@ -227,6 +227,19 @@ This is an intermediate implementation. Final release gates remain open.
   forced-combat fixtures, with native maps, RNG ownership, and real
   replay evidence outstanding. Details:
   [Glory weak closure](reference-builds/v0.111.0-glory-weak-closure.md).
+- Registered all **41 pinned native Normal encounter IDs**. The
+  final seven source-backed gated fixtures are Glory Axebots,
+  Construct Menagerie, Fabricator, Globe Head, Owl Magistrate,
+  The Lost and Forgotten; plus unused-by-Hive-bags Tunneler Normal.
+  New typed mechanics cover Axebot three-life Stock, Fabricator's
+  two bot classes and four-slot minion fabrication, Galvanic on
+  Power cards, Soar reducing powered hits, and Possess Strength/Speed
+  restoration on owner death. Original Cubex/Punch models are
+  reused in the Glory construct formation. Normal encounter
+  registration and synthetic tests do NOT establish completed native
+  later-act map integration or fidelity. All newly added fights
+  remain Weight=0. See [v111 normal roster closure](
+  reference-builds/v0.111.0-all-normal-encounters.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
