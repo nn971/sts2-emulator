@@ -148,7 +148,9 @@ public sealed class V111HiveHunterAndLouseTests
         var played = engine.Step(state, engine.GetLegalActions(state)
             .Single(a => a.Kind == "play_card")).State;
         var enemy = Assert.Single(played.World!.Combat!.Enemies);
-        Assert.Equal(114, enemy.Block);
+        // Strike's six damage is absorbed first (100 -> 94).
+        // Native Curl Up grants 14 only AFTER the card completes.
+        Assert.Equal(108, enemy.Block);
         Assert.Equal(originalEnemy.Hp, enemy.Hp);
         Assert.DoesNotContain(enemy.PowerStates,
             p => p.PowerId == CurlUp);
