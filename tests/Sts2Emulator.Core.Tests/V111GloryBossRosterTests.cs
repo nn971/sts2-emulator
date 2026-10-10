@@ -169,6 +169,22 @@ public sealed class V111GloryBossRosterTests
 
         Assert.Contains(Assert.Single(state.World!.Combat!.Enemies).PowerStates,
             p => p.PowerId == PrototypeNativeGloryBosses.NemesisId);
+        // Nemesis alternates Intangible across enemy turns. Put the
+        // final form at one HP so its per-hit cap remains respected.
+        var finalCombat = state.World!.Combat!;
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = finalCombat with
+                {
+                    Enemies = finalCombat.Enemies.Select(enemy =>
+                        enemy.InstanceId == id
+                            ? enemy with { Hp = 1 }
+                            : enemy).ToArray()
+                }
+            }
+        };
         state = HitEnemy(state, id, 10000);
         var final = Assert.Single(state.World!.Combat!.Enemies);
         Assert.Equal(0, final.Hp);
