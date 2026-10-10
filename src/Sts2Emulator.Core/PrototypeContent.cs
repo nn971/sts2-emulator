@@ -2953,6 +2953,23 @@ public static class PrototypeContent
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
         new[]
         {
+            new PrototypePowerDefinition(
+                "proto.power.fasten", "Fasten", 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                BlockBonusRequiredCardTag: "Defend"),
+            new PrototypePowerDefinition(
+                "proto.power.prep_time", "Prep Time", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyPlayerPower,
+                                0, AmountPerPowerStack: 1,
+                                PowerId: "proto.power.vigor")
+                        ])
+                ]),
             // Panache instances independently count five cards during each
             // turn, ignoring the card which originally applied the power.
             new PrototypePowerDefinition(

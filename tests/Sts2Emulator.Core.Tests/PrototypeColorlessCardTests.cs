@@ -10,7 +10,7 @@ public sealed class PrototypeColorlessCardTests
         Assert.Equal(65, PrototypeColorlessCards.NativePoolIds.Length);
         Assert.Equal(65, PrototypeColorlessCards.NativePoolIds
             .Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(33, PrototypeColorlessCards.ImplementedShopPool.Length);
+        Assert.Equal(41, PrototypeColorlessCards.ImplementedShopPool.Length);
         Assert.All(PrototypeColorlessCards.ImplementedShopPool, id =>
         {
             Assert.Contains(id, PrototypeColorlessCards.NativePoolIds);
@@ -21,9 +21,9 @@ public sealed class PrototypeColorlessCardTests
                 or PrototypeCardRarity.Rare);
             Assert.DoesNotContain(id, PrototypeContent.RewardCardPool);
         });
-        Assert.Equal(24, PrototypeColorlessCards.Implemented.Count(
+        Assert.Equal(28, PrototypeColorlessCards.Implemented.Count(
             card => card.Rarity == PrototypeCardRarity.Uncommon));
-        Assert.Equal(9, PrototypeColorlessCards.Implemented.Count(
+        Assert.Equal(13, PrototypeColorlessCards.Implemented.Count(
             card => card.Rarity == PrototypeCardRarity.Rare));
     }
 

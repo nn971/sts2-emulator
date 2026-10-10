@@ -208,6 +208,7 @@ public static class PrototypeNativeUnderdocks
             BlockBonusPerStack: 0,
             Triggers: [],
             EnemyAttackDamageBonusPerStack: 1,
+            PlayerAttackDamageBonusPerStack: 1,
             ConsumeAfterEnemyAttack: true)
     ];
 
