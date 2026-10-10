@@ -341,6 +341,21 @@ This is an intermediate implementation. Final release gates remain open.
   remain forced-event Weight=0 fixtures; native Hive maps, event
   randomness and live-oracle parity are still pending.
 
+- Added source-backed Act 2 Hive forced-event fixtures for **Colossal Flower**
+  and **Spirit Grafter**. Flower supports all three digging stages:
+  35/75/135 Gold or HP losses of 5/6/7, culminating in Pollinous Core.
+  The flower eligibility check requires at least 19 HP. The relic keeps
+  a serializable cross-combat hand-draw counter, granting +2 extra
+  cards on every fourth hand draw including the opening draw.
+  Spirit Grafter offers 25 healing plus Metamorphosis, or a selected
+  card upgrade followed by 10 HP loss; the rejection option remains
+  legal with no upgradable deck card. Metamorphosis generates 3 (5)
+  random eligible Silent Attacks with replacement, inserts each into
+  the combat draw pile at a random index, and makes each free for that
+  combat. Native unlock pools and exact CardFactory RNG are still
+  approximated; real Act 2 event routing and oracle validation remain
+  gated.
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

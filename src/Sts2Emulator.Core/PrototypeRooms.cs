@@ -763,6 +763,11 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
+        if (eventState.EventId == PrototypeNativeHiveEvents.ColossalFlowerId)
+        {
+            return GetColossalFlowerActions(eventState);
+        }
+
         if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
         {
             return GetEndlessConveyorActions(state, eventState);
@@ -975,6 +980,11 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == PrototypeNativeHiveEvents.InfestedAutomatonId)
         {
             return StepNativeInfestedAutomaton(state, action);
+        }
+
+        if (eventState.EventId == PrototypeNativeHiveEvents.ColossalFlowerId)
+        {
+            return StepNativeColossalFlower(state, action);
         }
 
         if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
@@ -1687,6 +1697,8 @@ public sealed partial class PrototypeGameEngine
         return PrototypeNativeOvergrowthEvents.AllowsEmptyDeckChoice(
                    world.Event?.EventId ?? string.Empty)
             || PrototypeNativeUnderdocksEvents.AllowsEmptyDeckChoice(
+                   world.Event?.EventId ?? string.Empty)
+            || PrototypeNativeHiveEvents.AllowsEmptyDeckChoice(
                    world.Event?.EventId ?? string.Empty)
             || player.Deck.Any(card =>
                 CanSelectEventDeckCard(
