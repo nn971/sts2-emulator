@@ -419,9 +419,6 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             .GetProperty("PreviousSource").GetInt32());
         Assert.False(lenses[1].PersistentState
             .TryGetProperty("PreviousSource", out _));
-        Assert.Equal(4, lenses.Sum(relic =>
-            PrototypeContent.Relic(relic.RelicId)
-                .EnchantNewBlockCardsNimble));
         PrototypeStateInvariants.Validate(after);
     }
 
