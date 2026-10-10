@@ -63,6 +63,18 @@ This is an intermediate implementation. Final release gates remain open.
   Conveyor selections and native potion-offer slots. This narrows invalid
   states admitted by synthetic snapshots and fixes valid special-event states
   rejected by legacy single-page assumptions.
+- Source-audited lethal event actions: pinned solo Overgrowth/Underdocks
+  choices are legal even when their HP loss is fatal (native options warn but
+  do not lock). Damage-first paths now stop immediately on defeat without
+  yielding deferred rewards; Sunken Statue's source-ordered gold-before-damage
+  path still credits its gold. Legacy prototype-only event safety gating stays
+  unchanged. Regression tests cover Maze, Statue and delayed Whispering Hollow.
+- Extended source-backed public event option projections across Overgrowth:
+  Dense Vegetation's rolled gold and rest heal, Byrdonis Nest fixed Egg/HP,
+  Morphic Grove's entire current gold sacrifice, Sapphire Seed heal,
+  Unrest Site's current healing and fixed curse/max-HP sacrifice, Wellspring's
+  curse, Luminous Choir's card, and Wood Carvings' fixed transformations.
+  All projections derive from visible state and consume no random draws.
 - Added CI pin/inventory/coverage baseline checks and real-server Python
   snapshot/batch/compatibility checks. Added configured decision-boundary
   benchmarks for forks, allocations, stepping, batches, hashing, snapshots and

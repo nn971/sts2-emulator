@@ -356,20 +356,25 @@ public sealed class PrototypeNativeEventOrderingTests
             () => PrototypeStateInvariants.Validate(state));
     }
 
-    [Fact]
-    public void JungleMazeSoloRequiresSurvivableHp()
+    [Theory]
+    [InlineData(18)]
+    [InlineData(10)]
+    [InlineData(1)]
+    public void JungleMazeSoloRemainsLegalEvenWhenLethalAndAwardsNoGold(
+        int initialHp)
     {
         var state = EnterEvent(
             "proto.native.event.jungle_maze_adventure",
-            "jungle-unsafe-solo",
+            "jungle-lethal-solo-" + initialHp,
             nativeEventGold: 150,
             nativeSecondaryGold: 50);
         state = state with
         {
-            Player = state.Player with { Hp = 18 }
+            Player = state.Player with { Hp = initialHp }
         };
+        var startingGold = state.Player.Gold;
         var engine = new PrototypeGameEngine();
-        Assert.DoesNotContain(engine.GetLegalActions(state),
+        Assert.Contains(engine.GetLegalActions(state),
             action => action.Kind == "event_choice"
                 && action.ReadPayload<EventChoicePayload>().ChoiceId
                     == "solo");
@@ -378,6 +383,60 @@ public sealed class PrototypeNativeEventOrderingTests
                 && action.ReadPayload<EventChoicePayload>().ChoiceId
                     == "join");
         PrototypeStateInvariants.Validate(state);
+        state = Take(state, "solo");
+        Assert.Equal(RunPhase.Terminal, state.Phase);
+        Assert.Equal(0, state.Player.Hp);
+        Assert.Equal(startingGold, state.Player.Gold);
+        Assert.Equal("defeat", state.World!.TerminalOutcome);
+    }
+
+    [Fact]
+    public void SunkenStatueDivePaysGoldBeforeLethalDamage()
+    {
+        var state = EnterEvent(
+            "proto.native.event.sunken_statue",
+            "sunken-statue-lethal", nativeEventGold: 111);
+        state = state with
+        {
+            Player = state.Player with { Hp = 7 }
+        };
+        var startingGold = state.Player.Gold;
+        var engine = new PrototypeGameEngine();
+        Assert.Contains(engine.GetLegalActions(state),
+            action => action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == "dive");
+        state = Take(state, "dive");
+        Assert.Equal(RunPhase.Terminal, state.Phase);
+        Assert.Equal(0, state.Player.Hp);
+        Assert.Equal(startingGold + 111, state.Player.Gold);
+        Assert.Equal("defeat", state.World!.TerminalOutcome);
+    }
+
+    [Fact]
+    public void WhisperingHollowAllowsLethalHugThenStopsAfterTransformation()
+    {
+        var state = EnterEvent(
+            "proto.native.event.whispering_hollow",
+            "whisper-hug-lethal", nativeEventGold: 35);
+        state = state with { Player = state.Player with { Hp = 9 } };
+        var engine = new PrototypeGameEngine();
+        Assert.Contains(engine.GetLegalActions(state),
+            action => action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == "hug");
+        state = Take(state, "hug");
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.NotNull(state.World!.Event!.PendingDeckChoice);
+        var before = state.Player.Deck[0];
+        var transform = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "choose_event_deck_card"
+            && action.ReadPayload<ChooseEventDeckCardPayload>()
+                .CardInstanceId == before.InstanceId);
+        state = engine.Step(state, transform).State;
+        Assert.Equal(RunPhase.Terminal, state.Phase);
+        Assert.Equal(0, state.Player.Hp);
+        Assert.Equal("defeat", state.World!.TerminalOutcome);
     }
 
     [Fact]
