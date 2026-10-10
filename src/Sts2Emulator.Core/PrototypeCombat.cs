@@ -3761,6 +3761,15 @@ public sealed partial class PrototypeGameEngine
                         resumeCardPlaySeries: false);
                 }
 
+                case PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand:
+                    combat = AddDistinctGeneratedColorlessCardsToHand(
+                        combat, operation.Amount, rng,
+                        sourceCardInstanceId is null
+                            ? null
+                            : RequireCombatCard(
+                                combat, sourceCardInstanceId.Value).CardId);
+                    break;
+
                 case PrototypeCombatEffectKind.ChooseGeneratedCards:
                 {
                     var generated = AddGeneratedChoiceCards(
@@ -3821,6 +3830,17 @@ public sealed partial class PrototypeGameEngine
                                     RequireCombatCard(combat, instanceId).CardId).Type
                                 == selection.RequiredCardType.Value)
                             .ToArray();
+                    }
+
+                    if (selection.RandomCandidateCount > 0
+                        && candidates.Length > selection.RandomCandidateCount)
+                    {
+                        // Native pile selectors may offer only a random
+                        // shortlist. Filter by type before choosing it.
+                        var shuffledCandidates = (long[])candidates.Clone();
+                        PrototypeRng.Shuffle(rng, "combat", shuffledCandidates);
+                        candidates = shuffledCandidates
+                            .Take(selection.RandomCandidateCount).ToArray();
                     }
 
                     if (selection.RequireEnergyCostingCard)
@@ -4769,6 +4789,47 @@ public sealed partial class PrototypeGameEngine
     private sealed record PrototypeGeneratedChoiceResult(
         CombatState Combat,
         long[] CardInstanceIds);
+
+    private static CombatState AddDistinctGeneratedColorlessCardsToHand(
+        CombatState combat, int count, RngBundle rng, string? sourceCardId)
+    {
+        const int maxHandSize = 10;
+        var capacity = Math.Max(0, maxHandSize - combat.Hand.Length);
+        var candidates = PrototypeColorlessCards.ImplementedCombatGenerationPool
+            .Where(id => !StringComparer.Ordinal.Equals(id, sourceCardId))
+            .ToArray();
+        if (capacity == 0 || count <= 0 || candidates.Length == 0)
+        {
+            return combat;
+        }
+
+        // Native GetDistinctForCombat uses CombatCardGeneration and a
+        // fully-unlocked card pool. Synthetic RNG currently shares the
+        // combat stream, and we intentionally omit locked/unimplemented
+        // models until the native unlock bridge exists.
+        PrototypeRng.Shuffle(rng, "combat", candidates);
+        foreach (var cardId in candidates.Take(
+                     Math.Min(Math.Min(count, capacity), candidates.Length)))
+        {
+            var instance = new CombatCardInstance(
+                InstanceId: combat.NextCardInstanceId,
+                PersistentCardInstanceId: null,
+                CardId: cardId,
+                UpgradeLevel: 0,
+                IsTemporary: true,
+                State: PrototypeJson.EmptyObject());
+            instance = ApplyActiveSourceBoundAfflictionToCard(
+                combat, instance);
+            combat = combat with
+            {
+                NextCardInstanceId = combat.NextCardInstanceId + 1,
+                Cards = combat.Cards.Append(instance).ToArray(),
+                Hand = combat.Hand.Append(instance.InstanceId).ToArray()
+            };
+        }
+
+        return combat;
+    }
 
     private static PrototypeGeneratedChoiceResult AddGeneratedChoiceCards(
         CombatState combat,
@@ -5903,6 +5964,8 @@ public sealed partial class PrototypeGameEngine
                 combat.Hand.Length,
             PrototypeCombatCountKind.DrawPileCards =>
                 combat.DrawPile.Length,
+            PrototypeCombatCountKind.PlayerBlock =>
+                combat.PlayerBlock,
 
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };

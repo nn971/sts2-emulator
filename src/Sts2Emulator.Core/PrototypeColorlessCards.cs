@@ -338,11 +338,183 @@ public static class PrototypeColorlessCards
             ],
             ExhaustOnUse: true,
             Rarity: PrototypeCardRarity.Uncommon,
-            Type: PrototypeCardType.Skill)
+            Type: PrototypeCardType.Skill),
+        // Source: Discovery.cs. Optional choice of three distinct unlocked
+        // character cards, chosen copy free for the remainder of this turn.
+        new(
+            "proto.colorless.discovery",
+            "Discovery",
+            1,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+                    GeneratedChoiceCardsFreeThisTurn: true,
+                    GeneratedChoiceMustPick: false)
+            ],
+            ExhaustOnUse: true,
+            LoseExhaustOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        // Source: JackOfAllTrades.cs. Add distinct colorless copies, not
+        // a choice; native combat-generation and unlock gates apply.
+        new(
+            "proto.colorless.jack_of_all_trades",
+            "Jack of All Trades",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand,
+                    1, 1)
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.scrawl",
+            "Scrawl",
+            1,
+            PrototypeCardTarget.None,
+            [
+                // Draw's normal hand capacity of 10 bounds this request.
+                new(PrototypeCombatEffectKind.DrawCards, 10)
+            ],
+            ExhaustOnUse: true,
+            RetainOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.restlessness",
+            "Restlessness",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.DrawCards, 2, 1,
+                    Condition: new(
+                        PrototypeCombatPredicateKind.HandEmptyAtEnqueue)),
+                new(PrototypeCombatEffectKind.GainEnergy, 2, 1,
+                    Condition: new(
+                        PrototypeCombatPredicateKind.HandEmptyAtEnqueue))
+            ],
+            Retain: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.prowess",
+            "Prowess",
+            1,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1, 1,
+                    PowerId: "proto.power.strength"),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1, 1,
+                    PowerId: "proto.power.dexterity")
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power),
+        new(
+            "proto.colorless.equilibrium",
+            "Equilibrium",
+            2,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.GainPlayerBlock, 13, 3),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                    PowerId: "proto.power.retain_hand")
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.production",
+            "Production",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.GainEnergy, 2, 1)
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.prolong",
+            "Prolong",
+            0,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 0,
+                    CountKind: PrototypeCombatCountKind.PlayerBlock,
+                    AmountPerCount: 1,
+                    PowerId: "proto.power.block_next_turn")
+            ],
+            ExhaustOnUse: true,
+            LoseExhaustOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Skill),
+        new(
+            "proto.colorless.salvo",
+            "Salvo",
+            1,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 12, 4),
+                new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                    PowerId: "proto.power.retain_hand")
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        new(
+            "proto.colorless.seeker_strike",
+            "Seeker Strike",
+            1,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 9, 3),
+                new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.DrawPile, 1, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand,
+                        RandomCandidateCount: 3))
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack,
+            Tags: ["Strike"])
     ];
 
     public static string[] ImplementedShopPool { get; } =
         Implemented.Select(c => c.Id).ToArray();
+
+    // Native Colorless1..5Epoch.Cards (pinned v0.111.0).
+    // Until unlock state is available, combat generation deliberately
+    // uses the conservative base-pool subset. This does not reproduce a
+    // fully-unlocked game and should not be used for RNG parity tests.
+    public static string[] EpochGatedIds { get; } =
+    [
+        "proto.colorless.automation",
+        "proto.colorless.entropy",
+        "proto.colorless.catastrophe",
+        "proto.colorless.eternal_armor",
+        "proto.colorless.jackpot",
+        "proto.colorless.prep_time",
+        "proto.colorless.rend",
+        "proto.colorless.beat_down",
+        "proto.colorless.prowess",
+        "proto.colorless.alchemize",
+        "proto.colorless.nostalgia",
+        "proto.colorless.scrawl",
+        "proto.colorless.splash",
+        "proto.colorless.anointed",
+        "proto.colorless.calamity"
+    ];
+
+    public static string[] ImplementedCombatGenerationPool { get; } =
+        NativePoolIds.Where(id =>
+            Implemented.Any(card => card.Id == id
+                && card.CanBeGeneratedInCombat
+                && card.MechanicsImplemented
+                && !card.MultiplayerOnly
+                && card.Rarity is
+                    PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare)
+            && !EpochGatedIds.Contains(id, StringComparer.Ordinal))
+        .ToArray();
 
     public static string PickMerchantCard(
         PrototypeCardRarity rarity,
