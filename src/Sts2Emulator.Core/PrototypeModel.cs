@@ -1387,7 +1387,10 @@ public sealed record EnemyCombatState(
     int HpLossBudgetUsed = 0,
     bool GainedReactiveBlockThisTurn = false,
     bool LastStandTriggered = false,
-    int StoredEnemyDamage = 0)
+    int StoredEnemyDamage = 0,
+    // Committed at combat entry / the player-turn boundary, never on Observe.
+    int? PlannedMoveIndex = null,
+    string? PlannedNextAiStateId = null)
 {
     public EnemyCombatState Fork() => this with
     {
