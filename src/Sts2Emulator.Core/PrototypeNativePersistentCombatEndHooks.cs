@@ -40,90 +40,92 @@ public sealed partial class PrototypeGameEngine
 
         player = player with { Deck = deck };
 
-        // Sword of Stone increments on elite victories only. The fifth
-        // victory replaces it in place with Sword of Jade, preserving
-        // relic order and giving future combats Jade's opening Strength.
+        // Each Sword of Stone is its own native relic instance with its
+        // own persisted elite counter. The fifth elite victory replaces
+        // that instance with Jade while preserving the relic's slot.
         if (roomType == PrototypeRoomType.Elite)
         {
             const string stoneId = "proto.native.event.sword_of_stone";
             const string jadeId = "proto.native.event.sword_of_jade";
-            var index = Array.FindIndex(player.Relics,
-                relic => relic.RelicId == stoneId);
-            if (index >= 0)
+            player = player with
             {
-                var stoneRelics = (RelicInstance[])player.Relics.Clone();
-                var defeated = GetNativeElitesDefeated(
-                    stoneRelics[index].PersistentState) + 1;
-                stoneRelics[index] = defeated >= 5
-                    ? new RelicInstance(jadeId, PrototypeJson.EmptyObject())
-                    : stoneRelics[index] with
+                Relics = player.Relics.Select(relic =>
+                {
+                    if (relic.RelicId != stoneId)
                     {
-                        PersistentState = JsonSerializer.SerializeToElement(
-                            new NativeElitesDefeated(defeated))
-                    };
-                player = player with { Relics = stoneRelics };
-            }
+                        return relic;
+                    }
+
+                    var defeated = checked(
+                        GetNativeElitesDefeated(relic.PersistentState) + 1);
+                    return defeated >= 5
+                        ? new RelicInstance(jadeId, PrototypeJson.EmptyObject())
+                        : relic with
+                        {
+                            PersistentState = JsonSerializer.SerializeToElement(
+                                new NativeElitesDefeated(defeated))
+                        };
+                }).ToArray()
+            };
         }
 
-        // Fishing Rod counts only ordinary monster encounters. Every
-        // third one upgrades one random currently upgradable deck card.
-        if (roomType != PrototypeRoomType.Combat)
+        // Each Fishing Rod independently counts ordinary monster combats.
+        // On every third combat its native callback upgrades one currently
+        // eligible deck card; when two Rods are present, the callbacks
+        // execute separately and see each other's deck modifications.
+        if (roomType == PrototypeRoomType.Combat)
         {
-            return player;
-        }
-
-        var rodId = PrototypeNativeOvergrowthEvents.NeowRelicId(
-            "FishingRod");
-        var rodIndex = Array.FindIndex(player.Relics,
-            relic => relic.RelicId == rodId);
-        if (rodIndex < 0)
-        {
-            return player;
-        }
-
-        var relics = (RelicInstance[])player.Relics.Clone();
-        var countAfterCombat =
-            GetNativeCombatsSeen(relics[rodIndex].PersistentState) + 1;
-        relics[rodIndex] = relics[rodIndex] with
-        {
-            PersistentState = JsonSerializer.SerializeToElement(
-                new NativeCombatsSeen(countAfterCombat))
-        };
-        player = player with { Relics = relics };
-
-        if (countAfterCombat % 3 != 0)
-        {
-            return player;
-        }
-
-        var candidates = player.Deck
-            .Where(card =>
+            var rodId = PrototypeNativeOvergrowthEvents.NeowRelicId(
+                "FishingRod");
+            var relics = (RelicInstance[])player.Relics.Clone();
+            for (var index = 0; index < relics.Length; index++)
             {
-                var definition = PrototypeContent.Card(card.CardId);
-                return card.UpgradeLevel == 0
-                    && !definition.Unplayable
-                    && definition.Rarity is not
-                        PrototypeCardRarity.Curse
-                        and not PrototypeCardRarity.Status
-                        and not PrototypeCardRarity.Quest;
-            })
-            .Select(card => card.InstanceId)
-            .ToArray();
+                var relic = relics[index];
+                if (relic.RelicId != rodId)
+                {
+                    continue;
+                }
 
-        if (candidates.Length == 0)
-        {
-            return player;
+                var count = checked(
+                    GetNativeCombatsSeen(relic.PersistentState) + 1);
+                relics[index] = relic with
+                {
+                    PersistentState = JsonSerializer.SerializeToElement(
+                        new NativeCombatsSeen(count))
+                };
+                if (count % 3 != 0)
+                {
+                    continue;
+                }
+
+                var candidates = player.Deck
+                    .Where(card => CanSelectEventDeckCard(
+                        card, PrototypePersistentDeckChoiceKind.Upgrade,
+                        null, null, false))
+                    .Select(card => card.InstanceId)
+                    .ToArray();
+                if (candidates.Length == 0)
+                {
+                    continue;
+                }
+
+                // Native uses RunState.Rng.Niche; this prototype retains
+                // the pre-existing event stream until native integration.
+                var selected = candidates[
+                    PrototypeRng.NextInt(rng, "event", candidates.Length)];
+                player = player with
+                {
+                    Deck = player.Deck.Select(card =>
+                        card.InstanceId == selected
+                            ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
+                            : card).ToArray()
+                };
+            }
+
+            player = player with { Relics = relics };
         }
 
-        var selected = candidates[
-            PrototypeRng.NextInt(rng, "event", candidates.Length)];
-        return player with
-        {
-            Deck = player.Deck.Select(card =>
-                card.InstanceId == selected
-                    ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
-                    : card).ToArray()
-        };
+        return player;
     }
 
     private static int GetNativeElitesDefeated(JsonElement state) =>
