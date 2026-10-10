@@ -94,7 +94,7 @@ public sealed class PrototypeColorlessSeventhBatchTests
     {
         var state = Setup("anointed-" + upgrade,
             ["proto.colorless.anointed", "proto.silent.strike",
-             "proto.colorless.panache", "proto.colorless.the_bomb",
+             "proto.colorless.mayhem", "proto.colorless.hand_of_greed",
              "proto.colorless.master_of_strategy"],
             [1], [2, 3, 4, 5], upgrade);
         var fork = state.Fork();
@@ -117,7 +117,7 @@ public sealed class PrototypeColorlessSeventhBatchTests
     {
         var ids = new[] { "proto.colorless.anointed" }
             .Concat(Enumerable.Repeat("proto.silent.strike", 8))
-            .Concat(Enumerable.Repeat("proto.colorless.panache", 3))
+            .Concat(Enumerable.Repeat("proto.colorless.master_of_strategy", 3))
             .ToArray();
         var state = Setup("anointed-capacity", ids,
             Enumerable.Range(1, 9).Select(i => (long)i).ToArray(),
