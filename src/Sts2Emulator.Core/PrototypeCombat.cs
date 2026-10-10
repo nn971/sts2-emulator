@@ -8216,12 +8216,26 @@ public sealed partial class PrototypeGameEngine
                         "proto.power.strength"));
             }
 
+            var forcedStateId =
+                thresholdDefinition.OwnerAiStateOnHpThresholdTrigger;
+            var forcedAiState = forcedStateId is null
+                ? null
+                : PrototypeContent.Enemy(enemy.EnemyId)
+                    .Ai?.States.FirstOrDefault(state =>
+                        StringComparer.Ordinal.Equals(
+                            state.Id, forcedStateId));
+            // A player-triggered threshold may OVERRIDE an announced move,
+            // e.g. the Ceremonial Beast is visibly stunned. This is a
+            // deterministic interrupt, never a new hidden random roll.
             enemy = enemy with
             {
-                AiStateId =
-                    thresholdDefinition
-                        .OwnerAiStateOnHpThresholdTrigger
-                    ?? enemy.AiStateId
+                AiStateId = forcedStateId ?? enemy.AiStateId,
+                PlannedMoveIndex = forcedAiState is
+                    { Kind: PrototypeEnemyAiStateKind.Move }
+                    ? forcedAiState.MoveIndex : enemy.PlannedMoveIndex,
+                PlannedNextAiStateId = forcedAiState is
+                    { Kind: PrototypeEnemyAiStateKind.Move }
+                    ? forcedAiState.NextStateId : enemy.PlannedNextAiStateId
             };
         }
 
