@@ -104,10 +104,10 @@ This is an intermediate implementation. Final release gates remain open.
   the typed entries must not be mistaken for full playable later acts.
   Source audit and test boundaries:
   [Hive/Glory first slice](reference-builds/v0.111.0-hive-glory-first-slice.md).
-- Implemented **three source-backed Hive weak formations** in the typed
-  encounter registry: Bowlbugs Weak (Rock plus Egg/Nectar roll),
-  Exoskeletons Weak (three distinct opening slots), and Tunneler Weak
-  (one Burrowed Tunneler). Added Rock's
+- Implemented **all four source-backed Hive weak encounter formations**
+  in the typed combat registry: Bowlbugs Weak (Rock plus Egg/Nectar
+  roll), Exoskeletons Weak (three distinct opening slots), Tunneler Weak
+  (one Burrowed Tunneler), and Thieving Hopper Weak (single thief). Added Rock's
   Imbalanced fully-blocked-attack → committed Dizzy turn → recovery,
   Silk's independent Weak/Thrash sequence, Exoskeleton's slot-based
   move state machine and non-repeating AI, and Hard to Kill's 9-HP
@@ -116,7 +116,15 @@ This is an intermediate implementation. Final release gates remain open.
   committed Below intent with Dizzy, then restores the Bite cycle.
   These are explicitly testable and fork-safe, **not yet sampled in
   actual Hive maps**; legacy selector weights remain zero. The
-  Thieving Hopper card-theft/escape weak encounter is still unsupported.
+  Thieving Hopper now steals eligible **physical persistent deck cards**
+  from combat draw/discard, carrying full upgrade/instance state in Swipe
+  until the thief dies and automatically restores its original card,
+  or escapes and permanently removes it. Flutter halves powered attacks
+  only and stuns on the fifth unblocked hit. The special return is exposed
+  as typed reward metadata without giving a duplicate persistent card.
+  All four fights remain **gated from real Hive route generation**;
+  their legacy weights are zero. Native CombatCardGeneration RNG,
+  Imbued-card priority and exact reward UI timing remain unverified.
   Source details are recorded in the Hive/Glory first-slice audit note.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
