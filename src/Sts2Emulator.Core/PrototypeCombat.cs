@@ -201,6 +201,7 @@ public sealed partial class PrototypeGameEngine
                     InstanceId: index + 1,
                     EnemyId: enemySpec.EnemyId,
                     Hp: hp,
+                    MaxHp: hp,
                     Block: powers.Sum(power =>
                         power.Stacks * PrototypeContent.Power(power.PowerId)
                             .EnemyStartingBlockPerStack),
@@ -2420,6 +2421,10 @@ public sealed partial class PrototypeGameEngine
             PrototypeEnemyAiConditionKind.MoveUsedAtLeast =>
                 hasThreshold
                 && used >= int.Parse(moveThreshold![1]),
+            PrototypeEnemyAiConditionKind.HpAtLeastHalf =>
+                enemy.MaxHp > 0 && enemy.Hp >= enemy.MaxHp / 2,
+            PrototypeEnemyAiConditionKind.HpBelowHalf =>
+                enemy.MaxHp > 0 && enemy.Hp < enemy.MaxHp / 2,
             PrototypeEnemyAiConditionKind.IsAlone =>
                 isAlone,
             PrototypeEnemyAiConditionKind.IsFront =>
@@ -2983,6 +2988,7 @@ public sealed partial class PrototypeGameEngine
                             {
                                 EnemyId = effect.EnemyId,
                                 Hp = maxHp,
+                                MaxHp = maxHp,
                                 Block = 0,
                                 Statuses = new Dictionary<string, int>(
                                     StringComparer.Ordinal),
@@ -3157,6 +3163,7 @@ public sealed partial class PrototypeGameEngine
                                     InstanceId: nextEnemyId,
                                     EnemyId: effect.EnemyId,
                                     Hp: summonedHp,
+                                    MaxHp: summonedHp,
                                     Block: 0,
                                     MoveIndex: 0,
                                     Statuses:
@@ -3417,6 +3424,7 @@ public sealed partial class PrototypeGameEngine
                         InstanceId: nextEnemyId,
                         EnemyId: summon.EnemyId,
                         Hp: hp,
+                        MaxHp: hp,
                         Block: 0,
                         MoveIndex: 0,
                         Statuses:
