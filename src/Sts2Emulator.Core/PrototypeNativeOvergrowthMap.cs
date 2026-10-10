@@ -17,17 +17,39 @@ public static class PrototypeNativeOvergrowthMap
     public const int FirstTreasureFloor = 9;
     public const int PreBossRestFloor = 15;
 
-    private sealed class Point(int floor, int column)
+    private sealed class Point(int act, int floor, int column)
     {
+        public int Act { get; } = act;
         public int Floor { get; } = floor;
         public int Column { get; } = column;
         public PrototypeRoomType? Room { get; set; }
         public HashSet<Point> Children { get; } = [];
         public HashSet<Point> Parents { get; } = [];
-        public string Id => $"1:{Floor}:{Column}";
+        public string Id => $"{Act}:{Floor}:{Column}";
     }
 
-    public static MapState Generate(RngBundle rng, int ascension = 0)
+    public static MapState Generate(RngBundle rng, int ascension = 0) =>
+        GenerateCore(rng, ascension, 1, RoomRows, GenerationProfileId);
+
+    /// <summary>
+    /// Source-shaped later-act geometry. Reuses the pinned StandardActMap
+    /// connectivity/placement model but not native RNG stream/call ordering.
+    /// Act 2 has 14 room rows; Act 3 has 13.
+    /// </summary>
+    internal static MapState GenerateLaterAct(
+        RngBundle rng, int ascension, int act)
+    {
+        if (act is not (2 or 3))
+            throw new ArgumentOutOfRangeException(nameof(act));
+        return GenerateCore(rng, ascension, act,
+            act == 2 ? 14 : 13,
+            act == 2
+                ? PrototypeNativeLaterActRouting.HiveMapProfile
+                : PrototypeNativeLaterActRouting.GloryMapProfile);
+    }
+
+    private static MapState GenerateCore(RngBundle rng, int ascension,
+        int act, int roomRows, string profileId)
     {
         var points = new Dictionary<(int Floor, int Column), Point>();
         Point Get(int floor, int col)
@@ -35,7 +57,7 @@ public static class PrototypeNativeOvergrowthMap
             var key = (floor, col);
             if (!points.TryGetValue(key, out var point))
             {
-                point = new Point(floor, col);
+                point = new Point(act, floor, col);
                 points.Add(key, point);
             }
 
@@ -64,7 +86,7 @@ public static class PrototypeNativeOvergrowthMap
             starts.Add(start);
 
             var current = Get(1, start);
-            for (var row = 1; row < RoomRows; row++)
+            for (var row = 1; row < roomRows; row++)
             {
                 var deltas = new[] { -1, 0, 1 };
                 PrototypeRng.Shuffle(rng, "map", deltas);
@@ -102,9 +124,9 @@ public static class PrototypeNativeOvergrowthMap
             }
         }
 
-        var boss = Get(BossFloor, 3);
+        var boss = Get(roomRows + 1, 3);
         foreach (var top in points.Values.Where(point =>
-                     point.Floor == RoomRows).ToArray())
+                     point.Floor == roomRows).ToArray())
         {
             Connect(top, boss);
         }
@@ -119,11 +141,11 @@ public static class PrototypeNativeOvergrowthMap
             {
                 point.Room = PrototypeRoomType.Treasure;
             }
-            else if (point.Floor == PreBossRestFloor)
+            else if (point.Floor == roomRows)
             {
                 point.Room = PrototypeRoomType.Rest;
             }
-            else if (point.Floor == BossFloor)
+            else if (point.Floor == roomRows + 1)
             {
                 point.Room = PrototypeRoomType.Boss;
             }
@@ -134,8 +156,15 @@ public static class PrototypeNativeOvergrowthMap
         // (mean 12, sigma 1, clamp [10,14]). Use the same rejection
         // algorithm; output draws remain non-native until the map RNG
         // codec and source call-order are translated.
-        var restCount = SampleTruncatedGaussian(rng, 7, 1, 6, 7);
-        var unknownCount = SampleTruncatedGaussian(rng, 12, 1, 10, 14);
+        var restCount = act switch
+        {
+            1 => SampleTruncatedGaussian(rng, 7, 1, 6, 7),
+            2 => SampleTruncatedGaussian(rng, 6, 1, 6, 7),
+            3 => 5 + PrototypeRng.NextInt(rng, "map", 2),
+            _ => throw new ArgumentOutOfRangeException(nameof(act))
+        };
+        var unknownCount = SampleTruncatedGaussian(rng, 12, 1, 10, 14)
+            - (act == 1 ? 0 : 1);
         var quotas = new (PrototypeRoomType Type, int Count)[]
         {
             (PrototypeRoomType.Rest, restCount),
@@ -163,7 +192,7 @@ public static class PrototypeNativeOvergrowthMap
                         break;
                     }
 
-                    if (!CanAssign(type, point))
+                    if (!CanAssign(type, point, roomRows))
                     {
                         continue;
                     }
@@ -184,7 +213,7 @@ public static class PrototypeNativeOvergrowthMap
             .ThenBy(point => point.Column)
             .Select(point => new MapNodeState(
                 point.Id,
-                1,
+                act,
                 point.Floor,
                 point.Room!.Value,
                 point.Children.OrderBy(child => child.Column)
@@ -195,7 +224,7 @@ public static class PrototypeNativeOvergrowthMap
             Nodes: nodes,
             EntryNodeIds: nodes.Where(node => node.Floor == 1)
                 .Select(node => node.NodeId).ToArray(),
-            GenerationProfileId: GenerationProfileId);
+            GenerationProfileId: profileId);
     }
 
     private static int SampleTruncatedGaussian(
@@ -222,7 +251,7 @@ public static class PrototypeNativeOvergrowthMap
         }
     }
 
-    private static bool CanAssign(PrototypeRoomType type, Point point)
+    private static bool CanAssign(PrototypeRoomType type, Point point, int roomRows)
     {
         if (point.Room is not null)
         {
@@ -235,7 +264,7 @@ public static class PrototypeNativeOvergrowthMap
             return false;
         }
 
-        if (type == PrototypeRoomType.Rest && point.Floor >= RoomRows - 2)
+        if (type == PrototypeRoomType.Rest && point.Floor >= roomRows - 2)
         {
             return false;
         }
