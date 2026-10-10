@@ -79,6 +79,7 @@ central dispatch branches.
 - [x] source-backed fifth batch: Panic Button and Dark Shackles; card-only Block prevention, enemy-side countdown expiration and reversible Strength reduction
 - [x] source-backed ten-card sixth batch: Discovery, Jack of All Trades, Scrawl, Restlessness, Prowess, Equilibrium, Production, Prolong, Salvo and Seeker Strike; generic distinct generation, optional choices and random draw-pile shortlists
 - [x] source-backed seventh batch: Volley, Splash, Anointed and Gold Axe; X-cost random attacks, upgraded attack discovery, rare-card draw-pile extraction and combat-wide finished-play counts
+- [x] source-backed eighth batch: Fisticuffs, Bolas, Thrumming Hatchet, Hidden Gem, Rend, Jackpot, Fasten and Prep Time; reusable damage-to-Block, per-instance last-turn recovery, replay, debuff scaling, zero-cost generation and power lifecycle effects
 - [x] pinned five colorless epoch-gated unlock inventories, with conservative combat generation filtering pending unlock-state modeling
 - [ ] implement further single-player colorless cards in mechanic-dependency batches (powers, generated choices, delayed effects, conditional damage, source-backed triggers)
 - [ ] model native solo unlock/epoch constraints and the actual colorless reward/merchant generation rules

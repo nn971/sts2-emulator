@@ -69,3 +69,26 @@ These mechanics are source-checked against the pinned game build.
 Generation, shuffle and selection use synthetic RNG streams until the
 native stream partition is implemented. Epoch-gated cards remain
 conservatively excluded from synthetic combat generation by default.
+
+## Eighth single-player batch (source-checked v0.111.0)
+
+- Fisticuffs: attack for 7/9; Block scales with the executed hit's
+  blocked/unblocked/overkill total. Damage-capped special encounters require
+  parity fixtures; current result-based Block matches ordinary attacks.
+- Bolas (3/4) and Thrumming Hatchet (11/14): independently track which
+  *physical card instances* finished play last player turn, and move those
+  instances from their current piles into hand before the next hand draw.
+- Hidden Gem: one random eligible draw-pile card gains 2/3 extra replays;
+  the native priority of playable Attack, Skill, Power candidates applies.
+- Rend: 10/12 base damage, plus 5/8 per non-temporary debuff currently
+  affecting the target.
+- Jackpot: 25/30 damage then three random current-character 0-cost
+  cards; upgrade also upgrades the generated cards. The synthetic pool is
+  restricted to implemented solo Silent reward cards.
+- Fasten: persistent 4/6 additive Block on cards tagged Defend.
+- Prep Time: persistent 4/6 Vigor on each subsequent player-turn start,
+  consumed after the next powered attack finishes.
+
+Native RNG streams and unlock gates are still modeled conservatively. Rend
+counts known prototype status debuffs and non-temporary enemy debuff powers;
+additional native power taxonomies require future differential verification.
