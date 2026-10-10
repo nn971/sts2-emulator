@@ -31,6 +31,11 @@ public sealed record PrototypeAiPower(
     string PowerId,
     int Stacks);
 
+// Progress on combat-local relic triggers that a player can count from public actions.
+public sealed record PrototypeAiRelicCounter(
+    string RelicId,
+    int[] TriggerCounts);
+
 public sealed record PrototypeAiEnemy(
     int InstanceId,
     string EnemyId,
@@ -58,7 +63,11 @@ public sealed record PrototypeAiCombat(
     PrototypeAiEnemy[] Enemies,
     string? PendingChoiceId,
     // Active player powers are visible on the combat HUD.
-    PrototypeAiPower[]? PlayerPowers = null);
+    PrototypeAiPower[]? PlayerPowers = null,
+    // Draw pile is an unordered multiset: this list NEVER uses the hidden draw order.
+    PrototypeAiCard[]? DrawPile = null,
+    // Public-action-derived counters; the private RNG/history remains hidden.
+    PrototypeAiRelicCounter[]? RelicCounters = null);
 
 public sealed record PrototypeAiMapNode(
     string NodeId,
@@ -365,6 +374,7 @@ public sealed class PrototypeAiEnvironment
                     world.Combat,
                     world.Act,
                     state.Ascension,
+                    state.Player.Relics,
                     state.Player.Relics.Any(relic =>
                         PrototypeContent.Relic(
                             relic.RelicId)
@@ -577,6 +587,7 @@ public sealed class PrototypeAiEnvironment
         CombatState combat,
         int act,
         int ascension,
+        RelicInstance[] ownedRelics,
         bool hideEnemyIntents)
     {
         var byId = combat.Cards.ToDictionary(card => card.InstanceId);
@@ -633,6 +644,25 @@ public sealed class PrototypeAiEnvironment
             PlayerPowers: combat.PlayerPowers
                 .Select(power => new PrototypeAiPower(
                     power.PowerId, power.Stacks))
-                .ToArray());
+                .ToArray(),
+            // Sort by stable card ID, NOT by the engine's secret draw ordering.
+            DrawPile: combat.DrawPile.OrderBy(id => id).Select(Card).ToArray(),
+            RelicCounters: combat.RelicStates
+                .OrderBy(relic => relic.PersistentIndex)
+                .Select(relic =>
+                {
+                    if (relic.PersistentIndex < 0 || relic.PersistentIndex >= ownedRelics.Length)
+                    {
+                        throw new InvalidOperationException(
+                            "Combat relic counter has invalid persistent index.");
+                    }
+                    if (ownedRelics[relic.PersistentIndex].RelicId != relic.RelicId)
+                    {
+                        throw new InvalidOperationException(
+                            "Combat relic counter does not match owned relic.");
+                    }
+                    return new PrototypeAiRelicCounter(
+                        relic.RelicId, (int[])relic.TriggerCounts.Clone());
+                }).ToArray());
     }
 }
