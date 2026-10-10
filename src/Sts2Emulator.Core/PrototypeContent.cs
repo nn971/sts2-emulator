@@ -3033,7 +3033,7 @@ public static class PrototypeContent
                             new PrototypeCombatEffectSpec(
                                 PrototypeCombatEffectKind.ChooseCards, 0,
                                 Selection: new PrototypeCardSelectionSpec(
-                                    PrototypeCardZone.Hand, 1, 1,
+                                    PrototypeCardZone.Hand, 0, 0,
                                     PrototypeCardSelectionResolutionKind.TransformRandom,
                                     SelectionsPerPowerStack: 1))
                         ])
