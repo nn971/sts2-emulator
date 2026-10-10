@@ -342,6 +342,7 @@ This is an intermediate implementation. Final release gates remain open.
   not the native complete event distribution; unsupported events,
   other Ancients and native RNG fidelity remain missing. See
   [event expansion audit](reference-builds/v0.111.0-hive-glory-events-expansion-v2.md).
+- Added pinned v111 **Spirit Grafter, Zen Weaver and Hungry for Mushrooms** events, plus Metamorphosis, Enlightenment, Big Mushroom and Fragrant Mushroom. New combat operations cover random free-for-combat Attack generation into draw, hand cost caps, and first-turn hand-size penalties. Deferred HP loss and sequential deck removal/upgrade use the existing choice continuation state. Curated content now covers **6 Hive + 3 Glory** events, not the native full event bag or RNG priors; see [event V3 reference audit](reference-builds/v0.111.0-hive-glory-events-expansion-v3.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
