@@ -5167,6 +5167,18 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.ReduceHandCardCostsToOne:
+                    // Base Enlightenment: expires when played or at turn end.
+                    // Enlightenment+: the changed card retains cost 1
+                    // through the combat, including future turns.
+                    combat = SetHandCardsTemporaryEnergyCost(
+                        combat, 1, reduceOnly: true,
+                        expiry: operation.Amount > 0
+                            ? PrototypeTemporaryCardCostExpiry.None
+                            : PrototypeTemporaryCardCostExpiry.EndOfTurn
+                                | PrototypeTemporaryCardCostExpiry.WhenPlayed);
+                    break;
+
                 case PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed:
                 {
                     var candidates = combat.Hand
@@ -7091,7 +7103,11 @@ public sealed partial class PrototypeGameEngine
 
     private static CombatState SetHandCardsTemporaryEnergyCost(
         CombatState combat,
-        int cost)
+        int cost,
+        bool reduceOnly = false,
+        PrototypeTemporaryCardCostExpiry expiry =
+            PrototypeTemporaryCardCostExpiry.EndOfTurn
+            | PrototypeTemporaryCardCostExpiry.WhenPlayed)
     {
         var hand = combat.Hand.ToHashSet();
         var cards = combat.Cards
@@ -7109,13 +7125,16 @@ public sealed partial class PrototypeGameEngine
                     return card;
                 }
 
+                if (reduceOnly && ResolveFixedCardEnergyCost(
+                        combat, card, definition) <= cost)
+                {
+                    return card;
+                }
+
                 return card with
                 {
-                    TemporaryEnergyCost =
-                        new PrototypeTemporaryCardCost(
-                            Math.Max(0, cost),
-                            PrototypeTemporaryCardCostExpiry.EndOfTurn
-                            | PrototypeTemporaryCardCostExpiry.WhenPlayed)
+                    TemporaryEnergyCost = new PrototypeTemporaryCardCost(
+                        Math.Max(0, cost), expiry)
                 };
             })
             .ToArray();

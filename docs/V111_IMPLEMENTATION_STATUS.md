@@ -327,6 +327,20 @@ This is an intermediate implementation. Final release gates remain open.
   RNG stream are used. Both Hive event registrations remain Weight=0, with
   map/event integration and live oracle replay outstanding.
 
+- Added two source-backed Hive event fixtures: **Lost Wisp** and **Zen Weaver**.
+  Lost Wisp offers its entry-rolled 45–75 Gold or a newly obtained
+  Lost Wisp relic plus the unupgradable Decay Curse. Decay inflicts 2
+  blockable turn-end damage; Lost Wisp fires 8 unpowered damage on all
+  enemies for each played Power card. Zen Weaver requires 125 Gold to
+  enter; its fixed 50/125/250-Gold options give two independent
+  Enlightenment cards or remove one/two selected cards. Removal costs
+  are deferred until after the card-selection continuation.
+  Enlightenment limits the current hand's costs to one, preserving any
+  lower cost; base expires when played or at turn end, while upgraded
+  cards retain the reduced cost until combat end. The added events
+  remain forced-event Weight=0 fixtures; native Hive maps, event
+  randomness and live-oracle parity are still pending.
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

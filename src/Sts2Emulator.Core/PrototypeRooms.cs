@@ -694,6 +694,8 @@ public sealed partial class PrototypeGameEngine
                         // eventual choice never changes the RNG outcome.
                         "proto.native.underdocks.sunken_treasury" =>
                             52 + PrototypeRng.NextInt(state.Rng, "event", 16),
+                        PrototypeNativeHiveEvents.LostWispId =>
+                            45 + PrototypeRng.NextInt(state.Rng, "event", 31),
                         "proto.native.underdocks.sunken_statue" =>
                             101 + PrototypeRng.NextInt(state.Rng, "event", 21),
                         // Punch Off computes an entry-only 91..98 gold
@@ -1035,6 +1037,7 @@ public sealed partial class PrototypeGameEngine
             new List<PrototypePendingEventDeckChoiceState>();
         RewardState? deferredReward = null;
         var deferredHpLoss = 0;
+        var deferredGoldLoss = 0;
         string? deferredCardId = null;
 
         foreach (var effect in choice.Effects)
@@ -1142,6 +1145,11 @@ public sealed partial class PrototypeGameEngine
                     };
                     break;
                 }
+
+                case PrototypeRunEffectKind.LoseGoldAfterDeckChoices:
+                    deferredGoldLoss += Math.Max(0,
+                        ResolveEventGoldAmount(eventState, choice.Id, effect));
+                    break;
 
                 case PrototypeRunEffectKind.LoseAllGold:
                     player = player with { Gold = 0 };
@@ -1449,6 +1457,7 @@ public sealed partial class PrototypeGameEngine
                     QueuedDeckChoices = queuedDeckChoices.ToArray(),
                     PendingReward = deferredReward,
                     DeferredHpLoss = deferredHpLoss,
+                    DeferredGoldLoss = deferredGoldLoss,
                     DeferredCardId = deferredCardId
                 }
             }
@@ -1527,6 +1536,14 @@ public sealed partial class PrototypeGameEngine
             return rolled;
         }
 
+        if (eventState.EventId == PrototypeNativeHiveEvents.LostWispId
+            && choiceId == "search"
+            && effect.Kind == PrototypeRunEffectKind.GainGold
+            && rolled is >= 45 and <= 75)
+        {
+            return rolled;
+        }
+
         if (eventState.EventId == "proto.native.event.jungle_maze_adventure"
             && choiceId == "join"
             && effect.Kind == PrototypeRunEffectKind.GainGold
@@ -1549,7 +1566,9 @@ public sealed partial class PrototypeGameEngine
             or "proto.native.underdocks.sunken_statue")
             && relicId == "proto.native.event.sword_of_stone")
         || (eventId == "proto.native.underdocks.drowning_beacon"
-            && relicId == "proto.native.underdocks.fresnel_lens");
+            && relicId == "proto.native.underdocks.fresnel_lens")
+        || (eventId == PrototypeNativeHiveEvents.LostWispId
+            && relicId == PrototypeNativeHiveEvents.LostWispRelicId);
 
     private static bool CanTakeEventChoice(
         PlayerState player,
@@ -1566,7 +1585,8 @@ public sealed partial class PrototypeGameEngine
         var goldCost = choice.Effects
             .Where(effect =>
                 effect.Kind
-                    == PrototypeRunEffectKind.LoseGold)
+                    is PrototypeRunEffectKind.LoseGold
+                        or PrototypeRunEffectKind.LoseGoldAfterDeckChoices)
             .Sum(effect =>
                 Math.Max(0, ResolveEventGoldAmount(
                     world.Event, choice.Id, effect)));
@@ -1590,6 +1610,8 @@ public sealed partial class PrototypeGameEngine
             && !PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(
                 world.Event?.EventId ?? string.Empty)
             && !PrototypeNativeUnderdocksEvents.IsNativeRegionEvent(
+                world.Event?.EventId ?? string.Empty)
+            && !PrototypeNativeHiveEvents.IsNativeEvent(
                 world.Event?.EventId ?? string.Empty))
         {
             return false;

@@ -116,6 +116,7 @@ public enum PrototypeCombatEffectKind
     GainToricToughnessBlock,
     ModifySourceCardEnergyCost,
     SetHandCardsEnergyCostUntilTurnEndOrPlayed,
+    ReduceHandCardCostsToOne,
     SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
     RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
     ModifyEventSourceCardKeyword,
@@ -384,6 +385,7 @@ public enum PrototypeRunEffectKind
     LoseHpAfterDeckChoices,
     GainGold,
     LoseGold,
+    LoseGoldAfterDeckChoices,
     AddCard,
     AddCardAfterDeckChoices,
     GainRandomRareCard,
@@ -2100,7 +2102,8 @@ public sealed record EventState(
     string? NativeDishId = null,
     string? NativeLastDishId = null,
     int NativeDishCount = 0,
-    bool NativeDishRollPending = false)
+    bool NativeDishRollPending = false,
+    int DeferredGoldLoss = 0)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();

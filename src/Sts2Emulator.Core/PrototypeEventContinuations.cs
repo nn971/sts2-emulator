@@ -111,6 +111,22 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (eventState.DeferredGoldLoss > 0)
+            {
+                state = state with
+                {
+                    Player = state.Player with
+                    {
+                        Gold = state.Player.Gold - eventState.DeferredGoldLoss
+                    },
+                    World = world with
+                    {
+                        Event = eventState with { DeferredGoldLoss = 0 }
+                    }
+                };
+                continue;
+            }
+
             if (eventState.DeferredCardId is { } deferredCardId)
             {
                 var player = AppendCard(
