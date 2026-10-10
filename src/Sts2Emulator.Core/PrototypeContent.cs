@@ -1899,6 +1899,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeUnderdocksTrashHeap.Cards)
             .Concat(PrototypeNativeEndlessConveyor.EventCards)
             .Concat(PrototypeNativeLaterActs.Cards)
+            .Concat(PrototypeNativeHiveNormals.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
