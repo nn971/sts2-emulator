@@ -10,7 +10,7 @@ public sealed class PrototypeColorlessCardTests
         Assert.Equal(65, PrototypeColorlessCards.NativePoolIds.Length);
         Assert.Equal(65, PrototypeColorlessCards.NativePoolIds
             .Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(51, PrototypeColorlessCards.ImplementedShopPool.Length);
+        Assert.Equal(53, PrototypeColorlessCards.ImplementedShopPool.Length);
         Assert.All(PrototypeColorlessCards.ImplementedShopPool, id =>
         {
             Assert.Contains(id, PrototypeColorlessCards.NativePoolIds);
@@ -21,10 +21,38 @@ public sealed class PrototypeColorlessCardTests
                 or PrototypeCardRarity.Rare);
             Assert.DoesNotContain(id, PrototypeContent.RewardCardPool);
         });
-        Assert.Equal(31, PrototypeColorlessCards.Implemented.Count(
+        Assert.Equal(32, PrototypeColorlessCards.Implemented.Count(
             card => card.Rarity == PrototypeCardRarity.Uncommon));
-        Assert.Equal(20, PrototypeColorlessCards.Implemented.Count(
+        Assert.Equal(21, PrototypeColorlessCards.Implemented.Count(
             card => card.Rarity == PrototypeCardRarity.Rare));
+    }
+
+    [Fact]
+    public void EveryNativeColorlessIdIsEitherPlayableSoloOrExplicitlyUnsupportedMultiplayer()
+    {
+        var solo = PrototypeColorlessCards.Implemented.Select(card => card.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var multiplayer = PrototypeColorlessCards.UnsupportedMultiplayerIds
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(53, solo.Count);
+        Assert.Equal(12, multiplayer.Count);
+        Assert.False(solo.Overlaps(multiplayer));
+        Assert.True(PrototypeColorlessCards.NativePoolIds
+            .ToHashSet(StringComparer.Ordinal).SetEquals(
+                solo.Concat(multiplayer)));
+
+        foreach (var id in multiplayer)
+        {
+            var card = PrototypeContent.Card(id);
+            Assert.False(card.MechanicsImplemented);
+            Assert.True(card.MultiplayerOnly);
+            Assert.False(card.CanBeGeneratedInCombat);
+            Assert.False(card.RewardEligible);
+            Assert.DoesNotContain(id, PrototypeColorlessCards.ImplementedShopPool);
+            Assert.DoesNotContain(id, PrototypeColorlessCards.ImplementedCombatGenerationPool);
+            Assert.DoesNotContain(id, PrototypeContent.RewardCardPool);
+        }
     }
 
     [Fact]
