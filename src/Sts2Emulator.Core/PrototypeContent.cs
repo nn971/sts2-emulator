@@ -228,10 +228,10 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
-                Type: PrototypeCardType.Curse),
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
             // Neow's Torment grants Neow's Fury. Native v0.111.0:
-            // deal 10 (14,
-                MaxUpgradeLevel: 0), then choose up to 2 (3) discard-pile cards
+            // deal 10 (14), then choose up to 2 (3) discard-pile cards
             // to return to hand, exhausting Fury afterward.
             new PrototypeCardDefinition(
                 "proto.native.neow.neows_fury",
