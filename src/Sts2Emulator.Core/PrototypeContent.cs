@@ -3716,6 +3716,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeUnderdocksTrashHeap.Powers)
             .Concat(PrototypeNativeLaterActs.Powers)
             .Concat(PrototypeNativeHiveNormals.Powers)
+            .Concat(PrototypeNativeHiveRemainingNormals.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
@@ -6025,6 +6026,7 @@ public static class PrototypeContent
         }.Concat(PrototypeNativeUnderdocks.Enemies)
             .Concat(PrototypeNativeLaterActs.Enemies)
             .Concat(PrototypeNativeHiveNormals.Enemies)
+            .Concat(PrototypeNativeHiveRemainingNormals.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
@@ -6982,7 +6984,8 @@ public static class PrototypeContent
             Weight: 1),
         ..PrototypeNativeUnderdocks.Encounters,
         ..PrototypeNativeLaterActs.Encounters,
-        ..PrototypeNativeHiveNormals.Encounters
+        ..PrototypeNativeHiveNormals.Encounters,
+        ..PrototypeNativeHiveRemainingNormals.Encounters
     ];
 
     public static string[] StartingDeck { get; } =

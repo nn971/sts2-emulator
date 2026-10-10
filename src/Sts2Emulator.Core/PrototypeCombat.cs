@@ -3541,6 +3541,33 @@ public sealed partial class PrototypeGameEngine
                             ? MinimumPoweredAttackHpLoss(player) : 0,
                         operation.IsPoweredAttack);
                     combat = damageResult.Combat;
+                    // CurlUpPower records the attack's physical card source
+                    // even on a fully blocked hit, then fires AFTER that
+                    // complete card play, including all of its hit repeats.
+                    if (operation.IsPoweredAttack
+                        && sourceCardInstanceId is { } attackCardId
+                        && splashTarget is { Hp: > 0 })
+                    {
+                        combat = combat with
+                        {
+                            Enemies = combat.Enemies.Select(enemy =>
+                                enemy.InstanceId == targetEnemyId.Value
+                                && enemy.Hp > 0
+                                    ? enemy with
+                                    {
+                                        Powers = enemy.PowerStates.Select(power =>
+                                            power.PendingAttackingCardInstanceId is null
+                                            && PrototypeContent.Power(power.PowerId)
+                                                .EnemyBlockAfterAttackingCardPlayedPerStack > 0
+                                                ? power with
+                                                {
+                                                    PendingAttackingCardInstanceId =
+                                                        attackCardId
+                                                }
+                                                : power).ToArray()
+                                    } : enemy).ToArray()
+                        };
+                    }
                     if (splashTarget is { Block: > 0 } && damageAmount >= splashTarget.Block)
                         combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
                     if (operation.SplashUnpoweredAttackToOtherEnemies
@@ -7947,6 +7974,122 @@ public sealed partial class PrototypeGameEngine
                         : power).ToArray()
         };
 
+
+    // Both hooks run at the native AfterCardPlayed boundary: after the
+    // effects of the card have resolved, before the next card action.
+    // Tender restores only Strength/Dexterity actually lost (Artifact can
+    // block either application), with counters stored on the power instance.
+    // Curl Up waits for the *same card instance* that first attacked it.
+    private static CombatState ResolveNativeCardCompletionPowers(
+        CombatState combat, PrototypeCombatEvent combatEvent)
+    {
+        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
+        {
+            foreach (var tender in combat.PlayerPowers.Where(power =>
+                PrototypeContent.Power(power.PowerId)
+                    .PlayerStrengthDexterityLossPerCardPlayedPerStack > 0)
+                .ToArray())
+            {
+                var reduced = tender.TriggerCounts ?? Array.Empty<int>();
+                if (reduced.Length >= 2)
+                {
+                    if (reduced[0] > 0)
+                        combat = ApplyPlayerPower(combat,
+                            "proto.power.strength", reduced[0]);
+                    if (reduced[1] > 0)
+                        combat = ApplyPlayerPower(combat,
+                            "proto.power.dexterity", reduced[1]);
+                }
+                combat = combat with
+                {
+                    PlayerPowers = combat.PlayerPowers.Select(power =>
+                        power.ApplicationOrder == tender.ApplicationOrder
+                            ? power with { TriggerCounts = null,
+                                StoredValue = 0 }
+                            : power).ToArray()
+                };
+            }
+            return combat;
+        }
+
+        if (combatEvent.Kind != PrototypeCombatEventKind.CardPlayed
+            || combatEvent.CardId is null)
+            return combat;
+
+        foreach (var tender in combat.PlayerPowers.Where(power =>
+            power.Stacks > 0
+            && PrototypeContent.Power(power.PowerId)
+                .PlayerStrengthDexterityLossPerCardPlayedPerStack > 0)
+            .ToArray())
+        {
+            var amount = powerLoss(tender);
+            var beforeStrength = combat.PlayerPowers
+                .Where(power => power.PowerId == "proto.power.strength")
+                .Sum(power => power.Stacks);
+            combat = ApplyPlayerPower(combat, "proto.power.strength", -amount);
+            var afterStrength = combat.PlayerPowers
+                .Where(power => power.PowerId == "proto.power.strength")
+                .Sum(power => power.Stacks);
+            var beforeDexterity = combat.PlayerPowers
+                .Where(power => power.PowerId == "proto.power.dexterity")
+                .Sum(power => power.Stacks);
+            combat = ApplyPlayerPower(combat, "proto.power.dexterity", -amount);
+            var afterDexterity = combat.PlayerPowers
+                .Where(power => power.PowerId == "proto.power.dexterity")
+                .Sum(power => power.Stacks);
+            var previous = tender.TriggerCounts ?? new int[2];
+            combat = combat with
+            {
+                PlayerPowers = combat.PlayerPowers.Select(power =>
+                    power.ApplicationOrder == tender.ApplicationOrder
+                        ? power with
+                        {
+                            TriggerCounts = new[]
+                            {
+                                previous[0] + beforeStrength - afterStrength,
+                                previous[1] + beforeDexterity - afterDexterity
+                            },
+                            StoredValue = power.StoredValue + 1
+                        } : power).ToArray()
+            };
+        }
+
+        if (combatEvent.SourceCardInstanceId is { } cardId)
+        {
+            combat = combat with
+            {
+                Enemies = combat.Enemies.Select(enemy =>
+                {
+                    if (enemy.Hp <= 0)
+                        return enemy;
+                    var completing = enemy.PowerStates.Where(power =>
+                        power.PendingAttackingCardInstanceId == cardId
+                        && PrototypeContent.Power(power.PowerId)
+                            .EnemyBlockAfterAttackingCardPlayedPerStack > 0)
+                        .ToArray();
+                    if (completing.Length == 0)
+                        return enemy;
+                    var block = completing.Sum(power => power.Stacks
+                        * PrototypeContent.Power(power.PowerId)
+                            .EnemyBlockAfterAttackingCardPlayedPerStack);
+                    var orders = completing.Select(power =>
+                        power.ApplicationOrder).ToHashSet();
+                    return enemy with
+                    {
+                        Block = enemy.Block + block,
+                        Powers = enemy.PowerStates.Where(power =>
+                            !orders.Contains(power.ApplicationOrder)).ToArray()
+                    };
+                }).ToArray()
+            };
+        }
+        return combat;
+
+        static int powerLoss(PrototypePowerInstanceState power) =>
+            power.Stacks * PrototypeContent.Power(power.PowerId)
+                .PlayerStrengthDexterityLossPerCardPlayedPerStack;
+    }
+
     private static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
         PlayerState player,
         CombatState combat,
@@ -7968,6 +8111,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
+        combat = ResolveNativeCardCompletionPowers(combat, combatEvent);
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
         {
             var plating = combat.PlayerPowers.Sum(power =>
