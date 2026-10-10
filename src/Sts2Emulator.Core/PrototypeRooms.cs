@@ -1144,8 +1144,13 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeRunEffectKind.UpgradeRandomCard:
                 {
+                    // Native selection filters CardModel.IsUpgradable;
+                    // upgraded, eternal and non-upgradable event/status
+                    // cards must not dilute random upgrade probabilities.
                     var candidates = player.Deck
-                        .Where(card => card.UpgradeLevel == 0)
+                        .Where(card => CanSelectEventDeckCard(
+                            card, PrototypePersistentDeckChoiceKind.Upgrade,
+                            null, null, false))
                         .Select(card => card.InstanceId)
                         .ToArray();
                     if (candidates.Length > 0)
@@ -1157,7 +1162,10 @@ public sealed partial class PrototypeGameEngine
                         {
                             Deck = player.Deck.Select(card =>
                                 card.InstanceId == selectedId
-                                    ? card with { UpgradeLevel = 1 }
+                                    ? card with
+                                    {
+                                        UpgradeLevel = card.UpgradeLevel + 1
+                                    }
                                     : card).ToArray()
                         };
                     }
@@ -1168,8 +1176,13 @@ public sealed partial class PrototypeGameEngine
                     player = player with
                     {
                         Deck = player.Deck.Select(card =>
-                            card.UpgradeLevel == 0
-                                ? card with { UpgradeLevel = 1 }
+                            CanSelectEventDeckCard(
+                                card, PrototypePersistentDeckChoiceKind.Upgrade,
+                                null, null, false)
+                                ? card with
+                                {
+                                    UpgradeLevel = card.UpgradeLevel + 1
+                                }
                                 : card).ToArray()
                     };
                     break;
