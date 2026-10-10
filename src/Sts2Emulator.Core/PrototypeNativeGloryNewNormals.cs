@@ -15,6 +15,12 @@ public static class PrototypeNativeGloryNewNormals
     public const string GalvanicId = "proto.native.glory.galvanic";
     public const string GlobeHeadEncounterId =
         "proto.native.glory.encounter.globe_head_normal";
+    public const string AxebotId = "proto.native.glory.axebot";
+    public const string AxebotSecondId = "proto.native.glory.axebot_respawn_1";
+    public const string AxebotThirdId = "proto.native.glory.axebot_respawn_2";
+    public const string StockId = "proto.native.glory.stock";
+    public const string AxebotsEncounterId =
+        "proto.native.glory.encounter.axebots_normal";
 
     public static PrototypePowerDefinition[] Powers { get; } =
     [
@@ -25,8 +31,61 @@ public static class PrototypeNativeGloryNewNormals
             EnemyIncomingPoweredAttackNumerator: 1,
             EnemyIncomingPoweredAttackDenominator: 2),
         new(GalvanicId, "Galvanic", 0, [],
-            GalvanizePowerCardsPerStack: 1)
+            GalvanizePowerCardsPerStack: 1),
+        // Death/summon semantics are carried by typed stage definitions;
+        // this power retains the visible Stock counter.
+        new(StockId, "Stock", 0, [])
     ];
+
+    // Native Axebot respawns twice: remaining Stock 2 → 1 → 0,
+    // each replacement with +10 max HP and a Boot Up opener.
+    // The original opens with Hammer Uppercut rather than Boot Up.
+    private static PrototypeEnemyDefinition AxebotStage(
+        string id, int respawnsUsed) =>
+        new(id, "Axebot", 78 + 10 * respawnsUsed, 0,
+        [
+            new("boot_up",
+            [
+                new(PrototypeEnemyEffectKind.GainBlock, 10,
+                    AscensionDeltas: [new(9, 5)]),
+                new(PrototypeEnemyEffectKind.ApplyEnemyPower,
+                    respawnsUsed * 3,
+                    PowerId: "proto.power.strength",
+                    AscensionDeltas: [new(9, respawnsUsed)])
+            ]),
+            new("one_two", [new(PrototypeEnemyEffectKind.DamagePlayer,
+                10, Repetitions: 2,
+                AscensionDeltas: [new(9, 1)])]),
+            new("hammer_uppercut",
+            [
+                new(PrototypeEnemyEffectKind.DamagePlayer, 14,
+                    AscensionDeltas: [new(9, 4)]),
+                new(PrototypeEnemyEffectKind.ApplyPlayerPower, 2,
+                    PowerId: "proto.power.weak"),
+                new(PrototypeEnemyEffectKind.ApplyPlayerPower, 2,
+                    PowerId: "proto.power.frail")
+            ])
+        ],
+        MinHp: 70 + 10 * respawnsUsed,
+        HpAscensionDeltas: [new(8, 8)],
+        MinHpAscensionDeltas: [new(8, 6)],
+        StartingPowers: respawnsUsed < 2
+            ? [new(StockId, 2 - respawnsUsed)]
+            : [],
+        MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+        Ai: new(respawnsUsed == 0 ? "uppercut" : "boot",
+        [
+            new("boot", PrototypeEnemyAiStateKind.Move,
+                MoveIndex: 0, NextStateId: "uppercut"),
+            new("one_two", PrototypeEnemyAiStateKind.Move,
+                MoveIndex: 1, NextStateId: "uppercut"),
+            new("uppercut", PrototypeEnemyAiStateKind.Move,
+                MoveIndex: 2, NextStateId: "one_two")
+        ]),
+        DeathSummons: respawnsUsed < 2
+            ? [new(respawnsUsed == 0 ? AxebotSecondId : AxebotThirdId,
+                0, SlotName: "front", SkipEnemyActions: 0)]
+            : null);
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
     [
@@ -57,6 +116,9 @@ public static class PrototypeNativeGloryNewNormals
         // GlobeHead.cs: Shocking Slap -> Thunder Strike ->
         // Galvanic Burst -> Shocking Slap. Galvanic inflicts
         // Power cards and damages the player on their play.
+        AxebotStage(AxebotId, 0),
+        AxebotStage(AxebotSecondId, 1),
+        AxebotStage(AxebotThirdId, 2),
         new(GlobeHeadId, "Globe Head", 148, 0,
         [
             new("shocking_slap",
@@ -88,6 +150,9 @@ public static class PrototypeNativeGloryNewNormals
         new(OwlEncounterId, PrototypeRoomType.Combat,
             [OwlId], MinAct: 3, MaxAct: 3, Weight: 0),
         new(GlobeHeadEncounterId, PrototypeRoomType.Combat,
-            [GlobeHeadId], MinAct: 3, MaxAct: 3, Weight: 0)
+            [GlobeHeadId], MinAct: 3, MaxAct: 3, Weight: 0),
+        new(AxebotsEncounterId, PrototypeRoomType.Combat,
+            [AxebotId], MinAct: 3, MaxAct: 3, Weight: 0,
+            Formation: [new(AxebotId, 0, "front")])
     ];
 }

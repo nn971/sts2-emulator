@@ -248,6 +248,14 @@ This is an intermediate implementation. Final release gates remain open.
   takes 6/8 damage from the living source power. Damage observes
   player Block and owner death; native damage-modifier parity
   remains unverified.
+- Added gated **Axebots Normal** as a three-stage, two-respawn
+  Stock encounter: the first Axebot opens with Hammer Uppercut,
+  each replacement has 10 more maximum HP, loses one Stock,
+  and opens with Boot Up (Block plus respawn-scaled Strength).
+  Each stage has separate committed intents and A0/A8/A9 HP,
+  attack and debuff values. The typed death-summon chain makes
+  Stock prevent premature victory. Native animation timing,
+  replacement RNG and live replay remain unverified.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
