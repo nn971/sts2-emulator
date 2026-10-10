@@ -1540,8 +1540,8 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     private static bool AllowsNativeEventDuplicateRelic(
         string? eventId, string relicId) =>
-        (eventId is "proto.native.event.sunken_statue"
-            or "proto.native.underdocks.sunken_statue"
+        ((eventId is "proto.native.event.sunken_statue"
+            or "proto.native.underdocks.sunken_statue")
             && relicId == "proto.native.event.sword_of_stone")
         || (eventId == "proto.native.underdocks.drowning_beacon"
             && relicId == "proto.native.underdocks.fresnel_lens");
