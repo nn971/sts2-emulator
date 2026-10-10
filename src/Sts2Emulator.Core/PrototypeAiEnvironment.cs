@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
@@ -37,7 +38,11 @@ public sealed record PrototypeAiEnemy(
     int Block,
     string? MoveId,
     IReadOnlyDictionary<string, int> Statuses,
-    PrototypeAiPower[] Powers);
+    PrototypeAiPower[] Powers,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? IntentDamage = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? IntentHits = null);
 
 public sealed record PrototypeAiCombat(
     int Turn,
@@ -472,6 +477,119 @@ public sealed class PrototypeAiEnvironment
                 : (PrototypeCompletedRoomRecord[])world.CompletedRooms.Clone());
     }
 
+    // The current combat engine rolls many random/state-machine moves when
+    // the enemy ACTS, not when the turn is first displayed. Do not turn that
+    // private future RNG into a fake public prediction. Only show a move
+    // that is already forced by the current publicly visible turn state.
+    private static PrototypeEnemyMoveDefinition? VisibleDeterministicMove(
+        EnemyCombatState enemy,
+        bool hideEnemyIntents)
+    {
+        if (hideEnemyIntents
+            || enemy.Hp <= 0
+            || enemy.SkipNextEnemyAction
+            || enemy.EnemyActionSkipsRemaining > 0)
+        {
+            return null;
+        }
+
+        var definition = PrototypeContent.Enemy(enemy.EnemyId);
+        if (definition.Moves.Length == 0 || enemy.MoveIndex < 0)
+        {
+            return null;
+        }
+
+        if (definition.MovePolicy == PrototypeEnemyMovePolicy.SequentialLoop)
+        {
+            var index = enemy.MoveIndex;
+            if (index >= definition.Moves.Length)
+            {
+                var start = definition.MoveLoopStartIndex;
+                if (start < 0 || start >= definition.Moves.Length)
+                {
+                    return null;
+                }
+
+                index = start + ((index - start) % (definition.Moves.Length - start));
+            }
+
+            return definition.Moves[index];
+        }
+
+        if (definition.MovePolicy
+            == PrototypeEnemyMovePolicy.UniformRandomAfterOpener)
+        {
+            var opening = definition.OpeningMoveIndices
+                ?? [definition.OpeningMoveIndex];
+            if (enemy.MoveIndex < opening.Length)
+            {
+                var index = opening[enemy.MoveIndex];
+                return index >= 0 && index < definition.Moves.Length
+                    ? definition.Moves[index]
+                    : null;
+            }
+        }
+
+        // State-machine choices and random moves cannot currently be
+        // guaranteed without advancing the private RNG or simulating hidden
+        // AI branches. Correct future handling needs a distinct planned
+        // public intent in canonical combat state.
+        return null;
+    }
+
+    private static (int? Damage, int? Hits) VisibleAttackIntent(
+        CombatState combat,
+        EnemyCombatState enemy,
+        PrototypeEnemyMoveDefinition move)
+    {
+        int? perHitDamage = null;
+        var hits = 0;
+        foreach (var effect in move.Effects)
+        {
+            if (effect.Kind != PrototypeEnemyEffectKind.DamagePlayer)
+            {
+                // A preceding self-buff could alter subsequent hit damage.
+                // Do not approximate it using the enemy's pre-move powers.
+                if (effect.Kind == PrototypeEnemyEffectKind.ApplyEnemyPower
+                    && hits == 0)
+                {
+                    return (null, null);
+                }
+
+                continue;
+            }
+
+            // The v1 interface represents a homogeneous attack as one
+            // per-hit damage value and one hit count. Mixed attack/nonattack
+            // damage and nonuniform attack amounts cannot fit this shape.
+            if (!effect.IsAttack)
+            {
+                return (null, null);
+            }
+
+            var repetitions = effect.RepetitionsAt(combat.Ascension);
+            if (repetitions <= 0)
+            {
+                continue;
+            }
+
+            var damage = Math.Max(0,
+                PrototypeGameEngine.EnemyHitDamage(
+                    enemy, combat, effect, combat.Act, combat.Ascension));
+            if (perHitDamage is not null && perHitDamage != damage)
+            {
+                return (null, null);
+            }
+
+            perHitDamage = damage;
+            hits += repetitions;
+        }
+
+        return hits > 0 && perHitDamage is not null
+            ? (perHitDamage, hits)
+            : (null, null);
+    }
+
     private static PrototypeAiCombat CreateCombatObservation(
         CombatState combat,
         bool hideEnemyIntents)
@@ -507,24 +625,21 @@ public sealed class PrototypeAiEnvironment
             PlayPile: combat.PlayCardIds.Select(Card).ToArray(),
             Enemies: combat.Enemies.Select(enemy =>
             {
-                var definition = PrototypeContent.Enemy(enemy.EnemyId);
-                var moveId =
-                    hideEnemyIntents
-                    || definition.Moves.Length == 0
-                        ? null
-                        : definition.Moves[
-                            enemy.MoveIndex
-                            % definition.Moves.Length].Id;
-
+                var move = VisibleDeterministicMove(enemy, hideEnemyIntents);
+                var threat = move is null
+                    ? (Damage: (int?)null, Hits: (int?)null)
+                    : VisibleAttackIntent(combat, enemy, move);
                 return new PrototypeAiEnemy(
                     enemy.InstanceId,
                     enemy.EnemyId,
                     enemy.Hp,
                     enemy.Block,
-                    moveId,
+                    move?.Id,
                     new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal),
                     enemy.PowerStates.Select(power =>
-                        new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray());
+                        new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray(),
+                    threat.Damage,
+                    threat.Hits);
             }).ToArray(),
             PendingChoiceId: combat.PendingChoice?.ChoiceId,
             PlayerPowers: combat.PlayerPowers
