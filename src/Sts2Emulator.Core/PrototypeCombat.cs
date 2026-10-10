@@ -1553,7 +1553,14 @@ public sealed partial class PrototypeGameEngine
                 combat = combat with
                 {
                     Enemies = combat.Enemies
-                        .Select(enemy => enemy with { Block = 0 })
+                        .Select(enemy => enemy with
+                        {
+                            Block = enemy.PowerStates.Any(power =>
+                                power.Stacks > 0
+                                && PrototypeContent.Power(power.PowerId)
+                                    .PreventsEnemyBlockClear)
+                                    ? enemy.Block : 0
+                        })
                         .ToArray()
                 };
                 break;
@@ -2346,6 +2353,10 @@ public sealed partial class PrototypeGameEngine
                 && StringComparer.Ordinal.Equals(
                     enemy.SlotName,
                     branch.Value),
+            PrototypeEnemyAiConditionKind.IsOffBalance =>
+                enemy.IsOffBalance,
+            PrototypeEnemyAiConditionKind.IsNotOffBalance =>
+                !enemy.IsOffBalance,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(branch.Condition))
         };
@@ -2499,6 +2510,13 @@ public sealed partial class PrototypeGameEngine
                    NextAiStateId: enemy.PlannedNextAiStateId)
                 : SelectEnemyMove(definition, enemy, enemies, rng);
             var move = selection.Move;
+            // BowlbugRock.DizzyMove unstuns the model and clears its
+            // persistent off-balance condition before its next Headbutt.
+            if (enemy.EnemyId == "proto.native.hive.bowlbug_rock"
+                && move.Id == "dizzy")
+            {
+                enemy = enemy with { IsOffBalance = false };
+            }
             // Vigor applies to every hit of one attack command, then
             // consumes the stacks that existed when the command began.
             // Vigor gained by this move is never consumed by that move.
@@ -2562,6 +2580,19 @@ public sealed partial class PrototypeGameEngine
                                 Math.Max(0, damage));
                             block -= absorbed;
                             var unblocked = Math.Max(0, damage - absorbed);
+                            // ImbalancedPower.AfterDamageGiven: a fully
+                            // blocked attack leaves Bowlbug Rock off-balance.
+                            // Headbutt then commits Dizzy on the NEXT
+                            // enemy turn rather than rerolling in Observe.
+                            if (effect.IsAttack && damage > 0
+                                && unblocked == 0
+                                && enemy.PowerStates.Any(power =>
+                                    power.Stacks > 0
+                                    && power.PowerId ==
+                                        "proto.native.hive.imbalanced"))
+                            {
+                                enemy = enemy with { IsOffBalance = true };
+                            }
                             if (effect.IsAttack && unblocked > 0 && hp > 0)
                             {
                                 unblockedAttackHits++;
@@ -9432,6 +9463,14 @@ public sealed partial class PrototypeGameEngine
         }
 
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
+        // BurrowedPower.AfterBlockBroken fires when a HIT actually
+        // consumes the last point of the shield. Ordinary enemy Block
+        // resetting, HP-loss effects and hits on zero Block do not stun.
+        var brokeBurrowedBlock = enemy.Block > 0
+            && absorbed == enemy.Block
+            && enemy.PowerStates.Any(power =>
+                power.Stacks > 0
+                && power.PowerId == "proto.native.hive.burrowed");
         var unblocked = Math.Max(0, damage - absorbed);
         // The Boot modifies attack HP loss AFTER Block absorption.
         // A fully blocked hit or non-attack HP loss does not trigger.
@@ -9478,6 +9517,24 @@ public sealed partial class PrototypeGameEngine
                 Block = enemy.Block - absorbed,
                 Hp = nextHp
             });
+
+        if (brokeBurrowedBlock && enemies[index].Hp > 0)
+        {
+            // Tunneler.GetStunned -> CreatureCmd.Stun(StillDizzy,
+            // "BITE_MOVE") overrides the previously announced BELOW.
+            // Persist the forced action now, not during observation.
+            var interrupted = enemies[index];
+            enemies[index] = interrupted with
+            {
+                Powers = interrupted.PowerStates.Where(power =>
+                    power.PowerId != "proto.native.hive.burrowed")
+                    .ToArray(),
+                Block = 0,
+                AiStateId = "dizzy",
+                PlannedMoveIndex = 3,
+                PlannedNextAiStateId = "bite"
+            };
+        }
 
         var defeated = enemy.Hp > 0 && enemies[index].Hp == 0;
         var nextCombat = combat with { Enemies = enemies };

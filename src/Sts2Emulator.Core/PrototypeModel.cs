@@ -863,7 +863,10 @@ public sealed record PrototypePowerDefinition(
     int EnemyStrengthOnApplyPerStack = 0,
     int EnemyStrengthRestoreAtSideTurnEndPerStack = 0,
     bool ReturnNextDiscardedCardToDraw = false,
-    bool SnapshotGenerationStacksAtTurnStart = false);
+    bool SnapshotGenerationStacksAtTurnStart = false,
+    // Tunneler's BurrowedPower vetoes ordinary block clearing at
+    // the enemy-side turn boundary until its Block is broken.
+    bool PreventsEnemyBlockClear = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -958,7 +961,9 @@ public enum PrototypeEnemyAiConditionKind
     IsAlone,
     IsFront,
     IsNotFront,
-    SlotNameEquals
+    SlotNameEquals,
+    IsOffBalance,
+    IsNotOffBalance
 }
 
 public enum PrototypeEnemyAiRepeatRule
@@ -1405,7 +1410,10 @@ public sealed record EnemyCombatState(
     int StoredEnemyDamage = 0,
     // Committed at combat entry / the player-turn boundary, never on Observe.
     int? PlannedMoveIndex = null,
-    string? PlannedNextAiStateId = null)
+    string? PlannedNextAiStateId = null,
+    // BowlbugRock.Imbalanced tracks whether its prior attack was fully
+    // blocked; survives intent commitment and deterministic snapshots.
+    bool IsOffBalance = false)
 {
     public EnemyCombatState Fork() => this with
     {
