@@ -1583,6 +1583,9 @@ public sealed partial class PrototypeGameEngine
                         AttacksPlayedThisTurn = 0,
                         SkillsPlayedThisTurn = 0,
                         CardsDiscardedThisTurn = 0,
+                        PlayedCardIdsLastTurn =
+                            combat.CounterState.PlayedCardIdsThisTurn,
+                        PlayedCardIdsThisTurn = Array.Empty<long>(),
                         PlayedCardTagsThisTurn =
                             Array.Empty<string>()
                     }
@@ -1671,7 +1674,7 @@ public sealed partial class PrototypeGameEngine
                         PrototypeCombatEventKind.BeforeHandDraw),
                     state.Rng);
                 player = beforeHandDraw.Player;
-                combat = beforeHandDraw.Combat;
+                combat = ReturnLastTurnReboundCardsToHand(beforeHandDraw.Combat);
 
                 var handDrawBonus =
                     combat.PlayerPowers.Sum(power =>
@@ -1704,6 +1707,49 @@ public sealed partial class PrototypeGameEngine
             Player = player,
             World = world with { Combat = combat }
         };
+    }
+
+    private static CombatState ReturnLastTurnReboundCardsToHand(
+        CombatState combat)
+    {
+        var lastTurn = combat.CounterState.PlayedCardIdsLastTurn
+            ?? Array.Empty<long>();
+        foreach (var id in lastTurn.Distinct())
+        {
+            if (combat.Hand.Contains(id))
+            {
+                continue;
+            }
+
+            var card = combat.Cards.FirstOrDefault(c => c.InstanceId == id);
+            if (card is null || card.CardId is not
+                ("proto.colorless.bolas" or "proto.colorless.thrumming_hatchet"))
+            {
+                continue;
+            }
+
+            if (combat.Hand.Length >= 10)
+            {
+                break;
+            }
+
+            var fromDraw = combat.DrawPile.Contains(id);
+            var fromDiscard = combat.DiscardPile.Contains(id);
+            var fromExhaust = combat.ExhaustPile.Contains(id);
+            if (!fromDraw && !fromDiscard && !fromExhaust)
+            {
+                continue;
+            }
+
+            combat = combat with
+            {
+                DrawPile = combat.DrawPile.Where(x => x != id).ToArray(),
+                DiscardPile = combat.DiscardPile.Where(x => x != id).ToArray(),
+                ExhaustPile = combat.ExhaustPile.Where(x => x != id).ToArray(),
+                Hand = combat.Hand.Append(id).ToArray()
+            };
+        }
+        return combat;
     }
 
     private static CombatState ResolveEnemyStatusStage(
@@ -2979,6 +3025,7 @@ public sealed partial class PrototypeGameEngine
             ? null
             : effect.Condition;
         var count = effect.CountKind is null
+            or PrototypeCombatCountKind.TargetDebuffs
             ? 0
             : ResolveCombatCount(effect.CountKind.Value, combat);
 
@@ -3028,7 +3075,11 @@ public sealed partial class PrototypeGameEngine
                         + (effect.AmountPerPowerStack * powerStacks)
                         + ((effect.AmountPerCount
                             + (effect.AmountPerCountUpgradeDelta * upgradeLevel))
-                            * count),
+                            * (effect.CountKind == PrototypeCombatCountKind.TargetDebuffs
+                                ? ResolveCombatCount(
+                                    PrototypeCombatCountKind.TargetDebuffs,
+                                    combat, targetEnemyId)
+                                : count)),
                     targetEnemyId,
                     effect.StatusId,
                     effect.Selection is null
@@ -3086,6 +3137,8 @@ public sealed partial class PrototypeGameEngine
                     GoldOnFatal:
                         effect.GoldOnFatal
                         + (effect.GoldOnFatalUpgradeDelta * upgradeLevel),
+                    GainBlockEqualToAttackDamage:
+                        effect.GainBlockEqualToAttackDamage,
                     PowerStoredValue:
                         effect.PowerStoredValue
                         + (effect.PowerStoredValueUpgradeDelta * upgradeLevel),
@@ -3246,6 +3299,19 @@ public sealed partial class PrototypeGameEngine
                         operation.IsPoweredAttack
                             ? MinimumPoweredAttackHpLoss(player) : 0);
                     combat = damageResult.Combat;
+                    if (operation.GainBlockEqualToAttackDamage)
+                    {
+                        // Fisticuffs uses the attack result (including
+                        // blocked and overkill damage) as the Block source.
+                        // Target was alive before resolution of this hit.
+                        var block = ModifyPlayerBlockGain(
+                            combat, Math.Max(0, damageAmount),
+                            fromCard: true, sourceCardInstanceId);
+                        combat = combat with
+                        {
+                            PlayerBlock = combat.PlayerBlock + Math.Max(0, block)
+                        };
+                    }
                     if (operation.IsPoweredAttack
                         && sourceCardInstanceId is not null
                         && damageResult.DamageDealt > 0)
@@ -3511,7 +3577,8 @@ public sealed partial class PrototypeGameEngine
                             combat,
                             operation.Amount,
                             operation.SourceKind
-                                == PrototypeEffectSourceKind.Card);
+                                == PrototypeEffectSourceKind.Card,
+                            sourceCardInstanceId);
                     combat = combat with
                     {
                         PlayerBlock = combat.PlayerBlock
@@ -3817,6 +3884,77 @@ public sealed partial class PrototypeGameEngine
                                 eventDispatchContinuation?.Fork())
                     };
                     return (player, combat);
+                }
+
+                case PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay:
+                {
+                    var eligible = combat.DrawPile
+                        .Where(id =>
+                        {
+                            var card = RequireCombatCard(combat, id);
+                            var definition = PrototypeContent.Card(card.CardId);
+                            return !definition.Unplayable
+                                && definition.Type is not
+                                    (PrototypeCardType.Curse or PrototypeCardType.Status)
+                                && card.ReplayCount == 0
+                                && card.Enchantment is not
+                                    { Kind: PrototypeCardEnchantmentKind.Spiral
+                                        or PrototypeCardEnchantmentKind.Glam };
+                        })
+                        .ToArray();
+                    var preferred = eligible.Where(id =>
+                        PrototypeContent.Card(
+                            RequireCombatCard(combat, id).CardId).Type
+                            is PrototypeCardType.Attack
+                                or PrototypeCardType.Skill
+                                or PrototypeCardType.Power).ToArray();
+                    var pool = preferred.Length > 0 ? preferred : eligible;
+                    if (pool.Length > 0)
+                    {
+                        var selected = pool[PrototypeRng.NextInt(
+                            rng, "combat", pool.Length)];
+                        combat = combat with
+                        {
+                            Cards = combat.Cards.Select(card =>
+                                card.InstanceId == selected
+                                    ? card with
+                                    {
+                                        ReplayCount = card.ReplayCount
+                                            + Math.Max(0, operation.Amount)
+                                    }
+                                    : card).ToArray()
+                        };
+                    }
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.AddRandomZeroCostCardsToHand:
+                {
+                    var pool = PrototypeContent.RewardCardPool
+                        .Where(id =>
+                        {
+                            var definition = PrototypeContent.Card(id);
+                            return definition.MechanicsImplemented
+                                && definition.CanBeGeneratedInCombat
+                                && !definition.MultiplayerOnly
+                                && definition.Cost.Kind == PrototypeCardCostKind.Fixed
+                                && definition.Cost.Amount == 0;
+                        }).ToArray();
+                    if (pool.Length == 0 && operation.Amount > 0)
+                    {
+                        throw new NotSupportedException(
+                            "No implemented zero-cost Silent card generation candidates.");
+                    }
+                    for (var n = 0; n < operation.Amount; n++)
+                    {
+                        var picked = pool[PrototypeRng.NextInt(
+                            rng, "combat", pool.Length)];
+                        combat = AddGeneratedCardCopies(combat,
+                            new PrototypeCombatCardSnapshot(
+                                picked, operation.GeneratedCardUpgradeLevel,
+                                PrototypeJson.EmptyObject()), 1);
+                    }
+                    break;
                 }
 
                 case PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand:
@@ -5345,12 +5483,14 @@ public sealed partial class PrototypeGameEngine
     private static int ModifyPlayerBlockGain(
         CombatState combat,
         int amount,
-        bool fromCard)
+        bool fromCard,
+        long? sourceCardInstanceId = null)
     {
         var modified = fromCard
             ? ModifyPlayerCardBlock(
                 combat,
-                amount)
+                amount,
+                sourceCardInstanceId)
             : amount;
 
         foreach (var power in combat.PlayerPowers
@@ -5385,8 +5525,25 @@ public sealed partial class PrototypeGameEngine
 
     private static int ModifyPlayerCardBlock(
         CombatState combat,
-        int amount)
+        int amount,
+        long? sourceCardInstanceId = null)
     {
+        if (sourceCardInstanceId is { } id)
+        {
+            var tags = PrototypeContent.Card(
+                RequireCombatCard(combat, id).CardId).Tags
+                ?? Array.Empty<string>();
+            amount += combat.PlayerPowers.Where(power => power.Stacks > 0)
+                .Sum(power =>
+                {
+                    var requiredTag = PrototypeContent.Power(
+                        power.PowerId).BlockBonusRequiredCardTag;
+                    return requiredTag is not null
+                        && tags.Contains(requiredTag, StringComparer.Ordinal)
+                        ? power.Stacks : 0;
+                });
+        }
+
         if (combat.PlayerPowers.Any(power =>
             power.Stacks > 0
             && PrototypeContent.Power(power.PowerId).PreventsCardBlock))
@@ -5981,7 +6138,8 @@ public sealed partial class PrototypeGameEngine
 
     private static int ResolveCombatCount(
         PrototypeCombatCountKind kind,
-        CombatState combat) =>
+        CombatState combat,
+        int? targetEnemyId = null) =>
         kind switch
         {
             PrototypeCombatCountKind.SkillsInHand =>
@@ -6005,6 +6163,15 @@ public sealed partial class PrototypeGameEngine
                 combat.DrawPile.Length,
             PrototypeCombatCountKind.PlayerBlock =>
                 combat.PlayerBlock,
+            PrototypeCombatCountKind.TargetDebuffs =>
+                combat.Enemies.Where(e => e.InstanceId == targetEnemyId
+                    && e.Hp > 0).Sum(enemy =>
+                    enemy.Statuses.Count(status => status.Value > 0)
+                    + enemy.PowerStates.Count(power =>
+                        power.Stacks > 0
+                        && PrototypeContent.Power(power.PowerId).IsDebuff
+                        && !PrototypeContent.Power(power.PowerId)
+                            .RemoveAtEnemyTurnEnd)),
 
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
@@ -6028,7 +6195,13 @@ public sealed partial class PrototypeGameEngine
                     CardsPlayedThisTurn =
                         counters.CardsPlayedThisTurn + 1,
                     CardsPlayedThisCombat =
-                        counters.CardsPlayedThisCombat + 1
+                        counters.CardsPlayedThisCombat + 1,
+                    PlayedCardIdsThisTurn =
+                        combatEvent.SourceCardInstanceId is { } playedId
+                            ? (counters.PlayedCardIdsThisTurn
+                                ?? Array.Empty<long>())
+                                .Append(playedId).ToArray()
+                            : counters.PlayedCardIdsThisTurn
                 };
 
                 var cardDefinition =
@@ -6081,7 +6254,18 @@ public sealed partial class PrototypeGameEngine
                 break;
         }
 
-        return combat with { Counters = counters };
+        var powers = combat.PlayerPowers;
+        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
+            && combatEvent.CardId is { } cardId
+            && PrototypeContent.Card(cardId).Type == PrototypeCardType.Attack)
+        {
+            // Vigor lasts through every hit of the next attack, and is
+            // consumed when that card's attack has completed.
+            powers = powers.Where(power =>
+                power.PowerId != "proto.power.vigor").ToArray();
+        }
+
+        return combat with { Counters = counters, PlayerPowers = powers };
     }
 
     private static bool EvaluateCombatPredicate(
