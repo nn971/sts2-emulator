@@ -14,11 +14,69 @@ public static class PrototypeNativeHiveNormals
         "proto.native.hive.encounter.exoskeletons_normal";
     public const string ChompersNormalId =
         "proto.native.hive.encounter.chompers_normal";
+    public const string MytesNormalId =
+        "proto.native.hive.encounter.mytes_normal";
 
     public const string ChomperId = "proto.native.hive.chomper";
+    public const string MyteId = "proto.native.hive.myte";
+    public const string ToxicCardId = "proto.native.hive.toxic";
+
+    public static PrototypeCardDefinition[] Cards { get; } =
+    [
+        // Toxic.cs: cost 1 playable Status, Exhaust on use,
+        // 5 damage while held at the end of the owner's turn.
+        // It is combat-created only, never a normal reward.
+        new(ToxicCardId, "Toxic", 1, PrototypeCardTarget.None,
+            [], ExhaustOnUse: true, RewardEligible: false,
+            Rarity: PrototypeCardRarity.Status,
+            Type: PrototypeCardType.Status,
+            EndTurnDamageIfInHand: 5, MaxUpgradeLevel: 0)
+    ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
     [
+        // Myte.cs: pair opens at different points in the cycle.
+        // Toxic creates two temporary status cards directly in hand.
+        new(MyteId, "Myte", 67, 0,
+            [
+                new("toxic", [new(
+                    PrototypeEnemyEffectKind.AddCardsToHand, 2,
+                    CardId: ToxicCardId)]),
+                new("bite", [new(
+                    PrototypeEnemyEffectKind.DamagePlayer, 13,
+                    AscensionDeltas: [new(9, 2)])]),
+                new("suck",
+                [
+                    new(PrototypeEnemyEffectKind.DamagePlayer, 4,
+                        AscensionDeltas: [new(9, 2)]),
+                    new(PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                        PowerId: "proto.power.strength",
+                        AscensionDeltas: [new(9, 1)])
+                ])
+            ],
+            MinHp: 61,
+            HpAscensionDeltas: [new(8, 2)],
+            MinHpAscensionDeltas: [new(8, 3)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new("opening",
+            [
+                new("opening", PrototypeEnemyAiStateKind.Conditional,
+                    ConditionalBranches:
+                    [
+                        new("toxic",
+                            PrototypeEnemyAiConditionKind.SlotNameEquals,
+                            "first"),
+                        new("suck",
+                            PrototypeEnemyAiConditionKind.SlotNameEquals,
+                            "second")
+                    ]),
+                new("toxic", PrototypeEnemyAiStateKind.Move,
+                    MoveIndex: 0, NextStateId: "bite"),
+                new("bite", PrototypeEnemyAiStateKind.Move,
+                    MoveIndex: 1, NextStateId: "suck"),
+                new("suck", PrototypeEnemyAiStateKind.Move,
+                    MoveIndex: 2, NextStateId: "toxic")
+            ])),
         // Chomper.cs: each enemy has 2 Artifact.
         // ChompersNormal.cs sets ScreamFirst on the second instance,
         // represented by an internal slot label; the label does not
@@ -98,6 +156,16 @@ public static class PrototypeNativeHiveNormals
                 new("proto.native.hive.exoskeleton", 1, "second"),
                 new("proto.native.hive.exoskeleton", 2, "third"),
                 new("proto.native.hive.exoskeleton", 3, "fourth")
+            ]),
+        // MytesNormal.cs: two Mytes at native first/second slots,
+        // with different starting moves and independent persistent AI.
+        new(MytesNormalId, PrototypeRoomType.Combat,
+            [MyteId, MyteId],
+            MinAct: 2, MaxAct: 2, Weight: 0,
+            Formation:
+            [
+                new(MyteId, 0, "first"),
+                new(MyteId, 1, "second")
             ]),
         // ChompersNormal.cs has two identical species with different
         // initial move flags. Internal slot labels encode this initial
