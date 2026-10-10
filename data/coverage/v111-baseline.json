@@ -4793,7 +4793,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/FranticEscape.cs#fbd36d62124e9fdcdeb59c4cdd02cd483a1f8973cb10fe09e529a0da9dbbffa4"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -29439,7 +29439,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 171,
+        "implemented": 172,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
