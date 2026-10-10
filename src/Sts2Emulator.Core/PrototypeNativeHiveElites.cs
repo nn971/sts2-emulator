@@ -8,9 +8,9 @@ public static class PrototypeNativeHiveElites
 {
     public const string EntomancerId = "proto.native.hive.entomancer";
     public const string PrismId = "proto.native.hive.infested_prism";
-    public const string FrontId = "proto.native.hive.decimillipede_front";
-    public const string MiddleId = "proto.native.hive.decimillipede_middle";
-    public const string BackId = "proto.native.hive.decimillipede_back";
+    public const string FrontId = "proto.native.hive.decimillipede_segment_front";
+    public const string MiddleId = "proto.native.hive.decimillipede_segment_middle";
+    public const string BackId = "proto.native.hive.decimillipede_segment_back";
     public const string EntomancerEncounterId =
         "proto.native.hive.encounter.entomancer_elite";
     public const string PrismEncounterId =
@@ -66,13 +66,23 @@ public static class PrototypeNativeHiveElites
             new("spear",
                 [new(PrototypeEnemyEffectKind.DamagePlayer, 18,
                     AscensionDeltas: [new(9, 2)])]),
-            // Source caps PersonalHive at 3 stacks, otherwise gains
-            // +1 Hive and +1 Strength. The conditional power hook is
-            // retained as explicit follow-up work; the current move
-            // grants its initial +1 Strength only.
+            // Evaluate the source's stack condition before upgrading
+            // Hive: 1 Strength and 1 Hive below 3, else 2 Strength.
             new("pheromone_spit",
-                [new(PrototypeEnemyEffectKind.ApplyEnemyPower, 1,
-                    PowerId: "proto.power.strength")])
+            [
+                new(PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                    PowerId: "proto.power.strength",
+                    OwnerPowerStackConditionId: PersonalHiveId,
+                    OwnerPowerStacksAtLeast: 3),
+                new(PrototypeEnemyEffectKind.ApplyEnemyPower, 1,
+                    PowerId: "proto.power.strength",
+                    OwnerPowerStackConditionId: PersonalHiveId,
+                    OwnerPowerStacksLessThan: 3),
+                new(PrototypeEnemyEffectKind.ApplyEnemyPower, 1,
+                    PowerId: PersonalHiveId,
+                    OwnerPowerStackConditionId: PersonalHiveId,
+                    OwnerPowerStacksLessThan: 3)
+            ])
         ],
         HpAscensionDeltas: [new(8, 20)],
         StartingPowers: [new(PersonalHiveId, 1)]),

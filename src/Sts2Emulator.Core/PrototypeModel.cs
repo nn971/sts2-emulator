@@ -933,7 +933,11 @@ public sealed record PrototypeEnemyEffectSpec(
     int ExtraAmountPerPriorMoveUse = 0,
     bool UseStoredEnemyDamage = false,
     // Native egg slots remain occupied even by dead eggs.
-    bool ReserveSummonSlotAfterDeath = false)
+    bool ReserveSummonSlotAfterDeath = false,
+    // Source-backed conditional buffs, read before the action executes.
+    string? OwnerPowerStackConditionId = null,
+    int? OwnerPowerStacksLessThan = null,
+    int? OwnerPowerStacksAtLeast = null)
 {
     public int AmountAt(
         int act,

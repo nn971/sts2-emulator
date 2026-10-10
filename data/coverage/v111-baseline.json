@@ -17093,24 +17093,28 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.decimillipede_segment_back",
+          "proto.native.hive.decimillipede_segment_front",
+          "proto.native.hive.decimillipede_segment_middle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/DecimillipedeSegment.cs#c5218cdeb9df32ccfbc1fcfc6e14209b319cfe654eec96dd6226cdb08f98b27c"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DECIMILLIPEDE_SEGMENT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
         "engine_ids": [
-          "proto.native.hive.decimillipede_back"
+          "proto.native.hive.decimillipede_segment_back"
         ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/DecimillipedeSegmentBack.cs#0a8c1a5883f67310fcb988c1708b2feb228fb0803ed9b03490a477c1143cdb05"
@@ -17128,7 +17132,7 @@
       {
         "catalogued": true,
         "engine_ids": [
-          "proto.native.hive.decimillipede_front"
+          "proto.native.hive.decimillipede_segment_front"
         ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/DecimillipedeSegmentFront.cs#aa560470bf39e41d5d062ddea747cfbb14ec29ed2abd1eb8e539b7d116365bd8"
@@ -17146,7 +17150,7 @@
       {
         "catalogued": true,
         "engine_ids": [
-          "proto.native.hive.decimillipede_middle"
+          "proto.native.hive.decimillipede_segment_middle"
         ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/DecimillipedeSegmentMiddle.cs#3c1fd33848308186f837e0f37cff18cc74669582d5c293aed9ecb3f963614507"

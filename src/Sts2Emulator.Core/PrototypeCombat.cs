@@ -2552,6 +2552,18 @@ public sealed partial class PrototypeGameEngine
 
             foreach (var effect in move.Effects)
             {
+                if (effect.OwnerPowerStackConditionId is { } requiredPower)
+                {
+                    var stackCount = enemy.PowerStates
+                        .Where(power => power.PowerId == requiredPower)
+                        .Sum(power => power.Stacks);
+                    if (effect.OwnerPowerStacksLessThan is { } upper
+                        && stackCount >= upper)
+                        continue;
+                    if (effect.OwnerPowerStacksAtLeast is { } lower
+                        && stackCount < lower)
+                        continue;
+                }
                 var amount = effect.UseStoredEnemyDamage
                     ? enemy.StoredEnemyDamage
                     : checked(effect.AmountAt(act, ascension)
@@ -3599,6 +3611,35 @@ public sealed partial class PrototypeGameEngine
                             ? MinimumPoweredAttackHpLoss(player) : 0,
                         operation.IsPoweredAttack);
                     combat = damageResult.Combat;
+                    // PersonalHivePower.AfterDamageReceived fires on each
+                    // powered hit, including a fully blocked hit. Every
+                    // stack adds a generated Dazed into a random draw slot.
+                    // It is a target-side reaction, not a card-play event.
+                    if (operation.IsPoweredAttack && splashTarget is { Hp: > 0 })
+                    {
+                        var hiveStacks = splashTarget.PowerStates
+                            .Where(power => power.PowerId ==
+                                PrototypeNativeHiveElites.PersonalHiveId)
+                            .Sum(power => power.Stacks);
+                        for (var n = 0; n < hiveStacks; n++)
+                        {
+                            var instance = new CombatCardInstance(
+                                combat.NextCardInstanceId, null,
+                                "proto.status.dazed", 0, true,
+                                PrototypeJson.EmptyObject());
+                            var slot = PrototypeRng.NextInt(
+                                rng, "combat", combat.DrawPile.Length + 1);
+                            var draw = combat.DrawPile.ToList();
+                            draw.Insert(slot, instance.InstanceId);
+                            combat = combat with
+                            {
+                                Cards = combat.Cards.Append(instance).ToArray(),
+                                DrawPile = draw.ToArray(),
+                                NextCardInstanceId =
+                                    combat.NextCardInstanceId + 1
+                            };
+                        }
+                    }
                     // CurlUpPower records the attack's physical card source
                     // even on a fully blocked hit, then fires AFTER that
                     // complete card play, including all of its hit repeats.
