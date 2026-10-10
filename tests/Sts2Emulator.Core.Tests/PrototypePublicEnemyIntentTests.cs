@@ -77,13 +77,30 @@ public sealed class PrototypePublicEnemyIntentTests
         Assert.Equal(6, enemy.IntentDamage);
         Assert.Equal(1, enemy.IntentHits);
 
-        // Flail Knight's war_chant grants Strength but has no damage.
+        // The Flail Knight's forced opener is "ram" (index two) rather
+        // than definition-index-zero "war_chant".
         var opening = new PrototypeAiEnvironment().Observe(
             CreateState("proto.enemy.flail_knight", moveIndex: 0));
-        // It is a forced ram, NOT a war_chant: random-after-opener maps
-        // its opening index to a specific move in the content definition.
         Assert.Equal("ram", Assert.Single(
             opening.Observation.Combat!.Enemies).MoveId);
+
+        // Ceremonial Beast starts at a deterministic state-machine
+        // nonattack move; after the transition its next move is plow.
+        var stamp = new PrototypeAiEnvironment().Observe(
+            CreateState("proto.enemy.ceremonial_beast"));
+        var nonAttack = Assert.Single(stamp.Observation.Combat!.Enemies);
+        Assert.Equal("stamp", nonAttack.MoveId);
+        Assert.Null(nonAttack.IntentDamage);
+        Assert.Null(nonAttack.IntentHits);
+        AssertNoDamageOrHits(stamp);
+
+        var plow = new PrototypeAiEnvironment().Observe(
+            CreateState("proto.enemy.ceremonial_beast",
+                aiStateId: "plow_move"));
+        var nextMove = Assert.Single(plow.Observation.Combat!.Enemies);
+        Assert.Equal("plow", nextMove.MoveId);
+        Assert.Equal(18, nextMove.IntentDamage);
+        Assert.Equal(1, nextMove.IntentHits);
     }
 
     [Fact]
@@ -155,7 +172,8 @@ public sealed class PrototypePublicEnemyIntentTests
         bool hideIntents = false,
         PrototypePowerInstanceState[]? enemyPowers = null,
         PrototypePowerInstanceState[]? playerPowers = null,
-        Dictionary<string, int>? enemyStatuses = null)
+        Dictionary<string, int>? enemyStatuses = null,
+        string? aiStateId = null)
     {
         var empty = PrototypeJson.EmptyObject();
         var player = new PlayerState(
@@ -183,7 +201,8 @@ public sealed class PrototypePublicEnemyIntentTests
                     moveIndex,
                     enemyStatuses
                         ?? new Dictionary<string, int>(StringComparer.Ordinal),
-                    Powers: enemyPowers)
+                    Powers: enemyPowers,
+                    AiStateId: aiStateId)
             ],
             NextCardInstanceId: 1,
             Cards: [],
