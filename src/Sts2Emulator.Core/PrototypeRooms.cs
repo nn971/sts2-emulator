@@ -696,6 +696,11 @@ public sealed partial class PrototypeGameEngine
                             52 + PrototypeRng.NextInt(state.Rng, "event", 16),
                         "proto.native.underdocks.sunken_statue" =>
                             101 + PrototypeRng.NextInt(state.Rng, "event", 21),
+                        // Punch Off computes an entry-only 91..98 gold
+                        // variable even though neither option pays it.
+                        // Keep this draw to preserve the event RNG stream.
+                        PrototypeNativePunchOff.EventId =>
+                            91 + PrototypeRng.NextInt(state.Rng, "event", 8),
                         _ => 0
                     },
                 NativeEventSecondaryGold:

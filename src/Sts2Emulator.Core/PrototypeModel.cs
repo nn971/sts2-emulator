@@ -1988,7 +1988,8 @@ public sealed record EventState(
     int NativeEventSecondaryGold = 0,
     string? NativeDishId = null,
     string? NativeLastDishId = null,
-    int NativeDishCount = 0)
+    int NativeDishCount = 0,
+    bool NativeDishRollPending = false)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
