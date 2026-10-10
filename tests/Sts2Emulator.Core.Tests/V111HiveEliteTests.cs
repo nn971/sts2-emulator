@@ -193,6 +193,58 @@ public sealed class V111HiveEliteTests
             .Single(c => c.InstanceId == 1).Affliction!.Amount);
     }
 
+    [Fact]
+    public void VitalSparkAfflictsActualCombatEntryCards()
+    {
+        var state = Single(Prism, "prism-combat-entry");
+        var card = new CardInstance(1, "proto.silent.defend", 0,
+            PrototypeJson.EmptyObject());
+        state = state with
+        {
+            Player = state.Player with { Deck = [card] },
+            Phase = RunPhase.Map
+        };
+        var start = typeof(PrototypeGameEngine).GetMethod(
+            "StartCombat", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(start);
+        var entered = Assert.IsType<RunState>(start!.Invoke(null,
+        [
+            state,
+            PrototypeRoomType.Elite,
+            PrototypeContent.Encounter(
+                PrototypeNativeHiveElites.PrismsEncounterId)
+        ]));
+        var instance = Assert.Single(entered.World!.Combat!.Cards);
+        Assert.NotNull(instance.Affliction);
+        Assert.Equal(PrototypeCardAfflictionKind.Tainted,
+            instance.Affliction.Kind);
+        Assert.Equal(2, instance.Affliction.Amount);
+        Assert.Equal(1, instance.Affliction.SourceEnemyInstanceId);
+    }
+
+    [Fact]
+    public void VitalSparkAfflictionsClearWhenSourceDies()
+    {
+        var state = AddCardToHand(
+            Single(Prism, "prism-cleanup"),
+            "proto.silent.defend");
+        var refreshed = RefreshSkillAura(state.World!.Combat!);
+        var before = CanonicalJson.Sha256(refreshed);
+        Assert.NotNull(Assert.Single(refreshed.Cards).Affliction);
+        var dead = refreshed with
+        {
+            Enemies = [refreshed.Enemies[0] with { Hp = 0 }]
+        };
+        var cleanup = typeof(PrototypeGameEngine).GetMethod(
+            "CleanupSourceBoundPowersForDefeatedEnemies",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(cleanup);
+        var result = Assert.IsType<CombatState>(
+            cleanup!.Invoke(null, [dead]));
+        Assert.Null(Assert.Single(result.Cards).Affliction);
+        Assert.Equal(before, CanonicalJson.Sha256(refreshed));
+    }
+
     private static int Stack(EnemyCombatState enemy, string id) =>
         enemy.PowerStates.Where(power => power.PowerId == id)
             .Sum(power => power.Stacks);

@@ -2980,6 +2980,8 @@ public sealed partial class PrototypeGameEngine
                                     combat.NextCardInstanceId,
                                     null, effect.CardId, 0, true,
                                     PrototypeJson.EmptyObject());
+                                instance = ApplyActiveSourceBoundAfflictionToCard(
+                                    combat, instance);
                                 var insertion = PrototypeRng.NextInt(
                                     rng, "combat", combat.DrawPile.Length + 1);
                                 var draw = combat.DrawPile.ToList();
@@ -9581,20 +9583,23 @@ public sealed partial class PrototypeGameEngine
                 var transformed = combat.TransformedPersistentCardIds
                     ?? Array.Empty<long>();
 
-                // Transform creates a new physical card; it does not
-                // mutate the original card's persistent deck identity.
-                // Track that absence explicitly for run invariants.
+                // Transform creates a new physical card. Before it
+                // enters any pile, re-evaluate enemy affliction auras
+                // (such as Vital Spark) against its *new* card type.
+                var replacementCard = ApplyActiveSourceBoundAfflictionToCard(
+                    combat,
+                    new CombatCardInstance(
+                        replacementId,
+                        PersistentCardInstanceId: null,
+                        CardId: replacement,
+                        UpgradeLevel: 0,
+                        IsTemporary: true,
+                        State: PrototypeJson.EmptyObject()));
                 combat = combat with
                 {
                     Cards = combat.Cards
                         .Where(card => card.InstanceId != instanceId)
-                        .Append(new CombatCardInstance(
-                            replacementId,
-                            PersistentCardInstanceId: null,
-                            CardId: replacement,
-                            UpgradeLevel: 0,
-                            IsTemporary: true,
-                            State: PrototypeJson.EmptyObject()))
+                        .Append(replacementCard)
                         .ToArray(),
                     Hand = combat.Hand.Select(id =>
                         id == instanceId ? replacementId : id).ToArray(),
