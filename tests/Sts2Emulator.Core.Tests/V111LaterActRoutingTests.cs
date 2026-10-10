@@ -245,6 +245,31 @@ public sealed class V111LaterActRoutingTests
             unchanged.RemainingEliteEncounterIds);
     }
 
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void GeneratedNativeLaterActMapSurvivesSnapshotAndForkValidation(
+        int act)
+    {
+        var engine = new PrototypeGameEngine();
+        var state = V111RunFactory.Create("later-map-snapshot-" + act);
+        state = engine.Step(state, GameAction.Empty("start_run")).State;
+        for (var next = 2; next <= act; next++)
+        {
+            state = engine.Step(state with { Phase = RunPhase.ActTransition },
+                GameAction.Empty("continue_act")).State;
+        }
+        PrototypeStateInvariants.Validate(state);
+        var fork = state.Fork();
+        var restored = RunSnapshot.Load(RunSnapshot.Save(state));
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(restored));
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(fork));
+        Assert.NotSame(state.World!.Map.Nodes,
+            restored.World!.Map.Nodes);
+    }
+
     [Fact]
     public void LaterActUnknownRoomEventsUseOnlyExplicitSupportedContent()
     {
