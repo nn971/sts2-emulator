@@ -252,6 +252,111 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.False(reward.PotionResolved);
     }
 
+
+    [Fact]
+    public void ConveyorWaitsForJellyLiverTransformBeforeRollingNextDish()
+    {
+        var engine = new PrototypeGameEngine();
+        var entered = FindEvent(engine,
+            PrototypeNativeEndlessConveyor.EventId,
+            "conveyor-jelly-continuation", gold: 400);
+        var forced = entered with
+        {
+            World = entered.World! with
+            {
+                Event = entered.World.Event! with
+                {
+                    NativeDishId = "JELLY_LIVER",
+                    NativeLastDishId = "JELLY_LIVER"
+                }
+            }
+        };
+        var visible = new PrototypeAiEnvironment().Observe(forced)
+            .Observation.Event!;
+        Assert.Equal("JELLY_LIVER", visible.CurrentDishId);
+        Assert.Equal(1, visible.CurrentDishNumber);
+
+        var rngBefore = CanonicalJson.Sha256(forced.Rng);
+        var pending = Choose(engine, forced, "grab");
+        var eventBeforeChoice = pending.World!.Event!;
+        Assert.True(eventBeforeChoice.NativeDishRollPending);
+        Assert.Equal("JELLY_LIVER", eventBeforeChoice.NativeDishId);
+        Assert.Equal(1, eventBeforeChoice.NativeDishCount);
+        Assert.NotNull(eventBeforeChoice.PendingDeckChoice);
+        Assert.Equal(PrototypePersistentDeckChoiceKind.Transform,
+            eventBeforeChoice.PendingDeckChoice.Kind);
+        // The dish itself needs no event RNG until the transform target
+        // is chosen; rolling the next dish here would advance it early.
+        Assert.Equal(rngBefore, CanonicalJson.Sha256(pending.Rng));
+        Assert.Equal(CanonicalJson.Sha256(pending),
+            CanonicalJson.Sha256(pending.Fork()));
+
+        var select = engine.GetLegalActions(pending).First(action =>
+            action.Kind == "choose_event_deck_card");
+        var resolved = engine.Step(pending, select).State;
+        Assert.Equal(RunPhase.Event, resolved.Phase);
+        Assert.False(resolved.World!.Event!.NativeDishRollPending);
+        Assert.Null(resolved.World.Event.PendingDeckChoice);
+        Assert.Equal(2, resolved.World.Event.NativeDishCount);
+        Assert.NotNull(resolved.World.Event.NativeDishId);
+        var newVisible = new PrototypeAiEnvironment()
+            .Observe(resolved).Observation.Event!;
+        Assert.Equal(resolved.World.Event.NativeDishId,
+            newVisible.CurrentDishId);
+        Assert.Equal(2, newVisible.CurrentDishNumber);
+    }
+
+    [Fact]
+    public void ConveyorWaitsForCondimentPotionChoiceBeforeRolling()
+    {
+        var engine = new PrototypeGameEngine();
+        var entered = FindEvent(engine,
+            PrototypeNativeEndlessConveyor.EventId,
+            "conveyor-condiment-continuation", gold: 400);
+        var forced = entered with
+        {
+            World = entered.World! with
+            {
+                Event = entered.World.Event! with
+                {
+                    NativeDishId = "SUSPICIOUS_CONDIMENT",
+                    NativeLastDishId = "SUSPICIOUS_CONDIMENT"
+                }
+            }
+        };
+        Assert.Contains(null, forced.Player.PotionSlots);
+        var pending = Choose(engine, forced, "grab");
+        Assert.Equal(RunPhase.Event, pending.Phase);
+        Assert.True(pending.World!.Event!.NativeDishRollPending);
+        Assert.NotNull(pending.World.Event.PendingPotionReplacement);
+        Assert.Equal(1, pending.World.Event.NativeDishCount);
+        Assert.Equal("SUSPICIOUS_CONDIMENT",
+            pending.World.Event.NativeDishId);
+
+        var skip = engine.GetLegalActions(pending).Single(action =>
+            action.Kind == "skip_event_potion");
+        var resolved = engine.Step(pending, skip).State;
+        Assert.Equal(RunPhase.Event, resolved.Phase);
+        Assert.False(resolved.World!.Event!.NativeDishRollPending);
+        Assert.Null(resolved.World.Event.PendingPotionReplacement);
+        Assert.Equal(2, resolved.World.Event.NativeDishCount);
+    }
+
+    [Fact]
+    public void PunchOffEntryConsumesItsNativeDynamicGoldRoll()
+    {
+        var engine = new PrototypeGameEngine();
+        var entered = FindEvent(engine, PrototypeNativePunchOff.EventId,
+            "punch-entry-gold-roll", floor: 6);
+        // PunchOff.CalculateVars samples NextInt(91,99) on event entry,
+        // independently of its Injury/relic and combat branches.
+        Assert.InRange(entered.World!.Event!.NativeEventGold, 91, 98);
+        Assert.Equal(CanonicalJson.Sha256(entered),
+            CanonicalJson.Sha256(entered.Fork()));
+        Assert.Contains("nab", ChoiceIds(engine, entered));
+        Assert.Contains("take_them", ChoiceIds(engine, entered));
+    }
+
     private static string[] ChoiceIds(
         PrototypeGameEngine engine, RunState state) =>
         engine.GetLegalActions(state)
