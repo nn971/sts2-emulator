@@ -213,7 +213,13 @@ public static class PrototypeNativeLaterActs
                                 "second"),
                             new("enrage",
                                 PrototypeEnemyAiConditionKind.SlotNameEquals,
-                                "third")
+                                "third"),
+                            // Native ExoskeletonsNormal adds a fourth
+                            // slot starting at RAND. Unlike the weak
+                            // encounter this first move is stochastic.
+                            new("random",
+                                PrototypeEnemyAiConditionKind.SlotNameEquals,
+                                "fourth")
                         ]),
                     new("skitter", PrototypeEnemyAiStateKind.Move,
                         MoveIndex: 0, NextStateId: "random"),

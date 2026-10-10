@@ -894,6 +894,7 @@ public enum PrototypeEnemyEffectKind
     ApplyPlayerPower,
     ApplyEnemyPower,
     AddCardsToDiscard,
+    AddCardsToHand,
     AddCardsToRandomDraw,
     SummonEnemy,
     KillSelf,

@@ -2303,15 +2303,18 @@ public sealed partial class PrototypeGameEngine
 
                     if (!states.TryGetValue(
                             selected.TargetStateId,
-                            out var target)
-                        || target.Kind
-                            != PrototypeEnemyAiStateKind.Move)
+                            out var target))
                     {
                         throw new InvalidOperationException(
-                            $"Enemy '{definition.Id}' AI conditional branch targets invalid move state '{selected.TargetStateId}'.");
+                            $"Enemy '{definition.Id}' AI conditional branch targets missing state '{selected.TargetStateId}'.");
                     }
 
-                    stateId = selected.TargetStateId;
+                    // The native Exoskeleton fourth slot branches to
+                    // RAND rather than directly to a MoveState.
+                    // Continue resolving the graph until a concrete
+                    // move is committed, using the same RNG and without
+                    // sampling anything during Observe().
+                    stateId = target.Id;
                     break;
                 }
 
@@ -2783,6 +2786,17 @@ public sealed partial class PrototypeGameEngine
                                 amount);
                             combat = selfPower.Combat;
                             enemy = selfPower.Enemy;
+                            break;
+
+                        case PrototypeEnemyEffectKind.AddCardsToHand:
+                            if (effect.CardId is null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Enemy hand-card effect is missing a card ID.");
+                            }
+
+                            combat = AddGeneratedEnemyCardsToHand(
+                                combat, effect.CardId, amount);
                             break;
 
                         case PrototypeEnemyEffectKind.AddCardsToDiscard:
@@ -5372,6 +5386,46 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    /// <summary>
+    /// CardPileCmd.AddToCombatAndPreview(..., PileType.Hand) for enemy
+    /// status injection. Generated cards are temporary, have no persistent
+    /// deck version, and use stable combat instance identifiers.
+    /// A full hand cannot accept another card; excess cards are put
+    /// into discard by this emulator pending native overflow verification.
+    /// </summary>
+    private static CombatState AddGeneratedEnemyCardsToHand(
+        CombatState combat,
+        string cardId,
+        int count)
+    {
+        _ = PrototypeContent.Card(cardId);
+        const int maxHandSize = 10;
+        for (var index = 0; index < Math.Max(0, count); index++)
+        {
+            var instance = new CombatCardInstance(
+                InstanceId: combat.NextCardInstanceId,
+                PersistentCardInstanceId: null,
+                CardId: cardId,
+                UpgradeLevel: 0,
+                IsTemporary: true,
+                State: PrototypeJson.EmptyObject());
+            instance = ApplyActiveSourceBoundAfflictionToCard(
+                combat, instance);
+            var fits = combat.Hand.Length < maxHandSize;
+            combat = combat with
+            {
+                NextCardInstanceId = combat.NextCardInstanceId + 1,
+                Cards = combat.Cards.Append(instance).ToArray(),
+                Hand = fits ? combat.Hand.Append(instance.InstanceId).ToArray()
+                    : combat.Hand,
+                DiscardPile = fits ? combat.DiscardPile
+                    : combat.DiscardPile.Append(instance.InstanceId).ToArray()
+            };
+        }
+
+        return combat;
     }
 
     private static CombatState AddGeneratedCardsToDiscard(

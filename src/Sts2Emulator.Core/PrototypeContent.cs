@@ -1899,6 +1899,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeUnderdocksTrashHeap.Cards)
             .Concat(PrototypeNativeEndlessConveyor.EventCards)
             .Concat(PrototypeNativeLaterActs.Cards)
+            .Concat(PrototypeNativeHiveNormals.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -6022,6 +6023,7 @@ public static class PrototypeContent
                 ])
         }.Concat(PrototypeNativeUnderdocks.Enemies)
             .Concat(PrototypeNativeLaterActs.Enemies)
+            .Concat(PrototypeNativeHiveNormals.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
@@ -6978,7 +6980,8 @@ public static class PrototypeContent
             MaxAct: 3,
             Weight: 1),
         ..PrototypeNativeUnderdocks.Encounters,
-        ..PrototypeNativeLaterActs.Encounters
+        ..PrototypeNativeLaterActs.Encounters,
+        ..PrototypeNativeHiveNormals.Encounters
     ];
 
     public static string[] StartingDeck { get; } =
