@@ -808,6 +808,10 @@ public sealed partial class PrototypeGameEngine
             && IsLaterActExpandedEvent(eventState.EventId))
             return GetLaterActExpandedEventActions(eventState);
 
+        if (UsesNativeLaterActEvents(state)
+            && IsLaterActV3Event(eventState.EventId))
+            return GetLaterActV3Actions(state);
+
         var definition =
             PrototypeContent.Event(
                 eventState.EventId);

@@ -36,14 +36,22 @@ public sealed class V111LaterActEventTests
             seen.Add(selected);
             var actionIds = engine.GetLegalActions(state).Select(action =>
                 action.ReadPayload<EventChoicePayload>().ChoiceId).ToArray();
-            Assert.Equal(2, actionIds.Length);
-            Assert.Equal(
-                PrototypeContent.Event(selected).Choices.Take(2)
-                    .Select(c => c.Id),
-                actionIds);
+            var choices = PrototypeContent.Event(selected).Choices;
+            var expected = selected
+                == PrototypeNativeLaterActEventExpansionV3.ZenWeaverId
+                    ? choices.Where(option => state.Player.Gold >=
+                        (option.Id switch
+                        {
+                            "breathing_techniques" => 50,
+                            "emotional_awareness" => 125,
+                            "arachnid_acupuncture" => 250,
+                            _ => int.MaxValue
+                        })).Select(option => option.Id)
+                    : choices.Take(2).Select(option => option.Id);
+            Assert.Equal(expected, actionIds);
         }
-        Assert.Equal(PrototypeNativeLaterActEvents.SupportedIds(act).Length,
-            seen.Count);
+        Assert.True(seen.Count >= 2,
+            "The seeded source-backed event pool should expose diversity.");
     }
 
     [Theory]

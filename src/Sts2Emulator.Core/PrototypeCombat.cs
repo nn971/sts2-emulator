@@ -346,6 +346,8 @@ public sealed partial class PrototypeGameEngine
         state = state with { Player = openingPollinous.Player };
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
+            - PrototypeNativeLaterActEventExpansionV3
+                .BigMushroomFirstTurnDrawPenalty(state.Player)
             + (boomingConchAtElite ? 2 : 0)
             + FirstTurnDrawBonus(state.Player)
             + state.Player.Relics.Sum(relic =>
@@ -1874,7 +1876,11 @@ public sealed partial class PrototypeGameEngine
                     + player.Relics.Sum(relic =>
                         PrototypeContent.Relic(relic.RelicId)
                             .HandDrawBonus)
-                    + pollinousDraw.DrawBonus;
+                    + pollinousDraw.DrawBonus
+                    - (combat.Turn == 1
+                        ? PrototypeNativeLaterActEventExpansionV3
+                            .BigMushroomFirstTurnDrawPenalty(player)
+                        : 0);
                 var drawn = DrawCards(
                     player,
                     combat,
@@ -5214,6 +5220,31 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.SetHandCardsEnergyCostMaxOne:
+                {
+                    // Enlightenment caps, but never increases, the current
+                    // cost of cards already in hand. On upgrade this is
+                    // persistent for the combat, otherwise it expires
+                    // on turn end / when the card is played.
+                    var expiry = operation.GeneratedCardUpgradeLevel > 0
+                        ? PrototypeTemporaryCardCostExpiry.None
+                        : PrototypeTemporaryCardCostExpiry.EndOfTurn
+                            | PrototypeTemporaryCardCostExpiry.WhenPlayed;
+                    foreach (var id in combat.Hand)
+                    {
+                        var card = RequireCombatCard(combat, id);
+                        var definition = PrototypeContent.Card(card.CardId);
+                        if (definition.Cost.Kind != PrototypeCardCostKind.Fixed
+                            || definition.Cost.Amount < 0
+                            || ResolveFixedCardEnergyCost(
+                                combat, card, definition) <= 1)
+                            continue;
+                        combat = SetCardTemporaryEnergyCost(combat, id,
+                            new PrototypeTemporaryCardCost(1, expiry));
+                    }
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed:
                 {
                     var candidates = combat.Hand
@@ -5318,6 +5349,57 @@ public sealed partial class PrototypeGameEngine
                         operation.StatusId,
                         operation.Amount);
                     break;
+
+                case PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInDrawPile:
+                {
+                    // Metamorphosis creates three (five upgraded) Silent
+                    // Attacks with zero energy cost for this combat, at
+                    // random positions in the draw pile. Uses an explicit
+                    // supported pool; native card-generation RNG order is
+                    // still pending the capture oracle.
+                    var pool = PrototypeContent.NativeSilentCardPool
+                        .Where(id =>
+                        {
+                            var def = PrototypeContent.Card(id);
+                            return def.Type == PrototypeCardType.Attack
+                                && def.CanBeGeneratedInCombat
+                                && def.MechanicsImplemented
+                                && !def.MultiplayerOnly
+                                && def.Rarity is PrototypeCardRarity.Common
+                                    or PrototypeCardRarity.Uncommon
+                                    or PrototypeCardRarity.Rare;
+                        }).ToArray();
+                    if (pool.Length == 0 && operation.Amount > 0)
+                        throw new NotSupportedException(
+                            "Metamorphosis has no supported Attack pool.");
+                    for (var i = 0; i < operation.Amount; i++)
+                    {
+                        var selected = pool[PrototypeRng.NextInt(
+                            rng, "combat", pool.Length)];
+                        var instance = new CombatCardInstance(
+                            InstanceId: combat.NextCardInstanceId,
+                            PersistentCardInstanceId: null,
+                            CardId: selected,
+                            UpgradeLevel: 0,
+                            IsTemporary: true,
+                            State: PrototypeJson.EmptyObject(),
+                            TemporaryEnergyCost: new(
+                                0, PrototypeTemporaryCardCostExpiry.None));
+                        instance = ApplyActiveSourceBoundAfflictionToCard(
+                            combat, instance);
+                        var position = PrototypeRng.NextInt(
+                            rng, "combat", combat.DrawPile.Length + 1);
+                        var draw = combat.DrawPile.ToList();
+                        draw.Insert(position, instance.InstanceId);
+                        combat = combat with
+                        {
+                            Cards = combat.Cards.Append(instance).ToArray(),
+                            NextCardInstanceId = combat.NextCardInstanceId + 1,
+                            DrawPile = draw.ToArray()
+                        };
+                    }
+                    break;
+                }
 
                 case PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand:
                 case PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand:

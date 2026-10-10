@@ -18,9 +18,12 @@ public static class PrototypeNativeLaterActEvents
         2 => [PrototypeNativeLaterActs.HiveBugslayerId,
             InfestedAutomatonId,
             PrototypeNativeLaterActEventExpansion.LostWispEventId,
-            PrototypeNativeLaterActEventExpansion.ColossalFlowerEventId],
+            PrototypeNativeLaterActEventExpansion.ColossalFlowerEventId,
+            PrototypeNativeLaterActEventExpansionV3.SpiritGrafterId,
+            PrototypeNativeLaterActEventExpansionV3.ZenWeaverId],
         3 => [ReflectionsId,
-            PrototypeNativeLaterActEventExpansion.RoundTeaPartyEventId],
+            PrototypeNativeLaterActEventExpansion.RoundTeaPartyEventId,
+            PrototypeNativeLaterActEventExpansionV3.HungryForMushroomsId],
         _ => throw new ArgumentOutOfRangeException(nameof(act))
     };
 
@@ -72,6 +75,8 @@ public sealed partial class PrototypeGameEngine
             .Where(id => !world.EventIds.Contains(id, StringComparer.Ordinal))
             .Where(id => PrototypeNativeLaterActEventExpansion.IsEligible(
                 id, state.Player))
+            .Where(id => PrototypeNativeLaterActEventExpansionV3.IsEligible(
+                id, state.Player))
             .Select(PrototypeContent.Event).ToArray();
     }
 
@@ -122,6 +127,8 @@ public sealed partial class PrototypeGameEngine
 
         if (IsLaterActExpandedEvent(eventState.EventId))
             return StepLaterActExpandedEvent(state, choice);
+        if (IsLaterActV3Event(eventState.EventId))
+            return StepLaterActV3Event(state, choice);
 
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
