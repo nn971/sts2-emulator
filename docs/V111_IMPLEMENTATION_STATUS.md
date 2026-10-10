@@ -158,6 +158,16 @@ This is an intermediate implementation. Final release gates remain open.
   fully blocked hits). Both preserve exact source-pinned A8/A9 numbers,
   occupy independent enemy instances and retain Weight=0 pending
   native Hive region generation.
+- Implemented **two more gated Hive normal encounters**: Ovicopter
+  (three egg summons with reserved native slots; Tough Egg to Hatchling
+  transformations, living-teammate conditional Lay/Paste) and The Obscura
+  (Parafright illusion summon, nonrepeating random attacks, Wail buffing
+  all living enemies, minion death/revival). Secondary minions have
+  persistent instance IDs and no longer block combat victory after
+  their primary is defeated. Spawn, hatch and revive transitions have
+  focused deterministic, Ascension, fork and edge-case coverage.
+  Prototype summon RNG and exceptional visual/slot ordering remain
+  explicitly unverified against live game traces. Both Weight=0.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

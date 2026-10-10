@@ -2368,6 +2368,13 @@ public sealed partial class PrototypeGameEngine
                 branch.Value is not null
                 && !enemy.PowerStates.Any(power =>
                     power.PowerId == branch.Value && power.Stacks > 0),
+            // GetTeammatesOf includes the acting monster.
+            PrototypeEnemyAiConditionKind.LivingEnemiesAtMost =>
+                int.TryParse(branch.Value, out var maxAlive)
+                && living.Length <= maxAlive,
+            PrototypeEnemyAiConditionKind.LivingEnemiesGreaterThan =>
+                int.TryParse(branch.Value, out var minAlive)
+                && living.Length > minAlive,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(branch.Condition))
         };
@@ -2478,6 +2485,7 @@ public sealed partial class PrototypeGameEngine
                     {
                         Hp = hpRange.Max,
                         Block = 0,
+                        LastMoveId = "revive",
                         Statuses =
                             new Dictionary<string, int>(
                                 StringComparer.Ordinal)
@@ -2796,6 +2804,55 @@ public sealed partial class PrototypeGameEngine
                             enemy = selfPower.Enemy;
                             break;
 
+                        case PrototypeEnemyEffectKind.ApplyAllEnemyPower:
+                        {
+                            if (effect.PowerId is null)
+                                throw new InvalidOperationException(
+                                    "Team power requires a power ID.");
+                            for (var allyIndex = 0; allyIndex < enemies.Count; allyIndex++)
+                            {
+                                var ally = enemies[allyIndex].InstanceId ==
+                                    enemy.InstanceId ? enemy : enemies[allyIndex];
+                                if (ally.Hp <= 0)
+                                    continue;
+                                var applied = ApplyEnemyPowerToState(
+                                    combat, ally, effect.PowerId, amount);
+                                combat = applied.Combat;
+                                enemies[allyIndex] = applied.Enemy;
+                                if (ally.InstanceId == enemy.InstanceId)
+                                    enemy = applied.Enemy;
+                            }
+                            break;
+                        }
+
+                        case PrototypeEnemyEffectKind.TransformEnemy:
+                        {
+                            if (effect.EnemyId is null)
+                                throw new InvalidOperationException(
+                                    "Enemy transformation requires a model ID.");
+                            var transformed = PrototypeContent.Enemy(effect.EnemyId);
+                            var range = transformed.HpRangeAt(act, ascension);
+                            var maxHp = range.Min == range.Max
+                                ? range.Max
+                                : range.Min + PrototypeRng.NextInt(
+                                    rng, "combat", range.Max - range.Min + 1);
+                            // ToughEgg.Hatch preserves its instance and
+                            // Minion marker, but changes the combat body.
+                            enemy = enemy with
+                            {
+                                EnemyId = effect.EnemyId,
+                                Hp = maxHp,
+                                Block = 0,
+                                Statuses = new Dictionary<string, int>(
+                                    StringComparer.Ordinal),
+                                Powers = enemy.PowerStates.Where(power =>
+                                    power.PowerId == "proto.power.minion")
+                                    .ToArray(),
+                                AiStateId = transformed.Ai?.InitialStateId
+                            };
+                            break;
+                        }
+
                         case PrototypeEnemyEffectKind.AddCardsToHand:
                             if (effect.CardId is null)
                             {
@@ -2903,7 +2960,8 @@ public sealed partial class PrototypeGameEngine
                                     .Reverse()
                                     .FirstOrDefault(slot =>
                                         !enemies.Any(item =>
-                                            item.Hp > 0
+                                            (item.Hp > 0
+                                                || effect.ReserveSummonSlotAfterDeath)
                                             && StringComparer.Ordinal.Equals(
                                                 item.SlotName, slot)));
                                 if (selectedSlot is null)
@@ -10448,6 +10506,15 @@ public sealed partial class PrototypeGameEngine
         }
     }
 
-    private static bool AllEnemiesDefeated(CombatState combat) =>
-        combat.Enemies.All(enemy => enemy.Hp <= 0);
+    // MinionPower identifies secondary enemies. A combat with primary
+    // enemies is won when they fall even if a summoned egg or illusion
+    // still survives; standalone minion fixtures require all-dead.
+    private static bool AllEnemiesDefeated(CombatState combat)
+    {
+        var primary = combat.Enemies.Where(enemy =>
+            !PrototypeContent.Enemy(enemy.EnemyId).IsMinion).ToArray();
+        return primary.Length > 0
+            ? primary.All(enemy => enemy.Hp <= 0)
+            : combat.Enemies.All(enemy => enemy.Hp <= 0);
+    }
 }

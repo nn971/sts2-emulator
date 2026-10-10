@@ -907,7 +907,11 @@ public enum PrototypeEnemyEffectKind
     EscapeEnemy,
     HealSelf,
     StoreEnemyPowerAsDamage,
-    StealPlayerCard
+    StealPlayerCard,
+    // Native Ovicopter egg hatching preserves the combat instance.
+    TransformEnemy,
+    // The Obscura's Wail buffs every living teammate.
+    ApplyAllEnemyPower
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -927,7 +931,9 @@ public sealed record PrototypeEnemyEffectSpec(
     string? EnemyId = null,
     string[]? SummonSlotNames = null,
     int ExtraAmountPerPriorMoveUse = 0,
-    bool UseStoredEnemyDamage = false)
+    bool UseStoredEnemyDamage = false,
+    // Native egg slots remain occupied even by dead eggs.
+    bool ReserveSummonSlotAfterDeath = false)
 {
     public int AmountAt(
         int act,
@@ -972,7 +978,9 @@ public enum PrototypeEnemyAiConditionKind
     IsOffBalance,
     IsNotOffBalance,
     HasEnemyPower,
-    LacksEnemyPower
+    LacksEnemyPower,
+    LivingEnemiesAtMost,
+    LivingEnemiesGreaterThan
 }
 
 public enum PrototypeEnemyAiRepeatRule

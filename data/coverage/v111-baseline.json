@@ -13305,17 +13305,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.encounter.ovicopter_normal"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/OvicopterNormal.cs#47d9dbf8600e0e1f7d0a89d1131080a41d9aa1f10e6afa3359d3b7c2c7ddef4d"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "OVICOPTER_NORMAL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13839,17 +13841,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.encounter.the_obscura_normal"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TheObscuraNormal.cs#634ac3c9cf1739374efbfc4a69250f20522ee20c36a5109380e03878384d7e06"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "THE_OBSCURA_NORMAL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17805,17 +17809,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.ovicopter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/Ovicopter.cs#bffac853521afcaa0fd4d74d6aa595da359096e65cc67d0e99484b600881aaec"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "OVICOPTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17853,17 +17859,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.parafright"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/Parafright.cs#cf2ec86e1cab489f4c064be88254a4dae45455de2ffebb6c75b6c069ef5b6588"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PARAFRIGHT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -18365,17 +18373,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.the_obscura"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/TheObscura.cs#40fa10935031312874abfa482cff482f6500f7296b15c9e2137efc02267822fd"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "THE_OBSCURA",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -18433,17 +18443,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.tough_egg"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/ToughEgg.cs#68d8a9d5a728ae5a43c9ea258c00d5902143bac9dd1053532e1d47ba442cde02"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TOUGH_EGG",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -21541,17 +21553,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.hatch"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/HatchPower.cs#f5bb49856cc482d818b7a49a828ba7c135509fed828612ce7556f69793f50092"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "HATCH",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
