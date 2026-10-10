@@ -775,6 +775,9 @@ public sealed partial class PrototypeGameEngine
         {
             var card = RequireCombatCard(combat, instanceId);
             var definition = PrototypeContent.Card(card.CardId);
+            if (card.Affliction?.Kind == PrototypeCardAfflictionKind.Bound
+                && combat.BoundCardPlayedThisTurn)
+                continue;
             if (!CanPlayAnotherCardThisTurn(state.Player, combat, card))
             {
                 continue;
@@ -8847,6 +8850,124 @@ public sealed partial class PrototypeGameEngine
                 .PlayerStrengthDexterityLossPerCardPlayedPerStack;
     }
 
+    private static CombatState ResolveNativeGloryBossCardHooks(
+        CombatState combat, PrototypeCombatEvent combatEvent)
+    {
+        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
+        {
+            return combat with
+            {
+                BoundCardPlayedThisTurn = false,
+                Cards = combat.Cards.Select(card =>
+                    card.Affliction?.Kind == PrototypeCardAfflictionKind.Bound
+                        ? card with { Affliction = null }
+                        : card).ToArray(),
+                PlayerPowers = combat.PlayerPowers.Select(power =>
+                    power.PowerId == PrototypeNativeGloryBosses.ChainsId
+                        ? power with { StoredValue = 0 } : power).ToArray()
+            };
+        }
+
+        if (combatEvent.Kind == PrototypeCombatEventKind.CardDrawn
+            && combatEvent.SourceCardInstanceId is { } drawnId)
+        {
+            var card = combat.Cards.FirstOrDefault(candidate =>
+                candidate.InstanceId == drawnId);
+            if (card is not null && card.Affliction is null)
+            {
+                for (var powerIndex = 0; powerIndex < combat.PlayerPowers.Length;
+                     powerIndex++)
+                {
+                    var power = combat.PlayerPowers[powerIndex];
+                    if (power.PowerId != PrototypeNativeGloryBosses.ChainsId
+                        || power.StoredValue >= power.Stacks
+                        || power.SourceEnemyInstanceId is not { } sourceId
+                        || !combat.Enemies.Any(enemy =>
+                            enemy.InstanceId == sourceId && enemy.Hp > 0))
+                        continue;
+                    combat = combat with
+                    {
+                        Cards = combat.Cards.Select(candidate =>
+                            candidate.InstanceId == drawnId
+                                ? candidate with
+                                {
+                                    Affliction = new PrototypeCardAffliction(
+                                        PrototypeCardAfflictionKind.Bound,
+                                        SourceEnemyInstanceId: sourceId)
+                                }
+                                : candidate).ToArray(),
+                        PlayerPowers = combat.PlayerPowers.Select((candidate, i) =>
+                            i == powerIndex
+                                ? candidate with { StoredValue = power.StoredValue + 1 }
+                                : candidate).ToArray()
+                    };
+                    break;
+                }
+            }
+        }
+
+        if (combatEvent.Kind != PrototypeCombatEventKind.CardPlayed)
+            return combat;
+
+        if (combatEvent.SourceCardInstanceId is { } playedId
+            && combat.Cards.FirstOrDefault(card =>
+                card.InstanceId == playedId)?.Affliction?.Kind
+                == PrototypeCardAfflictionKind.Bound)
+            combat = combat with { BoundCardPlayedThisTurn = true };
+
+        // Test Subject Enrage grows on each completed Skill play.
+        if (combatEvent.CardId is { } id
+            && PrototypeContent.Card(id).Type == PrototypeCardType.Skill)
+        {
+            var enemies = combat.Enemies.ToArray();
+            for (var index = 0; index < enemies.Length; index++)
+            {
+                var enemy = enemies[index];
+                if (enemy.Hp <= 0
+                    || enemy.EnemyId != PrototypeNativeGloryBosses.TestSubjectId)
+                    continue;
+                var amount = enemy.PowerStates
+                    .Where(power => power.PowerId
+                        == PrototypeNativeGloryBosses.EnrageId)
+                    .Sum(power => power.Stacks);
+                if (amount <= 0)
+                    continue;
+                var applied = ApplyEnemyPowerToState(
+                    combat, enemy, "proto.power.strength", amount);
+                combat = applied.Combat;
+                enemies[index] = applied.Enemy;
+            }
+            combat = combat with { Enemies = enemies };
+        }
+
+        // Aeonglass's Withering Presence has one six-card countdown
+        // per owner, regardless of other enemies or card type.
+        var updatedEnemies = combat.Enemies.ToArray();
+        for (var index = 0; index < updatedEnemies.Length; index++)
+        {
+            var enemy = updatedEnemies[index];
+            if (enemy.Hp <= 0
+                || enemy.EnemyId != PrototypeNativeGloryBosses.AeonglassId)
+                continue;
+            var powers = enemy.PowerStates.ToArray();
+            var powerIndex = Array.FindIndex(powers, power =>
+                power.PowerId == PrototypeNativeGloryBosses.WitheringPresenceId);
+            if (powerIndex < 0)
+                continue;
+            var next = powers[powerIndex].Stacks - 1;
+            powers[powerIndex] = powers[powerIndex] with
+            {
+                Stacks = next > 0 ? next : 6
+            };
+            updatedEnemies[index] = enemy with { Powers = powers };
+            combat = combat with { Enemies = updatedEnemies };
+            if (next <= 0)
+                combat = AddGeneratedEnemyCardsToHand(
+                    combat, PrototypeNativeGloryBosses.WitherId, 1);
+        }
+        return combat;
+    }
+
     private static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
         PlayerState player,
         CombatState combat,
@@ -8869,6 +8990,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
+        combat = ResolveNativeGloryBossCardHooks(combat, combatEvent);
         combat = RefreshNativeHiveVitalSpark(combat);
         combat = RefreshNativeGloryGalvanic(combat);
         combat = ResolveNativeCardCompletionPowers(combat, combatEvent);
