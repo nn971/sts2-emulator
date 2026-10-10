@@ -199,4 +199,110 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Equal(originalHash, CanonicalJson.Sha256(state));
         Assert.NotEqual(originalHash, CanonicalJson.Sha256(branch));
     }
+
+    [Fact]
+    public void DrawPileObservationIsUnorderedButPreservesVisibleCards()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("public-draw-multiset");
+        state = engine.Step(state, Assert.Single(engine.GetLegalActions(state))).State;
+        var mapAction = engine.GetLegalActions(state).First(action =>
+        {
+            var payload = action.ReadPayload<ChooseMapNodePayload>();
+            return state.World!.Map.AvailableNodes().Single(node =>
+                node.NodeId == payload.NodeId).RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, mapAction).State;
+
+        var original = state.World!.Combat!;
+        Assert.True(original.DrawPile.Length >= 2);
+        var reversed = original with
+        {
+            DrawPile = original.DrawPile.Reverse().ToArray()
+        };
+        var reordered = state with
+        {
+            World = state.World with { Combat = reversed }
+        };
+
+        var first = Assert.IsType<PrototypeAiCombat>(
+            environment.Observe(state).Observation.Combat);
+        var second = Assert.IsType<PrototypeAiCombat>(
+            environment.Observe(reordered).Observation.Combat);
+
+        Assert.Equal(original.DrawPile.Length, first.DrawPileCount);
+        Assert.NotNull(first.DrawPile);
+        Assert.Equal(
+            original.DrawPile.OrderBy(id => id),
+            first.DrawPile.Select(card => card.InstanceId));
+        Assert.Equal(
+            first.DrawPile.Select(card => card.CardId),
+            second.DrawPile!.Select(card => card.CardId));
+        Assert.Equal(
+            CanonicalJson.Serialize(environment.Observe(state).Observation),
+            CanonicalJson.Serialize(environment.Observe(reordered).Observation));
+        Assert.NotEqual(CanonicalJson.Sha256(state), CanonicalJson.Sha256(reordered));
+    }
+
+    [Fact]
+    public void PublicObservationIncludesOwnedCombatRelicProgress()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("visible-relic-counters");
+        state = engine.Step(state, Assert.Single(engine.GetLegalActions(state))).State;
+        var mapAction = engine.GetLegalActions(state).First(action =>
+        {
+            var payload = action.ReadPayload<ChooseMapNodePayload>();
+            return state.World!.Map.AvailableNodes().Single(node =>
+                node.NodeId == payload.NodeId).RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, mapAction).State;
+
+        var relic = new RelicInstance("proto.relic.kunai", PrototypeJson.EmptyObject());
+        var index = state.Player.Relics.Length;
+        var counter = new CombatRelicState(
+            index, "proto.relic.kunai", 1L, [2]);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = state.Player.Relics.Append(relic).ToArray()
+            },
+            World = state.World! with
+            {
+                Combat = state.World.Combat! with
+                {
+                    Relics = state.World.Combat.RelicStates.Append(counter).ToArray()
+                }
+            }
+        };
+
+        var view = environment.Observe(state).Observation;
+        Assert.Contains(view.Relics, r => r.RelicId == "proto.relic.kunai");
+        var counters = Assert.IsType<PrototypeAiRelicCounter[]>(
+            view.Combat!.RelicCounters);
+        var kunai = Assert.Single(counters, r => r.RelicId == "proto.relic.kunai");
+        Assert.Equal([2], kunai.TriggerCounts);
+
+        var changed = state with
+        {
+            World = state.World! with
+            {
+                Combat = state.World.Combat! with
+                {
+                    Relics = state.World.Combat.RelicStates
+                        .Select(r => r.RelicId == "proto.relic.kunai"
+                            ? r with { TriggerCounts = [1] }
+                            : r)
+                        .ToArray()
+                }
+            }
+        };
+        Assert.NotEqual(
+            environment.Observe(state).ObservationHash,
+            environment.Observe(changed).ObservationHash);
+    }
+
 }
