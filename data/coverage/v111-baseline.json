@@ -12755,17 +12755,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.encounter.decimillipede_elite"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/DecimillipedeElite.cs#d75edaf36e6f5c62da7df61703931e8a23ee84afaf2f8a7dc1c59896eef1830b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DECIMILLIPEDE_ELITE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -12805,17 +12807,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.encounter.entomancer_elite"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/EntomancerElite.cs#8eef25337d28e09287760e716c6f4b75783c70a3cd70d0bdf1bf66acafad350e"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ENTOMANCER_ELITE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13047,17 +13051,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.encounter.infested_prisms_elite"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/InfestedPrismsElite.cs#2b5cffeb7afd6f227ca133ec3c2e7785012062aa1133909bf8b5ef24a020dcbc"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "INFESTED_PRISMS_ELITE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17103,49 +17109,55 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.decimillipede_segment_back"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/DecimillipedeSegmentBack.cs#0a8c1a5883f67310fcb988c1708b2feb228fb0803ed9b03490a477c1143cdb05"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DECIMILLIPEDE_SEGMENT_BACK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.decimillipede_segment_front"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/DecimillipedeSegmentFront.cs#aa560470bf39e41d5d062ddea747cfbb14ec29ed2abd1eb8e539b7d116365bd8"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DECIMILLIPEDE_SEGMENT_FRONT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.decimillipede_segment_middle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/DecimillipedeSegmentMiddle.cs#3c1fd33848308186f837e0f37cff18cc74669582d5c293aed9ecb3f963614507"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DECIMILLIPEDE_SEGMENT_MIDDLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17169,17 +17181,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.entomancer"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/Entomancer.cs#fcce78680587481ac3fc5587b0db70c1488dd38ebee1edf4f85982c394396fe2"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ENTOMANCER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17481,17 +17495,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.infested_prism"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/InfestedPrism.cs#4ce7c426026ad904192a24eb789323d01a032b1834d4f1cece1685c181621c93"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "INFESTED_PRISM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -22502,17 +22518,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.personal_hive"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/PersonalHivePower.cs#c92eb7f3b43b1554c3406a9b95c4d98b3581cec40a3b0bae1bfc953b0785b297"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PERSONAL_HIVE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -22768,17 +22786,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.reattach"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/ReattachPower.cs#7d8b21db9c6908f0e87c1a4c803cdca54066ba628df5f9ee2e066fa71bf0e652"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "REATTACH",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -23744,17 +23764,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.tainted"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/TaintedPower.cs#795f015fbe6e6b69d7d03dc2936f69b0e5eb19d06b83f8aa34bcaeea001ea75d"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TAINTED",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24118,17 +24140,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.vital_spark"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/VitalSparkPower.cs#a38f842d4de1fa70c3f268f1df8c168290b3b66b87cfbb11736999a5821db1fe"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "VITAL_SPARK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },

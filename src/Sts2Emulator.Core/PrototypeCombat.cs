@@ -3689,6 +3689,15 @@ public sealed partial class PrototypeGameEngine
                             ? MinimumPoweredAttackHpLoss(player) : 0,
                         operation.IsPoweredAttack);
                     combat = damageResult.Combat;
+                    if (operation.IsPoweredAttack && splashTarget is { Hp: > 0 })
+                    {
+                        // PersonalHivePower.AfterDamageReceived reacts to
+                        // powered attacks, even when all damage was blocked.
+                        // Each hit inserts one Dazed per current hive stack
+                        // into the draw pile, using the combat RNG.
+                        combat = AddEnemyReactiveStatusCards(
+                            combat, splashTarget, rng);
+                    }
                     // CurlUpPower records the attack's physical card source
                     // even on a fully blocked hit, then fires AFTER that
                     // complete card play, including all of its hit repeats.
@@ -6399,6 +6408,17 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 $"Enemy {enemyId} is missing.");
 
+        if (PrototypeContent.Enemy(enemy.EnemyId)
+                .ReattachesWithLivingAlly
+            && combat.Enemies.Any(other =>
+                other.InstanceId != enemy.InstanceId
+                && other.Hp > 0))
+        {
+            // Native ReattachPower prevents Fatal rewards unless the
+            // segment is the last living component.
+            return false;
+        }
+
         return enemy.PowerStates.All(power =>
             PrototypeContent.Power(power.PowerId)
                 .OwnerDeathTriggersFatal);
@@ -7598,11 +7618,108 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    // Re-evaluate Vital Spark's card aura when its counter changes.
+    // Never overwrite a different active affliction; only Tainted
+    // already owned by the aura may have its amount refreshed.
+    private static CombatState RefreshEnemySkillAfflictions(
+        CombatState combat)
+    {
+        var aura = combat.Enemies
+            .Where(enemy => enemy.Hp > 0)
+            .SelectMany(enemy => enemy.PowerStates
+                .Where(power => power.Stacks > 0
+                    && PrototypeContent.Power(power.PowerId)
+                        .TaintsPlayerSkills)
+                .Select(power => (Enemy: enemy, Power: power)))
+            .OrderBy(pair => pair.Power.ApplicationOrder)
+            .FirstOrDefault();
+
+        if (aura.Power is null)
+            return combat;
+
+        return combat with
+        {
+            Cards = combat.Cards.Select(card =>
+            {
+                if (PrototypeContent.Card(card.CardId).Type
+                    != PrototypeCardType.Skill)
+                    return card;
+                if (card.Affliction is not null
+                    && card.Affliction.Kind
+                        != PrototypeCardAfflictionKind.Tainted)
+                    return card;
+                return card with
+                {
+                    Affliction = new PrototypeCardAffliction(
+                        PrototypeCardAfflictionKind.Tainted,
+                        aura.Power.Stacks, aura.Enemy.InstanceId)
+                };
+            }).ToArray()
+        };
+    }
+
+    private static CombatState AddEnemyReactiveStatusCards(
+        CombatState combat, EnemyCombatState defender, RngBundle rng)
+    {
+        foreach (var power in defender.PowerStates.Where(power =>
+            power.Stacks > 0))
+        {
+            var statusCardId = PrototypeContent.Power(power.PowerId)
+                .StatusCardAddedToDrawWhenAttacked;
+            if (statusCardId is null)
+                continue;
+            _ = PrototypeContent.Card(statusCardId);
+            for (var n = 0; n < power.Stacks; n++)
+            {
+                var card = new CombatCardInstance(
+                    combat.NextCardInstanceId,
+                    null, statusCardId, 0, true,
+                    PrototypeJson.EmptyObject());
+                card = ApplyActiveSourceBoundAfflictionToCard(
+                    combat, card);
+                var draw = combat.DrawPile.ToList();
+                var place = PrototypeRng.NextInt(
+                    rng, "combat", draw.Count + 1);
+                draw.Insert(place, card.InstanceId);
+                combat = combat with
+                {
+                    Cards = combat.Cards.Append(card).ToArray(),
+                    DrawPile = draw.ToArray(),
+                    NextCardInstanceId = combat.NextCardInstanceId + 1
+                };
+            }
+        }
+        return combat;
+    }
+
     private static CombatCardInstance
         ApplyActiveSourceBoundAfflictionToCard(
             CombatState combat,
             CombatCardInstance card)
     {
+        if (card.Affliction is null
+            && PrototypeContent.Card(card.CardId).Type
+                == PrototypeCardType.Skill)
+        {
+            var aura = combat.Enemies.Where(enemy => enemy.Hp > 0)
+                .SelectMany(enemy => enemy.PowerStates
+                    .Where(power => power.Stacks > 0
+                        && PrototypeContent.Power(power.PowerId)
+                            .TaintsPlayerSkills)
+                    .Select(power => (Enemy: enemy, Power: power)))
+                .OrderBy(pair => pair.Power.ApplicationOrder)
+                .FirstOrDefault();
+            if (aura.Power is not null)
+            {
+                card = card with
+                {
+                    Affliction = new PrototypeCardAffliction(
+                        PrototypeCardAfflictionKind.Tainted,
+                        aura.Power.Stacks, aura.Enemy.InstanceId)
+                };
+            }
+        }
+
         foreach (var power in combat.PlayerPowers
                      .OrderBy(item => item.ApplicationOrder))
         {
@@ -7713,6 +7830,18 @@ public sealed partial class PrototypeGameEngine
                 && PrototypeContent.Power(power.PowerId)
                     .SourceBoundToEnemy)
             .ToArray();
+        // Vital Spark resides on the *enemy*, rather than as a
+        // source-bound player power. Clear Tainted when its source
+        // dies, even if no player power was removed by this cleanup.
+        combat = combat with
+        {
+            Cards = combat.Cards.Select(card =>
+                card.Affliction is
+                    { Kind: PrototypeCardAfflictionKind.Tainted,
+                      SourceEnemyInstanceId: { } source }
+                    && defeatedEnemyIds.Contains(source)
+                    ? card with { Affliction = null } : card).ToArray()
+        };
         if (removed.Length == 0)
         {
             return combat;

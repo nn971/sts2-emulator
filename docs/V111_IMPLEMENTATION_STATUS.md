@@ -168,6 +168,20 @@ This is an intermediate implementation. Final release gates remain open.
   focused deterministic, Ascension, fork and edge-case coverage.
   Prototype summon RNG and exceptional visual/slot ordering remain
   explicitly unverified against live game traces. Both Weight=0.
+- Added **three source-backed, gated Hive elite encounters**:
+  Decimillipede (three distinct segment species, rotated opening
+  Writhe/Bulk/Constrict actions, even/unique starting HP and delayed
+  same-instance reattachment for 25 HP while another segment lives),
+  Entomancer (7/8×3 Bees, Spear, Personal Hive, charged Pheromone Spit
+  and per-powered-hit Dazed insertion into random draw positions),
+  and Infested Prisms (four-move cycle, Vital Spark, persistent Tainted
+  afflictions on Skills including newly generated cards, stacked
+  Tainted incoming-attack penalties with enemy-side-end cleanup).
+  Segment death only triggers native-style Fatal while no other
+  segment survives. All three are explicit elite fixtures with
+  Weight=0 and no unsupported native Hive map sampling. Source
+  RNG ownership, Revive animations and real-game parity remain
+  unverified; all feature evidence is synthetic / pinned-source.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
