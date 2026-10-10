@@ -72,12 +72,11 @@ public sealed class V111LaterActRelicCombatTests
             PrototypeRng.CreateBundle(seed),
             PrototypeJson.EmptyObject(),
             new RunWorldState(PrototypeContent.RulesetId,
-                PrototypeContent.CharacterId, 3, 1, 2,
+                PrototypeContent.CharacterId, 3, 1, 100,
                 PrototypeRoomType.Elite, new MapState([]),
                 new CombatState(1, 3, 0, [], [], [], [], [],
                     1, [], [], 1, Act: 3),
-                null, null, null, null,
-                NextCardInstanceId: 100));
+                null, null, null, null));
         var method = typeof(PrototypeGameEngine).GetMethod(
             "StartCombat", BindingFlags.NonPublic | BindingFlags.Static);
         Assert.NotNull(method);
