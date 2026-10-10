@@ -1,100 +1,98 @@
-# Public enemy intent damage and hit counts (isolated AI interface branch)
+# Committed enemy intents and player-visible attack numbers
 
-## Scope and branch isolation
+## Isolation and implementation status
 
-This changes only the public AI observation projection, a shared damage
-calculation helper, and tests. It is based on the exact
-`sts2-ai`-pinned emulator commit
-`3e897c80c4c694a8c4ae75ecdbfb98e6fc15eb56` and is deliberately
-**not merged into `main` or any ongoing feature branch**. It does not
-modify combat RNG, future move selection, card mechanics, or Act 1 content.
+This branch is based on `sts2-ai`'s pinned emulator revision
+`3e897c80c4c694a8c4ae75ecdbfb98e6fc15eb56`. Neither the
+emulator's older `main` branch nor its ongoing feature branches are
+changed. The isolated draft review target
+`review-base/pinned-ai-emulator-20261008` points to that commit and
+has no substantive changes itself.
 
-The public `PrototypeAiEnemy` now has two nullable optional fields:
+## Move-selection lifecycle
 
-- `intent_damage`: publicly projectable **damage per hit**, after
-  modifiers relevant to the currently displayed combat state.
-- `intent_hits`: publicly projectable **number of hits**, before
-  Block absorbs damage.
+**The enemy's move is selected before the player acts.** In particular:
 
-When an attack is not public, is not a predictable current move, has mixed
-hit values, or is otherwise not representable as a homogeneous
-per-hit damage/hit-count pair, both fields are omitted from serialized
-`prototype-ai-v0` observations. Consumers must treat missing fields as
-unknown, **not zero damage**. A nonattacking move can have a visible
-`move_id` with no damage fields.
+1. At combat entry, once the combat-start event has resolved, the engine
+   calls `CommitEnemyIntents` and stores each enemy's
+   `PlannedMoveIndex` and `PlannedNextAiStateId` in canonical combat
+   state. This includes random-policy and state-machine monsters.
+2. During the player's turn, their next move does **not** change as
+   cards are played. The public observation reads the committed move
+   index only; it never selects a new move or advances RNG.
+3. At the enemy-action stage, the engine executes the stored move,
+   updates LastMoveId, consecutive uses, AI-state continuation and move
+   use counters, and clears the consumed commitment.
+4. Once the enemy turn's end-status effects, deaths, and summons
+   complete, the next move is committed at the AdvanceTurn step,
+   *before* the next player turn begins.
 
-## Which current moves are knowable?
+Random draws for choosing moves are moved from enemy execution to
+the pre-player-turn commitment boundaries. This deliberately changes
+the order of the combat RNG stream compared with earlier emulator
+revisions. It is **not** an assumption about a native RNG seed, and
+native-game fidelity should be rechecked against a reference trace.
 
-The underlying prototype selects many random enemy moves when enemies
-ACT, *after the player's actions*. There is therefore no public,
-precommitted intent for those cases yet, even though the older
-observation implementation emitted `Moves[MoveIndex % Moves.Length]`,
-which could be **incorrect** for random and state-machine enemies.
+Skipped/dead enemies do not receive a visible move. Fresh summons that
+skip a turn do not claim an attack they cannot execute. A compatibility
+fallback in enemy execution is retained solely for legacy or manually
+constructed states that lack a commitment; correctly initialized seeded
+runs select every move before the player makes a decision.
 
-The new projection is conservative:
+## Base damage, modified damage, and hit count
 
-1. Deterministic sequential loops: use the same loop-start logic as combat.
-2. Random-after-opener enemies: show only their forced opening moves,
-   honoring the actual `OpeningMoveIndex` / `OpeningMoveIndices`.
-3. State-machine enemies: resolve deterministic Move and Conditional
-   states with the engine's existing formation condition helper.
-   Stop at Random states.
-4. Hidden intents (e.g. Runic Dome), stunned/skipping or dead enemies:
-   emit no move, damage or hit count.
-5. Unresolved random current move: emit `move_id: null`, with no numeric
-   threat data, rather than claim to know a private RNG outcome.
+The AI projection returns an enemy's committed `move_id` and, when a
+uniform damaging attack can be displayed faithfully, the following
+**optional** JSON values:
 
-**Known limitation:** on genuine native STS2 runs the player sees a chosen
-intent even for random-policy enemies. Full parity requires changing the
-prototype combat engine to select and store that intent when the player's
-turn begins (plus validating the corresponding RNG consumption and state
-machine timing). This branch deliberately **does not** do that; it keeps
-combat behavior and pinned training runs reproducible. Until that
-separate fidelity project, it would be incorrect to claim that all
-announced intents have been completely implemented.
+- `intent_base_damage`: base **per-hit** damage from the move definition,
+  including current act/ascension scaling, excluding Strength/Weak/
+  Vulnerable/damage caps.
+- `intent_damage`: currently modified **per-hit** damage, accounting
+  for enemy powers/statuses and player powers, using the actual combat
+  engine's damage calculation.
+- `intent_hits`: number of hits for the announced attack.
 
-## Damage derivation
+The move ID and repetition count are tied to the committed attack.
+`intent_damage` is recomputed on **each public observation**; the
+player's Weak/Vulnerable/other modifiers can change after a card is
+played. This projected attack damage is **before player Block**:
+existing player Block is separately visible, and additional Block can
+be acquired mid-turn. `intent_base_damage` is stable under buffs and
+debuffs but will reflect act/ascension differences between combats.
 
-The actual combat damage calculation and intent projection now share
-`PrototypeGameEngine.EnemyHitDamage`. It uses the same act/ascension
-damage deltas, per-enemy power bonuses (Strength), enemy statuses
-(Weak), player powers (Vulnerable), and incoming damage caps. It does
-not deduct player Block or predict how a player might alter their
-block before the end of turn.
+A heterogeneous or context-sensitive sequence of hits cannot be
+faithfully represented by one damage scalar, so its numeric values
+are omitted. Nonattack damage and self-buffs that alter the attack
+before a later hit are likewise withheld. A known non-attacking move
+still has a `move_id` but omits attack numerics.
 
-Only `DamagePlayer` effects marked `IsAttack` are currently projected.
-Mixed unequal attacks or moves which self-buff Strength before/among
-attacks are conservatively not projected, rather than reporting
-misleading per-hit numbers. Ordinary multi-hit attacks such as
-`proto.enemy.assassin` Flurry are represented as damage and repetitions.
-Move selection and RNG are not invoked during observation.
+When a relic such as Runic Dome conceals intents, `move_id` and all
+three attack fields are null/omitted. The private committed move
+remains in canonical engine state because combat execution must know
+which move was selected, but is **never** projected to the player.
 
-This is a **prototype engine-consistent projection**, not a verified
-equivalence to the native game UI. Native-player HUD parity remains
-a separate evidence/test obligation (see emulator issue #45).
+## Contracts and compatibility
 
-## Integration
+The public JSON is additive (`prototype-ai-v0`). The three numeric
+fields are nullable and excluded from JSON entirely when unavailable.
+Previously constructed `PrototypeAiEnemy` objects remain compatible
+through optional record constructor parameters.
 
-The `sts2-ai` relational tactical v5 encoder reads optional
-`intent_damage` and `intent_hits` from each public enemy frame.
-Its four reserved threat-value slots stay zero when no visible intent
-number is present.
-
-No change is required to the AI model format or the legal action API.
-Old `PrototypeAiEnemy` constructors still compile because the two new
-fields are optional at the end. The observation hash changes where
-actual new numbers or corrected visible move IDs are returned. This is
-why running it against existing trained checkpoint/baseline studies
-requires an explicit emulator revision update and fresh paired evaluation.
+Because seeded enemy move selection now occurs earlier, old trace
+hashes and seed-to-outcome expectations may change. Updating the
+`sts2-ai` emulator submodule to this branch should be a separate
+deliberate integration step. The AI v5 relational feature encoder
+already consumes `intent_damage` and `intent_hits`; it can be extended
+later to consume `intent_base_damage` explicitly.
 
 ## Verification
 
-`tests/Sts2Emulator.Core.Tests/PrototypePublicEnemyIntentTests.cs`
-checks deterministic single- and multi-hit attacks, enemy Strength,
-player Vulnerable, ascension damage deltas, enemy Weak, nonattacking
-state-machine moves, random unresolved intents, Runic Dome and
-observation/RNG stability. The tests compare projection with actual
-combat damage in deterministic cases.
+`PrototypePublicEnemyIntentTests` and the existing emulator suite
+exercise commit timing, guaranteed execution of a committed random move,
+RNG and observation stability, multi-hit damage, ascension, dynamic
+Strength/Weak/Vulnerable changes, nonattacks and Runic Dome. Tests
+compare reported damage against actual combat execution.
 
-This branch is **ready for review**, not an automatic change to the
-production or on-going development line.
+This branch is for isolated implementation and review only, not for
+automatic merge into unrelated emulator feature work.
