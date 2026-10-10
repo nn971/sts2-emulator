@@ -51,9 +51,10 @@ public sealed class V111LaterActEventTests
     public void BugslayerAddsExactlyTheSelectedEventCard(
         string choice, string expectedCardId)
     {
-        var state = EnterEvent(2, "bugslayer-" + choice) with
+        var state = EnterEvent(2, "bugslayer-" + choice);
+        state = state with
         {
-            World = EnterEvent(2, "bugslayer-" + choice).World! with
+            World = state.World! with
             {
                 Event = new EventState(PrototypeNativeLaterActs.HiveBugslayerId)
             }
@@ -200,19 +201,19 @@ public sealed class V111LaterActEventTests
                 EventHistory = PrototypeNativeLaterActEvents.SupportedIds(act)
             }
         };
-        var eventNode = new MapNodeState($"{act}:3:0", act, 3,
-            PrototypeRoomType.Event, [$"{act}:4:0"]);
-        var nextNode = new MapNodeState($"{act}:4:0", act, 4,
-            PrototypeRoomType.Combat);
+        // Replay a supported event choice from the real generated
+        // map's floor-one predecessor, not a synthetic two-node map.
+        var map = state.World!.Map;
+        var entry = map.Nodes.Single(node =>
+            node.NodeId == map.EntryNodeIds![0]);
         state = state with
         {
             Phase = RunPhase.MapChoice,
             World = state.World with
             {
-                Map = new MapState([eventNode, nextNode],
-                    EntryNodeIds: [eventNode.NodeId],
-                    GenerationProfileId:
-                        state.World.Map.GenerationProfileId)
+                Floor = 1,
+                ActiveRoom = null,
+                Map = map with { CurrentNodeId = entry.NodeId }
             }
         };
         var before = CanonicalJson.Sha256(state);
@@ -234,19 +235,26 @@ public sealed class V111LaterActEventTests
                 Phase = RunPhase.ActTransition
             }, GameAction.Empty("continue_act")).State;
         }
-        var node = new MapNodeState($"{act}:2:0", act, 2,
-            PrototypeRoomType.Event, [$"{act}:3:0"]);
-        var nextNode = new MapNodeState($"{act}:3:0", act, 3,
-            PrototypeRoomType.Combat);
+        // Select a real connected floor-two node and annotate only its
+        // event room type, retaining the act's full 14/13-row graph.
+        var map = state.World!.Map;
+        var entry = map.Nodes.Single(node =>
+            node.NodeId == map.EntryNodeIds![0]);
+        var targetId = entry.NextNodeIds![0];
+        map = map with
+        {
+            CurrentNodeId = entry.NodeId,
+            Nodes = map.Nodes.Select(node =>
+                node.NodeId == targetId
+                    ? node with { RoomType = PrototypeRoomType.Event }
+                    : node).ToArray()
+        };
         state = state with
         {
-            World = state.World! with
-            {
-                Map = new MapState([node, nextNode],
-                    EntryNodeIds: [node.NodeId],
-                    GenerationProfileId: state.World.Map.GenerationProfileId)
-            }
+            World = state.World with { Map = map, Floor = 1 }
         };
-        return engine.Step(state, engine.GetLegalActions(state)[0]).State;
+        var choice = GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload(targetId));
+        return engine.Step(state, choice).State;
     }
 }
