@@ -89,8 +89,10 @@ This is an intermediate implementation. Final release gates remain open.
 - Event UpgradeRandomCard and UpgradeAllCards now use the typed
   upgradability predicate (maximum upgrade level and card state) instead of
   assuming any upgrade-level-zero card is eligible. Added Doors of Light
-  and Dark regression with a non-upgradable Injury in the deck. Native
-  StableShuffle RNG call-order for Doors remains unverified.
+  and Dark regression with a non-upgradable Injury in the deck.
+  Pinned source metadata now explicitly marks Injury, Greed (both ID
+  variants), Guilty, Dowsing, Infection and Slimed as max-level zero.
+  Native StableShuffle RNG call-order for Doors remains unverified.
 - Added CI pin/inventory/coverage baseline checks and real-server Python
   snapshot/batch/compatibility checks. Added configured decision-boundary
   benchmarks for forks, allocations, stepping, batches, hashing, snapshots and
