@@ -1694,6 +1694,17 @@ public sealed partial class PrototypeGameEngine
             return true;
         }
 
+        if (deckChoice.RequiredCardTag is not null)
+        {
+            // Amalgamator must have two eligible, distinct basic cards
+            // with the selected native tag; a single available card
+            // must not expose an impossible two-card removal choice.
+            return player.Deck.Count(card => CanSelectEventDeckCard(
+                card, deckChoice.Kind, deckChoice.TransformToCardId,
+                deckChoice.EnchantmentKind, deckChoice.BasicCardsOnly,
+                deckChoice.RequiredCardTag)) >= deckChoice.Selections;
+        }
+
         return PrototypeNativeOvergrowthEvents.AllowsEmptyDeckChoice(
                    world.Event?.EventId ?? string.Empty)
             || PrototypeNativeUnderdocksEvents.AllowsEmptyDeckChoice(
@@ -1741,7 +1752,8 @@ public sealed partial class PrototypeGameEngine
                 spec.UpgradeTransformedCards,
                 TransformToCardId: spec.TransformToCardId,
                 EnchantmentKind: spec.EnchantmentKind,
-                BasicCardsOnly: spec.BasicCardsOnly);
+                BasicCardsOnly: spec.BasicCardsOnly,
+                RequiredCardTag: spec.RequiredCardTag);
     }
 
     private static PlayerState ResolveEventDeckChoice(

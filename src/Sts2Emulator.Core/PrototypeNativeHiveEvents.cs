@@ -20,6 +20,13 @@ public static class PrototypeNativeHiveEvents
         "LostWisp", "SpiritGrafter", "TheLanternKey", "ZenWeaver"
     ];
 
+    public const string AmalgamatorId = "proto.native.hive.amalgamator";
+    public const string FieldOfManSizedHolesId =
+        "proto.native.hive.field_of_man_sized_holes";
+    public const string NormalityId = "proto.native.hive.normality";
+    public const string UltimateStrikeId = "proto.colorless.ultimate_strike";
+    public const string UltimateDefendId = "proto.colorless.ultimate_defend";
+
     public const string ColossalFlowerId = "proto.native.hive.colossal_flower";
     public const string SpiritGrafterId = "proto.native.hive.spirit_grafter";
     public const string PollinousCoreId = "proto.native.hive.pollinous_core";
@@ -33,7 +40,8 @@ public static class PrototypeNativeHiveEvents
 
     public static bool IsNativeEvent(string id) =>
         id is InfestedAutomatonId or LostWispId or ZenWeaverId
-            or ColossalFlowerId or SpiritGrafterId;
+            or ColossalFlowerId or SpiritGrafterId
+            or AmalgamatorId or FieldOfManSizedHolesId;
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         eventId == SpiritGrafterId;
@@ -41,10 +49,35 @@ public static class PrototypeNativeHiveEvents
     public static bool IsEligible(PrototypeEventDefinition evt,
         PlayerState player) =>
         (evt.Id != ZenWeaverId || player.Gold >= 125)
-        && (evt.Id != ColossalFlowerId || player.Hp >= 19);
+        && (evt.Id != ColossalFlowerId || player.Hp >= 19)
+        && (evt.Id != AmalgamatorId
+            || CountBasicRemovableWithTag(player, "Strike") >= 2
+                && CountBasicRemovableWithTag(player, "Defend") >= 2)
+        && (evt.Id != FieldOfManSizedHolesId
+            || player.Deck.Any(card =>
+                PrototypeGameEngine.CanSelectEventDeckCard(card,
+                    PrototypePersistentDeckChoiceKind.Enchant,
+                    null, PrototypeCardEnchantmentKind.PerfectFit,
+                    false)));
+
+    private static int CountBasicRemovableWithTag(
+        PlayerState player, string tag) =>
+        player.Deck.Count(card =>
+        {
+            var def = PrototypeContent.Card(card.CardId);
+            return def.Rarity == PrototypeCardRarity.Basic
+                && !def.Eternal
+                && def.Tags?.Contains(tag, StringComparer.Ordinal) == true;
+        });
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        // Normality: while any copy is in hand, the player cannot
+        // start another card play after the third play that turn.
+        new(NormalityId, "Normality", -1, PrototypeCardTarget.None, [],
+            Rarity: PrototypeCardRarity.Curse,
+            Type: PrototypeCardType.Curse, Unplayable: true,
+            RewardEligible: false, MaxUpgradeLevel: 0),
         // Metamorphosis: 3 (5) random character Attacks, each made
         // free for this combat and inserted at a random draw-pile index.
         new(MetamorphosisId, "Metamorphosis", 2,
@@ -88,6 +121,39 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Source Amalgamator.IsValid: only removable basic cards with
+        // the selected tag qualify; ordinary (uncommon) Ultimate cards
+        // cannot be fed back into the machine.
+        new(AmalgamatorId, "Amalgamator",
+        [
+            new("combine_strikes", "Combine two basic Strikes",
+                [new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
+                    CardId: UltimateStrikeId)],
+                new PrototypeEventDeckChoiceSpec(
+                    PrototypePersistentDeckChoiceKind.Remove, 2,
+                    BasicCardsOnly: true, RequiredCardTag: "Strike")),
+            new("combine_defends", "Combine two basic Defends",
+                [new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
+                    CardId: UltimateDefendId)],
+                new PrototypeEventDeckChoiceSpec(
+                    PrototypePersistentDeckChoiceKind.Remove, 2,
+                    BasicCardsOnly: true, RequiredCardTag: "Defend"))
+        ], MinAct: 2, MaxAct: 2, Weight: 0),
+        // Resist removes up to two chosen cards, then adds Normality.
+        // Enter Your Hole enchants exactly one eligible deck card.
+        new(FieldOfManSizedHolesId, "Field of Man-Sized Holes",
+        [
+            new("resist", "Remove two cards and gain Normality",
+                [new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
+                    CardId: NormalityId)],
+                new PrototypeEventDeckChoiceSpec(
+                    PrototypePersistentDeckChoiceKind.Remove, 2)),
+            new("enter", "Apply Perfect Fit to one eligible card",
+                [],
+                new PrototypeEventDeckChoiceSpec(
+                    PrototypePersistentDeckChoiceKind.Enchant, 1,
+                    EnchantmentKind: PrototypeCardEnchantmentKind.PerfectFit))
+        ], MinAct: 2, MaxAct: 2, Weight: 0),
         new(InfestedAutomatonId, "Infested Automaton",
         [
             new("study", "Study: gain one random character Power", []),

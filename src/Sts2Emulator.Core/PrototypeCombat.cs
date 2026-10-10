@@ -5767,7 +5767,9 @@ public sealed partial class PrototypeGameEngine
                             ? PrototypeCardZone.ExhaustPile
                             : PrototypeCardZone.DiscardPile;
 
-                    if (autoPlayDefinition.Unplayable)
+                    if (autoPlayDefinition.Unplayable
+                        || !CanPlayAnotherCardThisTurn(
+                            player, combat, autoPlayCard))
                     {
                         combat = SetZone(
                             combat,
@@ -7029,6 +7031,17 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         CombatCardInstance card)
     {
+        // Normality.ShouldPlay is a hand-based veto, not a global
+        // relic/power cap: the restriction disappears when Normality
+        // leaves the hand, without resetting the cards-played counter.
+        if (combat.CounterState.CardsPlayedThisTurn >= 3
+            && combat.Hand.Any(id =>
+                RequireCombatCard(combat, id).CardId
+                    == PrototypeNativeHiveEvents.NormalityId))
+        {
+            return false;
+        }
+
         // Smoggy disallows playing a Skill while the card carries Smog.
         // Its affliction is cleared at the end of the player's turn.
         if (card.Affliction is { } affliction
@@ -11437,6 +11450,18 @@ public sealed partial class PrototypeGameEngine
                 var recycled = discard.ToArray();
                 discard.Clear();
                 PrototypeRng.Shuffle(rng, "combat", recycled);
+                // PerfectFit.ModifyShuffleOrder applies only to a
+                // NON-initial reshuffle. In the prototype the *last*
+                // draw-pile element is the top card, so enchanted
+                // cards move to the end after RNG permutation.
+                var perfectFit = recycled.Where(id =>
+                    RequireCombatCard(combat, id).Enchantment?.Kind
+                        == PrototypeCardEnchantmentKind.PerfectFit).ToArray();
+                if (perfectFit.Length > 0)
+                {
+                    recycled = recycled.Except(perfectFit).Concat(
+                        perfectFit).ToArray();
+                }
                 draw.AddRange(recycled);
                 var stratagem = combat.PlayerPowers.Sum(power =>
                     power.PowerId == "proto.power.stratagem"
