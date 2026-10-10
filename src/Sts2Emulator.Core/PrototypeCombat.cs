@@ -3511,12 +3511,13 @@ public sealed partial class PrototypeGameEngine
                     var overkill = splashTarget is null ? 0
                         : Math.Max(0, Math.Max(0, damageAmount - splashTarget.Block)
                             - splashTarget.Hp);
-                    var damageResult = DamageEnemy(
+                    var damageResult = DamageEnemyInternal(
                         combat,
                         targetEnemyId.Value,
                         damageAmount,
                         operation.IsPoweredAttack
-                            ? MinimumPoweredAttackHpLoss(player) : 0);
+                            ? MinimumPoweredAttackHpLoss(player) : 0,
+                        operation.IsPoweredAttack);
                     combat = damageResult.Combat;
                     if (splashTarget is { Block: > 0 } && damageAmount >= splashTarget.Block)
                         combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
@@ -3729,12 +3730,13 @@ public sealed partial class PrototypeGameEngine
                             }
 
                             var echoTargetBlock = combat.Enemies.Single(enemy => enemy.InstanceId == enemyId).Block;
-                            var echoDamageResult = DamageEnemy(
+                            var echoDamageResult = DamageEnemyInternal(
                                 combat,
                                 enemyId,
                                 echoDamageAmount,
                                 operation.IsPoweredAttack
-                                    ? MinimumPoweredAttackHpLoss(player) : 0);
+                                    ? MinimumPoweredAttackHpLoss(player) : 0,
+                                operation.IsPoweredAttack);
                             combat = echoDamageResult.Combat;
                             if (echoTargetBlock > 0 && echoDamageAmount >= echoTargetBlock)
                                 combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, enemyId);
@@ -9537,7 +9539,16 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         int enemyId,
         int damage,
-        int minPoweredAttackHpLoss = 0)
+        int minPoweredAttackHpLoss = 0) =>
+        DamageEnemyInternal(combat, enemyId, damage,
+            minPoweredAttackHpLoss, false);
+
+    private static PrototypeDamageResult DamageEnemyInternal(
+        CombatState combat,
+        int enemyId,
+        int damage,
+        int minPoweredAttackHpLoss,
+        bool isPoweredAttack)
     {
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var index = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
@@ -9550,6 +9561,16 @@ public sealed partial class PrototypeGameEngine
         if (enemy.Hp <= 0)
         {
             return new PrototypeDamageResult(combat, 0, false);
+        }
+
+        // Flutter modifies only powered attack damage. Ordinary HP loss,
+        // poison and non-powered hit effects bypass the 50% modifier.
+        var flutter = enemy.PowerStates.FirstOrDefault(power =>
+            power.Stacks > 0
+            && power.PowerId == "proto.native.hive.flutter");
+        if (isPoweredAttack && flutter is not null)
+        {
+            damage = (int)Math.Floor(damage * 0.5m);
         }
 
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
@@ -9573,6 +9594,31 @@ public sealed partial class PrototypeGameEngine
         enemy = hpDamage.Enemy;
         var nextHp = Math.Max(0, enemy.Hp - hpDamage.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
+
+        if (isPoweredAttack && hpDamage.HpLoss > 0
+            && flutter is not null && nextHp > 0)
+        {
+            // Flutter.AfterDamageReceived decrements once per unblocked
+            // powered hit. On the fifth, CreatureCmd.Stun overrides the
+            // previously committed move for exactly one enemy turn;
+            // resume the interrupted move next turn.
+            var remaining = flutter.Stacks - 1;
+            enemy = enemy with
+            {
+                Powers = enemy.PowerStates
+                    .Where(power => power.ApplicationOrder
+                        != flutter.ApplicationOrder)
+                    .Concat(remaining > 0
+                        ? [flutter with { Stacks = remaining }]
+                        : Array.Empty<PrototypePowerInstanceState>())
+                    .OrderBy(power => power.ApplicationOrder)
+                    .ToArray(),
+                PlannedMoveIndex = remaining <= 0
+                    ? 5 : enemy.PlannedMoveIndex,
+                PlannedNextAiStateId = remaining <= 0
+                    ? enemy.AiStateId : enemy.PlannedNextAiStateId
+            };
+        }
 
         // Some buffs (e.g. native Asleep) react only to unblocked
         // attack HP damage, not to blocked attacks or poison HP loss.
