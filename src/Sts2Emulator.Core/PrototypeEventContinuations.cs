@@ -187,8 +187,19 @@ public sealed partial class PrototypeGameEngine
             if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId
                 && eventState.ChosenChoiceId == "grab")
             {
-                // After a grab (and its optional card/potion decision),
-                // the conveyor offers the freshly rolled next dish.
+                // All pending dish effects have settled. The source rolls
+                // the next dish here, after Jelly Liver transformation or
+                // Suspicious Condiment's optional potion reward completes.
+                if (eventState.NativeDishRollPending)
+                {
+                    var next = PrototypeNativeEndlessConveyor.RollNextDish(
+                        eventState with { NativeDishRollPending = false },
+                        state.Player, state.Rng);
+                    return state with
+                    {
+                        World = world with { Event = next }
+                    };
+                }
                 return state;
             }
 
