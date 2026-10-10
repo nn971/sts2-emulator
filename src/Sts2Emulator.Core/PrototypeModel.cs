@@ -1273,7 +1273,11 @@ public sealed record EnemyCombatState(
     int? LeaderEnemyInstanceId = null,
     bool SkipNextEnemyAction = false,
     int EnemyActionSkipsRemaining = 0,
-    bool DeathEffectsResolved = false)
+    bool DeathEffectsResolved = false,
+    // The next publicly announced action is selected BEFORE the player
+    // acts, and is consumed at the following enemy-action stage.
+    int? PlannedMoveIndex = null,
+    string? PlannedNextAiStateId = null)
 {
     public EnemyCombatState Fork() => this with
     {
