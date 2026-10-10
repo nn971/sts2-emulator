@@ -103,6 +103,32 @@ public sealed class V111AllNormalEncountersTests
     }
 
     [Fact]
+    public void GlobeHeadGalvanizesPowerCardsBeforeTheFirstDrawAndShocksOnPlay()
+    {
+        var power = new CardInstance(1, "proto.silent.noxious_fumes", 0,
+            PrototypeJson.EmptyObject());
+        var state = Begin(PrototypeNativeRemainingNormals.GlobeHeadNormalId,
+            "globe-galvanic-power", 9, [power]);
+        var combat = state.World!.Combat!;
+        var card = Assert.Single(combat.Cards);
+        var affliction = Assert.IsType<PrototypeCardAffliction>(
+            card.Affliction);
+        Assert.Equal(PrototypeCardAfflictionKind.Galvanized, affliction.Kind);
+        Assert.Equal(8, affliction.Amount);
+        Assert.Equal(1, affliction.SourceEnemyInstanceId);
+        Assert.Equal(8, Assert.Single(combat.Enemies[0].PowerStates).Stacks);
+
+        var engine = new PrototypeGameEngine();
+        var play = engine.GetLegalActions(state)
+            .Single(a => a.Kind == "play_card");
+        var after = engine.Step(state, play).State;
+        Assert.Equal(8992, after.Player.Hp);
+        Assert.Equal(9000, state.Player.Hp);
+        Assert.Equal(PrototypeCardAfflictionKind.Galvanized,
+            Assert.Single(state.World.Combat.Cards).Affliction?.Kind);
+    }
+
+    [Fact]
     public void OwlJudicialFlightProtectsFromPoweredAttacksOnly()
     {
         var engine = new PrototypeGameEngine();
@@ -232,11 +258,13 @@ public sealed class V111AllNormalEncountersTests
             engine.GetLegalActions(state).Single(action=>
                 action.Kind=="end_turn")).State;
 
-    private static RunState Begin(string id,string seed,int asc=0)
+    private static RunState Begin(string id,string seed,int asc=0,
+        CardInstance[]? deck = null)
     {
         var state=new RunState("prototype-unbound","prototype-0.1",
             seed,seed,0,RunPhase.Combat,
-            new PlayerState(9000,9000,0,[],[],new PotionInstance?[2]),
+            new PlayerState(9000,9000,0,deck ?? [],[],
+                new PotionInstance?[2]),
             PrototypeRng.CreateBundle(seed),
             PrototypeJson.EmptyObject(),
             new RunWorldState(PrototypeContent.RulesetId,
