@@ -203,6 +203,16 @@ This is an intermediate implementation. Final release gates remain open.
   Both remain forced-test-only at Weight=0; no native Glory map,
   encounter bag, RNG stream or real-game replay evidence is claimed.
   See [Glory first normal slice](reference-builds/v0.111.0-glory-normal-first-slice.md).
+- Added **gated Glory Scrolls of Biting weak and normal formations**:
+  one shared encounter roll rotates three distinct opener states
+  (Chomp, Chew, More Teeth); a fourth normal scroll always opens at
+  More Teeth. Source-backed Scroll of Biting HP/A8/A9, move graph,
+  weighted random Chew branch and its Paper Cuts power are modeled.
+  Paper Cuts reduces persistent player maximum HP by two after each
+  *unblocked powered attack hit*, including individual multi-hits;
+  absorbed hits leave max HP unchanged. The max-HP clamp follows
+  the pinned LoseMaxHp command. Encounters remain Weight=0,
+  synthetic/test-only. See [Glory scroll slice](reference-builds/v0.111.0-glory-scrolls-first-slice.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
