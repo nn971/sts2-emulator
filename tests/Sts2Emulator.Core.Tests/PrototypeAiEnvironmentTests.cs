@@ -284,7 +284,7 @@ public sealed class PrototypeAiEnvironmentTests
         var counters = Assert.IsType<PrototypeAiRelicCounter[]>(
             view.Combat!.RelicCounters);
         var kunai = Assert.Single(counters, r => r.RelicId == "proto.relic.kunai");
-        Assert.Equal([2], kunai.TriggerCounts);
+        Assert.Equal(new[] { 2 }, kunai.TriggerCounts);
 
         var changed = state with
         {
