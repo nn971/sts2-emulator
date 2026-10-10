@@ -224,6 +224,24 @@ public sealed partial class PrototypeGameEngine
                             : null);
             })
             .ToArray();
+        // Decimillipede segments occupy unique, even HP pools.
+        // Native rounds each initial roll up and searches in steps of 2.
+        for (var i = 0; i < enemies.Length; i++)
+        {
+            var definition = PrototypeContent.Enemy(enemies[i].EnemyId);
+            if (!definition.UniqueEvenInitialHp)
+                continue;
+            var range = definition.HpRangeAt(world.Act, state.Ascension);
+            var value = enemies[i].Hp + (enemies[i].Hp % 2);
+            var firstEven = range.Min + (range.Min % 2);
+            while (enemies.Take(i).Any(other => other.Hp == value))
+            {
+                value += 2;
+                if (value > range.Max)
+                    value = firstEven;
+            }
+            enemies[i] = enemies[i] with { Hp = value };
+        }
 
         var nextCombatCardId = 1L;
         var combatCards = state.Player.Deck
@@ -270,6 +288,8 @@ public sealed partial class PrototypeGameEngine
             Potions: combatPotions,
             Act: world.Act,
             Ascension: state.Ascension);
+
+        combat = RefreshEnemySkillAfflictions(combat);
 
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
@@ -1532,6 +1552,12 @@ public sealed partial class PrototypeGameEngine
                 if (automaticStep.Stage.Value
                     == PrototypeTurnStage.EnemyTurnEnd)
                 {
+                    combat = combat with
+                    {
+                        PlayerPowers = combat.PlayerPowers.Where(power =>
+                            !PrototypeContent.Power(power.PowerId)
+                                .RemoveAtEnemySideTurnEnd).ToArray()
+                    };
                     combat = DecrementPlayerPowers(
                         combat,
                         definition =>
@@ -2032,7 +2058,10 @@ public sealed partial class PrototypeGameEngine
         {
             var enemy = formation[index];
             var definition = PrototypeContent.Enemy(enemy.EnemyId);
-            if (enemy.Hp <= 0
+            if ((enemy.Hp <= 0
+                    && !(definition.ReattachesWithLivingAlly
+                        && formation.Any(other => other.Hp > 0
+                            && other.InstanceId != enemy.InstanceId)))
                 || enemy.SkipNextEnemyAction
                 || enemy.EnemyActionSkipsRemaining > 0
                 || definition.Moves.Length == 0)
@@ -2469,7 +2498,10 @@ public sealed partial class PrototypeGameEngine
             var enemy = enemies[index];
             var definition = PrototypeContent.Enemy(enemy.EnemyId);
 
-            if (enemy.Hp <= 0)
+            if (enemy.Hp <= 0
+                && !(definition.ReattachesWithLivingAlly
+                    && enemies.Any(other => other.Hp > 0
+                        && other.InstanceId != enemy.InstanceId)))
             {
                 var leaderAlive = enemy.LeaderEnemyInstanceId is not
                         { } leaderId
@@ -2748,6 +2780,28 @@ public sealed partial class PrototypeGameEngine
                             enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
                             break;
 
+                        case PrototypeEnemyEffectKind.ReattachSelf:
+                        {
+                            // Revive the *same* segment only while a
+                            // different segment remains alive. No enemy
+                            // body or instance is created or replaced.
+                            if (enemies.Any(other =>
+                                other.InstanceId != enemy.InstanceId
+                                && other.Hp > 0))
+                            {
+                                enemy = enemy with
+                                {
+                                    Hp = Math.Min(
+                                        definition.HpRangeAt(act, ascension).Max,
+                                        amount),
+                                    Block = 0,
+                                    Statuses = new Dictionary<string, int>(
+                                        StringComparer.Ordinal)
+                                };
+                            }
+                            break;
+                        }
+
                         case PrototypeEnemyEffectKind.HealSelf:
                             enemy = enemy with
                             {
@@ -2788,6 +2842,33 @@ public sealed partial class PrototypeGameEngine
                                 sourceEnemyInstanceId: enemy.InstanceId);
                             break;
 
+                        case PrototypeEnemyEffectKind.ApplyEnemyPowerWithCapFallback:
+                        {
+                            if (effect.PowerId is null
+                                || effect.FallbackPowerId is null)
+                                throw new InvalidOperationException(
+                                    "Counter/fallback requires two power IDs.");
+                            var existing = enemy.PowerStates
+                                .Where(power => power.PowerId == effect.PowerId)
+                                .Sum(power => power.Stacks);
+                            if (existing >= effect.MaxPowerStacksBeforeFallback)
+                            {
+                                var fallback = ApplyEnemyPowerToState(
+                                    combat, enemy, effect.FallbackPowerId,
+                                    effect.FallbackPowerAmount);
+                                combat = fallback.Combat;
+                                enemy = fallback.Enemy;
+                            }
+                            else
+                            {
+                                var increment = ApplyEnemyPowerToState(
+                                    combat, enemy, effect.PowerId, amount);
+                                combat = increment.Combat;
+                                enemy = increment.Enemy;
+                            }
+                            break;
+                        }
+
                         case PrototypeEnemyEffectKind.ApplyEnemyPower:
                             if (effect.PowerId is null)
                             {
@@ -2802,6 +2883,15 @@ public sealed partial class PrototypeGameEngine
                                 amount);
                             combat = selfPower.Combat;
                             enemy = selfPower.Enemy;
+                            if (PrototypeContent.Power(effect.PowerId)
+                                .TaintsPlayerSkills)
+                            {
+                                var current = enemies.Select(other =>
+                                    other.InstanceId == enemy.InstanceId
+                                        ? enemy : other).ToArray();
+                                combat = RefreshEnemySkillAfflictions(
+                                    combat with { Enemies = current });
+                            }
                             break;
 
                         case PrototypeEnemyEffectKind.ApplyAllEnemyPower:
@@ -6259,9 +6349,12 @@ public sealed partial class PrototypeGameEngine
                 / definition.PlayerIncomingAttackDamageDenominator;
         }
 
+        modified += combat.PlayerPowers.Sum(power =>
+            power.Stacks * PrototypeContent.Power(power.PowerId)
+                .PlayerIncomingPoweredAttackFlatBonusPerStack);
         return ApplyPlayerIncomingDamageCap(
             combat,
-            modified);
+            Math.Max(0, modified));
     }
 
     private static void EnqueueCardEnchantmentOperations(
@@ -8110,6 +8203,18 @@ public sealed partial class PrototypeGameEngine
                             StoredValue = power.StoredValue + 1
                         } : power).ToArray()
             };
+        }
+
+        if (combatEvent.SourceCardInstanceId is { } taintedCardId)
+        {
+            var card = combat.Cards.FirstOrDefault(item =>
+                item.InstanceId == taintedCardId);
+            if (card?.Affliction is
+                { Kind: PrototypeCardAfflictionKind.Tainted } taint)
+            {
+                combat = ApplyPlayerPower(combat,
+                    "proto.native.hive.tainted", taint.Amount);
+            }
         }
 
         if (combatEvent.SourceCardInstanceId is { } cardId)
@@ -9988,6 +10093,21 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        if (enemy.Hp <= 0
+            && PrototypeContent.Enemy(enemy.EnemyId)
+                .ReattachesWithLivingAlly)
+        {
+            // Native ReattachPower sets a DEAD move immediately.
+            // The following enemy turn transitions to REATTACH.
+            var move = PrototypeContent.Enemy(enemy.EnemyId).Ai?.States
+                .FirstOrDefault(state => state.Id == "dead");
+            return enemy with
+            {
+                AiStateId = "dead",
+                PlannedMoveIndex = move?.MoveIndex,
+                PlannedNextAiStateId = move?.NextStateId
+            };
+        }
         return enemy;
     }
 

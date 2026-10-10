@@ -870,7 +870,12 @@ public sealed record PrototypePowerDefinition(
     // Tender: temporary Strength/Dexterity penalties for each completed card.
     int PlayerStrengthDexterityLossPerCardPlayedPerStack = 0,
     // Curl Up: grant Block only after the triggering attack card finishes.
-    int EnemyBlockAfterAttackingCardPlayedPerStack = 0);
+    int EnemyBlockAfterAttackingCardPlayedPerStack = 0,
+    // Source-pinned Hive elite powers.
+    string? StatusCardAddedToDrawWhenAttacked = null,
+    bool TaintsPlayerSkills = false,
+    int PlayerIncomingPoweredAttackFlatBonusPerStack = 0,
+    bool RemoveAtEnemySideTurnEnd = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -911,7 +916,9 @@ public enum PrototypeEnemyEffectKind
     // Native Ovicopter egg hatching preserves the combat instance.
     TransformEnemy,
     // The Obscura's Wail buffs every living teammate.
-    ApplyAllEnemyPower
+    ApplyAllEnemyPower,
+    ApplyEnemyPowerWithCapFallback,
+    ReattachSelf
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -933,7 +940,10 @@ public sealed record PrototypeEnemyEffectSpec(
     int ExtraAmountPerPriorMoveUse = 0,
     bool UseStoredEnemyDamage = false,
     // Native egg slots remain occupied even by dead eggs.
-    bool ReserveSummonSlotAfterDeath = false)
+    bool ReserveSummonSlotAfterDeath = false,
+    int MaxPowerStacksBeforeFallback = 0,
+    string? FallbackPowerId = null,
+    int FallbackPowerAmount = 0)
 {
     public int AmountAt(
         int act,
@@ -1066,7 +1076,9 @@ public sealed record PrototypeEnemyDefinition(
     int MaxCoordinatedSummons = 0,
     bool RecoverCarriedGoldOnDeath = false,
     float EscapedRewardProportionWithGold = 1f,
-    float EscapedRewardProportionWithoutGold = 1f)
+    float EscapedRewardProportionWithoutGold = 1f,
+    bool ReattachesWithLivingAlly = false,
+    bool UniqueEvenInitialHp = false)
 {
     public (int Min, int Max) HpRangeAt(
         int act,
