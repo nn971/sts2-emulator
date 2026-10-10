@@ -160,11 +160,20 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' has an empty cyclic opening AI list.");
         }
-        if (openingAiStates is not null
-            && enemySpecs.Length > openingAiStates.Length)
+        var fixedTrailingOpenings =
+            encounter.FixedTrailingOpeningAiStateIds
+            ?? Array.Empty<string>();
+        if (openingAiStates is null && fixedTrailingOpenings.Length > 0)
         {
             throw new InvalidOperationException(
-                $"Encounter '{encounter.Id}' has too few distinct opening AI states.");
+                $"Encounter '{encounter.Id}' defines fixed trailing openings without a cyclic prefix.");
+        }
+        if (openingAiStates is not null
+            && enemySpecs.Length
+                != openingAiStates.Length + fixedTrailingOpenings.Length)
+        {
+            throw new InvalidOperationException(
+                $"Encounter '{encounter.Id}' cyclic/fixed opening count does not match its formation.");
         }
         var openingOffset = openingAiStates is null
             ? 0
@@ -213,8 +222,11 @@ public sealed partial class PrototypeGameEngine
                     SlotName: enemySpec.SlotName,
                     AiStateId: openingAiStates is null
                         ? null
-                        : openingAiStates[(openingOffset + index)
-                            % openingAiStates.Length],
+                        : index < openingAiStates.Length
+                            ? openingAiStates[(openingOffset + index)
+                                % openingAiStates.Length]
+                            : fixedTrailingOpenings[
+                                index - openingAiStates.Length],
                     NonSummonMovesUntilEligible:
                         definition.NonSummonMovesBeforeEligible,
                     LeaderEnemyInstanceId:
@@ -2762,7 +2774,30 @@ public sealed partial class PrototypeGameEngine
                             {
                                 unblockedAttackHits++;
                             }
+                            var aliveBeforeHit = hp > 0;
                             hp = Math.Max(0, hp - unblocked);
+                            if (effect.IsAttack && unblocked > 0
+                                && aliveBeforeHit)
+                            {
+                                // PaperCutsPower.AfterDamageGiven is per
+                                // powered attack hit, after ordinary Block
+                                // absorption. LoseMaxHp damages the player
+                                // down to the new cap before clamping the
+                                // cap itself to at least one.
+                                var maxHpLoss = enemy.PowerStates.Sum(power =>
+                                    Math.Max(0, power.Stacks)
+                                    * PrototypeContent.Power(power.PowerId)
+                                        .PlayerMaxHpLossOnUnblockedAttackHitPerStack);
+                                if (maxHpLoss > 0)
+                                {
+                                    var rawMaxHp = player.MaxHp - maxHpLoss;
+                                    hp = Math.Max(0, Math.Min(hp, rawMaxHp));
+                                    player = player with
+                                    {
+                                        MaxHp = Math.Max(1, rawMaxHp)
+                                    };
+                                }
+                            }
                             if (effect.IsAttack && unblocked > 0
                                 && combat.PlayerPowers.Any(power =>
                                     power.Stacks > 0

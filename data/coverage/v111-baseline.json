@@ -13457,33 +13457,37 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.scrolls_of_biting_normal"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ScrollsOfBitingNormal.cs#a6b35af7e55980d1b6886fe48fbb92dd8b7fd7ca27f70c4766a0025add70b9d6"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SCROLLS_OF_BITING_NORMAL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.scrolls_of_biting_weak"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ScrollsOfBitingWeak.cs#fc0972a52008d577df97e1c32942d8e2b0beb1e8d2977b73e19caa2630a2b8f3"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SCROLLS_OF_BITING_WEAK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -18003,17 +18007,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.scroll_of_biting"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/ScrollOfBiting.cs#36138c02e24b461e6145e591ba695baa9cdd52fa5debf13fbfe45416616c3d26"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SCROLL_OF_BITING",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -22520,17 +22526,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.paper_cuts"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/PaperCutsPower.cs#451342ada2c96adbf7c1aabf5e8a508ea4d1da32eb302d44cb8280e178aa7623"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PAPER_CUTS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },

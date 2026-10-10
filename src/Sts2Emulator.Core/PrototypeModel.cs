@@ -872,7 +872,10 @@ public sealed record PrototypePowerDefinition(
     // Tender: temporary Strength/Dexterity penalties for each completed card.
     int PlayerStrengthDexterityLossPerCardPlayedPerStack = 0,
     // Curl Up: grant Block only after the triggering attack card finishes.
-    int EnemyBlockAfterAttackingCardPlayedPerStack = 0);
+    int EnemyBlockAfterAttackingCardPlayedPerStack = 0,
+    // Scroll of Biting Paper Cuts: each unblocked powered hit
+    // reduces the victim's persistent maximum HP.
+    int PlayerMaxHpLossOnUnblockedAttackHitPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -1159,7 +1162,10 @@ public sealed record PrototypeEncounterDefinition(
     PrototypeEncounterSelectionGroup[]? SelectionGroups = null,
     PrototypeEncounterFormationVariant[]? FormationVariants = null,
     string[]? CyclicOpeningAiStateIds = null,
-    bool UniqueEvenEnemyHpWithinEncounter = false)
+    bool UniqueEvenEnemyHpWithinEncounter = false,
+    // Fixed openings after the once-rotated encounter-local prefix
+    // (e.g. fourth Scroll of Biting in the normal formation).
+    string[]? FixedTrailingOpeningAiStateIds = null)
 {
     public PrototypeEncounterEnemySpec[] FixedEnemySpecs =>
         Formation
