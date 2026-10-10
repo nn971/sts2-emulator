@@ -41,6 +41,13 @@ This is an intermediate implementation. Final release gates remain open.
   relic rolls as separate instances; duplicate Dream Catchers offer independently
   selectable rest rewards using the shared rarity lifecycle, and fresh Maw Banks
   retain independent purchase state.
+- Corrected v111 Endless Conveyor continuation ordering: the next dish is
+  rolled after Jelly Liver deck transformation or Suspicious Condiment potion
+  reward resolution. The visible dish ID/number are now exported to consumers;
+  a pending roll remains fork- and snapshot-safe. Punch Off also consumes its
+  pinned event-entry dynamic-gold roll (91–98), even when that value is unused
+  by its options. The event RNG still uses the prototype codec, so native
+  stream parity remains unverified.
 - Added CI pin/inventory/coverage baseline checks and real-server Python
   snapshot/batch/compatibility checks. Added configured decision-boundary
   benchmarks for forks, allocations, stepping, batches, hashing, snapshots and
