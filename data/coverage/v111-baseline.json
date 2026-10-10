@@ -13951,17 +13951,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.turret_operator_weak"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TurretOperatorWeak.cs#998337f7118b974fd5ed537d4743e7f5e8ad01d25e3885f3fd99a29b24fc5d7b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TURRET_OPERATOR_WEAK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17681,17 +17683,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.living_shield"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/LivingShield.cs#d77e6ead62bd6b47c4c0024b88b3ae422bff53b67ef8ebebd8ff3d5f37541467"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "LIVING_SHIELD",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -22778,17 +22782,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.rampart"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/RampartPower.cs#89acacd7c482efce7773b5c1980a84f5825ddcdade6f35a6f672db854f22931a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "RAMPART",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
