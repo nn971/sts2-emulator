@@ -879,7 +879,10 @@ public sealed record PrototypePowerDefinition(
     // Living Shield/Rampart: independently owned ally block grants
     // at the start of the player's side-turn.
     int AllyBlockAtPlayerTurnStartPerStack = 0,
-    string? AllyBlockTargetEnemyId = null);
+    string? AllyBlockTargetEnemyId = null,
+    int EnemyIncomingPoweredAttackDamageNumerator = 1,
+    int EnemyIncomingPoweredAttackDamageDenominator = 1,
+    string? RestoreStolenPlayerPowerOnOwnerDeathId = null);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -924,7 +927,11 @@ public enum PrototypeEnemyEffectKind
     // Insatiable's Frantic Escapes enter draw/discard at random indices.
     AddCardsToRandomDiscard,
     // Knowledge Demon must ask the player to choose between curses.
-    RequireNativeChoice
+    RequireNativeChoice,
+    // Source-pinned Glory normal content.
+    RemoveEnemyPower,
+    GiveBlockToEnemyType,
+    StealPlayerPower
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -950,7 +957,9 @@ public sealed record PrototypeEnemyEffectSpec(
     // Source-backed conditional buffs, read before the action executes.
     string? OwnerPowerStackConditionId = null,
     int? OwnerPowerStacksLessThan = null,
-    int? OwnerPowerStacksAtLeast = null)
+    int? OwnerPowerStacksAtLeast = null,
+    string[]? EnemyPool = null,
+    string? OwnerPowerDamageBonusId = null)
 {
     public int AmountAt(
         int act,
@@ -1466,7 +1475,10 @@ public sealed record EnemyCombatState(
     // Older hand-built fixtures retain the default for compatibility.
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    int MaxHp = 0)
+    int MaxHp = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? LastSummonedEnemyId = null)
 {
     public EnemyCombatState Fork() => this with
     {
