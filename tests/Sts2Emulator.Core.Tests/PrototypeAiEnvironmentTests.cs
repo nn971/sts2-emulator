@@ -305,4 +305,61 @@ public sealed class PrototypeAiEnvironmentTests
             environment.Observe(changed).ObservationHash);
     }
 
+
+    [Fact]
+    public void PublicEnemyInstancesPreserveSpeciesPositionAndOwnedEffects()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("enemy-instance-identity");
+        state = engine.Step(state, Assert.Single(engine.GetLegalActions(state))).State;
+        var combatNode = engine.GetLegalActions(state).First(action =>
+        {
+            var payload = action.ReadPayload<ChooseMapNodePayload>();
+            return state.World!.Map.AvailableNodes().Single(node =>
+                node.NodeId == payload.NodeId).RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, combatNode).State;
+        var original = state.World!.Combat!;
+        var first = original.Enemies[0] with
+        {
+            Hp = 29,
+            FormationPosition = 0,
+            LastMoveId = "quick_slash",
+            Statuses = new Dictionary<string, int> { ["proto.status.poison"] = 3 }
+        };
+        var second = first with
+        {
+            InstanceId = original.Enemies.Max(enemy => enemy.InstanceId) + 1,
+            FormationPosition = 2,
+            LastMoveId = "boomerang",
+            Statuses = new Dictionary<string, int> { ["proto.status.poison"] = 18 }
+        };
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = original with { Enemies = [first, second] }
+            }
+        };
+        var frame = environment.Observe(state);
+        var enemies = Assert.IsType<PrototypeAiEnemy[]>(frame.Observation.Combat!.Enemies);
+        Assert.Equal(2, enemies.Length);
+        Assert.Equal(enemies[0].EnemyId, enemies[1].EnemyId);
+        Assert.NotEqual(enemies[0].InstanceId, enemies[1].InstanceId);
+        Assert.Equal(0, enemies[0].FormationPosition);
+        Assert.Equal(2, enemies[1].FormationPosition);
+        Assert.Equal("quick_slash", enemies[0].LastMoveId);
+        Assert.Equal("boomerang", enemies[1].LastMoveId);
+        Assert.Equal(3, enemies[0].Statuses["proto.status.poison"]);
+        Assert.Equal(18, enemies[1].Statuses["proto.status.poison"]);
+        // Target references and enemy records use the SAME public instance IDs.
+        var targets = frame.LegalActions
+            .Where(action => action.Kind == "play_card"
+                && action.Payload.TryGetProperty("TargetEnemyId", out _))
+            .Select(action => action.Payload.GetProperty("TargetEnemyId").GetInt32())
+            .ToHashSet();
+        Assert.Contains(first.InstanceId, targets);
+        Assert.Contains(second.InstanceId, targets);
+    }
 }
