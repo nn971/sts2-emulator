@@ -227,6 +227,14 @@ This is an intermediate implementation. Final release gates remain open.
   forced-combat fixtures, with native maps, RNG ownership, and real
   replay evidence outstanding. Details:
   [Glory weak closure](reference-builds/v0.111.0-glory-weak-closure.md).
+- Added source-pinned **Tunneler Normal** (Hive) and
+  **Construct Menagerie Normal** (Glory) encounter formations,
+  reusing existing typed Chomper/Tunneler and Punch/Cubex enemies.
+  The Chomper is explicitly assigned its source-true screaming
+  initial phase; Menagerie has independently targetable Punch
+  and two Cubex instances. Both fights remain Weight=0,
+  synthetic fixtures only, and native Act 2/3 progression
+  is not enabled. [Normal formation audit](reference-builds/v0.111.0-normal-formations.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

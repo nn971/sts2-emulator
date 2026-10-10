@@ -7003,7 +7003,8 @@ public static class PrototypeContent
         ..PrototypeNativeHiveBosses.Encounters,
         ..PrototypeNativeGloryNormals.Encounters,
         ..PrototypeNativeGloryScrolls.Encounters,
-        ..PrototypeNativeGloryWeak.Encounters
+        ..PrototypeNativeGloryWeak.Encounters,
+        ..PrototypeNativeAdditionalNormals.Encounters
     ];
 
     public static string[] StartingDeck { get; } =
