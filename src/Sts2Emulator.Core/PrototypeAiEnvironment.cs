@@ -485,6 +485,7 @@ public sealed class PrototypeAiEnvironment
     // that is already forced by the current publicly visible turn state.
     private static PrototypeEnemyMoveDefinition? VisibleDeterministicMove(
         EnemyCombatState enemy,
+        IReadOnlyList<EnemyCombatState> formation,
         bool hideEnemyIntents)
     {
         if (hideEnemyIntents
@@ -532,10 +533,51 @@ public sealed class PrototypeAiEnvironment
             }
         }
 
-        // State-machine choices and random moves cannot currently be
-        // guaranteed without advancing the private RNG or simulating hidden
-        // AI branches. Correct future handling needs a distinct planned
-        // public intent in canonical combat state.
+        if (definition.MovePolicy == PrototypeEnemyMovePolicy.StateMachine
+            && definition.Ai is { } ai)
+        {
+            var states = ai.States.ToDictionary(state => state.Id,
+                StringComparer.Ordinal);
+            var stateId = enemy.AiStateId ?? ai.InitialStateId;
+            for (var depth = 0; depth < 32; depth++)
+            {
+                if (!states.TryGetValue(stateId, out var state))
+                {
+                    return null;
+                }
+
+                if (state.Kind == PrototypeEnemyAiStateKind.Move)
+                {
+                    return state.MoveIndex is { } index
+                        && index >= 0 && index < definition.Moves.Length
+                        ? definition.Moves[index]
+                        : null;
+                }
+
+                if (state.Kind != PrototypeEnemyAiStateKind.Conditional)
+                {
+                    // Random branches are selected by the private combat RNG
+                    // at enemy action time. No public projection may roll
+                    // ahead or claim to know which branch will be selected.
+                    return null;
+                }
+
+                var branch = (state.ConditionalBranches
+                    ?? Array.Empty<PrototypeEnemyAiConditionalBranch>())
+                    .FirstOrDefault(item =>
+                        PrototypeGameEngine.EnemyAiConditionMatches(
+                            enemy, formation, item));
+                if (branch is null)
+                {
+                    return null;
+                }
+
+                stateId = branch.TargetStateId;
+            }
+        }
+
+        // Unresolved random move selection requires an engine change to
+        // precommit a fair public intent before the player acts.
         return null;
     }
 
@@ -630,7 +672,8 @@ public sealed class PrototypeAiEnvironment
             PlayPile: combat.PlayCardIds.Select(Card).ToArray(),
             Enemies: combat.Enemies.Select(enemy =>
             {
-                var move = VisibleDeterministicMove(enemy, hideEnemyIntents);
+                var move = VisibleDeterministicMove(
+                    enemy, combat.Enemies, hideEnemyIntents);
                 var threat = move is null
                     ? (Damage: (int?)null, Hits: (int?)null)
                     : VisibleAttackIntent(combat, enemy, move, act, ascension);
