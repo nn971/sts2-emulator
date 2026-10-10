@@ -933,7 +933,9 @@ public enum PrototypeEnemyEffectKind
     RemoveEnemyPower,
     // Lost/Forgotten: apply -stats to the player, grant +stats
     // to the owner, and track the successful stolen amount.
-    StealPlayerPower
+    StealPlayerPower,
+    // Guardbot: grant fixed Block to every living ally of an enemy type.
+    GrantBlockToEnemyType
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -962,7 +964,12 @@ public sealed record PrototypeEnemyEffectSpec(
     int? OwnerPowerStacksAtLeast = null,
     // The Forgotten's Dread adds the owner's current Dexterity to
     // its printed damage, before ordinary attack modifiers.
-    string? ExtraAmountFromOwnerPowerId = null)
+    string? ExtraAmountFromOwnerPowerId = null,
+    // Fabricator pools: the next bot must differ from the last
+    // monster summoned by the same parent, living or dead.
+    string[]? SummonEnemyPool = null,
+    bool SelectFirstAvailableSummonSlot = false,
+    int[]? SummonSlotFormationPositions = null)
 {
     public int AmountAt(
         int act,

@@ -265,6 +265,19 @@ This is an intermediate implementation. Final release gates remain open.
   the Forgotten's current Dexterity before attack modifiers.
   Source numbers, Ascension breaks, state forks and restoration
   are regression-tested; live trace parity is still outstanding.
+- Added gated **Fabricator Normal** with four source-backed
+  minion types: Zapbot (High Voltage +2 Strength per enemy side),
+  Stabbot (attack/Frail), Guardbot (15 Block to each living
+  Fabricator), and Noisebot (one Dazed into discard and another
+  randomly into draw). Fabricator chooses between defensive+aggressive
+  summon and Strike+aggressive summon until four living allies,
+  then uses Disintegrate; bots occupy native five-slot formation
+  positions. Bot pools exclude the last spawned monster type,
+  including dead minions, and use prototype combat RNG rather
+  than native MonsterAi; this and native summon animation timing
+  remain explicitly unverified. All encounters remain Weight=0.
+  The ordinary 41-encounter normal roster now has executable
+  registrations, but later-act pool integration is still gated.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

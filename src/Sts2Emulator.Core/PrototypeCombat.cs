@@ -2984,6 +2984,24 @@ public sealed partial class PrototypeGameEngine
                             enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
                             break;
 
+                        case PrototypeEnemyEffectKind.GrantBlockToEnemyType:
+                            if (effect.EnemyId is null)
+                                throw new InvalidOperationException(
+                                    "Ally Block grant must specify an enemy type.");
+                            for (var allyIndex = 0;
+                                 allyIndex < enemies.Count;
+                                 allyIndex++)
+                            {
+                                var ally = enemies[allyIndex];
+                                if (ally.Hp > 0 && ally.EnemyId == effect.EnemyId)
+                                    enemies[allyIndex] = ally with
+                                    {
+                                        Block = checked(ally.Block
+                                            + Math.Max(0, amount))
+                                    };
+                            }
+                            break;
+
                         case PrototypeEnemyEffectKind.HealSelf:
                             enemy = enemy with
                             {
@@ -3224,15 +3242,32 @@ public sealed partial class PrototypeGameEngine
 
                         case PrototypeEnemyEffectKind.SummonEnemy:
                         {
-                            if (effect.EnemyId is null)
+                            var summonId = effect.EnemyId;
+                            if (effect.SummonEnemyPool is { Length: > 0 } pool)
                             {
-                                throw new InvalidOperationException(
-                                    "Enemy summon effect is missing an enemy ID.");
+                                // Native Fabricator._lastSpawned persists
+                                // through deaths. Retired minions stay in the
+                                // typed combat history with their leader ID.
+                                var lastSpawned = enemies
+                                    .Where(candidate =>
+                                        candidate.LeaderEnemyInstanceId ==
+                                            enemy.InstanceId)
+                                    .OrderByDescending(candidate =>
+                                        candidate.InstanceId)
+                                    .FirstOrDefault()?.EnemyId;
+                                var choices = pool.Where(id =>
+                                    id != lastSpawned).ToArray();
+                                if (choices.Length == 0)
+                                    choices = pool;
+                                summonId = choices[PrototypeRng.NextInt(
+                                    rng, "combat", choices.Length)];
                             }
+                            if (summonId is null)
+                                throw new InvalidOperationException(
+                                    "Enemy summon requires an enemy ID or pool.");
 
                             var summonedDefinition =
-                                PrototypeContent.Enemy(
-                                    effect.EnemyId);
+                                PrototypeContent.Enemy(summonId);
                             var hpRange =
                                 summonedDefinition.HpRangeAt(
                                     act,
@@ -3275,8 +3310,9 @@ public sealed partial class PrototypeGameEngine
                             string? selectedSlot = null;
                             if (summonSlots is { Length: > 0 })
                             {
-                                selectedSlot = summonSlots
-                                    .Reverse()
+                                selectedSlot = (effect.SelectFirstAvailableSummonSlot
+                                        ? summonSlots
+                                        : summonSlots.Reverse())
                                     .FirstOrDefault(slot =>
                                         !enemies.Any(item =>
                                             (item.Hp > 0
@@ -3295,12 +3331,16 @@ public sealed partial class PrototypeGameEngine
                                         ? 0
                                         : enemies.Max(item =>
                                             item.FormationPosition) + 1)
-                                    : Array.IndexOf(summonSlots!, selectedSlot);
+                                    : effect.SummonSlotFormationPositions is
+                                            { } sourcePositions
+                                        ? sourcePositions[
+                                            Array.IndexOf(summonSlots!, selectedSlot)]
+                                        : Array.IndexOf(summonSlots!, selectedSlot);
 
                             enemies.Add(
                                 new EnemyCombatState(
                                     InstanceId: nextEnemyId,
-                                    EnemyId: effect.EnemyId,
+                                    EnemyId: summonId,
                                     Hp: summonedHp,
                                     MaxHp: summonedHp,
                                     Block: 0,
