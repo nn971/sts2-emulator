@@ -23,7 +23,10 @@ As of the branch's initial pin:
   **Bubble Bubble**, because it assumed native automatic targeting was unknown.
 - `PrototypeCombat.cs:ResolveOperations`, at
   `PrototypeCombatEffectKind.AutoPlayCombatCard`, already chooses an
-  RNG-driven live enemy when the operation has no valid explicit target.
+  RNG-driven live enemy **when the operation has no valid explicit target**.
+  When it inherits a still-valid target, it currently reuses that target.
+  This inherited-target path also needs auditing rather than assuming it
+  matches native random-target semantics.
 - The generic `RandomEnemy` combat effect uses an RNG draw separately; do
   not conflate these cases.
 
