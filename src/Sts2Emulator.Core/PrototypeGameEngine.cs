@@ -770,9 +770,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             return card;
         }
 
-        var amount = player.Relics.Sum(relic =>
-            PrototypeContent.Relic(relic.RelicId)
-                .EnchantNewBlockCardsNimble);
+        // Fresnel Lens attaches Nimble through an ordered relic hook.
+        // The pinned Nimble EnchantmentModel is NOT stackable, so the
+        // first owned Lens enchants the card; later copies cannot add
+        // their amounts again to an already enchanted card.
+        var amount = player.Relics
+            .Select(relic => PrototypeContent.Relic(relic.RelicId)
+                .EnchantNewBlockCardsNimble)
+            .FirstOrDefault(value => value > 0);
         return amount > 0
             ? card with
             {
