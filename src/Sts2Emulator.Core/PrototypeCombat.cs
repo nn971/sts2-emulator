@@ -2497,6 +2497,16 @@ public sealed partial class PrototypeGameEngine
                                 unblockedAttackHits++;
                             }
                             hp = Math.Max(0, hp - unblocked);
+                            if (effect.IsAttack && unblocked > 0
+                                && combat.PlayerPowers.Any(power =>
+                                    power.Stacks > 0
+                                    && PrototypeContent.Power(power.PowerId)
+                                        .LethalAfterUnblockedPoweredAttack))
+                            {
+                                // The Gambit deliberately kills its owner
+                                // upon the first unblocked powered hit.
+                                hp = 0;
+                            }
                             break;
                         }
 
@@ -3008,7 +3018,8 @@ public sealed partial class PrototypeGameEngine
         bool isPoweredAttack = false,
         PrototypeCombatCardSnapshot? powerCardPayload = null,
         int? sourcePowerEnemyId = null,
-        int sourcePowerStoredValue = 0)
+        int sourcePowerStoredValue = 0,
+        long? sourcePowerApplicationOrder = null)
     {
         // Snapshot hand-sensitive card conditions when their operations are
         // queued. Restlessness first draws cards and then gains energy, but
@@ -3139,6 +3150,14 @@ public sealed partial class PrototypeGameEngine
                         + (effect.GoldOnFatalUpgradeDelta * upgradeLevel),
                     GainBlockEqualToAttackDamage:
                         effect.GainBlockEqualToAttackDamage,
+                    SplashUnpoweredAttackToOtherEnemies:
+                        effect.SplashUnpoweredAttackToOtherEnemies,
+                    AutoPlayRequiredCardType:
+                        effect.AutoPlayRequiredCardType,
+                    AutoPlayFallbackToUnplayable:
+                        effect.AutoPlayFallbackToUnplayable,
+                    SourcePowerApplicationOrder:
+                        sourcePowerApplicationOrder,
                     PowerStoredValue:
                         effect.PowerStoredValue
                         + (effect.PowerStoredValueUpgradeDelta * upgradeLevel),
@@ -3292,6 +3311,11 @@ public sealed partial class PrototypeGameEngine
                             damageAmount);
                     }
 
+                    var splashTarget = combat.Enemies.FirstOrDefault(e =>
+                        e.InstanceId == targetEnemyId.Value);
+                    var overkill = splashTarget is null ? 0
+                        : Math.Max(0, Math.Max(0, damageAmount - splashTarget.Block)
+                            - splashTarget.Hp);
                     var damageResult = DamageEnemy(
                         combat,
                         targetEnemyId.Value,
@@ -3299,6 +3323,22 @@ public sealed partial class PrototypeGameEngine
                         operation.IsPoweredAttack
                             ? MinimumPoweredAttackHpLoss(player) : 0);
                     combat = damageResult.Combat;
+                    if (operation.SplashUnpoweredAttackToOtherEnemies
+                        && splashTarget is { Hp: > 0 })
+                    {
+                        // Omnislice: powered primary hit, then separate
+                        // unpowered Move-damage to the other enemies.
+                        var echoAmount = Math.Max(0, damageAmount + overkill);
+                        operations = new Queue<PrototypeQueuedOperation>(
+                            combat.Enemies
+                                .Where(enemy => enemy.Hp > 0
+                                    && enemy.InstanceId != targetEnemyId.Value)
+                                .Select(enemy => new PrototypeQueuedOperation(
+                                    PrototypeCombatEffectKind.DamageEnemy,
+                                    echoAmount, TargetEnemyId: enemy.InstanceId))
+                                .Concat(operations));
+                    }
+
                     if (operation.GainBlockEqualToAttackDamage)
                     {
                         // Fisticuffs uses the attack result (including
@@ -4374,6 +4414,75 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand:
+                {
+                    var pool = PrototypeContent.RewardCardPool.Where(id =>
+                    {
+                        var definition = PrototypeContent.Card(id);
+                        return definition.Type == PrototypeCardType.Attack
+                            && definition.MechanicsImplemented
+                            && definition.CanBeGeneratedInCombat
+                            && !definition.MultiplayerOnly;
+                    }).ToArray();
+                    if (pool.Length == 0 && operation.Amount > 0)
+                    {
+                        throw new NotSupportedException(
+                            "No implemented solo attack generation pool.");
+                    }
+                    for (var i = 0; i < operation.Amount; i++)
+                    {
+                        var id = pool[PrototypeRng.NextInt(
+                            rng, "combat", pool.Length)];
+                        combat = AddGeneratedCardCopies(combat,
+                            new PrototypeCombatCardSnapshot(
+                                id, 0, PrototypeJson.EmptyObject()), 1);
+                    }
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.AcquireRandomCombatPotion:
+                {
+                    var pool = PrototypeContent.PotionPool;
+                    for (var i = 0; i < operation.Amount; i++)
+                    {
+                        var generated = pool[PrototypeRng.NextInt(
+                            rng, "combat", pool.Length)];
+                        var slots = (PotionInstance?[])player.PotionSlots.Clone();
+                        var firstEmpty = Array.FindIndex(slots, item => item is null);
+                        if (firstEmpty < 0)
+                        {
+                            continue;
+                        }
+
+                        slots[firstEmpty] = new PotionInstance(
+                            generated, PrototypeJson.EmptyObject());
+                        player = player with { PotionSlots = slots };
+                    }
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.IncreaseSourcePowerStacks:
+                {
+                    if (operation.SourcePowerApplicationOrder is not { } order)
+                    {
+                        throw new InvalidOperationException(
+                            "Power growth requires source application order.");
+                    }
+
+                    combat = combat with
+                    {
+                        PlayerPowers = combat.PlayerPowers.Select(power =>
+                            power.ApplicationOrder == order
+                                ? power with
+                                {
+                                    Stacks = power.Stacks
+                                        + operation.Amount
+                                }
+                                : power).ToArray()
+                    };
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.CreateCardsInHand:
                 {
                     if (operation.CardId is null)
@@ -4508,6 +4617,60 @@ public sealed partial class PrototypeGameEngine
                                         .UpgradeAutoPlayedCardsBeforePlay,
                                 CardInstanceId: id))
                         .Concat(operations));
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone:
+                {
+                    if (operation.Amount <= 0
+                        || AllEnemiesDefeated(combat))
+                    {
+                        break;
+                    }
+
+                    var zone = operation.AutoPlaySourceZone
+                        ?? throw new InvalidOperationException(
+                            "Random autoplay requires a source pile.");
+                    var ids = GetZone(combat, zone);
+                    var eligible = ids.Where(id =>
+                    {
+                        var definition = PrototypeContent.Card(
+                            RequireCombatCard(combat, id).CardId);
+                        return !definition.Unplayable
+                            && definition.MechanicsImplemented
+                            && (operation.AutoPlayRequiredCardType is null
+                                || definition.Type
+                                    == operation.AutoPlayRequiredCardType);
+                    }).ToArray();
+                    if (eligible.Length == 0
+                        && operation.AutoPlayFallbackToUnplayable)
+                    {
+                        eligible = ids;
+                    }
+
+                    if (eligible.Length == 0)
+                    {
+                        break;
+                    }
+
+                    var selected = eligible[PrototypeRng.NextInt(
+                        rng, "combat", eligible.Length)];
+                    combat = SetZone(combat, zone,
+                        ids.Where(id => id != selected).ToArray());
+                    combat = SetZone(combat, PrototypeCardZone.PlayPile,
+                        combat.PlayCardIds.Append(selected).ToArray());
+
+                    // Re-evaluate the source pile after each autoplay,
+                    // because the played card can draw or mutate cards.
+                    operations = new Queue<PrototypeQueuedOperation>(
+                        new[]
+                        {
+                            new PrototypeQueuedOperation(
+                                PrototypeCombatEffectKind.AutoPlayCombatCard,
+                                0, SourceKind: operation.SourceKind,
+                                CardInstanceId: selected),
+                            operation with { Amount = operation.Amount - 1 }
+                        }.Concat(operations));
                     break;
                 }
 
@@ -4836,10 +4999,31 @@ public sealed partial class PrototypeGameEngine
             if (!sourceCardAlreadyMoved
                 && !removeSourceCardOnCompletion)
             {
-                var destination = GetZone(combat, sourceCardDestination);
+                var finalZone = sourceCardDestination;
+                if (finalZone == PrototypeCardZone.DiscardPile)
+                {
+                    var source = RequireCombatCard(
+                        combat, sourceCardInstanceId.Value);
+                    var sourceType = PrototypeContent.Card(source.CardId).Type;
+                    if (sourceType is PrototypeCardType.Attack
+                        or PrototypeCardType.Skill)
+                    {
+                        var alreadyPlayed = combat.CounterState
+                            .AttacksPlayedThisTurn
+                            + combat.CounterState.SkillsPlayedThisTurn;
+                        if (combat.PlayerPowers.Any(power =>
+                            power.Stacks > alreadyPlayed
+                            && PrototypeContent.Power(power.PowerId)
+                                .PlayedAttacksAndSkillsReturnToDraw))
+                        {
+                            finalZone = PrototypeCardZone.DrawPile;
+                        }
+                    }
+                }
+
+                var destination = GetZone(combat, finalZone);
                 combat = SetZone(
-                    combat,
-                    sourceCardDestination,
+                    combat, finalZone,
                     destination.Append(sourceCardInstanceId.Value).ToArray());
             }
 
@@ -7638,7 +7822,9 @@ public sealed partial class PrototypeGameEngine
                     sourcePowerEnemyId:
                         subscriber.SourcePowerEnemyId,
                     sourcePowerStoredValue:
-                        subscriber.SourcePowerStoredValue);
+                        subscriber.SourcePowerStoredValue,
+                    sourcePowerApplicationOrder:
+                        subscriber.SourcePowerApplicationOrder);
             }
 
             var continuation =
@@ -7774,7 +7960,9 @@ public sealed partial class PrototypeGameEngine
                     sourcePowerEnemyId:
                         subscriber.SourcePowerEnemyId,
                     sourcePowerStoredValue:
-                        subscriber.SourcePowerStoredValue);
+                        subscriber.SourcePowerStoredValue,
+                    sourcePowerApplicationOrder:
+                        subscriber.SourcePowerApplicationOrder);
             }
 
             var nextContinuation =
