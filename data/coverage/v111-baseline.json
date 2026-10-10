@@ -3936,11 +3936,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.event.enlightenment"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Enlightenment.cs#2667676a39fa42d26778118c09af55454446b84cef77491cf381de83eef570ea"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -3949,7 +3951,7 @@
           "upgraded"
         ],
         "native_id": "ENLIGHTENMENT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -6824,11 +6826,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.event.metamorphosis"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Metamorphosis.cs#4bdffa4fe4edfaeafd34d6d7a2318604beb4053a2b8c9a4d147fd497052767b4"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -6837,7 +6841,7 @@
           "upgraded"
         ],
         "native_id": "METAMORPHOSIS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15416,11 +15420,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.hungry_for_mushrooms"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/HungryForMushrooms.cs#2d2d2d521b75a254729bbc78b230a56bd4177feafcdadb60d9e821c33f49fdbc"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15435,7 +15441,7 @@
         ],
         "missing_variants": [],
         "native_id": "HUNGRY_FOR_MUSHROOMS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16015,11 +16021,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.spirit_grafter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SpiritGrafter.cs#3be1eb82235e62924fb5437399610e2d73e5550da31d3c373627cf9ff5e05098"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -16033,7 +16041,7 @@
         ],
         "missing_variants": [],
         "native_id": "SPIRIT_GRAFTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16710,11 +16718,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.zen_weaver"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ZenWeaver.cs#7cf5ba4e7c71eb4ba0537312fc1dc1339ce9f98f2633a2d1fff53269ff4181b3"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -16733,7 +16743,7 @@
         ],
         "missing_variants": [],
         "native_id": "ZEN_WEAVER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24689,17 +24699,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.relic.big_mushroom"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BigMushroom.cs#164ccada42443b186a3b79cb8ebe3543704d19696aa7b19b75fa5cc07a47fddc"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BIG_MUSHROOM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -25935,17 +25947,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.relic.fragrant_mushroom"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FragrantMushroom.cs#0c9bb8fc7e261cbc721e4a361522cba3e00bac1513ba8eff13d030155c24a792"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FRAGRANT_MUSHROOM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29574,7 +29588,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 176,
+        "implemented": 178,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
