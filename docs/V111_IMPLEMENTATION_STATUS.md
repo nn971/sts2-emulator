@@ -290,6 +290,23 @@ This is an intermediate implementation. Final release gates remain open.
   selection, MonsterAi RNG ownership and live-game parity are
   unverified. Knights Elite remains outstanding. Evidence:
   [Glory elite slice](reference-builds/v0.111.0-glory-elites-soul-mecha.md).
+- Added source-pinned **Knights Elite** and all three **Glory bosses**
+  (Queen, Test Subject, Aeonglass) as typed Weight=0 forced-combat
+  fixtures, completing the native 3/3 elite and 3/3 boss encounter
+  registrations alongside Soul Nexus and Mecha Knight. Knights
+  preserves three named bodies, weighted/conditional moves and
+  Hex/Dampen powers. Queen models Amalgam-death interrupt and Bound
+  cards; Test Subject models two same-instance resurrections,
+  Enrage, Wounds and Nemesis; Aeonglass models six-card Withering
+  Presence and ever-increasing Wither fake upgrades.
+  Per-instance boss phase and status counters survive snapshots
+  and forks. A0/A8/A9, formation, ownership, death, hand,
+  generation and conditional-intent regressions were added.
+  All new encounters remain unintegrated and unverified against
+  native traces, with specific parity gaps documented in
+  [the source audit](reference-builds/v0.111.0-glory-elites-bosses.md).
+  Glory map/encounter selection, elites/boss rewards, native RNG,
+  rare power interactions and act terminal parity remain open.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

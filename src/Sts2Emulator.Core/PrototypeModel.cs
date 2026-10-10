@@ -183,7 +183,8 @@ public sealed record PrototypeCombatCardSnapshot(
     PrototypeCardEnchantment? Enchantment = null,
     bool EnchantmentTriggeredThisCombat = false,
     PrototypeCardAffliction? Affliction = null,
-    int SuppressedUpgradeLevels = 0)
+    int SuppressedUpgradeLevels = 0,
+    int WitherFakeUpgradeLevel = 0)
 {
     public PrototypeCombatCardSnapshot Fork() => this with
     {
@@ -935,7 +936,10 @@ public enum PrototypeEnemyEffectKind
     // to the owner, and track the successful stolen amount.
     StealPlayerPower,
     // Guardbot: grant fixed Block to every living ally of an enemy type.
-    GrantBlockToEnemyType
+    GrantBlockToEnemyType,
+    GrantStrengthToOtherLivingEnemies,
+    ReviveTestSubject,
+    IntensifyWither
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -1020,7 +1024,9 @@ public enum PrototypeEnemyAiConditionKind
     MoveUsedFewerThan,
     MoveUsedAtLeast,
     HpAtLeastHalf,
-    HpBelowHalf
+    HpBelowHalf,
+    HasLivingEnemyId,
+    LacksLivingEnemyId
 }
 
 public enum PrototypeEnemyAiRepeatRule
@@ -1485,7 +1491,12 @@ public sealed record EnemyCombatState(
     // Older hand-built fixtures retain the default for compatibility.
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    int MaxHp = 0)
+    int MaxHp = 0,
+    int BossPhase = 0,
+    bool BossPendingRevival = false,
+    int ExtraMultiClawCount = 0,
+    int WitherUpgradeCount = 0,
+    bool NemesisIntangibleNext = false)
 {
     public EnemyCombatState Fork() => this with
     {
@@ -1524,7 +1535,8 @@ public sealed record CombatCardInstance(
     PrototypeCardEnchantment? Enchantment = null,
     bool EnchantmentTriggeredThisCombat = false,
     PrototypeCardAffliction? Affliction = null,
-    int SuppressedUpgradeLevels = 0)
+    int SuppressedUpgradeLevels = 0,
+    int WitherFakeUpgradeLevel = 0)
 {
     public CombatCardInstance Fork() => this with
     {
@@ -1694,7 +1706,8 @@ public sealed record CombatState(
     long[]? ChoicePool = null,
     long[]? PlayPile = null,
     PrototypeToricShield[]? ToricShields = null,
-    long[]? TransformedPersistentCardIds = null)
+    long[]? TransformedPersistentCardIds = null,
+    bool BoundCardPlayedThisTurn = false)
 {
     public CombatState Fork() => this with
     {

@@ -11895,11 +11895,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.status.wither"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Wither.cs#d9cab3353836f39d7acf62be4b6ea9d637c25ec802214c63144784c060127e9b"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -11908,7 +11910,7 @@
           "upgraded"
         ],
         "native_id": "WITHER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -12467,17 +12469,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.aeonglass_boss"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/AeonglassBoss.cs#f1f77c0e9d69517fa4d959fb6bb977b780b22b928c5a6f5eca05162dff6096bb"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "AEONGLASS_BOSS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13119,17 +13123,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.knights_elite"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/KnightsElite.cs#59ccd1ec5cddfbf3fb5310e1d43fed93ab08110e0e4c8f15d8f5a5fa88f785b6"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "KNIGHTS_ELITE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13437,17 +13443,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.queen_boss"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/QueenBoss.cs#0d42c95c7b046d9ad5e706ea6c1e6f8993f5402685419fa4c087b8ff02786c0f"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "QUEEN_BOSS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13795,17 +13803,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.encounter.test_subject_boss"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TestSubjectBoss.cs#2b79aee0c4e2dc5af23b39aecddd9c808c0954c26347d6080366fc54fad96c4f"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TEST_SUBJECT_BOSS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16715,17 +16725,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.aeonglass"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/Aeonglass.cs#35e1b7eef1f178c740073770d7492e3275fa25715d7f93e43af0a3441501995a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "AEONGLASS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17336,7 +17348,8 @@
       {
         "catalogued": true,
         "engine_ids": [
-          "proto.enemy.flail_knight"
+          "proto.enemy.flail_knight",
+          "proto.native.glory.flail_knight"
         ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/FlailKnight.cs#7e5158dd5559c57156fee1ff9be34600d656ddb42a1bc0de61ef1207fe9b089b"
@@ -17750,7 +17763,8 @@
       {
         "catalogued": true,
         "engine_ids": [
-          "proto.enemy.magi_knight"
+          "proto.enemy.magi_knight",
+          "proto.native.glory.magi_knight"
         ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/MagiKnight.cs#13d22cfd5fe22c7b9113dcbca56b13ad116818ea865da0974feba53c58236fe1"
@@ -18013,17 +18027,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.queen"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/Queen.cs#7eabd128144544d0567b15c005b770024a07a44de4a1763ce4095be10705f527"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "QUEEN",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -18282,7 +18298,8 @@
       {
         "catalogued": true,
         "engine_ids": [
-          "proto.enemy.spectral_knight"
+          "proto.enemy.spectral_knight",
+          "proto.native.glory.spectral_knight"
         ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/SpectralKnight.cs#59bfaa4848cade56697b267e1a5bb41b96269310d5cad56766de06ae1cfd60a6"
@@ -18353,17 +18370,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.test_subject"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/TestSubject.cs#73375eba65bc85c3db7ae61dfee6e9cd929fb4691df0d4b89471cec20610a6ae"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TEST_SUBJECT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -18525,17 +18544,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.torch_head_amalgam"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/TorchHeadAmalgam.cs#f9d78b745ba63d04fae388e1ce2b0618651df3368ee02c40a6ce0c786f5ebfec"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TORCH_HEAD_AMALGAM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19963,17 +19984,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.adaptable"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/AdaptablePower.cs#d52696c9f8e9b8753844c46a7d9e1a8644bcadcf332a93042fa8440ad91285d4"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ADAPTABLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -20401,17 +20424,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.chains_of_binding"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/ChainsOfBindingPower.cs#24b13c2fd3f33f6ad639b4f3bf40b001a3a8253eb5162243fe1f0159331bf9a2"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CHAINS_OF_BINDING",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -20762,6 +20787,7 @@
       {
         "catalogued": true,
         "engine_ids": [
+          "proto.native.glory.dampen",
           "proto.power.dampen"
         ],
         "evidence": [
@@ -21095,17 +21121,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.enrage"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/EnragePower.cs#ff5fc31f32e76264ac9548c102f9d7923f4fc15e53af249e99308cdd76b2b4ce"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ENRAGE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -21764,6 +21792,7 @@
       {
         "catalogued": true,
         "engine_ids": [
+          "proto.native.glory.hex",
           "proto.power.hex"
         ],
         "evidence": [
@@ -22312,17 +22341,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.nemesis"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/NemesisPower.cs#26f4d0934e270d6cc6ac3dbccf6174d61687f7ec798910fe7093d6a772a4c22e"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "NEMESIS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -22530,17 +22561,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.painful_stabs"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/PainfulStabsPower.cs#831faebcd0e3abddd1d9970cef5ccb5968e8c6f82c5c8531ab4f37ab7d2d71a9"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PAINFUL_STABS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24354,17 +24387,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.withering_presence"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/WitheringPresencePower.cs#aa46615f0397905cd8f4becbed94af6ca1fdbf66010be9cc7f3c22392171be24"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "WITHERING_PRESENCE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29519,7 +29554,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 173,
+        "implemented": 174,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
