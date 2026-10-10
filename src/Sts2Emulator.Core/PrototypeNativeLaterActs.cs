@@ -89,7 +89,9 @@ public static class PrototypeNativeLaterActs
         new("proto.native.hive.imbalanced", "Imbalanced", 0, [],
             DoesNotStack: true),
         new("proto.native.hive.hard_to_kill", "Hard to Kill", 0, [],
-            DoesNotStack: true, EnemyHpLossCapPerTrigger: 9)
+            DoesNotStack: true, EnemyHpLossCapPerTrigger: 9),
+        new("proto.native.hive.burrowed", "Burrowed", 0, [],
+            DoesNotStack: true, PreventsEnemyBlockClear: true)
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
@@ -220,6 +222,37 @@ public static class PrototypeNativeLaterActs
                                 PrototypeEnemyAiRepeatRule.CannotRepeat)
                         ])
                 ])),
+        // Tunneler.cs: Bite -> Burrow (32/37 Block, retains Block)
+        // -> Below forever. Breaking its Block while burrowed forces
+        // a stunned Dizzy recovery action, then returns to Bite.
+        new("proto.native.hive.tunneler", "Tunneler", 87, 0,
+            [
+                new("bite", [new(PrototypeEnemyEffectKind.DamagePlayer,
+                    13, AscensionDeltas: [new(9, 2)])]),
+                new("burrow",
+                    [
+                        new(PrototypeEnemyEffectKind.ApplyEnemyPower, 1,
+                            PowerId: "proto.native.hive.burrowed"),
+                        new(PrototypeEnemyEffectKind.GainBlock, 32,
+                            AscensionDeltas: [new(8, 5)])
+                    ]),
+                new("below", [new(PrototypeEnemyEffectKind.DamagePlayer,
+                    23, AscensionDeltas: [new(9, 3)])]),
+                new("dizzy", [])
+            ],
+            HpAscensionDeltas: [new(8, 5)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new("bite",
+                [
+                    new("bite", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "burrow"),
+                    new("burrow", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "below"),
+                    new("below", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "below"),
+                    new("dizzy", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 3, NextStateId: "bite")
+                ])),
         // Source: DevotedSculptor.cs. An opening +9 Ritual, then
         // 12/15-damage Savage repeatedly; HP 162 (A8 172).
         new("proto.native.glory.devoted_sculptor", "Devoted Sculptor",
@@ -287,6 +320,12 @@ public static class PrototypeNativeLaterActs
                 new("proto.native.hive.exoskeleton", 1, "second"),
                 new("proto.native.hive.exoskeleton", 2, "third")
             ]),
+        // TunnelerWeak.cs is exactly one Tunneler. The Burrowed
+        // power's persistence and block-break interrupt are supported.
+        new("proto.native.hive.encounter.tunneler_weak",
+            PrototypeRoomType.Combat,
+            ["proto.native.hive.tunneler"],
+            MinAct: 2, MaxAct: 2, Weight: 0),
         // Source: DevotedSculptorWeak.cs. Weight zero intentionally
         // prevents an incomplete native Glory map from sampling this
         // via the legacy prototype encounter selector. Forced/synthetic
