@@ -21,6 +21,14 @@ public static class PrototypeNativeGloryNewNormals
     public const string StockId = "proto.native.glory.stock";
     public const string AxebotsEncounterId =
         "proto.native.glory.encounter.axebots_normal";
+    public const string TheLostId = "proto.native.glory.the_lost";
+    public const string TheForgottenId = "proto.native.glory.the_forgotten";
+    public const string PossessStrengthId =
+        "proto.native.glory.possess_strength";
+    public const string PossessSpeedId =
+        "proto.native.glory.possess_speed";
+    public const string LostAndForgottenEncounterId =
+        "proto.native.glory.encounter.the_lost_and_forgotten_normal";
 
     public static PrototypePowerDefinition[] Powers { get; } =
     [
@@ -34,7 +42,11 @@ public static class PrototypeNativeGloryNewNormals
             GalvanizePowerCardsPerStack: 1),
         // Death/summon semantics are carried by typed stage definitions;
         // this power retains the visible Stock counter.
-        new(StockId, "Stock", 0, [])
+        new(StockId, "Stock", 0, []),
+        new(PossessStrengthId, "Possess Strength", 0, [],
+            DoesNotStack: true),
+        new(PossessSpeedId, "Possess Speed", 0, [],
+            DoesNotStack: true)
     ];
 
     // Native Axebot respawns twice: remaining Stock 2 → 1 → 0,
@@ -116,6 +128,37 @@ public static class PrototypeNativeGloryNewNormals
         // GlobeHead.cs: Shocking Slap -> Thunder Strike ->
         // Galvanic Burst -> Shocking Slap. Galvanic inflicts
         // Power cards and damages the player on their play.
+        // Lost opens with Strength theft then uses two Eye Lasers.
+        new(TheLostId, "The Lost", 93, 0,
+        [
+            new("debilitating_smog",
+                [new(PrototypeEnemyEffectKind.StealPlayerPower, 2,
+                    PowerId: "proto.power.strength")]),
+            new("eye_lasers",
+                [new(PrototypeEnemyEffectKind.DamagePlayer, 4,
+                    Repetitions: 2,
+                    AscensionDeltas: [new(9, 1)])])
+        ],
+        HpAscensionDeltas: [new(8, 6)],
+        StartingPowers: [new(PossessStrengthId, 1)]),
+        // Forgotten's Dread scales by its current Dexterity,
+        // unlike ordinary attacks, where Dexterity modifies Block.
+        new(TheForgottenId, "The Forgotten", 106, 0,
+        [
+            new("miasma",
+            [
+                new(PrototypeEnemyEffectKind.StealPlayerPower, 2,
+                    PowerId: "proto.power.dexterity"),
+                new(PrototypeEnemyEffectKind.GainBlock, 8)
+            ]),
+            new("dread",
+                [new(PrototypeEnemyEffectKind.DamagePlayer, 13,
+                    AscensionDeltas: [new(9, 2)],
+                    ExtraAmountFromOwnerPowerId:
+                        "proto.power.dexterity")])
+        ],
+        HpAscensionDeltas: [new(8, 5)],
+        StartingPowers: [new(PossessSpeedId, 1)]),
         AxebotStage(AxebotId, 0),
         AxebotStage(AxebotSecondId, 1),
         AxebotStage(AxebotThirdId, 2),
@@ -153,6 +196,10 @@ public static class PrototypeNativeGloryNewNormals
             [GlobeHeadId], MinAct: 3, MaxAct: 3, Weight: 0),
         new(AxebotsEncounterId, PrototypeRoomType.Combat,
             [AxebotId], MinAct: 3, MaxAct: 3, Weight: 0,
-            Formation: [new(AxebotId, 0, "front")])
+            Formation: [new(AxebotId, 0, "front")]),
+        new(LostAndForgottenEncounterId, PrototypeRoomType.Combat,
+            [TheLostId, TheForgottenId],
+            MinAct: 3, MaxAct: 3, Weight: 0,
+            Formation: [new(TheLostId, 0), new(TheForgottenId, 1)])
     ];
 }

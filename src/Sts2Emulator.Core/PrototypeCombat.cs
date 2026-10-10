@@ -3051,6 +3051,44 @@ public sealed partial class PrototypeGameEngine
                             };
                             break;
 
+                        case PrototypeEnemyEffectKind.StealPlayerPower:
+                        {
+                            if (effect.PowerId is not
+                                ("proto.power.strength" or "proto.power.dexterity"))
+                                throw new InvalidOperationException(
+                                    "Stat theft must specify Strength or Dexterity.");
+                            var prior = combat.PlayerPowers
+                                .Where(power => power.PowerId == effect.PowerId)
+                                .Sum(power => power.Stacks);
+                            combat = ApplyPlayerPower(
+                                combat, effect.PowerId, -amount,
+                                sourceEnemyInstanceId: enemy.InstanceId);
+                            var after = combat.PlayerPowers
+                                .Where(power => power.PowerId == effect.PowerId)
+                                .Sum(power => power.Stacks);
+                            var stolen = Math.Max(0, prior - after);
+                            var granted = ApplyEnemyPowerToState(
+                                combat, enemy, effect.PowerId, amount);
+                            combat = granted.Combat;
+                            enemy = granted.Enemy;
+                            var ownerPowerId =
+                                effect.PowerId == "proto.power.strength"
+                                    ? PrototypeNativeGloryNewNormals.PossessStrengthId
+                                    : PrototypeNativeGloryNewNormals.PossessSpeedId;
+                            enemy = enemy with
+                            {
+                                Powers = enemy.PowerStates.Select(power =>
+                                    power.PowerId == ownerPowerId
+                                        ? power with
+                                        {
+                                            StoredValue = checked(
+                                                power.StoredValue + stolen)
+                                        }
+                                        : power).ToArray()
+                            };
+                            break;
+                        }
+
                         case PrototypeEnemyEffectKind.ApplyAllEnemyPower:
                         {
                             if (effect.PowerId is null)
@@ -6519,6 +6557,11 @@ public sealed partial class PrototypeGameEngine
             : checked(effect.AmountAt(act, ascension)
                 + effect.ExtraAmountPerPriorMoveUse * priorMoveUses);
         var damage = baseDamage
+            + (effect.ExtraAmountFromOwnerPowerId is { } statId
+                ? enemy.PowerStates
+                    .Where(power => power.PowerId == statId)
+                    .Sum(power => power.Stacks)
+                : 0)
             + enemy.PowerStates.Sum(power =>
                 PrototypeContent.Power(power.PowerId)
                     .EnemyAttackDamageBonusPerStack * power.Stacks);
@@ -10525,6 +10568,45 @@ public sealed partial class PrototypeGameEngine
     private static CombatState ResolveAllyDeathPowers(
         CombatState combat, int defeatedEnemyId)
     {
+        // PossessStrength/PossessSpeed store the actual successful
+        // player stat loss, not the attempted debuff: Artifact can
+        // prevent theft. Death returns precisely those stolen stacks,
+        // once, before living allies process their death reactions.
+        var defeated = combat.Enemies.FirstOrDefault(enemy =>
+            enemy.InstanceId == defeatedEnemyId);
+        if (defeated is not null)
+        {
+            foreach (var stolenPower in defeated.PowerStates.Where(power =>
+                power.StoredValue > 0
+                && power.PowerId is
+                    (PrototypeNativeGloryNewNormals.PossessStrengthId
+                     or PrototypeNativeGloryNewNormals.PossessSpeedId)))
+            {
+                var restoredStat = stolenPower.PowerId ==
+                    PrototypeNativeGloryNewNormals.PossessStrengthId
+                    ? "proto.power.strength"
+                    : "proto.power.dexterity";
+                combat = ApplyPlayerPower(
+                    combat, restoredStat, stolenPower.StoredValue);
+            }
+            combat = combat with
+            {
+                Enemies = combat.Enemies.Select(enemy =>
+                    enemy.InstanceId == defeatedEnemyId
+                        ? enemy with
+                        {
+                            Powers = enemy.PowerStates.Select(power =>
+                                power.StoredValue > 0
+                                && power.PowerId is
+                                    (PrototypeNativeGloryNewNormals.PossessStrengthId
+                                     or PrototypeNativeGloryNewNormals.PossessSpeedId)
+                                    ? power with { StoredValue = 0 }
+                                    : power).ToArray()
+                        }
+                        : enemy).ToArray()
+            };
+        }
+
         foreach (var owner in combat.Enemies
             .Where(item => item.Hp > 0
                 && item.InstanceId != defeatedEnemyId)

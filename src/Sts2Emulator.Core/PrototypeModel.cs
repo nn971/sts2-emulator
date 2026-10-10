@@ -930,7 +930,10 @@ public enum PrototypeEnemyEffectKind
     AddCardsToRandomDiscard,
     // Knowledge Demon must ask the player to choose between curses.
     RequireNativeChoice,
-    RemoveEnemyPower
+    RemoveEnemyPower,
+    // Lost/Forgotten: apply -stats to the player, grant +stats
+    // to the owner, and track the successful stolen amount.
+    StealPlayerPower
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -956,7 +959,10 @@ public sealed record PrototypeEnemyEffectSpec(
     // Source-backed conditional buffs, read before the action executes.
     string? OwnerPowerStackConditionId = null,
     int? OwnerPowerStacksLessThan = null,
-    int? OwnerPowerStacksAtLeast = null)
+    int? OwnerPowerStacksAtLeast = null,
+    // The Forgotten's Dread adds the owner's current Dexterity to
+    // its printed damage, before ordinary attack modifiers.
+    string? ExtraAmountFromOwnerPowerId = null)
 {
     public int AmountAt(
         int act,

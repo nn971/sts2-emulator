@@ -256,6 +256,15 @@ This is an intermediate implementation. Final release gates remain open.
   attack and debuff values. The typed death-summon chain makes
   Stock prevent premature victory. Native animation timing,
   replacement RNG and live replay remain unverified.
+- Added gated **The Lost and Forgotten Normal**: two living,
+  independently targetable paired enemies that alternate
+  Strength/Dexterity theft with source-scaled Eye Lasers/Dread
+  attacks. Possess Strength/Speed now tracks the actual player
+  stat decrease that survives debuff prevention and restores it
+  on the corresponding owner's death, only once. Dread includes
+  the Forgotten's current Dexterity before attack modifiers.
+  Source numbers, Ascension breaks, state forks and restoration
+  are regression-tested; live trace parity is still outstanding.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
