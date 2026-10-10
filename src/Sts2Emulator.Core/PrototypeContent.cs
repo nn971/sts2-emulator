@@ -1899,6 +1899,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeUnderdocksTrashHeap.Cards)
             .Concat(PrototypeNativeEndlessConveyor.EventCards)
             .Concat(PrototypeNativeLaterActs.Cards)
+            .Concat(PrototypeNativeHiveEvents.Cards)
             .Concat(PrototypeNativeHiveNormals.Cards)
             .Concat(PrototypeNativeHiveBosses.Cards)
             .Concat(PrototypeNativeGloryElites.Cards)
@@ -2961,6 +2962,7 @@ public static class PrototypeContent
                 ])
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
+            .Concat(PrototypeNativeHiveEvents.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
