@@ -263,6 +263,7 @@ public sealed partial class PrototypeGameEngine
             ExhaustPile: Array.Empty<long>(),
             Enemies: enemies,
             NextCardInstanceId: nextCombatCardId,
+            NextEnemyInstanceId: enemies.Length + 1,
             Cards: combatCards,
             PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
             NextPowerApplicationOrder: nextPowerApplicationOrder,
@@ -2725,11 +2726,11 @@ public sealed partial class PrototypeGameEngine
                                             hpRange.Max
                                                 - hpRange.Min
                                                 + 1);
-                            var nextEnemyId =
+                            var nextEnemyId = Math.Max(
+                                combat.NextEnemyInstanceId,
                                 enemies.Count == 0
                                     ? 1
-                                    : enemies.Max(item =>
-                                        item.InstanceId) + 1;
+                                    : enemies.Max(item => item.InstanceId) + 1);
                             var nextPowerOrder =
                                 combat.NextPowerApplicationOrder;
                             var powers =
@@ -2829,6 +2830,7 @@ public sealed partial class PrototypeGameEngine
                             {
                                 NextPowerApplicationOrder =
                                     nextPowerOrder,
+                                NextEnemyInstanceId = nextEnemyId + 1,
                                 Enemies = enemies
                                     .Select(item => item.Fork())
                                     .ToArray()
@@ -3028,11 +3030,11 @@ public sealed partial class PrototypeGameEngine
                     .Where(power =>
                         power.Stacks > 0)
                     .ToArray();
-                var nextEnemyId =
+                var nextEnemyId = Math.Max(
+                    combat.NextEnemyInstanceId,
                     enemies.Count == 0
                         ? 1
-                        : enemies.Max(enemy =>
-                            enemy.InstanceId) + 1;
+                        : enemies.Max(enemy => enemy.InstanceId) + 1);
 
                 enemies.Add(
                     new EnemyCombatState(
@@ -3070,7 +3072,10 @@ public sealed partial class PrototypeGameEngine
                     .Select(enemy => enemy.Fork())
                     .ToArray(),
                 NextPowerApplicationOrder =
-                    nextPowerOrder
+                    nextPowerOrder,
+                NextEnemyInstanceId = Math.Max(
+                    combat.NextEnemyInstanceId,
+                    enemies.Max(enemy => enemy.InstanceId) + 1)
             }
             : combat;
     }
