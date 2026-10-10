@@ -257,6 +257,124 @@ public sealed class V111EventObservabilityAndRelicInstanceTests
         Assert.Equal(before, CanonicalJson.Sha256(rng));
     }
 
+    [Fact]
+    public void EventValidatorAcceptsUnderdocksGoldRollsAndMultiPageStates()
+    {
+        ValidateEvent(AtEvent("proto.native.underdocks.sunken_treasury",
+            gold: 62, secondary: 315));
+        ValidateEvent(AtEvent("proto.native.underdocks.sunken_statue",
+            gold: 117));
+        ValidateEvent(AtEvent(PrototypeNativePunchOff.EventId, gold: 96));
+
+        var baths = AtEvent("proto.native.underdocks.abyssal_baths");
+        baths = baths with
+        {
+            World = baths.World! with
+            {
+                Event = baths.World.Event! with { NativePageIndex = 12 }
+            }
+        };
+        ValidateEvent(baths);
+
+        var conveyor = AtEvent(PrototypeNativeEndlessConveyor.EventId);
+        conveyor = conveyor with
+        {
+            World = conveyor.World! with
+            {
+                Event = conveyor.World.Event! with
+                {
+                    NativeDishId = "CAVIAR",
+                    NativeLastDishId = "CAVIAR",
+                    NativeDishCount = 1
+                }
+            }
+        };
+        ValidateEvent(conveyor);
+        conveyor = conveyor with
+        {
+            World = conveyor.World! with
+            {
+                Event = conveyor.World.Event! with
+                {
+                    NativePageIndex = 1,
+                    NativeDishCount = 2,
+                    NativeDishId = "JELLY_LIVER",
+                    NativeLastDishId = "JELLY_LIVER",
+                    ChosenChoiceId = "grab",
+                    NativeDishRollPending = true,
+                    PendingDeckChoice = new PrototypePendingEventDeckChoiceState(
+                        "grab", PrototypePersistentDeckChoiceKind.Transform,
+                        1, [conveyor.Player.Deck[0].InstanceId])
+                }
+            }
+        };
+        ValidateEvent(conveyor);
+    }
+
+    [Fact]
+    public void EventValidatorRejectsOutOfRangeRollsAndOrphanedConveyorState()
+    {
+        var treasury = AtEvent("proto.native.underdocks.sunken_treasury",
+            gold: 62, secondary: 315);
+        var invalidTreasury = treasury with
+        {
+            World = treasury.World! with
+            {
+                Event = treasury.World.Event! with
+                {
+                    NativeEventSecondaryGold = 400
+                }
+            }
+        };
+        AssertInvalidEvent(invalidTreasury);
+
+        var orphan = AtEvent("proto.native.underdocks.sunken_statue",
+            gold: 112);
+        orphan = orphan with
+        {
+            World = orphan.World! with
+            {
+                Event = orphan.World.Event! with
+                {
+                    NativeDishId = "CAVIAR",
+                    NativeDishCount = 1
+                }
+            }
+        };
+        AssertInvalidEvent(orphan);
+
+        var conveyor = AtEvent(PrototypeNativeEndlessConveyor.EventId);
+        conveyor = conveyor with
+        {
+            World = conveyor.World! with
+            {
+                Event = conveyor.World.Event! with
+                {
+                    NativeDishId = "CAVIAR",
+                    NativeLastDishId = "CAVIAR",
+                    NativeDishCount = 1,
+                    NativeDishRollPending = true
+                }
+            }
+        };
+        AssertInvalidEvent(conveyor);
+    }
+
+    private static void ValidateEvent(RunState state)
+    {
+        var method = typeof(PrototypeStateInvariants).GetMethod(
+            "ValidateEvent", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+        method!.Invoke(null, [state.Player, state.World!.Event!]);
+    }
+
+    private static void AssertInvalidEvent(RunState state)
+    {
+        var exception = Assert.Throws<TargetInvocationException>(
+            () => ValidateEvent(state));
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
+    }
+
     private static RunState AtEvent(
         string eventId, int gold = 0, int secondary = 0)
     {
