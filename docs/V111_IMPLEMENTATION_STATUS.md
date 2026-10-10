@@ -356,6 +356,15 @@ This is an intermediate implementation. Final release gates remain open.
   approximated; real Act 2 event routing and oracle validation remain
   gated.
 
+- Added a source-pinned **Amalgamator** Act 2 Hive forced event fixture.
+  Eligibility requires at least two removable Basic Strikes and two
+  removable Basic Defends. Both choices filter the actual deck-card
+  selection to the matching tag and Basic rarity, removing two
+  persistent cards before adding one Ultimate Strike (14/20 damage)
+  or Ultimate Defend (11/15 Block). These resulting cards are not
+  normal reward-pool cards. Event remains Weight=0 and native selection
+  and oracle parity are unverified.
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

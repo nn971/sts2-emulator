@@ -233,7 +233,10 @@ public sealed partial class PrototypeGameEngine
                 card, requested.Kind,
                 requested.TransformToCardId,
                 requested.EnchantmentKind,
-                requested.BasicCardsOnly))
+                requested.BasicCardsOnly)
+                && (requested.RequiredCardTag is null
+                    || PrototypeContent.Card(card.CardId).Tags?.Contains(
+                        requested.RequiredCardTag, StringComparer.Ordinal) == true))
             .Select(card => card.InstanceId)
             .ToArray();
         var selections = Math.Min(

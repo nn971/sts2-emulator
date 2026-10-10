@@ -1706,7 +1706,10 @@ public sealed partial class PrototypeGameEngine
                     deckChoice.Kind,
                     deckChoice.TransformToCardId,
                     deckChoice.EnchantmentKind,
-                    deckChoice.BasicCardsOnly));
+                    deckChoice.BasicCardsOnly)
+                && (deckChoice.RequiredCardTag is null
+                    || PrototypeContent.Card(card.CardId).Tags?.Contains(
+                        deckChoice.RequiredCardTag, StringComparer.Ordinal) == true));
     }
 
     private static PrototypePendingEventDeckChoiceState?
@@ -1741,7 +1744,8 @@ public sealed partial class PrototypeGameEngine
                 spec.UpgradeTransformedCards,
                 TransformToCardId: spec.TransformToCardId,
                 EnchantmentKind: spec.EnchantmentKind,
-                BasicCardsOnly: spec.BasicCardsOnly);
+                BasicCardsOnly: spec.BasicCardsOnly,
+                RequiredCardTag: spec.RequiredCardTag);
     }
 
     private static PlayerState ResolveEventDeckChoice(

@@ -1352,7 +1352,8 @@ public sealed record PrototypeEventDeckChoiceSpec(
     bool UpgradeTransformedCards = false,
     string? TransformToCardId = null,
     PrototypeCardEnchantmentKind? EnchantmentKind = null,
-    bool BasicCardsOnly = false);
+    bool BasicCardsOnly = false,
+    string? RequiredCardTag = null);
 
 public sealed record PrototypeEventChoiceDefinition(
     string Id,
@@ -2066,7 +2067,8 @@ public sealed record PrototypePendingEventDeckChoiceState(
     string? SourceRelicId = null,
     string? TransformToCardId = null,
     PrototypeCardEnchantmentKind? EnchantmentKind = null,
-    bool BasicCardsOnly = false)
+    bool BasicCardsOnly = false,
+    string? RequiredCardTag = null)
 {
     public PrototypePendingEventDeckChoiceState Fork() => this with
     {
