@@ -182,6 +182,18 @@ This is an intermediate implementation. Final release gates remain open.
   gated on surviving siblings. Remaining mismatch: death/reattach
   visuals, niche RNG streams, and lack of live-game trace evidence.
   All three Weight=0; native fidelity remains unverified.
+- Three **source-pinned Hive boss combat entries** registered at
+  `Weight=0`: Kaiser Crab (independently targetable Crusher and Rocket,
+  5-move cycles, Surrounded directional damage, once-per-arm Crab Rage
+  +6 Strength/+99 Block on the other arm's death), Knowledge Demon
+  (attack/heal state machine and finite three-curse schedule, but its
+  mandatory player curse selection explicitly raises Unsupported),
+  and The Insatiable (Liquify Sandpit countdown, six Frantic Escapes
+  split between randomly inserted draw/discard, five-move loop, and
+  Frantic Escape increasing Sandpit and its own cost). Source HP,
+  Ascension damage breaks and boss formations have synthetic tests.
+  All three remain gated; live-game parity and native enemy-choice
+  prompts still need implementation/audit.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
