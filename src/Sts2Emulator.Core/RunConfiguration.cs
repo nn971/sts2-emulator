@@ -84,14 +84,30 @@ public sealed record RunConfiguration(
         {
             if (configuration.CharacterId != "silent")
                 throw new NotSupportedException("Initialized v111 character mechanics are currently limited to Silent.");
-            if (initialized.Act != 1)
-                throw new NotSupportedException("Initialized native Hive/Glory state is not supported yet.");
-            var region = configuration.Acts[0] == ActIdentity.Overgrowth
-                ? PrototypeActOneRegion.Overgrowth : PrototypeActOneRegion.Underdocks;
-            var mapProfile = region == PrototypeActOneRegion.Overgrowth
-                ? PrototypeNativeOvergrowthMap.GenerationProfileId : PrototypeNativeUnderdocks.GenerationProfileId;
-            if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile)
-                throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
+            if (initialized.Act == 1)
+            {
+                var region = configuration.Acts[0] == ActIdentity.Overgrowth
+                    ? PrototypeActOneRegion.Overgrowth : PrototypeActOneRegion.Underdocks;
+                var mapProfile = region == PrototypeActOneRegion.Overgrowth
+                    ? PrototypeNativeOvergrowthMap.GenerationProfileId : PrototypeNativeUnderdocks.GenerationProfileId;
+                if (initialized.ActOneRegion != region
+                    || initialized.Map.GenerationProfileId != mapProfile
+                    || initialized.LaterActEncounterPool is not null)
+                    throw new InvalidDataException(
+                        "Act 1 region, map or encounter pool does not match the configured route.");
+            }
+            else
+            {
+                var mapProfile = initialized.Act == 2
+                    ? PrototypeNativeLaterActRouting.HiveMapProfile
+                    : PrototypeNativeLaterActRouting.GloryMapProfile;
+                if (initialized.Map.GenerationProfileId != mapProfile
+                    || initialized.LaterActEncounterPool is null
+                    || initialized.LaterActEncounterPool.Act != initialized.Act
+                    || initialized.ActOneEncounterPool is not null)
+                    throw new InvalidDataException(
+                        "Later-act map and encounter bag must match the configured native route.");
+            }
         }
     }
 }
