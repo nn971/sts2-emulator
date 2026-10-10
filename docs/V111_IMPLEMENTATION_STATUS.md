@@ -168,6 +168,14 @@ This is an intermediate implementation. Final release gates remain open.
   focused deterministic, Ascension, fork and edge-case coverage.
   Prototype summon RNG and exceptional visual/slot ordering remain
   explicitly unverified against live game traces. Both Weight=0.
+- Three **gated Hive elite first-slice registrations**: Entomancer,
+  Infested Prism and the three-part Decimillipede. Source-scaled
+  HP, move damage/repetitions, formation slots and starting powers
+  are included, with deterministic Entomancer/Prism move cycles.
+  Explicit unsupported: PersonalHive status-on-hit/conditional
+  Pheromone stacks, VitalSpark's card Tainted affliction, linked
+  Decimillipede segment reattachment and rotational opener/unique HP.
+  All three Weight=0; do not count as full elite fidelity.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
