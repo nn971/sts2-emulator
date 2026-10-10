@@ -117,7 +117,7 @@ public sealed class V111HiveWeakFormationsTests
         var state = Commit(State(enemies, "exo-intents"));
         Assert.Equal(new[] { 0, 1, 2 },
             state.World!.Combat!.Enemies
-                .Select(enemy => enemy.PlannedMoveIndex));
+                .Select(enemy => enemy.PlannedMoveIndex!.Value).ToArray());
 
         var engine = new PrototypeGameEngine();
         state = EndTurn(engine, state);
