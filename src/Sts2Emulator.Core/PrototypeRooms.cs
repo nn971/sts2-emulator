@@ -21,6 +21,18 @@ public sealed partial class PrototypeGameEngine
             option => StringComparer.Ordinal.Equals(option.NodeId, payload.NodeId))
             ?? throw new InvalidOperationException($"Unknown map node '{payload.NodeId}'.");
 
+        // The source-shaped later-act maps expose question marks, but
+        // Hive/Glory event bags are not implemented. Never let a
+        // configured v111 run fall through to unrelated prototype events.
+        if (state.Configuration is not null
+            && world.Act is 2 or 3
+            && node.RoomType is PrototypeRoomType.Unknown
+                or PrototypeRoomType.Event)
+            throw new NotSupportedException(
+                $"Native {world.ActIdentity} event/unknown room routing " +
+                "requires the pinned later-act event bag and content. " +
+                "No prototype event fallback is permitted.");
+
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;

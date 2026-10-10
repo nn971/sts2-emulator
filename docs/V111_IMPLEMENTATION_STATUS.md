@@ -307,6 +307,19 @@ This is an intermediate implementation. Final release gates remain open.
   [the source audit](reference-builds/v0.111.0-glory-elites-bosses.md).
   Glory map/encounter selection, elites/boss rewards, native RNG,
   rare power interactions and act terminal parity remain open.
+- Added a **controlled source-shaped v111 Hive/Glory route**:
+  configured Silent runs now advance through Act 1→Hive→Glory, with
+  act-specific 14/13-row maps, explicit map/act identity validation,
+  full pinned 20/18 encounter inventories, first-two weak encounters,
+  separate normal/elite bags, and a boss encounter rolled once per
+  act. It preserves run/player/encounter history and deep-forks
+  later-act pools. Native later-act unknown/event room actions now
+  stop with `NotSupportedException` rather than choosing unrelated
+  legacy events. The later-act shop/treasure/rest and reward backends
+  remain provisional; Knowledge Demon's mandatory enemy-owned choice
+  and later-act event/Ancient bags are unsupported. **No native RNG,
+  boss route, reward, map or end-to-end fidelity claims** are implied.
+  See [route source audit](reference-builds/v0.111.0-hive-glory-route-slice.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

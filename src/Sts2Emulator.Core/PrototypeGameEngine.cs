@@ -516,9 +516,6 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RequireKind(action, "continue_act");
         var world = RequireWorld(state);
 
-        if (state.Configuration is not null)
-            throw new NotSupportedException("Native Hive/Glory mechanics are not implemented; prototype later-act fallback is disabled for v111 runs.");
-
         if (world.Act >= PrototypeContent.Rules.Acts)
         {
             throw new InvalidOperationException("The final act cannot transition to another act.");
@@ -534,7 +531,25 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Shop = null,
             Event = null
         };
-        world = world with { Map = GenerateActMap(world.Act, state.Rng) };
+        if (state.Configuration is not null)
+        {
+            var nextAct = world.Act;
+            var encounterPool = PrototypeNativeLaterActRouting.Create(
+                nextAct, state.Rng);
+            world = world with
+            {
+                ActIdentity = state.Configuration.Acts[nextAct - 1],
+                ActOneEncounterPool = null,
+                LaterActEncounterPool = encounterPool,
+                UnknownRoomOdds = new PrototypeUnknownRoomOddsState(),
+                Map = PrototypeNativeLaterActRouting.GenerateMap(
+                    nextAct, state.Rng, state.Ascension)
+            };
+        }
+        else
+        {
+            world = world with { Map = GenerateActMap(world.Act, state.Rng) };
+        }
 
         return state with
         {

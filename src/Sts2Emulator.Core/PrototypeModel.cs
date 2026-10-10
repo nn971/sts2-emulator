@@ -2149,6 +2149,27 @@ public sealed record PrototypeUnknownRoomOddsState(
         };
 }
 
+/// <summary>
+/// Encounter bags for the source-shaped v0.111.0 Hive/Glory run route.
+/// Stored per act so each combat advances exactly one independently
+/// forkable bag; legacy and Act 1 pools remain unchanged.
+/// </summary>
+public sealed record PrototypeLaterActEncounterPoolState(
+    int Act,
+    int OrdinaryCombatsStarted,
+    string[] RemainingWeakEncounterIds,
+    string[] RemainingNormalEncounterIds,
+    string[] RemainingEliteEncounterIds,
+    string BossEncounterId)
+{
+    public PrototypeLaterActEncounterPoolState Fork() => this with
+    {
+        RemainingWeakEncounterIds = (string[])RemainingWeakEncounterIds.Clone(),
+        RemainingNormalEncounterIds = (string[])RemainingNormalEncounterIds.Clone(),
+        RemainingEliteEncounterIds = (string[])RemainingEliteEncounterIds.Clone()
+    };
+}
+
 public sealed record RunWorldState(
     string RulesetId,
     string CharacterId,
@@ -2176,7 +2197,8 @@ public sealed record RunWorldState(
         PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints,
     bool NativeOvergrowthOpening = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    ActIdentity? ActIdentity = null)
+    ActIdentity? ActIdentity = null,
+    PrototypeLaterActEncounterPoolState? LaterActEncounterPool = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -2195,6 +2217,7 @@ public sealed record RunWorldState(
             ? null
             : (PrototypeCompletedRoomRecord[])CompletedRoomHistory.Clone(),
         ActOneEncounterPool = ActOneEncounterPool?.Fork(),
+        LaterActEncounterPool = LaterActEncounterPool?.Fork(),
         RelicBag = RelicBag?.Fork()
     };
 
