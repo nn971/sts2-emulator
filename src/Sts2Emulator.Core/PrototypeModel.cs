@@ -933,7 +933,11 @@ public sealed record PrototypeEnemyEffectSpec(
     int ExtraAmountPerPriorMoveUse = 0,
     bool UseStoredEnemyDamage = false,
     // Native egg slots remain occupied even by dead eggs.
-    bool ReserveSummonSlotAfterDeath = false)
+    bool ReserveSummonSlotAfterDeath = false,
+    // Source-backed conditional buffs, read before the action executes.
+    string? OwnerPowerStackConditionId = null,
+    int? OwnerPowerStacksLessThan = null,
+    int? OwnerPowerStacksAtLeast = null)
 {
     public int AmountAt(
         int act,
@@ -1144,7 +1148,8 @@ public sealed record PrototypeEncounterDefinition(
     int EnemyCount = 0,
     PrototypeEncounterSelectionGroup[]? SelectionGroups = null,
     PrototypeEncounterFormationVariant[]? FormationVariants = null,
-    string[]? CyclicOpeningAiStateIds = null)
+    string[]? CyclicOpeningAiStateIds = null,
+    bool UniqueEvenEnemyHpWithinEncounter = false)
 {
     public PrototypeEncounterEnemySpec[] FixedEnemySpecs =>
         Formation
@@ -1435,7 +1440,8 @@ public sealed record EnemyCombatState(
     // type. Preserve its instance ID, upgrade and persistent state.
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    CardInstance[]? StolenCards = null)
+    CardInstance[]? StolenCards = null,
+    bool ReattachDeadMoveResolved = false)
 {
     public EnemyCombatState Fork() => this with
     {

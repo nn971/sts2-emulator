@@ -168,6 +168,20 @@ This is an intermediate implementation. Final release gates remain open.
   focused deterministic, Ascension, fork and edge-case coverage.
   Prototype summon RNG and exceptional visual/slot ordering remain
   explicitly unverified against live game traces. Both Weight=0.
+- Three **gated Hive elite first-slice registrations**: Entomancer,
+  Infested Prism and the three-part Decimillipede. Source-scaled
+  HP, move damage/repetitions, formation slots and starting powers
+  are included, with deterministic Entomancer/Prism move cycles.
+  PersonalHive now adds Dazed per powered hit with a conditional stack
+  cap at 3; VitalSpark taints Skill cards, inflicts Tainted on play,
+  adds flat incoming attack damage, and expires after the enemy turn.
+  Decimillipede now coordinates its rotational opening moves from a
+  single encounter-local roll, assigns distinct even segment HP, and
+  performs an untargetable dead turn followed by reattachment for 25 HP
+  while another segment remains alive. Dynamic owner-death fatal is
+  gated on surviving siblings. Remaining mismatch: death/reattach
+  visuals, niche RNG streams, and lack of live-game trace evidence.
+  All three Weight=0; native fidelity remains unverified.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

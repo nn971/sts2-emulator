@@ -225,6 +225,33 @@ public sealed partial class PrototypeGameEngine
             })
             .ToArray();
 
+        if (encounter.UniqueEvenEnemyHpWithinEncounter)
+        {
+            var occupiedHp = new HashSet<int>();
+            for (var i = 0; i < enemies.Length; i++)
+            {
+                var range = PrototypeContent.Enemy(
+                    enemies[i].EnemyId).HpRangeAt(world.Act, state.Ascension);
+                var minimumEven = range.Min + (range.Min % 2);
+                var maximumEven = range.Max - (range.Max % 2);
+                if (minimumEven > maximumEven)
+                    throw new InvalidOperationException(
+                        "Segment HP interval has no even value.");
+                var candidate = enemies[i].Hp + (enemies[i].Hp % 2);
+                if (candidate > maximumEven)
+                    candidate = minimumEven;
+                // Native Decimillipede's AfterAddedToRoom advances
+                // duplicate HP by two and wraps around its even range.
+                while (!occupiedHp.Add(candidate))
+                {
+                    candidate += 2;
+                    if (candidate > maximumEven)
+                        candidate = minimumEven;
+                }
+                enemies[i] = enemies[i] with { Hp = candidate };
+            }
+        }
+
         var nextCombatCardId = 1L;
         var combatCards = state.Player.Deck
             .Select(card => new CombatCardInstance(
@@ -270,6 +297,10 @@ public sealed partial class PrototypeGameEngine
             Potions: combatPotions,
             Act: world.Act,
             Ascension: state.Ascension);
+
+        // Vital Spark afflicts every existing Skill before the opening
+        // draw, without overriding a different native affliction.
+        combat = RefreshNativeHiveVitalSpark(combat);
 
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
@@ -1537,6 +1568,15 @@ public sealed partial class PrototypeGameEngine
                         definition =>
                             definition
                                 .DecrementAtEnemyTurnEnd);
+                    // Native TaintedPower expires after the enemy side-turn
+                    // (all stacks simultaneously, not one per turn).
+                    combat = combat with
+                    {
+                        PlayerPowers = combat.PlayerPowers
+                            .Where(power => power.PowerId !=
+                                PrototypeNativeHiveElites.TaintedPowerId)
+                            .ToArray()
+                    };
                 }
 
                 combat = ResolveEnemyDeathSummons(
@@ -2471,6 +2511,45 @@ public sealed partial class PrototypeGameEngine
 
             if (enemy.Hp <= 0)
             {
+                // ReattachPower: a deceased segment remains in combat,
+                // untargetable. It first spends its DEAD move, then
+                // reattaches for 25 HP on a later enemy action if at
+                // least one other segment remains alive. Its next
+                // normal intent is chosen after reattachment.
+                if (enemy.PowerStates.Any(power =>
+                        power.PowerId == PrototypeNativeHiveElites.ReattachId)
+                    && enemies.Any(other =>
+                        other.InstanceId != enemy.InstanceId
+                        && other.Hp > 0
+                        && other.PowerStates.Any(power =>
+                            power.PowerId ==
+                                PrototypeNativeHiveElites.ReattachId)))
+                {
+                    enemy = enemy.ReattachDeadMoveResolved
+                        ? enemy with
+                        {
+                            Hp = Math.Min(definition.HpRangeAt(act,
+                                ascension).Max,
+                                enemy.PowerStates
+                                    .Where(power => power.PowerId ==
+                                        PrototypeNativeHiveElites.ReattachId)
+                                    .Sum(power => power.Stacks)),
+                            Block = 0,
+                            LastMoveId = "reattach",
+                            ReattachDeadMoveResolved = false,
+                            AiStateId = "reattach_random",
+                            Statuses = new Dictionary<string, int>(
+                                StringComparer.Ordinal)
+                        }
+                        : enemy with
+                        {
+                            LastMoveId = "dead",
+                            ReattachDeadMoveResolved = true
+                        };
+                    enemies[index] = enemy;
+                    continue;
+                }
+
                 var leaderAlive = enemy.LeaderEnemyInstanceId is not
                         { } leaderId
                     || enemies.Any(candidate =>
@@ -2552,6 +2631,18 @@ public sealed partial class PrototypeGameEngine
 
             foreach (var effect in move.Effects)
             {
+                if (effect.OwnerPowerStackConditionId is { } requiredPower)
+                {
+                    var stackCount = enemy.PowerStates
+                        .Where(power => power.PowerId == requiredPower)
+                        .Sum(power => power.Stacks);
+                    if (effect.OwnerPowerStacksLessThan is { } upper
+                        && stackCount >= upper)
+                        continue;
+                    if (effect.OwnerPowerStacksAtLeast is { } lower
+                        && stackCount < lower)
+                        continue;
+                }
                 var amount = effect.UseStoredEnemyDamage
                     ? enemy.StoredEnemyDamage
                     : checked(effect.AmountAt(act, ascension)
@@ -3599,6 +3690,35 @@ public sealed partial class PrototypeGameEngine
                             ? MinimumPoweredAttackHpLoss(player) : 0,
                         operation.IsPoweredAttack);
                     combat = damageResult.Combat;
+                    // PersonalHivePower.AfterDamageReceived fires on each
+                    // powered hit, including a fully blocked hit. Every
+                    // stack adds a generated Dazed into a random draw slot.
+                    // It is a target-side reaction, not a card-play event.
+                    if (operation.IsPoweredAttack && splashTarget is { Hp: > 0 })
+                    {
+                        var hiveStacks = splashTarget.PowerStates
+                            .Where(power => power.PowerId ==
+                                PrototypeNativeHiveElites.PersonalHiveId)
+                            .Sum(power => power.Stacks);
+                        for (var n = 0; n < hiveStacks; n++)
+                        {
+                            var instance = new CombatCardInstance(
+                                combat.NextCardInstanceId, null,
+                                "proto.status.dazed", 0, true,
+                                PrototypeJson.EmptyObject());
+                            var slot = PrototypeRng.NextInt(
+                                rng, "combat", combat.DrawPile.Length + 1);
+                            var draw = combat.DrawPile.ToList();
+                            draw.Insert(slot, instance.InstanceId);
+                            combat = combat with
+                            {
+                                Cards = combat.Cards.Append(instance).ToArray(),
+                                DrawPile = draw.ToArray(),
+                                NextCardInstanceId =
+                                    combat.NextCardInstanceId + 1
+                            };
+                        }
+                    }
                     // CurlUpPower records the attack's physical card source
                     // even on a fully blocked hit, then fires AFTER that
                     // complete card play, including all of its hit repeats.
@@ -6259,6 +6379,13 @@ public sealed partial class PrototypeGameEngine
                 / definition.PlayerIncomingAttackDamageDenominator;
         }
 
+        // TaintedPower adds flat powered-attack damage after the
+        // multiplicative incoming-damage modifiers.
+        modified += combat.PlayerPowers
+            .Where(power => power.PowerId ==
+                PrototypeNativeHiveElites.TaintedPowerId)
+            .Sum(power => Math.Max(0, power.Stacks));
+
         return ApplyPlayerIncomingDamageCap(
             combat,
             modified);
@@ -6305,6 +6432,17 @@ public sealed partial class PrototypeGameEngine
             item => item.InstanceId == enemyId)
             ?? throw new InvalidOperationException(
                 $"Enemy {enemyId} is missing.");
+
+        // ReattachPower only makes a segment's death fatal when
+        // every other linked segment is already dead.
+        if (enemy.PowerStates.Any(power =>
+                power.PowerId == PrototypeNativeHiveElites.ReattachId)
+            && combat.Enemies.Any(other =>
+                other.InstanceId != enemy.InstanceId
+                && other.Hp > 0
+                && other.PowerStates.Any(power =>
+                    power.PowerId == PrototypeNativeHiveElites.ReattachId)))
+            return false;
 
         return enemy.PowerStates.All(power =>
             PrototypeContent.Power(power.PowerId)
@@ -8038,6 +8176,53 @@ public sealed partial class PrototypeGameEngine
     // Tender restores only Strength/Dexterity actually lost (Artifact can
     // block either application), with counters stored on the power instance.
     // Curl Up waits for the *same card instance* that first attacked it.
+    private static CombatState RefreshNativeHiveVitalSpark(
+        CombatState combat)
+    {
+        var sources = combat.Enemies
+            .Where(enemy => enemy.Hp > 0)
+            .Select(enemy => (enemy.InstanceId,
+                Amount: enemy.PowerStates
+                    .Where(power => power.PowerId ==
+                        PrototypeNativeHiveElites.VitalSparkId)
+                    .Sum(power => Math.Max(0, power.Stacks))))
+            .Where(source => source.Amount > 0)
+            .OrderBy(source => source.InstanceId)
+            .ToArray();
+
+        // One native Infested Prism per encounter. Retain deterministic
+        // behavior for forced multi-Prism scenarios.
+        var owner = sources.FirstOrDefault();
+        return combat with
+        {
+            Cards = combat.Cards.Select(card =>
+            {
+                if (card.Affliction is
+                    { Kind: PrototypeCardAfflictionKind.Tainted })
+                {
+                    return owner.Amount > 0
+                        ? card with
+                        {
+                            Affliction = new PrototypeCardAffliction(
+                                PrototypeCardAfflictionKind.Tainted,
+                                owner.Amount, owner.InstanceId)
+                        }
+                        : card with { Affliction = null };
+                }
+                if (owner.Amount <= 0 || card.Affliction is not null
+                    || PrototypeContent.Card(card.CardId).Type
+                        != PrototypeCardType.Skill)
+                    return card;
+                return card with
+                {
+                    Affliction = new PrototypeCardAffliction(
+                        PrototypeCardAfflictionKind.Tainted,
+                        owner.Amount, owner.InstanceId)
+                };
+            }).ToArray()
+        };
+    }
+
     private static CombatState ResolveNativeCardCompletionPowers(
         CombatState combat, PrototypeCombatEvent combatEvent)
     {
@@ -8073,6 +8258,21 @@ public sealed partial class PrototypeGameEngine
         if (combatEvent.Kind != PrototypeCombatEventKind.CardPlayed
             || combatEvent.CardId is null)
             return combat;
+
+        // Each completed afflicted Skill inflicts Tainted equal to
+        // the number of Vital Spark stacks stamped on the card.
+        if (combatEvent.SourceCardInstanceId is { } playedId)
+        {
+            var played = combat.Cards.FirstOrDefault(card =>
+                card.InstanceId == playedId);
+            if (played?.Affliction is
+                { Kind: PrototypeCardAfflictionKind.Tainted } affliction)
+            {
+                combat = ApplyPlayerPower(combat,
+                    PrototypeNativeHiveElites.TaintedPowerId,
+                    affliction.Amount);
+            }
+        }
 
         foreach (var tender in combat.PlayerPowers.Where(power =>
             power.Stacks > 0
@@ -8169,6 +8369,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
+        combat = RefreshNativeHiveVitalSpark(combat);
         combat = ResolveNativeCardCompletionPowers(combat, combatEvent);
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
         {
