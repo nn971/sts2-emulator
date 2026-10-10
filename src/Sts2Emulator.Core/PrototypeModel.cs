@@ -1901,7 +1901,13 @@ public sealed record RewardState(
             : (bool[])ExtraRelicGroupsResolved.Clone(),
         ExtraGoldOptions = ExtraGoldOptions is null ? null : (int[])ExtraGoldOptions.Clone(),
         ExtraGoldGroupsResolved = ExtraGoldGroupsResolved is null ? null : (bool[])ExtraGoldGroupsResolved.Clone(),
-        PendingDeckChoice = PendingDeckChoice?.Fork()
+        PendingDeckChoice = PendingDeckChoice?.Fork(),
+        ReturnedStolenCards = ReturnedStolenCards is null
+            ? null
+            : ReturnedStolenCards.Select(card => card with
+            {
+                PersistentState = card.PersistentState.Clone()
+            }).ToArray()
     };
 }
 
