@@ -27,6 +27,7 @@ public sealed class PrototypePublicEnemyIntentTests
 
         Assert.Equal("proto.enemy.assassin", intent.EnemyId);
         Assert.Equal("flurry", intent.MoveId);
+        Assert.Equal(5, intent.IntentBaseDamage);
         Assert.Equal(10, intent.IntentDamage);
         Assert.Equal(2, intent.IntentHits);
 
@@ -35,6 +36,7 @@ public sealed class PrototypePublicEnemyIntentTests
         {
             var enemy = json.RootElement.GetProperty("combat")
                 .GetProperty("enemies")[0];
+            Assert.Equal(5, enemy.GetProperty("intent_base_damage").GetInt32());
             Assert.Equal(10, enemy.GetProperty("intent_damage").GetInt32());
             Assert.Equal(2, enemy.GetProperty("intent_hits").GetInt32());
         }
@@ -58,6 +60,7 @@ public sealed class PrototypePublicEnemyIntentTests
         var frame = new PrototypeAiEnvironment().Observe(state);
         var intent = Assert.Single(frame.Observation.Combat!.Enemies);
         Assert.Equal("ram", intent.MoveId);
+        Assert.Equal(17, intent.IntentBaseDamage);
         Assert.Equal(17, intent.IntentDamage);
         Assert.Equal(1, intent.IntentHits);
 
@@ -104,18 +107,92 @@ public sealed class PrototypePublicEnemyIntentTests
     }
 
     [Fact]
-    public void UnresolvedRandomMoveDoesNotLeakPrivateFutureIntent()
+    public void RandomMoveIsCommittedBeforePlayerActsAndNeverRerolledByObserve()
     {
-        // Once its forced opening move has been used, the Flail Knight
-        // randomly selects a new move when the enemy turn resolves.
-        // The projection must not expose the impending RNG choice.
-        var frame = new PrototypeAiEnvironment().Observe(
-            CreateState("proto.enemy.flail_knight", moveIndex: 1));
-        var enemy = Assert.Single(frame.Observation.Combat!.Enemies);
-        Assert.Null(enemy.MoveId);
-        Assert.Null(enemy.IntentDamage);
-        Assert.Null(enemy.IntentHits);
-        AssertNoDamageOrHits(frame);
+        var state = CreateState("proto.enemy.flail_knight", moveIndex: 1);
+        var planned = Assert.Single(state.World!.Combat!.Enemies);
+        var index = Assert.IsType<int>(planned.PlannedMoveIndex);
+        var expectedMove = PrototypeContent.Enemy(planned.EnemyId).Moves[index].Id;
+        var rngBefore = CanonicalJson.Sha256(state.Rng);
+        var environment = new PrototypeAiEnvironment();
+        var frame = environment.Observe(state);
+        var observed = Assert.Single(frame.Observation.Combat!.Enemies);
+        Assert.Equal(expectedMove, observed.MoveId);
+        Assert.Equal(frame.ObservationHash, environment.Observe(state).ObservationHash);
+        Assert.Equal(rngBefore, CanonicalJson.Sha256(state.Rng));
+        var endTurn = frame.LegalActions.Single(action => action.Kind == "end_turn");
+        var next = environment.Step(state, endTurn.ActionId).State;
+        Assert.Equal(expectedMove, Assert.Single(
+            next.World!.Combat!.Enemies).LastMoveId);
+        // The next intent is also precommitted, before the player acts.
+        Assert.NotNull(Assert.Single(
+            next.World.Combat.Enemies).PlannedMoveIndex);
+    }
+
+    [Fact]
+    public void BaseDamageRemainsFixedWhileCurrentModifiersChange()
+    {
+        var state = CreateState("proto.enemy.assassin");
+        var before = Assert.Single(
+            new PrototypeAiEnvironment().Observe(state)
+                .Observation.Combat!.Enemies);
+        Assert.Equal("flurry", before.MoveId);
+        Assert.Equal(5, before.IntentBaseDamage);
+        Assert.Equal(5, before.IntentDamage);
+        Assert.Equal(2, before.IntentHits);
+
+        var combat = state.World!.Combat!;
+        var enemy = Assert.Single(combat.Enemies);
+        var altered = combat with
+        {
+            Enemies =
+            [
+                enemy with
+                {
+                    Statuses = new Dictionary<string, int>(
+                        StringComparer.Ordinal)
+                    {
+                        ["proto.status.weak"] = 2
+                    }
+                }
+            ]
+        };
+        var modified = state with
+        {
+            World = state.World with { Combat = altered }
+        };
+        var after = Assert.Single(
+            new PrototypeAiEnvironment().Observe(modified)
+                .Observation.Combat!.Enemies);
+        Assert.Equal(before.MoveId, after.MoveId);
+        Assert.Equal(before.IntentBaseDamage, after.IntentBaseDamage);
+        Assert.Equal(before.IntentHits, after.IntentHits);
+        Assert.Equal(3, after.IntentDamage);
+    }
+
+    [Fact]
+    public void MissingCommitNeverFabricatesANextMove()
+    {
+        var state = CreateState("proto.enemy.assassin");
+        var combat = state.World!.Combat!;
+        var enemy = Assert.Single(combat.Enemies);
+        var uncommitted = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Enemies = [enemy with { PlannedMoveIndex = null }]
+                }
+            }
+        };
+        var publicEnemy = Assert.Single(
+            new PrototypeAiEnvironment().Observe(uncommitted)
+                .Observation.Combat!.Enemies);
+        Assert.Null(publicEnemy.MoveId);
+        Assert.Null(publicEnemy.IntentBaseDamage);
+        Assert.Null(publicEnemy.IntentDamage);
+        Assert.Null(publicEnemy.IntentHits);
     }
 
     [Fact]
@@ -127,6 +204,7 @@ public sealed class PrototypePublicEnemyIntentTests
         Assert.Equal("proto.enemy.assassin", enemy.EnemyId);
         Assert.Null(enemy.MoveId);
         Assert.Null(enemy.IntentDamage);
+        Assert.Null(enemy.IntentBaseDamage);
         Assert.Null(enemy.IntentHits);
         AssertNoDamageOrHits(frame);
 
@@ -151,6 +229,7 @@ public sealed class PrototypePublicEnemyIntentTests
             new PrototypeAiEnvironment().Observe(state)
                 .Observation.Combat!.Enemies);
         // Weak scales 5 damage by 3/4 with integer rounding.
+        Assert.Equal(5, intent.IntentBaseDamage);
         Assert.Equal(3, intent.IntentDamage);
         Assert.Equal(2, intent.IntentHits);
     }
@@ -161,6 +240,7 @@ public sealed class PrototypePublicEnemyIntentTests
             CanonicalJson.Serialize(frame.Observation));
         var enemy = json.RootElement.GetProperty("combat")
             .GetProperty("enemies")[0];
+        Assert.False(enemy.TryGetProperty("intent_base_damage", out _));
         Assert.False(enemy.TryGetProperty("intent_damage", out _));
         Assert.False(enemy.TryGetProperty("intent_hits", out _));
     }
@@ -210,6 +290,8 @@ public sealed class PrototypePublicEnemyIntentTests
             NextPowerApplicationOrder: 5,
             Act: 1,
             Ascension: ascension);
+        var rng = PrototypeRng.CreateBundle("visible-intent-test");
+        combat = PrototypeGameEngine.CommitEnemyIntents(combat, rng);
         return new RunState(
             "prototype-unbound",
             "prototype-0.1",
@@ -218,7 +300,7 @@ public sealed class PrototypePublicEnemyIntentTests
             0,
             RunPhase.Combat,
             player,
-            PrototypeRng.CreateBundle("visible-intent-test"),
+            rng,
             empty,
             new RunWorldState(
                 PrototypeContent.RulesetId,
