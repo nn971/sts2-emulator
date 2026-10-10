@@ -82,8 +82,7 @@ public sealed class V111GloryElitesTests
         var state = Start(PrototypeNativeGloryElites.MechaKnightEncounterId,
             "mecha-flamethrower");
         var enemy = Assert.Single(state.World!.Combat!.Enemies);
-        Assert.Equal("charge", enemy.PlannedMoveIndex == 0
-            ? "charge" : "unexpected");
+        Assert.Equal(0, enemy.PlannedMoveIndex);
         Assert.Equal(3, enemy.PowerStates.Single(power =>
             power.PowerId == "proto.power.artifact").Stacks);
 
@@ -102,9 +101,10 @@ public sealed class V111GloryElitesTests
         Assert.Equal(2, burnDef.EndTurnDamageIfInHand);
         Assert.True(burnDef.Unplayable);
         Assert.Equal(0, burnDef.MaxUpgradeLevel);
+        var burnIds = burns.Select(card => card.InstanceId).ToHashSet();
         Assert.DoesNotContain(engine.GetLegalActions(state),
             action => action.Kind == "play_card"
-                && action.PayloadJson.Contains(PrototypeNativeGloryElites.BurnId));
+                && burnIds.Contains(action.ReadPayload<PlayCardPayload>().CardInstanceId));
 
         var hpBefore = state.Player.Hp;
         state = EndTurn(engine, state);
