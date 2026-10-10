@@ -4924,8 +4924,10 @@ public sealed partial class PrototypeGameEngine
                             $"Autoplay cannot resolve unsupported card '{autoPlayDefinition.Name}'.");
                     }
 
-                    int? autoPlayTarget =
-                        operation.TargetEnemyId;
+                    // Every automatic play makes a new random-target
+                    // choice for enemy-targeted cards; never inherit the
+                    // originating action's explicit target.
+                    int? autoPlayTarget = null;
                     if (EffectiveCardTarget(
                             combat,
                             autoPlayDefinition)
@@ -4958,17 +4960,11 @@ public sealed partial class PrototypeGameEngine
                             break;
                         }
 
-                        if (autoPlayTarget is null
-                            || !liveTargets.Contains(
-                                autoPlayTarget.Value))
-                        {
-                            autoPlayTarget =
-                                liveTargets[
-                                    PrototypeRng.NextInt(
-                                        rng,
-                                        "combat_targets",
-                                        liveTargets.Length)];
-                        }
+                        autoPlayTarget = liveTargets[
+                            PrototypeRng.NextInt(
+                                rng,
+                                "combat_targets",
+                                liveTargets.Length)];
                     }
                     else
                     {
