@@ -161,7 +161,9 @@ public static class PrototypeNativeUnderdocks
             Triggers: [],
             EnemyStartingBlockPerStack: 1,
             EnemyBlockAtSideTurnEndPerStack: 1,
-            EnemyStacksDecayAtSideTurnStartAfterFirst: 1),
+            EnemyStacksDecayAtSideTurnStartAfterFirst: 1,
+            PlayerBlockAtTurnEndPerStack: 1,
+            DecrementAfterPlayerTurnStart: true),
         // Smoggy: after a Skill play, afflict all otherwise-unafflicted
         // Skills with Smog until the player's turn ends. Such Skills
         // cannot be played while the debuff is active.

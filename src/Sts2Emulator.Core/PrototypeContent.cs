@@ -2970,6 +2970,57 @@ public static class PrototypeContent
                                 PowerId: "proto.power.vigor")
                         ])
                 ]),
+
+            new PrototypePowerDefinition(
+                "proto.power.automation", "Automation", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardDrawn,
+                        [new PrototypeCombatEffectSpec(
+                            PrototypeCombatEffectKind.GainEnergy, 0,
+                            AmountPerPowerStack: 1)],
+                        EveryNth: 10)
+                ],
+                IsInstanced: true),
+            new PrototypePowerDefinition(
+                "proto.power.calamity", "Calamity", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.CardPlayed,
+                        [new PrototypeCombatEffectSpec(
+                            PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand,
+                            0, AmountPerPowerStack: 1)],
+                        RequiredSourceCardType: PrototypeCardType.Attack)
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.nostalgia", "Nostalgia", 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                PlayedAttacksAndSkillsReturnToDraw: true),
+            new PrototypePowerDefinition(
+                "proto.power.rolling_boulder", "Rolling Boulder", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.DamageEnemy, 0,
+                                AmountPerPowerStack: 1,
+                                Target: PrototypeEffectTarget.AllEnemies),
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.IncreaseSourcePowerStacks,
+                                5)
+                        ])
+                ],
+                IsInstanced: true),
+            new PrototypePowerDefinition(
+                "proto.power.the_gambit", "The Gambit", 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                DoesNotStack: true,
+                LethalAfterUnblockedPoweredAttack: true),
             // Panache instances independently count five cards during each
             // turn, ignoring the card which originally applied the power.
             new PrototypePowerDefinition(

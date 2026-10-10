@@ -90,6 +90,10 @@ public enum PrototypeCombatEffectKind
     MoveRandomRareDrawCardsToHand,
     AddRandomZeroCostCardsToHand,
     EmpowerRandomDrawCardReplay,
+    AcquireRandomCombatPotion,
+    CreateRandomCharacterAttackCardsInHand,
+    AutoPlayRandomCardsFromZone,
+    IncreaseSourcePowerStacks,
     ApplyEnemyStatus,
     ChooseCards,
     ChooseGeneratedCards,
@@ -555,7 +559,10 @@ public sealed record PrototypeCombatEffectSpec(
     int PowerStoredValue = 0,
     int PowerStoredValueUpgradeDelta = 0,
     bool UseSourcePowerStoredValue = false,
-    bool GainBlockEqualToAttackDamage = false)
+    bool GainBlockEqualToAttackDamage = false,
+    bool SplashUnpoweredAttackToOtherEnemies = false,
+    PrototypeCardType? AutoPlayRequiredCardType = null,
+    bool AutoPlayFallbackToUnplayable = false)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -601,7 +608,11 @@ public sealed record PrototypeQueuedOperation(
     int GoldOnFatal = 0,
     int PowerStoredValue = 0,
     long? CardInstanceId = null,
-    bool GainBlockEqualToAttackDamage = false);
+    bool GainBlockEqualToAttackDamage = false,
+    bool SplashUnpoweredAttackToOtherEnemies = false,
+    PrototypeCardType? AutoPlayRequiredCardType = null,
+    bool AutoPlayFallbackToUnplayable = false,
+    long? SourcePowerApplicationOrder = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -734,6 +745,7 @@ public sealed record PrototypePowerDefinition(
     bool AllowNegative = false,
     bool RemoveAtPlayerTurnEnd = false,
     int BlockAfterClearPerStack = 0,
+    int PlayerBlockAtTurnEndPerStack = 0,
     int EnergyAfterResetPerStack = 0,
     int HandDrawBonusPerStack = 0,
     int DiscardAfterPlayerTurnStartPerStack = 0,
@@ -830,6 +842,8 @@ public sealed record PrototypePowerDefinition(
     // unpowered effects from relics or other powers.
     bool PreventsCardBlock = false,
     string? BlockBonusRequiredCardTag = null,
+    bool PlayedAttacksAndSkillsReturnToDraw = false,
+    bool LethalAfterUnblockedPoweredAttack = false,
     // Reversible enemy strength effects; changes are applied after
     // debuff prevention, then restored at enemy side-turn end.
     int EnemyStrengthOnApplyPerStack = 0,
