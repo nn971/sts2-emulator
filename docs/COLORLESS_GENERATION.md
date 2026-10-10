@@ -48,3 +48,24 @@ and separate combat-generation/selection RNG streams under an explicit
 schema/version migration. Then compare actual native candidate IDs
 and stream consumption using the passive oracle before asserting
 seed-for-seed fidelity.
+
+## Seventh single-player batch
+
+- **Volley:** X-cost attack, one independently random-targeted hit per X
+  energy for 10 damage (14 upgraded). Uses the existing synthetic
+  `combat_targets` stream.
+- **Splash:** optionally choose among three distinct generated character
+  attacks; the selected attack costs zero this turn. Upgraded Splash
+  upgrades the generated attack. Solo character-pool limitations from
+  Discovery still apply.
+- **Anointed:** move randomly selected Rare cards from the draw pile to
+  available hand slots (up to ten). These are pile transfers, so ordinary
+  draw triggers do not fire. Upgrading grants Retain.
+- **Gold Axe:** attack damage equals the total number of previously
+  completed card plays in this combat, across turn boundaries. Upgrading
+  grants Retain.
+
+These mechanics are source-checked against the pinned game build.
+Generation, shuffle and selection use synthetic RNG streams until the
+native stream partition is implemented. Epoch-gated cards remain
+conservatively excluded from synthetic combat generation by default.
