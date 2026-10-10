@@ -131,7 +131,7 @@ public sealed class V111HiveThievingHopperTests
             }
         }
         Assert.Equal(RunPhase.Reward, state.Phase);
-        Assert.Equal(1, state.Player.Deck.Length);
+        Assert.Single(state.Player.Deck);
         Assert.DoesNotContain(state.Player.Deck, card =>
             card.CardId == "proto.silent.footwork");
         Assert.Null(state.World!.Reward!.ReturnedStolenCards);
