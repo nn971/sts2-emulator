@@ -20,7 +20,7 @@ public sealed class V111HiveThievingHopperTests
         Assert.Equal((hp, hp), enemy.HpRangeAt(2, asc));
         Assert.Equal(5, enemy.StartingPowers!.Single().StacksAt(asc));
         Assert.Equal("proto.native.hive.escape_artist",
-            enemy.StartingPowers.Single().PowerId);
+            enemy.StartingPowers!.Single().PowerId);
         Assert.Equal(new[] { "thievery", "flutter", "hat_trick",
             "nab", "escape", "stunned" },
             enemy.Moves.Select(m => m.Id));
