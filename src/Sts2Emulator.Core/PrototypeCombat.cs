@@ -8809,18 +8809,39 @@ public sealed partial class PrototypeGameEngine
 
                 var replacement = eligible[PrototypeRng.NextInt(
                     rng, "combat", eligible.Length)];
+                var replacementId = combat.NextCardInstanceId;
+                var oldPersistentId = original.PersistentCardInstanceId;
+                var transformed = combat.TransformedPersistentCardIds
+                    ?? Array.Empty<long>();
+
+                // Transform creates a new physical card; it does not
+                // mutate the original card's persistent deck identity.
+                // Track that absence explicitly for run invariants.
                 combat = combat with
                 {
-                    Cards = combat.Cards.Select(card =>
-                        card.InstanceId == instanceId
-                            ? new CombatCardInstance(
-                                instanceId,
-                                PersistentCardInstanceId: null,
-                                CardId: replacement,
-                                UpgradeLevel: 0,
-                                IsTemporary: true,
-                                State: PrototypeJson.EmptyObject())
-                            : card).ToArray()
+                    Cards = combat.Cards
+                        .Where(card => card.InstanceId != instanceId)
+                        .Append(new CombatCardInstance(
+                            replacementId,
+                            PersistentCardInstanceId: null,
+                            CardId: replacement,
+                            UpgradeLevel: 0,
+                            IsTemporary: true,
+                            State: PrototypeJson.EmptyObject()))
+                        .ToArray(),
+                    Hand = combat.Hand.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    DrawPile = combat.DrawPile.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    DiscardPile = combat.DiscardPile.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    ExhaustPile = combat.ExhaustPile.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    NextCardInstanceId = replacementId + 1,
+                    TransformedPersistentCardIds =
+                        oldPersistentId is { } persistentId
+                            ? transformed.Append(persistentId).ToArray()
+                            : transformed
                 };
             }
             return combat;

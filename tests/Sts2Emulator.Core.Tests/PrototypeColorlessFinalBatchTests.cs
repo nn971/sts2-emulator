@@ -56,12 +56,17 @@ public sealed class PrototypeColorlessFinalBatchTests
 
         var combat = state.World!.Combat!;
         Assert.Null(combat.PendingChoice);
-        var transformed = combat.Cards.Single(card => card.InstanceId == candidate);
+        Assert.DoesNotContain(combat.Cards,
+            card => card.InstanceId == candidate);
+        var transformedId = Assert.Single(combat.Hand.Where(id =>
+            !pending.CandidateCardInstanceIds.Contains(id)));
+        var transformed = combat.Cards.Single(card =>
+            card.InstanceId == transformedId);
         Assert.NotEqual("proto.silent.strike", transformed.CardId);
         Assert.True(transformed.IsTemporary);
         Assert.Null(transformed.PersistentCardInstanceId);
         Assert.Contains(transformed.CardId, PrototypeContent.RewardCardPool);
-        Assert.Contains(combat.Hand, id => id == candidate);
+        Assert.Contains(candidate, combat.TransformedPersistentCardIds!);
         Assert.Equal("proto.silent.strike",
             state.Player.Deck.Single(card => card.InstanceId == candidate).CardId);
         PrototypeStateInvariants.Validate(state);

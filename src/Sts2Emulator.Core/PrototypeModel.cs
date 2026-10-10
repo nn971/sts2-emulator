@@ -1589,7 +1589,8 @@ public sealed record CombatState(
     int ExtraCardRewardsEarned = 0,
     long[]? ChoicePool = null,
     long[]? PlayPile = null,
-    PrototypeToricShield[]? ToricShields = null)
+    PrototypeToricShield[]? ToricShields = null,
+    long[]? TransformedPersistentCardIds = null)
 {
     public CombatState Fork() => this with
     {
@@ -1615,6 +1616,9 @@ public sealed record CombatState(
         ToricShields = ToricShields is null
             ? null
             : (PrototypeToricShield[])ToricShields.Clone(),
+        TransformedPersistentCardIds = TransformedPersistentCardIds is null
+            ? null
+            : (long[])TransformedPersistentCardIds.Clone(),
         PendingChoice = PendingChoice?.Fork(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
