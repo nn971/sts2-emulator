@@ -126,6 +126,20 @@ This is an intermediate implementation. Final release gates remain open.
   their legacy weights are zero. Native CombatCardGeneration RNG,
   Imbued-card priority and exact reward UI timing remain unverified.
   Source details are recorded in the Hive/Glory first-slice audit note.
+- Added **four gated Hive normal encounters** with source-backed
+  formations and combat moves: Bowlbugs Normal (Rock plus two different
+  workers), Exoskeletons Normal (four slots with a stochastic fourth
+  opener), Chompers Normal (paired Artifact-2 Chompers with opposite
+  starting moves and Dazed creation), and Mytes Normal (paired Mytes
+  with distinct initial move states, Toxic-to-hand and Suck Strength).
+  Enemy AI Conditional states now permit transitions into Random
+  states while preserving precommitted public intents. Added the
+  playable one-cost, exhausting Toxic Status (5 damage when left in
+  hand at turn end) and bounded enemy-generated hand-card creation.
+  All four normal encounters remain **Weight=0 and unavailable in
+  real Hive maps** until region generation is implemented.
+  Hand-overflow discard behavior and native combat RNG parity are
+  marked as provisional rather than silently called faithful.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
