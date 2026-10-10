@@ -3715,6 +3715,7 @@ public static class PrototypeContent
         }.Concat(PrototypeNativeUnderdocks.Powers)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Powers)
             .Concat(PrototypeNativeLaterActs.Powers)
+            .Concat(PrototypeNativeHiveNormals.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
