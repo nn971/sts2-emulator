@@ -49,7 +49,11 @@ public sealed record PrototypeAiEnemy(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     int? IntentHits = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    int? IntentBaseDamage = null);
+    int? IntentBaseDamage = null,
+    // Visible formation position distinguishes same-species enemies.
+    int? FormationPosition = null,
+    // Previous executed move is observable combat history, not future AI state.
+    string? LastMoveId = null);
 
 public sealed record PrototypeAiCombat(
     int Turn,
@@ -638,7 +642,9 @@ public sealed class PrototypeAiEnvironment
                         new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray(),
                     threat.Damage,
                     threat.Hits,
-                    threat.BaseDamage);
+                    threat.BaseDamage,
+                    enemy.FormationPosition,
+                    enemy.LastMoveId);
             }).ToArray(),
             PendingChoiceId: combat.PendingChoice?.ChoiceId,
             PlayerPowers: combat.PlayerPowers
