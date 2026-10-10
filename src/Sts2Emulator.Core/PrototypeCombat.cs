@@ -14,6 +14,20 @@ public sealed partial class PrototypeGameEngine
         {
             encounter = scriptedEncounter;
         }
+        else if (world.Act is 2 or 3
+            && state.Configuration is not null)
+        {
+            var pool = world.LaterActEncounterPool
+                ?? throw new InvalidOperationException(
+                    "Configured later-act combat is missing its native encounter pool.");
+            if (pool.Act != world.Act)
+                throw new InvalidOperationException(
+                    "Native later-act encounter bag belongs to a different act.");
+            var result = PrototypeNativeLaterActRouting.Pick(
+                pool, roomType, world.EncounterIds.LastOrDefault(), state.Rng);
+            encounter = result.Encounter;
+            world = world with { LaterActEncounterPool = result.NextPool };
+        }
         else if (world.Act == 1
             && world.ActOneRegion == PrototypeActOneRegion.Underdocks)
         {
