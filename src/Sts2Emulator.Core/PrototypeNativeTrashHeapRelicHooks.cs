@@ -76,10 +76,25 @@ public sealed partial class PrototypeGameEngine
         // Native Dream Catcher adds one ordinary 3-choice CardReward
         // after the RestSite heal. No card reward is given on train or
         // smith actions. Each relic adds its own reward group.
-        var groups = rewardCounts
-            .Select(count => PickRewardCards(
-                world.Act, count, state.Rng))
-            .ToArray();
+        var native = UsesNativeActOneSystems(world);
+        var groups = new List<string[]>();
+        var upgrades = new List<bool[]>();
+        foreach (var count in rewardCounts)
+        {
+            if (native)
+            {
+                var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+                    count, state.Ascension, PrototypeRoomType.Combat,
+                    world.CardRarityOffsetBasisPoints, state.Rng, act: world.Act);
+                groups.Add(next.Cards);
+                upgrades.Add(next.UpgradeFlags);
+                world = world with { CardRarityOffsetBasisPoints = next.NextOffsetBasisPoints };
+            }
+            else
+            {
+                groups.Add(PickRewardCards(world.Act, count, state.Rng));
+            }
+        }
         var reward = new RewardState(
             SourceRoom: "Rest",
             CardOptions: groups[0],
@@ -89,7 +104,12 @@ public sealed partial class PrototypeGameEngine
             PotionResolved: true,
             RelicResolved: true,
             EndsAct: false,
-            ExtraCardOptions: groups.Skip(1).ToArray());
+            ExtraCardOptions: groups.Skip(1).ToArray(),
+            CardOptionUpgradeFlags: native ? upgrades[0] : null,
+            ExtraCardOptionUpgradeFlags: native ? upgrades.Skip(1).ToArray() : null,
+            IndependentSelection: native,
+            ExtraCardGroupsResolved: native ? new bool[groups.Count - 1] : null,
+            ExtraRelicGroupsResolved: native ? [] : null);
 
         return state with
         {

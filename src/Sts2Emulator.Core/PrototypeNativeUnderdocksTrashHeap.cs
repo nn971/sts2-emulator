@@ -186,16 +186,10 @@ public sealed partial class PrototypeGameEngine
                     PrototypeRng.NextInt(
                         state.Rng, "event",
                         PrototypeNativeUnderdocksTrashHeap.RelicIds.Length)];
-                if (player.Relics.Any(relic =>
-                        StringComparer.Ordinal.Equals(relic.RelicId, relicId)))
-                {
-                    // Native duplicate RelicCmd.Obtain needs separate oracle
-                    // validation. Do not secretly replace a duplicate roll
-                    // with a different relic and bias the source distribution.
-                    throw new NotSupportedException(
-                        $"Trash Heap rolled already owned relic '{relicId}'; native duplicate handling is not implemented.");
-                }
-
+                // RelicCmd.Obtain / Player.AddRelicInternal append a new
+                // mutable instance even when its model ID is already owned.
+                // A new Maw Bank starts active regardless of an older one's
+                // purchase history. The fixed event pool is never rerolled.
                 player = player with
                 {
                     Relics = player.Relics.Append(

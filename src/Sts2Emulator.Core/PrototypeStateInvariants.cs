@@ -350,7 +350,8 @@ public static class PrototypeStateInvariants
             if (visit.Act == world.Act
                 && world.Map.GenerationProfileId
                     is PrototypeContent.MapGenerationProfileId
-                        or PrototypeNativeOvergrowthMap.GenerationProfileId)
+                        or PrototypeNativeOvergrowthMap.GenerationProfileId
+                        or PrototypeNativeUnderdocks.GenerationProfileId)
             {
                 var node = world.Map.Nodes
                     .FirstOrDefault(candidate =>
@@ -374,7 +375,8 @@ public static class PrototypeStateInvariants
 
         if (world.Map.GenerationProfileId
             is not (PrototypeContent.MapGenerationProfileId
-                or PrototypeNativeOvergrowthMap.GenerationProfileId))
+                or PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeUnderdocks.GenerationProfileId))
         {
             return;
         }
@@ -1062,10 +1064,10 @@ public static class PrototypeStateInvariants
         }
 
         if (reward.IndependentSelection
-            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss"))
+            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest"))
         {
             throw new InvalidOperationException(
-                "Independent reward selection requires a combat reward.");
+                "Independent reward selection requires a combat or rest reward.");
         }
 
         var extraCards = reward.ExtraCardOptions ?? Array.Empty<string[]>();

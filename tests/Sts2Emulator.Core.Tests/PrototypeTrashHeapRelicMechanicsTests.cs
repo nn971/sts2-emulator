@@ -124,6 +124,71 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
     }
 
     [Fact]
+    public void DuplicateDreamCatchersAllowEitherGroupFirstAndLeavingWithoutTakingTheOther()
+    {
+        var engine = new PrototypeGameEngine();
+        var root = BuildMapRun("duplicate-dream-catcher",
+            [PrototypeRoomType.Rest, PrototypeRoomType.Rest],
+            [Relic(DreamCatcher), Relic(DreamCatcher)]);
+        var rest = EnterNext(engine, root);
+        var healed = engine.Step(rest, GameAction.Empty("rest_heal")).State;
+        var reward = healed.World!.Reward!;
+        Assert.True(reward.IndependentSelection);
+        Assert.Equal(3, reward.CardOptions.Length);
+        Assert.Equal(3, Assert.Single(reward.ExtraCardOptions!).Length);
+        var expectedOffset = rest.World!.CardRarityOffsetBasisPoints;
+        foreach (var card in reward.CardOptions.Concat(reward.ExtraCardOptions![0]))
+            expectedOffset = PrototypeContent.Card(card).Rarity == PrototypeCardRarity.Rare
+                ? PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints
+                : Math.Min(PrototypeNativeCardRarityOdds.MaximumOffsetBasisPoints, expectedOffset + 100);
+        Assert.Equal(expectedOffset, healed.World.CardRarityOffsetBasisPoints);
+        Assert.All(reward.CardOptionUpgradeFlags!, flag => Assert.False(flag));
+        var parentHash = CanonicalJson.Sha256(healed);
+        var corruptHistory = healed with { World = healed.World with {
+            CompletedRoomHistory = healed.World.CompletedRoomHistory!.Skip(1).ToArray() } };
+        Assert.Throws<InvalidOperationException>(() => RunSnapshot.Save(corruptHistory));
+        var extra = engine.GetLegalActions(healed).First(action => action.Kind == "take_reward_card_group");
+        var picked = engine.Step(RunSnapshot.Load(RunSnapshot.Save(healed)), extra).State;
+        Assert.False(picked.World!.Reward!.CardResolved);
+        Assert.True(Assert.Single(picked.World.Reward.ExtraCardGroupsResolved!));
+        Assert.Equal(healed.Player.Deck.Length + 1, picked.Player.Deck.Length);
+        Assert.Equal(parentHash, CanonicalJson.Sha256(healed));
+        Assert.DoesNotContain(engine.GetLegalActions(picked), action => action.Kind == "take_reward_card_group");
+        var left = engine.Step(picked, GameAction.Empty("leave_reward")).State;
+        Assert.Equal(RunPhase.MapChoice, left.Phase);
+        Assert.Equal(picked.Player.Deck.Length, left.Player.Deck.Length);
+        var other = engine.Step(healed, GameAction.Empty("skip_reward_card")).State;
+        Assert.True(other.World!.Reward!.CardResolved);
+        Assert.False(Assert.Single(other.World.Reward.ExtraCardGroupsResolved!));
+        Assert.Contains(engine.GetLegalActions(other), action => action.Kind == "take_reward_card");
+        PrototypeStateInvariants.Validate(left);
+        PrototypeStateInvariants.Validate(other);
+    }
+
+    [Fact]
+    public void DuplicateMawBanksKeepSeparatePurchaseStateAcrossBranches()
+    {
+        var exhausted = new RelicInstance(MawBank,
+            System.Text.Json.JsonSerializer.SerializeToElement(new { Purchased = true }));
+        var engine = new PrototypeGameEngine();
+        var root = BuildMapRun("duplicate-maw-bank",
+            [PrototypeRoomType.Shop, PrototypeRoomType.Rest], [exhausted, Relic(MawBank)]);
+        root = root with { Player = root.Player with { Gold = 500 } };
+        var shop = EnterNext(engine, root);
+        Assert.Equal(512, shop.Player.Gold);
+        var purchase = engine.GetLegalActions(shop).First(action => action.Kind == "remove_card");
+        var bought = engine.Step(shop, purchase).State;
+        Assert.All(bought.Player.Relics, relic => Assert.True(relic.PersistentState.GetProperty("Purchased").GetBoolean()));
+        Assert.False(shop.Player.Relics[1].PersistentState.TryGetProperty("Purchased", out _));
+        var withPurchase = EnterNext(engine, engine.Step(bought, GameAction.Empty("leave_shop")).State);
+        var withoutPurchase = EnterNext(engine, engine.Step(shop, GameAction.Empty("leave_shop")).State);
+        Assert.Equal(bought.Player.Gold, withPurchase.Player.Gold);
+        Assert.Equal(shop.Player.Gold + 12, withoutPurchase.Player.Gold);
+        PrototypeStateInvariants.Validate(withPurchase);
+        PrototypeStateInvariants.Validate(withoutPurchase);
+    }
+
+    [Fact]
     public void BootDoesNotTriggerOnNonAttackDamageOrEnemyDamageCaps()
     {
         Assert.Equal(5, PrototypeContent.Relic(TheBoot)
@@ -146,12 +211,11 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
         RelicInstance[] relics)
     {
         var initial = PrototypeNativeUnderdocksRunFactory.Create(seed);
-        var nodes = rooms.Select((room, index) =>
-            new MapNodeState("relic-room-" + index, 1,
-                index + 1, room,
-                index < rooms.Length - 1
-                    ? ["relic-room-" + (index + 1)]
-                    : [])).ToArray();
+        var map = initial.World!.Map;
+        var first = map.Nodes.Single(node => node.NodeId == map.EntryNodeIds![0]);
+        var second = map.Nodes.Single(node => node.NodeId == first.NextNodeIds![0]);
+        var nodes = map.Nodes.Select(node => node.Floor >= 3 && node.Floor < 3 + rooms.Length
+            ? node with { RoomType = rooms[node.Floor - 3] } : node).ToArray();
         return initial with
         {
             Phase = RunPhase.MapChoice,
@@ -161,12 +225,14 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
             },
             World = initial.World! with
             {
-                Floor = 0,
+                Floor = 2,
                 ActiveRoom = null,
-                Map = new MapState(nodes, null, [nodes[0].NodeId],
-                    PrototypeNativeUnderdocks.GenerationProfileId),
+                Map = map with { Nodes = nodes, CurrentNodeId = second.NodeId },
                 Combat = null, Reward = null, Shop = null, Event = null,
-                CompletedRoomHistory = []
+                CompletedRoomHistory = [
+                    new(1, 1, first.NodeId, first.RoomType),
+                    new(1, 2, second.NodeId, second.RoomType == PrototypeRoomType.Unknown
+                        ? PrototypeRoomType.Combat : second.RoomType)]
             }
         };
     }
@@ -209,6 +275,6 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
 
     private static RunState EnterNext(
         PrototypeGameEngine engine, RunState state) =>
-        engine.Step(state, Assert.Single(
-            engine.GetLegalActions(state))).State;
+        engine.Step(state, engine.GetLegalActions(state)
+            .First(action => action.Kind == "choose_map_node")).State;
 }

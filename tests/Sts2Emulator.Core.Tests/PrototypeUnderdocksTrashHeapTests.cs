@@ -141,6 +141,42 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         Assert.True(cards[2].ExhaustOnUse);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void DivePreservesDuplicateRollAndAddsIndependentPersistentInstance(int relicIndex)
+    {
+        var engine = new PrototypeGameEngine();
+        var chosen = PrototypeNativeUnderdocksTrashHeap.RelicIds[relicIndex];
+        RunState? entered = null;
+        RunState? prediction = null;
+        for (var seed = 0; seed < 100; seed++)
+        {
+            var candidate = FindTrashHeap(engine, "trash-duplicate-" + seed);
+            var fork = candidate.Fork();
+            var index = PrototypeRng.NextInt(fork.Rng, "event", 5);
+            if (index != relicIndex) continue;
+            entered = candidate with { Player = candidate.Player with {
+                Relics = [new(chosen, System.Text.Json.JsonSerializer.SerializeToElement(new { Purchased = true }))] } };
+            prediction = fork;
+            break;
+        }
+        Assert.NotNull(entered);
+        var parentHash = CanonicalJson.Sha256(entered);
+        var resolved = Choose(engine, RunSnapshot.Load(RunSnapshot.Save(entered)), "dive");
+        Assert.Equal(RunPhase.MapChoice, resolved.Phase);
+        Assert.Equal(entered.Player.Hp - 8, resolved.Player.Hp);
+        Assert.Equal(new[] { chosen, chosen }, resolved.Player.Relics.Select(relic => relic.RelicId));
+        Assert.True(resolved.Player.Relics[0].PersistentState.GetProperty("Purchased").GetBoolean());
+        Assert.False(resolved.Player.Relics[1].PersistentState.TryGetProperty("Purchased", out _));
+        Assert.Equal(CanonicalJson.Sha256(prediction!.Rng), CanonicalJson.Sha256(resolved.Rng));
+        Assert.Equal(parentHash, CanonicalJson.Sha256(entered));
+        PrototypeStateInvariants.Validate(resolved);
+    }
+
     private static RunState Choose(
         PrototypeGameEngine engine, RunState state, string choice)
     {
@@ -168,29 +204,29 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         PrototypeGameEngine engine, string seed)
     {
         var state = PrototypeNativeUnderdocksRunFactory.Create(seed);
-        var node = new MapNodeState(
-            "test-trash-event", 1, 1,
-            PrototypeRoomType.Event, ["next-room"]);
-        var next = new MapNodeState(
-            "next-room", 1, 2, PrototypeRoomType.Combat, []);
+        var map = state.World!.Map;
+        var first = map.Nodes.Single(node => node.NodeId == map.EntryNodeIds![0]);
+        var second = map.Nodes.Single(node => node.NodeId == first.NextNodeIds![0]);
+        var nodes = map.Nodes.Select(node => node.Floor == 3
+            ? node with { RoomType = PrototypeRoomType.Event } : node).ToArray();
         state = state with
         {
             Phase = RunPhase.MapChoice,
             World = state.World! with
             {
-                Floor = 0,
+                Floor = 2,
                 ActiveRoom = null,
-                Map = new MapState(
-                    [node, next], CurrentNodeId: null,
-                    EntryNodeIds: [node.NodeId],
-                    GenerationProfileId:
-                        PrototypeNativeUnderdocks.GenerationProfileId),
+                Map = map with { Nodes = nodes, CurrentNodeId = second.NodeId },
+                CompletedRoomHistory = [
+                    new(1, 1, first.NodeId, first.RoomType),
+                    new(1, 2, second.NodeId, second.RoomType == PrototypeRoomType.Unknown
+                        ? PrototypeRoomType.Combat : second.RoomType)],
                 Event = null,
                 Combat = null,
                 Reward = null
             }
         };
         return engine.Step(
-            state, Assert.Single(engine.GetLegalActions(state))).State;
+            state, engine.GetLegalActions(state).First(action => action.Kind == "choose_map_node")).State;
     }
 }

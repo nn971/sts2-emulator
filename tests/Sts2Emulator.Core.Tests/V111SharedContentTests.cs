@@ -146,16 +146,20 @@ public sealed class V111SharedContentTests
     }
 
     [Theory]
-    [InlineData(0, 6, 0)]
-    [InlineData(7, 0, 0)]
-    [InlineData(6, 0, 2)]
-    [InlineData(3, 3, 2)]
-    public void HandDrillTriggersOnActualBlockBreakAfterResolvingTheHit(int block, int hpLost, int vulnerable)
+    [InlineData(0, 6, 0, 1)]
+    [InlineData(7, 0, 0, 1)]
+    [InlineData(6, 0, 2, 1)]
+    [InlineData(3, 3, 2, 1)]
+    [InlineData(3, 3, 4, 2)]
+    public void HandDrillTriggersOnActualBlockBreakAfterResolvingTheHit(int block, int hpLost, int vulnerable, int relicCount)
     {
         var state = Setup(["proto.silent.strike"], [1], []);
-        state = state with { Player = state.Player with { Relics = [new("proto.native.trash_heap.hand_drill", PrototypeJson.EmptyObject())] },
+        state = state with { Player = state.Player with { Relics = Enumerable.Range(0, relicCount)
+                .Select(_ => new RelicInstance("proto.native.trash_heap.hand_drill", PrototypeJson.EmptyObject())).ToArray() },
             World = state.World! with { Combat = state.World!.Combat! with {
-                Relics = [new(0, "proto.native.trash_heap.hand_drill", 1, [])], NextPowerApplicationOrder = 2,
+                Relics = Enumerable.Range(0, relicCount).Select(index =>
+                    new CombatRelicState(index, "proto.native.trash_heap.hand_drill", index + 1, [])).ToArray(),
+                NextPowerApplicationOrder = relicCount + 1,
                 Enemies = state.World.Combat.Enemies.Select(
                 enemy => enemy.InstanceId == 1 ? enemy with { Block = block } : enemy).ToArray() } } };
         var next = Play(state, 1, 1);

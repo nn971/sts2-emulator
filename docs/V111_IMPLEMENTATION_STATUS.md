@@ -37,7 +37,10 @@ This is an intermediate implementation. Final release gates remain open.
   base/upgrade, identity, choice, generation timing, targeting and Block
   tests. Underdocks shares native-shaped Act 1 shops, rewards, treasures and
   unknown-room resolution. Recovered stolen gold has its own reward group.
-  Neow continuations preserve pre-map history.
+  Neow continuations preserve pre-map history. Trash Heap preserves duplicate
+  relic rolls as separate instances; duplicate Dream Catchers offer independently
+  selectable rest rewards using the shared rarity lifecycle, and fresh Maw Banks
+  retain independent purchase state.
 - Added CI pin/inventory/coverage baseline checks and real-server Python
   snapshot/batch/compatibility checks. Added configured decision-boundary
   benchmarks for forks, allocations, stepping, batches, hashing, snapshots and
@@ -78,8 +81,8 @@ diff. Native parity claims require a real reference fixture ledger.
 
 1. Exhaustive event branches, Ancient options, acquisition paths, profiles and
    evidence-ledger coverage for every variant.
-2. Remaining Act 1 mechanics and native validation. Duplicate Trash Heap relic
-   acquisition still fails explicitly; exhaustive event outcomes remain unaudited.
+2. Remaining Act 1 mechanics and native validation; exhaustive event outcomes
+   and reward modifiers remain unaudited.
 3. Native Hive/Glory encounters, maps, events, Ancients, transfers and terminal
    rules. Configured transitions reject unrelated prototype acts.
 4. Ironclad, Defect, Regent and Necrobinder execution/content; all remaining
