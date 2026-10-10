@@ -243,15 +243,16 @@ public sealed partial class PrototypeGameEngine
                     $"Unknown Conveyor dish '{evt.NativeDishId}'.");
         }
 
-        // Native rolls the next dish after the current dish action,
-        // even if that action opens a selection/reward continuation.
-        evt = PrototypeNativeEndlessConveyor.RollNextDish(
-            evt, playerAfter, state.Rng) with
+        // Native awaits the entire dish action, including a card-selection
+        // or potion-reward continuation, before sampling the next dish.
+        // Preserve that ordering so choices can consume the event RNG first.
+        evt = evt with
         {
             ChosenChoiceId = "grab",
             NativePageIndex = 1,
             QueuedDeckChoices = pendingCards,
-            QueuedPotionIds = pendingPotions
+            QueuedPotionIds = pendingPotions,
+            NativeDishRollPending = true
         };
         return AdvanceEventContinuations(state with
         {
