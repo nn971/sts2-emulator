@@ -210,7 +210,8 @@ public enum PrototypeCardSelectionResolutionKind
     MoveToHand,
     MoveToDiscard,
     MoveToExhaust,
-    MoveToDrawTop
+    MoveToDrawTop,
+    TransformRandom
 }
 
 public enum PrototypeEffectTarget
@@ -1386,7 +1387,10 @@ public sealed record EnemyCombatState(
     int HpLossBudgetUsed = 0,
     bool GainedReactiveBlockThisTurn = false,
     bool LastStandTriggered = false,
-    int StoredEnemyDamage = 0)
+    int StoredEnemyDamage = 0,
+    // Committed at combat entry / the player-turn boundary, never on Observe.
+    int? PlannedMoveIndex = null,
+    string? PlannedNextAiStateId = null)
 {
     public EnemyCombatState Fork() => this with
     {
@@ -1588,7 +1592,8 @@ public sealed record CombatState(
     int ExtraCardRewardsEarned = 0,
     long[]? ChoicePool = null,
     long[]? PlayPile = null,
-    PrototypeToricShield[]? ToricShields = null)
+    PrototypeToricShield[]? ToricShields = null,
+    long[]? TransformedPersistentCardIds = null)
 {
     public CombatState Fork() => this with
     {
@@ -1614,6 +1619,9 @@ public sealed record CombatState(
         ToricShields = ToricShields is null
             ? null
             : (PrototypeToricShield[])ToricShields.Clone(),
+        TransformedPersistentCardIds = TransformedPersistentCardIds is null
+            ? null
+            : (long[])TransformedPersistentCardIds.Clone(),
         PendingChoice = PendingChoice?.Fork(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =

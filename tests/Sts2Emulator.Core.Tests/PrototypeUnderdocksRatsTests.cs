@@ -79,6 +79,8 @@ public sealed class PrototypeUnderdocksRatsTests
             enemy with
             {
                 AiStateId = index == 0 ? "backup" : "screech",
+                PlannedMoveIndex = null,
+                PlannedNextAiStateId = null,
                 NonSummonMovesUntilEligible = 0
             }).ToArray();
         state = state with

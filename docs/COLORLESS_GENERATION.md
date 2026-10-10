@@ -121,3 +121,30 @@ native unlocked solo character card/potion candidate distributions and
 stream partitions are not yet implemented. Selected damage-loss caps,
 status interactions and unusual no-target autoplays still need oracle
 differential coverage.
+
+## Final solo colorless batch (pinned native v0.111.0)
+
+**Entropy** (1 energy, rare Power; upgraded: Innate) prompts for one
+hand card per stack at the beginning of each player turn, **after hand draw**.
+Chosen cards transform in place into a random different eligible card in
+the original card's pool. The combat-only replacement has no persistent-deck
+identity, while the actual persistent deck retains its original card.
+Until unlock data is connected, candidates are restricted to implemented
+and solo-unlocked proxy pools; native combat-card-selection RNG parity
+is not yet guaranteed.
+
+**Stratagem** (1 energy, uncommon Power; upgraded: 0) prompts for a
+draw-pile card after each shuffle, **before the next card is drawn**.
+The selected card enters the hand directly (subject to ten-card capacity).
+Draw effects and normal hand draw suspend and resume deterministically
+through the generic combat choice continuation. Multiple stacks increase
+the selection amount.
+
+**Multiplayer-only (explicit unsupported):** Beacon of Hope, Believe in
+You, Coordinate, Gang Up, Huddle Up, Intercept, Knockdown, Lift, Mimic,
+Rally, Tag Team, The Ball. All twelve are registered as typed unsupported
+native cards and excluded from every solo generation and merchant pool.
+
+**Inventory coverage:** 65 native IDs = 53 playable single-player cards
++ 12 explicitly unsupported multiplayer-only cards. This is an inventory
+and mechanic coverage statement, not a native RNG/fidelity certification.

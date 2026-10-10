@@ -295,7 +295,7 @@ public sealed partial class PrototypeGameEngine
             state.Rng,
             allowSuspension: true);
         state = state with { Player = combatStarted.Player };
-        combat = combatStarted.Combat;
+        combat = CommitEnemyIntents(combatStarted.Combat, state.Rng);
 
         world = world with
         {
@@ -1572,7 +1572,10 @@ public sealed partial class PrototypeGameEngine
             }
 
             case PrototypeAutomaticStepKind.AdvanceTurn:
-                combat = combat with
+                // EnemyTurnEnd statuses, summons, and formation changes have
+                // completed. Select/commit the next enemy moves BEFORE the
+                // next player turn begins, never during Observe().
+                combat = CommitEnemyIntents(combat, state.Rng) with
                 {
                     Turn = combat.Turn + 1,
                     Counters = combat.CounterState with
@@ -1692,8 +1695,26 @@ public sealed partial class PrototypeGameEngine
                     state.Rng,
                     fromHandDraw: true);
                 player = drawn.Player;
+                combat = drawn.Combat;
+                if (drawn.ShuffleSelectionPending)
+                {
+                    var pendingDraw = new Queue<PrototypeQueuedOperation>(
+                        new[]
+                        {
+                            StratagemChoiceOperation(combat),
+                            new PrototypeQueuedOperation(
+                                PrototypeCombatEffectKind.DrawCards,
+                                drawn.RemainingCount)
+                        });
+                    var resumed = ResolveOperations(
+                        player, combat, pendingDraw, state.Rng,
+                        moveSourceCardOnCompletion: false);
+                    player = resumed.Player;
+                    combat = resumed.Combat;
+                }
+
                 combat = RemovePlayerPowers(
-                    drawn.Combat,
+                    combat,
                     definition => definition.RemoveAfterHandDraw);
                 break;
             }
@@ -1707,6 +1728,20 @@ public sealed partial class PrototypeGameEngine
             Player = player,
             World = world with { Combat = combat }
         };
+    }
+
+    private static PrototypeQueuedOperation StratagemChoiceOperation(
+        CombatState combat)
+    {
+        var amount = combat.PlayerPowers
+            .Where(power => power.PowerId == "proto.power.stratagem")
+            .Sum(power => Math.Max(0, power.Stacks));
+        return new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.ChooseCards, 0,
+            Selection: new PrototypeCardSelectionSpec(
+                PrototypeCardZone.DrawPile,
+                amount, amount,
+                PrototypeCardSelectionResolutionKind.MoveToHand));
     }
 
     private static CombatState ReturnLastTurnReboundCardsToHand(
@@ -1975,6 +2010,49 @@ public sealed partial class PrototypeGameEngine
             combat);
     }
 
+    // Commit each enemy's action at combat entry and at the end of each
+    // enemy turn. Importantly, this consumes the combat RNG once, at a
+    // transition boundary; repeated public observations never reroll moves.
+    internal static CombatState CommitEnemyIntents(
+        CombatState combat,
+        RngBundle rng)
+    {
+        var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
+        for (var index = 0; index < formation.Length; index++)
+        {
+            var enemy = formation[index];
+            var definition = PrototypeContent.Enemy(enemy.EnemyId);
+            if (enemy.Hp <= 0
+                || enemy.SkipNextEnemyAction
+                || enemy.EnemyActionSkipsRemaining > 0
+                || definition.Moves.Length == 0)
+            {
+                formation[index] = enemy with
+                {
+                    PlannedMoveIndex = null,
+                    PlannedNextAiStateId = null
+                };
+                continue;
+            }
+
+            var selected = SelectEnemyMove(definition, enemy, formation, rng);
+            var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
+            if (selectedIndex < 0)
+            {
+                throw new InvalidOperationException(
+                    $"Enemy '{enemy.EnemyId}' selected an unknown move.");
+            }
+
+            formation[index] = enemy with
+            {
+                PlannedMoveIndex = selectedIndex,
+                PlannedNextAiStateId = selected.NextAiStateId
+            };
+        }
+
+        return combat with { Enemies = formation };
+    }
+
     private static (
         PrototypeEnemyMoveDefinition Move,
         string? NextAiStateId)
@@ -2237,7 +2315,7 @@ public sealed partial class PrototypeGameEngine
             $"Enemy '{definition.Id}' AI exceeded the state-resolution depth limit.");
     }
 
-    private static bool EnemyAiConditionMatches(
+    internal static bool EnemyAiConditionMatches(
         EnemyCombatState enemy,
         IReadOnlyList<EnemyCombatState> formation,
         PrototypeEnemyAiConditionalBranch branch)
@@ -2410,11 +2488,13 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var selection = SelectEnemyMove(
-                definition,
-                enemy,
-                enemies,
-                rng);
+            // Normal gameplay has a precommitted move. A fallback is kept
+            // solely for legacy/manual combat states created without the
+            // initial intent-commit step; seeded runs never use it.
+            var selection = enemy.PlannedMoveIndex is { } selectedIndex
+                ? (Move: definition.Moves[selectedIndex],
+                   NextAiStateId: enemy.PlannedNextAiStateId)
+                : SelectEnemyMove(definition, enemy, enemies, rng);
             var move = selection.Move;
             // Vigor applies to every hit of one attack command, then
             // consumes the stacks that existed when the command began.
@@ -2466,26 +2546,13 @@ public sealed partial class PrototypeGameEngine
                                 };
                             }
 
-                            var damage = amount
-                                + enemy.PowerStates.Sum(power =>
-                                    PrototypeContent.Power(
-                                        power.PowerId)
-                                        .EnemyAttackDamageBonusPerStack
-                                    * power.Stacks);
-                            foreach (var status in enemy.Statuses)
-                            {
-                                var statusDefinition = PrototypeContent.Status(status.Key);
-                                damage = (damage * statusDefinition.OutgoingDamageNumerator)
-                                    / statusDefinition.OutgoingDamageDenominator;
-                            }
-
-                            damage = effect.IsAttack
-                                ? ModifyIncomingPlayerAttackDamage(
-                                    combat,
-                                    damage)
-                                : ApplyPlayerIncomingDamageCap(
-                                    combat,
-                                    damage);
+                            var damage = EnemyHitDamage(
+                                enemy,
+                                combat,
+                                effect,
+                                act,
+                                ascension,
+                                enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0);
 
                             var absorbed = Math.Min(
                                 block,
@@ -2860,7 +2927,9 @@ public sealed partial class PrototypeGameEngine
                 LastMoveId = move.Id,
                 ConsecutiveMoveUses = consecutiveUses,
                 AiStateId = selection.NextAiStateId,
-                MoveUseCounts = moveUseCounts
+                MoveUseCounts = moveUseCounts,
+                PlannedMoveIndex = null,
+                PlannedNextAiStateId = null
             };
             if (hp <= 0)
             {
@@ -3729,6 +3798,19 @@ public sealed partial class PrototypeGameEngine
                         eventDepth: eventDepth + 1);
                     player = drawn.Player;
                     combat = drawn.Combat;
+                    if (drawn.ShuffleSelectionPending)
+                    {
+                        // Suspend this draw at the exact post-shuffle point.
+                        // A chosen card moves to hand before any of the
+                        // remaining cards are drawn.
+                        operations = new Queue<PrototypeQueuedOperation>(
+                            new[]
+                            {
+                                StratagemChoiceOperation(combat),
+                                operation with { Amount = drawn.RemainingCount }
+                            }.Concat(operations));
+                    }
+
                     if (operation.DrawnCardKeyword is not null)
                     {
                         foreach (var cardInstanceId in drawn.DrawnCardInstanceIds)
@@ -5780,6 +5862,37 @@ public sealed partial class PrototypeGameEngine
         }
 
         return modified;
+    }
+
+    // This is the single damage calculation used by both actual enemy hits
+    // and public intent previews. It deliberately does not account for player
+    // Block, and never consumes combat RNG.
+    internal static int EnemyHitDamage(
+        EnemyCombatState enemy,
+        CombatState combat,
+        PrototypeEnemyEffectSpec effect,
+        int act,
+        int ascension,
+        int priorMoveUses = 0)
+    {
+        var baseDamage = effect.UseStoredEnemyDamage
+            ? enemy.StoredEnemyDamage
+            : checked(effect.AmountAt(act, ascension)
+                + effect.ExtraAmountPerPriorMoveUse * priorMoveUses);
+        var damage = baseDamage
+            + enemy.PowerStates.Sum(power =>
+                PrototypeContent.Power(power.PowerId)
+                    .EnemyAttackDamageBonusPerStack * power.Stacks);
+        foreach (var status in enemy.Statuses)
+        {
+            var definition = PrototypeContent.Status(status.Key);
+            damage = (damage * definition.OutgoingDamageNumerator)
+                / definition.OutgoingDamageDenominator;
+        }
+
+        return effect.IsAttack
+            ? ModifyIncomingPlayerAttackDamage(combat, damage)
+            : ApplyPlayerIncomingDamageCap(combat, damage);
     }
 
     private static int ApplyPlayerIncomingDamageCap(
@@ -8283,7 +8396,8 @@ public sealed partial class PrototypeGameEngine
                     .ToArray()
                 : Array.Empty<long>();
 
-        combat = ApplyCardSelection(combat, pending.Selection, selected);
+        combat = ApplyCardSelection(
+            combat, pending.Selection, selected, state.Rng);
         combat = combat with { PendingChoice = null };
 
         if (pending.SelectedCardTemporaryCost is not null)
@@ -8713,7 +8827,8 @@ public sealed partial class PrototypeGameEngine
     private static CombatState ApplyCardSelection(
         CombatState combat,
         PrototypeCardSelectionSpec selection,
-        long[] selected)
+        long[] selected,
+        RngBundle rng)
     {
         var source = GetZone(combat, selection.SourceZone);
         var selectedSet = selected.ToHashSet();
@@ -8722,6 +8837,82 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException(
                 "Selected card is no longer in the requested source zone.");
+        }
+
+        if (selection.Resolution
+                == PrototypeCardSelectionResolutionKind.TransformRandom)
+        {
+            foreach (var instanceId in selected)
+            {
+                var original = RequireCombatCard(combat, instanceId);
+                var definition = PrototypeContent.Card(original.CardId);
+                if (definition.Eternal)
+                {
+                    throw new InvalidOperationException(
+                        "Eternal combat cards cannot be transformed.");
+                }
+
+                // Native combat transforms into a different eligible
+                // card from the ORIGINAL card's own generation pool.
+                var pool = original.CardId.StartsWith(
+                        "proto.colorless.", StringComparison.Ordinal)
+                    ? PrototypeColorlessCards.ImplementedCombatGenerationPool
+                    : PrototypeContent.RewardCardPool;
+                var eligible = pool.Where(id =>
+                {
+                    var candidate = PrototypeContent.Card(id);
+                    return id != original.CardId
+                        && candidate.CanBeGeneratedInCombat
+                        && candidate.MechanicsImplemented
+                        && candidate.Rarity is
+                            PrototypeCardRarity.Common
+                            or PrototypeCardRarity.Uncommon
+                            or PrototypeCardRarity.Rare;
+                }).ToArray();
+                if (eligible.Length == 0)
+                {
+                    throw new NotSupportedException(
+                        "No eligible native-pool solo transform targets.");
+                }
+
+                var replacement = eligible[PrototypeRng.NextInt(
+                    rng, "combat", eligible.Length)];
+                var replacementId = combat.NextCardInstanceId;
+                var oldPersistentId = original.PersistentCardInstanceId;
+                var transformed = combat.TransformedPersistentCardIds
+                    ?? Array.Empty<long>();
+
+                // Transform creates a new physical card; it does not
+                // mutate the original card's persistent deck identity.
+                // Track that absence explicitly for run invariants.
+                combat = combat with
+                {
+                    Cards = combat.Cards
+                        .Where(card => card.InstanceId != instanceId)
+                        .Append(new CombatCardInstance(
+                            replacementId,
+                            PersistentCardInstanceId: null,
+                            CardId: replacement,
+                            UpgradeLevel: 0,
+                            IsTemporary: true,
+                            State: PrototypeJson.EmptyObject()))
+                        .ToArray(),
+                    Hand = combat.Hand.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    DrawPile = combat.DrawPile.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    DiscardPile = combat.DiscardPile.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    ExhaustPile = combat.ExhaustPile.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    NextCardInstanceId = replacementId + 1,
+                    TransformedPersistentCardIds =
+                        oldPersistentId is { } persistentId
+                            ? transformed.Append(persistentId).ToArray()
+                            : transformed
+                };
+            }
+            return combat;
         }
 
         if (selection.Resolution
@@ -9232,12 +9423,22 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            // A lethal-intercept script overrides the previously
+            // announced action immediately. If its destination is a
+            // deterministic move state, commit that move and its
+            // continuation without consuming a new RNG draw.
+            var moveState = PrototypeContent.Enemy(enemy.EnemyId)
+                .Ai?.States.FirstOrDefault(state =>
+                    StringComparer.Ordinal.Equals(state.Id, nextState)
+                    && state.Kind == PrototypeEnemyAiStateKind.Move);
             return enemy with
             {
                 Hp = definition.LastStandHp,
                 Block = 0,
                 LastStandTriggered = true,
-                AiStateId = nextState
+                AiStateId = nextState,
+                PlannedMoveIndex = moveState?.MoveIndex,
+                PlannedNextAiStateId = moveState?.NextStateId
             };
         }
 
@@ -9414,12 +9615,26 @@ public sealed partial class PrototypeGameEngine
                         "proto.power.strength"));
             }
 
+            var forcedStateId =
+                thresholdDefinition.OwnerAiStateOnHpThresholdTrigger;
+            var forcedAiState = forcedStateId is null
+                ? null
+                : PrototypeContent.Enemy(enemy.EnemyId)
+                    .Ai?.States.FirstOrDefault(state =>
+                        StringComparer.Ordinal.Equals(
+                            state.Id, forcedStateId));
+            // A player-triggered threshold may OVERRIDE an announced move,
+            // e.g. the Ceremonial Beast is visibly stunned. This is a
+            // deterministic interrupt, never a new hidden random roll.
             enemy = enemy with
             {
-                AiStateId =
-                    thresholdDefinition
-                        .OwnerAiStateOnHpThresholdTrigger
-                    ?? enemy.AiStateId
+                AiStateId = forcedStateId ?? enemy.AiStateId,
+                PlannedMoveIndex = forcedAiState is
+                    { Kind: PrototypeEnemyAiStateKind.Move }
+                    ? forcedAiState.MoveIndex : enemy.PlannedMoveIndex,
+                PlannedNextAiStateId = forcedAiState is
+                    { Kind: PrototypeEnemyAiStateKind.Move }
+                    ? forcedAiState.NextStateId : enemy.PlannedNextAiStateId
             };
         }
 
@@ -9580,7 +9795,9 @@ public sealed partial class PrototypeGameEngine
     private sealed record PrototypeDrawCardsResult(
         PlayerState Player,
         CombatState Combat,
-        long[] DrawnCardInstanceIds);
+        long[] DrawnCardInstanceIds,
+        int RemainingCount = 0,
+        bool ShuffleSelectionPending = false);
 
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
@@ -9622,6 +9839,23 @@ public sealed partial class PrototypeGameEngine
                 discard.Clear();
                 PrototypeRng.Shuffle(rng, "combat", recycled);
                 draw.AddRange(recycled);
+                var stratagem = combat.PlayerPowers.Sum(power =>
+                    power.PowerId == "proto.power.stratagem"
+                        ? Math.Max(0, power.Stacks) : 0);
+                if (stratagem > 0 && combat.Hand.Length < maxHandSize)
+                {
+                    // Persist the recycled draw pile before prompting.
+                    // The suspended draw resumes after this choice.
+                    combat = combat with
+                    {
+                        DrawPile = draw.ToArray(),
+                        DiscardPile = discard.ToArray()
+                    };
+                    return new PrototypeDrawCardsResult(
+                        player, combat, drawnCardInstanceIds.ToArray(),
+                        RemainingCount: count - drawNumber,
+                        ShuffleSelectionPending: true);
+                }
             }
 
             var index = draw.Count - 1;

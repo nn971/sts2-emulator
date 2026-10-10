@@ -678,8 +678,74 @@ public static class PrototypeColorlessCards
                     PowerId: "proto.power.the_gambit")
             ],
             Rarity: PrototypeCardRarity.Rare,
-            Type: PrototypeCardType.Skill)
+            Type: PrototypeCardType.Skill),
+        // Entropy triggers at player-turn start AFTER the new hand is drawn.
+        // Each stack chooses a card from hand to transform in place.
+        new(
+            "proto.colorless.entropy", "Entropy", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.entropy")],
+            InnateOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Power),
+        // Stratagem makes an interactive draw-pile selection immediately
+        // after every combat reshuffle, before the next card is drawn.
+        new(
+            "proto.colorless.stratagem", "Stratagem",
+            new(PrototypeCardCostKind.Fixed, 1, -1),
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.stratagem")],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power)
     ];
+
+    // These twelve native cards explicitly have
+    // CardMultiplayerConstraint.MultiplayerOnly in the pinned source.
+    // They are catalogued as unsupported, not silently absent or
+    // treated as single-player playables.
+    public static PrototypeCardDefinition[] UnsupportedMultiplayer { get; } =
+    [
+        MultiplayerOnly("beacon_of_hope", "Beacon of Hope", 2,
+            PrototypeCardRarity.Rare, PrototypeCardType.Power),
+        MultiplayerOnly("believe_in_you", "Believe in You", 0,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("coordinate", "Coordinate", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("gang_up", "Gang Up", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Attack),
+        MultiplayerOnly("huddle_up", "Huddle Up", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("intercept", "Intercept", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("knockdown", "Knockdown", 3,
+            PrototypeCardRarity.Rare, PrototypeCardType.Attack),
+        MultiplayerOnly("lift", "Lift", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Skill),
+        MultiplayerOnly("mimic", "Mimic", 1,
+            PrototypeCardRarity.Rare, PrototypeCardType.Skill),
+        MultiplayerOnly("rally", "Rally", 2,
+            PrototypeCardRarity.Rare, PrototypeCardType.Skill),
+        MultiplayerOnly("tag_team", "Tag Team", 2,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Attack),
+        MultiplayerOnly("the_ball", "The Ball", 1,
+            PrototypeCardRarity.Uncommon, PrototypeCardType.Attack)
+    ];
+
+    private static PrototypeCardDefinition MultiplayerOnly(
+        string slug, string name, int cost,
+        PrototypeCardRarity rarity, PrototypeCardType type) =>
+        new(
+            "proto.colorless." + slug, name, cost,
+            // Native ally-target types are outside the solo target enum.
+            PrototypeCardTarget.None, [],
+            Rarity: rarity, Type: type,
+            MechanicsImplemented: false, MultiplayerOnly: true,
+            CanBeGeneratedInCombat: false, RewardEligible: false);
+
+    public static string[] UnsupportedMultiplayerIds { get; } =
+        UnsupportedMultiplayer.Select(card => card.Id).ToArray();
 
     public static string[] ImplementedShopPool { get; } =
         Implemented.Select(c => c.Id).ToArray();
