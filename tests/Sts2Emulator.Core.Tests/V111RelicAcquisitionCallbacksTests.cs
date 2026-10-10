@@ -74,6 +74,59 @@ public sealed class V111RelicAcquisitionCallbacksTests
             CanonicalJson.Sha256(unchanged));
     }
 
+    [Fact]
+    public void DuplicateFresnelLensesApplyOnlyOneNonstackableNimble()
+    {
+        const string lensId = "proto.native.underdocks.fresnel_lens";
+        var source = PrototypeNativeUnderdocksRunFactory.Create(
+            "duplicate-nimble");
+        var card = new CardInstance(500, "proto.silent.defend", 0,
+            PrototypeJson.EmptyObject());
+        var once = source.Player with
+        {
+            Relics = [Relic(lensId)]
+        };
+        var twice = source.Player with
+        {
+            Relics = [Relic(lensId), Relic(lensId)]
+        };
+
+        var one = ApplyNewCardEnchantments(once, card);
+        var two = ApplyNewCardEnchantments(twice, card);
+        Assert.NotNull(one.Enchantment);
+        Assert.NotNull(two.Enchantment);
+        Assert.Equal(PrototypeCardEnchantmentKind.Nimble,
+            two.Enchantment.Kind);
+        Assert.Equal(2, one.Enchantment.Amount);
+        Assert.Equal(2, two.Enchantment.Amount);
+        Assert.Equal(CanonicalJson.Sha256(once),
+            CanonicalJson.Sha256(once.Fork()));
+        Assert.Equal(CanonicalJson.Sha256(twice),
+            CanonicalJson.Sha256(twice.Fork()));
+
+        var alreadyEnchanted = card with
+        {
+            Enchantment = new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.Steady, 1)
+        };
+        var preserved = ApplyNewCardEnchantments(
+            twice, alreadyEnchanted);
+        Assert.Equal(alreadyEnchanted.Enchantment,
+            preserved.Enchantment);
+        Assert.Null(ApplyNewCardEnchantments(source.Player, card)
+            .Enchantment);
+    }
+
+    private static CardInstance ApplyNewCardEnchantments(
+        PlayerState player, CardInstance card)
+    {
+        var method = typeof(PrototypeGameEngine).GetMethod(
+            "ApplyNewCardEnchantments", BindingFlags.NonPublic |
+                BindingFlags.Static);
+        Assert.NotNull(method);
+        return (CardInstance)method!.Invoke(null, [player, card])!;
+    }
+
     private static RelicInstance Relic(string id) =>
         new(id, PrototypeJson.EmptyObject());
 
