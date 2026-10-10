@@ -211,7 +211,7 @@ public static class PrototypeNativeRemainingNormals
         ],
         HpAscensionDeltas: [new(8, 10)],
         StartingPowers: [new(GalvanicId, 6,
-            AscensionDeltas: [new(9, 2)])]),
+            AscensionDeltas: [new(9, 2)])],
         MovePolicy: PrototypeEnemyMovePolicy.SequentialLoop),
         new(OwlMagistrateId, "Owl Magistrate", 231, 0,
         [
