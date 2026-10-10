@@ -136,10 +136,12 @@ public sealed class PrototypeColorlessSeventhBatchTests
         var state = Setup("gold-axe",
             ["proto.colorless.gold_axe", "proto.silent.strike"],
             [1, 2], []);
-        state = Play(state, 1, 1);
-        Assert.Equal(100, state.World!.Combat!.Enemies[0].Hp);
-        Assert.Equal(1, state.World.Combat.CounterState.CardsPlayedThisCombat);
+        // Strike completes first; Gold Axe observes that one completed
+        // play and counts its own play only after the attack resolves.
         state = Play(state, 2, 1);
+        Assert.Equal(94, state.World!.Combat!.Enemies[0].Hp);
+        Assert.Equal(1, state.World.Combat.CounterState.CardsPlayedThisCombat);
+        state = Play(state, 1, 1);
         Assert.Equal(2, state.World!.Combat!.CounterState.CardsPlayedThisCombat);
         Assert.Equal(93, state.World.Combat.Enemies[0].Hp);
         PrototypeStateInvariants.Validate(state);
