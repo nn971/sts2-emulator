@@ -356,6 +356,21 @@ This is an intermediate implementation. Final release gates remain open.
   approximated; real Act 2 event routing and oracle validation remain
   gated.
 
+- Implemented source-backed **Amalgamator** and **Field of Man-Sized
+  Holes** as gated, forceable Hive events. Amalgamator requires two
+  basic removable Strike-tagged and two basic removable Defend-tagged
+  cards to appear; the selected option prompts for exactly two
+  valid distinct tag-matching cards, removes them, then awards the
+  already-implemented Ultimate Strike or Ultimate Defend.
+  Field of Man-Sized Holes offers removal of two cards followed
+  by Normality, or one Perfect Fit enchantment selection.
+  Normality blocks further card plays after the third play of
+  the turn only while held in hand, including autoplay attempts.
+  Perfect Fit places the enchanted card at the top after
+  non-initial discard reshuffles without changing opening shuffle.
+  All v0.111.0 Hive events remain Weight=0 fixture content
+  until native Act 2 routing and oracle testing are available.
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

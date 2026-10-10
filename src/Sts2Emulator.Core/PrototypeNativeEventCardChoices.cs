@@ -12,9 +12,16 @@ public sealed partial class PrototypeGameEngine
         PrototypePersistentDeckChoiceKind kind,
         string? transformToCardId,
         PrototypeCardEnchantmentKind? enchantmentKind,
-        bool basicCardsOnly)
+        bool basicCardsOnly,
+        string? requiredCardTag = null)
     {
         var definition = PrototypeContent.Card(card.CardId);
+        if (requiredCardTag is not null
+            && (definition.Tags?.Contains(
+                requiredCardTag, StringComparer.Ordinal) != true))
+        {
+            return false;
+        }
         if (basicCardsOnly && definition.Rarity != PrototypeCardRarity.Basic)
         {
             return false;

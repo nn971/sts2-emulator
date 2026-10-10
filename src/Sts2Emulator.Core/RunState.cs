@@ -10,7 +10,8 @@ public enum PrototypeCardEnchantmentKind
     Sown,
     Slither,
     Nimble,
-    Steady
+    Steady,
+    PerfectFit
 }
 
 public sealed record PrototypeCardEnchantment(
