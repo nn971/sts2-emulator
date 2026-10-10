@@ -104,6 +104,17 @@ This is an intermediate implementation. Final release gates remain open.
   the typed entries must not be mistaken for full playable later acts.
   Source audit and test boundaries:
   [Hive/Glory first slice](reference-builds/v0.111.0-hive-glory-first-slice.md).
+- Implemented **two source-backed Hive weak formations** in the typed
+  encounter registry: Bowlbugs Weak (Rock plus Egg/Nectar roll) and
+  Exoskeletons Weak (three distinct opening slots). Added Rock's
+  Imbalanced fully-blocked-attack → committed Dizzy turn → recovery,
+  Silk's independent Weak/Thrash sequence, Exoskeleton's slot-based
+  move state machine and non-repeating AI, and Hard to Kill's 9-HP
+  loss cap per hit. These are explicitly testable and fork-safe,
+  **not yet sampled in actual Hive maps**; their legacy selector weight
+  remains zero. Tunneler and Thieving Hopper are still blocked on
+  more specialized power/deck-theft mechanics. Source details are
+  recorded in the Hive/Glory first-slice audit note.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
