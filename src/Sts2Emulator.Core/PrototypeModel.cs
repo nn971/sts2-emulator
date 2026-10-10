@@ -90,6 +90,7 @@ public enum PrototypeCombatEffectKind
     ApplyEnemyStatus,
     ChooseCards,
     ChooseGeneratedCards,
+    CreateDistinctColorlessCardsInHand,
     CreateCardsInHand,
     CreateCardsInHandFromPowerCardPayload,
     CreateEventSourceCardCopyInHand,
@@ -423,7 +424,10 @@ public sealed record PrototypeCardSelectionSpec(
     bool RequireEnergyCostingCard = false,
     bool SequentialOptional = false,
     bool DrawEqualToSelectionsOnCompletion = false,
-    int MaxSelectionsUpgradeDelta = 0);
+    int MaxSelectionsUpgradeDelta = 0,
+    // Offer a random subset of the matching source pile without moving
+    // unchosen cards. Native Seeker Strike offers up to three options.
+    int RandomCandidateCount = 0);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
