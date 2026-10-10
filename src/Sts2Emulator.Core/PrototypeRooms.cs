@@ -1104,6 +1104,14 @@ public sealed partial class PrototypeGameEngine
                             0,
                             player.Hp - effect.Amount)
                     };
+                    // Native CreatureCmd.Damage stops the event when
+                    // it kills the player. Do not execute subsequent
+                    // rewards (e.g. Jungle Maze's gold after damage).
+                    if (player.Hp == 0)
+                    {
+                        return EndRun(state with { Player = player },
+                            "defeat");
+                    }
                     break;
 
                 case PrototypeRunEffectKind.LoseHpAfterDeckChoices:
@@ -1536,7 +1544,15 @@ public sealed partial class PrototypeGameEngine
                     or PrototypeRunEffectKind.LoseHpAfterDeckChoices)
             .Sum(effect =>
                 Math.Max(0, effect.Amount));
-        if (hpCost >= player.Hp)
+        // The pinned solo event UI warns about lethal HP damage;
+        // it does not lock these options. Native CreatureCmd.Damage
+        // can end the run. Keep the historical safety restriction for
+        // unverified prototype-only events.
+        if (hpCost >= player.Hp
+            && !PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(
+                world.Event?.EventId ?? string.Empty)
+            && !PrototypeNativeUnderdocksEvents.IsNativeRegionEvent(
+                world.Event?.EventId ?? string.Empty))
         {
             return false;
         }
