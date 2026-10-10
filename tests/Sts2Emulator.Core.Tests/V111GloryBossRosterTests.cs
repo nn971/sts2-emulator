@@ -221,8 +221,8 @@ public sealed class V111GloryBossRosterTests
             state = engine.Step(state, action).State;
         }
         combat = state.World!.Combat!;
-        Assert.Single(combat.Cards.Where(card =>
-            card.CardId == PrototypeNativeGloryBosses.WitherId));
+        Assert.Single(combat.Cards, card =>
+            card.CardId == PrototypeNativeGloryBosses.WitherId);
         Assert.Equal(6, Assert.Single(combat.Enemies).PowerStates.Single(power =>
             power.PowerId == PrototypeNativeGloryBosses.WitheringPresenceId).Stacks);
         Assert.Contains(combat.Hand, id =>
