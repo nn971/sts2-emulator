@@ -367,16 +367,24 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RngBundle? rng = null,
         RunWorldState? world = null)
     {
-        foreach (var relic in player.Relics)
+        // RelicAcquired models RelicModel.AfterObtained on the newly
+        // appended instance, not a broadcast to every owned relic with the
+        // same model ID. Older copies retain their independent state and
+        // must not replay acquisition-only rewards (e.g. Old Coin).
+        var acquiredIndex = eventKind == PrototypeRunEventKind.RelicAcquired
+            ? Array.FindLastIndex(player.Relics, relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, acquiredRelicId))
+            : -1;
+        for (var relicIndex = 0; relicIndex < player.Relics.Length;
+             relicIndex++)
         {
             if (eventKind == PrototypeRunEventKind.RelicAcquired
-                && !StringComparer.Ordinal.Equals(
-                    relic.RelicId,
-                    acquiredRelicId))
+                && relicIndex != acquiredIndex)
             {
                 continue;
             }
 
+            var relic = player.Relics[relicIndex];
             var definition =
                 PrototypeContent.Relic(relic.RelicId);
             foreach (var trigger in
@@ -762,9 +770,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             return card;
         }
 
-        var amount = player.Relics.Sum(relic =>
-            PrototypeContent.Relic(relic.RelicId)
-                .EnchantNewBlockCardsNimble);
+        // Fresnel Lens attaches Nimble through an ordered relic hook.
+        // The pinned Nimble EnchantmentModel is NOT stackable, so the
+        // first owned Lens enchants the card; later copies cannot add
+        // their amounts again to an already enchanted card.
+        var amount = player.Relics
+            .Select(relic => PrototypeContent.Relic(relic.RelicId)
+                .EnchantNewBlockCardsNimble)
+            .FirstOrDefault(value => value > 0);
         return amount > 0
             ? card with
             {

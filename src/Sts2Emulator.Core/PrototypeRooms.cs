@@ -1144,8 +1144,13 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeRunEffectKind.UpgradeRandomCard:
                 {
+                    // Native selection filters CardModel.IsUpgradable;
+                    // upgraded, eternal and non-upgradable event/status
+                    // cards must not dilute random upgrade probabilities.
                     var candidates = player.Deck
-                        .Where(card => card.UpgradeLevel == 0)
+                        .Where(card => CanSelectEventDeckCard(
+                            card, PrototypePersistentDeckChoiceKind.Upgrade,
+                            null, null, false))
                         .Select(card => card.InstanceId)
                         .ToArray();
                     if (candidates.Length > 0)
@@ -1157,7 +1162,10 @@ public sealed partial class PrototypeGameEngine
                         {
                             Deck = player.Deck.Select(card =>
                                 card.InstanceId == selectedId
-                                    ? card with { UpgradeLevel = 1 }
+                                    ? card with
+                                    {
+                                        UpgradeLevel = card.UpgradeLevel + 1
+                                    }
                                     : card).ToArray()
                         };
                     }
@@ -1168,8 +1176,13 @@ public sealed partial class PrototypeGameEngine
                     player = player with
                     {
                         Deck = player.Deck.Select(card =>
-                            card.UpgradeLevel == 0
-                                ? card with { UpgradeLevel = 1 }
+                            CanSelectEventDeckCard(
+                                card, PrototypePersistentDeckChoiceKind.Upgrade,
+                                null, null, false)
+                                ? card with
+                                {
+                                    UpgradeLevel = card.UpgradeLevel + 1
+                                }
                                 : card).ToArray()
                     };
                     break;
@@ -1294,10 +1307,17 @@ public sealed partial class PrototypeGameEngine
                     var relicDefinition =
                         PrototypeContent.Relic(
                             relicId);
+                    // Direct fixed relic event rewards use RelicCmd.Obtain:
+                    // a fresh mutable relic is appended even when another
+                    // instance of this model already belongs to the player.
+                    // Random pulls still use the single-copy grab bag.
                     if (player.Relics.Any(relic =>
                             StringComparer.Ordinal.Equals(
                                 relic.RelicId,
-                                relicId)))
+                                relicId))
+                        && (effect.Kind != PrototypeRunEffectKind.GainRelic
+                            || !AllowsNativeEventDuplicateRelic(
+                                eventState.EventId, relicId)))
                     {
                         throw new InvalidOperationException(
                             $"Player already owns relic '{relicId}'.");
@@ -1513,6 +1533,19 @@ public sealed partial class PrototypeGameEngine
         return effect.Amount;
     }
 
+    /// <summary>
+    /// Source-pinned direct RelicCmd.Obtain calls that grant a new
+    /// instance even if the player owns an identical model already.
+    /// This deliberately does not change ordinary relic-bag uniqueness.
+    /// </summary>
+    private static bool AllowsNativeEventDuplicateRelic(
+        string? eventId, string relicId) =>
+        ((eventId is "proto.native.event.sunken_statue"
+            or "proto.native.underdocks.sunken_statue")
+            && relicId == "proto.native.event.sword_of_stone")
+        || (eventId == "proto.native.underdocks.drowning_beacon"
+            && relicId == "proto.native.underdocks.fresnel_lens");
+
     private static bool CanTakeEventChoice(
         PlayerState player,
         PrototypeEventChoiceDefinition choice,
@@ -1602,10 +1635,11 @@ public sealed partial class PrototypeGameEngine
 
                 var definition = PrototypeContent.Relic(
                     effect.RelicId);
-                if (player.Relics.Any(relic =>
-                        StringComparer.Ordinal.Equals(
-                            relic.RelicId,
-                            effect.RelicId))
+                if ((player.Relics.Any(relic =>
+                         StringComparer.Ordinal.Equals(
+                             relic.RelicId, effect.RelicId))
+                     && !AllowsNativeEventDuplicateRelic(
+                         world.Event?.EventId, effect.RelicId))
                     || !newlyGrantedRelics.Add(effect.RelicId))
                 {
                     return false;

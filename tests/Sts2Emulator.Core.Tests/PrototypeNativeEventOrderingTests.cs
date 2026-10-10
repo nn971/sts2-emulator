@@ -299,6 +299,42 @@ public sealed class PrototypeNativeEventOrderingTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void OvergrowthSunkenStatueCanGrantAnAlreadyOwnedSword()
+    {
+        const string swordId = "proto.native.event.sword_of_stone";
+        var state = EnterEvent("proto.native.event.sunken_statue",
+            "overgrowth-duplicate-sword", nativeEventGold: 114);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics =
+                [
+                    .. state.Player.Relics,
+                    new RelicInstance(swordId,
+                        System.Text.Json.JsonSerializer.SerializeToElement(
+                            new { ElitesDefeated = 2 }))
+                ]
+            }
+        };
+        var engine = new PrototypeGameEngine();
+        Assert.Contains(engine.GetLegalActions(state), action =>
+            action.Kind == "event_choice"
+            && action.ReadPayload<EventChoicePayload>().ChoiceId
+                == "grab");
+        var result = Take(state, "grab");
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        var swords = result.Player.Relics
+            .Where(relic => relic.RelicId == swordId).ToArray();
+        Assert.Equal(2, swords.Length);
+        Assert.Equal(2, swords[0].PersistentState
+            .GetProperty("ElitesDefeated").GetInt32());
+        Assert.False(swords[1].PersistentState
+            .TryGetProperty("ElitesDefeated", out _));
+        PrototypeStateInvariants.Validate(result);
+    }
+
     [Theory]
     [InlineData("solo", 135, 64, 135, 18)]
     [InlineData("solo", 164, 35, 164, 18)]

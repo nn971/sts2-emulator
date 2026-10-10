@@ -228,7 +228,8 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
-                Type: PrototypeCardType.Curse),
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
             // Neow's Torment grants Neow's Fury. Native v0.111.0:
             // deal 10 (14), then choose up to 2 (3) discard-pile cards
             // to return to hand, exhausting Fury afterward.
@@ -267,7 +268,8 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Quest,
                 RewardEligible: false,
                 MechanicsImplemented: false,
-                Type: PrototypeCardType.Quest),
+                Type: PrototypeCardType.Quest,
+                MaxUpgradeLevel: 0),
             // Dowsing's quest completion transforms into Abundance:
             // choose one of three upgraded, free-this-turn Powers, Exhaust.
             new PrototypeCardDefinition(
@@ -298,7 +300,8 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
-                Type: PrototypeCardType.Curse),
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
             new PrototypeCardDefinition(
                 "proto.native.underdocks.greed",
                 "Greed",
@@ -308,7 +311,8 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
-                Type: PrototypeCardType.Curse),
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
             new PrototypeCardDefinition(
                 "proto.native.event.guilty",
                 "Guilty",
@@ -318,7 +322,8 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
-                Type: PrototypeCardType.Curse),
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
             new PrototypeCardDefinition(
                 "proto.common.restlessness",
                 "Restlessness",
@@ -351,7 +356,8 @@ public static class PrototypeContent
                 Unplayable: true,
                 RewardEligible: false,
                 Type: PrototypeCardType.Status,
-                EndTurnDamageIfInHand: 3),
+                EndTurnDamageIfInHand: 3,
+                MaxUpgradeLevel: 0),
             new PrototypeCardDefinition(
                 "proto.status.slimed",
                 "Slimed",
@@ -365,7 +371,8 @@ public static class PrototypeContent
                 ExhaustOnUse: true,
                 Rarity: PrototypeCardRarity.Status,
                 RewardEligible: false,
-                Type: PrototypeCardType.Status),
+                Type: PrototypeCardType.Status,
+                MaxUpgradeLevel: 0),
             new PrototypeCardDefinition(
                 "proto.silent.strike",
                 "Strike",

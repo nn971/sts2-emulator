@@ -357,6 +357,119 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.Contains("take_them", ChoiceIds(engine, entered));
     }
 
+    [Fact]
+    public void SunkenStatueSwordCreatesIndependentSecondRelicInstance()
+    {
+        const string swordId = "proto.native.event.sword_of_stone";
+        var engine = new PrototypeGameEngine();
+        var state = FindEvent(engine,
+            "proto.native.underdocks.sunken_statue",
+            "underdocks-duplicate-sword", floor: 6);
+        var old = new RelicInstance(swordId,
+            System.Text.Json.JsonSerializer.SerializeToElement(
+                new { ElitesDefeated = 4 }));
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = state.Player.Relics.Append(old).ToArray()
+            }
+        };
+        var before = CanonicalJson.Sha256(state);
+        Assert.Contains("sword", ChoiceIds(engine, state));
+        var chosen = Choose(engine, state, "sword");
+        Assert.Equal(RunPhase.MapChoice, chosen.Phase);
+        var swords = chosen.Player.Relics
+            .Where(relic => relic.RelicId == swordId).ToArray();
+        Assert.Equal(2, swords.Length);
+        Assert.Equal(4, swords[0].PersistentState
+            .GetProperty("ElitesDefeated").GetInt32());
+        Assert.False(swords[1].PersistentState
+            .TryGetProperty("ElitesDefeated", out _));
+        Assert.Equal(before, CanonicalJson.Sha256(state));
+    }
+
+    [Fact]
+    public void DrowningBeaconClimbAllowsDuplicateLensAndPreservesOldInstance()
+    {
+        const string lensId = "proto.native.underdocks.fresnel_lens";
+        var engine = new PrototypeGameEngine();
+        var state = FindEvent(engine,
+            "proto.native.underdocks.drowning_beacon",
+            "underdocks-duplicate-lens", floor: 4);
+        var old = new RelicInstance(lensId,
+            System.Text.Json.JsonSerializer.SerializeToElement(
+                new { PreviousSource = 12 }));
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = state.Player.Relics.Append(old).ToArray()
+            }
+        };
+        Assert.Contains("climb", ChoiceIds(engine, state));
+        var after = Choose(engine, state, "climb");
+        Assert.Equal(RunPhase.MapChoice, after.Phase);
+        Assert.Equal(state.Player.MaxHp - 13, after.Player.MaxHp);
+        var lenses = after.Player.Relics.Where(relic =>
+            relic.RelicId == lensId).ToArray();
+        Assert.Equal(2, lenses.Length);
+        Assert.Equal(12, lenses[0].PersistentState
+            .GetProperty("PreviousSource").GetInt32());
+        Assert.False(lenses[1].PersistentState
+            .TryGetProperty("PreviousSource", out _));
+    }
+
+    [Fact]
+    public void DoorsLightNeverSelectsNonUpgradableUnupgradedCards()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = FindEvent(engine,
+            "proto.native.underdocks.doors_of_light_and_dark",
+            "doors-true-upgradability", floor: 4);
+
+        // Exactly two cards can be upgraded. An unupgradable Injury
+        // has upgrade level zero but must not enter the random pool.
+        var initialDeck = state.Player.Deck;
+        var upgradeable = initialDeck
+            .Where(card => PrototypeContent.Card(card.CardId)
+                .MaxUpgradeLevel > 0)
+            .Take(2).Select(card => card.InstanceId).ToArray();
+        Assert.Equal(2, upgradeable.Length);
+        var invalidId = initialDeck.First(card =>
+            !upgradeable.Contains(card.InstanceId)).InstanceId;
+        var prepared = initialDeck.Select(card =>
+            card.InstanceId == invalidId
+                ? new CardInstance(card.InstanceId,
+                    "proto.native.neow.injury", 0,
+                    PrototypeJson.EmptyObject())
+                : card with
+                {
+                    UpgradeLevel = upgradeable.Contains(card.InstanceId)
+                        ? 0
+                        : PrototypeContent.Card(card.CardId).MaxUpgradeLevel
+                }).ToArray();
+        state = state with
+        {
+            Player = state.Player with { Deck = prepared }
+        };
+        Assert.False(PrototypeGameEngine.CanSelectEventDeckCard(
+            prepared.Single(card => card.InstanceId == invalidId),
+            PrototypePersistentDeckChoiceKind.Upgrade,
+            null, null, false));
+        var hash = CanonicalJson.Sha256(state);
+        var done = Choose(engine, state, "light");
+        Assert.Equal(RunPhase.MapChoice, done.Phase);
+        Assert.All(upgradeable, id =>
+            Assert.Equal(1, done.Player.Deck.Single(card =>
+                card.InstanceId == id).UpgradeLevel));
+        var injury = done.Player.Deck.Single(card =>
+            card.InstanceId == invalidId);
+        Assert.Equal("proto.native.neow.injury", injury.CardId);
+        Assert.Equal(0, injury.UpgradeLevel);
+        Assert.Equal(hash, CanonicalJson.Sha256(state));
+    }
+
     private static string[] ChoiceIds(
         PrototypeGameEngine engine, RunState state) =>
         engine.GetLegalActions(state)
