@@ -9609,7 +9609,7 @@ public sealed partial class PrototypeGameEngine
                     .Where(power => power.ApplicationOrder
                         != flutter.ApplicationOrder)
                     .Concat(remaining > 0
-                        ? [flutter with { Stacks = remaining }]
+                        ? new[] { flutter with { Stacks = remaining } }
                         : Array.Empty<PrototypePowerInstanceState>())
                     .OrderBy(power => power.ApplicationOrder)
                     .ToArray(),
