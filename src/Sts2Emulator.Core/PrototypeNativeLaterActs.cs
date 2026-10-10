@@ -74,7 +74,11 @@ public static class PrototypeNativeLaterActs
                     [new(PrototypeRunEffectKind.AddCard,
                         CardId: SquashId)])
             ],
-            MinAct: 2, MaxAct: 2)
+            MinAct: 2, MaxAct: 2,
+            // Registered for explicit event-step tests only. Native Hive
+            // room/event bags are not yet implemented; never mix this
+            // event into the legacy prototype Act 2 random selector.
+            Weight: 0)
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
