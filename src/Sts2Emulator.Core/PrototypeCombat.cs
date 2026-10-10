@@ -3494,6 +3494,20 @@ public sealed partial class PrototypeGameEngine
                     }
                 }
 
+                if (unblockedAttackHits > 0 && enemy.Hp > 0
+                    && enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
+                    && enemy.BossPhase == 1
+                    && enemy.PowerStates.Any(power =>
+                        power.PowerId == PrototypeNativeGloryBosses.PainfulStabsId))
+                {
+                    var wounds = unblockedAttackHits * enemy.PowerStates
+                        .Where(power => power.PowerId
+                            == PrototypeNativeGloryBosses.PainfulStabsId)
+                        .Sum(power => power.Stacks);
+                    combat = AddGeneratedCardsToDiscard(
+                        combat, "proto.status.wound", wounds);
+                }
+
                 if (unblockedAttackHits > 0 && enemy.Hp > 0)
                 {
                     // The native Suck hook fires after a powered attack
@@ -3545,6 +3559,29 @@ public sealed partial class PrototypeGameEngine
                     turnEndStrength);
                 combat = strengthened.Combat;
                 enemy = strengthened.Enemy;
+            }
+
+            if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
+                && enemy.BossPhase >= 2
+                && enemy.PowerStates.Any(power => power.PowerId
+                    == PrototypeNativeGloryBosses.NemesisId))
+            {
+                var makeIntangible = !enemy.NemesisIntangibleNext;
+                enemy = enemy with
+                {
+                    Powers = enemy.PowerStates.Where(power =>
+                        power.PowerId != PrototypeNativeGloryBosses.NemesisIntangibleId)
+                        .ToArray(),
+                    NemesisIntangibleNext = makeIntangible
+                };
+                if (makeIntangible)
+                {
+                    var applied = ApplyEnemyPowerToState(
+                        combat, enemy,
+                        PrototypeNativeGloryBosses.NemesisIntangibleId, 1);
+                    combat = applied.Combat;
+                    enemy = applied.Enemy;
+                }
             }
 
             var consecutiveUses =
@@ -10442,7 +10479,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var enemy = enemies[index];
-        if (enemy.Hp <= 0)
+        if (enemy.Hp <= 0 || enemy.BossPendingRevival)
         {
             return new PrototypeDamageResult(
                 combat,
@@ -10506,7 +10543,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var enemy = enemies[index];
-        if (enemy.Hp <= 0)
+        if (enemy.Hp <= 0 || enemy.BossPendingRevival)
         {
             return new PrototypeDamageResult(combat, 0, false);
         }
@@ -10654,9 +10691,30 @@ public sealed partial class PrototypeGameEngine
     private static EnemyCombatState InterceptEnemyLethalDeath(
         EnemyCombatState enemy)
     {
-        if (enemy.Hp > 0 || enemy.LastStandTriggered)
+        if (enemy.BossPendingRevival || enemy.Hp > 0
+            || enemy.LastStandTriggered)
         {
             return enemy;
+        }
+
+        // Adaptable: the first two lethal hits interrupt the announced
+        // action with a forced resurrection on the same enemy instance.
+        // The final (third-form) lethal hit ends combat normally.
+        if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
+            && enemy.BossPhase < 2
+            && enemy.PowerStates.Any(power =>
+                power.PowerId == PrototypeNativeGloryBosses.AdaptableId))
+        {
+            return enemy with
+            {
+                Hp = 1,
+                Block = 0,
+                BossPendingRevival = true,
+                AiStateId = "respawn",
+                PlannedMoveIndex = 3,
+                PlannedNextAiStateId = enemy.BossPhase == 0
+                    ? "claw" : "lacerate"
+            };
         }
 
         foreach (var power in enemy.PowerStates)
@@ -10706,6 +10764,24 @@ public sealed partial class PrototypeGameEngine
         // once, before living allies process their death reactions.
         var defeated = combat.Enemies.FirstOrDefault(enemy =>
             enemy.InstanceId == defeatedEnemyId);
+        if (defeated is not null
+            && defeated.EnemyId == PrototypeNativeGloryBosses.AmalgamId)
+        {
+            combat = combat with
+            {
+                Enemies = combat.Enemies.Select(enemy =>
+                    enemy.EnemyId == PrototypeNativeGloryBosses.QueenId
+                    && enemy.Hp > 0
+                    && enemy.PlannedMoveIndex == 2
+                        ? enemy with
+                        {
+                            AiStateId = "enrage",
+                            PlannedMoveIndex = 5,
+                            PlannedNextAiStateId = "heads"
+                        }
+                        : enemy).ToArray()
+            };
+        }
         if (defeated is not null)
         {
             foreach (var stolenPower in defeated.PowerStates.Where(power =>
@@ -10823,7 +10899,7 @@ public sealed partial class PrototypeGameEngine
         int requestedHpLoss)
     {
         var hpLoss = Math.Max(0, requestedHpLoss);
-        if (hpLoss == 0 || enemy.Hp <= 0)
+        if (hpLoss == 0 || enemy.Hp <= 0 || enemy.BossPendingRevival)
         {
             return new PrototypeEnemyHpLossResult(
                 enemy,
