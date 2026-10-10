@@ -2615,6 +2615,96 @@ public sealed partial class PrototypeGameEngine
                             enemy = enemy with { Hp = 0, Block = 0 };
                             break;
 
+                        case PrototypeEnemyEffectKind.StealPlayerCard:
+                        {
+                            // Thieving Hopper only steals persistent cards
+                            // presently in the DRAW or DISCARD piles. A card
+                            // in hand/exhaust/temporary play cannot be stolen.
+                            var eligible = combat.DrawPile
+                                .Concat(combat.DiscardPile)
+                                .Select(id => combat.Cards.FirstOrDefault(
+                                    card => card.InstanceId == id))
+                                .Where(card => card is not null
+                                    && card.PersistentCardInstanceId is not null
+                                    && player.Deck.Any(persistent =>
+                                        persistent.InstanceId
+                                            == card.PersistentCardInstanceId))
+                                .Select(card => card!)
+                                .ToArray();
+                            if (eligible.Length == 0)
+                            {
+                                break;
+                            }
+
+                            // Source priority: Uncommon; then Common,
+                            // Rare or Event; then Basic or Quest; then
+                            // Ancient/Imbued. The latter enchantment is
+                            // not represented in this single-player
+                            // registry and remains unsupported.
+                            static int TheftPriority(CombatCardInstance card)
+                            {
+                                var rarity = PrototypeContent.Card(
+                                    card.CardId).Rarity;
+                                return rarity switch
+                                {
+                                    PrototypeCardRarity.Uncommon => 0,
+                                    PrototypeCardRarity.Common
+                                        or PrototypeCardRarity.Rare
+                                        or PrototypeCardRarity.Event => 1,
+                                    PrototypeCardRarity.Basic
+                                        or PrototypeCardRarity.Quest => 2,
+                                    PrototypeCardRarity.Ancient => 3,
+                                    _ => 4
+                                };
+                            }
+
+                            var best = eligible.Min(TheftPriority);
+                            var candidates = eligible.Where(card =>
+                                TheftPriority(card) == best).ToArray();
+                            // Native uses RunRng.CombatCardGeneration,
+                            // which has no matching prototype substream.
+                            // This stream is explicitly an approximation.
+                            var chosen = candidates[
+                                PrototypeRng.NextInt(rng, "combat",
+                                    candidates.Length)];
+                            var persistentId =
+                                chosen.PersistentCardInstanceId!.Value;
+                            var persistentCard = player.Deck.Single(card =>
+                                card.InstanceId == persistentId);
+                            player = player with
+                            {
+                                Deck = player.Deck.Where(card =>
+                                    card.InstanceId != persistentId)
+                                    .ToArray()
+                            };
+                            combat = combat with
+                            {
+                                DrawPile = combat.DrawPile.Where(id =>
+                                    id != chosen.InstanceId).ToArray(),
+                                DiscardPile = combat.DiscardPile.Where(id =>
+                                    id != chosen.InstanceId).ToArray(),
+                                Cards = combat.Cards.Where(card =>
+                                    card.InstanceId != chosen.InstanceId)
+                                    .ToArray(),
+                                NextPowerApplicationOrder =
+                                    combat.NextPowerApplicationOrder + 1
+                            };
+                            enemy = enemy with
+                            {
+                                StolenCards = enemy.StolenCards
+                                    is { } existing
+                                        ? existing.Append(persistentCard)
+                                            .ToArray()
+                                        : [persistentCard],
+                                Powers = enemy.PowerStates.Append(
+                                    new PrototypePowerInstanceState(
+                                        "proto.native.hive.swipe", 1,
+                                        combat.NextPowerApplicationOrder - 1))
+                                    .ToArray()
+                            };
+                            break;
+                        }
+
                         case PrototypeEnemyEffectKind.StealPlayerGold:
                         {
                             var stolen = Math.Min(Math.Max(0, amount), gold);
