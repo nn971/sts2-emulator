@@ -91,7 +91,15 @@ public static class PrototypeNativeLaterActs
         new("proto.native.hive.hard_to_kill", "Hard to Kill", 0, [],
             DoesNotStack: true, EnemyHpLossCapPerTrigger: 9),
         new("proto.native.hive.burrowed", "Burrowed", 0, [],
-            DoesNotStack: true, PreventsEnemyBlockClear: true)
+            DoesNotStack: true, PreventsEnemyBlockClear: true),
+        // Escape Artist is a display countdown; Swipe is an instanced
+        // carrier of the stolen persistent card (stored on enemy state).
+        new("proto.native.hive.escape_artist", "Escape Artist", 0, [],
+            DoesNotStack: true, EnemyStacksDecayAtSideTurnEnd: 1),
+        new("proto.native.hive.swipe", "Swipe", 0, [],
+            IsInstanced: true),
+        new("proto.native.hive.flutter", "Flutter", 0, [],
+            DoesNotStack: true)
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
@@ -253,6 +261,49 @@ public static class PrototypeNativeLaterActs
                     new("dizzy", PrototypeEnemyAiStateKind.Move,
                         MoveIndex: 3, NextStateId: "bite")
                 ])),
+        // ThievingHopper.cs: thievery steals the highest-priority
+        // card still in draw/discard, then attacks. On death Swipe
+        // restores that exact deck version; escape forfeits it.
+        new("proto.native.hive.thieving_hopper", "Thieving Hopper",
+            79, 0,
+            [
+                new("thievery",
+                [
+                    new(PrototypeEnemyEffectKind.StealPlayerCard, 1),
+                    new(PrototypeEnemyEffectKind.DamagePlayer, 17,
+                        AscensionDeltas: [new(9, 2)])
+                ]),
+                new("flutter", [new(
+                    PrototypeEnemyEffectKind.ApplyEnemyPower, 5,
+                    PowerId: "proto.native.hive.flutter")]),
+                new("hat_trick", [new(
+                    PrototypeEnemyEffectKind.DamagePlayer, 21,
+                    AscensionDeltas: [new(9, 2)])]),
+                new("nab", [new(
+                    PrototypeEnemyEffectKind.DamagePlayer, 14,
+                    AscensionDeltas: [new(9, 2)])]),
+                new("escape", [new(
+                    PrototypeEnemyEffectKind.EscapeEnemy, 0)]),
+                new("stunned", [])
+            ],
+            HpAscensionDeltas: [new(8, 5)],
+            StartingPowers: [new("proto.native.hive.escape_artist", 5)],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new("thievery",
+                [
+                    new("thievery", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 0, NextStateId: "flutter"),
+                    new("flutter", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 1, NextStateId: "hat_trick"),
+                    new("hat_trick", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 2, NextStateId: "nab"),
+                    new("nab", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 3, NextStateId: "escape"),
+                    new("escape", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 4, NextStateId: "escape"),
+                    new("stunned", PrototypeEnemyAiStateKind.Move,
+                        MoveIndex: 5, NextStateId: "hat_trick")
+                ])),
         // Source: DevotedSculptor.cs. An opening +9 Ritual, then
         // 12/15-damage Savage repeatedly; HP 162 (A8 172).
         new("proto.native.glory.devoted_sculptor", "Devoted Sculptor",
@@ -325,6 +376,10 @@ public static class PrototypeNativeLaterActs
         new("proto.native.hive.encounter.tunneler_weak",
             PrototypeRoomType.Combat,
             ["proto.native.hive.tunneler"],
+            MinAct: 2, MaxAct: 2, Weight: 0),
+        new("proto.native.hive.encounter.thieving_hopper_weak",
+            PrototypeRoomType.Combat,
+            ["proto.native.hive.thieving_hopper"],
             MinAct: 2, MaxAct: 2, Weight: 0),
         // Source: DevotedSculptorWeak.cs. Weight zero intentionally
         // prevents an incomplete native Glory map from sampling this

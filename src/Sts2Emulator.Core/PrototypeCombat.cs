@@ -2615,6 +2615,96 @@ public sealed partial class PrototypeGameEngine
                             enemy = enemy with { Hp = 0, Block = 0 };
                             break;
 
+                        case PrototypeEnemyEffectKind.StealPlayerCard:
+                        {
+                            // Thieving Hopper only steals persistent cards
+                            // presently in the DRAW or DISCARD piles. A card
+                            // in hand/exhaust/temporary play cannot be stolen.
+                            var eligible = combat.DrawPile
+                                .Concat(combat.DiscardPile)
+                                .Select(id => combat.Cards.FirstOrDefault(
+                                    card => card.InstanceId == id))
+                                .Where(card => card is not null
+                                    && card.PersistentCardInstanceId is not null
+                                    && player.Deck.Any(persistent =>
+                                        persistent.InstanceId
+                                            == card.PersistentCardInstanceId))
+                                .Select(card => card!)
+                                .ToArray();
+                            if (eligible.Length == 0)
+                            {
+                                break;
+                            }
+
+                            // Source priority: Uncommon; then Common,
+                            // Rare or Event; then Basic or Quest; then
+                            // Ancient/Imbued. The latter enchantment is
+                            // not represented in this single-player
+                            // registry and remains unsupported.
+                            static int TheftPriority(CombatCardInstance card)
+                            {
+                                var rarity = PrototypeContent.Card(
+                                    card.CardId).Rarity;
+                                return rarity switch
+                                {
+                                    PrototypeCardRarity.Uncommon => 0,
+                                    PrototypeCardRarity.Common
+                                        or PrototypeCardRarity.Rare
+                                        or PrototypeCardRarity.Event => 1,
+                                    PrototypeCardRarity.Basic
+                                        or PrototypeCardRarity.Quest => 2,
+                                    PrototypeCardRarity.Ancient => 3,
+                                    _ => 4
+                                };
+                            }
+
+                            var best = eligible.Min(TheftPriority);
+                            var candidates = eligible.Where(card =>
+                                TheftPriority(card) == best).ToArray();
+                            // Native uses RunRng.CombatCardGeneration,
+                            // which has no matching prototype substream.
+                            // This stream is explicitly an approximation.
+                            var chosen = candidates[
+                                PrototypeRng.NextInt(rng, "combat",
+                                    candidates.Length)];
+                            var persistentId =
+                                chosen.PersistentCardInstanceId!.Value;
+                            var persistentCard = player.Deck.Single(card =>
+                                card.InstanceId == persistentId);
+                            player = player with
+                            {
+                                Deck = player.Deck.Where(card =>
+                                    card.InstanceId != persistentId)
+                                    .ToArray()
+                            };
+                            combat = combat with
+                            {
+                                DrawPile = combat.DrawPile.Where(id =>
+                                    id != chosen.InstanceId).ToArray(),
+                                DiscardPile = combat.DiscardPile.Where(id =>
+                                    id != chosen.InstanceId).ToArray(),
+                                Cards = combat.Cards.Where(card =>
+                                    card.InstanceId != chosen.InstanceId)
+                                    .ToArray(),
+                                NextPowerApplicationOrder =
+                                    combat.NextPowerApplicationOrder + 1
+                            };
+                            enemy = enemy with
+                            {
+                                StolenCards = enemy.StolenCards
+                                    is { } existing
+                                        ? existing.Append(persistentCard)
+                                            .ToArray()
+                                        : [persistentCard],
+                                Powers = enemy.PowerStates.Append(
+                                    new PrototypePowerInstanceState(
+                                        "proto.native.hive.swipe", 1,
+                                        combat.NextPowerApplicationOrder - 1))
+                                    .ToArray()
+                            };
+                            break;
+                        }
+
                         case PrototypeEnemyEffectKind.StealPlayerGold:
                         {
                             var stolen = Math.Min(Math.Max(0, amount), gold);
@@ -3421,12 +3511,13 @@ public sealed partial class PrototypeGameEngine
                     var overkill = splashTarget is null ? 0
                         : Math.Max(0, Math.Max(0, damageAmount - splashTarget.Block)
                             - splashTarget.Hp);
-                    var damageResult = DamageEnemy(
+                    var damageResult = DamageEnemyInternal(
                         combat,
                         targetEnemyId.Value,
                         damageAmount,
                         operation.IsPoweredAttack
-                            ? MinimumPoweredAttackHpLoss(player) : 0);
+                            ? MinimumPoweredAttackHpLoss(player) : 0,
+                        operation.IsPoweredAttack);
                     combat = damageResult.Combat;
                     if (splashTarget is { Block: > 0 } && damageAmount >= splashTarget.Block)
                         combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
@@ -3639,12 +3730,13 @@ public sealed partial class PrototypeGameEngine
                             }
 
                             var echoTargetBlock = combat.Enemies.Single(enemy => enemy.InstanceId == enemyId).Block;
-                            var echoDamageResult = DamageEnemy(
+                            var echoDamageResult = DamageEnemyInternal(
                                 combat,
                                 enemyId,
                                 echoDamageAmount,
                                 operation.IsPoweredAttack
-                                    ? MinimumPoweredAttackHpLoss(player) : 0);
+                                    ? MinimumPoweredAttackHpLoss(player) : 0,
+                                operation.IsPoweredAttack);
                             combat = echoDamageResult.Combat;
                             if (echoTargetBlock > 0 && echoDamageAmount >= echoTargetBlock)
                                 combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, enemyId);
@@ -9447,7 +9539,16 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         int enemyId,
         int damage,
-        int minPoweredAttackHpLoss = 0)
+        int minPoweredAttackHpLoss = 0) =>
+        DamageEnemyInternal(combat, enemyId, damage,
+            minPoweredAttackHpLoss, false);
+
+    private static PrototypeDamageResult DamageEnemyInternal(
+        CombatState combat,
+        int enemyId,
+        int damage,
+        int minPoweredAttackHpLoss,
+        bool isPoweredAttack)
     {
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var index = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
@@ -9460,6 +9561,16 @@ public sealed partial class PrototypeGameEngine
         if (enemy.Hp <= 0)
         {
             return new PrototypeDamageResult(combat, 0, false);
+        }
+
+        // Flutter modifies only powered attack damage. Ordinary HP loss,
+        // poison and non-powered hit effects bypass the 50% modifier.
+        var flutter = enemy.PowerStates.FirstOrDefault(power =>
+            power.Stacks > 0
+            && power.PowerId == "proto.native.hive.flutter");
+        if (isPoweredAttack && flutter is not null)
+        {
+            damage = (int)Math.Floor(damage * 0.5m);
         }
 
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
@@ -9483,6 +9594,31 @@ public sealed partial class PrototypeGameEngine
         enemy = hpDamage.Enemy;
         var nextHp = Math.Max(0, enemy.Hp - hpDamage.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
+
+        if (isPoweredAttack && hpDamage.HpLoss > 0
+            && flutter is not null && nextHp > 0)
+        {
+            // Flutter.AfterDamageReceived decrements once per unblocked
+            // powered hit. On the fifth, CreatureCmd.Stun overrides the
+            // previously committed move for exactly one enemy turn;
+            // resume the interrupted move next turn.
+            var remaining = flutter.Stacks - 1;
+            enemy = enemy with
+            {
+                Powers = enemy.PowerStates
+                    .Where(power => power.ApplicationOrder
+                        != flutter.ApplicationOrder)
+                    .Concat(remaining > 0
+                        ? new[] { flutter with { Stacks = remaining } }
+                        : Array.Empty<PrototypePowerInstanceState>())
+                    .OrderBy(power => power.ApplicationOrder)
+                    .ToArray(),
+                PlannedMoveIndex = remaining <= 0
+                    ? 5 : enemy.PlannedMoveIndex,
+                PlannedNextAiStateId = remaining <= 0
+                    ? enemy.AiStateId : enemy.PlannedNextAiStateId
+            };
+        }
 
         // Some buffs (e.g. native Asleep) react only to unblocked
         // attack HP damage, not to blocked attacks or poison HP loss.

@@ -900,7 +900,8 @@ public enum PrototypeEnemyEffectKind
     StealPlayerGold,
     EscapeEnemy,
     HealSelf,
-    StoreEnemyPowerAsDamage
+    StoreEnemyPowerAsDamage,
+    StealPlayerCard
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -1413,7 +1414,12 @@ public sealed record EnemyCombatState(
     string? PlannedNextAiStateId = null,
     // BowlbugRock.Imbalanced tracks whether its prior attack was fully
     // blocked; survives intent commitment and deterministic snapshots.
-    bool IsOffBalance = false)
+    bool IsOffBalance = false,
+    // Each Swipe carries the original persistent card, not merely its
+    // type. Preserve its instance ID, upgrade and persistent state.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    CardInstance[]? StolenCards = null)
 {
     public EnemyCombatState Fork() => this with
     {
@@ -1425,7 +1431,13 @@ public sealed record EnemyCombatState(
             ? null
             : new Dictionary<string, int>(
                 MoveUseCounts,
-                StringComparer.Ordinal)
+                StringComparer.Ordinal),
+        StolenCards = StolenCards is null
+            ? null
+            : StolenCards.Select(card => card with
+            {
+                PersistentState = card.PersistentState.Clone()
+            }).ToArray()
     };
 
     public PrototypePowerInstanceState[] PowerStates =>
@@ -1712,7 +1724,13 @@ public sealed record RewardState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     int[]? ExtraGoldOptions = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    bool[]? ExtraGoldGroupsResolved = null)
+    bool[]? ExtraGoldGroupsResolved = null,
+    // Native Swipe.BeforeDeath restores the deck version and adds a
+    // special card reward; the card is already in the deck and must
+    // not be duplicated when this reward is inspected.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    CardInstance[]? ReturnedStolenCards = null)
 {
     /// <summary>
     /// Native rewards resolve each extra offer by its stable original
@@ -1887,7 +1905,13 @@ public sealed record RewardState(
             : (bool[])ExtraRelicGroupsResolved.Clone(),
         ExtraGoldOptions = ExtraGoldOptions is null ? null : (int[])ExtraGoldOptions.Clone(),
         ExtraGoldGroupsResolved = ExtraGoldGroupsResolved is null ? null : (bool[])ExtraGoldGroupsResolved.Clone(),
-        PendingDeckChoice = PendingDeckChoice?.Fork()
+        PendingDeckChoice = PendingDeckChoice?.Fork(),
+        ReturnedStolenCards = ReturnedStolenCards is null
+            ? null
+            : ReturnedStolenCards.Select(card => card with
+            {
+                PersistentState = card.PersistentState.Clone()
+            }).ToArray()
     };
 }
 

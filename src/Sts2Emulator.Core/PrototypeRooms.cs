@@ -3218,6 +3218,32 @@ public sealed partial class PrototypeGameEngine
         var room = world.ActiveRoom
             ?? throw new InvalidOperationException("Combat reward has no active room.");
 
+        // SwipePower.BeforeDeath returns the exact stolen DeckVersion and
+        // creates a distinct special card reward. This restoration is
+        // automatic and must NOT acquire another copy when the reward is
+        // inspected/closed. Escaped thieves retain the original card.
+        var returnedCards = combat.Enemies
+            .Where(enemy => enemy.Hp <= 0 && !enemy.Escaped)
+            .SelectMany(enemy => enemy.StolenCards
+                ?? Array.Empty<CardInstance>())
+            .ToArray();
+        if (returnedCards.Length > 0)
+        {
+            var deck = state.Player.Deck.ToList();
+            foreach (var card in returnedCards)
+            {
+                if (!deck.Any(existing =>
+                    existing.InstanceId == card.InstanceId))
+                {
+                    deck.Add(card);
+                }
+            }
+            state = state with
+            {
+                Player = state.Player with { Deck = deck.ToArray() }
+            };
+        }
+
         var nativeOvergrowth = UsesNativeActOneSystems(world);
 
         // RewardsSet.GenerateRewardsFor rolls the potion pity check
@@ -3444,7 +3470,9 @@ public sealed partial class PrototypeGameEngine
                 ? new bool[lavaRock.AdditionalRelicIds.Length]
                 : null,
             ExtraGoldOptions: nativeOvergrowth && recoveredGold > 0 ? [recoveredGold] : null,
-            ExtraGoldGroupsResolved: nativeOvergrowth && recoveredGold > 0 ? [false] : null);
+            ExtraGoldGroupsResolved: nativeOvergrowth && recoveredGold > 0 ? [false] : null,
+            ReturnedStolenCards: returnedCards.Length == 0
+                ? null : returnedCards);
 
         world = world with
         {
