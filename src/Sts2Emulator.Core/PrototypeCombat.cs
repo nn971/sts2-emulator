@@ -337,13 +337,21 @@ public sealed partial class PrototypeGameEngine
         combat = RefreshNativeHiveVitalSpark(combat);
         combat = RefreshNativeGloryGalvanic(combat);
 
+        // Opening hand draw bypasses the later automatic turn pipeline.
+        // Pollinous Core nevertheless observes the native first hand draw;
+        // retain its per-relic fourth-draw counter across combats.
+        var openingPollinous =
+            PrototypeNativeLaterActEventExpansion
+                .AdvancePollinousCoreHandDraw(state.Player);
+        state = state with { Player = openingPollinous.Player };
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
             + (boomingConchAtElite ? 2 : 0)
             + FirstTurnDrawBonus(state.Player)
             + state.Player.Relics.Sum(relic =>
                 PrototypeContent.Relic(relic.RelicId)
-                    .HandDrawBonus);
+                    .HandDrawBonus)
+            + openingPollinous.DrawBonus;
         var openingDraw = DrawCards(
             state.Player,
             combat,
@@ -363,9 +371,28 @@ public sealed partial class PrototypeGameEngine
         state = state with { Player = combatStarted.Player };
         // The initial player side begins immediately after combat
         // starts, before an explicit PlayerTurnStarted pipeline event.
+        // Thus the source's first-turn Royal Poison self-damage must
+        // resolve explicitly here, after CombatStarted relics (such as
+        // Anchor) have applied their block.
+        combat = combatStarted.Combat;
+        var firstTurnRoyalPoison = state.Player.Relics.Count(relic =>
+            relic.RelicId ==
+                PrototypeNativeLaterActEventExpansion.RoyalPoisonRelicId);
+        if (firstTurnRoyalPoison > 0)
+        {
+            var royalEffects = new Queue<PrototypeQueuedOperation>(
+                Enumerable.Range(0, firstTurnRoyalPoison).Select(_ =>
+                    new PrototypeQueuedOperation(
+                        PrototypeCombatEffectKind.DamagePlayer, 4,
+                        IgnorePlayerBlock: true)));
+            var royalResult = ResolveOperations(
+                state.Player, combat, royalEffects, state.Rng);
+            state = state with { Player = royalResult.Player };
+            combat = royalResult.Combat;
+        }
+
         // Rampart's first grant must already protect the Turret.
-        combat = GrantEnemyAllyBlockOnPlayerTurnStart(
-            combatStarted.Combat);
+        combat = GrantEnemyAllyBlockOnPlayerTurnStart(combat);
         combat = CommitEnemyIntents(combat, state.Rng);
 
         world = world with
