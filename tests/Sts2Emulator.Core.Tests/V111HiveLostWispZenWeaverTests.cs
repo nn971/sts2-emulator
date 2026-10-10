@@ -149,7 +149,9 @@ public sealed class V111HiveLostWispZenWeaverTests
         var state = CombatWith(
             "proto.silent.accuracy", 0, withLostWisp: true);
         var play = Assert.Single(engine.GetLegalActions(state),
-            action => action.Kind == "play_card");
+            action => action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>()
+                    .CardInstanceId == 1);
         var result = engine.Step(state, play).State;
         Assert.Equal(new[] { 92, 92 },
             result.World!.Combat!.Enemies.Select(e => e.Hp));
