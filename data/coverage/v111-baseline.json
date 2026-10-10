@@ -15040,7 +15040,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Bugslayer.cs#5ea3d90ad9ac2ec95fb1316662f5669cfba1b346e7dce24406393d7875564f7f"
         ],
         "implementation": "partial",
-        "integration": "partial",
+        "integration": "missing",
         "kind": "events",
         "missing_branches": [
           "initial/EXTERMINATION",
