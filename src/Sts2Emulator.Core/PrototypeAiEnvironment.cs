@@ -42,7 +42,9 @@ public sealed record PrototypeAiEnemy(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     int? IntentDamage = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    int? IntentHits = null);
+    int? IntentHits = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? IntentBaseDamage = null);
 
 public sealed record PrototypeAiCombat(
     int Turn,
@@ -479,109 +481,29 @@ public sealed class PrototypeAiEnvironment
                 : (PrototypeCompletedRoomRecord[])world.CompletedRooms.Clone());
     }
 
-    // The current combat engine rolls many random/state-machine moves when
-    // the enemy ACTS, not when the turn is first displayed. Do not turn that
-    // private future RNG into a fake public prediction. Only show a move
-    // that is already forced by the current publicly visible turn state.
-    private static PrototypeEnemyMoveDefinition? VisibleDeterministicMove(
+    // Only an action already stored by the combat engine can be public.
+    // Never perform enemy AI selection from an observation: that would
+    // consume hidden RNG and reveal a future rather than a chosen intent.
+    private static PrototypeEnemyMoveDefinition? PlannedMove(
         EnemyCombatState enemy,
-        IReadOnlyList<EnemyCombatState> formation,
         bool hideEnemyIntents)
     {
         if (hideEnemyIntents
             || enemy.Hp <= 0
             || enemy.SkipNextEnemyAction
-            || enemy.EnemyActionSkipsRemaining > 0)
+            || enemy.EnemyActionSkipsRemaining > 0
+            || enemy.PlannedMoveIndex is not { } index)
         {
             return null;
         }
 
         var definition = PrototypeContent.Enemy(enemy.EnemyId);
-        if (definition.Moves.Length == 0 || enemy.MoveIndex < 0)
-        {
-            return null;
-        }
-
-        if (definition.MovePolicy == PrototypeEnemyMovePolicy.SequentialLoop)
-        {
-            var index = enemy.MoveIndex;
-            if (index >= definition.Moves.Length)
-            {
-                var start = definition.MoveLoopStartIndex;
-                if (start < 0 || start >= definition.Moves.Length)
-                {
-                    return null;
-                }
-
-                index = start + ((index - start) % (definition.Moves.Length - start));
-            }
-
-            return definition.Moves[index];
-        }
-
-        if (definition.MovePolicy
-            == PrototypeEnemyMovePolicy.UniformRandomAfterOpener)
-        {
-            var opening = definition.OpeningMoveIndices
-                ?? [definition.OpeningMoveIndex];
-            if (enemy.MoveIndex < opening.Length)
-            {
-                var index = opening[enemy.MoveIndex];
-                return index >= 0 && index < definition.Moves.Length
-                    ? definition.Moves[index]
-                    : null;
-            }
-        }
-
-        if (definition.MovePolicy == PrototypeEnemyMovePolicy.StateMachine
-            && definition.Ai is { } ai)
-        {
-            var states = ai.States.ToDictionary(state => state.Id,
-                StringComparer.Ordinal);
-            var stateId = enemy.AiStateId ?? ai.InitialStateId;
-            for (var depth = 0; depth < 32; depth++)
-            {
-                if (!states.TryGetValue(stateId, out var state))
-                {
-                    return null;
-                }
-
-                if (state.Kind == PrototypeEnemyAiStateKind.Move)
-                {
-                    return state.MoveIndex is { } index
-                        && index >= 0 && index < definition.Moves.Length
-                        ? definition.Moves[index]
-                        : null;
-                }
-
-                if (state.Kind != PrototypeEnemyAiStateKind.Conditional)
-                {
-                    // Random branches are selected by the private combat RNG
-                    // at enemy action time. No public projection may roll
-                    // ahead or claim to know which branch will be selected.
-                    return null;
-                }
-
-                var branch = (state.ConditionalBranches
-                    ?? Array.Empty<PrototypeEnemyAiConditionalBranch>())
-                    .FirstOrDefault(item =>
-                        PrototypeGameEngine.EnemyAiConditionMatches(
-                            enemy, formation, item));
-                if (branch is null)
-                {
-                    return null;
-                }
-
-                stateId = branch.TargetStateId;
-            }
-        }
-
-        // Unresolved random move selection requires an engine change to
-        // precommit a fair public intent before the player acts.
-        return null;
+        return index >= 0 && index < definition.Moves.Length
+            ? definition.Moves[index]
+            : null;
     }
 
-    private static (int? Damage, int? Hits) VisibleAttackIntent(
+    private static (int? BaseDamage, int? Damage, int? Hits) VisibleAttackIntent(
         CombatState combat,
         EnemyCombatState enemy,
         PrototypeEnemyMoveDefinition move,
@@ -589,6 +511,7 @@ public sealed class PrototypeAiEnvironment
         int ascension)
     {
         int? perHitDamage = null;
+        int? perHitBaseDamage = null;
         var hits = 0;
         var earlierSelfBuff = false;
         foreach (var effect in move.Effects)
@@ -604,7 +527,7 @@ public sealed class PrototypeAiEnvironment
 
             if (earlierSelfBuff)
             {
-                return (null, null);
+                return (null, null, null);
             }
 
             // The v1 interface represents a homogeneous attack as one
@@ -612,7 +535,7 @@ public sealed class PrototypeAiEnvironment
             // damage and nonuniform attack amounts cannot fit this shape.
             if (!effect.IsAttack)
             {
-                return (null, null);
+                return (null, null, null);
             }
 
             var repetitions = effect.RepetitionsAt(ascension);
@@ -621,21 +544,29 @@ public sealed class PrototypeAiEnvironment
                 continue;
             }
 
+            // Base damage includes the public act/ascension scaling, but
+            // no dynamic Strength/Weak/Vulnerable or damage caps.
+            var baseDamage = Math.Max(0, effect.AmountAt(act, ascension));
             var damage = Math.Max(0,
                 PrototypeGameEngine.EnemyHitDamage(
                     enemy, combat, effect, act, ascension));
-            if (perHitDamage is not null && perHitDamage != damage)
+            if ((perHitDamage is not null && perHitDamage != damage)
+                || (perHitBaseDamage is not null
+                    && perHitBaseDamage != baseDamage))
             {
-                return (null, null);
+                return (null, null, null);
             }
 
+            perHitBaseDamage = baseDamage;
             perHitDamage = damage;
             hits += repetitions;
         }
 
-        return hits > 0 && perHitDamage is not null
-            ? (perHitDamage, hits)
-            : (null, null);
+        return hits > 0
+            && perHitDamage is not null
+            && perHitBaseDamage is not null
+            ? (perHitBaseDamage, perHitDamage, hits)
+            : (null, null, null);
     }
 
     private static PrototypeAiCombat CreateCombatObservation(
@@ -675,10 +606,11 @@ public sealed class PrototypeAiEnvironment
             PlayPile: combat.PlayCardIds.Select(Card).ToArray(),
             Enemies: combat.Enemies.Select(enemy =>
             {
-                var move = VisibleDeterministicMove(
-                    enemy, combat.Enemies, hideEnemyIntents);
+                var move = PlannedMove(enemy, hideEnemyIntents);
                 var threat = move is null
-                    ? (Damage: (int?)null, Hits: (int?)null)
+                    ? (BaseDamage: (int?)null,
+                       Damage: (int?)null,
+                       Hits: (int?)null)
                     : VisibleAttackIntent(combat, enemy, move, act, ascension);
                 return new PrototypeAiEnemy(
                     enemy.InstanceId,
@@ -690,7 +622,8 @@ public sealed class PrototypeAiEnvironment
                     enemy.PowerStates.Select(power =>
                         new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray(),
                     threat.Damage,
-                    threat.Hits);
+                    threat.Hits,
+                    threat.BaseDamage);
             }).ToArray(),
             PendingChoiceId: combat.PendingChoice?.ChoiceId,
             PlayerPowers: combat.PlayerPowers
