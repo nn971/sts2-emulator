@@ -2970,10 +2970,6 @@ public static class PrototypeContent
                                 PowerId: "proto.power.vigor")
                         ])
                 ]),
-            new PrototypePowerDefinition(
-                "proto.power.vigor", "Vigor", 0,
-                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
-                PlayerAttackDamageBonusPerStack: 1),
             // Panache instances independently count five cards during each
             // turn, ignoring the card which originally applied the power.
             new PrototypePowerDefinition(
