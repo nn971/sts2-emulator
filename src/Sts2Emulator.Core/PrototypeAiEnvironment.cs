@@ -361,6 +361,8 @@ public sealed class PrototypeAiEnvironment
                 ? null
                 : CreateCombatObservation(
                     world.Combat,
+                    world.Act,
+                    state.Ascension,
                     state.Player.Relics.Any(relic =>
                         PrototypeContent.Relic(
                             relic.RelicId)
@@ -540,7 +542,9 @@ public sealed class PrototypeAiEnvironment
     private static (int? Damage, int? Hits) VisibleAttackIntent(
         CombatState combat,
         EnemyCombatState enemy,
-        PrototypeEnemyMoveDefinition move)
+        PrototypeEnemyMoveDefinition move,
+        int act,
+        int ascension)
     {
         int? perHitDamage = null;
         var hits = 0;
@@ -550,8 +554,7 @@ public sealed class PrototypeAiEnvironment
             {
                 // A preceding self-buff could alter subsequent hit damage.
                 // Do not approximate it using the enemy's pre-move powers.
-                if (effect.Kind == PrototypeEnemyEffectKind.ApplyEnemyPower
-                    && hits == 0)
+                if (effect.Kind == PrototypeEnemyEffectKind.ApplyEnemyPower)
                 {
                     return (null, null);
                 }
@@ -567,7 +570,7 @@ public sealed class PrototypeAiEnvironment
                 return (null, null);
             }
 
-            var repetitions = effect.RepetitionsAt(combat.Ascension);
+            var repetitions = effect.RepetitionsAt(ascension);
             if (repetitions <= 0)
             {
                 continue;
@@ -575,7 +578,7 @@ public sealed class PrototypeAiEnvironment
 
             var damage = Math.Max(0,
                 PrototypeGameEngine.EnemyHitDamage(
-                    enemy, combat, effect, combat.Act, combat.Ascension));
+                    enemy, combat, effect, act, ascension));
             if (perHitDamage is not null && perHitDamage != damage)
             {
                 return (null, null);
@@ -592,6 +595,8 @@ public sealed class PrototypeAiEnvironment
 
     private static PrototypeAiCombat CreateCombatObservation(
         CombatState combat,
+        int act,
+        int ascension,
         bool hideEnemyIntents)
     {
         var byId = combat.Cards.ToDictionary(card => card.InstanceId);
@@ -628,7 +633,7 @@ public sealed class PrototypeAiEnvironment
                 var move = VisibleDeterministicMove(enemy, hideEnemyIntents);
                 var threat = move is null
                     ? (Damage: (int?)null, Hits: (int?)null)
-                    : VisibleAttackIntent(combat, enemy, move);
+                    : VisibleAttackIntent(combat, enemy, move, act, ascension);
                 return new PrototypeAiEnemy(
                     enemy.InstanceId,
                     enemy.EnemyId,
