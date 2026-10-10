@@ -9,6 +9,10 @@ internal static class PrototypeAiJsonlServer
     public const string FairPolicyId = "prototype-fair-v0";
     public const string NativeOvergrowthResetId =
         "prototype-native-overgrowth-reset-v1";
+    // A semantic capability: v1 guarantees committed, non-rerolling
+    // public enemy intents with optional per-hit base/current damage.
+    public const string PublicEnemyIntentId =
+        "prototype-committed-public-enemy-intents-v1";
 
     public static void Run(TextReader input, TextWriter output)
     {
@@ -93,7 +97,8 @@ internal static class PrototypeAiJsonlServer
                             conditionalCombatEntryId = PrototypeConditionedCombatEntry.SchemaId,
                             factorizedInitialStreamsId = PrototypeFactorizedRunFactory.SchemaId,
                             pristineRewardProposalId = PrototypePristineRewardProposal.SchemaId,
-                            nativeOvergrowthResetId = NativeOvergrowthResetId
+                            nativeOvergrowthResetId = NativeOvergrowthResetId,
+                            publicEnemyIntentId = PublicEnemyIntentId
                         });
                         break;
 
