@@ -2346,6 +2346,10 @@ public sealed partial class PrototypeGameEngine
                 && StringComparer.Ordinal.Equals(
                     enemy.SlotName,
                     branch.Value),
+            PrototypeEnemyAiConditionKind.IsOffBalance =>
+                enemy.IsOffBalance,
+            PrototypeEnemyAiConditionKind.IsNotOffBalance =>
+                !enemy.IsOffBalance,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(branch.Condition))
         };
@@ -2499,6 +2503,13 @@ public sealed partial class PrototypeGameEngine
                    NextAiStateId: enemy.PlannedNextAiStateId)
                 : SelectEnemyMove(definition, enemy, enemies, rng);
             var move = selection.Move;
+            // BowlbugRock.DizzyMove unstuns the model and clears its
+            // persistent off-balance condition before its next Headbutt.
+            if (enemy.EnemyId == "proto.native.hive.bowlbug_rock"
+                && move.Id == "dizzy")
+            {
+                enemy = enemy with { IsOffBalance = false };
+            }
             // Vigor applies to every hit of one attack command, then
             // consumes the stacks that existed when the command began.
             // Vigor gained by this move is never consumed by that move.
@@ -2562,6 +2573,19 @@ public sealed partial class PrototypeGameEngine
                                 Math.Max(0, damage));
                             block -= absorbed;
                             var unblocked = Math.Max(0, damage - absorbed);
+                            // ImbalancedPower.AfterDamageGiven: a fully
+                            // blocked attack leaves Bowlbug Rock off-balance.
+                            // Headbutt then commits Dizzy on the NEXT
+                            // enemy turn rather than rerolling in Observe.
+                            if (effect.IsAttack && damage > 0
+                                && unblocked == 0
+                                && enemy.PowerStates.Any(power =>
+                                    power.Stacks > 0
+                                    && power.PowerId ==
+                                        "proto.native.hive.imbalanced"))
+                            {
+                                enemy = enemy with { IsOffBalance = true };
+                            }
                             if (effect.IsAttack && unblocked > 0 && hp > 0)
                             {
                                 unblockedAttackHits++;
