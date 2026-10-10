@@ -576,7 +576,8 @@ public sealed record PrototypeCombatEffectSpec(
     bool GainBlockEqualToAttackDamage = false,
     bool SplashUnpoweredAttackToOtherEnemies = false,
     PrototypeCardType? AutoPlayRequiredCardType = null,
-    bool AutoPlayFallbackToUnplayable = false)
+    bool AutoPlayFallbackToUnplayable = false,
+    bool IgnorePlayerBlock = false)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -626,7 +627,8 @@ public sealed record PrototypeQueuedOperation(
     bool SplashUnpoweredAttackToOtherEnemies = false,
     PrototypeCardType? AutoPlayRequiredCardType = null,
     bool AutoPlayFallbackToUnplayable = false,
-    long? SourcePowerApplicationOrder = null);
+    long? SourcePowerApplicationOrder = null,
+    bool IgnorePlayerBlock = false);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,

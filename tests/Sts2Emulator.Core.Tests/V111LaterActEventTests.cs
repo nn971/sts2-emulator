@@ -38,7 +38,8 @@ public sealed class V111LaterActEventTests
                 action.ReadPayload<EventChoicePayload>().ChoiceId).ToArray();
             Assert.Equal(2, actionIds.Length);
             Assert.Equal(
-                PrototypeContent.Event(selected).Choices.Select(c => c.Id),
+                PrototypeContent.Event(selected).Choices.Take(2)
+                    .Select(c => c.Id),
                 actionIds);
         }
         Assert.Equal(PrototypeNativeLaterActEvents.SupportedIds(act).Length,

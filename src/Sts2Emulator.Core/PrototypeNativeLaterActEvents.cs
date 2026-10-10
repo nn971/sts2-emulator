@@ -16,8 +16,11 @@ public static class PrototypeNativeLaterActEvents
     public static string[] SupportedIds(int act) => act switch
     {
         2 => [PrototypeNativeLaterActs.HiveBugslayerId,
-            InfestedAutomatonId],
-        3 => [ReflectionsId],
+            InfestedAutomatonId,
+            PrototypeNativeLaterActEventExpansion.LostWispEventId,
+            PrototypeNativeLaterActEventExpansion.ColossalFlowerEventId],
+        3 => [ReflectionsId,
+            PrototypeNativeLaterActEventExpansion.RoundTeaPartyEventId],
         _ => throw new ArgumentOutOfRangeException(nameof(act))
     };
 
@@ -67,6 +70,8 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         return PrototypeNativeLaterActEvents.SupportedIds(world.Act)
             .Where(id => !world.EventIds.Contains(id, StringComparer.Ordinal))
+            .Where(id => PrototypeNativeLaterActEventExpansion.IsEligible(
+                id, state.Player))
             .Select(PrototypeContent.Event).ToArray();
     }
 
@@ -86,7 +91,11 @@ public sealed partial class PrototypeGameEngine
         {
             World = world with
             {
-                Event = new EventState(chosen.Id),
+                Event = new EventState(chosen.Id,
+                    NativeEventGold: chosen.Id ==
+                        PrototypeNativeLaterActEventExpansion.LostWispEventId
+                        ? 45 + PrototypeRng.NextInt(state.Rng, "event", 31)
+                        : 0),
                 EventHistory = world.EventIds.Append(chosen.Id).ToArray()
             },
             Phase = RunPhase.Event
@@ -110,6 +119,9 @@ public sealed partial class PrototypeGameEngine
                 option => option.Id == choice))
             throw new InvalidOperationException(
                 $"Unknown later-act event choice '{choice}'.");
+
+        if (IsLaterActExpandedEvent(eventState.EventId))
+            return StepLaterActExpandedEvent(state, choice);
 
         var player = state.Player;
         var nextId = world.NextCardInstanceId;

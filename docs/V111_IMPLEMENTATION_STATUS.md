@@ -331,6 +331,17 @@ This is an intermediate implementation. Final release gates remain open.
   an assertion that the full later-act event inventory, eligibility
   predicates or native event RNG distribution is implemented. See
   [event source audit](reference-builds/v0.111.0-hive-glory-events-first-slice.md).
+- Extended source-backed Hive/Glory events with **Lost Wisp,
+  Colossal Flower and Round Tea Party**. These introduce Decay,
+  Lost Wisp relic (8 unpowered AoE after playing a Power),
+  Pollinous Core (persistent fourth-hand-draw +2) and Royal Poison
+  (first-turn 4 unblockable damage). Multi-page Flower/Tea state,
+  HP eligibility and the source-shaped random relic grab bag
+  are tested independently of live-game parity. Configured runs
+  now sample a **curated set of four Hive and two Glory events**,
+  not the native complete event distribution; unsupported events,
+  other Ancients and native RNG fidelity remain missing. See
+  [event expansion audit](reference-builds/v0.111.0-hive-glory-events-expansion-v2.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

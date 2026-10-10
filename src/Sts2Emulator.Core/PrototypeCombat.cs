@@ -337,13 +337,21 @@ public sealed partial class PrototypeGameEngine
         combat = RefreshNativeHiveVitalSpark(combat);
         combat = RefreshNativeGloryGalvanic(combat);
 
+        // Opening hand draw bypasses the later automatic turn pipeline.
+        // Pollinous Core nevertheless observes the native first hand draw;
+        // retain its per-relic fourth-draw counter across combats.
+        var openingPollinous =
+            PrototypeNativeLaterActEventExpansion
+                .AdvancePollinousCoreHandDraw(state.Player);
+        state = state with { Player = openingPollinous.Player };
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
             + (boomingConchAtElite ? 2 : 0)
             + FirstTurnDrawBonus(state.Player)
             + state.Player.Relics.Sum(relic =>
                 PrototypeContent.Relic(relic.RelicId)
-                    .HandDrawBonus);
+                    .HandDrawBonus)
+            + openingPollinous.DrawBonus;
         var openingDraw = DrawCards(
             state.Player,
             combat,
@@ -363,9 +371,28 @@ public sealed partial class PrototypeGameEngine
         state = state with { Player = combatStarted.Player };
         // The initial player side begins immediately after combat
         // starts, before an explicit PlayerTurnStarted pipeline event.
+        // Thus the source's first-turn Royal Poison self-damage must
+        // resolve explicitly here, after CombatStarted relics (such as
+        // Anchor) have applied their block.
+        combat = combatStarted.Combat;
+        var firstTurnRoyalPoison = state.Player.Relics.Count(relic =>
+            relic.RelicId ==
+                PrototypeNativeLaterActEventExpansion.RoyalPoisonRelicId);
+        if (firstTurnRoyalPoison > 0)
+        {
+            var royalEffects = new Queue<PrototypeQueuedOperation>(
+                Enumerable.Range(0, firstTurnRoyalPoison).Select(_ =>
+                    new PrototypeQueuedOperation(
+                        PrototypeCombatEffectKind.DamagePlayer, 4,
+                        IgnorePlayerBlock: true)));
+            var royalResult = ResolveOperations(
+                state.Player, combat, royalEffects, state.Rng);
+            state = state with { Player = royalResult.Player };
+            combat = royalResult.Combat;
+        }
+
         // Rampart's first grant must already protect the Turret.
-        combat = GrantEnemyAllyBlockOnPlayerTurnStart(
-            combatStarted.Combat);
+        combat = GrantEnemyAllyBlockOnPlayerTurnStart(combat);
         combat = CommitEnemyIntents(combat, state.Rng);
 
         world = world with
@@ -1834,6 +1861,10 @@ public sealed partial class PrototypeGameEngine
                     state.Rng);
                 player = beforeHandDraw.Player;
                 combat = ReturnLastTurnReboundCardsToHand(beforeHandDraw.Combat);
+                var pollinousDraw =
+                    PrototypeNativeLaterActEventExpansion
+                        .AdvancePollinousCoreHandDraw(player);
+                player = pollinousDraw.Player;
 
                 var handDrawBonus =
                     combat.PlayerPowers.Sum(power =>
@@ -1842,7 +1873,8 @@ public sealed partial class PrototypeGameEngine
                         * power.Stacks)
                     + player.Relics.Sum(relic =>
                         PrototypeContent.Relic(relic.RelicId)
-                            .HandDrawBonus);
+                            .HandDrawBonus)
+                    + pollinousDraw.DrawBonus;
                 var drawn = DrawCards(
                     player,
                     combat,
@@ -3947,6 +3979,7 @@ public sealed partial class PrototypeGameEngine
                         effect.AutoPlayFallbackToUnplayable,
                     SourcePowerApplicationOrder:
                         sourcePowerApplicationOrder,
+                    IgnorePlayerBlock: effect.IgnorePlayerBlock,
                     PowerStoredValue:
                         effect.PowerStoredValue
                         + (effect.PowerStoredValueUpgradeDelta * upgradeLevel),
@@ -5123,9 +5156,9 @@ public sealed partial class PrototypeGameEngine
                             Math.Max(
                                 0,
                                 operation.Amount));
-                    var absorbed = Math.Min(
-                        combat.PlayerBlock,
-                        incoming);
+                    var absorbed = operation.IgnorePlayerBlock
+                        ? 0
+                        : Math.Min(combat.PlayerBlock, incoming);
                     combat = combat with
                     {
                         PlayerBlock =

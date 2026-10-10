@@ -804,6 +804,10 @@ public sealed partial class PrototypeGameEngine
             return GetNativeTabletFollowupActions(eventState);
         }
 
+        if (UsesNativeLaterActEvents(state)
+            && IsLaterActExpandedEvent(eventState.EventId))
+            return GetLaterActExpandedEventActions(eventState);
+
         var definition =
             PrototypeContent.Event(
                 eventState.EventId);
