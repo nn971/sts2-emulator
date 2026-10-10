@@ -142,12 +142,12 @@ public sealed class V111HiveBossFirstSliceTests
         var escapes = combat.Cards.Where(card =>
             card.CardId == PrototypeNativeHiveBosses.FranticEscapeId).ToArray();
         Assert.Equal(6, escapes.Length);
-        // EndTurn also starts the next player turn, so some generated
-        // draw cards may already be in hand. Test the combined zone.
-        Assert.Equal(3, combat.DrawPile.Concat(combat.Hand).Count(id =>
-            escapes.Any(card => card.InstanceId == id)));
-        Assert.Equal(3, combat.DiscardPile.Count(id =>
-            escapes.Any(card => card.InstanceId == id)));
+        // EndTurn also starts the player's next draw phase. The
+        // original draw pile can exhaust, reshuffling generated cards
+        // from discard. Assert conservation across all three zones.
+        Assert.Equal(6, combat.DrawPile.Concat(combat.Hand)
+            .Concat(combat.DiscardPile).Count(id =>
+                escapes.Any(card => card.InstanceId == id)));
 
         var chosen = escapes.First(card => combat.Hand.Contains(
             card.InstanceId));
