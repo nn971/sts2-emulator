@@ -8,7 +8,9 @@ public enum PrototypeCardEnchantmentKind
     Glam,
     Inky,
     Sown,
-    Slither
+    Slither,
+    Nimble,
+    Steady
 }
 
 public sealed record PrototypeCardEnchantment(
@@ -36,13 +38,16 @@ public sealed record PlayerState(
     int Gold,
     CardInstance[] Deck,
     RelicInstance[] Relics,
-    PotionInstance?[] PotionSlots)
+    PotionInstance?[] PotionSlots,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    CharacterResourceState? Resources = null)
 {
     public PlayerState Fork() => this with
     {
         Deck = (CardInstance[])Deck.Clone(),
         Relics = (RelicInstance[])Relics.Clone(),
-        PotionSlots = (PotionInstance?[])PotionSlots.Clone()
+        PotionSlots = (PotionInstance?[])PotionSlots.Clone(),
+        Resources = Resources?.Fork()
     };
 }
 
@@ -62,13 +67,16 @@ public sealed record RunState(
     RngBundle Rng,
     JsonElement ExtensionState,
     RunWorldState? World = null,
-    int Ascension = 0)
+    int Ascension = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    RunConfiguration? Configuration = null)
 {
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
         Rng = Rng.Fork(),
         ExtensionState = ExtensionState.Clone(),
-        World = World?.Fork()
+        World = World?.Fork(),
+        Configuration = Configuration?.Fork()
     };
 }

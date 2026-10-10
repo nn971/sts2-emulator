@@ -18,6 +18,18 @@ jobs:
         run: dotnet build Sts2Emulator.sln -c Release --no-restore
       - name: Test
         run: dotnet test Sts2Emulator.sln -c Release --no-build
+      - name: Pinned v111 inventory and executable coverage
+        run: python tools/check_v111_coverage.py
+      - name: v111 Python binding, snapshots and deterministic batches
+        run: python tools/v111_interface_smoke.py
+      - name: Reproducible v111 coverage and performance reports
+        run: |
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage > /tmp/v111-coverage.json
+          dotnet benchmarks/Sts2Emulator.Microbench/bin/Release/net9.0/Sts2Emulator.Microbench.dll v111 100 > /tmp/v111-benchmark.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v111-coverage-and-performance
+          path: /tmp/v111-*.json
       - name: Prototype sweep diversity report
         run: dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-sweep 500
       - name: Overgrowth seeded audit
@@ -57,6 +69,7 @@ jobs:
           hello = call({"request_id": "hello", "op": "hello"})
           assert hello["wireSchemaId"] == "prototype-ai-jsonl-v0"
           assert hello["aiSchemaId"] == "prototype-ai-v0"
+          assert hello["publicEnemyIntentId"] == "prototype-committed-public-enemy-intents-v1"
 
           reset = call({"request_id": "reset", "op": "reset", "seed": "ci-bridge"})
           root = reset["stateHandle"]
@@ -110,6 +123,8 @@ jobs:
           process.wait(timeout=5)
           assert process.returncode == 0
           PY
+      - name: Native one-run capture preflight and audit smoke
+        run: python tools/native_one_run_audit_smoke.py
       - name: Passive oracle action-ledger smoke
         run: python tools/native_overgrowth_action_ledger_smoke.py
       - name: Native action-frame identity and callback smoke

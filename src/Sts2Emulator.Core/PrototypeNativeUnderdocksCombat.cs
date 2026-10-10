@@ -25,6 +25,55 @@ public sealed partial class PrototypeGameEngine
                 "Underdocks region and encounter pool disagree.");
         }
 
+        if (roomType == PrototypeRoomType.Boss)
+        {
+            if (pool.BossEncounterId is null
+                || !PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
+                    pool.BossEncounterId, StringComparer.Ordinal))
+            {
+                throw new NotSupportedException(
+                    "The selected Underdocks boss is not implemented. " +
+                    "Do not replace it with a different boss.");
+            }
+
+            return (PrototypeContent.Encounter(pool.BossEncounterId), world);
+        }
+
+        if (roomType == PrototypeRoomType.Elite)
+        {
+            var elites = pool.RemainingEliteEncounterIds
+                ?? throw new InvalidOperationException(
+                    "Underdocks elite encounter bag is missing.");
+            if (elites.Length == 0)
+            {
+                throw new NotSupportedException(
+                    "The implemented Underdocks elite bag is exhausted; " +
+                    "remaining elite encounters are not implemented.");
+            }
+
+            if (elites.Any(id =>
+                    !PrototypeNativeUnderdocks.SupportedEliteEncounterIds
+                        .Contains(id, StringComparer.Ordinal)))
+            {
+                throw new InvalidOperationException(
+                    "Underdocks elite bag contains unsupported encounters.");
+            }
+
+            var index = PrototypeRng.NextInt(
+                state.Rng, "combat", elites.Length);
+            return (
+                PrototypeContent.Encounter(elites[index]),
+                world with
+                {
+                    ActOneEncounterPool = pool with
+                    {
+                        RemainingEliteEncounterIds = elites
+                            .Where((_, i) => i != index)
+                            .ToArray()
+                    }
+                });
+        }
+
         if (roomType != PrototypeRoomType.Combat)
         {
             throw new NotSupportedException(

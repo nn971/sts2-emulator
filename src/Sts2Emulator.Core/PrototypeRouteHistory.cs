@@ -86,7 +86,8 @@ public sealed partial class PrototypeGameEngine
             // Generated worlds always carry both; validate those strictly.
             if (world.Map.GenerationProfileId
                 is PrototypeContent.MapGenerationProfileId
-                or PrototypeNativeOvergrowthMap.GenerationProfileId)
+                or PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeUnderdocks.GenerationProfileId)
             {
                 throw new InvalidOperationException(
                     "Generated room completion has no active map node.");

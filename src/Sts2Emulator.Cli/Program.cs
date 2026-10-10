@@ -6,6 +6,9 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("STS2 Emulator developer CLI");
     Console.WriteLine();
     Console.WriteLine("Commands:");
+    Console.WriteLine("  replay <trace.jsonl>    Replay normalized canonical decisions and stop at first divergence");
+    Console.WriteLine("  v111-coverage [--missing] [--check]  Report pinned solo content and evidence gaps");
+    Console.WriteLine("  v111-run [seed] [region] [ascension]  Start the explicit v111 mechanics profile");
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
     Console.WriteLine("  prototype-native-overgrowth-map [seed] [ascension]");
@@ -47,6 +50,38 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
 
 switch (args[0])
 {
+    case "replay":
+    {
+        if (args.Length != 2) throw new ArgumentException("replay requires one normalized canonical JSONL trace.");
+        var result = Sts2Emulator.Trace.ExactReplay.ReadAndRun(args[1], new PrototypeGameEngine());
+        Console.WriteLine(CanonicalJson.Serialize(result));
+        if (!result.Matched) Environment.ExitCode = 1;
+        break;
+    }
+    case "v111-coverage":
+    {
+        if (args.Skip(1).Any(arg => arg is not ("--missing" or "--check")))
+            throw new ArgumentException("v111-coverage accepts --missing and --check.");
+        var report = V111Coverage.Create();
+        if (args.Contains("--missing", StringComparer.Ordinal))
+            report = report with { Items = report.Items.Where(item => item.Scope != "multiplayer-only"
+                && (item.Implementation != "implemented" || item.Integration != "integrated"
+                    || item.Validation != "native-parity")).ToArray() };
+        Console.WriteLine(CanonicalJson.Serialize(report));
+        if (args.Contains("--check", StringComparer.Ordinal) && !report.ReleaseReady)
+            Environment.ExitCode = 1;
+        break;
+    }
+    case "v111-run":
+    {
+        var seed = args.Length > 1 ? args[1] : "v111-smoke";
+        var region = args.Length > 2 ? Enum.Parse<ActIdentity>(args[2], ignoreCase: true) : ActIdentity.Overgrowth;
+        var ascension = args.Length > 3 ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 0;
+        var state = new PrototypeGameEngine().Step(V111RunFactory.Create(seed,
+            RunConfiguration.Create(ascension: ascension, firstAct: region)), GameAction.Empty("start_run")).State;
+        Console.WriteLine(RunSnapshot.Save(state));
+        break;
+    }
     case "doctor":
         Console.WriteLine($"Runtime: {Environment.Version}");
         Console.WriteLine($"OS: {Environment.OSVersion}");

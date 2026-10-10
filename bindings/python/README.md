@@ -1,22 +1,30 @@
-# Python binding (planned)
+# Python binding
 
-This directory will contain a **thin consumer binding** to the canonical C# emulator.
+The standard-library `sts2_emulator` package provides a persistent JSONL consumer
+binding. Add `bindings/python` to `PYTHONPATH`; build the C# solution in Release.
 
-Its responsibilities may include:
+```python
+from sts2_emulator import Session
 
-- loading/creating emulator states;
-- querying legal actions;
-- single and batched stepping;
-- forking/snapshot handles;
-- extracting canonical or player-visible projections;
-- efficient transfer of scalar/array state to Python.
+with Session(["dotnet", "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll",
+              "prototype-ai-jsonl"]) as emulator:
+    root = emulator.reset("example", first_act="Underdocks")
+    action = root.actions()[0]["actionId"]
+    child = root.step(action)
+    fair_observation = child.observe()
+    restored = emulator.load_snapshot(child.save_snapshot())
+    assert restored.exact_hash() == child.exact_hash()
+    branches = emulator.step_batch([(root, action), (root, action)], parallelism=2)
+    assert branches[0].exact_hash() == branches[1].exact_hash()
+    child.release()
+```
 
-It must not contain parity-critical game mechanics.
+Construction checks wire/snapshot/batch compatibility. Handles belong to one
+session; release invalidates them. Calls are serialized with a lock.
+`EmulatorError` exposes server failures; the context manager closes the server.
+`mode="prototype"` selects legacy reset. Default `mode="v111"` supports Silent
+Act 1 mechanics with explicit prototype RNG fidelity; unsupported characters
+fail on start. Exact snapshots contain hidden state; `observe()` is fair.
 
-Likely implementation options include:
-
-- NativeAOT shared library + C ABI + `ctypes`/CFFI;
-- generated C ABI with opaque state handles and batch calls;
-- an in-process .NET/Python bridge during early prototyping.
-
-Search, training, strategic databases, and model code belong in the parent AI repository, not in this binding package.
+All mechanics remain in C#. Search, learning and strategy belong in the parent
+AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).

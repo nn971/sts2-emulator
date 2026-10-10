@@ -6,6 +6,13 @@ This repository is intended to stand on its own as emulator infrastructure and t
 
 The first milestone is the whole point of this repository:
 
+The active target is the [complete v111 single-player roadmap](docs/FULL_IMPLEMENTATION_ROADMAP.md).
+See [current implementation and remaining gates](docs/V111_IMPLEMENTATION_STATUS.md)
+and the [versioned consumer contract](docs/V111_INTERFACE.md). Configured v111
+execution currently supports Silent Act 1 with explicit prototype RNG fidelity;
+native Hive/Glory and other characters fail explicitly. The legacy complete
+prototype remains available through its original API.
+
 > **Make complete seeded runs simulatable end to end first, then iteratively replace prototype content, RNG, and timing with native STS2 semantics and optimize representative AI workloads.**
 
 ## Scope boundary
@@ -76,7 +83,7 @@ See [docs/MILESTONE_1.md](docs/MILESTONE_1.md).
 ├── benchmarks/
 │   └── Sts2Emulator.Microbench/ # Fork/hash/transition microbenchmarks
 ├── bindings/
-│   └── python/                   # Planned thin consumer binding only
+│   └── python/                   # Thin standard-library JSONL consumer binding
 ├── schemas/                      # Language-neutral state/trace schemas
 ├── tools/                        # Replay/parity utilities
 ├── scripts/                      # Fish-shell developer helpers

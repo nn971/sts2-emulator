@@ -2,12 +2,15 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
+    private static bool UsesNativeActOneSystems(RunWorldState world) =>
+        world.Act == 1 && (world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
+            || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId);
+
     private static PrototypeRoomType ResolveUnknownMapRoom(
         ref RunWorldState world,
         RngBundle rng)
     {
-        if (world.Map.GenerationProfileId
-            != PrototypeNativeOvergrowthMap.GenerationProfileId)
+        if (!UsesNativeActOneSystems(world))
         {
             throw new InvalidOperationException(
                 "Unknown map rooms require a native-structure generation profile.");
@@ -54,9 +57,7 @@ public sealed partial class PrototypeGameEngine
 
         var world = RequireWorld(state);
         string? relicId;
-        if (world.Act == 1
-            && world.Map.GenerationProfileId
-                == PrototypeNativeOvergrowthMap.GenerationProfileId)
+        if (UsesNativeActOneSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
                 world, state.Player, state.Rng, merchant: false);

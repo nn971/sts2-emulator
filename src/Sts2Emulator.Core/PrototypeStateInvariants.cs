@@ -4,6 +4,7 @@ public static class PrototypeStateInvariants
 {
     public static void Validate(RunState state)
     {
+        RunConfiguration.ValidateState(state);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(
@@ -23,7 +24,7 @@ public static class PrototypeStateInvariants
         var world = state.World
             ?? throw new InvalidOperationException("Initialized prototype run is missing world state.");
 
-        if (!StringComparer.Ordinal.Equals(world.RulesetId, PrototypeContent.RulesetId))
+        if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))
         {
             throw new InvalidOperationException($"Unexpected prototype ruleset '{world.RulesetId}'.");
         }
@@ -99,6 +100,7 @@ public static class PrototypeStateInvariants
 
         if (world.Floor < 0 || world.Floor > (
                 world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
+                    || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId
                     ? PrototypeNativeOvergrowthMap.BossFloor
                     : PrototypeContent.Rules.FloorsPerAct))
         {
@@ -254,7 +256,7 @@ public static class PrototypeStateInvariants
             : PrototypeNativeUnderdocks.SupportedNormalEncounterIds;
         var elitePool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthEliteEncounterPool
-            : Array.Empty<string>();
+            : PrototypeNativeUnderdocks.SupportedEliteEncounterIds;
         var bossPool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthBossEncounterPool
             : PrototypeNativeUnderdocks.NativeBossEncounterIds;
@@ -348,7 +350,8 @@ public static class PrototypeStateInvariants
             if (visit.Act == world.Act
                 && world.Map.GenerationProfileId
                     is PrototypeContent.MapGenerationProfileId
-                        or PrototypeNativeOvergrowthMap.GenerationProfileId)
+                        or PrototypeNativeOvergrowthMap.GenerationProfileId
+                        or PrototypeNativeUnderdocks.GenerationProfileId)
             {
                 var node = world.Map.Nodes
                     .FirstOrDefault(candidate =>
@@ -372,7 +375,8 @@ public static class PrototypeStateInvariants
 
         if (world.Map.GenerationProfileId
             is not (PrototypeContent.MapGenerationProfileId
-                or PrototypeNativeOvergrowthMap.GenerationProfileId))
+                or PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeUnderdocks.GenerationProfileId))
         {
             return;
         }
@@ -1020,6 +1024,10 @@ public static class PrototypeStateInvariants
             && (PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal)
                 || PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedEliteEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal));
 
         if (encounter.RoomType != world.ActiveRoom
@@ -1040,6 +1048,12 @@ public static class PrototypeStateInvariants
         PlayerState player,
         RewardState reward)
     {
+        if ((reward.ExtraGoldOptions is null) != (reward.ExtraGoldGroupsResolved is null)
+            || (reward.ExtraGoldOptions is not null && (!reward.IndependentSelection
+                || reward.ExtraGoldOptions.Length != reward.ExtraGoldGroupsResolved!.Length
+                || reward.ExtraGoldOptions.Any(amount => amount <= 0))))
+            throw new InvalidOperationException("Extra gold offers require positive amounts and matching independent resolution flags.");
+
         if (reward.GoldOption is < 0
             || (reward.GoldOption is null && !reward.GoldResolved)
             || (reward.GoldOption is not null
@@ -1050,10 +1064,10 @@ public static class PrototypeStateInvariants
         }
 
         if (reward.IndependentSelection
-            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss"))
+            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest"))
         {
             throw new InvalidOperationException(
-                "Independent reward selection requires a combat reward.");
+                "Independent reward selection requires a combat or rest reward.");
         }
 
         var extraCards = reward.ExtraCardOptions ?? Array.Empty<string[]>();
@@ -1956,14 +1970,28 @@ public static class PrototypeStateInvariants
         }
 
         var representedPersistentSet = representedPersistentIds.ToHashSet();
+        var transformedPersistentIds = combat.TransformedPersistentCardIds
+            ?? Array.Empty<long>();
+        if (transformedPersistentIds.Length
+                != transformedPersistentIds.Distinct().Count()
+            || transformedPersistentIds.Any(id =>
+                !persistentIds.Contains(id)
+                || representedPersistentSet.Contains(id)))
+        {
+            throw new InvalidOperationException(
+                "Combat card transformation provenance is inconsistent.");
+        }
+
+        var transformedPersistentSet = transformedPersistentIds.ToHashSet();
         foreach (var persistent in player.Deck.Where(card =>
-                     !representedPersistentSet.Contains(card.InstanceId)))
+                     !representedPersistentSet.Contains(card.InstanceId)
+                     && !transformedPersistentSet.Contains(card.InstanceId)))
         {
             if (PrototypeContent.Card(persistent.CardId).Type
                 != PrototypeCardType.Power)
             {
                 throw new InvalidOperationException(
-                    "Only resolved Power cards may leave the combat card scope.");
+                    "Only resolved Power or transformed cards may leave the combat card scope.");
             }
         }
 

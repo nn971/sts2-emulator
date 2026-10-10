@@ -12,6 +12,10 @@ This is the active implementation plan. Earlier prototype milestones remain
 historical evidence, not the definition of completion. Search, training,
 experiment management, strategy and presentation remain outside this repository.
 
+Execution progress and conservative evidence gaps are recorded in
+[V111_IMPLEMENTATION_STATUS.md](V111_IMPLEMENTATION_STATUS.md). Checked items
+below describe delivered work; unchecked release gates still define completion.
+
 ## Version and evidence
 
 - Game version: **v0.111.0**; game commit: **41cef1ea**.
@@ -66,7 +70,7 @@ Preserve explicit prototype compatibility through versioned adapters.
 ## 1. Completion contract and executable inventory
 
 - [ ] Derive all eligible single-player content from the pinned corpus.
-- [ ] Extend capabilities with implementation/integration/evidence status and
+- [x] Extend capabilities with implementation/integration/evidence status and
       a reproducible missing-content report.
 - [ ] Inventory all characters, act pools, special/event encounters, event
       branches, Ancient choices, cards/upgrades/generated cards, potions, relics,
@@ -74,21 +78,21 @@ Preserve explicit prototype compatibility through versioned adapters.
 - [ ] Exclude multiplayer-only behavior from denominators and generation.
 - [ ] Enforce v111 build identity in native-mode state, snapshots and traces;
       distinguish legacy prototype identity and semantics.
-- [ ] Detect changed inventories and stale coverage claims in CI.
+- [x] Detect changed inventories and stale coverage claims in CI.
 
 **Gate:** every remaining eligible item is identifiable; missing behavior,
 unreachable content and missing validation are distinguishable.
 
 ## 2. Configurable characters and acts
 
-- [ ] Represent character, Ascension, profile/unlocks, ruleset and act identity
+- [x] Represent character, Ascension, profile/unlocks, ruleset and act identity
       explicitly in run configuration and persistent state.
 - [ ] Define character starting HP/deck/relics/resources/pools and unique state.
 - [ ] Remove Silent assumptions from initialization, rules lookup and reporting.
 - [ ] Generalize act transitions for Overgrowth, Underdocks, Hive and Glory.
 - [ ] Keep resources, pools, counters, history and continuations fork-safe;
       avoid mutable global run configuration.
-- [ ] Maintain versioned consumer compatibility.
+- [x] Maintain versioned consumer compatibility.
 
 **Gate:** initialization, serialization, forks and observations support multiple
 characters and all four act identities, with explicit unsupported behavior.
@@ -96,10 +100,10 @@ characters and all four act identities, with explicit unsupported behavior.
 ## 3. Complete both Act 1 variants
 
 - [ ] Close Overgrowth event, map, progression and validation gaps.
-- [ ] Add remaining Underdocks normals: Cultists, Fossil Stalker, Gremlin Merc,
+- [x] Add remaining Underdocks normals: Cultists, Fossil Stalker, Gremlin Merc,
       Haunted Ship, Living Fog, Seapunk Normal, Sewer Clam, Two-Tailed Rats.
-- [ ] Add elites: Phantasmal Gardeners, Skulking Colony, Terror Eel.
-- [ ] Add bosses: Waterfall Giant, Soul Fysh, Lagavulin Matriarch.
+- [x] Add elites: Phantasmal Gardeners, Skulking Colony, Terror Eel.
+- [x] Add bosses: Waterfall Giant, Soul Fysh, Lagavulin Matriarch.
 - [ ] Complete all ten regional Underdocks events and every eligible branch.
 - [ ] Complete formations/slots, move policies, summons, ally-death hooks,
       phases and Ascension breakpoints.
@@ -203,7 +207,7 @@ Continuous during expansion; mandatory for the final release.
 - [ ] Extend reference capture/replay across all characters, acts and difficulties.
 - [ ] Compare legal actions, nested choices, decision-boundary state and RNG.
 - [ ] Minimize divergences into focused regression fixtures.
-- [ ] Validate independent forks and deterministic snapshot restore.
+- [x] Validate independent forks and deterministic snapshot restore.
 
 **Gate:** no unexplained release-corpus divergence; rare behavior has targeted
 fixtures. Follow the [RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md).

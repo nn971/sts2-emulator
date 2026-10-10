@@ -4,6 +4,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 {
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
+        RunConfiguration.ValidateState(state);
         var phaseActions = state.Phase switch
         {
             RunPhase.RunStart => [GameAction.Empty("start_run")],
@@ -32,6 +33,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     public TransitionResult Step(RunState state, GameAction action)
     {
+        RunConfiguration.ValidateState(state);
         var fork = state.Fork();
         fork = fork with { DecisionIndex = fork.DecisionIndex + 1 };
 
@@ -420,6 +422,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     {
         RequireKind(action, "start_run");
 
+        if (state.Configuration is not null)
+            return V111RunFactory.Initialize(state);
+
         var rules = PrototypeContent.Rules;
         // Ordinary starts use the historical correlated run-seed streams.
         // A distinct, hypothetical factorized prior may instead supply
@@ -503,6 +508,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RequireKind(action, "continue_act");
         var world = RequireWorld(state);
 
+        if (state.Configuration is not null)
+            throw new NotSupportedException("Native Hive/Glory mechanics are not implemented; prototype later-act fallback is disabled for v111 runs.");
+
         if (world.Act >= PrototypeContent.Rules.Acts)
         {
             throw new InvalidOperationException("The final act cannot transition to another act.");
@@ -532,7 +540,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var world = state.World
             ?? throw new InvalidOperationException("Prototype world state has not been initialized.");
 
-        if (!StringComparer.Ordinal.Equals(world.RulesetId, PrototypeContent.RulesetId))
+        if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))
         {
             throw new InvalidOperationException(
                 $"Prototype engine cannot run ruleset '{world.RulesetId}'.");
@@ -710,11 +718,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             ? 1
             : 0;
 
-        var card = new CardInstance(
-            instanceId,
-            cardId,
-            upgradeLevel,
-            PrototypeJson.EmptyObject());
+        var card = ApplyNewCardEnchantments(
+            player,
+            new CardInstance(
+                instanceId,
+                cardId,
+                upgradeLevel,
+                PrototypeJson.EmptyObject()));
         player = player with
         {
             Deck = player.Deck.Append(card).ToArray()
@@ -725,6 +735,43 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             PrototypeRunEventKind.CardAdded,
             addedCard: card,
             rng: rng);
+    }
+
+    /// <summary>
+    /// Apply acquisition-time relic enchantments to persistent cards.
+    /// Cards that already carry a persistent enchantment preserve it.
+    /// Source: FresnelLens.TryModifyCardBeingAddedToDeck.
+    /// </summary>
+    private static CardInstance ApplyNewCardEnchantments(
+        PlayerState player, CardInstance card)
+    {
+        if (card.Enchantment is not null)
+        {
+            return card;
+        }
+
+        var definition = PrototypeContent.Card(card.CardId);
+        var gainsBlock = definition.Effects.Any(effect =>
+            effect.Kind is
+                PrototypeCombatEffectKind.GainPlayerBlock
+                or PrototypeCombatEffectKind.GainToricToughnessBlock
+                or PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal
+                or PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain);
+        if (!gainsBlock)
+        {
+            return card;
+        }
+
+        var amount = player.Relics.Sum(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .EnchantNewBlockCardsNimble);
+        return amount > 0
+            ? card with
+            {
+                Enchantment = new PrototypeCardEnchantment(
+                    PrototypeCardEnchantmentKind.Nimble, amount)
+            }
+            : card;
     }
 
     private static RunState EndRun(RunState state, string outcome)

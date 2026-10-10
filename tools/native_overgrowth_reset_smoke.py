@@ -81,6 +81,9 @@ def main() -> None:
     try:
         hello = request("hello")
         assert hello["nativeOvergrowthResetId"] == RESET_SCHEMA
+        assert hello["publicEnemyIntentId"] == (
+            "prototype-committed-public-enemy-intents-v1"
+        )
         assert hello["wireSchemaId"] == "prototype-ai-jsonl-v0"
         assert hello["fairPolicyId"] == POLICY
 

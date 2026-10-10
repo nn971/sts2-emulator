@@ -77,6 +77,30 @@ central dispatch branches.
 - [x] deterministic multi-run sweep report
 - [x] parent `sts2-ai` integration against this adapter via the versioned JSONL bridge
 
+## Milestone 3b — native colorless cards for single-player runs
+
+- [x] preserve the exact pinned v0.111.0 65-card ColorlessCardPool inventory, with multiplayer constraints tracked separately
+- [x] playable first merchant batch: Finesse, Flash of Steel, Dramatic Entrance, Ultimate Strike, Ultimate Defend, Master of Strategy
+- [x] source-backed second batch: Shockwave, Impatience, Mind Blast, Secret Technique and Secret Weapon
+- [x] source-backed third batch: Purity, Thinking Ahead and Hand of Greed; generalized selection exhaustion, draw-top placement and fatal gold
+- [x] source-backed fourth batch: Panache, The Bomb and Mayhem; per-instance event counters, turn-end countdown damage and post-draw auto-preplay hooks
+- [x] source-backed fifth batch: Panic Button and Dark Shackles; card-only Block prevention, enemy-side countdown expiration and reversible Strength reduction
+- [x] source-backed ten-card sixth batch: Discovery, Jack of All Trades, Scrawl, Restlessness, Prowess, Equilibrium, Production, Prolong, Salvo and Seeker Strike; generic distinct generation, optional choices and random draw-pile shortlists
+- [x] source-backed seventh batch: Volley, Splash, Anointed and Gold Axe; X-cost random attacks, upgraded attack discovery, rare-card draw-pile extraction and combat-wide finished-play counts
+- [x] source-backed eighth batch: Fisticuffs, Bolas, Thrumming Hatchet, Hidden Gem, Rend, Jackpot, Fasten and Prep Time; reusable damage-to-Block, per-instance last-turn recovery, replay, debuff scaling, zero-cost generation and power lifecycle effects
+- [x] source-backed ninth batch: Alchemize, Automation, Beat Down, Calamity, Catastrophe, Eternal Armor, Nostalgia, Omnislice, Rolling Boulder and The Gambit; potion creation, triggered generation, sequential autoplay, turn-end Plating, resolved-card destinations, unpowered splash and lethal guarded downside
+- [x] pinned five colorless epoch-gated unlock inventories, with conservative combat generation filtering pending unlock-state modeling
+- [x] implement the remaining solo cards Entropy and Stratagem with explicit interactive turn-start transform and shuffle-time draw-pile choices
+- [x] register all 12 native multiplayer-only colorless cards as typed unsupported models (excluded from merchant/reward/combat generation pools)
+- [ ] native oracle differential testing for transformed card candidate distributions, shuffle-specific RNG streams and all earlier colorless card edge cases
+- [ ] model native solo unlock/epoch constraints and the actual colorless reward/merchant generation rules
+- [ ] provide card-specific native oracle differentials for complex choice, trigger, and RNG semantics
+
+Colorless shop cards are sampled separately from ordinary Silent combat rewards. Catalog
+membership and playable semantics are tracked separately: other colorless models
+must remain unavailable until their mechanics are implemented. Multiplayer-only
+and cross-character mechanics remain deferred.
+
 ## Milestone 4 — native-data and fidelity convergence
 
 - [x] pin a reference STS2 build — v0.111.0 / 41cef1ea, fingerprint `3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`

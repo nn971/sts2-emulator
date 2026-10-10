@@ -2,6 +2,12 @@ using System.Diagnostics;
 using System.Text.Json;
 using Sts2Emulator.Core;
 
+if (args.FirstOrDefault() == "v111")
+{
+    V111Benchmarks.Run(args.Length > 1 ? int.Parse(args[1]) : 1000);
+    return;
+}
+
 var iterations = 100_000;
 if (args.Length >= 1 && int.TryParse(args[0], out var parsed) && parsed > 0)
 {

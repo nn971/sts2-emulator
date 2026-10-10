@@ -157,6 +157,41 @@ high-risk mechanic can be targeted later only if the natural corpus leaves an im
 Keep `STS2_REFERENCE_VERBOSE` unset for this pass. Verbose state-tracker capture is reserved for
 diagnosing a divergence found by the compact corpus.
 
+## One-run Silent / Underdocks Act 1 corpus mode
+
+When the user can afford only **one** native playthrough, use the
+[one-run capture protocol](../../docs/reference-builds/v0.111.0-underdocks-one-run-capture.md)
+rather than the older combat-only Overgrowth corpus recipe.
+
+```fish
+fish tools/reference_bridge/stage_underdocks_corpus.fish '/path/to/clean/oracle/game'
+```
+
+Copy the staged mod only to the expendable instrumented game, **fully
+relaunch**, verify a fresh `underdocks-silent-act1-*.jsonl` exists, then run:
+
+```fish
+python tools/native_one_run_audit.py --preflight '/path/to/new-capture.jsonl'
+```
+
+Do not start the actual playthrough unless the audit says `READY`.
+After the run, preserve the unmodified JSONL and create a coverage report:
+
+```fish
+python tools/native_one_run_audit.py '/path/to/new-capture.jsonl' \\
+  --output '/path/to/native-one-run-audit.json'
+```
+
+This **opt-in** mode keeps the original combat-history and RNG probe and
+adds passive RunManager start/room/act signals, event state/option pages,
+native map graph, persistent deck/inventory and run history, player
+gold/relic/potion changes, map decisions and rest-site choice callbacks.
+It does not synthesize legal actions or modify gameplay. Optional runtime
+properties remain absent if unavailable. Run observations are added only
+at sparse run/room/event and key combat boundaries to control trace size.
+As with other native reference modes, this requires the exact pinned
+game binary and cannot be compiled in CI without it.
+
 ## Knight Gang capture
 
 For the current fidelity milestone, capture a **Knight Gang** combat from the pinned v0.111.0

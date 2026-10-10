@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sts2-emulator:run-config-v111-v1",
+  "title": "Configured v111 mechanics with prototype RNG",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "character_id",
+    "ascension",
+    "acts",
+    "profile",
+    "ruleset_id",
+    "build_fingerprint",
+    "fidelity_id"
+  ],
+  "properties": {
+    "character_id": {
+      "enum": [
+        "silent",
+        "ironclad",
+        "defect",
+        "regent",
+        "necrobinder"
+      ]
+    },
+    "ascension": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "acts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        {
+          "const": 2
+        },
+        {
+          "const": 3
+        }
+      ]
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fully_unlocked",
+        "unlocked_characters",
+        "revealed_epochs"
+      ],
+      "properties": {
+        "fully_unlocked": {
+          "type": "boolean"
+        },
+        "unlocked_characters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "revealed_epochs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ruleset_id": {
+      "const": "sts2-v111-single-player-v1"
+    },
+    "build_fingerprint": {
+      "const": "3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e"
+    },
+    "fidelity_id": {
+      "const": "v111-mechanics-prototype-rng-v1"
+    }
+  }
+}

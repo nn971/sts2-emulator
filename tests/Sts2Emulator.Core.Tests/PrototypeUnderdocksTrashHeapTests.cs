@@ -1,0 +1,232 @@
+using Sts2Emulator.Core;
+
+namespace Sts2Emulator.Core.Tests;
+
+public sealed class PrototypeUnderdocksTrashHeapTests
+{
+    private const string EventId =
+        PrototypeNativeUnderdocksTrashHeap.EventId;
+
+    [Fact]
+    public void CatalogPreservesExactSourcePoolsAndDoesNotPolluteNormalRewards()
+    {
+        Assert.Equal(10, PrototypeNativeUnderdocksTrashHeap.CardIds.Length);
+        Assert.Equal(5, PrototypeNativeUnderdocksTrashHeap.RelicIds.Length);
+        Assert.Equal(10, PrototypeNativeUnderdocksTrashHeap.CardIds
+            .Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(5, PrototypeNativeUnderdocksTrashHeap.RelicIds
+            .Distinct(StringComparer.Ordinal).Count());
+        foreach (var id in PrototypeNativeUnderdocksTrashHeap.CardIds)
+        {
+            var card = PrototypeContent.Card(id);
+            Assert.Equal(PrototypeCardRarity.Event, card.Rarity);
+            Assert.DoesNotContain(id, PrototypeContent.RewardCardPool);
+        }
+        foreach (var id in PrototypeNativeUnderdocksTrashHeap.RelicIds)
+        {
+            _ = PrototypeContent.Relic(id);
+            if (id != "proto.relic.darkstone_periapt")
+            {
+                Assert.DoesNotContain(id, PrototypeContent.RelicPool);
+            }
+        }
+        Assert.Contains(EventId,
+            PrototypeNativeUnderdocksEvents.SupportedRegionEventIds);
+    }
+
+    [Fact]
+    public void TrashHeapOnlySpawnsAboveFiveHpAndOffersPotentiallyLethalDive()
+    {
+        var evt = PrototypeContent.Event(EventId);
+        var player = PrototypeNativeUnderdocksRunFactory.Create(
+            "trash-eligibility").Player;
+        Assert.False(PrototypeNativeUnderdocksEvents.IsEligible(
+            evt, player with { Hp = 5 }));
+        Assert.True(PrototypeNativeUnderdocksEvents.IsEligible(
+            evt, player with { Hp = 6 }));
+
+        var engine = new PrototypeGameEngine();
+        var run = FindTrashHeap(engine);
+        run = run with { Player = run.Player with { Hp = 6 } };
+        var legal = engine.GetLegalActions(run)
+            .Select(action => action.ReadPayload<EventChoicePayload>().ChoiceId)
+            .ToArray();
+        Assert.Equal(new[] { "dive", "grab" }, legal);
+
+        var originalRng = CanonicalJson.Sha256(run.Rng);
+        var dead = Choose(engine, run, "dive");
+        Assert.Equal(RunPhase.Terminal, dead.Phase);
+        Assert.Equal("defeat", dead.World!.TerminalOutcome);
+        Assert.Equal(0, dead.Player.Hp);
+        // The native event does not draw a relic if the 8 HP loss killed us.
+        Assert.Equal(originalRng, CanonicalJson.Sha256(dead.Rng));
+    }
+
+    [Fact]
+    public void GrabGrantsExactlyOneUniformPoolCardAndHundredGold()
+    {
+        var engine = new PrototypeGameEngine();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var seedIndex = 0; seedIndex < 80; seedIndex++)
+        {
+            var entered = FindTrashHeap(engine, "trash-grab-" + seedIndex);
+            var rngPrediction = entered.Fork();
+            var expectedIndex = PrototypeRng.NextInt(
+                rngPrediction.Rng, "event",
+                PrototypeNativeUnderdocksTrashHeap.CardIds.Length);
+            var chosen = PrototypeNativeUnderdocksTrashHeap.CardIds[expectedIndex];
+            var resolved = Choose(engine, entered, "grab");
+            Assert.Equal(RunPhase.MapChoice, resolved.Phase);
+            Assert.Equal(entered.Player.Gold + 100, resolved.Player.Gold);
+            Assert.Equal(entered.Player.Hp, resolved.Player.Hp);
+            Assert.Equal(entered.Player.Deck.Length + 1, resolved.Player.Deck.Length);
+            Assert.Equal(chosen, resolved.Player.Deck.Last().CardId);
+            Assert.Equal(CanonicalJson.Sha256(rngPrediction.Rng),
+                CanonicalJson.Sha256(resolved.Rng));
+            Assert.Equal(CanonicalJson.Sha256(resolved),
+                CanonicalJson.Sha256(resolved.Fork()));
+            seen.Add(chosen);
+        }
+        Assert.True(seen.Count >= 5,
+            $"Only {seen.Count} native Trash Heap cards were sampled.");
+    }
+
+    [Fact]
+    public void DiveTakesEightUnblockableHpThenDrawsOneOfFiveRelics()
+    {
+        var engine = new PrototypeGameEngine();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var seedIndex = 0; seedIndex < 80; seedIndex++)
+        {
+            var entered = FindTrashHeap(engine, "trash-dive-" + seedIndex);
+            var rngPrediction = entered.Fork();
+            var expectedIndex = PrototypeRng.NextInt(
+                rngPrediction.Rng, "event",
+                PrototypeNativeUnderdocksTrashHeap.RelicIds.Length);
+            var chosen = PrototypeNativeUnderdocksTrashHeap.RelicIds[expectedIndex];
+            var resolved = Choose(engine, entered, "dive");
+            Assert.Equal(RunPhase.MapChoice, resolved.Phase);
+            Assert.Equal(entered.Player.Hp - 8, resolved.Player.Hp);
+            Assert.Equal(entered.Player.Gold, resolved.Player.Gold);
+            Assert.Contains(resolved.Player.Relics,
+                relic => relic.RelicId == chosen);
+            Assert.Equal(entered.Player.Relics.Length + 1,
+                resolved.Player.Relics.Length);
+            Assert.Equal(CanonicalJson.Sha256(rngPrediction.Rng),
+                CanonicalJson.Sha256(resolved.Rng));
+            seen.Add(chosen);
+        }
+        Assert.Equal(5, seen.Count);
+    }
+
+    [Fact]
+    public void ImplementedCrossCharacterItemsStaySeparateFromUnsupportedIdentityHooks()
+    {
+        var cards = PrototypeNativeUnderdocksTrashHeap.CardIds
+            .Select(PrototypeContent.Card).ToArray();
+        // The two simple Silent event cards remain executable.
+        Assert.True(cards[0].MechanicsImplemented); // Caltrops
+        Assert.Equal(3, cards[0].Effects.Single().Amount);
+        Assert.Equal(2, cards[0].Effects.Single().UpgradeDelta);
+        Assert.True(cards[6].MechanicsImplemented); // Outmaneuver
+        Assert.Equal(2, cards[6].Effects.Single().Amount);
+        Assert.Equal(1, cards[6].Effects.Single().UpgradeDelta);
+
+        foreach (var index in new[] { 1, 2, 3, 4, 5, 7, 8, 9 })
+        {
+            Assert.True(cards[index].MechanicsImplemented);
+            Assert.NotEmpty(cards[index].Effects);
+        }
+
+        Assert.True(cards[2].ExhaustOnUse);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void DivePreservesDuplicateRollAndAddsIndependentPersistentInstance(int relicIndex)
+    {
+        var engine = new PrototypeGameEngine();
+        var chosen = PrototypeNativeUnderdocksTrashHeap.RelicIds[relicIndex];
+        RunState? entered = null;
+        RunState? prediction = null;
+        for (var seed = 0; seed < 100; seed++)
+        {
+            var candidate = FindTrashHeap(engine, "trash-duplicate-" + seed);
+            var fork = candidate.Fork();
+            var index = PrototypeRng.NextInt(fork.Rng, "event", 5);
+            if (index != relicIndex) continue;
+            entered = candidate with { Player = candidate.Player with {
+                Relics = [new(chosen, System.Text.Json.JsonSerializer.SerializeToElement(new { Purchased = true }))] } };
+            prediction = fork;
+            break;
+        }
+        Assert.NotNull(entered);
+        var parentHash = CanonicalJson.Sha256(entered);
+        var resolved = Choose(engine, RunSnapshot.Load(RunSnapshot.Save(entered)), "dive");
+        Assert.Equal(RunPhase.MapChoice, resolved.Phase);
+        Assert.Equal(entered.Player.Hp - 8, resolved.Player.Hp);
+        Assert.Equal(new[] { chosen, chosen }, resolved.Player.Relics.Select(relic => relic.RelicId));
+        Assert.True(resolved.Player.Relics[0].PersistentState.GetProperty("Purchased").GetBoolean());
+        Assert.False(resolved.Player.Relics[1].PersistentState.TryGetProperty("Purchased", out _));
+        Assert.Equal(CanonicalJson.Sha256(prediction!.Rng), CanonicalJson.Sha256(resolved.Rng));
+        Assert.Equal(parentHash, CanonicalJson.Sha256(entered));
+        PrototypeStateInvariants.Validate(resolved);
+    }
+
+    private static RunState Choose(
+        PrototypeGameEngine engine, RunState state, string choice)
+    {
+        var action = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "event_choice"
+            && action.ReadPayload<EventChoicePayload>().ChoiceId == choice);
+        return engine.Step(state, action).State;
+    }
+
+    private static RunState FindTrashHeap(
+        PrototypeGameEngine engine, string prefix = "trash-seed")
+    {
+        for (var i = 0; i < 256; i++)
+        {
+            var state = StartUnderdocksEvent(engine, prefix + i);
+            if (state.World!.Event!.EventId == EventId)
+            {
+                return state;
+            }
+        }
+        throw new InvalidOperationException("Trash Heap was never selected.");
+    }
+
+    private static RunState StartUnderdocksEvent(
+        PrototypeGameEngine engine, string seed)
+    {
+        var state = PrototypeNativeUnderdocksRunFactory.Create(seed);
+        var map = state.World!.Map;
+        var first = map.Nodes.Single(node => node.NodeId == map.EntryNodeIds![0]);
+        var second = map.Nodes.Single(node => node.NodeId == first.NextNodeIds![0]);
+        var nodes = map.Nodes.Select(node => node.Floor == 3
+            ? node with { RoomType = PrototypeRoomType.Event } : node).ToArray();
+        state = state with
+        {
+            Phase = RunPhase.MapChoice,
+            World = state.World! with
+            {
+                Floor = 2,
+                ActiveRoom = null,
+                Map = map with { Nodes = nodes, CurrentNodeId = second.NodeId },
+                CompletedRoomHistory = [
+                    new(1, 1, first.NodeId, first.RoomType),
+                    new(1, 2, second.NodeId, second.RoomType == PrototypeRoomType.Unknown
+                        ? PrototypeRoomType.Combat : second.RoomType)],
+                Event = null,
+                Combat = null,
+                Reward = null
+            }
+        };
+        return engine.Step(
+            state, engine.GetLegalActions(state).First(action => action.Kind == "choose_map_node")).State;
+    }
+}

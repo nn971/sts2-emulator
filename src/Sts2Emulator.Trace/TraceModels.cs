@@ -1,4 +1,5 @@
 using Sts2Emulator.Core;
+using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Trace;
 
@@ -25,4 +26,8 @@ public sealed record TraceTransition(
     StateEnvelope After,
     RngBundle RngBefore,
     RngBundle RngAfter,
-    string[] Diagnostics);
+    string[] Diagnostics,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    GameAction[]? LegalActionsBefore = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    GameAction[]? LegalActionsAfter = null);
