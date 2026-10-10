@@ -66,14 +66,14 @@ public sealed class V111LaterActEventTests
         Assert.Equal(original + 1, state.Player.Deck.Length);
         Assert.Equal(expectedCardId, state.Player.Deck[^1].CardId);
         Assert.Null(state.World!.Event);
-        Assert.Equal(1, state.World.CompletedRooms.Length);
+        Assert.Single(state.World.CompletedRooms);
     }
 
     [Theory]
-    [InlineData("study", PrototypeCardType.Power)]
-    [InlineData("touch_core", PrototypeCardType.Attack)]
+    [InlineData("study")]
+    [InlineData("touch_core")]
     public void InfestedAutomatonGivesSingleSourceFilteredSilentCard(
-        string choice, PrototypeCardType ignoredType)
+        string choice)
     {
         var engine = new PrototypeGameEngine();
         var state = EnterEvent(2, "automaton-" + choice);
