@@ -1553,7 +1553,14 @@ public sealed partial class PrototypeGameEngine
                 combat = combat with
                 {
                     Enemies = combat.Enemies
-                        .Select(enemy => enemy with { Block = 0 })
+                        .Select(enemy => enemy with
+                        {
+                            Block = enemy.PowerStates.Any(power =>
+                                power.Stacks > 0
+                                && PrototypeContent.Power(power.PowerId)
+                                    .PreventsEnemyBlockClear)
+                                    ? enemy.Block : 0
+                        })
                         .ToArray()
                 };
                 break;
@@ -9456,6 +9463,14 @@ public sealed partial class PrototypeGameEngine
         }
 
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
+        // BurrowedPower.AfterBlockBroken fires when a HIT actually
+        // consumes the last point of the shield. Ordinary enemy Block
+        // resetting, HP-loss effects and hits on zero Block do not stun.
+        var brokeBurrowedBlock = enemy.Block > 0
+            && absorbed == enemy.Block
+            && enemy.PowerStates.Any(power =>
+                power.Stacks > 0
+                && power.PowerId == "proto.native.hive.burrowed");
         var unblocked = Math.Max(0, damage - absorbed);
         // The Boot modifies attack HP loss AFTER Block absorption.
         // A fully blocked hit or non-attack HP loss does not trigger.
@@ -9502,6 +9517,24 @@ public sealed partial class PrototypeGameEngine
                 Block = enemy.Block - absorbed,
                 Hp = nextHp
             });
+
+        if (brokeBurrowedBlock && enemies[index].Hp > 0)
+        {
+            // Tunneler.GetStunned -> CreatureCmd.Stun(StillDizzy,
+            // "BITE_MOVE") overrides the previously announced BELOW.
+            // Persist the forced action now, not during observation.
+            var interrupted = enemies[index];
+            enemies[index] = interrupted with
+            {
+                Powers = interrupted.PowerStates.Where(power =>
+                    power.PowerId != "proto.native.hive.burrowed")
+                    .ToArray(),
+                Block = 0,
+                AiStateId = "dizzy",
+                PlannedMoveIndex = 3,
+                PlannedNextAiStateId = "bite"
+            };
+        }
 
         var defeated = enemy.Hp > 0 && enemies[index].Hp == 0;
         var nextCombat = combat with { Enemies = enemies };
