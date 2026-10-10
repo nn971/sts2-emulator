@@ -50,3 +50,36 @@ This is a **behavior specification and backlog item, not a claim that the
 Sly implementation has already been corrected**. Do not paper over it by
 auto-selecting a player-visible target action or by treating exceptions as
 combat defeats.
+
+
+## Implementation on `agent/sly-random-target-v4`
+
+The targeted Sly path is **now implemented** in
+`PrototypeCombat.cs:AutoPlaySlyCard`: an explicit enemy-target card
+(e.g. Snakebite) samples a living enemy with the `combat_targets` RNG
+stream, then executes that card at that selected instance. It never asks
+the agent for a target and does not consume card energy when discarded.
+
+The generic `AutoPlayCombatCard` path now also samples a fresh living
+enemy target **even when the operation carries an inherited valid source
+target**. This avoids incorrectly reusing Knife Trap's chosen enemy for
+the auto-played Shiv.
+
+Tests added:
+
+- `PrototypeSlyTests.DiscardedSlySnakebiteRandomlyTargetsOnlyLivingEnemy`:
+  2 living targets, 1 living target, one RNG draw, exactly one poison
+  recipient, identical replay from a fixed seed.
+- `PrototypeRandomTargetTests.GenericAutomaticShivDoesNotInheritSourceCardEnemyTarget`:
+  Knight Trap/Shiv source-target independence (card is named Knife Trap),
+  one RNG draw and equal resulting target effects for different manually
+  selected source targets.
+
+The current implementation samples **uniformly among living enemies**.
+The user's confirmed game rule is *random target*, not a specification of
+special targeting restrictions, per-target weights or draw-stream identity.
+Those finer fidelity details still need game/oracle verification.
+
+The old paragraph above describing Sly as unsupported describes the
+previous branch. This branch replaces that implementation and must have
+its own emulator revision/pin when used by PPO.
