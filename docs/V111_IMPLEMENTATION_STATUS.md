@@ -77,9 +77,11 @@ This is an intermediate implementation. Final release gates remain open.
   All projections derive from visible state and consume no random draws.
 - Fixed three source-pinned direct event relic pickups: both variants of
   Sunken Statue grant a fresh Sword of Stone even when already owned, and
-  Drowning Beacon grants a second Fresnel Lens. Each keeps independent
-  persistent state and stacks its ordinary effects. Random rewards, shops
-  and relic grab bags retain their single-copy eligibility restrictions.
+  Drowning Beacon grants a second Fresnel Lens. Each retains independent
+  persistent state. Nimble is nonstackable in the pinned source, so two
+  Fresnel Lenses enchant new eligible cards with Nimble +2 **once**, not
+  +4. Random rewards, shops and relic grab bags retain their single-copy
+  eligibility restrictions.
 - Acquisition-only run callbacks now execute for the **newly acquired relic
   instance**, not all owned copies of the same ID. Verified with duplicate
   Old Coin and Mango; continuous RestSiteHealed triggers still execute for
