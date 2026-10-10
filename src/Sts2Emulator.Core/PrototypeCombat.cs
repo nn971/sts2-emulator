@@ -2492,6 +2492,12 @@ public sealed partial class PrototypeGameEngine
                 enemy.MaxHp > 0 && enemy.Hp >= enemy.MaxHp / 2,
             PrototypeEnemyAiConditionKind.HpBelowHalf =>
                 enemy.MaxHp > 0 && enemy.Hp < enemy.MaxHp / 2,
+            PrototypeEnemyAiConditionKind.HasLivingEnemyId =>
+                branch.Value is not null && formation.Any(item =>
+                    item.Hp > 0 && item.EnemyId == branch.Value),
+            PrototypeEnemyAiConditionKind.LacksLivingEnemyId =>
+                branch.Value is not null && !formation.Any(item =>
+                    item.Hp > 0 && item.EnemyId == branch.Value),
             PrototypeEnemyAiConditionKind.IsAlone =>
                 isAlone,
             PrototypeEnemyAiConditionKind.IsFront =>
@@ -2755,8 +2761,11 @@ public sealed partial class PrototypeGameEngine
                     : checked(effect.AmountAt(act, ascension)
                         + effect.ExtraAmountPerPriorMoveUse
                         * (enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0));
-                var repetitions =
-                    effect.RepetitionsAt(ascension);
+                var repetitions = effect.RepetitionsAt(ascension);
+                if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
+                    && move.Id == "multi_claw"
+                    && effect.Kind == PrototypeEnemyEffectKind.DamagePlayer)
+                    repetitions += enemy.ExtraMultiClawCount;
                 var unblockedAttackHits = 0;
                 for (var repetition = 0; repetition < repetitions; repetition++)
                 {
@@ -3157,6 +3166,81 @@ public sealed partial class PrototypeGameEngine
                             break;
                         }
 
+                        case PrototypeEnemyEffectKind.GrantStrengthToOtherLivingEnemies:
+                        {
+                            for (var allyIndex = 0; allyIndex < enemies.Count; allyIndex++)
+                            {
+                                var ally = enemies[allyIndex];
+                                if (ally.Hp <= 0 || ally.InstanceId == enemy.InstanceId)
+                                    continue;
+                                var applied = ApplyEnemyPowerToState(
+                                    combat, ally, effect.PowerId
+                                        ?? "proto.power.strength", amount);
+                                combat = applied.Combat;
+                                enemies[allyIndex] = applied.Enemy;
+                            }
+                            break;
+                        }
+
+                        case PrototypeEnemyEffectKind.ReviveTestSubject:
+                        {
+                            if (enemy.EnemyId != PrototypeNativeGloryBosses.TestSubjectId
+                                || !enemy.BossPendingRevival || enemy.BossPhase >= 2)
+                                throw new InvalidOperationException(
+                                    "Test Subject respawn requires a pending earlier phase.");
+                            var newPhase = enemy.BossPhase + 1;
+                            var newHp = newPhase == 1
+                                ? (ascension >= 8 ? 212 : 200)
+                                : (ascension >= 8 ? 313 : 300);
+                            enemy = enemy with
+                            {
+                                Hp = newHp,
+                                MaxHp = newHp,
+                                Block = 0,
+                                BossPhase = newPhase,
+                                BossPendingRevival = false,
+                                ExtraMultiClawCount = 0,
+                                AiStateId = newPhase == 1 ? "claw" : "lacerate",
+                                Powers = enemy.PowerStates.Where(power =>
+                                    newPhase < 2
+                                    || power.PowerId is not (
+                                        PrototypeNativeGloryBosses.AdaptableId
+                                        or PrototypeNativeGloryBosses.PainfulStabsId))
+                                    .ToArray()
+                            };
+                            var newPower = newPhase == 1
+                                ? PrototypeNativeGloryBosses.PainfulStabsId
+                                : PrototypeNativeGloryBosses.NemesisId;
+                            var applied = ApplyEnemyPowerToState(
+                                combat, enemy, newPower, 1);
+                            combat = applied.Combat;
+                            enemy = applied.Enemy;
+                            break;
+                        }
+
+                        case PrototypeEnemyEffectKind.IntensifyWither:
+                        {
+                            if (enemy.EnemyId != PrototypeNativeGloryBosses.AeonglassId)
+                                throw new InvalidOperationException(
+                                    "Only Aeonglass can intensify Wither.");
+                            enemy = enemy with
+                            {
+                                WitherUpgradeCount = enemy.WitherUpgradeCount + 1
+                            };
+                            combat = combat with
+                            {
+                                Cards = combat.Cards.Select(card =>
+                                    card.CardId == PrototypeNativeGloryBosses.WitherId
+                                        ? card with
+                                        {
+                                            WitherFakeUpgradeLevel =
+                                                card.WitherFakeUpgradeLevel + 1
+                                        }
+                                        : card).ToArray()
+                            };
+                            break;
+                        }
+
                         case PrototypeEnemyEffectKind.AddCardsToHand:
                             if (effect.CardId is null)
                             {
@@ -3480,6 +3564,12 @@ public sealed partial class PrototypeGameEngine
                 moveUseCounts.GetValueOrDefault(
                     move.Id) + 1;
 
+            if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
+                && move.Id == "multi_claw")
+                enemy = enemy with
+                {
+                    ExtraMultiClawCount = enemy.ExtraMultiClawCount + 1
+                };
             enemy = InterceptEnemyLethalDeath(enemy);
             enemies[index] = enemy with
             {
@@ -3490,7 +3580,9 @@ public sealed partial class PrototypeGameEngine
                     : Math.Max(0, enemy.NonSummonMovesUntilEligible - 1),
                 LastMoveId = move.Id,
                 ConsecutiveMoveUses = consecutiveUses,
-                AiStateId = selection.NextAiStateId,
+                AiStateId = enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
+                    && move.Id == "respawn" && enemy.BossPhase >= 2
+                        ? "lacerate" : selection.NextAiStateId,
                 MoveUseCounts = moveUseCounts,
                 PlannedMoveIndex = null,
                 PlannedNextAiStateId = null
