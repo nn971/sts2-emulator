@@ -223,6 +223,63 @@ public sealed class V111LaterActEventTests
         Assert.Equal(before, CanonicalJson.Sha256(state));
     }
 
+    [Fact]
+    public void BadLuckInHandDealsThirteenUnblockableAtPlayerTurnEnd()
+    {
+        var withCurse = StartCombatWithBadLuck(true);
+        var withoutCurse = StartCombatWithBadLuck(false);
+        var engine = new PrototypeGameEngine();
+        Assert.Equal(9000, withCurse.Player.Hp);
+        var curse = Assert.Single(withCurse.World!.Combat!.Hand);
+        Assert.Equal(PrototypeNativeLaterActEvents.BadLuckId,
+            withCurse.World.Combat.Cards.Single(card =>
+                card.InstanceId == curse).CardId);
+        Assert.DoesNotContain(engine.GetLegalActions(withCurse), action =>
+            action.Kind == "play_card");
+
+        var action = GameAction.Empty("end_turn");
+        withCurse = engine.Step(withCurse, action).State;
+        withoutCurse = engine.Step(withoutCurse, action).State;
+        Assert.Equal(13,
+            withoutCurse.Player.Hp - withCurse.Player.Hp);
+    }
+
+    private static RunState StartCombatWithBadLuck(bool includeCurse)
+    {
+        var seed = "bad-luck-event-hp";
+        var deck = includeCurse
+            ? new[]
+            {
+                new CardInstance(1,
+                    PrototypeNativeLaterActEvents.BadLuckId,
+                    0, PrototypeJson.EmptyObject())
+            }
+            : Array.Empty<CardInstance>();
+        var state = new RunState("prototype-unbound", "prototype-0.1",
+            seed, seed, 0, RunPhase.Combat,
+            new PlayerState(9000, 9000, 0, deck, [],
+                new PotionInstance?[2]),
+            PrototypeRng.CreateBundle(seed),
+            PrototypeJson.EmptyObject(),
+            new RunWorldState(PrototypeContent.RulesetId,
+                PrototypeContent.CharacterId, 3, 1, 2,
+                PrototypeRoomType.Elite, new MapState([]),
+                new CombatState(1, 3, 0, [], [], [], [], [],
+                    1, [], [], 1, Act: 3),
+                null, null, null, null));
+        var start = typeof(PrototypeGameEngine).GetMethod(
+            "StartCombat",
+            System.Reflection.BindingFlags.NonPublic
+            | System.Reflection.BindingFlags.Static);
+        Assert.NotNull(start);
+        return Assert.IsType<RunState>(start!.Invoke(null,
+        [
+            state, PrototypeRoomType.Elite,
+            PrototypeContent.Encounter(
+                PrototypeNativeGloryElites.SoulNexusEncounterId)
+        ]));
+    }
+
     private static RunState EnterEvent(int act, string seed)
     {
         var engine = new PrototypeGameEngine();
