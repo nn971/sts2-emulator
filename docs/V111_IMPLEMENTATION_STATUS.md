@@ -140,6 +140,16 @@ This is an intermediate implementation. Final release gates remain open.
   real Hive maps** until region generation is implemented.
   Hand-overflow discard behavior and native combat RNG parity are
   marked as provisional rather than silently called faithful.
+- Added **two more gated Hive normal encounters**: Spiny Toad
+  (Protruding Spikes → Spike Explosion → Tongue Lash, including
+  native Thorns damage retaliation and removal) and Slumbering
+  Beetle (Rock/Silk/Beetle formation, three-turn Slumber countdown,
+  Plating, unblocked-damage early wake and Roll Out Strength growth).
+  Added source-backed enemy power presence/absence AI branches so
+  sleep and wake actions are committed before observations and
+  persist through forks. Native Hive normal encounters now have
+  six guarded entries; native Act 2 map and selection remain disabled.
+  Exotic nonattack Slumber wake triggers require later source audit.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
