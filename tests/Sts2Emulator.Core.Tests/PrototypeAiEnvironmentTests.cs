@@ -341,7 +341,15 @@ public sealed class PrototypeAiEnvironmentTests
         {
             World = state.World with
             {
-                Combat = original with { Enemies = [first, second] }
+                Combat = original with
+                {
+                    Enemies = [first, second],
+                    // Force one legal targeted Attack for this attribution test.
+                    Hand = original.Cards
+                        .Where(card => card.CardId == "proto.silent.strike")
+                        .Take(1).Select(card => card.InstanceId).ToArray(),
+                    Energy = 3
+                }
             }
         };
         var frame = environment.Observe(state);
