@@ -232,7 +232,16 @@ public sealed class V111LaterActRoutingTests
         state = engine.Step(state, engine.GetLegalActions(state)[0]).State;
         Assert.Equal(RunPhase.Combat, state.Phase);
         Assert.Equal(initial.BossEncounterId, state.World!.EncounterIds[^1]);
-        Assert.Equal(initial, state.World.LaterActEncounterPool);
+        var unchanged = state.World.LaterActEncounterPool!;
+        Assert.Equal(initial.BossEncounterId, unchanged.BossEncounterId);
+        Assert.Equal(initial.OrdinaryCombatsStarted,
+            unchanged.OrdinaryCombatsStarted);
+        Assert.Equal(initial.RemainingWeakEncounterIds,
+            unchanged.RemainingWeakEncounterIds);
+        Assert.Equal(initial.RemainingNormalEncounterIds,
+            unchanged.RemainingNormalEncounterIds);
+        Assert.Equal(initial.RemainingEliteEncounterIds,
+            unchanged.RemainingEliteEncounterIds);
     }
 
     [Fact]
