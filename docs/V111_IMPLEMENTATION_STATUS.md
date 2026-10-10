@@ -194,6 +194,15 @@ This is an intermediate implementation. Final release gates remain open.
   Ascension damage breaks and boss formations have synthetic tests.
   All three remain gated; live-game parity and native enemy-choice
   prompts still need implementation/audit.
+- Two **gated Glory normal encounters** are now source-backed isolated
+  combat models: Frog Knight (Plating, Tongue Lash/Frail, Strike,
+  Queen buff, one conditional Beetle Charge) and Slimed Berserker
+  (Vomit ten Slimed, four-hit Pummeling, Weak/Strength Hug, Smother).
+  Enemy AI has fork-owned rolled maximum HP and committed half-HP
+  predicates. A0/A8/A9, cycle, identity and fork tests are included.
+  Both remain forced-test-only at Weight=0; no native Glory map,
+  encounter bag, RNG stream or real-game replay evidence is claimed.
+  See [Glory first normal slice](reference-builds/v0.111.0-glory-normal-first-slice.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

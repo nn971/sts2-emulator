@@ -992,7 +992,9 @@ public enum PrototypeEnemyAiConditionKind
     LivingEnemiesAtMost,
     LivingEnemiesGreaterThan,
     MoveUsedFewerThan,
-    MoveUsedAtLeast
+    MoveUsedAtLeast,
+    HpAtLeastHalf,
+    HpBelowHalf
 }
 
 public enum PrototypeEnemyAiRepeatRule
@@ -1449,7 +1451,12 @@ public sealed record EnemyCombatState(
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     CardInstance[]? StolenCards = null,
-    bool ReattachDeadMoveResolved = false)
+    bool ReattachDeadMoveResolved = false,
+    // The actual rolled maximum, carried across forks and native snapshots.
+    // Older hand-built fixtures retain the default for compatibility.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int MaxHp = 0)
 {
     public EnemyCombatState Fork() => this with
     {
