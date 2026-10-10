@@ -50,6 +50,63 @@ public sealed class PrototypeRandomTargetTests
         Assert.Equal(15, totalDamage);
     }
 
+
+    [Fact]
+    public void GenericAutomaticShivDoesNotInheritSourceCardEnemyTarget()
+    {
+        RunState Setup()
+        {
+            var initial = CreateCombatState(upgradeLevel: 0);
+            var world = initial.World!;
+            var combat = world.Combat!;
+            var source = combat.Cards[0] with { CardId = "proto.silent.knife_trap" };
+            var shiv = new CombatCardInstance(
+                2, 1002, "proto.silent.shiv", 0, false,
+                PrototypeJson.EmptyObject());
+            return initial with
+            {
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        Cards = [source, shiv],
+                        Hand = [1],
+                        ExhaustPile = [2],
+                        NextCardInstanceId = 3,
+                        NextEnemyInstanceId = 3
+                    }
+                }
+            };
+        }
+
+        RunState PlayTo(int targetEnemyId)
+        {
+            var state = Setup();
+            var engine = new PrototypeGameEngine();
+            var action = engine.GetLegalActions(state).Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1
+                && action.ReadPayload<PlayCardPayload>().TargetEnemyId
+                    == targetEnemyId);
+            return engine.Step(state, action).State;
+        }
+
+        var a = PlayTo(1);
+        var b = PlayTo(2);
+        var hpA = a.World!.Combat!.Enemies.Select(enemy => enemy.Hp).ToArray();
+        var hpB = b.World!.Combat!.Enemies.Select(enemy => enemy.Hp).ToArray();
+        Assert.Equal(hpA, hpB); // Source card target has no effect on autoplay.
+        Assert.Equal(4, hpA.Sum(hp => 100 - hp));
+        Assert.Equal<ulong>(
+            1UL,
+            StreamCalls(a, "combat_targets")
+                - StreamCalls(Setup(), "combat_targets"));
+        Assert.Equal<ulong>(
+            1UL,
+            StreamCalls(b, "combat_targets")
+                - StreamCalls(Setup(), "combat_targets"));
+    }
+
     private static ulong StreamCalls(RunState state, string streamId) =>
         state.Rng.Streams
             .Single(stream => stream.StreamId == streamId)
