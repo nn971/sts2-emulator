@@ -357,6 +357,74 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.Contains("take_them", ChoiceIds(engine, entered));
     }
 
+    [Fact]
+    public void SunkenStatueSwordCreatesIndependentSecondRelicInstance()
+    {
+        const string swordId = "proto.native.event.sword_of_stone";
+        var engine = new PrototypeGameEngine();
+        var state = FindEvent(engine,
+            "proto.native.underdocks.sunken_statue",
+            "underdocks-duplicate-sword", floor: 6);
+        var old = new RelicInstance(swordId,
+            System.Text.Json.JsonSerializer.SerializeToElement(
+                new { ElitesDefeated = 4 }));
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = state.Player.Relics.Append(old).ToArray()
+            }
+        };
+        var before = CanonicalJson.Sha256(state);
+        Assert.Contains("sword", ChoiceIds(engine, state));
+        var chosen = Choose(engine, state, "sword");
+        Assert.Equal(RunPhase.MapChoice, chosen.Phase);
+        var swords = chosen.Player.Relics
+            .Where(relic => relic.RelicId == swordId).ToArray();
+        Assert.Equal(2, swords.Length);
+        Assert.Equal(4, swords[0].PersistentState
+            .GetProperty("ElitesDefeated").GetInt32());
+        Assert.False(swords[1].PersistentState
+            .TryGetProperty("ElitesDefeated", out _));
+        Assert.Equal(before, CanonicalJson.Sha256(state));
+        PrototypeStateInvariants.Validate(chosen);
+    }
+
+    [Fact]
+    public void DrowningBeaconClimbAllowsDuplicateLensAndPreservesOldInstance()
+    {
+        const string lensId = "proto.native.underdocks.fresnel_lens";
+        var engine = new PrototypeGameEngine();
+        var state = FindEvent(engine,
+            "proto.native.underdocks.drowning_beacon",
+            "underdocks-duplicate-lens", floor: 4);
+        var old = new RelicInstance(lensId,
+            System.Text.Json.JsonSerializer.SerializeToElement(
+                new { PreviousSource = 12 }));
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = state.Player.Relics.Append(old).ToArray()
+            }
+        };
+        Assert.Contains("climb", ChoiceIds(engine, state));
+        var after = Choose(engine, state, "climb");
+        Assert.Equal(RunPhase.MapChoice, after.Phase);
+        Assert.Equal(state.Player.MaxHp - 13, after.Player.MaxHp);
+        var lenses = after.Player.Relics.Where(relic =>
+            relic.RelicId == lensId).ToArray();
+        Assert.Equal(2, lenses.Length);
+        Assert.Equal(12, lenses[0].PersistentState
+            .GetProperty("PreviousSource").GetInt32());
+        Assert.False(lenses[1].PersistentState
+            .TryGetProperty("PreviousSource", out _));
+        Assert.Equal(4, lenses.Sum(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .EnchantNewBlockCardsNimble));
+        PrototypeStateInvariants.Validate(after);
+    }
+
     private static string[] ChoiceIds(
         PrototypeGameEngine engine, RunState state) =>
         engine.GetLegalActions(state)
