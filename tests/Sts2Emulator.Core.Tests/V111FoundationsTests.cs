@@ -130,7 +130,11 @@ public sealed class V111FoundationsTests
             World = opened.World! with { CharacterId = "ironclad" }
         }));
         var transition = opened with { Phase = RunPhase.ActTransition };
-        Assert.Throws<NotSupportedException>(() => engine.Step(transition, GameAction.Empty("continue_act")));
+        var hive = engine.Step(transition, GameAction.Empty("continue_act")).State;
+        Assert.Equal(2, hive.World!.Act);
+        Assert.Equal(ActIdentity.Hive, hive.World.ActIdentity);
+        Assert.Equal(PrototypeNativeLaterActRouting.HiveMapProfile,
+            hive.World.Map.GenerationProfileId);
     }
 
     [Fact]
