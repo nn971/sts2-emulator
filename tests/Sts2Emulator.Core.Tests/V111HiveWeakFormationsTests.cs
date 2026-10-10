@@ -189,9 +189,100 @@ public sealed class V111HiveWeakFormationsTests
     }
 
     [Fact]
+    public void TunnelerBurrowPersistsBlockUntilBrokenAndStunsItsNextIntent()
+    {
+        const string id = "proto.native.hive.tunneler";
+        const string encounterId = "proto.native.hive.encounter.tunneler_weak";
+        var encounter = PrototypeContent.Encounter(encounterId);
+        Assert.Equal([id], encounter.EnemyIds);
+        Assert.Equal(0, encounter.Weight);
+        var model = PrototypeContent.Enemy(id);
+        Assert.Equal((87, 87), model.HpRangeAt(2, 0));
+        Assert.Equal((92, 92), model.HpRangeAt(2, 8));
+        Assert.Equal(13, model.Moves[0].Effects[0].AmountAt(2, 0));
+        Assert.Equal(15, model.Moves[0].Effects[0].AmountAt(2, 9));
+        Assert.Equal(23, model.Moves[2].Effects[0].AmountAt(2, 0));
+        Assert.Equal(26, model.Moves[2].Effects[0].AmountAt(2, 9));
+
+        var engine = new PrototypeGameEngine();
+        var state = Commit(State([Enemy(id, 87, "only")],
+            "hive-tunneler"));
+        state = EndTurn(engine, state);
+        Assert.Equal(87, state.Player.Hp);
+        Assert.Equal("bite",
+            Assert.Single(state.World!.Combat!.Enemies).LastMoveId);
+
+        state = EndTurn(engine, state);
+        var burrowed = Assert.Single(state.World!.Combat!.Enemies);
+        Assert.Equal("burrow", burrowed.LastMoveId);
+        Assert.Equal(32, burrowed.Block);
+        Assert.Contains(burrowed.PowerStates,
+            power => power.PowerId == "proto.native.hive.burrowed");
+        Assert.Equal(2, burrowed.PlannedMoveIndex);
+
+        var unbroken = EndTurn(engine, state.Fork());
+        var stayingBurrowed = Assert.Single(
+            unbroken.World!.Combat!.Enemies);
+        Assert.Equal("below", stayingBurrowed.LastMoveId);
+        Assert.Equal(32, stayingBurrowed.Block);
+        Assert.Equal(64, unbroken.Player.Hp);
+        Assert.Equal(2, stayingBurrowed.PlannedMoveIndex);
+
+        // A blocked hit smaller than the shield must not interrupt it.
+        var partial = Hit(state.World.Combat!, 7);
+        var partiallyBroken = Assert.Single(partial.Enemies);
+        Assert.Equal(25, partiallyBroken.Block);
+        Assert.Equal(2, partiallyBroken.PlannedMoveIndex);
+        Assert.Contains(partiallyBroken.PowerStates,
+            p => p.PowerId == "proto.native.hive.burrowed");
+
+        // Breaking the entire remaining Block forces the public next
+        // move to Dizzy and removes the persistent protection.
+        var broken = Hit(partial, 25);
+        var stunned = Assert.Single(broken.Enemies);
+        Assert.Equal(0, stunned.Block);
+        Assert.Equal(3, stunned.PlannedMoveIndex);
+        Assert.DoesNotContain(stunned.PowerStates,
+            p => p.PowerId == "proto.native.hive.burrowed");
+        Assert.Equal("dizzy", stunned.AiStateId);
+
+        state = state with
+        {
+            World = state.World! with { Combat = broken }
+        };
+        state = EndTurn(engine, state);
+        var recovered = Assert.Single(state.World!.Combat!.Enemies);
+        Assert.Equal("dizzy", recovered.LastMoveId);
+        Assert.Equal(0, recovered.PlannedMoveIndex);
+        Assert.Equal(87, state.Player.Hp);
+
+        state = EndTurn(engine, state);
+        Assert.Equal("bite",
+            Assert.Single(state.World!.Combat!.Enemies).LastMoveId);
+        Assert.Equal(74, state.Player.Hp);
+    }
+
+    [Fact]
+    public void TunnelerBurrowAscensionBlockScalesAtA8()
+    {
+        const string id = "proto.native.hive.tunneler";
+        var model = PrototypeContent.Enemy(id);
+        Assert.Equal(32, model.Moves[1].Effects[1].AmountAt(2, 0));
+        Assert.Equal(37, model.Moves[1].Effects[1].AmountAt(2, 8));
+        var state = Commit(State([Enemy(id, 92, "only")],
+            "hive-tunneler-a8", asc: 8));
+        var engine = new PrototypeGameEngine();
+        state = EndTurn(engine, state);
+        state = EndTurn(engine, state);
+        Assert.Equal(37,
+            Assert.Single(state.World!.Combat!.Enemies).Block);
+    }
+
+    [Fact]
     public void EveryNewNativeWeakEncounterIsExcludedFromPrototypePools()
     {
-        foreach (var id in new[] { RockEncounter, ExoEncounter })
+        foreach (var id in new[] { RockEncounter, ExoEncounter,
+                                 "proto.native.hive.encounter.tunneler_weak" })
         {
             var encounter = PrototypeContent.Encounter(id);
             Assert.Equal(0, encounter.Weight);
