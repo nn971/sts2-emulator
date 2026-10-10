@@ -1706,7 +1706,8 @@ public sealed record CombatState(
     long[]? ChoicePool = null,
     long[]? PlayPile = null,
     PrototypeToricShield[]? ToricShields = null,
-    long[]? TransformedPersistentCardIds = null)
+    long[]? TransformedPersistentCardIds = null,
+    bool BoundCardPlayedThisTurn = false)
 {
     public CombatState Fork() => this with
     {
