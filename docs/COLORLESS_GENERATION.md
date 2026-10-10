@@ -92,3 +92,32 @@ conservatively excluded from synthetic combat generation by default.
 Native RNG streams and unlock gates are still modeled conservatively. Rend
 counts known prototype status debuffs and non-temporary enemy debuff powers;
 additional native power taxonomies require future differential verification.
+
+## Ninth single-player batch (pinned native v0.111.0)
+
+- Alchemize creates one combat potion into the first free slot (cost 1,
+  upgraded 0; Exhaust). Its generation is excluded from combat card pools.
+- Automation is instanced: each independent application gains its amount
+  in energy after every ten actual card draws, including hand draw.
+- Beat Down sequentially auto-plays three (four upgraded) random playable
+  Attack cards from discard, with fresh random enemy targets.
+- Calamity creates an unlocked character Attack card after each Attack
+  played; Calamity+ costs two instead of three.
+- Catastrophe auto-plays two (three upgraded) random draw-pile cards,
+  preferring playable cards and falling back to unplayable cards.
+- Eternal Armor applies nine (twelve upgraded) Plating: gain unpowered
+  Block at turn end; decay one stack on subsequent player turns.
+- Nostalgia redirects the first Attack/Skill cards played each turn from
+  discard to the top of the draw pile; Nostalgia+ costs zero.
+- Omnislice attacks one enemy for eight (eleven upgraded), then deals
+  unpowered splash to other enemies based on the primary damage result.
+- Rolling Boulder is instanced: deal unpowered damage to every enemy at
+  the beginning of the next player turn and grow by five each trigger.
+- The Gambit grants 50 (75 upgraded) Block and applies a persistent
+  downside: the first unblocked powered enemy attack is lethal.
+
+Random generation uses the current synthetic combat stream; the full
+native unlocked solo character card/potion candidate distributions and
+stream partitions are not yet implemented. Selected damage-loss caps,
+status interactions and unusual no-target autoplays still need oracle
+differential coverage.
