@@ -246,7 +246,7 @@ public sealed class V111LaterActRoutingTests
     }
 
     [Fact]
-    public void UnsupportedHiveAndGloryUnknownRoomsNeverFallBackToActOneEvents()
+    public void LaterActUnknownRoomEventsUseOnlyExplicitSupportedContent()
     {
         var engine = new PrototypeGameEngine();
         var state = V111RunFactory.Create("no-legacy-event");
@@ -258,20 +258,30 @@ public sealed class V111LaterActRoutingTests
         {
             var world = state.World!;
             var node = new MapNodeState($"{act}:2:0", act, 2,
-                PrototypeRoomType.Unknown);
+                PrototypeRoomType.Unknown, [$"{act}:3:0"]);
+            var next = new MapNodeState($"{act}:3:0", act, 3,
+                PrototypeRoomType.Combat);
             var fixture = state with
             {
                 World = world with
                 {
-                    Map = new MapState([node], EntryNodeIds: [node.NodeId],
-                        GenerationProfileId: world.Map.GenerationProfileId)
+                    Map = new MapState([node, next],
+                        EntryNodeIds: [node.NodeId],
+                        GenerationProfileId: world.Map.GenerationProfileId),
+                    UnknownRoomOdds = new PrototypeUnknownRoomOddsState(
+                        MonsterWeight: 0, TreasureWeight: 0, ShopWeight: 0)
                 }
             };
-            var hash = CanonicalJson.Sha256(fixture);
-            var ex = Assert.Throws<NotSupportedException>(() =>
-                engine.Step(fixture, engine.GetLegalActions(fixture)[0]));
-            Assert.Contains("No prototype event fallback", ex.Message);
-            Assert.Equal(hash, CanonicalJson.Sha256(fixture));
+            var copy = fixture.Fork();
+            var action = engine.GetLegalActions(fixture)[0];
+            var chosen = engine.Step(fixture, action).State;
+            Assert.Equal(RunPhase.Event, chosen.Phase);
+            Assert.Contains(chosen.World!.Event!.EventId,
+                PrototypeNativeLaterActEvents.SupportedIds(act));
+            Assert.Equal(CanonicalJson.Sha256(chosen),
+                CanonicalJson.Sha256(engine.Step(copy, action).State));
+            Assert.Equal(PrototypeRoomType.Event,
+                chosen.World.ActiveRoom);
             if (act == 2)
                 state = engine.Step(state with
                 {
@@ -279,4 +289,5 @@ public sealed class V111LaterActRoutingTests
                 }, GameAction.Empty("continue_act")).State;
         }
     }
+
 }
