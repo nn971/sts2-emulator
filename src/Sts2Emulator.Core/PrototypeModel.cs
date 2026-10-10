@@ -1593,7 +1593,9 @@ public sealed record CombatState(
     long[]? ChoicePool = null,
     long[]? PlayPile = null,
     PrototypeToricShield[]? ToricShields = null,
-    long[]? TransformedPersistentCardIds = null)
+    long[]? TransformedPersistentCardIds = null,
+    // Monotone combat-local identity allocator; no ID reuse after an enemy dies.
+    int NextEnemyInstanceId = 0)
 {
     public CombatState Fork() => this with
     {
