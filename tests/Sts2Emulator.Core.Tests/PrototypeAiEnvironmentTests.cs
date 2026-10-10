@@ -321,6 +321,8 @@ public sealed class PrototypeAiEnvironmentTests
         });
         state = engine.Step(state, combatNode).State;
         var original = state.World!.Combat!;
+        Assert.True(original.NextEnemyInstanceId >
+            original.Enemies.Max(enemy => enemy.InstanceId));
         var first = original.Enemies[0] with
         {
             Hp = 29,
