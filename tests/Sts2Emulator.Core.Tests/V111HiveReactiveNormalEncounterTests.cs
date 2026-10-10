@@ -228,7 +228,9 @@ public sealed class V111HiveReactiveNormalEncounterTests
         };
         state = EndTurn(engine, state);
         Assert.Equal(500, state.Player.Hp);
-        Assert.Null(Assert.Single(state.World!.Combat!.Enemies)
+        // The interrupted action was skipped; the next Roll Out
+        // intent is already committed for the following player turn.
+        Assert.Equal(1, Assert.Single(state.World!.Combat!.Enemies)
             .PlannedMoveIndex);
         state = EndTurn(engine, state);
         Assert.Equal(484, state.Player.Hp);
