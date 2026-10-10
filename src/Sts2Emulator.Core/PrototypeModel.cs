@@ -239,7 +239,8 @@ public enum PrototypeCombatCountKind
     CardsDiscardedThisTurn,
     CardsDrawnThisCombat,
     OtherCardsInHand,
-    DrawPileCards
+    DrawPileCards,
+    PlayerBlock
 }
 
 public sealed record PrototypeCombatPredicateSpec(
