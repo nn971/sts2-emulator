@@ -129,7 +129,7 @@ public static class PrototypeNativeGloryBosses
                 AscensionDeltas: [new(8, 4)])]),
             new("magic_bomb", [new(PrototypeEnemyEffectKind.DamagePlayer, 35,
                 AscensionDeltas: [new(9, 5)])])
-        ], HpAscensionDeltas: [new(8, 7)]),
+        ], HpAscensionDeltas: [new(8, 7)], MoveLoopStartIndex: 2),
         new(AmalgamId, "Torch Head Amalgam", 199, 0,
         [
             new("strong_tackle", [new(PrototypeEnemyEffectKind.DamagePlayer, 26,
