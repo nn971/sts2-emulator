@@ -367,16 +367,24 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RngBundle? rng = null,
         RunWorldState? world = null)
     {
-        foreach (var relic in player.Relics)
+        // RelicAcquired models RelicModel.AfterObtained on the newly
+        // appended instance, not a broadcast to every owned relic with the
+        // same model ID. Older copies retain their independent state and
+        // must not replay acquisition-only rewards (e.g. Old Coin).
+        var acquiredIndex = eventKind == PrototypeRunEventKind.RelicAcquired
+            ? Array.FindLastIndex(player.Relics, relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, acquiredRelicId))
+            : -1;
+        for (var relicIndex = 0; relicIndex < player.Relics.Length;
+             relicIndex++)
         {
             if (eventKind == PrototypeRunEventKind.RelicAcquired
-                && !StringComparer.Ordinal.Equals(
-                    relic.RelicId,
-                    acquiredRelicId))
+                && relicIndex != acquiredIndex)
             {
                 continue;
             }
 
+            var relic = player.Relics[relicIndex];
             var definition =
                 PrototypeContent.Relic(relic.RelicId);
             foreach (var trigger in
