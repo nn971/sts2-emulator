@@ -193,7 +193,10 @@ public sealed partial class PrototypeGameEngine
                         PrototypeContent.Card(card.CardId).MaxUpgradeLevel)
                     .Select(card => card.InstanceId)
                     .ToArray();
-                PrototypeRng.Shuffle(state.Rng, "niche", upgrades);
+                // Native uses a Niche stream; the six-stream prototype
+                // exposes only event RNG. Keep an explicit approximation
+                // until RNG schema migration adds native stream identities.
+                PrototypeRng.Shuffle(state.Rng, "event", upgrades);
                 var chosen = upgrades.Take(2).ToHashSet();
                 player = player with
                 {
