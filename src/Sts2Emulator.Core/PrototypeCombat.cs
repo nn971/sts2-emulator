@@ -8778,15 +8778,25 @@ public sealed partial class PrototypeGameEngine
                 $"Card {cardInstanceId} is not Sly.");
         }
 
-        // Native CardCmd.AutoPlay receives target=null for SlyDiscard. Self,
-        // all-enemy and intrinsically-random cards resolve targeting inside
-        // their own effect implementation. Explicit enemy-target Sly cards
-        // remain unsupported until native target resolution is modeled.
-        if (definition.Target == PrototypeCardTarget.Enemy)
+        // Sly discard initiates an automatic play, not a player-targeted
+        // action. When the card requires one enemy, choose a living target
+        // from the dedicated combat target RNG stream exactly once for this
+        // play. The caller may not pass/borrow another card's target.
+        int? autoPlayTarget = null;
+        if (EffectiveCardTarget(combat, definition) == PrototypeCardTarget.Enemy)
         {
-            throw new NotSupportedException(
-                $"Sly auto-play for explicit enemy-target card '{definition.Name}' " +
-                "requires native target-resolution semantics.");
+            var liveTargets = combat.Enemies
+                .Where(enemy => enemy.Hp > 0)
+                .Select(enemy => enemy.InstanceId)
+                .ToArray();
+            if (liveTargets.Length == 0)
+            {
+                // The choice-resolution caller normally stops automatic
+                // plays when the combat has ended.
+                return (player, combat);
+            }
+            autoPlayTarget = liveTargets[
+                PrototypeRng.NextInt(rng, "combat_targets", liveTargets.Length)];
         }
 
         combat = combat with
@@ -8821,7 +8831,7 @@ public sealed partial class PrototypeGameEngine
             new PrototypeCardPlaySeriesState(
                 SourceCardInstanceId: cardInstanceId,
                 SourceCardDestination: sourceDestination,
-                TargetEnemyId: null,
+                TargetEnemyId: autoPlayTarget,
                 EnergySpent: 0,
                 PlayCount: playCountResult.PlayCount,
                 NextPlayIndex: 0,
