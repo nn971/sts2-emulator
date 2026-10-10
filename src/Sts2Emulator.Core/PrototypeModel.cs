@@ -87,6 +87,7 @@ public enum PrototypeCombatEffectKind
     GainPlayerBlock,
     MultiplyPlayerBlock,
     DrawCards,
+    MoveRandomRareDrawCardsToHand,
     ApplyEnemyStatus,
     ChooseCards,
     ChooseGeneratedCards,
@@ -238,6 +239,7 @@ public enum PrototypeCombatCountKind
     AttacksPlayedThisTurn,
     CardsDiscardedThisTurn,
     CardsDrawnThisCombat,
+    CardsPlayedThisCombat,
     OtherCardsInHand,
     DrawPileCards,
     PlayerBlock
@@ -1514,7 +1516,8 @@ public sealed record PrototypeCombatCounters(
     int CardsDiscardedThisTurn = 0,
     int CardsDrawnThisCombat = 0,
     string[]? PlayedCardTagsThisTurn = null,
-    int AttacksPlayedLastTurn = 0)
+    int AttacksPlayedLastTurn = 0,
+    int CardsPlayedThisCombat = 0)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();

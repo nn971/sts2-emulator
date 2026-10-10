@@ -476,7 +476,67 @@ public static class PrototypeColorlessCards
             ],
             Rarity: PrototypeCardRarity.Uncommon,
             Type: PrototypeCardType.Attack,
-            Tags: ["Strike"])
+            Tags: ["Strike"]),
+        // Native Volley is an untargeted X-cost attack: each X point
+        // generates an independent hit with a fresh random enemy target.
+        new(
+            "proto.colorless.volley",
+            "Volley",
+            new(PrototypeCardCostKind.X),
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 10, 4,
+                    Target: PrototypeEffectTarget.RandomEnemy,
+                    Repetitions: 0,
+                    RepetitionsPerEnergySpent: 1)
+            ],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        // Native Splash is an optional three-attack discovery. The
+        // generated card becomes free this turn; Splash+ upgrades it.
+        new(
+            "proto.colorless.splash",
+            "Splash",
+            1,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+                    GeneratedChoiceCardType: PrototypeCardType.Attack,
+                    GeneratedChoiceCardsFreeThisTurn: true,
+                    GeneratedChoiceCardsUpgraded: true)
+            ],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // Native Anointed moves randomly chosen Rare cards straight from
+        // draw pile into hand, bounded by remaining hand capacity.
+        new(
+            "proto.colorless.anointed",
+            "Anointed",
+            1,
+            PrototypeCardTarget.None,
+            [
+                new(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand,
+                    10)
+            ],
+            ExhaustOnUse: true,
+            RetainOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // Native Gold Axe counts completed card plays over the *entire*
+        // combat, including earlier turns. Its own play counts afterward.
+        new(
+            "proto.colorless.gold_axe",
+            "Gold Axe",
+            1,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 0,
+                    CountKind: PrototypeCombatCountKind.CardsPlayedThisCombat,
+                    AmountPerCount: 1)
+            ],
+            RetainOnUpgrade: true,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack)
     ];
 
     public static string[] ImplementedShopPool { get; } =

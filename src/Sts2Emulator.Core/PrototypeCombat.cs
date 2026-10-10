@@ -3817,6 +3817,41 @@ public sealed partial class PrototypeGameEngine
                     return (player, combat);
                 }
 
+                case PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand:
+                {
+                    // Anointed uses pile insertion rather than a normal draw:
+                    // it must preserve card instances and avoid draw triggers.
+                    const int maxHandSize = 10;
+                    var capacity = Math.Max(0, maxHandSize - combat.Hand.Length);
+                    var take = Math.Min(Math.Max(0, operation.Amount), capacity);
+                    if (take == 0)
+                    {
+                        break;
+                    }
+
+                    var rareCards = combat.DrawPile
+                        .Where(id => PrototypeContent.Card(
+                            RequireCombatCard(combat, id).CardId).Rarity
+                            == PrototypeCardRarity.Rare)
+                        .ToArray();
+                    if (rareCards.Length == 0)
+                    {
+                        break;
+                    }
+
+                    PrototypeRng.Shuffle(rng, "combat", rareCards);
+                    var selected = rareCards.Take(take).ToArray();
+                    var selectedIds = selected.ToHashSet();
+                    combat = combat with
+                    {
+                        DrawPile = combat.DrawPile
+                            .Where(id => !selectedIds.Contains(id))
+                            .ToArray(),
+                        Hand = combat.Hand.Concat(selected).ToArray()
+                    };
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.ChooseCards:
                 {
                     var selection = operation.Selection
@@ -5960,6 +5995,8 @@ public sealed partial class PrototypeGameEngine
                 combat.CounterState.CardsDiscardedThisTurn,
             PrototypeCombatCountKind.CardsDrawnThisCombat =>
                 combat.CounterState.CardsDrawnThisCombat,
+            PrototypeCombatCountKind.CardsPlayedThisCombat =>
+                combat.CounterState.CardsPlayedThisCombat,
             PrototypeCombatCountKind.OtherCardsInHand =>
                 combat.Hand.Length,
             PrototypeCombatCountKind.DrawPileCards =>
@@ -5987,7 +6024,9 @@ public sealed partial class PrototypeGameEngine
                 counters = counters with
                 {
                     CardsPlayedThisTurn =
-                        counters.CardsPlayedThisTurn + 1
+                        counters.CardsPlayedThisTurn + 1,
+                    CardsPlayedThisCombat =
+                        counters.CardsPlayedThisCombat + 1
                 };
 
                 var cardDefinition =
