@@ -3947,6 +3947,7 @@ public sealed partial class PrototypeGameEngine
                         effect.AutoPlayFallbackToUnplayable,
                     SourcePowerApplicationOrder:
                         sourcePowerApplicationOrder,
+                    IgnorePlayerBlock: effect.IgnorePlayerBlock,
                     PowerStoredValue:
                         effect.PowerStoredValue
                         + (effect.PowerStoredValueUpgradeDelta * upgradeLevel),
@@ -5123,9 +5124,9 @@ public sealed partial class PrototypeGameEngine
                             Math.Max(
                                 0,
                                 operation.Amount));
-                    var absorbed = Math.Min(
-                        combat.PlayerBlock,
-                        incoming);
+                    var absorbed = operation.IgnorePlayerBlock
+                        ? 0
+                        : Math.Min(combat.PlayerBlock, incoming);
                     combat = combat with
                     {
                         PlayerBlock =
