@@ -571,7 +571,9 @@ public sealed class PrototypeAiEnvironment
             ],
             "proto.native.event.luminous_choir" =>
             [
-                new("tribute", GoldCost: evt.NativeEventGold)
+                new("tribute", GoldCost: evt.NativeEventGold),
+                new("reach", GuaranteedCardId:
+                    "proto.native.event.spore_mind")
             ],
             "proto.native.event.jungle_maze_adventure" =>
             [
@@ -611,11 +613,6 @@ public sealed class PrototypeAiEnvironment
             [
                 new("bathe", GuaranteedCardId:
                     "proto.native.event.guilty")
-            ],
-            "proto.native.event.luminous_choir" =>
-            [
-                new("reach", GuaranteedCardId:
-                    "proto.native.event.spore_mind")
             ],
             "proto.native.event.wood_carvings" =>
             [
