@@ -20,6 +20,10 @@ public static class PrototypeNativeHiveEvents
         "LostWisp", "SpiritGrafter", "TheLanternKey", "ZenWeaver"
     ];
 
+    public const string AmalgamatorId = "proto.native.hive.amalgamator";
+    public const string UltimateStrikeId = "proto.colorless.ultimate_strike";
+    public const string UltimateDefendId = "proto.colorless.ultimate_defend";
+
     public const string ColossalFlowerId = "proto.native.hive.colossal_flower";
     public const string SpiritGrafterId = "proto.native.hive.spirit_grafter";
     public const string PollinousCoreId = "proto.native.hive.pollinous_core";
@@ -32,7 +36,7 @@ public static class PrototypeNativeHiveEvents
     public const string LostWispRelicId = "proto.native.hive.lost_wisp_relic";
 
     public static bool IsNativeEvent(string id) =>
-        id is InfestedAutomatonId or LostWispId or ZenWeaverId
+        id is AmalgamatorId or InfestedAutomatonId or LostWispId or ZenWeaverId
             or ColossalFlowerId or SpiritGrafterId;
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
@@ -40,8 +44,19 @@ public static class PrototypeNativeHiveEvents
 
     public static bool IsEligible(PrototypeEventDefinition evt,
         PlayerState player) =>
-        (evt.Id != ZenWeaverId || player.Gold >= 125)
+        (evt.Id != AmalgamatorId
+            || (CountBasic(player, "Strike") >= 2
+                && CountBasic(player, "Defend") >= 2))
+        && (evt.Id != ZenWeaverId || player.Gold >= 125)
         && (evt.Id != ColossalFlowerId || player.Hp >= 19);
+
+    private static int CountBasic(PlayerState player, string tag) =>
+        player.Deck.Count(card =>
+            !PrototypeContent.Card(card.CardId).Eternal
+            && PrototypeContent.Card(card.CardId).Rarity
+                == PrototypeCardRarity.Basic
+            && (PrototypeContent.Card(card.CardId).Tags?.Contains(
+                tag, StringComparer.Ordinal) ?? false));
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
@@ -88,6 +103,21 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        new(AmalgamatorId, "Amalgamator",
+        [
+            new("combine_strikes", "Combine two Strikes",
+            [new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
+                CardId: UltimateStrikeId)],
+            new PrototypeEventDeckChoiceSpec(
+                PrototypePersistentDeckChoiceKind.Remove, 2,
+                BasicCardsOnly: true, RequiredCardTag: "Strike")),
+            new("combine_defends", "Combine two Defends",
+            [new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
+                CardId: UltimateDefendId)],
+            new PrototypeEventDeckChoiceSpec(
+                PrototypePersistentDeckChoiceKind.Remove, 2,
+                BasicCardsOnly: true, RequiredCardTag: "Defend"))
+        ], MinAct: 2, MaxAct: 2, Weight: 0),
         new(InfestedAutomatonId, "Infested Automaton",
         [
             new("study", "Study: gain one random character Power", []),

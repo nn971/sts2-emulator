@@ -14937,11 +14937,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.amalgamator"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Amalgamator.cs#d0f41ef96e918a6c65a11293ff1f35a187ed09ae70d95419c17030b05f720727"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -14955,7 +14957,7 @@
         ],
         "missing_variants": [],
         "native_id": "AMALGAMATOR",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
