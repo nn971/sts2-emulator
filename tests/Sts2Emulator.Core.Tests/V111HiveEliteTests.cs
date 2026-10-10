@@ -201,8 +201,7 @@ public sealed class V111HiveEliteTests
             PrototypeJson.EmptyObject());
         state = state with
         {
-            Player = state.Player with { Deck = [card] },
-            Phase = RunPhase.Map
+            Player = state.Player with { Deck = [card] }
         };
         var start = typeof(PrototypeGameEngine).GetMethod(
             "StartCombat", BindingFlags.Static | BindingFlags.NonPublic);
