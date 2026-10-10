@@ -578,6 +578,52 @@ public sealed class PrototypeAiEnvironment
                 new("solo", GoldGain: evt.NativeEventGold, HpLoss: 18),
                 new("join", GoldGain: evt.NativeEventSecondaryGold)
             ],
+            PrototypeNativeDenseVegetation.EventId =>
+            [
+                new("trudge", GoldGain: evt.NativeEventGold, HpLoss: 8),
+                new("rest", Heal: Math.Min(
+                    player.MaxHp - player.Hp,
+                    Math.Max(1, player.MaxHp *
+                        PrototypeContent.Rules.RestHealPercent / 100)))
+            ],
+            "proto.native.event.byrdonis_nest" =>
+            [
+                new("eat", MaxHpDelta: 7),
+                new("take", GuaranteedCardId:
+                    "proto.native.event.byrdonis_egg")
+            ],
+            "proto.native.event.morphic_grove" =>
+            [
+                new("group", GoldCost: player.Gold),
+                new("loner", MaxHpDelta: 5)
+            ],
+            "proto.native.event.sapphire_seed" =>
+            [
+                new("eat", Heal: 9)
+            ],
+            "proto.native.event.unrest_site" =>
+            [
+                new("rest", Heal: player.MaxHp - player.Hp,
+                    GuaranteedCardId: "proto.native.event.poor_sleep"),
+                new("kill", MaxHpDelta: -8)
+            ],
+            "proto.native.event.wellspring" =>
+            [
+                new("bathe", GuaranteedCardId:
+                    "proto.native.event.guilty")
+            ],
+            "proto.native.event.luminous_choir" =>
+            [
+                new("reach", GuaranteedCardId:
+                    "proto.native.event.spore_mind")
+            ],
+            "proto.native.event.wood_carvings" =>
+            [
+                new("bird", GuaranteedCardId:
+                    "proto.native.event.peck"),
+                new("torus", GuaranteedCardId:
+                    "proto.native.event.toric_toughness")
+            ],
             "proto.native.underdocks.abyssal_baths" =>
                 evt.NativePageIndex == 0
                     ?
