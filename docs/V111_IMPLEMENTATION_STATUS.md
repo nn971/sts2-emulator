@@ -320,6 +320,17 @@ This is an intermediate implementation. Final release gates remain open.
   and later-act event/Ancient bags are unsupported. **No native RNG,
   boss route, reward, map or end-to-end fidelity claims** are implied.
   See [route source audit](reference-builds/v0.111.0-hive-glory-route-slice.md).
+- Implemented a first **source-backed Hive/Glory event subset**
+  in configured v111 routes: Hive Bugslayer and Infested Automaton,
+  Glory Reflections, plus the Bad Luck Eternal curse (13 unblockable
+  hand-damage on turn end). Completed event choices preserve persistent
+  cards, fork identity and map continuation; the in-run Unknown-room
+  odds now resolve to explicit supported-event pools rather than
+  unrelated prototype events. Unsupported events and exhausted
+  source-backed event pools still fail loudly. This is **not**
+  an assertion that the full later-act event inventory, eligibility
+  predicates or native event RNG distribution is implemented. See
+  [event source audit](reference-builds/v0.111.0-hive-glory-events-first-slice.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

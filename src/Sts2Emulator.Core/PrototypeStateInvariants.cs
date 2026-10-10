@@ -1584,14 +1584,30 @@ public static class PrototypeStateInvariants
         }
     }
 
-    private static void ValidateNativeOvergrowthMap(RunWorldState world)
+    private static void ValidateNativeStructureMap(RunWorldState world)
     {
-        if (world.Act != 1)
+        var expectedProfile = world.Act switch
         {
+            1 when world.Map.GenerationProfileId is
+                (PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeUnderdocks.GenerationProfileId) =>
+                    world.Map.GenerationProfileId,
+            2 => PrototypeNativeLaterActRouting.HiveMapProfile,
+            3 => PrototypeNativeLaterActRouting.GloryMapProfile,
+            _ => throw new InvalidOperationException(
+                "Native map has an unsupported act identity.")
+        };
+        if (world.Map.GenerationProfileId != expectedProfile)
             throw new InvalidOperationException(
-                "Native Overgrowth map profile is only valid in Act 1.");
-        }
-
+                "Native map profile and act identity disagree.");
+        var bossFloor = world.Act switch
+        {
+            1 => PrototypeNativeOvergrowthMap.BossFloor,
+            2 => 15,
+            3 => 14,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+        var roomRows = bossFloor - 1;
         var map = world.Map;
         var nodes = map.Nodes;
         if (nodes.Length == 0
@@ -1599,7 +1615,7 @@ public static class PrototypeStateInvariants
                 .Distinct(StringComparer.Ordinal).Count() != nodes.Length)
         {
             throw new InvalidOperationException(
-                "Native Overgrowth map is empty or contains duplicate nodes.");
+                "Native map is empty or contains duplicate nodes.");
         }
 
         var byId = nodes.ToDictionary(
@@ -1612,11 +1628,11 @@ public static class PrototypeStateInvariants
                 || node.Floor != 1))
         {
             throw new InvalidOperationException(
-                "Native Overgrowth map must have distinct first-row entries.");
+                "Native map must have distinct first-row entries.");
         }
 
         for (var floor = 1;
-             floor <= PrototypeNativeOvergrowthMap.BossFloor;
+             floor <= bossFloor;
              floor++)
         {
             var layer = nodes.Where(node => node.Floor == floor).ToArray();
@@ -1624,60 +1640,60 @@ public static class PrototypeStateInvariants
                 || layer.Length > PrototypeNativeOvergrowthMap.MapWidth)
             {
                 throw new InvalidOperationException(
-                    $"Native Overgrowth floor {floor} has an invalid node count.");
+                    $"Native floor {floor} has an invalid node count.");
             }
 
             if (floor == 1
                 && layer.Any(node => node.RoomType != PrototypeRoomType.Combat)
                 || floor == PrototypeNativeOvergrowthMap.FirstTreasureFloor
                 && layer.Any(node => node.RoomType != PrototypeRoomType.Treasure)
-                || floor == PrototypeNativeOvergrowthMap.PreBossRestFloor
+                || floor == roomRows
                 && layer.Any(node => node.RoomType != PrototypeRoomType.Rest))
             {
                 throw new InvalidOperationException(
-                    "Native Overgrowth map has an invalid fixed room row.");
+                    "Native map has an invalid fixed room row.");
             }
 
-            if (floor == PrototypeNativeOvergrowthMap.BossFloor
+            if (floor == bossFloor
                 && (layer.Length != 1
                     || layer[0].RoomType != PrototypeRoomType.Boss
                     || (layer[0].NextNodeIds?.Length ?? 0) != 0))
             {
                 throw new InvalidOperationException(
-                    "Native Overgrowth map does not terminate at one boss.");
+                    "Native map does not terminate at one boss.");
             }
         }
 
         foreach (var node in nodes)
         {
-            if (node.Act != 1
-                || node.Floor is < 1 or > PrototypeNativeOvergrowthMap.BossFloor
-                || !TryNativeColumn(node.NodeId, out var column)
+            if (node.Act != world.Act
+                || (node.Floor < 1 || node.Floor > bossFloor)
+                || !TryNativeColumn(node.NodeId, world.Act, out var column)
                 || column is < 0 or >= PrototypeNativeOvergrowthMap.MapWidth)
             {
                 throw new InvalidOperationException(
-                    "Native Overgrowth map has an invalid node coordinate.");
+                    "Native map has an invalid node coordinate.");
             }
 
             var children = node.NextNodeIds ?? Array.Empty<string>();
             if (children.Distinct(StringComparer.Ordinal).Count() != children.Length
-                || (node.Floor < PrototypeNativeOvergrowthMap.BossFloor
+                || (node.Floor < bossFloor
                     && children.Length == 0))
             {
                 throw new InvalidOperationException(
-                    "Native Overgrowth map has duplicate or missing outgoing edges.");
+                    "Native map has duplicate or missing outgoing edges.");
             }
 
             foreach (var id in children)
             {
                 if (!byId.TryGetValue(id, out var child)
                     || child.Floor != node.Floor + 1
-                    || (node.Floor < PrototypeNativeOvergrowthMap.RoomRows
-                        && (!TryNativeColumn(id, out var targetColumn)
+                    || (node.Floor < roomRows
+                        && (!TryNativeColumn(id, world.Act, out var targetColumn)
                             || Math.Abs(targetColumn - column) > 1)))
                 {
                     throw new InvalidOperationException(
-                        "Native Overgrowth map has an invalid path edge.");
+                        "Native map has an invalid path edge.");
                 }
             }
         }
@@ -1699,7 +1715,7 @@ public static class PrototypeStateInvariants
         if (reachable.Count != nodes.Length)
         {
             throw new InvalidOperationException(
-                "Native Overgrowth map has unreachable nodes.");
+                "Native map has unreachable nodes.");
         }
 
         if (map.CurrentNodeId is null)
@@ -1714,7 +1730,7 @@ public static class PrototypeStateInvariants
             || current.Floor != world.Floor)
         {
             throw new InvalidOperationException(
-                "Native Overgrowth current position disagrees with run floor.");
+                "Native current position disagrees with run floor.");
         }
 
         if (world.UnknownRoomOdds is { } odds
@@ -1722,16 +1738,16 @@ public static class PrototypeStateInvariants
                 || odds.TreasureWeight < 0))
         {
             throw new InvalidOperationException(
-                "Native Overgrowth unknown-room weights must be nonnegative.");
+                "Native unknown-room weights must be nonnegative.");
         }
     }
 
-    private static bool TryNativeColumn(string id, out int column)
+    private static bool TryNativeColumn(string id, int act, out int column)
     {
         column = -1;
         var parts = id.Split(':');
         return parts.Length == 3
-            && parts[0] == "1"
+            && parts[0] == act.ToString(System.Globalization.CultureInfo.InvariantCulture)
             && int.TryParse(parts[2], out column);
     }
 
@@ -1740,9 +1756,13 @@ public static class PrototypeStateInvariants
         if (world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId
             || world.Map.GenerationProfileId
-                == PrototypeNativeUnderdocks.GenerationProfileId)
+                == PrototypeNativeUnderdocks.GenerationProfileId
+            || world.Map.GenerationProfileId
+                == PrototypeNativeLaterActRouting.HiveMapProfile
+            || world.Map.GenerationProfileId
+                == PrototypeNativeLaterActRouting.GloryMapProfile)
         {
-            ValidateNativeOvergrowthMap(world);
+            ValidateNativeStructureMap(world);
             return;
         }
 

@@ -901,11 +901,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.curse.bad_luck"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/BadLuck.cs#218172d60d13c06570e9360104264936087d83cf217cb49dcb69f56a37cacd9f"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -913,7 +915,7 @@
           "base"
         ],
         "native_id": "BAD_LUCK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15435,11 +15437,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.infested_automaton"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/InfestedAutomaton.cs#4ad1a8b6be3f4fd38bf39c03a53e03a6d102fa7ace82684eb751a3da7767a62f"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15453,7 +15457,7 @@
         ],
         "missing_variants": [],
         "native_id": "INFESTED_AUTOMATON",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15774,11 +15778,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.reflections"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Reflections.cs#728bfd3c6044fc0a04411285a5e811e6b518d981e21257941b44f872f87e066e"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15792,7 +15798,7 @@
         ],
         "missing_variants": [],
         "native_id": "REFLECTIONS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29554,7 +29560,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 174,
+        "implemented": 175,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,

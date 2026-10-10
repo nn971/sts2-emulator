@@ -1903,6 +1903,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeHiveBosses.Cards)
             .Concat(PrototypeNativeGloryElites.Cards)
             .Concat(PrototypeNativeGloryBosses.Cards)
+            .Concat(PrototypeNativeLaterActEvents.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -6397,6 +6398,7 @@ public static class PrototypeContent
         }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
             .Concat(PrototypeNativeUnderdocksEvents.Definitions)
             .Concat(PrototypeNativeLaterActs.Events)
+            .Concat(PrototypeNativeLaterActEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
