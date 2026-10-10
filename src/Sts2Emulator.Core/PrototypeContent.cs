@@ -3718,6 +3718,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeHiveNormals.Powers)
             .Concat(PrototypeNativeHiveRemainingNormals.Powers)
             .Concat(PrototypeNativeHiveSummoningNormals.Powers)
+            .Concat(PrototypeNativeHiveElites.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
@@ -6029,6 +6030,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeHiveNormals.Enemies)
             .Concat(PrototypeNativeHiveRemainingNormals.Enemies)
             .Concat(PrototypeNativeHiveSummoningNormals.Enemies)
+            .Concat(PrototypeNativeHiveElites.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
@@ -6988,7 +6990,8 @@ public static class PrototypeContent
         ..PrototypeNativeLaterActs.Encounters,
         ..PrototypeNativeHiveNormals.Encounters,
         ..PrototypeNativeHiveRemainingNormals.Encounters,
-        ..PrototypeNativeHiveSummoningNormals.Encounters
+        ..PrototypeNativeHiveSummoningNormals.Encounters,
+        ..PrototypeNativeHiveElites.Encounters
     ];
 
     public static string[] StartingDeck { get; } =
