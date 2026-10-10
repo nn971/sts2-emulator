@@ -1,97 +1,137 @@
 # Emulator roadmap
 
-This roadmap ends at a mature emulator and consumer interface. AI/search/training milestones live in the future parent project.
+The emulator should become useful for whole-run AI experimentation early, then converge toward
+native fidelity and high throughput.
 
 ## Milestone 0 — scaffold
 
-- [x] emulator charter and fidelity contract
-- [x] deterministic engine interfaces
-- [x] generic explicit RNG-state container
+- [x] emulator charter and repository boundary
+- [x] deterministic engine interface
+- [x] explicit RNG-state container
 - [x] canonical JSON/hash bootstrap
-- [x] JSONL trace envelope
-- [x] first-divergence trace diff tool
-- [x] unit-test and microbenchmark scaffolding
+- [x] trace/diff scaffolding
+- [x] unit-test and benchmark scaffolding
 - [x] CI scaffold
-- [x] documented parent/subrepo boundary
 
-## Milestone 1A — native reference capture
+## Milestone 1 — restrictive Silent whole-run MVP
 
-- [ ] pin one STS2 build as the first reference target
-- [ ] identify mod-loader/instrumentation route
-- [ ] enumerate top-level run phases and decision boundaries
-- [ ] capture canonical run state from live game
-- [ ] capture legal actions
-- [ ] inventory complete continuation-relevant RNG streams
-- [ ] capture reproducible RNG stream state/fingerprints
-- [ ] emit versioned JSONL traces
-- [ ] record a small hand-verified trace corpus
+- [x] typed persistent run/world state
+- [x] deterministic prototype ruleset and RNG
+- [x] map choices and room entry
+- [x] normal/elite/boss combat
+- [x] card rewards and deck growth
+- [x] potions and relics
+- [x] shops
+- [x] events
+- [x] rest sites and upgrades
+- [x] act transitions
+- [x] victory/death terminal states
+- [x] CLI whole-run smoke driver
+- [x] deterministic whole-run smoke tests
+- [x] prototype CI hardening, structural invariants, and 500-seed whole-run sweep
 
-## Milestone 1B — deterministic whole-run kernel
+## Milestone 2 — expressive mechanics kernel
 
-- [ ] initialize/load a canonical run state
-- [ ] implement versioned RNG codecs/streams
-- [ ] map generation and routing
-- [ ] room/encounter generation
-- [ ] rewards/card choices
-- [ ] shops
-- [ ] rest sites
-- [ ] events
-- [ ] potions/relic acquisition and persistent state
-- [ ] act transitions
-- [ ] explicit unsupported-mechanic failures
+- [x] card-selection prompts
+- [x] discard/exhaust/generated cards
+- [x] variable/X costs
+- [x] multi-target and repeated effects
+- [x] shared player/enemy power model with globally ordered event subscribers
+- [x] generic combat event registration and ordered power/relic scheduling; status ticking remains a provisional stage system
+- [x] richer ordered enemy move-effect model; intent selection remains simple
+- [x] combat-local card/relic/potion state containers, including stateful relic counters
+- [x] temporary/generated combat card identities and exhaust lifetime
 
-## Milestone 1C — high-fidelity combat
+Hook/timing ordering must remain ruleset-driven or otherwise replaceable; avoid card-specific
+central dispatch branches.
 
-Study/reuse/adapt ideas from existing combat prediction infrastructure instead of casually rewriting combat.
+## Milestone 3 — broader Silent + richer run generation
 
-- [ ] canonical combat snapshot
-- [ ] fork-safe card/pile/creature/power state
-- [ ] native-order trigger semantics
-- [ ] enemy AI
-- [ ] potion/relic combat interactions
-- [ ] cross-turn histories/counters
-- [ ] combat RNG parity
-- [ ] native-vs-emulator closed-loop tests
+- [x] persistent graph-shaped maps
+- [x] act/floor/history-sensitive weighted encounter pools
+- [x] rarity-aware card rewards
+- [x] rarity-aware shops with one-use card removal
+- [x] weighted event eligibility/history with repeat constraints
+- [x] richer rest-site choices, including permanent max-HP training
+- [x] substantially larger Silent card pool — 28 non-basic reward cards plus starter/generated cards
+- [x] first expanded potion/relic pool
+- [x] act-specific boss and later-elite encounter expansion
+- [x] enough variety for first strategic AI experiments — 500-run sweep covers 28/28 reward cards, 8/8 relics, all events, and all acts
 
-## Milestone 1D — parity at scale
+## Prototype AI handoff
 
-- [ ] replay runner
+- [x] player-facing observation DTO
+- [x] stable semantic action IDs
+- [x] deterministic reset/step/fork adapter
+- [x] sibling expansion API for search
+- [x] observation and canonical-state hashes
+- [x] machine-readable capability manifest
+- [x] deterministic multi-run sweep report
+- [x] parent `sts2-ai` integration against this adapter via the versioned JSONL bridge
+
+## Milestone 3b — native colorless cards for single-player runs
+
+- [x] preserve the exact pinned v0.111.0 65-card ColorlessCardPool inventory, with multiplayer constraints tracked separately
+- [x] playable first merchant batch: Finesse, Flash of Steel, Dramatic Entrance, Ultimate Strike, Ultimate Defend, Master of Strategy
+- [x] source-backed second batch: Shockwave, Impatience, Mind Blast, Secret Technique and Secret Weapon
+- [x] source-backed third batch: Purity, Thinking Ahead and Hand of Greed; generalized selection exhaustion, draw-top placement and fatal gold
+- [x] source-backed fourth batch: Panache, The Bomb and Mayhem; per-instance event counters, turn-end countdown damage and post-draw auto-preplay hooks
+- [x] source-backed fifth batch: Panic Button and Dark Shackles; card-only Block prevention, enemy-side countdown expiration and reversible Strength reduction
+- [x] source-backed ten-card sixth batch: Discovery, Jack of All Trades, Scrawl, Restlessness, Prowess, Equilibrium, Production, Prolong, Salvo and Seeker Strike; generic distinct generation, optional choices and random draw-pile shortlists
+- [x] source-backed seventh batch: Volley, Splash, Anointed and Gold Axe; X-cost random attacks, upgraded attack discovery, rare-card draw-pile extraction and combat-wide finished-play counts
+- [x] source-backed eighth batch: Fisticuffs, Bolas, Thrumming Hatchet, Hidden Gem, Rend, Jackpot, Fasten and Prep Time; reusable damage-to-Block, per-instance last-turn recovery, replay, debuff scaling, zero-cost generation and power lifecycle effects
+- [x] source-backed ninth batch: Alchemize, Automation, Beat Down, Calamity, Catastrophe, Eternal Armor, Nostalgia, Omnislice, Rolling Boulder and The Gambit; potion creation, triggered generation, sequential autoplay, turn-end Plating, resolved-card destinations, unpowered splash and lethal guarded downside
+- [x] pinned five colorless epoch-gated unlock inventories, with conservative combat generation filtering pending unlock-state modeling
+- [x] implement the remaining solo cards Entropy and Stratagem with explicit interactive turn-start transform and shuffle-time draw-pile choices
+- [x] register all 12 native multiplayer-only colorless cards as typed unsupported models (excluded from merchant/reward/combat generation pools)
+- [ ] native oracle differential testing for transformed card candidate distributions, shuffle-specific RNG streams and all earlier colorless card edge cases
+- [ ] model native solo unlock/epoch constraints and the actual colorless reward/merchant generation rules
+- [ ] provide card-specific native oracle differentials for complex choice, trigger, and RNG semantics
+
+Colorless shop cards are sampled separately from ordinary Silent combat rewards. Catalog
+membership and playable semantics are tracked separately: other colorless models
+must remain unavailable until their mechanics are implemented. Multiplayer-only
+and cross-character mechanics remain deferred.
+
+## Milestone 4 — native-data and fidelity convergence
+
+- [x] pin a reference STS2 build — v0.111.0 / 41cef1ea, fingerprint `3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e`
+- [ ] native reference bridge — v0 passive recorder live-validated on two Silent A0 combats; probe v1 adds combat-history/action granularity, player creature state, and serialized RNG fields and awaits live validation
+- [ ] real content-data translation/import where appropriate
+- [ ] native RNG stream inventory/codecs
+- [ ] native timing/trigger semantics
 - [ ] legal-action parity
-- [ ] first-divergence reports
-- [ ] random-legal-action live traces
-- [ ] targeted rare-mechanic traces
+- [ ] decision-boundary state parity
 - [ ] minimized regression traces
-- [ ] nightly fuzz/parity jobs
-- [ ] 1,000-run milestone corpus with no unexplained divergence
+- [ ] large version-pinned parity corpus
 
-## Milestone 1E — practical speed
+## Milestone 5 — practical speed
 
-- [ ] representative benchmark suite
+- [ ] representative AI/search benchmark suite — prototype observe/expand microbenchmarks added
 - [ ] profile state copy/fork
-- [ ] structural sharing/copy-on-write where measurements justify it
-- [ ] efficient exact-state/transposition hashes
-- [ ] reduce allocations and GC pressure
-- [ ] parallel batch API
-- [ ] establish memory-per-branch budgets
-- [ ] evaluate NativeAOT and interop overhead
-- [ ] publish reproducible performance report
+- [ ] compact state layouts where justified
+- [ ] structural sharing/copy-on-write where justified
+- [ ] efficient transposition hashes
+- [ ] allocation/GC reduction
+- [ ] parallel/batch API — deterministic sibling expansion API added; parallel execution remains
+- [ ] memory-per-branch budgets
+- [ ] NativeAOT/interoperability evaluation
 
-## Milestone 1F — stable consumer release
+## Milestone 6 — stable consumer release
 
 - [ ] versioned public engine API
-- [ ] versioned canonical state/action schemas
-- [ ] stable native or managed batch interface
-- [ ] Python binding suitable for research workloads
-- [ ] compatibility/version-negotiation rules
-- [ ] deterministic save/load snapshots
-- [ ] benchmarked parent-project integration example
-- [ ] release checklist documenting supported mechanics and known parity gaps
+- [ ] versioned state/action schemas — `prototype-ai-v0` adapter schema exists; cross-language schema remains
+- [ ] deterministic save/load
+- [ ] Python binding
+- [ ] compatibility/version negotiation
+- [x] prototype supported-mechanics/content capability manifest
+- [ ] reproducible fidelity/performance report
 
-## Post-Milestone 1 maintenance
+## Maintenance
 
-- track new STS2 game builds;
-- characterize semantic diffs between builds;
-- update native fixtures before changing emulator behavior;
-- maintain backward-readable trace formats when practical;
+- track new STS2 builds;
+- keep prototype assumptions clearly separated from verified semantics;
+- characterize semantic diffs between game builds;
+- retain minimized parity regressions;
 - preserve benchmark history;
-- keep public bindings stable or explicitly versioned.
+- version public bindings deliberately.

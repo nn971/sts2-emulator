@@ -6,7 +6,7 @@ This repository is intended to stand on its own as emulator infrastructure and t
 
 The first milestone is the whole point of this repository:
 
-> **Reproduce complete STS2 runs with high fidelity to a pinned real-game build, while remaining fast enough for large-scale branching simulation.**
+> **Make complete seeded runs simulatable end to end first, then iteratively replace prototype content, RNG, and timing with native STS2 semantics and optimize representative AI workloads.**
 
 ## Scope boundary
 
@@ -37,14 +37,15 @@ See [docs/SUBREPO_INTEGRATION.md](docs/SUBREPO_INTEGRATION.md).
 
 ## Design principles
 
-1. **Parity before performance.** A speedup must preserve verified semantics.
-2. **Whole-run state.** Combat is one subsystem of a persistent run state.
-3. **Deterministic core.** Hidden RNG state belongs to engine state, so `Step(S, a)` is deterministic.
-4. **Forking is first-class.** Counterfactual branches must be cheap and isolated.
-5. **Version-pinned truth.** Every trace and parity result names the target game build and emulator revision.
-6. **Explicit uncertainty.** Unsupported or weakly verified mechanics fail loudly or carry explicit status.
-7. **Stable consumer boundary.** AI/search code consumes the emulator through documented APIs and bindings instead of importing internal mechanics.
-8. **No presentation baggage.** UI, animation, audio, and rendering are outside canonical simulation state unless they affect future mechanics.
+1. **Whole-run functionality first.** A restrictive complete game loop is more useful early than isolated high-fidelity subsystems.
+2. **Replaceable approximations.** Prototype content, RNG, generation rules, and timing are explicitly versioned so native semantics can replace them cleanly.
+3. **Whole-run state.** Combat is one subsystem of a persistent run state.
+4. **Deterministic core.** Hidden RNG state belongs to engine state, so `Step(S, a)` is deterministic.
+5. **Forking is first-class.** Counterfactual branches must be cheap and isolated.
+6. **Version-pinned truth.** Every trace and parity result names the target game build and emulator revision.
+7. **Explicit uncertainty.** Unsupported or weakly verified mechanics fail loudly or carry explicit status.
+8. **Stable consumer boundary.** AI/search code consumes the emulator through documented APIs and bindings instead of importing internal mechanics.
+9. **No presentation baggage.** UI, animation, audio, and rendering are outside canonical simulation state unless they affect future mechanics.
 
 ## Milestone 1: trustworthy + practically fast emulator
 
@@ -100,7 +101,19 @@ dotnet test Sts2Emulator.sln -c Release
 dotnet run --project benchmarks/Sts2Emulator.Microbench/Sts2Emulator.Microbench.csproj -c Release
 ```
 
-The current scaffold contains **infrastructure contracts, not an invented approximation of STS2 mechanics**. Missing mechanics should fail loudly until implemented from audited semantics or validated against the native reference.
+The current development branch contains a **restrictive Silent whole-run prototype**. Its `proto.*` content, development RNG, room generation, and timing model are intentionally provisional; they exist to exercise the complete run architecture before native-fidelity replacement.
+
+Useful developer commands:
+
+```fish
+dotnet run --project src/Sts2Emulator.Cli -- prototype-run my-seed
+dotnet run --project src/Sts2Emulator.Cli -- prototype-sweep 100
+dotnet run --project src/Sts2Emulator.Cli -- prototype-manifest
+```
+
+The prototype also exposes `PrototypeAiEnvironment` with the versioned `prototype-ai-v0`
+observation/action boundary, stable action IDs, deterministic reset/step/fork, and sibling
+expansion for search consumers.
 
 ## Start here
 
@@ -113,13 +126,15 @@ The current scaffold contains **infrastructure contracts, not an invented approx
 7. [docs/PARITY_TESTING.md](docs/PARITY_TESTING.md) — trace capture and first-divergence workflow.
 8. [docs/PERFORMANCE.md](docs/PERFORMANCE.md) — speed, memory, fork, and batch metrics.
 9. [docs/REFERENCE_BRIDGE.md](docs/REFERENCE_BRIDGE.md) — native-game oracle responsibilities.
-10. [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) — concrete first implementation sprints.
-11. [docs/ROADMAP.md](docs/ROADMAP.md) — emulator-only roadmap.
-12. [docs/REFERENCES.md](docs/REFERENCES.md) — relevant STS2 emulator/prediction prior art.
+10. [docs/PROTOTYPE_SCOPE.md](docs/PROTOTYPE_SCOPE.md) — current Silent whole-run prototype and replacement boundaries.
+11. [docs/AI_INTERFACE.md](docs/AI_INTERFACE.md) — prototype observation/action boundary for search and learning.
+12. [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) — concrete next implementation sprints.
+13. [docs/ROADMAP.md](docs/ROADMAP.md) — emulator-only roadmap.
+14. [docs/REFERENCES.md](docs/REFERENCES.md) — relevant STS2 emulator/prediction prior art.
 
 ## Current status
 
-**Scaffold / Milestone 0.** Engine interfaces, trace envelope, canonical hashing bootstrap, tests, schemas, docs, CI, and parity diff tooling are present. No claim of STS2 mechanical coverage is made yet.
+**AI-ready whole-run prototype.** A restrictive Silent ruleset supports seeded runs through constrained maps, varied encounters, combat, rewards, shops, events, richer rests, bosses, act transitions, and terminal victory/death. A versioned prototype AI adapter and capability manifest are available. Prototype semantics still carry no native-fidelity claim.
 
 ## Independence
 

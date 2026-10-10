@@ -1,0 +1,60 @@
+{
+  "schema": "sts2-reference-build-target-v0",
+  "game_version": "v0.111.0",
+  "commit": "41cef1ea",
+  "release_date": "2026-08-13T17:39:18-07:00",
+  "target_framework": "net9.0",
+  "build_fingerprint": "3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
+  "files": {
+    "sts2.dll": {
+      "sha256": "0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9",
+      "size_bytes": 9757184
+    },
+    "0Harmony.dll": {
+      "sha256": "ef1898322c9f5c86dc1b0758b272a9c440823b4a41ca9a0b82a3aa6b3d206387",
+      "size_bytes": 2328064
+    },
+    "GodotSharp.dll": {
+      "sha256": "0e4897ecdfb31456a97c7d8028dfb8d7dbdc632e2f73fc9b438d7b266a139289",
+      "size_bytes": 5613568
+    },
+    "release_info.json": {
+      "sha256": "74f244b13e9c6849149bec3b37e1729777a7f21306c56383405c2949eea62e22",
+      "size_bytes": 149
+    },
+    "sts2.runtimeconfig.json": {
+      "sha256": "bd81a252bc3f0e8bcb649b404c1da945913c5377b9d3a2c416c52730be8714c0",
+      "size_bytes": 357
+    }
+  },
+  "observed_surfaces": {
+    "initializer": [
+      "MegaCrit.Sts2.Core.Modding.ModInitializerAttribute",
+      "MegaCrit.Sts2.Core.Modding.ModManager.CallModInitializer"
+    ],
+    "combat_lifecycle": [
+      "MegaCrit.Sts2.Core.Combat.CombatManager.CombatSetUp",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.CombatBegan",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.TurnStarted",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.PlayerEndedTurn",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.AboutToSwitchToEnemyTurn",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.TurnEnded",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.CombatWon",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.CombatEnded",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.DebugOnlyGetState",
+      "MegaCrit.Sts2.Core.Combat.CombatManager.StateTracker",
+      "MegaCrit.Sts2.Core.Combat.CombatStateTracker.CombatStateChanged"
+    ],
+    "rng": [
+      "MegaCrit.Sts2.Core.Runs.RunRngSet.ToSerializable",
+      "MegaCrit.Sts2.Core.Random.PlayerRngSet.ToSerializable",
+      "MegaCrit.Sts2.Core.Random.Rng.ToSerializable"
+    ],
+    "native_replay": [
+      "MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter.RecordInitialState",
+      "MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter.RecordGameAction",
+      "MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter.RecordPlayerChoice",
+      "MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter.RecordChecksum"
+    ]
+  }
+}

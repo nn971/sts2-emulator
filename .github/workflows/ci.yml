@@ -18,6 +18,113 @@ jobs:
         run: dotnet build Sts2Emulator.sln -c Release --no-restore
       - name: Test
         run: dotnet test Sts2Emulator.sln -c Release --no-build
+      - name: Prototype sweep diversity report
+        run: dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-sweep 500
+      - name: Overgrowth seeded audit
+        run: dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-overgrowth-audit 64
+      - name: Native-shaped Overgrowth generation smoke
+        run: |
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-native-overgrowth-map native-ci 0
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-native-overgrowth-run native-ci 0
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-native-overgrowth-sweep 24 0
+      - name: Prototype AI JSONL bridge self-check
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+
+          process = subprocess.Popen(
+              [
+                  "dotnet",
+                  "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll",
+                  "prototype-ai-jsonl",
+              ],
+              stdin=subprocess.PIPE,
+              stdout=subprocess.PIPE,
+              text=True,
+          )
+
+          def call(payload):
+              assert process.stdin is not None
+              assert process.stdout is not None
+              process.stdin.write(json.dumps(payload) + "\n")
+              process.stdin.flush()
+              line = process.stdout.readline()
+              response = json.loads(line)
+              assert response["ok"], response
+              return response
+
+          hello = call({"request_id": "hello", "op": "hello"})
+          assert hello["wireSchemaId"] == "prototype-ai-jsonl-v0"
+          assert hello["aiSchemaId"] == "prototype-ai-v0"
+          assert hello["publicEnemyIntentId"] == "prototype-committed-public-enemy-intents-v1"
+
+          reset = call({"request_id": "reset", "op": "reset", "seed": "ci-bridge"})
+          root = reset["stateHandle"]
+          actions = call(
+              {
+                  "request_id": "actions",
+                  "op": "legal_actions",
+                  "state_handle": root,
+              }
+          )["actions"]
+          assert len(actions) == 1
+
+          observed = call(
+              {
+                  "request_id": "observe",
+                  "op": "observe",
+                  "state_handle": root,
+                  "policy_id": "prototype-fair-v0",
+              }
+          )
+          assert observed["schemaId"] == "prototype-ai-v0"
+
+          stepped = call(
+              {
+                  "request_id": "step",
+                  "op": "step",
+                  "state_handle": root,
+                  "action_id": actions[0]["actionId"],
+              }
+          )
+          assert stepped["parent"] == root
+          child = stepped["child"]
+
+          forked = call(
+              {
+                  "request_id": "fork",
+                  "op": "fork",
+                  "state_handle": child,
+              }
+          )
+          hashed = call(
+              {
+                  "request_id": "hash",
+                  "op": "exact_hash",
+                  "state_handle": child,
+              }
+          )
+          assert forked["exactHash"] == hashed["exactHash"]
+
+          call({"request_id": "close", "op": "close"})
+          process.wait(timeout=5)
+          assert process.returncode == 0
+          PY
+      - name: Native one-run capture preflight and audit smoke
+        run: python tools/native_one_run_audit_smoke.py
+      - name: Passive oracle action-ledger smoke
+        run: python tools/native_overgrowth_action_ledger_smoke.py
+      - name: Native action-frame identity and callback smoke
+        run: python tools/native_overgrowth_action_frames_smoke.py
+      - name: Pinned native RNG stream audit smoke
+        run: python tools/native_rng_stream_audit_smoke.py
+      - name: Native Overgrowth training-reset JSONL contract
+        run: python tools/native_overgrowth_reset_smoke.py
+      - name: Hypothetical draw-order JSONL integration
+        run: python tools/hypothetical_draw_order_smoke.py
+      - name: Conditional combat entry JSONL check
+        run: python tools/local_combat_condition_smoke.py
       - name: Trace diff self-check
         run: |
           printf '%s\n' '{"type":"header","trace_schema":"0.1","game_build":"test","bridge_version":"test","run_id":"r","run_seed":"1"}' > /tmp/a.jsonl

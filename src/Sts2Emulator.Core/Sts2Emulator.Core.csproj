@@ -2,4 +2,7 @@
   <PropertyGroup>
     <Description>Canonical deterministic state and engine contracts for the STS2 Emulator.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sts2Emulator.Core.Tests" />
+  </ItemGroup>
 </Project>

@@ -46,3 +46,32 @@ sw.Stop();
 Console.WriteLine($"hashes: {hashIterations:N0} in {sw.Elapsed.TotalSeconds:F3}s = {hashIterations / sw.Elapsed.TotalSeconds:N0}/s");
 Console.WriteLine($"last hash: {last}");
 Console.WriteLine("Note: scaffold canonical JSON hashing is a correctness tool, not a final hot-path hash implementation.");
+
+
+var environment = new PrototypeAiEnvironment();
+var aiState = environment.Reset("bench-ai");
+var startFrame = environment.Observe(aiState);
+aiState = environment.Step(aiState, startFrame.LegalActions.Single().ActionId).State;
+
+for (var i = 0; i < 100; i++) _ = environment.Observe(aiState);
+for (var i = 0; i < 25; i++) _ = environment.Expand(aiState);
+
+var observeIterations = Math.Max(1_000, iterations / 100);
+sw.Restart();
+PrototypeAiFrame? lastFrame = null;
+for (var i = 0; i < observeIterations; i++) lastFrame = environment.Observe(aiState);
+sw.Stop();
+Console.WriteLine(
+    $"ai observe: {observeIterations:N0} in {sw.Elapsed.TotalSeconds:F3}s = " +
+    $"{observeIterations / sw.Elapsed.TotalSeconds:N0}/s");
+
+var expandIterations = Math.Max(250, iterations / 500);
+sw.Restart();
+PrototypeAiExpansion[]? lastExpansion = null;
+for (var i = 0; i < expandIterations; i++) lastExpansion = environment.Expand(aiState);
+sw.Stop();
+Console.WriteLine(
+    $"ai expand: {expandIterations:N0} in {sw.Elapsed.TotalSeconds:F3}s = " +
+    $"{expandIterations / sw.Elapsed.TotalSeconds:N0}/s " +
+    $"({lastExpansion?.Length ?? 0} successors/call)");
+Console.WriteLine($"last observation hash: {lastFrame?.ObservationHash}");
