@@ -54,7 +54,27 @@ public static class PrototypeNativeHiveElites
         MinHp: 40,
         HpAscensionDeltas: [new(8, 6)],
         MinHpAscensionDeltas: [new(8, 6)],
-        StartingPowers: [new(ReattachId, 25)]);
+        StartingPowers: [new(ReattachId, 25)],
+        MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+        Ai: new("writhe",
+        [
+            new("writhe", PrototypeEnemyAiStateKind.Move,
+                MoveIndex: 0, NextStateId: "constrict"),
+            new("bulk", PrototypeEnemyAiStateKind.Move,
+                MoveIndex: 1, NextStateId: "writhe"),
+            new("constrict", PrototypeEnemyAiStateKind.Move,
+                MoveIndex: 2, NextStateId: "bulk"),
+            new("reattach_random", PrototypeEnemyAiStateKind.Random,
+                Branches:
+                [
+                    new("writhe", RepeatRule:
+                        PrototypeEnemyAiRepeatRule.CannotRepeat),
+                    new("bulk", RepeatRule:
+                        PrototypeEnemyAiRepeatRule.CannotRepeat),
+                    new("constrict", RepeatRule:
+                        PrototypeEnemyAiRepeatRule.CannotRepeat)
+                ])
+        ]));
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
     [
@@ -132,9 +152,10 @@ public static class PrototypeNativeHiveElites
             [EntomancerId], MinAct: 2, MaxAct: 2, Weight: 0),
         new(PrismEncounterId, PrototypeRoomType.Elite,
             [PrismId], MinAct: 2, MaxAct: 2, Weight: 0),
-        // Three positions and a cyclically offset opening move.
-        // Segment reattachment and HP uniquification remain
-        // unsupported, so this is NOT a native-fidelity encounter.
+        // Three positions with one shared rotational opener roll.
+        // HP uniquification and two-stage reattachment are modeled;
+        // encounter-local RNG and the native reattach visual delay
+        // remain unverified against gameplay traces.
         new(DecimillipedeEncounterId, PrototypeRoomType.Elite,
             [FrontId, MiddleId, BackId],
             MinAct: 2, MaxAct: 2, Weight: 0,
@@ -144,6 +165,8 @@ public static class PrototypeNativeHiveElites
                 new(MiddleId, 1, "segment2"),
                 new(BackId, 2, "segment3")
             ],
-            CyclicOpeningAiStateIds: null)
+            CyclicOpeningAiStateIds:
+                ["writhe", "bulk", "constrict"],
+            UniqueEvenEnemyHpWithinEncounter: true)
     ];
 }

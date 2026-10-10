@@ -175,9 +175,13 @@ This is an intermediate implementation. Final release gates remain open.
   PersonalHive now adds Dazed per powered hit with a conditional stack
   cap at 3; VitalSpark taints Skill cards, inflicts Tainted on play,
   adds flat incoming attack damage, and expires after the enemy turn.
-  Explicit unsupported: linked
-  Decimillipede segment reattachment and rotational opener/unique HP.
-  All three Weight=0; do not count as full elite fidelity.
+  Decimillipede now coordinates its rotational opening moves from a
+  single encounter-local roll, assigns distinct even segment HP, and
+  performs an untargetable dead turn followed by reattachment for 25 HP
+  while another segment remains alive. Dynamic owner-death fatal is
+  gated on surviving siblings. Remaining mismatch: death/reattach
+  visuals, niche RNG streams, and lack of live-game trace evidence.
+  All three Weight=0; native fidelity remains unverified.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

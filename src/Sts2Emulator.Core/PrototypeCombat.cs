@@ -225,6 +225,33 @@ public sealed partial class PrototypeGameEngine
             })
             .ToArray();
 
+        if (encounter.UniqueEvenEnemyHpWithinEncounter)
+        {
+            var occupiedHp = new HashSet<int>();
+            for (var i = 0; i < enemies.Length; i++)
+            {
+                var range = PrototypeContent.Enemy(
+                    enemies[i].EnemyId).HpRangeAt(world.Act, state.Ascension);
+                var minimumEven = range.Min + (range.Min % 2);
+                var maximumEven = range.Max - (range.Max % 2);
+                if (minimumEven > maximumEven)
+                    throw new InvalidOperationException(
+                        "Segment HP interval has no even value.");
+                var candidate = enemies[i].Hp + (enemies[i].Hp % 2);
+                if (candidate > maximumEven)
+                    candidate = minimumEven;
+                // Native Decimillipede's AfterAddedToRoom advances
+                // duplicate HP by two and wraps around its even range.
+                while (!occupiedHp.Add(candidate))
+                {
+                    candidate += 2;
+                    if (candidate > maximumEven)
+                        candidate = minimumEven;
+                }
+                enemies[i] = enemies[i] with { Hp = candidate };
+            }
+        }
+
         var nextCombatCardId = 1L;
         var combatCards = state.Player.Deck
             .Select(card => new CombatCardInstance(
@@ -2484,6 +2511,45 @@ public sealed partial class PrototypeGameEngine
 
             if (enemy.Hp <= 0)
             {
+                // ReattachPower: a deceased segment remains in combat,
+                // untargetable. It first spends its DEAD move, then
+                // reattaches for 25 HP on a later enemy action if at
+                // least one other segment remains alive. Its next
+                // normal intent is chosen after reattachment.
+                if (enemy.PowerStates.Any(power =>
+                        power.PowerId == PrototypeNativeHiveElites.ReattachId)
+                    && enemies.Any(other =>
+                        other.InstanceId != enemy.InstanceId
+                        && other.Hp > 0
+                        && other.PowerStates.Any(power =>
+                            power.PowerId ==
+                                PrototypeNativeHiveElites.ReattachId)))
+                {
+                    enemy = enemy.ReattachDeadMoveResolved
+                        ? enemy with
+                        {
+                            Hp = Math.Min(definition.HpRangeAt(act,
+                                ascension).Max,
+                                enemy.PowerStates
+                                    .Where(power => power.PowerId ==
+                                        PrototypeNativeHiveElites.ReattachId)
+                                    .Sum(power => power.Stacks)),
+                            Block = 0,
+                            LastMoveId = "reattach",
+                            ReattachDeadMoveResolved = false,
+                            AiStateId = "reattach_random",
+                            Statuses = new Dictionary<string, int>(
+                                StringComparer.Ordinal)
+                        }
+                        : enemy with
+                        {
+                            LastMoveId = "dead",
+                            ReattachDeadMoveResolved = true
+                        };
+                    enemies[index] = enemy;
+                    continue;
+                }
+
                 var leaderAlive = enemy.LeaderEnemyInstanceId is not
                         { } leaderId
                     || enemies.Any(candidate =>
@@ -6366,6 +6432,17 @@ public sealed partial class PrototypeGameEngine
             item => item.InstanceId == enemyId)
             ?? throw new InvalidOperationException(
                 $"Enemy {enemyId} is missing.");
+
+        // ReattachPower only makes a segment's death fatal when
+        // every other linked segment is already dead.
+        if (enemy.PowerStates.Any(power =>
+                power.PowerId == PrototypeNativeHiveElites.ReattachId)
+            && combat.Enemies.Any(other =>
+                other.InstanceId != enemy.InstanceId
+                && other.Hp > 0
+                && other.PowerStates.Any(power =>
+                    power.PowerId == PrototypeNativeHiveElites.ReattachId)))
+            return false;
 
         return enemy.PowerStates.All(power =>
             PrototypeContent.Power(power.PowerId)
