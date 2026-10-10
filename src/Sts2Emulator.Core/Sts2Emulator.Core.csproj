@@ -4,5 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Sts2Emulator.Core.Tests" />
+    <EmbeddedResource Include="../../data/coverage/v111-inventory.json" LogicalName="Sts2Emulator.Core.v111-inventory.json" />
   </ItemGroup>
 </Project>

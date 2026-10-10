@@ -82,6 +82,8 @@ public sealed record PrototypeAiExtraRelicReward(
     int GroupIndex,
     string RelicId);
 
+public sealed record PrototypeAiExtraGoldReward(int GroupIndex, int Amount);
+
 public sealed record PrototypeAiReward(
     string[] CardOptions,
     string? PotionOption,
@@ -97,7 +99,9 @@ public sealed record PrototypeAiReward(
     bool GoldResolved = true,
     bool IndependentSelection = false,
     PrototypeAiRewardCardGroup[]? PendingCardGroups = null,
-    PrototypeAiExtraRelicReward[]? PendingExtraRelicRewards = null);
+    PrototypeAiExtraRelicReward[]? PendingExtraRelicRewards = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiExtraGoldReward[]? PendingExtraGoldRewards = null);
 
 public sealed record PrototypeAiEventDeckChoice(
     string ChoiceId,
@@ -313,8 +317,8 @@ public sealed class PrototypeAiEnvironment
     {
         var world = state.World;
         return new PrototypeAiObservation(
-            RulesetId: world?.RulesetId ?? PrototypeContent.RulesetId,
-            CharacterId: world?.CharacterId ?? PrototypeContent.CharacterId,
+            RulesetId: world?.RulesetId ?? state.Configuration?.RulesetId ?? PrototypeContent.RulesetId,
+            CharacterId: world?.CharacterId ?? state.Configuration?.CharacterId ?? PrototypeContent.CharacterId,
             DecisionIndex: state.DecisionIndex,
             Phase: state.Phase,
             Act: world?.Act,
@@ -414,6 +418,12 @@ public sealed class PrototypeAiEnvironment
                             .Select(index => new PrototypeAiExtraRelicReward(
                                 index,
                                 world.Reward.ExtraRelicRewardIds![index]))
+                            .ToArray()
+                        : null,
+                    world.Reward.ExtraGoldOptions is { } extraGold
+                        ? Enumerable.Range(0, extraGold.Length)
+                            .Where(index => !world.Reward.ExtraGoldGroupsResolved![index])
+                            .Select(index => new PrototypeAiExtraGoldReward(index, extraGold[index]))
                             .ToArray()
                         : null),
             Shop: world?.Shop is null

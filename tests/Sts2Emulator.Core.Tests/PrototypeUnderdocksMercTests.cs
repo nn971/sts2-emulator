@@ -137,13 +137,19 @@ public sealed class PrototypeUnderdocksMercTests
         state = KillEnemyWithAttack(engine, state,
             "proto.enemy.fat_gremlin");
         Assert.Equal(RunPhase.Reward, state.Phase);
-        Assert.Equal(20, state.World!.Reward!.GoldOption);
+        var ordinaryGold = state.World!.Reward!.GoldOption!.Value;
+        Assert.InRange(ordinaryGold, 10, 20);
+        Assert.Equal(20, Assert.Single(state.World.Reward.ExtraGoldOptions!));
         Assert.False(state.World.Reward.GoldResolved);
-        Assert.Equal(79 + 25, state.Player.Gold);
+        Assert.Equal(79, state.Player.Gold);
         var takeGold = engine.GetLegalActions(state)
-            .Single(action => action.Kind == "take_reward_gold");
+            .Single(action => action.Kind == "take_reward_extra_gold");
         state = engine.Step(state, takeGold).State;
-        Assert.Equal(99 + 25, state.Player.Gold);
+        Assert.Equal(99, state.Player.Gold);
+        Assert.True(Assert.Single(state.World!.Reward!.ExtraGoldGroupsResolved!));
+        Assert.False(state.World.Reward.GoldResolved);
+        state = engine.Step(state, GameAction.Empty("take_reward_gold")).State;
+        Assert.Equal(99 + ordinaryGold, state.Player.Gold);
         Assert.True(state.World!.Reward!.GoldResolved);
     }
 

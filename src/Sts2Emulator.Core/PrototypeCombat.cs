@@ -1578,6 +1578,9 @@ public sealed partial class PrototypeGameEngine
                 combat = CommitEnemyIntents(combat, state.Rng) with
                 {
                     Turn = combat.Turn + 1,
+                    PlayerPowers = combat.PlayerPowers.Select(power =>
+                        PrototypeContent.Power(power.PowerId).SnapshotGenerationStacksAtTurnStart
+                            ? power with { StoredValue = power.Stacks } : power).ToArray(),
                     Counters = combat.CounterState with
                     {
                         CardsPlayedThisTurn = 0,
@@ -3175,7 +3178,9 @@ public sealed partial class PrototypeGameEngine
                                 + (effect.Selection.SelectionsPerPowerStack
                                     * powerStacks)
                                 + (effect.Selection.MaxSelectionsUpgradeDelta
-                                    * upgradeLevel)
+                                    * upgradeLevel),
+                            CopiesPerSelection = effect.Selection.CopiesPerSelection
+                                + effect.Selection.CopiesPerSelectionUpgradeDelta * upgradeLevel
                         },
                     effect.CardId,
                     effect.PowerId,
@@ -3392,6 +3397,8 @@ public sealed partial class PrototypeGameEngine
                         operation.IsPoweredAttack
                             ? MinimumPoweredAttackHpLoss(player) : 0);
                     combat = damageResult.Combat;
+                    if (splashTarget is { Block: > 0 } && damageAmount >= splashTarget.Block)
+                        combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
                     if (operation.SplashUnpoweredAttackToOtherEnemies
                         && splashTarget is { Hp: > 0 })
                     {
@@ -3600,6 +3607,7 @@ public sealed partial class PrototypeGameEngine
                                     echoDamageAmount);
                             }
 
+                            var echoTargetBlock = combat.Enemies.Single(enemy => enemy.InstanceId == enemyId).Block;
                             var echoDamageResult = DamageEnemy(
                                 combat,
                                 enemyId,
@@ -3607,6 +3615,8 @@ public sealed partial class PrototypeGameEngine
                                 operation.IsPoweredAttack
                                     ? MinimumPoweredAttackHpLoss(player) : 0);
                             combat = echoDamageResult.Combat;
+                            if (echoTargetBlock > 0 && echoDamageAmount >= echoTargetBlock)
+                                combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, enemyId);
                             if (echoDamageResult.Defeated)
                             {
                                 pendingRounds++;
@@ -4119,6 +4129,10 @@ public sealed partial class PrototypeGameEngine
                     var selection = operation.Selection
                         ?? throw new InvalidOperationException("Choose-cards operation has no selection specification.");
                     var candidates = GetZone(combat, selection.SourceZone);
+                    if (selection.RequireAttackOrPower)
+                        candidates = candidates.Where(id => PrototypeContent.Card(
+                            RequireCombatCard(combat, id).CardId).Type
+                            is PrototypeCardType.Attack or PrototypeCardType.Power).ToArray();
                     if (selection.RequiredCardType is not null)
                     {
                         candidates = candidates
@@ -4221,10 +4235,13 @@ public sealed partial class PrototypeGameEngine
                             "Remove-enemy-block operation requires a target.");
                     }
 
+                    var blockBeforeRemoval = combat.Enemies.Single(enemy => enemy.InstanceId == targetEnemyId.Value).Block;
                     combat = SetEnemyBlock(
                         combat,
                         targetEnemyId.Value,
                         0);
+                    if (blockBeforeRemoval > 0)
+                        combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
                     break;
 
                 case PrototypeCombatEffectKind.RemoveEnemyPower:
@@ -4497,19 +4514,24 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand:
+                case PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand:
                 {
-                    var pool = PrototypeContent.RewardCardPool.Where(id =>
+                    var skills = operation.Kind == PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand;
+                    var sourcePool = skills ? PrototypeContent.NativeSilentCardPool : PrototypeContent.RewardCardPool;
+                    var pool = sourcePool.Where(id =>
                     {
                         var definition = PrototypeContent.Card(id);
-                        return definition.Type == PrototypeCardType.Attack
+                        return definition.Type == (skills ? PrototypeCardType.Skill : PrototypeCardType.Attack)
                             && definition.MechanicsImplemented
                             && definition.CanBeGeneratedInCombat
+                            && definition.Rarity is PrototypeCardRarity.Common
+                                or PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare
                             && !definition.MultiplayerOnly;
                     }).ToArray();
                     if (pool.Length == 0 && operation.Amount > 0)
                     {
                         throw new NotSupportedException(
-                            "No implemented solo attack generation pool.");
+                            "No implemented solo character card generation pool.");
                     }
                     for (var i = 0; i < operation.Amount; i++)
                     {
@@ -4517,8 +4539,33 @@ public sealed partial class PrototypeGameEngine
                             rng, "combat", pool.Length)];
                         combat = AddGeneratedCardCopies(combat,
                             new PrototypeCombatCardSnapshot(
-                                id, 0, PrototypeJson.EmptyObject()), 1);
+                                id, 0, PrototypeJson.EmptyObject(),
+                                TemporaryEnergyCost: skills
+                                    ? new(0, PrototypeTemporaryCardCostExpiry.EndOfTurn)
+                                    : null), 1);
                     }
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand:
+                {
+                    var count = operation.SourcePowerApplicationOrder is { } order
+                        ? combat.PlayerPowers.Single(power => power.ApplicationOrder == order).StoredValue
+                        : operation.Amount;
+                    if (count <= 0) break;
+                    var pool = PrototypeContent.NativeSilentCardPool.Where(id =>
+                    {
+                        var definition = PrototypeContent.Card(id);
+                        return definition.Rarity == PrototypeCardRarity.Common
+                            && definition.MechanicsImplemented && definition.CanBeGeneratedInCombat
+                            && !definition.MultiplayerOnly;
+                    }).ToArray();
+                    // Native TakeRandom shuffles the whole filtered pool before
+                    // taking a distinct prefix, even for a single generated card.
+                    PrototypeRng.Shuffle(rng, "combat", pool);
+                    foreach (var id in pool.Take(count))
+                        combat = AddGeneratedCardCopies(combat,
+                            new PrototypeCombatCardSnapshot(id, 0, PrototypeJson.EmptyObject()), 1);
                     break;
                 }
 
@@ -5514,6 +5561,16 @@ public sealed partial class PrototypeGameEngine
             combat,
             series.SourceCardInstanceId);
         var definition = PrototypeContent.Card(card.CardId);
+        if (series.NextPlayIndex == 0 && !series.RemoveSourceCardOnCompletion
+            && series.SourceCardDestination == PrototypeCardZone.DiscardPile
+            && combat.PlayerPowers.Any(power => power.Stacks > 0
+                && PrototypeContent.Power(power.PowerId).ReturnNextDiscardedCardToDraw))
+        {
+            // Native result-location hooks run before OnPlay and apply once to
+            // the physical card, including autoplay and repeated executions.
+            combat = DecrementPlayerPowers(combat, power => power.ReturnNextDiscardedCardToDraw);
+            series = series with { SourceCardDestination = PrototypeCardZone.DrawPile };
+        }
         var powerApplicationOrderCeiling =
             combat.NextPowerApplicationOrder - 1;
 
@@ -6467,6 +6524,8 @@ public sealed partial class PrototypeGameEngine
                 combat.Hand.Length,
             PrototypeCombatCountKind.DrawPileCards =>
                 combat.DrawPile.Length,
+            PrototypeCombatCountKind.DiscardPileCards =>
+                combat.DiscardPile.Length,
             PrototypeCombatCountKind.PlayerBlock =>
                 combat.PlayerBlock,
             PrototypeCombatCountKind.TargetDebuffs =>
@@ -6593,6 +6652,11 @@ public sealed partial class PrototypeGameEngine
                     PrototypeContent.Card(
                         RequireCombatCard(combat, instanceId).CardId).Type
                     != PrototypeCardType.Attack),
+            PrototypeCombatPredicateKind.HandHasOnlyAttacks =>
+                combat.Hand.All(instanceId =>
+                    PrototypeContent.Card(
+                        RequireCombatCard(combat, instanceId).CardId).Type
+                    == PrototypeCardType.Attack),
 
             PrototypeCombatPredicateKind.TargetHasStatus =>
                 TargetHasStatus(
@@ -8839,6 +8903,20 @@ public sealed partial class PrototypeGameEngine
                 "Selected card is no longer in the requested source zone.");
         }
 
+        if (selection.Resolution == PrototypeCardSelectionResolutionKind.CopyToHand)
+        {
+            foreach (var id in selected)
+            {
+                var card = RequireCombatCard(combat, id);
+                combat = AddGeneratedCardCopies(combat, new PrototypeCombatCardSnapshot(
+                    card.CardId, card.UpgradeLevel, card.State.Clone(), card.CombatEnergyCostDelta,
+                    card.TemporaryEnergyCost, card.KeywordOverrides, card.ReplayCount,
+                    card.Enchantment, card.EnchantmentTriggeredThisCombat, card.Affliction,
+                    card.SuppressedUpgradeLevels), selection.CopiesPerSelection);
+            }
+            return combat;
+        }
+
         if (selection.Resolution
                 == PrototypeCardSelectionResolutionKind.TransformRandom)
         {
@@ -9321,6 +9399,17 @@ public sealed partial class PrototypeGameEngine
         }
         return new PrototypeDamageResult(
             nextCombat, damageDealt, Defeated: defeated);
+    }
+
+    private static CombatState ApplyPlayerEnemyBlockBrokenRelics(
+        PlayerState player, CombatState combat, int enemyId)
+    {
+        foreach (var relic in player.Relics)
+        {
+            var amount = PrototypeContent.Relic(relic.RelicId).EnemyVulnerableOnBlockBroken;
+            if (amount > 0) combat = ApplyEnemyPower(combat, enemyId, "proto.power.vulnerable", amount);
+        }
+        return combat;
     }
 
     private static PrototypeDamageResult DamageEnemy(

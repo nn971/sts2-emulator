@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
@@ -118,7 +119,9 @@ public enum PrototypeCombatEffectKind
     SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
     RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
     ModifyEventSourceCardKeyword,
-    GainPlayerBlockFromEnemyStatusTotal
+    GainPlayerBlockFromEnemyStatusTotal,
+    CreateRandomCharacterSkillCardsInHand,
+    CreateDistinctCharacterCommonCardsInHand
 }
 
 public enum PrototypeCardKeyword
@@ -211,7 +214,8 @@ public enum PrototypeCardSelectionResolutionKind
     MoveToDiscard,
     MoveToExhaust,
     MoveToDrawTop,
-    TransformRandom
+    TransformRandom,
+    CopyToHand
 }
 
 public enum PrototypeEffectTarget
@@ -236,7 +240,8 @@ public enum PrototypeCombatPredicateKind
     DrawPileEmpty,
     TargetHasStatus,
     HandEmptyAtEnqueue,
-    HandHasNoAttacks
+    HandHasNoAttacks,
+    HandHasOnlyAttacks
 }
 
 public enum PrototypeCombatCountKind
@@ -250,7 +255,8 @@ public enum PrototypeCombatCountKind
     OtherCardsInHand,
     DrawPileCards,
     PlayerBlock,
-    TargetDebuffs
+    TargetDebuffs,
+    DiscardPileCards
 }
 
 public sealed record PrototypeCombatPredicateSpec(
@@ -438,7 +444,13 @@ public sealed record PrototypeCardSelectionSpec(
     int MaxSelectionsUpgradeDelta = 0,
     // Offer a random subset of the matching source pile without moving
     // unchosen cards. Native Seeker Strike offers up to three options.
-    int RandomCandidateCount = 0);
+    int RandomCandidateCount = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    bool RequireAttackOrPower = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    int CopiesPerSelection = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    int CopiesPerSelectionUpgradeDelta = 0);
 
 public sealed record PrototypeSelectedCardPowerSpec(
     string PowerId,
@@ -724,7 +736,8 @@ public sealed record PrototypeRelicDefinition(
     // General run/combat modifier hooks, including event-only relics.
     int GoldOnRoomEntryUntilPurchase = 0,
     int RestHealCardRewardCount = 0,
-    int MinPoweredAttackHpLoss = 0);
+    int MinPoweredAttackHpLoss = 0,
+    int EnemyVulnerableOnBlockBroken = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -848,7 +861,9 @@ public sealed record PrototypePowerDefinition(
     // Reversible enemy strength effects; changes are applied after
     // debuff prevention, then restored at enemy side-turn end.
     int EnemyStrengthOnApplyPerStack = 0,
-    int EnemyStrengthRestoreAtSideTurnEndPerStack = 0);
+    int EnemyStrengthRestoreAtSideTurnEndPerStack = 0,
+    bool ReturnNextDiscardedCardToDraw = false,
+    bool SnapshotGenerationStacksAtTurnStart = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -1685,7 +1700,11 @@ public sealed record RewardState(
     bool GoldResolved = true,
     bool IndependentSelection = false,
     bool[]? ExtraCardGroupsResolved = null,
-    bool[]? ExtraRelicGroupsResolved = null)
+    bool[]? ExtraRelicGroupsResolved = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int[]? ExtraGoldOptions = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    bool[]? ExtraGoldGroupsResolved = null)
 {
     /// <summary>
     /// Native rewards resolve each extra offer by its stable original
@@ -1858,6 +1877,8 @@ public sealed record RewardState(
         ExtraRelicGroupsResolved = ExtraRelicGroupsResolved is null
             ? null
             : (bool[])ExtraRelicGroupsResolved.Clone(),
+        ExtraGoldOptions = ExtraGoldOptions is null ? null : (int[])ExtraGoldOptions.Clone(),
+        ExtraGoldGroupsResolved = ExtraGoldGroupsResolved is null ? null : (bool[])ExtraGoldGroupsResolved.Clone(),
         PendingDeckChoice = PendingDeckChoice?.Fork()
     };
 }
@@ -2041,7 +2062,9 @@ public sealed record RunWorldState(
         PrototypeNativePotionRewardOdds.InitialThousandths,
     int CardRarityOffsetBasisPoints =
         PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints,
-    bool NativeOvergrowthOpening = false)
+    bool NativeOvergrowthOpening = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    ActIdentity? ActIdentity = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -2080,6 +2103,7 @@ public sealed record ChooseCardPayload(int Index);
 public sealed record ChooseRewardCardGroupPayload(int GroupIndex, int Index);
 public sealed record ChooseBundlePayload(int Index);
 public sealed record ChooseRelicPayload(int Index);
+public sealed record ChooseGoldRewardPayload(int GroupIndex);
 public sealed record ChooseDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceRewardPotionPayload(int Slot);
 public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sts2-emulator:exact-snapshot-v1",
+  "title": "Exact hidden emulator snapshot envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "game_build",
+    "state_schema",
+    "state_hash",
+    "state"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sts2-exact-snapshot-v1"
+    },
+    "game_build": {
+      "type": "string"
+    },
+    "state_schema": {
+      "enum": [
+        "prototype-0.1",
+        "sts2-run-v111-v1"
+      ]
+    },
+    "state_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "state": {
+      "type": "object",
+      "required": [
+        "game_build",
+        "emulator_schema",
+        "run_id",
+        "run_seed",
+        "decision_index",
+        "phase",
+        "player",
+        "rng",
+        "extension_state"
+      ],
+      "properties": {
+        "configuration": {
+          "$ref": "run-config-v111.schema.json"
+        }
+      }
+    }
+  },
+  "$comment": "Restore also checks exact build/state consistency, hash and engine invariants. This envelope schema does not enumerate the entire content-dependent continuation state."
+}

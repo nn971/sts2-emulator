@@ -18,6 +18,18 @@ jobs:
         run: dotnet build Sts2Emulator.sln -c Release --no-restore
       - name: Test
         run: dotnet test Sts2Emulator.sln -c Release --no-build
+      - name: Pinned v111 inventory and executable coverage
+        run: python tools/check_v111_coverage.py
+      - name: v111 Python binding, snapshots and deterministic batches
+        run: python tools/v111_interface_smoke.py
+      - name: Reproducible v111 coverage and performance reports
+        run: |
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage > /tmp/v111-coverage.json
+          dotnet benchmarks/Sts2Emulator.Microbench/bin/Release/net9.0/Sts2Emulator.Microbench.dll v111 100 > /tmp/v111-benchmark.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v111-coverage-and-performance
+          path: /tmp/v111-*.json
       - name: Prototype sweep diversity report
         run: dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll prototype-sweep 500
       - name: Overgrowth seeded audit

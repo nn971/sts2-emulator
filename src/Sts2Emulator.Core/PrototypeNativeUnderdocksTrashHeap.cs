@@ -33,22 +33,20 @@ public static class PrototypeNativeUnderdocksTrashHeap
     ];
 
     // Event-only relics remain excluded from ordinary relic bags.
-    // Hand Drill still awaits the generic enemy-block-broken hook.
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
         new("proto.native.trash_heap.dream_catcher", "Dream Catcher",
             RestHealCardRewardCount: 3),
-        new("proto.native.trash_heap.hand_drill", "Hand Drill"),
+        new("proto.native.trash_heap.hand_drill", "Hand Drill",
+            EnemyVulnerableOnBlockBroken: 2),
         new("proto.native.trash_heap.maw_bank", "Maw Bank",
             GoldOnRoomEntryUntilPurchase: 12),
         new("proto.native.trash_heap.the_boot", "The Boot",
             MinPoweredAttackHpLoss: 5)
     ];
 
-    // All seven Ironclad/Defect event cards are present for source-accurate
-    // rewards, but none is executable in this Silent-only implementation.
-    // Their card mechanics are intentionally postponed; do not replace a
-    // cross-character reward with a Silent card.
+    // Cross-character event acquisitions use the same typed combat kernel.
+    // Event acquisitions stay outside ordinary rewards and combat generation.
     public static PrototypeCardDefinition[] Cards { get; } =
     [
         new(
@@ -58,31 +56,38 @@ public static class PrototypeNativeUnderdocksTrashHeap
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
             Type: PrototypeCardType.Power),
         new(
-            CardIds[1], "Clash", 0, PrototypeCardTarget.Enemy, [],
+            CardIds[1], "Clash", 0, PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 14, 4)],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Attack, MechanicsImplemented: false),
+            Type: PrototypeCardType.Attack,
+            PlayCondition: new(PrototypeCombatPredicateKind.HandHasOnlyAttacks)),
         new(
             CardIds[2], "Distraction",
             new(PrototypeCardCostKind.Fixed, 1, -1),
-            PrototypeCardTarget.None, [],
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand, 1)],
             ExhaustOnUse: true, Rarity: PrototypeCardRarity.Event,
-            RewardEligible: false, Type: PrototypeCardType.Skill,
-            MechanicsImplemented: false),
+            RewardEligible: false, Type: PrototypeCardType.Skill),
         new(
-            CardIds[3], "Dual Wield", 1, PrototypeCardTarget.None, [],
+            CardIds[3], "Dual Wield", 1, PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ChooseCards, 0,
+                Selection: new(PrototypeCardZone.Hand, 1, 1,
+                    PrototypeCardSelectionResolutionKind.CopyToHand,
+                    RequireAttackOrPower: true, CopiesPerSelection: 1, CopiesPerSelectionUpgradeDelta: 1))],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Skill, MechanicsImplemented: false),
+            Type: PrototypeCardType.Skill),
         new(
             CardIds[4], "Entrench",
             new(PrototypeCardCostKind.Fixed, 2, -1),
-            PrototypeCardTarget.None, [],
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.MultiplyPlayerBlock, 2)],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Skill, MechanicsImplemented: false),
+            Type: PrototypeCardType.Skill),
         new(
-            CardIds[5], "Hello World", 1, PrototypeCardTarget.None, [],
+            CardIds[5], "Hello World", 1, PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1, PowerId: "proto.power.hello_world")],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Power, InnateOnUpgrade: true,
-            MechanicsImplemented: false),
+            Type: PrototypeCardType.Power, InnateOnUpgrade: true),
         new(
             CardIds[6], "Outmaneuver", 1, PrototypeCardTarget.None,
             [new(PrototypeCombatEffectKind.ApplyPlayerPower, 2, 1,
@@ -90,17 +95,33 @@ public static class PrototypeNativeUnderdocksTrashHeap
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
             Type: PrototypeCardType.Skill),
         new(
-            CardIds[7], "Rebound", 1, PrototypeCardTarget.Enemy, [],
+            CardIds[7], "Rebound", 1, PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 9, 3),
+             new(PrototypeCombatEffectKind.ApplyPlayerPower, 1, PowerId: "proto.power.rebound")],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Attack, MechanicsImplemented: false),
+            Type: PrototypeCardType.Attack),
         new(
-            CardIds[8], "Rip and Tear", 1, PrototypeCardTarget.None, [],
+            CardIds[8], "Rip and Tear", 1, PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 7, 2,
+                Target: PrototypeEffectTarget.RandomEnemy, Repetitions: 2)],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Attack, MechanicsImplemented: false),
+            Type: PrototypeCardType.Attack),
         new(
-            CardIds[9], "Stack", 1, PrototypeCardTarget.None, [],
+            CardIds[9], "Stack", 1, PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.GainPlayerBlock, 0, 3,
+                CountKind: PrototypeCombatCountKind.DiscardPileCards, AmountPerCount: 1)],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
-            Type: PrototypeCardType.Skill, MechanicsImplemented: false)
+            Type: PrototypeCardType.Skill)
+    ];
+
+    public static PrototypePowerDefinition[] Powers { get; } =
+    [
+        new("proto.power.hello_world", "Hello World", 0,
+            [new(PrototypeCombatEventKind.BeforeHandDraw,
+                [new(PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand, 0, AmountPerPowerStack: 1)])],
+            SnapshotGenerationStacksAtTurnStart: true),
+        new("proto.power.rebound", "Rebound", 0, [],
+            RemoveAtPlayerTurnEnd: true, ReturnNextDiscardedCardToDraw: true)
     ];
 }
 

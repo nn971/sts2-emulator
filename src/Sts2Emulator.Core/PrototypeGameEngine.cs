@@ -4,6 +4,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 {
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
+        RunConfiguration.ValidateState(state);
         var phaseActions = state.Phase switch
         {
             RunPhase.RunStart => [GameAction.Empty("start_run")],
@@ -32,6 +33,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     public TransitionResult Step(RunState state, GameAction action)
     {
+        RunConfiguration.ValidateState(state);
         var fork = state.Fork();
         fork = fork with { DecisionIndex = fork.DecisionIndex + 1 };
 
@@ -420,6 +422,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     {
         RequireKind(action, "start_run");
 
+        if (state.Configuration is not null)
+            return V111RunFactory.Initialize(state);
+
         var rules = PrototypeContent.Rules;
         // Ordinary starts use the historical correlated run-seed streams.
         // A distinct, hypothetical factorized prior may instead supply
@@ -503,6 +508,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RequireKind(action, "continue_act");
         var world = RequireWorld(state);
 
+        if (state.Configuration is not null)
+            throw new NotSupportedException("Native Hive/Glory mechanics are not implemented; prototype later-act fallback is disabled for v111 runs.");
+
         if (world.Act >= PrototypeContent.Rules.Acts)
         {
             throw new InvalidOperationException("The final act cannot transition to another act.");
@@ -532,7 +540,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var world = state.World
             ?? throw new InvalidOperationException("Prototype world state has not been initialized.");
 
-        if (!StringComparer.Ordinal.Equals(world.RulesetId, PrototypeContent.RulesetId))
+        if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))
         {
             throw new InvalidOperationException(
                 $"Prototype engine cannot run ruleset '{world.RulesetId}'.");

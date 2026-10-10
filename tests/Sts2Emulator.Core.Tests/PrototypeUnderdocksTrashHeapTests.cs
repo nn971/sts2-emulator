@@ -120,7 +120,7 @@ public sealed class PrototypeUnderdocksTrashHeapTests
     }
 
     [Fact]
-    public void NativeSilentItemsAreSeparateFromExplicitlyUnsupportedCrossCharacterCards()
+    public void ImplementedCrossCharacterItemsStaySeparateFromUnsupportedIdentityHooks()
     {
         var cards = PrototypeNativeUnderdocksTrashHeap.CardIds
             .Select(PrototypeContent.Card).ToArray();
@@ -132,21 +132,13 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         Assert.Equal(2, cards[6].Effects.Single().Amount);
         Assert.Equal(1, cards[6].Effects.Single().UpgradeDelta);
 
-        // Ironclad: Clash, Dual Wield, Entrench.
-        // Defect: Hello World, Rebound, Rip and Tear, Stack.
-        // All seven keep their exact reward identities but have no
-        // executable gameplay effects until cross-character support is
-        // deliberately enabled in a later development phase.
-        foreach (var index in new[] { 1, 3, 4, 5, 7, 8, 9 })
+        foreach (var index in new[] { 1, 2, 3, 4, 5, 7, 8, 9 })
         {
-            Assert.False(cards[index].MechanicsImplemented);
-            Assert.Empty(cards[index].Effects);
+            Assert.True(cards[index].MechanicsImplemented);
+            Assert.NotEmpty(cards[index].Effects);
         }
 
-        // Distraction is a native Silent card; it remains unsupported
-        // for its own generated-card mechanics, not for its character.
-        Assert.False(cards[2].MechanicsImplemented);
-        Assert.Empty(cards[2].Effects);
+        Assert.True(cards[2].ExhaustOnUse);
     }
 
     private static RunState Choose(

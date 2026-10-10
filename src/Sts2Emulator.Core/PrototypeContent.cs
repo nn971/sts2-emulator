@@ -3704,6 +3704,7 @@ public static class PrototypeContent
                 DoesNotStack: true,
                 PreventsHandDiscard: true)
         }.Concat(PrototypeNativeUnderdocks.Powers)
+            .Concat(PrototypeNativeUnderdocksTrashHeap.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =

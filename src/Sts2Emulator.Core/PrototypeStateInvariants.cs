@@ -4,6 +4,7 @@ public static class PrototypeStateInvariants
 {
     public static void Validate(RunState state)
     {
+        RunConfiguration.ValidateState(state);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(
@@ -23,7 +24,7 @@ public static class PrototypeStateInvariants
         var world = state.World
             ?? throw new InvalidOperationException("Initialized prototype run is missing world state.");
 
-        if (!StringComparer.Ordinal.Equals(world.RulesetId, PrototypeContent.RulesetId))
+        if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))
         {
             throw new InvalidOperationException($"Unexpected prototype ruleset '{world.RulesetId}'.");
         }
@@ -99,6 +100,7 @@ public static class PrototypeStateInvariants
 
         if (world.Floor < 0 || world.Floor > (
                 world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
+                    || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId
                     ? PrototypeNativeOvergrowthMap.BossFloor
                     : PrototypeContent.Rules.FloorsPerAct))
         {
@@ -1044,6 +1046,12 @@ public static class PrototypeStateInvariants
         PlayerState player,
         RewardState reward)
     {
+        if ((reward.ExtraGoldOptions is null) != (reward.ExtraGoldGroupsResolved is null)
+            || (reward.ExtraGoldOptions is not null && (!reward.IndependentSelection
+                || reward.ExtraGoldOptions.Length != reward.ExtraGoldGroupsResolved!.Length
+                || reward.ExtraGoldOptions.Any(amount => amount <= 0))))
+            throw new InvalidOperationException("Extra gold offers require positive amounts and matching independent resolution flags.");
+
         if (reward.GoldOption is < 0
             || (reward.GoldOption is null && !reward.GoldResolved)
             || (reward.GoldOption is not null

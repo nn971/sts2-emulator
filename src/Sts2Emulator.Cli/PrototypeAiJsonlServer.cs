@@ -98,7 +98,12 @@ internal static class PrototypeAiJsonlServer
                             factorizedInitialStreamsId = PrototypeFactorizedRunFactory.SchemaId,
                             pristineRewardProposalId = PrototypePristineRewardProposal.SchemaId,
                             nativeOvergrowthResetId = NativeOvergrowthResetId,
-                            publicEnemyIntentId = PublicEnemyIntentId
+                            publicEnemyIntentId = PublicEnemyIntentId,
+                            coverageSchemaId = V111Coverage.SchemaId,
+                            snapshotSchemaId = RunSnapshot.SchemaId,
+                            batchSchemaId = DeterministicBatch.SchemaId,
+                            v111StateSchemaId = V111Build.StateSchema,
+                            v111FidelityId = "v111-mechanics-prototype-rng-v1"
                         });
                         break;
 
@@ -110,6 +115,64 @@ internal static class PrototypeAiJsonlServer
                             manifest = PrototypeCapabilities.Create()
                         });
                         break;
+
+                    case "v111_coverage":
+                        Write(new { requestId, ok = true, coverage = V111Coverage.Create() });
+                        break;
+
+                    case "reset_v111":
+                    {
+                        var region = OptionalString(request, "first_act") ?? "Overgrowth";
+                        var character = OptionalString(request, "character") ?? "silent";
+                        var configuration = RunConfiguration.Create(character,
+                            OptionalInt(request, "ascension") ?? 0,
+                            Enum.Parse<ActIdentity>(region, ignoreCase: true));
+                        var state = V111RunFactory.Create(RequiredString(request, "seed"), configuration);
+                        var handle = Store(state);
+                        Write(new { requestId, ok = true, stateHandle = handle,
+                            stateSchemaId = V111Build.StateSchema, configuration.FidelityId,
+                            exactHash = CanonicalJson.Sha256(state) });
+                        break;
+                    }
+
+                    case "save_snapshot":
+                        Write(new { requestId, ok = true, schemaId = RunSnapshot.SchemaId,
+                            snapshot = RunSnapshot.Save(RequireState(request)) });
+                        break;
+
+                    case "load_snapshot":
+                    {
+                        var state = RunSnapshot.Load(RequiredString(request, "snapshot"));
+                        var handle = Store(state);
+                        Write(new { requestId, ok = true, stateHandle = handle,
+                            exactHash = CanonicalJson.Sha256(state) });
+                        break;
+                    }
+
+                    case "step_batch":
+                    {
+                        if (!request.TryGetProperty("steps", out var steps) || steps.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException("step_batch requires a steps array.");
+                        var parents = steps.EnumerateArray().Select(step => new
+                        {
+                            Handle = RequiredString(step, "state_handle"),
+                            State = RequireState(step), ActionId = RequiredString(step, "action_id")
+                        }).ToArray();
+                        // Resolve every action before storing any children. Errors
+                        // leave the session unchanged and results preserve order.
+                        var transitions = DeterministicBatch.Step(parents.Select(parent => new BatchStepRequest(
+                            parent.State, new PrototypeGameEngine().GetLegalActions(parent.State)
+                                .Single(action => PrototypeAiEnvironment.StableActionId(action) == parent.ActionId))).ToArray(),
+                            OptionalInt(request, "parallelism") ?? 1);
+                        var children = transitions.Select((transition, index) => new
+                        {
+                            parent = parents[index].Handle,
+                            child = Store(transition.State, parents[index].Handle),
+                            exactHash = CanonicalJson.Sha256(transition.State)
+                        }).ToArray();
+                        Write(new { requestId, ok = true, schemaId = DeterministicBatch.SchemaId, children });
+                        break;
+                    }
 
                     case "reset":
                     {

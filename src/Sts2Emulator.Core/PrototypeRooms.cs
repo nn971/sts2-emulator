@@ -1260,9 +1260,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     string relicId;
                     if (effect.Kind == PrototypeRunEffectKind.GainRandomRelic
-                        && world.Act == 1
-                        && world.Map.GenerationProfileId
-                            == PrototypeNativeOvergrowthMap.GenerationProfileId)
+                        && UsesNativeActOneSystems(world))
                     {
                         var draw = PrototypeNativeRelicGrabBag.Draw(
                             world, player, state.Rng, merchant: false);
@@ -1322,9 +1320,7 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.GainPotion:
                 case PrototypeRunEffectKind.GainRandomPotion:
                 {
-                    var nativeOvergrowth = world.Act == 1
-                        && world.Map.GenerationProfileId
-                            == PrototypeNativeOvergrowthMap.GenerationProfileId;
+                    var nativeOvergrowth = UsesNativeActOneSystems(world);
                     var potionId = effect.Kind
                         == PrototypeRunEffectKind.GainRandomPotion
                         ? nativeOvergrowth && eventState.EventId
@@ -1752,9 +1748,7 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartShop(RunState state)
     {
         var world = RequireWorld(state);
-        var nativeMerchant = world.Act == 1
-            && world.Map.GenerationProfileId
-                == PrototypeNativeOvergrowthMap.GenerationProfileId;
+        var nativeMerchant = UsesNativeActOneSystems(world);
         // MerchantInventory chooses one of the five character-card
         // slots before populating the inventory.
         var saleIndex = nativeMerchant
@@ -2609,6 +2603,11 @@ public sealed partial class PrototypeGameEngine
         {
             actions.Add(GameAction.Empty("take_reward_gold"));
         }
+        for (var index = 0; index < (reward.ExtraGoldOptions?.Length ?? 0); index++)
+        {
+            if (!reward.ExtraGoldGroupsResolved![index])
+                actions.Add(GameAction.Create("take_reward_extra_gold", new ChooseGoldRewardPayload(index)));
+        }
 
         actions.Add(GameAction.Empty("leave_reward"));
         return actions;
@@ -2744,7 +2743,19 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
 
-        if (reward.GoldOption is { } goldOffer
+        if (action.Kind == "take_reward_extra_gold" && reward.IndependentSelection
+            && reward.PendingDeckChoice is null && (reward.CardResolved || reward.CardBundles is null))
+        {
+            var index = action.ReadPayload<ChooseGoldRewardPayload>().GroupIndex;
+            if (index < 0 || index >= (reward.ExtraGoldOptions?.Length ?? 0)
+                || reward.ExtraGoldGroupsResolved![index])
+                throw new InvalidOperationException("Extra gold reward group is unavailable.");
+            player = player with { Gold = checked(player.Gold + reward.ExtraGoldOptions![index]) };
+            var resolved = (bool[])reward.ExtraGoldGroupsResolved!.Clone();
+            resolved[index] = true;
+            reward = reward with { ExtraGoldGroupsResolved = resolved };
+        }
+        else if (reward.GoldOption is { } goldOffer
             && reward.PendingDeckChoice is null
             && (reward.CardResolved || reward.CardBundles is null)
             && StringComparer.Ordinal.Equals(
@@ -3152,9 +3163,7 @@ public sealed partial class PrototypeGameEngine
         var room = world.ActiveRoom
             ?? throw new InvalidOperationException("Combat reward has no active room.");
 
-        var nativeOvergrowth = world.Act == 1
-            && world.Map.GenerationProfileId
-                == PrototypeNativeOvergrowthMap.GenerationProfileId;
+        var nativeOvergrowth = UsesNativeActOneSystems(world);
 
         // RewardsSet.GenerateRewardsFor rolls the potion pity check
         // before rewards are populated; GoldReward.Populate runs first,
@@ -3288,9 +3297,7 @@ public sealed partial class PrototypeGameEngine
         string? relic = null;
         if (room == PrototypeRoomType.Elite)
         {
-            if (world.Act == 1
-                && world.Map.GenerationProfileId
-                    == PrototypeNativeOvergrowthMap.GenerationProfileId)
+            if (UsesNativeActOneSystems(world))
             {
                 var draw = PrototypeNativeRelicGrabBag.Draw(
                     world, state.Player, state.Rng, merchant: false);
@@ -3372,16 +3379,17 @@ public sealed partial class PrototypeGameEngine
             ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
             CardOptionUpgradeFlags: cardUpgradeFlags,
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
-            GoldOption: nativeGold ?? (recoveredGold > 0
-                ? recoveredGold : null),
-            GoldResolved: nativeGold is null && recoveredGold == 0,
+            GoldOption: nativeOvergrowth ? nativeGold : recoveredGold > 0 ? recoveredGold : null,
+            GoldResolved: nativeOvergrowth ? nativeGold is null : recoveredGold == 0,
             IndependentSelection: nativeOvergrowth || recoveredGold > 0,
             ExtraCardGroupsResolved: nativeOvergrowth
                 ? new bool[extraCardOptions.Length]
                 : null,
             ExtraRelicGroupsResolved: nativeOvergrowth
                 ? new bool[lavaRock.AdditionalRelicIds.Length]
-                : null);
+                : null,
+            ExtraGoldOptions: nativeOvergrowth && recoveredGold > 0 ? [recoveredGold] : null,
+            ExtraGoldGroupsResolved: nativeOvergrowth && recoveredGold > 0 ? [false] : null);
 
         world = world with
         {

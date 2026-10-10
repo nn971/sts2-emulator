@@ -1,0 +1,560 @@
+{
+  "fidelity_id": "v111-mechanics-prototype-rng-v1",
+  "iterations": 1000,
+  "measured_at_utc": "2026-10-10T11:16:46.653444+00:00",
+  "measurements": [
+    {
+      "boundary": "Overgrowth/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 472.104,
+      "elapsed_seconds": 0.0009041,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 1106072.3371308483
+    },
+    {
+      "boundary": "Overgrowth/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 17440.104,
+      "elapsed_seconds": 0.0802253,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 12464.895737379606
+    },
+    {
+      "boundary": "Overgrowth/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 37728.104,
+      "elapsed_seconds": 0.1982919,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 5043.0703422580555
+    },
+    {
+      "boundary": "Overgrowth/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 21672.104,
+      "elapsed_seconds": 0.1523296,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 6564.712308047811
+    },
+    {
+      "boundary": "Overgrowth/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 401360.104,
+      "elapsed_seconds": 0.8141838,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 1228.2238973558551
+    },
+    {
+      "boundary": "Overgrowth/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 3250146.432,
+      "elapsed_seconds": 1.0715501,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 116.653435056373
+    },
+    {
+      "boundary": "Overgrowth/RunStart",
+      "branches": 256,
+      "bytes_per_branch": 479.1875,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Overgrowth/Event",
+      "calling_thread_allocated_bytes_per_operation": 8376.104,
+      "elapsed_seconds": 0.0097512,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 102551.48084338338
+    },
+    {
+      "boundary": "Overgrowth/Event",
+      "calling_thread_allocated_bytes_per_operation": 224128.104,
+      "elapsed_seconds": 0.8315589,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 1202.5606364143298
+    },
+    {
+      "boundary": "Overgrowth/Event",
+      "calling_thread_allocated_bytes_per_operation": 501456.104,
+      "elapsed_seconds": 0.6310761,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 1584.5949482162293
+    },
+    {
+      "boundary": "Overgrowth/Event",
+      "calling_thread_allocated_bytes_per_operation": 332184.104,
+      "elapsed_seconds": 0.575778,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 1736.780495260326
+    },
+    {
+      "boundary": "Overgrowth/Event",
+      "calling_thread_allocated_bytes_per_operation": 10952.104,
+      "elapsed_seconds": 0.0135601,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 73745.768836513
+    },
+    {
+      "boundary": "Overgrowth/Event",
+      "calling_thread_allocated_bytes_per_operation": 89432.832,
+      "elapsed_seconds": 0.0125972,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 9922.83999618963
+    },
+    {
+      "boundary": "Overgrowth/Event",
+      "branches": 256,
+      "bytes_per_branch": 8244.4375,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Overgrowth/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 8208.104,
+      "elapsed_seconds": 0.0099291,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 100714.06270457544
+    },
+    {
+      "boundary": "Overgrowth/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 218008.104,
+      "elapsed_seconds": 0.2896947,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 3451.9098899634682
+    },
+    {
+      "boundary": "Overgrowth/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 491224.104,
+      "elapsed_seconds": 0.6772305,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 1476.6021317704976
+    },
+    {
+      "boundary": "Overgrowth/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 327176.104,
+      "elapsed_seconds": 0.4722286,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 2117.6184585177602
+    },
+    {
+      "boundary": "Overgrowth/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 30288.104,
+      "elapsed_seconds": 0.0452906,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 22079.63683413335
+    },
+    {
+      "boundary": "Overgrowth/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 244120.832,
+      "elapsed_seconds": 0.0336933,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 3709.936396850412
+    },
+    {
+      "boundary": "Overgrowth/MapChoice",
+      "branches": 256,
+      "bytes_per_branch": 8072.59375,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Overgrowth/Combat",
+      "calling_thread_allocated_bytes_per_operation": 10840.104,
+      "elapsed_seconds": 0.0121985,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 81977.29229003566
+    },
+    {
+      "boundary": "Overgrowth/Combat",
+      "calling_thread_allocated_bytes_per_operation": 340168.104,
+      "elapsed_seconds": 0.4099146,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 2439.5325270190424
+    },
+    {
+      "boundary": "Overgrowth/Combat",
+      "calling_thread_allocated_bytes_per_operation": 736832.104,
+      "elapsed_seconds": 0.9512962,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 1051.1973032163903
+    },
+    {
+      "boundary": "Overgrowth/Combat",
+      "calling_thread_allocated_bytes_per_operation": 468248.104,
+      "elapsed_seconds": 0.7228883,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 1383.3395837226858
+    },
+    {
+      "boundary": "Overgrowth/Combat",
+      "calling_thread_allocated_bytes_per_operation": 20880.104,
+      "elapsed_seconds": 0.0252917,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 39538.662881498676
+    },
+    {
+      "boundary": "Overgrowth/Combat",
+      "calling_thread_allocated_bytes_per_operation": 168856.832,
+      "elapsed_seconds": 0.0261038,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 4788.574843509374
+    },
+    {
+      "boundary": "Overgrowth/Combat",
+      "branches": 256,
+      "bytes_per_branch": 10521.03125,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Overgrowth/Reward",
+      "calling_thread_allocated_bytes_per_operation": 8584.104,
+      "elapsed_seconds": 0.0096965,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 103129.99535915021
+    },
+    {
+      "boundary": "Overgrowth/Reward",
+      "calling_thread_allocated_bytes_per_operation": 226784.104,
+      "elapsed_seconds": 0.2920029,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 3424.6235225746045
+    },
+    {
+      "boundary": "Overgrowth/Reward",
+      "calling_thread_allocated_bytes_per_operation": 506488.104,
+      "elapsed_seconds": 0.675723,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 1479.896348059782
+    },
+    {
+      "boundary": "Overgrowth/Reward",
+      "calling_thread_allocated_bytes_per_operation": 335936.104,
+      "elapsed_seconds": 0.5133002,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 1948.1776940667469
+    },
+    {
+      "boundary": "Overgrowth/Reward",
+      "calling_thread_allocated_bytes_per_operation": 10504.104,
+      "elapsed_seconds": 0.0133181,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 75085.78550994511
+    },
+    {
+      "boundary": "Overgrowth/Reward",
+      "calling_thread_allocated_bytes_per_operation": 85848.832,
+      "elapsed_seconds": 0.012223,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 10226.621942240039
+    },
+    {
+      "boundary": "Overgrowth/Reward",
+      "branches": 256,
+      "bytes_per_branch": 8452.4375,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Underdocks/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 472.104,
+      "elapsed_seconds": 0.0007425,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 1346801.3468013469
+    },
+    {
+      "boundary": "Underdocks/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 17440.104,
+      "elapsed_seconds": 0.017905,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 55850.321139346546
+    },
+    {
+      "boundary": "Underdocks/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 37728.104,
+      "elapsed_seconds": 0.0419325,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 23847.850712454543
+    },
+    {
+      "boundary": "Underdocks/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 21672.104,
+      "elapsed_seconds": 0.0336947,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 29678.25800496814
+    },
+    {
+      "boundary": "Underdocks/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 381240.104,
+      "elapsed_seconds": 0.3555176,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 2812.8002664284413
+    },
+    {
+      "boundary": "Underdocks/RunStart",
+      "calling_thread_allocated_bytes_per_operation": 3051736.832,
+      "elapsed_seconds": 0.3723648,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 335.6923103365302
+    },
+    {
+      "boundary": "Underdocks/RunStart",
+      "branches": 256,
+      "bytes_per_branch": 479.1875,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Underdocks/Event",
+      "calling_thread_allocated_bytes_per_operation": 7952.104,
+      "elapsed_seconds": 0.0132484,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 75480.81277739198
+    },
+    {
+      "boundary": "Underdocks/Event",
+      "calling_thread_allocated_bytes_per_operation": 217280.104,
+      "elapsed_seconds": 0.4484629,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 2229.8388562353766
+    },
+    {
+      "boundary": "Underdocks/Event",
+      "calling_thread_allocated_bytes_per_operation": 485208.104,
+      "elapsed_seconds": 1.1931166,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 838.1410500868063
+    },
+    {
+      "boundary": "Underdocks/Event",
+      "calling_thread_allocated_bytes_per_operation": 320616.104,
+      "elapsed_seconds": 0.7081728,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 1412.0847341213896
+    },
+    {
+      "boundary": "Underdocks/Event",
+      "calling_thread_allocated_bytes_per_operation": 10520.104,
+      "elapsed_seconds": 0.0102888,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 97193.06430293134
+    },
+    {
+      "boundary": "Underdocks/Event",
+      "calling_thread_allocated_bytes_per_operation": 85976.832,
+      "elapsed_seconds": 0.0096731,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 12922.43437987822
+    },
+    {
+      "boundary": "Underdocks/Event",
+      "branches": 256,
+      "bytes_per_branch": 7821.84375,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Underdocks/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 7784.104,
+      "elapsed_seconds": 0.0088242,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 113324.72065456357
+    },
+    {
+      "boundary": "Underdocks/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 211144.104,
+      "elapsed_seconds": 0.2881746,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 3470.1184629040868
+    },
+    {
+      "boundary": "Underdocks/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 474888.104,
+      "elapsed_seconds": 0.6967334,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 1435.2692148819046
+    },
+    {
+      "boundary": "Underdocks/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 315584.104,
+      "elapsed_seconds": 0.4629602,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 2160.0128909569335
+    },
+    {
+      "boundary": "Underdocks/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 29632.104,
+      "elapsed_seconds": 0.0272909,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 36642.250713607835
+    },
+    {
+      "boundary": "Underdocks/MapChoice",
+      "calling_thread_allocated_bytes_per_operation": 238872.832,
+      "elapsed_seconds": 0.0305789,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 4087.7860223879866
+    },
+    {
+      "boundary": "Underdocks/MapChoice",
+      "branches": 256,
+      "bytes_per_branch": 7654.21875,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Underdocks/Combat",
+      "calling_thread_allocated_bytes_per_operation": 10416.104,
+      "elapsed_seconds": 0.0096776,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 103331.4044804497
+    },
+    {
+      "boundary": "Underdocks/Combat",
+      "calling_thread_allocated_bytes_per_operation": 332824.104,
+      "elapsed_seconds": 0.3980244,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 2512.408786998988
+    },
+    {
+      "boundary": "Underdocks/Combat",
+      "calling_thread_allocated_bytes_per_operation": 719744.104,
+      "elapsed_seconds": 0.923395,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 1082.9601633103928
+    },
+    {
+      "boundary": "Underdocks/Combat",
+      "calling_thread_allocated_bytes_per_operation": 456032.104,
+      "elapsed_seconds": 0.7946625,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 1258.395859877621
+    },
+    {
+      "boundary": "Underdocks/Combat",
+      "calling_thread_allocated_bytes_per_operation": 20456.104,
+      "elapsed_seconds": 0.0264353,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 37828.20698081732
+    },
+    {
+      "boundary": "Underdocks/Combat",
+      "calling_thread_allocated_bytes_per_operation": 165464.832,
+      "elapsed_seconds": 0.0186122,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 6716.02497286726
+    },
+    {
+      "boundary": "Underdocks/Combat",
+      "branches": 256,
+      "bytes_per_branch": 10097.78125,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "Underdocks/Reward",
+      "calling_thread_allocated_bytes_per_operation": 8160.104,
+      "elapsed_seconds": 0.0085055,
+      "iterations": 1000,
+      "operation": "fork",
+      "operations_per_second": 117570.98348127684
+    },
+    {
+      "boundary": "Underdocks/Reward",
+      "calling_thread_allocated_bytes_per_operation": 219992.104,
+      "elapsed_seconds": 0.3134745,
+      "iterations": 1000,
+      "operation": "hash",
+      "operations_per_second": 3190.0521414022514
+    },
+    {
+      "boundary": "Underdocks/Reward",
+      "calling_thread_allocated_bytes_per_operation": 490312.104,
+      "elapsed_seconds": 0.641115,
+      "iterations": 1000,
+      "operation": "save_snapshot",
+      "operations_per_second": 1559.7825663102565
+    },
+    {
+      "boundary": "Underdocks/Reward",
+      "calling_thread_allocated_bytes_per_operation": 324336.104,
+      "elapsed_seconds": 0.5135899,
+      "iterations": 1000,
+      "operation": "load_snapshot",
+      "operations_per_second": 1947.078787959031
+    },
+    {
+      "boundary": "Underdocks/Reward",
+      "calling_thread_allocated_bytes_per_operation": 10112.104,
+      "elapsed_seconds": 0.0126046,
+      "iterations": 1000,
+      "operation": "step",
+      "operations_per_second": 79336.11538644621
+    },
+    {
+      "boundary": "Underdocks/Reward",
+      "calling_thread_allocated_bytes_per_operation": 82712.832,
+      "elapsed_seconds": 0.0109445,
+      "iterations": 125,
+      "operation": "batch_8_sequential",
+      "operations_per_second": 11421.261821005985
+    },
+    {
+      "boundary": "Underdocks/Reward",
+      "branches": 256,
+      "bytes_per_branch": 8028.4375,
+      "operation": "retained_fork_bytes"
+    },
+    {
+      "boundary": "legacy-prototype",
+      "decisions": 992,
+      "elapsed_seconds": 0.1014899,
+      "operation": "whole_terminal_runs",
+      "runs": 10,
+      "runs_per_second": 98.53197214698211
+    }
+  ],
+  "note": "Configured decision-boundary workloads plus explicitly legacy whole runs; no native full-route throughput claim.",
+  "processors": 2,
+  "runtime": "9.0.20",
+  "schema": "sts2-v111-benchmark-v1",
+  "source_tree_sha256": "c31973793ec2d6c26ff95af922200fa547275515507c235a825e551a43c0fe4c"
+}

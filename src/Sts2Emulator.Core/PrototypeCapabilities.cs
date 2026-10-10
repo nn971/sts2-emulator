@@ -13,7 +13,8 @@ public sealed record PrototypeCapabilityManifest(
     string[] EncounterIds,
     string[] CombatEffectKinds,
     string[] CombatEventKinds,
-    string[] RunPhases);
+    string[] RunPhases,
+    V111CoverageSummary[]? V111Coverage = null);
 
 public static class PrototypeCapabilities
 {
@@ -40,5 +41,6 @@ public static class PrototypeCapabilities
                 .ToArray(),
             RunPhases: Enum.GetNames<RunPhase>()
                 .Order(StringComparer.Ordinal)
-                .ToArray());
+                .ToArray(),
+            V111Coverage: Sts2Emulator.Core.V111Coverage.Create().Summary);
 }

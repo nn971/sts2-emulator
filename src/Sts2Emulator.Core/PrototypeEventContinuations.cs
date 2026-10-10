@@ -171,7 +171,8 @@ public sealed partial class PrototypeGameEngine
                     PrototypeNativeOvergrowthEvents.NeowEventId)
                 && world.Act == 1
                 && world.Map.GenerationProfileId
-                    == PrototypeNativeOvergrowthMap.GenerationProfileId
+                    is PrototypeNativeOvergrowthMap.GenerationProfileId
+                    or PrototypeNativeUnderdocks.GenerationProfileId
                 && world.Map.CurrentNodeId is null)
             {
                 // The Ancient opening precedes all selectable map rows.
