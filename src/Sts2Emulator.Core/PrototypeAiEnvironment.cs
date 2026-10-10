@@ -128,7 +128,13 @@ public sealed record PrototypeAiEvent(
     PrototypeAiEventPotionReplacement? PendingPotionReplacement = null,
     string[]? QueuedPotionIds = null,
     PrototypeAiEventQueuedDeckChoice[]? QueuedDeckChoices = null,
-    string[]? OfferedChoiceIds = null);
+    string[]? OfferedChoiceIds = null,
+    // The current dish is player-visible; it changes only after the
+    // previous dish's card/potion continuation has been resolved.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? CurrentDishId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? CurrentDishNumber = null);
 
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
@@ -483,7 +489,13 @@ public sealed class PrototypeAiEnvironment
                         .ToArray(),
                     world.Event.OfferedChoiceIds is null
                         ? null
-                        : (string[])world.Event.OfferedChoiceIds.Clone()),
+                        : (string[])world.Event.OfferedChoiceIds.Clone(),
+                    world.Event.EventId == PrototypeNativeEndlessConveyor.EventId
+                        ? world.Event.NativeDishId
+                        : null,
+                    world.Event.EventId == PrototypeNativeEndlessConveyor.EventId
+                        ? world.Event.NativeDishCount
+                        : null),
             MapGenerationProfileId:
                 world?.Map.GenerationProfileId,
             CompletedRooms: world is null
