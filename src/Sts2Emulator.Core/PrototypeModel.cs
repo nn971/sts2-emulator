@@ -965,7 +965,9 @@ public enum PrototypeEnemyAiConditionKind
     IsNotFront,
     SlotNameEquals,
     IsOffBalance,
-    IsNotOffBalance
+    IsNotOffBalance,
+    HasEnemyPower,
+    LacksEnemyPower
 }
 
 public enum PrototypeEnemyAiRepeatRule
