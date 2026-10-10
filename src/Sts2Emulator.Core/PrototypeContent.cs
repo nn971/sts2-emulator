@@ -2995,17 +2995,6 @@ public static class PrototypeContent
                         RequiredSourceCardType: PrototypeCardType.Attack)
                 ]),
             new PrototypePowerDefinition(
-                "proto.power.plating", "Plating", 0,
-                Triggers:
-                [
-                    new PrototypePowerTriggerSpec(
-                        PrototypeCombatEventKind.PlayerTurnEnded,
-                        [new PrototypeCombatEffectSpec(
-                            PrototypeCombatEffectKind.GainPlayerBlock,
-                            0, AmountPerPowerStack: 1)])
-                ],
-                DecrementAfterPlayerTurnStart: true),
-            new PrototypePowerDefinition(
                 "proto.power.nostalgia", "Nostalgia", 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 PlayedAttacksAndSkillsReturnToDraw: true),

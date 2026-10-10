@@ -7597,6 +7597,23 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
+        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
+        {
+            var plating = combat.PlayerPowers.Sum(power =>
+                Math.Max(0, power.Stacks)
+                * PrototypeContent.Power(power.PowerId)
+                    .PlayerBlockAtTurnEndPerStack);
+            if (plating > 0)
+            {
+                combat = combat with
+                {
+                    PlayerBlock = combat.PlayerBlock
+                        + Math.Max(0, ModifyPlayerBlockGain(
+                            combat, plating, fromCard: false))
+                };
+            }
+        }
+
         if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
             && combatEvent.CardId is { } playedCardId
             && PrototypeContent.Card(playedCardId).Type
