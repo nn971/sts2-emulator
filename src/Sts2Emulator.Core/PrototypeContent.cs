@@ -1898,6 +1898,7 @@ public static class PrototypeContent
             .Concat(PrototypeColorlessCards.UnsupportedMultiplayer)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Cards)
             .Concat(PrototypeNativeEndlessConveyor.EventCards)
+            .Concat(PrototypeNativeLaterActs.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -6019,6 +6020,7 @@ public static class PrototypeContent
                         ])
                 ])
         }.Concat(PrototypeNativeUnderdocks.Enemies)
+            .Concat(PrototypeNativeLaterActs.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
@@ -6369,6 +6371,7 @@ public static class PrototypeContent
                 OncePerRun: false)
         }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
             .Concat(PrototypeNativeUnderdocksEvents.Definitions)
+            .Concat(PrototypeNativeLaterActs.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
@@ -6973,7 +6976,8 @@ public static class PrototypeContent
             MinAct: 3,
             MaxAct: 3,
             Weight: 1),
-        ..PrototypeNativeUnderdocks.Encounters
+        ..PrototypeNativeUnderdocks.Encounters,
+        ..PrototypeNativeLaterActs.Encounters
     ];
 
     public static string[] StartingDeck { get; } =
