@@ -172,7 +172,10 @@ This is an intermediate implementation. Final release gates remain open.
   Infested Prism and the three-part Decimillipede. Source-scaled
   HP, move damage/repetitions, formation slots and starting powers
   are included, with deterministic Entomancer/Prism move cycles.
-  Explicit unsupported: VitalSpark's card Tainted affliction, linked
+  PersonalHive now adds Dazed per powered hit with a conditional stack
+  cap at 3; VitalSpark taints Skill cards, inflicts Tainted on play,
+  adds flat incoming attack damage, and expires after the enemy turn.
+  Explicit unsupported: linked
   Decimillipede segment reattachment and rotational opener/unique HP.
   All three Weight=0; do not count as full elite fidelity.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;

@@ -20,11 +20,13 @@ public static class PrototypeNativeHiveElites
     public const string PersonalHiveId = "proto.native.hive.personal_hive";
     public const string VitalSparkId = "proto.native.hive.vital_spark";
     public const string ReattachId = "proto.native.hive.reattach";
+    public const string TaintedPowerId = "proto.native.hive.tainted";
 
     public static PrototypePowerDefinition[] Powers { get; } =
     [
         new(PersonalHiveId, "Personal Hive", 0, []),
         new(VitalSparkId, "Vital Spark", 0, []),
+        new(TaintedPowerId, "Tainted", 0, [], IsDebuff: true),
         new(ReattachId, "Reattach", 0, [])
     ];
 

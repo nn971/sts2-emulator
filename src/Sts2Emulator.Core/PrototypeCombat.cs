@@ -271,6 +271,10 @@ public sealed partial class PrototypeGameEngine
             Act: world.Act,
             Ascension: state.Ascension);
 
+        // Vital Spark afflicts every existing Skill before the opening
+        // draw, without overriding a different native affliction.
+        combat = RefreshNativeHiveVitalSpark(combat);
+
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
             + (boomingConchAtElite ? 2 : 0)
@@ -1537,6 +1541,15 @@ public sealed partial class PrototypeGameEngine
                         definition =>
                             definition
                                 .DecrementAtEnemyTurnEnd);
+                    // Native TaintedPower expires after the enemy side-turn
+                    // (all stacks simultaneously, not one per turn).
+                    combat = combat with
+                    {
+                        PlayerPowers = combat.PlayerPowers
+                            .Where(power => power.PowerId !=
+                                PrototypeNativeHiveElites.TaintedPowerId)
+                            .ToArray()
+                    };
                 }
 
                 combat = ResolveEnemyDeathSummons(
@@ -6300,6 +6313,13 @@ public sealed partial class PrototypeGameEngine
                 / definition.PlayerIncomingAttackDamageDenominator;
         }
 
+        // TaintedPower adds flat powered-attack damage after the
+        // multiplicative incoming-damage modifiers.
+        modified += combat.PlayerPowers
+            .Where(power => power.PowerId ==
+                PrototypeNativeHiveElites.TaintedPowerId)
+            .Sum(power => Math.Max(0, power.Stacks));
+
         return ApplyPlayerIncomingDamageCap(
             combat,
             modified);
@@ -8079,6 +8099,53 @@ public sealed partial class PrototypeGameEngine
     // Tender restores only Strength/Dexterity actually lost (Artifact can
     // block either application), with counters stored on the power instance.
     // Curl Up waits for the *same card instance* that first attacked it.
+    private static CombatState RefreshNativeHiveVitalSpark(
+        CombatState combat)
+    {
+        var sources = combat.Enemies
+            .Where(enemy => enemy.Hp > 0)
+            .Select(enemy => (enemy.InstanceId,
+                Amount: enemy.PowerStates
+                    .Where(power => power.PowerId ==
+                        PrototypeNativeHiveElites.VitalSparkId)
+                    .Sum(power => Math.Max(0, power.Stacks))))
+            .Where(source => source.Amount > 0)
+            .OrderBy(source => source.InstanceId)
+            .ToArray();
+
+        // One native Infested Prism per encounter. Retain deterministic
+        // behavior for forced multi-Prism scenarios.
+        var owner = sources.FirstOrDefault();
+        return combat with
+        {
+            Cards = combat.Cards.Select(card =>
+            {
+                if (card.Affliction is
+                    { Kind: PrototypeCardAfflictionKind.Tainted })
+                {
+                    return owner.Amount > 0
+                        ? card with
+                        {
+                            Affliction = new PrototypeCardAffliction(
+                                PrototypeCardAfflictionKind.Tainted,
+                                owner.Amount, owner.InstanceId)
+                        }
+                        : card with { Affliction = null };
+                }
+                if (owner.Amount <= 0 || card.Affliction is not null
+                    || PrototypeContent.Card(card.CardId).Type
+                        != PrototypeCardType.Skill)
+                    return card;
+                return card with
+                {
+                    Affliction = new PrototypeCardAffliction(
+                        PrototypeCardAfflictionKind.Tainted,
+                        owner.Amount, owner.InstanceId)
+                };
+            }).ToArray()
+        };
+    }
+
     private static CombatState ResolveNativeCardCompletionPowers(
         CombatState combat, PrototypeCombatEvent combatEvent)
     {
@@ -8114,6 +8181,21 @@ public sealed partial class PrototypeGameEngine
         if (combatEvent.Kind != PrototypeCombatEventKind.CardPlayed
             || combatEvent.CardId is null)
             return combat;
+
+        // Each completed afflicted Skill inflicts Tainted equal to
+        // the number of Vital Spark stacks stamped on the card.
+        if (combatEvent.SourceCardInstanceId is { } playedId)
+        {
+            var played = combat.Cards.FirstOrDefault(card =>
+                card.InstanceId == playedId);
+            if (played?.Affliction is
+                { Kind: PrototypeCardAfflictionKind.Tainted } affliction)
+            {
+                combat = ApplyPlayerPower(combat,
+                    PrototypeNativeHiveElites.TaintedPowerId,
+                    affliction.Amount);
+            }
+        }
 
         foreach (var tender in combat.PlayerPowers.Where(power =>
             power.Stacks > 0
@@ -8210,6 +8292,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
+        combat = RefreshNativeHiveVitalSpark(combat);
         combat = ResolveNativeCardCompletionPowers(combat, combatEvent);
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
         {
