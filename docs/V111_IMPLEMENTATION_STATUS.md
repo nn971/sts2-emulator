@@ -48,6 +48,21 @@ This is an intermediate implementation. Final release gates remain open.
   pinned event-entry dynamic-gold roll (91–98), even when that value is unused
   by its options. The event RNG still uses the prototype codec, so native
   stream parity remains unverified.
+- Exposed only already-visible v111 event economics and fixed item rewards in
+  optional AI event-choice projections: independent chest rolls, Statue/Conveyor
+  outcomes, cost/HP trades, escalation in Abyssal Baths and source-known
+  curses, potions and relics. Internal Punch Off RNG rolls stay private.
+  Suspended card/potion prompts hide the parent page's option metadata.
+- Updated Sword of Stone and Fishing Rod victory callbacks to advance **each**
+  owned relic instance separately. Two rods can upgrade two eligible cards
+  after their third ordinary combat, while each Sword has its own five-elite
+  transformation counter. Fishing Rod still uses prototype event RNG instead
+  of the native Niche stream.
+- Extended structural validation to the Underdocks multi-page event state
+  machine, source-range persisted Treasury/Statue/Punch Off rolls, deferred
+  Conveyor selections and native potion-offer slots. This narrows invalid
+  states admitted by synthetic snapshots and fixes valid special-event states
+  rejected by legacy single-page assumptions.
 - Added CI pin/inventory/coverage baseline checks and real-server Python
   snapshot/batch/compatibility checks. Added configured decision-boundary
   benchmarks for forks, allocations, stepping, batches, hashing, snapshots and

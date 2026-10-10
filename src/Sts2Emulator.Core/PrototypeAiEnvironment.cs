@@ -121,6 +121,30 @@ public sealed record PrototypeAiEventQueuedDeckChoice(
     int RequestedSelections,
     string? SourceRelicId);
 
+/// <summary>
+/// Numbers printed on an event's current choice page. They are computed
+/// solely from revealed event variables, never from future RNG draws.
+/// Positive MaxHpDelta is a gain; negative is a sacrifice.
+/// </summary>
+public sealed record PrototypeAiEventChoiceValue(
+    string ChoiceId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? GoldGain = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? GoldCost = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? HpLoss = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? Heal = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? MaxHpDelta = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? GuaranteedCardId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? GuaranteedRelicId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? GuaranteedPotionId = null);
+
 public sealed record PrototypeAiEvent(
     string EventId,
     string? ChosenChoiceId,
@@ -134,7 +158,9 @@ public sealed record PrototypeAiEvent(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? CurrentDishId = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    int? CurrentDishNumber = null);
+    int? CurrentDishNumber = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiEventChoiceValue[]? VisibleChoiceValues = null);
 
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
@@ -495,12 +521,119 @@ public sealed class PrototypeAiEnvironment
                         : null,
                     world.Event.EventId == PrototypeNativeEndlessConveyor.EventId
                         ? world.Event.NativeDishCount
-                        : null),
+                        : null,
+                    VisibleEventChoiceValues(world.Event, state.Player)),
             MapGenerationProfileId:
                 world?.Map.GenerationProfileId,
             CompletedRooms: world is null
                 ? Array.Empty<PrototypeCompletedRoomRecord>()
                 : (PrototypeCompletedRoomRecord[])world.CompletedRooms.Clone());
+    }
+
+    /// <summary>
+    /// Only values already displayed by the pinned event page are exposed.
+    /// In particular, Punch Off's unused entry-time gold roll and future
+    /// dish outcomes remain private, even though they are in exact state.
+    /// </summary>
+    private static PrototypeAiEventChoiceValue[]? VisibleEventChoiceValues(
+        EventState evt, PlayerState player)
+    {
+        // While a selected action is suspended inside a deck/potion prompt,
+        // the event's main-page options are not actionable.
+        if (evt.PendingDeckChoice is not null
+            || evt.PendingPotionReplacement is not null
+            || evt.RemainingDeckChoices.Length > 0
+            || evt.RemainingPotionIds.Length > 0)
+        {
+            return null;
+        }
+
+        return evt.EventId switch
+        {
+            "proto.native.underdocks.sunken_treasury" =>
+            [
+                new("first_chest", GoldGain: evt.NativeEventGold),
+                new("second_chest", GoldGain: evt.NativeEventSecondaryGold,
+                    GuaranteedCardId: "proto.native.underdocks.greed")
+            ],
+            "proto.native.underdocks.sunken_statue"
+                or "proto.native.event.sunken_statue" =>
+            [
+                new("dive", GoldGain: evt.NativeEventGold, HpLoss: 7),
+                new(evt.EventId == "proto.native.underdocks.sunken_statue"
+                        ? "sword" : "grab",
+                    GuaranteedRelicId: "proto.native.event.sword_of_stone")
+            ],
+            "proto.native.event.whispering_hollow" =>
+            [
+                new("gold", GoldCost: evt.NativeEventGold),
+                new("hug", HpLoss: 9)
+            ],
+            "proto.native.event.luminous_choir" =>
+            [
+                new("tribute", GoldCost: evt.NativeEventGold)
+            ],
+            "proto.native.event.jungle_maze_adventure" =>
+            [
+                new("solo", GoldGain: evt.NativeEventGold, HpLoss: 18),
+                new("join", GoldGain: evt.NativeEventSecondaryGold)
+            ],
+            "proto.native.underdocks.abyssal_baths" =>
+                evt.NativePageIndex == 0
+                    ?
+                    [
+                        new("immerse", HpLoss: 3, MaxHpDelta: 2),
+                        new("abstain", Heal: 10)
+                    ]
+                    :
+                    [
+                        new("linger", HpLoss: checked(3 + evt.NativePageIndex),
+                            MaxHpDelta: 2)
+                    ],
+            "proto.native.underdocks.spiraling_whirlpool" =>
+            [
+                new("drink", Heal: (player.MaxHp * 33) / 100)
+            ],
+            "proto.native.underdocks.trash_heap" =>
+            [
+                new("dive", HpLoss: 8),
+                new("grab", GoldGain: 100)
+            ],
+            "proto.native.underdocks.waterlogged_scriptorium" =>
+            [
+                new("bloody_ink", MaxHpDelta: 6),
+                new("tentacle_quill", GoldCost: 55),
+                new("prickly_sponge", GoldCost: 99)
+            ],
+            "proto.native.underdocks.drowning_beacon" =>
+            [
+                new("climb", MaxHpDelta: -13,
+                    GuaranteedRelicId:
+                        "proto.native.underdocks.fresnel_lens"),
+                new("bottle", GuaranteedPotionId:
+                    "proto.native.underdocks.glowwater_potion")
+            ],
+            PrototypeNativePunchOff.EventId =>
+            [
+                new("nab", GuaranteedCardId: "proto.native.neow.injury")
+            ],
+            PrototypeNativeEndlessConveyor.EventId =>
+                evt.NativeDishId == "GOLDEN_FYSH"
+                    ?
+                    [
+                        new("grab", GoldGain: 75)
+                    ]
+                    :
+                    [
+                        new("grab", GoldCost: 40,
+                            Heal: evt.NativeDishId == "CLAM_ROLL" ? 10 : null,
+                            MaxHpDelta: evt.NativeDishId == "CAVIAR" ? 4 : null,
+                            GuaranteedCardId: evt.NativeDishId == "SEAPUNK_SALAD"
+                                ? PrototypeNativeEndlessConveyor.FeedingFrenzyId
+                                : null)
+                    ],
+            _ => null
+        };
     }
 
     // Only an action already stored by the combat engine can be public.

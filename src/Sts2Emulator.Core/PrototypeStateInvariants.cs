@@ -493,14 +493,26 @@ public static class PrototypeStateInvariants
                 : eventState.EventId ==
                     PrototypeNativeDenseVegetation.EventId
                     ? eventState.NativePageIndex > 2
-                    : eventState.NativePageIndex != 0))
+                    : eventState.EventId ==
+                        PrototypeNativeEndlessConveyor.EventId
+                        ? eventState.NativePageIndex > 1
+                        : eventState.EventId ==
+                            PrototypeNativePunchOff.EventId
+                            ? eventState.NativePageIndex > 2
+                            : eventState.EventId ==
+                                "proto.native.underdocks.abyssal_baths"
+                                ? false
+                                : eventState.NativePageIndex != 0))
         {
             throw new InvalidOperationException(
                 "Native event page progress is out of range.");
         }
 
         if (eventState.NativePageIndex > 0
-            && eventState.ChosenChoiceId is not null)
+            && eventState.ChosenChoiceId is not null
+            && eventState.EventId != PrototypeNativeEndlessConveyor.EventId
+            && eventState.EventId != PrototypeNativePunchOff.EventId
+            && eventState.EventId != "proto.native.underdocks.abyssal_baths")
         {
             throw new InvalidOperationException(
                 "Native followup page cannot have a completed choice.");
@@ -519,6 +531,12 @@ public static class PrototypeStateInvariants
                     eventState.NativeEventGold is >= 100 and <= 149,
                 "proto.native.event.jungle_maze_adventure" =>
                     eventState.NativeEventGold is >= 135 and <= 164,
+                "proto.native.underdocks.sunken_statue" =>
+                    eventState.NativeEventGold is >= 101 and <= 121,
+                "proto.native.underdocks.sunken_treasury" =>
+                    eventState.NativeEventGold is >= 52 and <= 67,
+                PrototypeNativePunchOff.EventId =>
+                    eventState.NativeEventGold is >= 91 and <= 98,
                 _ => false
             }) == false)
         {
@@ -527,8 +545,14 @@ public static class PrototypeStateInvariants
         }
 
         if (eventState.NativeEventSecondaryGold != 0
-            && (eventState.EventId != "proto.native.event.jungle_maze_adventure"
-                || eventState.NativeEventSecondaryGold is < 35 or > 64))
+            && !(eventState.EventId switch
+            {
+                "proto.native.event.jungle_maze_adventure" =>
+                    eventState.NativeEventSecondaryGold is >= 35 and <= 64,
+                "proto.native.underdocks.sunken_treasury" =>
+                    eventState.NativeEventSecondaryGold is >= 303 and <= 363,
+                _ => false
+            }))
         {
             throw new InvalidOperationException(
                 "Native event secondary gold roll is invalid.");
@@ -540,6 +564,49 @@ public static class PrototypeStateInvariants
         {
             throw new InvalidOperationException(
                 "Jungle Maze must preserve both independent gold rolls.");
+        }
+
+        if (eventState.EventId == "proto.native.underdocks.sunken_treasury"
+            && (eventState.NativeEventGold == 0)
+                != (eventState.NativeEventSecondaryGold == 0))
+        {
+            throw new InvalidOperationException(
+                "Sunken Treasury must preserve both independent gold rolls.");
+        }
+
+        if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
+        {
+            ValidateConveyorEvent(player, eventState);
+            return;
+        }
+        if (eventState.NativeDishId is not null
+            || eventState.NativeLastDishId is not null
+            || eventState.NativeDishCount != 0
+            || eventState.NativeDishRollPending)
+        {
+            throw new InvalidOperationException(
+                "Conveyor-specific state leaked into another event.");
+        }
+
+        if (eventState.EventId == "proto.native.underdocks.abyssal_baths")
+        {
+            if (eventState.ChosenChoiceId is not null
+                || eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null)
+            {
+                throw new InvalidOperationException(
+                    "Abyssal Baths must remain on a resumable choice page.");
+            }
+            return;
+        }
+
+        if (eventState.EventId == PrototypeNativePunchOff.EventId
+            && eventState.ChosenChoiceId is null
+            && eventState.PendingDeckChoice is null
+            && eventState.PendingPotionReplacement is null)
+        {
+            // Initial and challenge/fight pages have their own choices.
+            return;
         }
 
         if (eventState.ChosenChoiceId is null)
@@ -596,7 +663,8 @@ public static class PrototypeStateInvariants
         var potionReplacement =
             eventState.PendingPotionReplacement;
         if (pending is null
-            && potionReplacement is null)
+            && potionReplacement is null
+            && eventState.PendingReward is null)
         {
             throw new InvalidOperationException(
                 "Resolved event choice should not remain in Event phase without an active continuation.");
@@ -795,7 +863,8 @@ public static class PrototypeStateInvariants
                     "Pending event potion replacement has invalid slot candidates.");
             }
 
-            if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId))
+            if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)
+                || PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(eventState.EventId))
             {
                 var firstEmpty = Array.IndexOf(player.PotionSlots, null);
                 var expectedSlots = firstEmpty >= 0
@@ -813,11 +882,123 @@ public static class PrototypeStateInvariants
                 if (slot < 0
                     || slot >= player.PotionSlots.Length
                     || (player.PotionSlots[slot] is null
-                        && !PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)))
+                        && !PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)
+                        && !PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(eventState.EventId)))
                 {
                     throw new InvalidOperationException(
                         $"Pending event potion reward references invalid slot {slot}.");
                 }
+            }
+        }
+    }
+
+    private static void ValidateConveyorEvent(
+        PlayerState player, EventState evt)
+    {
+        // Source event pages carry the current, player-visible dish.
+        // Even when a grab is suspended, the new dish has not been rolled.
+        string[] dishes =
+        [
+            "CAVIAR", "SPICY_SNAPPY", "JELLY_LIVER", "FRIED_EEL",
+            "SUSPICIOUS_CONDIMENT", "CLAM_ROLL", "GOLDEN_FYSH",
+            "SEAPUNK_SALAD"
+        ];
+        if (evt.NativeDishCount < 1
+            || !dishes.Contains(evt.NativeDishId, StringComparer.Ordinal)
+            || evt.NativeDishId != evt.NativeLastDishId
+            || (evt.NativeDishCount % 5 == 0
+                && evt.NativeDishId != "SEAPUNK_SALAD")
+            || (evt.NativeDishCount % 5 != 0
+                && evt.NativeDishId == "SEAPUNK_SALAD"))
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor dish progression is inconsistent.");
+        }
+
+        if (evt.NativePageIndex == 0)
+        {
+            if (evt.NativeDishCount != 1
+                || evt.ChosenChoiceId is not null
+                || evt.NativeDishRollPending)
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor initial page is inconsistent.");
+            }
+        }
+        else if (evt.ChosenChoiceId != "grab")
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor followup requires a prior grab.");
+        }
+
+        if (evt.PendingDeckChoice is not null
+            && evt.PendingPotionReplacement is not null)
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor has two active selection prompts.");
+        }
+        if (evt.NativeDishRollPending
+            && evt.PendingDeckChoice is null
+            && evt.PendingPotionReplacement is null
+            && evt.RemainingDeckChoices.Length == 0
+            && evt.RemainingPotionIds.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor has an orphaned pending dish roll.");
+        }
+        if ((evt.PendingDeckChoice is not null
+            || evt.PendingPotionReplacement is not null
+            || evt.RemainingDeckChoices.Length > 0
+            || evt.RemainingPotionIds.Length > 0)
+            && !evt.NativeDishRollPending)
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor selection lacks a deferred dish roll.");
+        }
+
+        if (evt.PendingDeckChoice is { } deckChoice)
+        {
+            if (deckChoice.ChoiceId != "grab"
+                || deckChoice.Kind != PrototypePersistentDeckChoiceKind.Transform
+                || deckChoice.RemainingSelections != 1
+                || deckChoice.CandidateCardInstanceIds.Length == 0
+                || deckChoice.CandidateCardInstanceIds
+                    .Distinct().Count() !=
+                    deckChoice.CandidateCardInstanceIds.Length
+                || deckChoice.CandidateCardInstanceIds.Any(id =>
+                    !player.Deck.Any(card => card.InstanceId == id)))
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor Jelly Liver selection is invalid.");
+            }
+        }
+
+        if (evt.PendingPotionReplacement is { } potion)
+        {
+            var firstEmpty = Array.IndexOf(player.PotionSlots, null);
+            var expected = firstEmpty >= 0
+                ? new[] { firstEmpty }
+                : Enumerable.Range(0, player.PotionSlots.Length).ToArray();
+            if (potion.ChoiceId != "grab"
+                || !potion.CandidateSlots.SequenceEqual(expected))
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor potion offer has invalid slots.");
+            }
+            _ = PrototypeContent.Potion(potion.PotionId);
+        }
+
+        foreach (var queued in evt.RemainingPotionIds)
+        {
+            _ = PrototypeContent.Potion(queued);
+        }
+        foreach (var queued in evt.RemainingDeckChoices)
+        {
+            if (queued.ChoiceId != "grab"
+                || queued.Kind != PrototypePersistentDeckChoiceKind.Transform)
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor queued transformation is invalid.");
             }
         }
     }
