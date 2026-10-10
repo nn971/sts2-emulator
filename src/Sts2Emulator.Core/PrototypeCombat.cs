@@ -3231,8 +3231,14 @@ public sealed partial class PrototypeGameEngine
                             {
                                 WitherUpgradeCount = enemy.WitherUpgradeCount + 1
                             };
+                            // Publish the updated owner before the next
+                            // AddCardsToDiscard command constructs its Withers.
+                            // Newly generated cards must inherit this move's
+                            // new fake-upgrade level.
+                            enemies[index] = enemy;
                             combat = combat with
                             {
+                                Enemies = enemies.ToArray(),
                                 Cards = combat.Cards.Select(card =>
                                     card.CardId == PrototypeNativeGloryBosses.WitherId
                                         ? card with
