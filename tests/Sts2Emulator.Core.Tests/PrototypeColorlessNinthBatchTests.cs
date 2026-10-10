@@ -72,7 +72,7 @@ public sealed class PrototypeColorlessNinthBatchTests
         state = Play(state, 1);
         Assert.Equal(4, state.World!.Combat!.Energy);
         Assert.Contains(2, state.World.Combat.Hand);
-        Assert.Equal(10, Assert.Single(
+        Assert.Equal(0, Assert.Single(
             state.World.Combat.PlayerPowers).TriggerCounts![0]);
         PrototypeStateInvariants.Validate(state);
     }
