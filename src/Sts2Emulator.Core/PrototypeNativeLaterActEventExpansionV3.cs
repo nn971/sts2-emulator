@@ -90,13 +90,13 @@ public sealed partial class PrototypeGameEngine
         return options
             .Where(choice => evt.EventId !=
                     PrototypeNativeLaterActEventExpansionV3.ZenWeaverId
-                || state.Player.Gold >= choice.Id switch
+                || state.Player.Gold >= (choice.Id switch
                 {
                     "breathing_techniques" => 50,
                     "emotional_awareness" => 125,
                     "arachnid_acupuncture" => 250,
                     _ => int.MaxValue
-                })
+                }))
             .Select(choice => GameAction.Create(
                 "event_choice", new EventChoicePayload(choice.Id)))
             .ToArray();
