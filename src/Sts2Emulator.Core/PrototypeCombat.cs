@@ -291,7 +291,7 @@ public sealed partial class PrototypeGameEngine
             state.Rng,
             allowSuspension: true);
         state = state with { Player = combatStarted.Player };
-        combat = combatStarted.Combat;
+        combat = CommitEnemyIntents(combatStarted.Combat, state.Rng);
 
         world = world with
         {
@@ -1561,7 +1561,10 @@ public sealed partial class PrototypeGameEngine
             }
 
             case PrototypeAutomaticStepKind.AdvanceTurn:
-                combat = combat with
+                // EnemyTurnEnd statuses, summons, and formation changes have
+                // completed. Select/commit the next enemy moves BEFORE the
+                // next player turn begins, never during Observe().
+                combat = CommitEnemyIntents(combat, state.Rng) with
                 {
                     Turn = combat.Turn + 1,
                     Counters = combat.CounterState with
@@ -1809,6 +1812,49 @@ public sealed partial class PrototypeGameEngine
         combat = combat with { Enemies = enemies };
         return CleanupSourceBoundPowersForDefeatedEnemies(
             combat);
+    }
+
+    // Commit each enemy's action at combat entry and at the end of each
+    // enemy turn. Importantly, this consumes the combat RNG once, at a
+    // transition boundary; repeated public observations never reroll moves.
+    internal static CombatState CommitEnemyIntents(
+        CombatState combat,
+        RngBundle rng)
+    {
+        var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
+        for (var index = 0; index < formation.Length; index++)
+        {
+            var enemy = formation[index];
+            var definition = PrototypeContent.Enemy(enemy.EnemyId);
+            if (enemy.Hp <= 0
+                || enemy.SkipNextEnemyAction
+                || enemy.EnemyActionSkipsRemaining > 0
+                || definition.Moves.Length == 0)
+            {
+                formation[index] = enemy with
+                {
+                    PlannedMoveIndex = null,
+                    PlannedNextAiStateId = null
+                };
+                continue;
+            }
+
+            var selected = SelectEnemyMove(definition, enemy, formation, rng);
+            var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
+            if (selectedIndex < 0)
+            {
+                throw new InvalidOperationException(
+                    $"Enemy '{enemy.EnemyId}' selected an unknown move.");
+            }
+
+            formation[index] = enemy with
+            {
+                PlannedMoveIndex = selectedIndex,
+                PlannedNextAiStateId = selected.NextAiStateId
+            };
+        }
+
+        return combat with { Enemies = formation };
     }
 
     private static (
@@ -2225,11 +2271,13 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var selection = SelectEnemyMove(
-                definition,
-                enemy,
-                enemies,
-                rng);
+            // Normal gameplay has a precommitted move. A fallback is kept
+            // solely for legacy/manual combat states created without the
+            // initial intent-commit step; seeded runs never use it.
+            var selection = enemy.PlannedMoveIndex is { } selectedIndex
+                ? (Move: definition.Moves[selectedIndex],
+                   NextAiStateId: enemy.PlannedNextAiStateId)
+                : SelectEnemyMove(definition, enemy, enemies, rng);
             var move = selection.Move;
 
             foreach (var effect in move.Effects)
@@ -2467,7 +2515,9 @@ public sealed partial class PrototypeGameEngine
                 LastMoveId = move.Id,
                 ConsecutiveMoveUses = consecutiveUses,
                 AiStateId = selection.NextAiStateId,
-                MoveUseCounts = moveUseCounts
+                MoveUseCounts = moveUseCounts,
+                PlannedMoveIndex = null,
+                PlannedNextAiStateId = null
             };
             if (hp <= 0)
             {
