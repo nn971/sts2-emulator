@@ -323,10 +323,13 @@ public sealed partial class PrototypeGameEngine
         combat = RefreshNativeHiveVitalSpark(combat);
         combat = RefreshNativeGloryGalvanic(combat);
 
+        var pollinousOpening = ApplyPollinousCoreHandDraw(state.Player);
+        state = state with { Player = pollinousOpening.Player };
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
             + (boomingConchAtElite ? 2 : 0)
             + FirstTurnDrawBonus(state.Player)
+            + pollinousOpening.Bonus
             + state.Player.Relics.Sum(relic =>
                 PrototypeContent.Relic(relic.RelicId)
                     .HandDrawBonus);
@@ -1821,8 +1824,11 @@ public sealed partial class PrototypeGameEngine
                 player = beforeHandDraw.Player;
                 combat = ReturnLastTurnReboundCardsToHand(beforeHandDraw.Combat);
 
+                var pollinousTurn = ApplyPollinousCoreHandDraw(player);
+                player = pollinousTurn.Player;
                 var handDrawBonus =
-                    combat.PlayerPowers.Sum(power =>
+                    pollinousTurn.Bonus
+                    + combat.PlayerPowers.Sum(power =>
                         PrototypeContent.Power(power.PowerId)
                             .HandDrawBonusPerStack
                         * power.Stacks)
@@ -5283,6 +5289,56 @@ public sealed partial class PrototypeGameEngine
                         operation.StatusId,
                         operation.Amount);
                     break;
+
+                case PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile:
+                {
+                    var pool = PrototypeContent.NativeSilentCardPool
+                        .Where(id =>
+                        {
+                            var card = PrototypeContent.Card(id);
+                            return card.Type == PrototypeCardType.Attack
+                                && card.Rarity is PrototypeCardRarity.Common
+                                    or PrototypeCardRarity.Uncommon
+                                    or PrototypeCardRarity.Rare
+                                && card.MechanicsImplemented
+                                && !card.MultiplayerOnly
+                                && card.CanBeGeneratedInCombat;
+                        })
+                        .ToArray();
+                    if (pool.Length == 0 && operation.Amount > 0)
+                    {
+                        throw new NotSupportedException(
+                            "Metamorphosis has no implemented character Attacks.");
+                    }
+
+                    // CardFactory.GetForCombat samples WITH replacement.
+                    // The native CombatCardGeneration stream and unlocked
+                    // roster are not yet modeled; use the prototype combat
+                    // stream and implemented Silent subset explicitly.
+                    for (int i = 0; i < operation.Amount; i++)
+                    {
+                        var selected = pool[PrototypeRng.NextInt(
+                            rng, "combat", pool.Length)];
+                        var id = combat.NextCardInstanceId;
+                        var draw = combat.DrawPile.ToList();
+                        draw.Insert(PrototypeRng.NextInt(
+                            rng, "combat", draw.Count + 1), id);
+                        combat = combat with
+                        {
+                            NextCardInstanceId = id + 1,
+                            Cards = combat.Cards.Append(
+                                new CombatCardInstance(
+                                    id, null, selected, 0, true,
+                                    PrototypeJson.EmptyObject(),
+                                    TemporaryEnergyCost:
+                                        new PrototypeTemporaryCardCost(0,
+                                            PrototypeTemporaryCardCostExpiry.None)))
+                                .ToArray(),
+                            DrawPile = draw.ToArray()
+                        };
+                    }
+                    break;
+                }
 
                 case PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand:
                 case PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand:

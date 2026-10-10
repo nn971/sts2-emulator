@@ -20,6 +20,11 @@ public static class PrototypeNativeHiveEvents
         "LostWisp", "SpiritGrafter", "TheLanternKey", "ZenWeaver"
     ];
 
+    public const string ColossalFlowerId = "proto.native.hive.colossal_flower";
+    public const string SpiritGrafterId = "proto.native.hive.spirit_grafter";
+    public const string PollinousCoreId = "proto.native.hive.pollinous_core";
+    public const string MetamorphosisId = "proto.native.hive.metamorphosis";
+
     public const string LostWispId = "proto.native.hive.lost_wisp";
     public const string ZenWeaverId = "proto.native.hive.zen_weaver";
     public const string DecayId = "proto.native.hive.decay";
@@ -27,14 +32,27 @@ public static class PrototypeNativeHiveEvents
     public const string LostWispRelicId = "proto.native.hive.lost_wisp_relic";
 
     public static bool IsNativeEvent(string id) =>
-        id is InfestedAutomatonId or LostWispId or ZenWeaverId;
+        id is InfestedAutomatonId or LostWispId or ZenWeaverId
+            or ColossalFlowerId or SpiritGrafterId;
+
+    public static bool AllowsEmptyDeckChoice(string eventId) =>
+        eventId == SpiritGrafterId;
 
     public static bool IsEligible(PrototypeEventDefinition evt,
         PlayerState player) =>
-        evt.Id != ZenWeaverId || player.Gold >= 125;
+        (evt.Id != ZenWeaverId || player.Gold >= 125)
+        && (evt.Id != ColossalFlowerId || player.Hp >= 19);
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        // Metamorphosis: 3 (5) random character Attacks, each made
+        // free for this combat and inserted at a random draw-pile index.
+        new(MetamorphosisId, "Metamorphosis", 2,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
+                3, UpgradeDelta: 2)],
+            ExhaustOnUse: true, Rarity: PrototypeCardRarity.Event,
+            Type: PrototypeCardType.Skill, RewardEligible: false),
         // Source: Decay.cs. Each unplayable Curse deals 2 unpowered
         // blockable damage if held at turn end.
         new(DecayId, "Decay", -1, PrototypeCardTarget.None, [],
@@ -53,6 +71,9 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // PollinousCore.TurnsSeen persists across combats and supplies
+        // +2 hand draws on each fourth hand draw (not fourth card drawn).
+        new(PollinousCoreId, "Pollinous Core"),
         // LostWisp.AfterCardPlayed is triggered only by Power cards.
         // Relic damage is unpowered, hitting all living enemies.
         new(LostWispRelicId, "Lost Wisp",
@@ -72,6 +93,30 @@ public static class PrototypeNativeHiveEvents
             new("study", "Study: gain one random character Power", []),
             new("touch_core",
                 "Touch Core: gain one random zero-cost character card", [])
+        ], MinAct: 2, MaxAct: 2, Weight: 0),
+        // Colossal Flower is a multistage event. At page 0 or 1 the
+        // player may extract the current prize, or dig for 5/6 damage.
+        // At page 2, extract 135 gold or lose 7 HP for Pollinous Core.
+        // Stage legality/transition is handled by StepNativeColossalFlower.
+        new(ColossalFlowerId, "Colossal Flower",
+        [
+            new("extract", "Extract the current gold prize", []),
+            new("dig", "Reach deeper at the cost of HP", []),
+            new("relic", "Take Pollinous Core and lose 7 HP", [])
+        ], MinAct: 2, MaxAct: 2, Weight: 0),
+        // Spirit Grafter's optional upgrade is resolved before damage.
+        // When nothing is upgradable, native still deals the 10 damage.
+        new(SpiritGrafterId, "Spirit Grafter",
+        [
+            new("let_it_in", "Heal 25 and gain Metamorphosis",
+            [
+                new(PrototypeRunEffectKind.Heal, 25),
+                new(PrototypeRunEffectKind.AddCard, CardId: MetamorphosisId)
+            ]),
+            new("rejection", "Upgrade one card then lose 10 HP",
+                [new(PrototypeRunEffectKind.LoseHpAfterDeckChoices, 10)],
+                new PrototypeEventDeckChoiceSpec(
+                    PrototypePersistentDeckChoiceKind.Upgrade, 1))
         ], MinAct: 2, MaxAct: 2, Weight: 0),
         // LostWisp.CalculateVars rolls 60 +/- 15 on event entry.
         new(LostWispId, "Lost Wisp",

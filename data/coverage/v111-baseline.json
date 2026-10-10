@@ -6824,11 +6824,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.metamorphosis"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Metamorphosis.cs#4bdffa4fe4edfaeafd34d6d7a2318604beb4053a2b8c9a4d147fd497052767b4"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -6837,7 +6839,7 @@
           "upgraded"
         ],
         "native_id": "METAMORPHOSIS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15117,11 +15119,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.colossal_flower"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ColossalFlower.cs#ca0ee1f25d200ea85ddfe301965370d20e7930606409956c22c2317b2622c0d3"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15142,7 +15146,7 @@
         ],
         "missing_variants": [],
         "native_id": "COLOSSAL_FLOWER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16009,11 +16013,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.spirit_grafter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SpiritGrafter.cs#3be1eb82235e62924fb5437399610e2d73e5550da31d3c373627cf9ff5e05098"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -16027,7 +16033,7 @@
         ],
         "missing_variants": [],
         "native_id": "SPIRIT_GRAFTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -27779,17 +27785,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.pollinous_core"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PollinousCore.cs#37cc32f0978fb0ce588e72a0e157db7501daa3253459c55d249759c39ffeddc9"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "POLLINOUS_CORE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29566,7 +29574,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 176,
+        "implemented": 177,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
