@@ -112,7 +112,8 @@ public sealed class V111LaterActRoutingTests
         var second = PrototypeNativeLaterActRouting.Pick(first.NextPool,
             PrototypeRoomType.Combat, first.Encounter.Id, rng);
         Assert.NotEqual(first.Encounter.Id, second.Encounter.Id);
-        Assert.Empty(second.NextPool.RemainingWeakEncounterIds);
+        Assert.Equal(initial.RemainingWeakEncounterIds.Length - 2,
+            second.NextPool.RemainingWeakEncounterIds.Length);
         Assert.Equal(2, second.NextPool.OrdinaryCombatsStarted);
         Assert.Equal(initial.RemainingNormalEncounterIds,
             second.NextPool.RemainingNormalEncounterIds);
