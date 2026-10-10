@@ -346,7 +346,12 @@ public sealed partial class PrototypeGameEngine
             state.Rng,
             allowSuspension: true);
         state = state with { Player = combatStarted.Player };
-        combat = CommitEnemyIntents(combatStarted.Combat, state.Rng);
+        // The initial player side begins immediately after combat
+        // starts, before an explicit PlayerTurnStarted pipeline event.
+        // Rampart's first grant must already protect the Turret.
+        combat = GrantEnemyAllyBlockOnPlayerTurnStart(
+            combatStarted.Combat);
+        combat = CommitEnemyIntents(combat, state.Rng);
 
         world = world with
         {
@@ -704,6 +709,53 @@ public sealed partial class PrototypeGameEngine
         }
 
         throw new InvalidOperationException("Weighted encounter selection fell through.");
+    }
+
+    // Native RampartPower.AfterSideTurnStart fires once at the start
+    // of every player side. Each living owner contributes its own
+    // stacks to each living matching ally; defeated owners stop
+    // granting Block. Block is reset by the existing enemy-side hook.
+    internal static CombatState GrantEnemyAllyBlockOnPlayerTurnStart(
+        CombatState combat)
+    {
+        var grants = combat.Enemies
+            .Where(owner => owner.Hp > 0)
+            .SelectMany(owner => owner.PowerStates)
+            .Where(power => power.Stacks > 0)
+            .Select(power => (
+                Power: power,
+                Definition: PrototypeContent.Power(power.PowerId)))
+            .Where(item =>
+                item.Definition.AllyBlockAtPlayerTurnStartPerStack > 0
+                && item.Definition.AllyBlockTargetEnemyId is not null)
+            .ToArray();
+        if (grants.Length == 0)
+        {
+            return combat;
+        }
+
+        return combat with
+        {
+            Enemies = combat.Enemies.Select(enemy =>
+            {
+                if (enemy.Hp <= 0)
+                {
+                    return enemy;
+                }
+
+                var block = grants
+                    .Where(item => StringComparer.Ordinal.Equals(
+                        item.Definition.AllyBlockTargetEnemyId,
+                        enemy.EnemyId))
+                    .Sum(item => checked(
+                        item.Power.Stacks
+                        * item.Definition
+                            .AllyBlockAtPlayerTurnStartPerStack));
+                return block <= 0
+                    ? enemy
+                    : enemy with { Block = checked(enemy.Block + block) };
+            }).ToArray()
+        };
     }
 
     private static IReadOnlyList<GameAction> GetCombatActions(RunState state)
@@ -8519,6 +8571,7 @@ public sealed partial class PrototypeGameEngine
             == PrototypeCombatEventKind.PlayerTurnStarted)
         {
             combat = ResetPerTurnRelicCounters(combat);
+            combat = GrantEnemyAllyBlockOnPlayerTurnStart(combat);
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);

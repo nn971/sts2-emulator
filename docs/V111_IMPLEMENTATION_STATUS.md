@@ -213,6 +213,20 @@ This is an intermediate implementation. Final release gates remain open.
   absorbed hits leave max HP unchanged. The max-HP clamp follows
   the pinned LoseMaxHp command. Encounters remain Weight=0,
   synthetic/test-only. See [Glory scroll slice](reference-builds/v0.111.0-glory-scrolls-first-slice.md).
+- Completed the **source-backed ordinary weak encounter catalogue**:
+  all 15 weak encounter IDs across Overgrowth (4), Underdocks (4),
+  Hive (4), and Glory (3) have typed executable registrations.
+  Glory's previously missing Turret Operator Weak now pairs a
+  55/65-HP Living Shield (Shield Slam while accompanied; permanent
+  Smash/+3 Strength when alone) with the existing Turret Operator.
+  Its Rampart 25 grants Block to living Turret Operators at each
+  player-side start, including the initial turn; each living Shield
+  independently contributes, and killing the owner stops future grants.
+  Added A0/A8/A9, formation, side-turn timing, kill-order and
+  deterministic fork tests. Later-act entries remain Weight=0
+  forced-combat fixtures, with native maps, RNG ownership, and real
+  replay evidence outstanding. Details:
+  [Glory weak closure](reference-builds/v0.111.0-glory-weak-closure.md).
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

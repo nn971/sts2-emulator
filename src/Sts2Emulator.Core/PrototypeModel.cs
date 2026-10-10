@@ -875,7 +875,11 @@ public sealed record PrototypePowerDefinition(
     int EnemyBlockAfterAttackingCardPlayedPerStack = 0,
     // Scroll of Biting Paper Cuts: each unblocked powered hit
     // reduces the victim's persistent maximum HP.
-    int PlayerMaxHpLossOnUnblockedAttackHitPerStack = 0);
+    int PlayerMaxHpLossOnUnblockedAttackHitPerStack = 0,
+    // Living Shield/Rampart: independently owned ally block grants
+    // at the start of the player's side-turn.
+    int AllyBlockAtPlayerTurnStartPerStack = 0,
+    string? AllyBlockTargetEnemyId = null);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

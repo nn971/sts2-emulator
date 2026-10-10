@@ -324,9 +324,9 @@ public static class PrototypeNativeLaterActs
             ],
             MoveLoopStartIndex: 1,
             HpAscensionDeltas: [new(8, 10)]),
-        // Source: TurretOperator.cs. Its native Weak encounter includes
-        // a Living Shield, whose Rampart/ally-death interactions must be
-        // implemented before the encounter is made available.
+        // Source: TurretOperator.cs. Its weak formation with Living
+        // Shield and Rampart is in PrototypeNativeGloryWeak, still
+        // forced-test-only until native Glory routing is implemented.
         new("proto.native.glory.turret_operator", "Turret Operator",
             41, 0,
             [
