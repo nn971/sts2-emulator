@@ -16760,7 +16760,9 @@
       {
         "catalogued": true,
         "engine_ids": [
-          "proto.native.glory.axebot"
+          "proto.native.glory.axebot",
+          "proto.native.glory.axebot_empty_stock",
+          "proto.native.glory.axebot_stock_one"
         ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/Axebot.cs#51909bbd369b6676e9a9874f06cde7f76db1714080b18d4f7f7c2783dff56be0"
