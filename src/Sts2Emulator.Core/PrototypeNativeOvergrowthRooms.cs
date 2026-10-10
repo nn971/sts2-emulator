@@ -10,7 +10,15 @@ public sealed partial class PrototypeGameEngine
         ref RunWorldState world,
         RngBundle rng)
     {
-        if (!UsesNativeActOneSystems(world))
+        var supportedLaterMap = world.Act switch
+        {
+            2 => world.Map.GenerationProfileId ==
+                PrototypeNativeLaterActRouting.HiveMapProfile,
+            3 => world.Map.GenerationProfileId ==
+                PrototypeNativeLaterActRouting.GloryMapProfile,
+            _ => false
+        };
+        if (!UsesNativeActOneSystems(world) && !supportedLaterMap)
         {
             throw new InvalidOperationException(
                 "Unknown map rooms require a native-structure generation profile.");
