@@ -75,6 +75,20 @@ This is an intermediate implementation. Final release gates remain open.
   Unrest Site's current healing and fixed curse/max-HP sacrifice, Wellspring's
   curse, Luminous Choir's card, and Wood Carvings' fixed transformations.
   All projections derive from visible state and consume no random draws.
+- Fixed three source-pinned direct event relic pickups: both variants of
+  Sunken Statue grant a fresh Sword of Stone even when already owned, and
+  Drowning Beacon grants a second Fresnel Lens. Each keeps independent
+  persistent state and stacks its ordinary effects. Random rewards, shops
+  and relic grab bags retain their single-copy eligibility restrictions.
+- Acquisition-only run callbacks now execute for the **newly acquired relic
+  instance**, not all owned copies of the same ID. Verified with duplicate
+  Old Coin and Mango; continuous RestSiteHealed triggers still execute for
+  every owned Stone Humidifier. This follows native RelicModel.AfterObtained.
+- Event UpgradeRandomCard and UpgradeAllCards now use the typed
+  upgradability predicate (maximum upgrade level and card state) instead of
+  assuming any upgrade-level-zero card is eligible. Added Doors of Light
+  and Dark regression with a non-upgradable Injury in the deck. Native
+  StableShuffle RNG call-order for Doors remains unverified.
 - Added CI pin/inventory/coverage baseline checks and real-server Python
   snapshot/batch/compatibility checks. Added configured decision-boundary
   benchmarks for forks, allocations, stepping, batches, hashing, snapshots and
