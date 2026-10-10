@@ -1834,6 +1834,10 @@ public sealed partial class PrototypeGameEngine
                     state.Rng);
                 player = beforeHandDraw.Player;
                 combat = ReturnLastTurnReboundCardsToHand(beforeHandDraw.Combat);
+                var pollinousDraw =
+                    PrototypeNativeLaterActEventExpansion
+                        .AdvancePollinousCoreHandDraw(player);
+                player = pollinousDraw.Player;
 
                 var handDrawBonus =
                     combat.PlayerPowers.Sum(power =>
@@ -1842,7 +1846,8 @@ public sealed partial class PrototypeGameEngine
                         * power.Stacks)
                     + player.Relics.Sum(relic =>
                         PrototypeContent.Relic(relic.RelicId)
-                            .HandDrawBonus);
+                            .HandDrawBonus)
+                    + pollinousDraw.DrawBonus;
                 var drawn = DrawCards(
                     player,
                     combat,
