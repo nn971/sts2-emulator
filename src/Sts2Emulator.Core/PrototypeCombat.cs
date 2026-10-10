@@ -2265,26 +2265,12 @@ public sealed partial class PrototypeGameEngine
                                 };
                             }
 
-                            var damage = amount
-                                + enemy.PowerStates.Sum(power =>
-                                    PrototypeContent.Power(
-                                        power.PowerId)
-                                        .EnemyAttackDamageBonusPerStack
-                                    * power.Stacks);
-                            foreach (var status in enemy.Statuses)
-                            {
-                                var statusDefinition = PrototypeContent.Status(status.Key);
-                                damage = (damage * statusDefinition.OutgoingDamageNumerator)
-                                    / statusDefinition.OutgoingDamageDenominator;
-                            }
-
-                            damage = effect.IsAttack
-                                ? ModifyIncomingPlayerAttackDamage(
-                                    combat,
-                                    damage)
-                                : ApplyPlayerIncomingDamageCap(
-                                    combat,
-                                    damage);
+                            var damage = EnemyHitDamage(
+                                enemy,
+                                combat,
+                                effect,
+                                act,
+                                ascension);
 
                             var absorbed = Math.Min(
                                 block,
@@ -4880,6 +4866,32 @@ public sealed partial class PrototypeGameEngine
         }
 
         return modified;
+    }
+
+    // This is the single damage calculation used by both actual enemy hits
+    // and public intent previews. It deliberately does not account for player
+    // Block, and never consumes combat RNG.
+    internal static int EnemyHitDamage(
+        EnemyCombatState enemy,
+        CombatState combat,
+        PrototypeEnemyEffectSpec effect,
+        int act,
+        int ascension)
+    {
+        var damage = effect.AmountAt(act, ascension)
+            + enemy.PowerStates.Sum(power =>
+                PrototypeContent.Power(power.PowerId)
+                    .EnemyAttackDamageBonusPerStack * power.Stacks);
+        foreach (var status in enemy.Statuses)
+        {
+            var definition = PrototypeContent.Status(status.Key);
+            damage = (damage * definition.OutgoingDamageNumerator)
+                / definition.OutgoingDamageDenominator;
+        }
+
+        return effect.IsAttack
+            ? ModifyIncomingPlayerAttackDamage(combat, damage)
+            : ApplyPlayerIncomingDamageCap(combat, damage);
     }
 
     private static int ApplyPlayerIncomingDamageCap(
