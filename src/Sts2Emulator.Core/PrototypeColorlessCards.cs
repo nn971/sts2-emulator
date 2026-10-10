@@ -536,7 +536,75 @@ public static class PrototypeColorlessCards
             ],
             RetainOnUpgrade: true,
             Rarity: PrototypeCardRarity.Rare,
-            Type: PrototypeCardType.Attack)
+            Type: PrototypeCardType.Attack),
+        // Fisticuffs gains Block equal to resolved attack damage,
+        // including blocked and overkill portions of a successful hit.
+        new(
+            "proto.colorless.fisticuffs", "Fisticuffs", 1,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 7, 2,
+                GainBlockEqualToAttackDamage: true)],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        // These two attacks return from their current piles at the next
+        // BeforeHandDraw if that physical card was played last turn.
+        new(
+            "proto.colorless.bolas", "Bolas", 0,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 3, 1)],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack),
+        new(
+            "proto.colorless.thrumming_hatchet", "Thrumming Hatchet", 1,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 11, 3)],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Attack),
+        // Randomly grant a draw-pile card two (three upgraded) extra replays.
+        new(
+            "proto.colorless.hidden_gem", "Hidden Gem", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay, 2, 1)],
+            CanBeGeneratedInCombat: false,
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Skill),
+        // For every current non-temporary enemy debuff, Rend gains
+        // five damage (+three per debuff after upgrade), atop its base.
+        new(
+            "proto.colorless.rend", "Rend", 1,
+            PrototypeCardTarget.Enemy,
+            [new(PrototypeCombatEffectKind.DamageEnemy, 10, 2,
+                CountKind: PrototypeCombatCountKind.TargetDebuffs,
+                AmountPerCount: 5,
+                AmountPerCountUpgradeDelta: 3)],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack),
+        // Native Jackpot creates three zero-cost character cards
+        // (with replacement), upgraded when Jackpot itself is upgraded.
+        new(
+            "proto.colorless.jackpot", "Jackpot", 3,
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 25, 5),
+                new(PrototypeCombatEffectKind.AddRandomZeroCostCardsToHand, 3,
+                    GeneratedCardUpgradePerSourceUpgrade: 1)
+            ],
+            Rarity: PrototypeCardRarity.Rare,
+            Type: PrototypeCardType.Attack),
+        new(
+            "proto.colorless.fasten", "Fasten", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 4, 2,
+                PowerId: "proto.power.fasten")],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power),
+        new(
+            "proto.colorless.prep_time", "Prep Time", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 4, 2,
+                PowerId: "proto.power.prep_time")],
+            Rarity: PrototypeCardRarity.Uncommon,
+            Type: PrototypeCardType.Power)
     ];
 
     public static string[] ImplementedShopPool { get; } =

@@ -88,6 +88,8 @@ public enum PrototypeCombatEffectKind
     MultiplyPlayerBlock,
     DrawCards,
     MoveRandomRareDrawCardsToHand,
+    AddRandomZeroCostCardsToHand,
+    EmpowerRandomDrawCardReplay,
     ApplyEnemyStatus,
     ChooseCards,
     ChooseGeneratedCards,
@@ -242,7 +244,8 @@ public enum PrototypeCombatCountKind
     CardsPlayedThisCombat,
     OtherCardsInHand,
     DrawPileCards,
-    PlayerBlock
+    PlayerBlock,
+    TargetDebuffs
 }
 
 public sealed record PrototypeCombatPredicateSpec(
@@ -551,7 +554,8 @@ public sealed record PrototypeCombatEffectSpec(
     int GoldOnFatalUpgradeDelta = 0,
     int PowerStoredValue = 0,
     int PowerStoredValueUpgradeDelta = 0,
-    bool UseSourcePowerStoredValue = false)
+    bool UseSourcePowerStoredValue = false,
+    bool GainBlockEqualToAttackDamage = false)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -596,7 +600,8 @@ public sealed record PrototypeQueuedOperation(
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     int GoldOnFatal = 0,
     int PowerStoredValue = 0,
-    long? CardInstanceId = null);
+    long? CardInstanceId = null,
+    bool GainBlockEqualToAttackDamage = false);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -824,6 +829,7 @@ public sealed record PrototypePowerDefinition(
     // Native NoBlockPower applies only to card-sourced Block, not
     // unpowered effects from relics or other powers.
     bool PreventsCardBlock = false,
+    string? BlockBonusRequiredCardTag = null,
     // Reversible enemy strength effects; changes are applied after
     // debuff prevention, then restored at enemy side-turn end.
     int EnemyStrengthOnApplyPerStack = 0,
@@ -1518,7 +1524,9 @@ public sealed record PrototypeCombatCounters(
     int CardsDrawnThisCombat = 0,
     string[]? PlayedCardTagsThisTurn = null,
     int AttacksPlayedLastTurn = 0,
-    int CardsPlayedThisCombat = 0)
+    int CardsPlayedThisCombat = 0,
+    long[]? PlayedCardIdsThisTurn = null,
+    long[]? PlayedCardIdsLastTurn = null)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();
@@ -1529,10 +1537,12 @@ public sealed record PrototypeCombatCounters(
 
     public PrototypeCombatCounters Fork() => this with
     {
-        PlayedCardTagsThisTurn =
-            PlayedCardTagsThisTurn is null
-                ? null
-                : (string[])PlayedCardTagsThisTurn.Clone()
+        PlayedCardTagsThisTurn = PlayedCardTagsThisTurn is null
+            ? null : (string[])PlayedCardTagsThisTurn.Clone(),
+        PlayedCardIdsThisTurn = PlayedCardIdsThisTurn is null
+            ? null : (long[])PlayedCardIdsThisTurn.Clone(),
+        PlayedCardIdsLastTurn = PlayedCardIdsLastTurn is null
+            ? null : (long[])PlayedCardIdsLastTurn.Clone()
     };
 }
 
