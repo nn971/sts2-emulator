@@ -246,4 +246,91 @@ public sealed class PrototypeSlyTests
                 null,
                 null));
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DiscardedSlySnakebiteRandomlyTargetsOnlyLivingEnemy(
+        bool killFirstEnemy)
+    {
+        var slySnakebite = Card(2, "proto.silent.snakebite") with
+        {
+            KeywordOverrides =
+            [
+                new PrototypeCardKeywordOverride(
+                    PrototypeCardKeyword.Sly, true,
+                    PrototypeCardKeywordOverrideExpiry.None)
+            ]
+        };
+
+        RunState Setup()
+        {
+            var initial = CreateState(
+                energy: 3,
+                hand:
+                [
+                    Card(1, "proto.silent.survivor"),
+                    slySnakebite,
+                    Card(3, "proto.silent.strike")
+                ],
+                drawPile: []);
+            var world = initial.World!;
+            var combat = world.Combat!;
+            var first = combat.Enemies[0] with
+            {
+                Hp = killFirstEnemy ? 0 : 100,
+                InstanceId = 1
+            };
+            var second = first with { InstanceId = 2, Hp = 100 };
+            return initial with
+            {
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        Enemies = [first, second],
+                        NextEnemyInstanceId = 3
+                    }
+                }
+            };
+        }
+
+        RunState Resolve(RunState state)
+        {
+            var engine = new PrototypeGameEngine();
+            state = PlayCard(engine, state, 1);
+            var choice = engine.GetLegalActions(state).Single(action =>
+                action.Kind == "select_cards"
+                && action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.SequenceEqual([2]));
+            return engine.Step(state, choice).State;
+        }
+
+        var before = Setup();
+        var calls = before.Rng.Streams.Single(stream =>
+            stream.StreamId == "combat_targets").CallCount ?? 0UL;
+        var result = Resolve(before);
+        var combat = result.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Equal(2, combat.Energy);
+        Assert.Contains(2L, combat.DiscardPile);
+        var afterCalls = result.Rng.Streams.Single(stream =>
+            stream.StreamId == "combat_targets").CallCount ?? 0UL;
+        Assert.Equal<ulong>(1UL, afterCalls - calls);
+        var statuses = combat.Enemies.Select(enemy =>
+            enemy.Statuses.GetValueOrDefault("proto.status.poison")).ToArray();
+        Assert.Equal(7, statuses.Sum());
+        if (killFirstEnemy)
+        {
+            Assert.Equal(0, statuses[0]);
+            Assert.Equal(7, statuses[1]);
+        }
+
+        var replay = Resolve(Setup());
+        Assert.Equal(
+            CanonicalJson.Sha256(result),
+            CanonicalJson.Sha256(replay));
+        PrototypeStateInvariants.Validate(result);
+    }
+
 }
