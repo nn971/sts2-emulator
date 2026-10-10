@@ -546,10 +546,14 @@ public sealed class PrototypeAiEnvironment
 
             // Base damage includes the public act/ascension scaling, but
             // no dynamic Strength/Weak/Vulnerable or damage caps.
-            var baseDamage = Math.Max(0, effect.AmountAt(act, ascension));
+            var priorUses = enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0;
+            var baseDamage = Math.Max(0, effect.UseStoredEnemyDamage
+                ? enemy.StoredEnemyDamage
+                : checked(effect.AmountAt(act, ascension)
+                    + effect.ExtraAmountPerPriorMoveUse * priorUses));
             var damage = Math.Max(0,
                 PrototypeGameEngine.EnemyHitDamage(
-                    enemy, combat, effect, act, ascension));
+                    enemy, combat, effect, act, ascension, priorUses));
             if ((perHitDamage is not null && perHitDamage != damage)
                 || (perHitBaseDamage is not null
                     && perHitBaseDamage != baseDamage))

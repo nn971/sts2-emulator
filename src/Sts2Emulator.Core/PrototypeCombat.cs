@@ -2551,7 +2551,8 @@ public sealed partial class PrototypeGameEngine
                                 combat,
                                 effect,
                                 act,
-                                ascension);
+                                ascension,
+                                enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0);
 
                             var absorbed = Math.Min(
                                 block,
@@ -5871,9 +5872,14 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         PrototypeEnemyEffectSpec effect,
         int act,
-        int ascension)
+        int ascension,
+        int priorMoveUses = 0)
     {
-        var damage = effect.AmountAt(act, ascension)
+        var baseDamage = effect.UseStoredEnemyDamage
+            ? enemy.StoredEnemyDamage
+            : checked(effect.AmountAt(act, ascension)
+                + effect.ExtraAmountPerPriorMoveUse * priorMoveUses);
+        var damage = baseDamage
             + enemy.PowerStates.Sum(power =>
                 PrototypeContent.Power(power.PowerId)
                     .EnemyAttackDamageBonusPerStack * power.Stacks);
