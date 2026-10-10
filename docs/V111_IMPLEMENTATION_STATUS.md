@@ -93,6 +93,20 @@ This is an intermediate implementation. Final release gates remain open.
   Pinned source metadata now explicitly marks Injury, Greed (both ID
   variants), Guilty, Dowsing, Infection and Slimed as max-level zero.
   Native StableShuffle RNG call-order for Doors remains unverified.
+- Started the **native later-act content** track without allowing prototype
+  substitutions into configured runs. Pinned `Hive.cs` (20) and `Glory.cs`
+  (18) ordinary encounter ID catalogues are recorded. A first executable
+  slice adds Hive's Bugslayer event and its event-only Exterminate/Squash
+  cards, Hive Bowlbug Egg/Nectar worker models, and Glory Devoted Sculptor/
+  Turret Operator models. The native Glory Devoted Sculptor weak encounter
+  is also available as an explicit test fixture. Act 2/3 random selection
+  is **disabled** until complete regional encounter/event policies exist;
+  the typed entries must not be mistaken for full playable later acts.
+  Source audit and test boundaries:
+  [Hive/Glory first slice](reference-builds/v0.111.0-hive-glory-first-slice.md).
+- Live-game Act 1 fidelity capture is currently unavailable to the user;
+  this is an external evidence blocker, not a reason to stop content work.
+  No current patch establishes new real-game fidelity measurements.
 - Added CI pin/inventory/coverage baseline checks and real-server Python
   snapshot/batch/compatibility checks. Added configured decision-boundary
   benchmarks for forks, allocations, stepping, batches, hashing, snapshots and
