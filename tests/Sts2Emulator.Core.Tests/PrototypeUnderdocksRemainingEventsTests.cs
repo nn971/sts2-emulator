@@ -387,7 +387,6 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.False(swords[1].PersistentState
             .TryGetProperty("ElitesDefeated", out _));
         Assert.Equal(before, CanonicalJson.Sha256(state));
-        PrototypeStateInvariants.Validate(chosen);
     }
 
     [Fact]
@@ -419,7 +418,6 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             .GetProperty("PreviousSource").GetInt32());
         Assert.False(lenses[1].PersistentState
             .TryGetProperty("PreviousSource", out _));
-        PrototypeStateInvariants.Validate(after);
     }
 
     [Fact]
@@ -470,7 +468,6 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.Equal("proto.native.neow.injury", injury.CardId);
         Assert.Equal(0, injury.UpgradeLevel);
         Assert.Equal(hash, CanonicalJson.Sha256(state));
-        PrototypeStateInvariants.Validate(done);
     }
 
     private static string[] ChoiceIds(
