@@ -92,7 +92,10 @@ public sealed class V111FabricatorNormalTests
             {
                 Assert.Equal(formation[0].InstanceId,
                     e.LeaderEnemyInstanceId);
-                Assert.True(e.SkipNextEnemyAction);
+                // The initial enemy-side skip has already been consumed
+                // by the time the next player turn begins.
+                Assert.Null(e.LastMoveId);
+                Assert.Equal(0, e.MoveIndex);
             });
         var fork = state.Fork();
         Assert.Equal(CanonicalJson.Sha256(state),
