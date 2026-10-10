@@ -425,6 +425,57 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         PrototypeStateInvariants.Validate(after);
     }
 
+    [Fact]
+    public void DoorsLightNeverSelectsNonUpgradableUnupgradedCards()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = FindEvent(engine,
+            "proto.native.underdocks.doors_of_light_and_dark",
+            "doors-true-upgradability", floor: 4);
+
+        // Exactly two cards can be upgraded. An unupgradable Injury
+        // has upgrade level zero but must not enter the random pool.
+        var initialDeck = state.Player.Deck;
+        var upgradeable = initialDeck
+            .Where(card => PrototypeContent.Card(card.CardId)
+                .MaxUpgradeLevel > 0)
+            .Take(2).Select(card => card.InstanceId).ToArray();
+        Assert.Equal(2, upgradeable.Length);
+        var invalidId = initialDeck.First(card =>
+            !upgradeable.Contains(card.InstanceId)).InstanceId;
+        var prepared = initialDeck.Select(card =>
+            card.InstanceId == invalidId
+                ? new CardInstance(card.InstanceId,
+                    "proto.native.neow.injury", 0,
+                    PrototypeJson.EmptyObject())
+                : card with
+                {
+                    UpgradeLevel = upgradeable.Contains(card.InstanceId)
+                        ? 0
+                        : PrototypeContent.Card(card.CardId).MaxUpgradeLevel
+                }).ToArray();
+        state = state with
+        {
+            Player = state.Player with { Deck = prepared }
+        };
+        Assert.False(PrototypeGameEngine.CanSelectEventDeckCard(
+            prepared.Single(card => card.InstanceId == invalidId),
+            PrototypePersistentDeckChoiceKind.Upgrade,
+            null, null, false));
+        var hash = CanonicalJson.Sha256(state);
+        var done = Choose(engine, state, "light");
+        Assert.Equal(RunPhase.MapChoice, done.Phase);
+        Assert.All(upgradeable, id =>
+            Assert.Equal(1, done.Player.Deck.Single(card =>
+                card.InstanceId == id).UpgradeLevel));
+        var injury = done.Player.Deck.Single(card =>
+            card.InstanceId == invalidId);
+        Assert.Equal("proto.native.neow.injury", injury.CardId);
+        Assert.Equal(0, injury.UpgradeLevel);
+        Assert.Equal(hash, CanonicalJson.Sha256(state));
+        PrototypeStateInvariants.Validate(done);
+    }
+
     private static string[] ChoiceIds(
         PrototypeGameEngine engine, RunState state) =>
         engine.GetLegalActions(state)
