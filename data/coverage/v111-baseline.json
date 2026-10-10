@@ -3160,11 +3160,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.curse.decay"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Decay.cs#6122b7e3807499c54aee177900103f91559760e5fba360e9acb176343a519a80"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -3172,7 +3174,7 @@
           "base"
         ],
         "native_id": "DECAY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15115,11 +15117,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.colossal_flower"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ColossalFlower.cs#ca0ee1f25d200ea85ddfe301965370d20e7930606409956c22c2317b2622c0d3"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15140,7 +15144,7 @@
         ],
         "missing_variants": [],
         "native_id": "COLOSSAL_FLOWER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15489,11 +15493,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.lost_wisp"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/LostWisp.cs#a6779ac7cf9cbd79cbe348b74d6c5a944f828acaa7c44ccd7a116dcd426c2f5c"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15507,7 +15513,7 @@
         ],
         "missing_variants": [],
         "native_id": "LOST_WISP",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15853,11 +15859,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.round_tea_party"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/RoundTeaParty.cs#863bcb03830443c7c2e4ed256c2287c962146f486a32346665092baa5b09d012"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15874,7 +15882,7 @@
         ],
         "missing_variants": [],
         "native_id": "ROUND_TEA_PARTY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26769,17 +26777,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.relic.lost_wisp"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/LostWisp.cs#1c9abca9e7341560b8d9a442037bd3bf4fd1aacaa708ac2dc4ec0f93b57a5249"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "LOST_WISP",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -27773,17 +27783,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.relic.pollinous_core"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PollinousCore.cs#37cc32f0978fb0ce588e72a0e157db7501daa3253459c55d249759c39ffeddc9"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "POLLINOUS_CORE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -28153,17 +28165,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.relic.royal_poison"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RoyalPoison.cs#f1016293fd7fdc5439d4f775e0880b67d7669d2f982c6d46207c66a3ca1dbc1e"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ROYAL_POISON",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29560,7 +29574,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 175,
+        "implemented": 176,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
