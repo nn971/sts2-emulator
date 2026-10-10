@@ -61,7 +61,7 @@ public sealed class V111HiveNormalEncountersTests
         {
             var state = State(specs, "hive-four-exos-" + i);
             var before = CanonicalJson.Sha256(state);
-            var committed = Commit(state);
+            var committed = Commit(state.Fork());
             var indexes = committed.World!.Combat!.Enemies
                 .Select(enemy => enemy.PlannedMoveIndex).ToArray();
             Assert.Equal(0, indexes[0]);
