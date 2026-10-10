@@ -1498,8 +1498,9 @@ public sealed partial class PrototypeGameEngine
                             combat,
                             Math.Max(
                                 0,
-                                definition
-                                    .EndTurnDamageIfInHand));
+                                definition.EndTurnDamageIfInHand
+                                    + (card.CardId == PrototypeNativeGloryBosses.WitherId
+                                        ? 3 * card.WitherFakeUpgradeLevel : 0)));
                     if (damage <= 0)
                     {
                         continue;
@@ -6022,7 +6023,12 @@ public sealed partial class PrototypeGameEngine
                 CardId: cardId,
                 UpgradeLevel: 0,
                 IsTemporary: true,
-                State: PrototypeJson.EmptyObject());
+                State: PrototypeJson.EmptyObject(),
+                WitherFakeUpgradeLevel: cardId == PrototypeNativeGloryBosses.WitherId
+                    ? combat.Enemies.Where(enemy =>
+                        enemy.EnemyId == PrototypeNativeGloryBosses.AeonglassId)
+                        .Sum(enemy => enemy.WitherUpgradeCount)
+                    : 0);
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat, instance);
             var fits = combat.Hand.Length < maxHandSize;
@@ -6054,7 +6060,12 @@ public sealed partial class PrototypeGameEngine
                 CardId: cardId,
                 UpgradeLevel: 0,
                 IsTemporary: true,
-                State: PrototypeJson.EmptyObject());
+                State: PrototypeJson.EmptyObject(),
+                WitherFakeUpgradeLevel: cardId == PrototypeNativeGloryBosses.WitherId
+                    ? combat.Enemies.Where(enemy =>
+                        enemy.EnemyId == PrototypeNativeGloryBosses.AeonglassId)
+                        .Sum(enemy => enemy.WitherUpgradeCount)
+                    : 0);
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat,
                 instance);
@@ -10903,7 +10914,7 @@ public sealed partial class PrototypeGameEngine
         {
             return new PrototypeEnemyHpLossResult(
                 enemy,
-                hpLoss);
+                enemy.BossPendingRevival ? 0 : hpLoss);
         }
 
         var powers = enemy.PowerStates.ToList();
