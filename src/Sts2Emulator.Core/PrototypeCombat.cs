@@ -321,6 +321,7 @@ public sealed partial class PrototypeGameEngine
         // Vital Spark afflicts every existing Skill before the opening
         // draw, without overriding a different native affliction.
         combat = RefreshNativeHiveVitalSpark(combat);
+        combat = RefreshNativeGloryGalvanic(combat);
 
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
@@ -2983,6 +2984,24 @@ public sealed partial class PrototypeGameEngine
                             enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
                             break;
 
+                        case PrototypeEnemyEffectKind.GrantBlockToEnemyType:
+                            if (effect.EnemyId is null)
+                                throw new InvalidOperationException(
+                                    "Ally Block grant must specify an enemy type.");
+                            for (var allyIndex = 0;
+                                 allyIndex < enemies.Count;
+                                 allyIndex++)
+                            {
+                                var ally = enemies[allyIndex];
+                                if (ally.Hp > 0 && ally.EnemyId == effect.EnemyId)
+                                    enemies[allyIndex] = ally with
+                                    {
+                                        Block = checked(ally.Block
+                                            + Math.Max(0, amount))
+                                    };
+                            }
+                            break;
+
                         case PrototypeEnemyEffectKind.HealSelf:
                             enemy = enemy with
                             {
@@ -3038,6 +3057,55 @@ public sealed partial class PrototypeGameEngine
                             combat = selfPower.Combat;
                             enemy = selfPower.Enemy;
                             break;
+
+                        case PrototypeEnemyEffectKind.RemoveEnemyPower:
+                            if (effect.PowerId is null)
+                                throw new InvalidOperationException(
+                                    "Enemy remove-power effect requires a power ID.");
+                            enemy = enemy with
+                            {
+                                Powers = enemy.PowerStates.Where(power =>
+                                    power.PowerId != effect.PowerId).ToArray()
+                            };
+                            break;
+
+                        case PrototypeEnemyEffectKind.StealPlayerPower:
+                        {
+                            if (effect.PowerId is not
+                                ("proto.power.strength" or "proto.power.dexterity"))
+                                throw new InvalidOperationException(
+                                    "Stat theft must specify Strength or Dexterity.");
+                            var prior = combat.PlayerPowers
+                                .Where(power => power.PowerId == effect.PowerId)
+                                .Sum(power => power.Stacks);
+                            combat = ApplyPlayerPower(
+                                combat, effect.PowerId, -amount,
+                                sourceEnemyInstanceId: enemy.InstanceId);
+                            var after = combat.PlayerPowers
+                                .Where(power => power.PowerId == effect.PowerId)
+                                .Sum(power => power.Stacks);
+                            var stolen = Math.Max(0, prior - after);
+                            var granted = ApplyEnemyPowerToState(
+                                combat, enemy, effect.PowerId, amount);
+                            combat = granted.Combat;
+                            enemy = granted.Enemy;
+                            var ownerPowerId =
+                                effect.PowerId == "proto.power.strength"
+                                    ? PrototypeNativeGloryNewNormals.PossessStrengthId
+                                    : PrototypeNativeGloryNewNormals.PossessSpeedId;
+                            enemy = enemy with
+                            {
+                                Powers = enemy.PowerStates.Select(power =>
+                                    power.PowerId == ownerPowerId
+                                        ? power with
+                                        {
+                                            StoredValue = checked(
+                                                power.StoredValue + stolen)
+                                        }
+                                        : power).ToArray()
+                            };
+                            break;
+                        }
 
                         case PrototypeEnemyEffectKind.ApplyAllEnemyPower:
                         {
@@ -3174,15 +3242,32 @@ public sealed partial class PrototypeGameEngine
 
                         case PrototypeEnemyEffectKind.SummonEnemy:
                         {
-                            if (effect.EnemyId is null)
+                            var summonId = effect.EnemyId;
+                            if (effect.SummonEnemyPool is { Length: > 0 } pool)
                             {
-                                throw new InvalidOperationException(
-                                    "Enemy summon effect is missing an enemy ID.");
+                                // Native Fabricator._lastSpawned persists
+                                // through deaths. Retired minions stay in the
+                                // typed combat history with their leader ID.
+                                var lastSpawned = enemies
+                                    .Where(candidate =>
+                                        candidate.LeaderEnemyInstanceId ==
+                                            enemy.InstanceId)
+                                    .OrderByDescending(candidate =>
+                                        candidate.InstanceId)
+                                    .FirstOrDefault()?.EnemyId;
+                                var choices = pool.Where(id =>
+                                    id != lastSpawned).ToArray();
+                                if (choices.Length == 0)
+                                    choices = pool;
+                                summonId = choices[PrototypeRng.NextInt(
+                                    rng, "combat", choices.Length)];
                             }
+                            if (summonId is null)
+                                throw new InvalidOperationException(
+                                    "Enemy summon requires an enemy ID or pool.");
 
                             var summonedDefinition =
-                                PrototypeContent.Enemy(
-                                    effect.EnemyId);
+                                PrototypeContent.Enemy(summonId);
                             var hpRange =
                                 summonedDefinition.HpRangeAt(
                                     act,
@@ -3225,8 +3310,9 @@ public sealed partial class PrototypeGameEngine
                             string? selectedSlot = null;
                             if (summonSlots is { Length: > 0 })
                             {
-                                selectedSlot = summonSlots
-                                    .Reverse()
+                                selectedSlot = (effect.SelectFirstAvailableSummonSlot
+                                        ? summonSlots
+                                        : summonSlots.Reverse())
                                     .FirstOrDefault(slot =>
                                         !enemies.Any(item =>
                                             (item.Hp > 0
@@ -3245,12 +3331,16 @@ public sealed partial class PrototypeGameEngine
                                         ? 0
                                         : enemies.Max(item =>
                                             item.FormationPosition) + 1)
-                                    : Array.IndexOf(summonSlots!, selectedSlot);
+                                    : effect.SummonSlotFormationPositions is
+                                            { } sourcePositions
+                                        ? sourcePositions[
+                                            Array.IndexOf(summonSlots!, selectedSlot)]
+                                        : Array.IndexOf(summonSlots!, selectedSlot);
 
                             enemies.Add(
                                 new EnemyCombatState(
                                     InstanceId: nextEnemyId,
-                                    EnemyId: effect.EnemyId,
+                                    EnemyId: summonId,
                                     Hp: summonedHp,
                                     MaxHp: summonedHp,
                                     Block: 0,
@@ -6507,6 +6597,11 @@ public sealed partial class PrototypeGameEngine
             : checked(effect.AmountAt(act, ascension)
                 + effect.ExtraAmountPerPriorMoveUse * priorMoveUses);
         var damage = baseDamage
+            + (effect.ExtraAmountFromOwnerPowerId is { } statId
+                ? enemy.PowerStates
+                    .Where(power => power.PowerId == statId)
+                    .Sum(power => power.Stacks)
+                : 0)
             + enemy.PowerStates.Sum(power =>
                 PrototypeContent.Power(power.PowerId)
                     .EnemyAttackDamageBonusPerStack * power.Stacks);
@@ -7828,6 +7923,31 @@ public sealed partial class PrototypeGameEngine
             CombatState combat,
             CombatCardInstance card)
     {
+        if (card.Affliction is null
+            && PrototypeContent.Card(card.CardId).Type
+                == PrototypeCardType.Power)
+        {
+            var source = combat.Enemies
+                .Where(enemy => enemy.Hp > 0)
+                .SelectMany(enemy => enemy.PowerStates
+                    .Where(power => power.Stacks > 0
+                        && PrototypeContent.Power(power.PowerId)
+                            .GalvanizePowerCardsPerStack > 0)
+                    .Select(power => (Enemy: enemy, Power: power)))
+                .FirstOrDefault();
+            if (source.Enemy is not null)
+            {
+                return card with
+                {
+                    Affliction = new PrototypeCardAffliction(
+                        PrototypeCardAfflictionKind.Galvanized,
+                        source.Power.Stacks * PrototypeContent.Power(
+                            source.Power.PowerId).GalvanizePowerCardsPerStack,
+                        source.Enemy.InstanceId)
+                };
+            }
+        }
+
         foreach (var power in combat.PlayerPowers
                      .OrderBy(item => item.ApplicationOrder))
         {
@@ -8356,6 +8476,40 @@ public sealed partial class PrototypeGameEngine
     // Tender restores only Strength/Dexterity actually lost (Artifact can
     // block either application), with counters stored on the power instance.
     // Curl Up waits for the *same card instance* that first attacked it.
+    private static CombatState RefreshNativeGloryGalvanic(
+        CombatState combat)
+    {
+        var galvanicSource = combat.Enemies
+            .Where(enemy => enemy.Hp > 0)
+            .SelectMany(enemy => enemy.PowerStates
+                .Where(power => power.Stacks > 0
+                    && PrototypeContent.Power(power.PowerId)
+                        .GalvanizePowerCardsPerStack > 0)
+                .Select(power => (
+                    Enemy: enemy,
+                    Amount: power.Stacks * PrototypeContent.Power(
+                        power.PowerId).GalvanizePowerCardsPerStack)))
+            .FirstOrDefault();
+        if (galvanicSource.Enemy is null)
+            return combat;
+
+        return combat with
+        {
+            Cards = combat.Cards.Select(card =>
+                card.Affliction is null
+                && PrototypeContent.Card(card.CardId).Type
+                    == PrototypeCardType.Power
+                    ? card with
+                    {
+                        Affliction = new PrototypeCardAffliction(
+                            PrototypeCardAfflictionKind.Galvanized,
+                            galvanicSource.Amount,
+                            galvanicSource.Enemy.InstanceId)
+                    }
+                    : card).ToArray()
+        };
+    }
+
     private static CombatState RefreshNativeHiveVitalSpark(
         CombatState combat)
     {
@@ -8576,7 +8730,38 @@ public sealed partial class PrototypeGameEngine
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
         combat = RefreshNativeHiveVitalSpark(combat);
+        combat = RefreshNativeGloryGalvanic(combat);
         combat = ResolveNativeCardCompletionPowers(combat, combatEvent);
+        // GalvanicPower.AfterCardPlayed is installed on the living
+        // Globe Head, not on the card: the card remains afflicted if
+        // the owner dies, but no further damage trigger fires.
+        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
+            && combatEvent.SourceCardInstanceId is { } galvanicCardId)
+        {
+            var card = combat.Cards.FirstOrDefault(item =>
+                item.InstanceId == galvanicCardId);
+            if (card?.Affliction?.Kind
+                    == PrototypeCardAfflictionKind.Galvanized)
+            {
+                var damage = combat.Enemies
+                    .Where(enemy => enemy.Hp > 0)
+                    .SelectMany(enemy => enemy.PowerStates)
+                    .Sum(power => Math.Max(0, power.Stacks)
+                        * PrototypeContent.Power(power.PowerId)
+                            .GalvanizePowerCardsPerStack);
+                var absorbed = Math.Min(combat.PlayerBlock,
+                    Math.Max(0, damage));
+                combat = combat with
+                {
+                    PlayerBlock = combat.PlayerBlock - absorbed
+                };
+                player = player with
+                {
+                    Hp = Math.Max(0, player.Hp -
+                        Math.Max(0, damage - absorbed))
+                };
+            }
+        }
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
         {
             var plating = combat.PlayerPowers.Sum(power =>
@@ -10244,6 +10429,22 @@ public sealed partial class PrototypeGameEngine
             damage = (int)Math.Floor(damage * 0.5m);
         }
 
+        if (isPoweredAttack)
+        {
+            foreach (var power in enemy.PowerStates.Where(power =>
+                power.Stacks > 0))
+            {
+                var definition = PrototypeContent.Power(power.PowerId);
+                if (definition.EnemyIncomingPoweredAttackDenominator <= 0)
+                    throw new InvalidOperationException(
+                        "Enemy powered-attack modifier has nonpositive denominator.");
+                damage = (int)Math.Floor(
+                    (decimal)damage
+                    * definition.EnemyIncomingPoweredAttackNumerator
+                    / definition.EnemyIncomingPoweredAttackDenominator);
+            }
+        }
+
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
         // BurrowedPower.AfterBlockBroken fires when a HIT actually
         // consumes the last point of the shield. Ordinary enemy Block
@@ -10407,6 +10608,45 @@ public sealed partial class PrototypeGameEngine
     private static CombatState ResolveAllyDeathPowers(
         CombatState combat, int defeatedEnemyId)
     {
+        // PossessStrength/PossessSpeed store the actual successful
+        // player stat loss, not the attempted debuff: Artifact can
+        // prevent theft. Death returns precisely those stolen stacks,
+        // once, before living allies process their death reactions.
+        var defeated = combat.Enemies.FirstOrDefault(enemy =>
+            enemy.InstanceId == defeatedEnemyId);
+        if (defeated is not null)
+        {
+            foreach (var stolenPower in defeated.PowerStates.Where(power =>
+                power.StoredValue > 0
+                && power.PowerId is
+                    (PrototypeNativeGloryNewNormals.PossessStrengthId
+                     or PrototypeNativeGloryNewNormals.PossessSpeedId)))
+            {
+                var restoredStat = stolenPower.PowerId ==
+                    PrototypeNativeGloryNewNormals.PossessStrengthId
+                    ? "proto.power.strength"
+                    : "proto.power.dexterity";
+                combat = ApplyPlayerPower(
+                    combat, restoredStat, stolenPower.StoredValue);
+            }
+            combat = combat with
+            {
+                Enemies = combat.Enemies.Select(enemy =>
+                    enemy.InstanceId == defeatedEnemyId
+                        ? enemy with
+                        {
+                            Powers = enemy.PowerStates.Select(power =>
+                                power.StoredValue > 0
+                                && power.PowerId is
+                                    (PrototypeNativeGloryNewNormals.PossessStrengthId
+                                     or PrototypeNativeGloryNewNormals.PossessSpeedId)
+                                    ? power with { StoredValue = 0 }
+                                    : power).ToArray()
+                        }
+                        : enemy).ToArray()
+            };
+        }
+
         foreach (var owner in combat.Enemies
             .Where(item => item.Hp > 0
                 && item.InstanceId != defeatedEnemyId)

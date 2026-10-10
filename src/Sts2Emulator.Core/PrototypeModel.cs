@@ -879,7 +879,12 @@ public sealed record PrototypePowerDefinition(
     // Living Shield/Rampart: independently owned ally block grants
     // at the start of the player's side-turn.
     int AllyBlockAtPlayerTurnStartPerStack = 0,
-    string? AllyBlockTargetEnemyId = null);
+    string? AllyBlockTargetEnemyId = null,
+    // Soar: powered incoming attacks are multiplied by this fraction.
+    int EnemyIncomingPoweredAttackNumerator = 1,
+    int EnemyIncomingPoweredAttackDenominator = 1,
+    // Galvanic: Power cards carry this affliction's damage amount.
+    int GalvanizePowerCardsPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -924,7 +929,13 @@ public enum PrototypeEnemyEffectKind
     // Insatiable's Frantic Escapes enter draw/discard at random indices.
     AddCardsToRandomDiscard,
     // Knowledge Demon must ask the player to choose between curses.
-    RequireNativeChoice
+    RequireNativeChoice,
+    RemoveEnemyPower,
+    // Lost/Forgotten: apply -stats to the player, grant +stats
+    // to the owner, and track the successful stolen amount.
+    StealPlayerPower,
+    // Guardbot: grant fixed Block to every living ally of an enemy type.
+    GrantBlockToEnemyType
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -950,7 +961,15 @@ public sealed record PrototypeEnemyEffectSpec(
     // Source-backed conditional buffs, read before the action executes.
     string? OwnerPowerStackConditionId = null,
     int? OwnerPowerStacksLessThan = null,
-    int? OwnerPowerStacksAtLeast = null)
+    int? OwnerPowerStacksAtLeast = null,
+    // The Forgotten's Dread adds the owner's current Dexterity to
+    // its printed damage, before ordinary attack modifiers.
+    string? ExtraAmountFromOwnerPowerId = null,
+    // Fabricator pools: the next bot must differ from the last
+    // monster summoned by the same parent, living or dead.
+    string[]? SummonEnemyPool = null,
+    bool SelectFirstAvailableSummonSlot = false,
+    int[]? SummonSlotFormationPositions = null)
 {
     public int AmountAt(
         int act,

@@ -227,6 +227,57 @@ This is an intermediate implementation. Final release gates remain open.
   forced-combat fixtures, with native maps, RNG ownership, and real
   replay evidence outstanding. Details:
   [Glory weak closure](reference-builds/v0.111.0-glory-weak-closure.md).
+- Added source-pinned **Tunneler Normal** (Hive) and
+  **Construct Menagerie Normal** (Glory) encounter formations,
+  reusing existing typed Chomper/Tunneler and Punch/Cubex enemies.
+  The Chomper is explicitly assigned its source-true screaming
+  initial phase; Menagerie has independently targetable Punch
+  and two Cubex instances. Both fights remain Weight=0,
+  synthetic fixtures only, and native Act 2/3 progression
+  is not enabled. [Normal formation audit](reference-builds/v0.111.0-normal-formations.md).
+- Added source-backed **Owl Magistrate Normal** with
+  A0/A8/A9 attack and HP deltas, six-hit Peck, four-move loop,
+  Judicial Flight's Soar (halves incoming powered attack damage),
+  and Verdict's Vulnerable and Soar removal. It is `Weight=0`,
+  like the other test-only Glory models. The Soar modifier is
+  typed and reusable for future incoming-attack rules.
+- Added gated **Globe Head Normal** with native 3-move loop,
+  A0/A8/A9 HP and damage, Frail and Strength, plus a source-owned
+  Galvanic affliction hook: Power cards present at combat entry
+  or newly created in combat become Galvanized, and playing one
+  takes 6/8 damage from the living source power. Damage observes
+  player Block and owner death; native damage-modifier parity
+  remains unverified.
+- Added gated **Axebots Normal** as a three-stage, two-respawn
+  Stock encounter: the first Axebot opens with Hammer Uppercut,
+  each replacement has 10 more maximum HP, loses one Stock,
+  and opens with Boot Up (Block plus respawn-scaled Strength).
+  Each stage has separate committed intents and A0/A8/A9 HP,
+  attack and debuff values. The typed death-summon chain makes
+  Stock prevent premature victory. Native animation timing,
+  replacement RNG and live replay remain unverified.
+- Added gated **The Lost and Forgotten Normal**: two living,
+  independently targetable paired enemies that alternate
+  Strength/Dexterity theft with source-scaled Eye Lasers/Dread
+  attacks. Possess Strength/Speed now tracks the actual player
+  stat decrease that survives debuff prevention and restores it
+  on the corresponding owner's death, only once. Dread includes
+  the Forgotten's current Dexterity before attack modifiers.
+  Source numbers, Ascension breaks, state forks and restoration
+  are regression-tested; live trace parity is still outstanding.
+- Added gated **Fabricator Normal** with four source-backed
+  minion types: Zapbot (High Voltage +2 Strength per enemy side),
+  Stabbot (attack/Frail), Guardbot (15 Block to each living
+  Fabricator), and Noisebot (one Dazed into discard and another
+  randomly into draw). Fabricator chooses between defensive+aggressive
+  summon and Strike+aggressive summon until four living allies,
+  then uses Disintegrate; bots occupy native five-slot formation
+  positions. Bot pools exclude the last spawned monster type,
+  including dead minions, and use prototype combat RNG rather
+  than native MonsterAi; this and native summon animation timing
+  remain explicitly unverified. All encounters remain Weight=0.
+  The ordinary 41-encounter normal roster now has executable
+  registrations, but later-act pool integration is still gated.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.
