@@ -16,9 +16,16 @@ public static class PrototypeNativeHiveNormals
         "proto.native.hive.encounter.chompers_normal";
     public const string MytesNormalId =
         "proto.native.hive.encounter.mytes_normal";
+    public const string SpinyToadNormalId =
+        "proto.native.hive.encounter.spiny_toad_normal";
+    public const string SlumberingBeetleNormalId =
+        "proto.native.hive.encounter.slumbering_beetle_normal";
 
     public const string ChomperId = "proto.native.hive.chomper";
     public const string MyteId = "proto.native.hive.myte";
+    public const string SpinyToadId = "proto.native.hive.spiny_toad";
+    public const string SlumberingBeetleId =
+        "proto.native.hive.slumbering_beetle";
     public const string ToxicCardId = "proto.native.hive.toxic";
 
     public static PrototypeCardDefinition[] Cards { get; } =
@@ -33,8 +40,86 @@ public static class PrototypeNativeHiveNormals
             EndTurnDamageIfInHand: 5, MaxUpgradeLevel: 0)
     ];
 
+    // SlumberPower: three enemy-side turns of Snore or wake early on
+    // unblocked incoming attack damage. Companion Plating is removed
+    // on either wake route. This is NOT the Underdocks Asleep power:
+    // their post-wake first moves have different identifiers.
+    public static PrototypePowerDefinition[] Powers { get; } =
+    [
+        new("proto.native.hive.slumber", "Slumber", 0, [],
+            EnemyStacksDecayAtSideTurnEnd: 1,
+            WakeOwnerOnUnblockedAttackDamage: true,
+            OwnerAiStateOnWake: "rollout",
+            RemoveOwnerPowersOnWake:
+                ["proto.native.hive.slumber", "proto.power.plating"],
+            StunOwnerOnWake: true,
+            OwnerAiStateOnPowerExpiry: "rollout",
+            RemoveOwnerPowersOnPowerExpiry: ["proto.power.plating"])
+    ];
+
     public static PrototypeEnemyDefinition[] Enemies { get; } =
     [
+        // SpinyToad.cs: Protruding Spikes grants 5 Thorns,
+        // Spike Explosion hits BEFORE removing those 5 stacks,
+        // then Tongue Lash and repeat.
+        new(SpinyToadId, "Spiny Toad", 119, 0,
+            [
+                new("protruding_spikes",
+                    [new(PrototypeEnemyEffectKind.ApplyEnemyPower,
+                        5, PowerId: "proto.power.thorns")]),
+                new("spike_explosion",
+                [
+                    new(PrototypeEnemyEffectKind.DamagePlayer, 23,
+                        AscensionDeltas: [new(9, 2)]),
+                    new(PrototypeEnemyEffectKind.ApplyEnemyPower, -5,
+                        PowerId: "proto.power.thorns")
+                ]),
+                new("tongue_lash",
+                    [new(PrototypeEnemyEffectKind.DamagePlayer, 17,
+                        AscensionDeltas: [new(9, 2)])])
+            ],
+            MinHp: 116, HpAscensionDeltas: [new(8, 5)]),
+        // SlumberingBeetle.cs: native 86/89 HP, Plating 15/18
+        // and three Slumber charges. Snore until the count expires
+        // at enemy-side turn end; Roll Out then attacks and gains
+        // Strength 2 every enemy turn. An unblocked attack hit
+        // interrupts Slumber and stuns the current planned action.
+        new(SlumberingBeetleId, "Slumbering Beetle", 86, 0,
+            [
+                new("snore", []),
+                new("rollout",
+                [
+                    new(PrototypeEnemyEffectKind.DamagePlayer, 16,
+                        AscensionDeltas: [new(9, 2)]),
+                    new(PrototypeEnemyEffectKind.ApplyEnemyPower, 2,
+                        PowerId: "proto.power.strength")
+                ])
+            ],
+            HpAscensionDeltas: [new(8, 3)],
+            StartingPowers:
+            [
+                new("proto.power.plating", 15,
+                    AscensionDeltas: [new(8, 3)]),
+                new("proto.native.hive.slumber", 3)
+            ],
+            MovePolicy: PrototypeEnemyMovePolicy.StateMachine,
+            Ai: new("snore",
+            [
+                new("snore", PrototypeEnemyAiStateKind.Move,
+                    MoveIndex: 0, NextStateId: "post_snore"),
+                new("post_snore", PrototypeEnemyAiStateKind.Conditional,
+                    ConditionalBranches:
+                    [
+                        new("snore",
+                            PrototypeEnemyAiConditionKind.HasEnemyPower,
+                            "proto.native.hive.slumber"),
+                        new("rollout",
+                            PrototypeEnemyAiConditionKind.LacksEnemyPower,
+                            "proto.native.hive.slumber")
+                    ]),
+                new("rollout", PrototypeEnemyAiStateKind.Move,
+                    MoveIndex: 1, NextStateId: "rollout")
+            ])),
         // Myte.cs: pair opens at different points in the cycle.
         // Toxic creates two temporary status cards directly in hand.
         new(MyteId, "Myte", 67, 0,
@@ -116,6 +201,25 @@ public static class PrototypeNativeHiveNormals
 
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
+        // SpinyToadNormal.cs: a single isolated Spiny Toad.
+        new(SpinyToadNormalId, PrototypeRoomType.Combat,
+            [SpinyToadId], MinAct: 2, MaxAct: 2, Weight: 0),
+        // SlumberingBeetleNormal.cs: fixed named slots, not a
+        // random worker selection. Rock and Silk accompany the
+        // sleeping Beetle and can be targeted independently.
+        new(SlumberingBeetleNormalId, PrototypeRoomType.Combat,
+            [
+                "proto.native.hive.bowlbug_rock",
+                "proto.native.hive.bowlbug_silk",
+                SlumberingBeetleId
+            ],
+            MinAct: 2, MaxAct: 2, Weight: 0,
+            Formation:
+            [
+                new("proto.native.hive.bowlbug_rock", 0, "first"),
+                new("proto.native.hive.bowlbug_silk", 1, "second"),
+                new(SlumberingBeetleId, 2, "third")
+            ]),
         // BowlbugsNormal.cs fixes Rock in "first" and independently
         // samples two DIFFERENT workers in "middle" and "last".
         // The pool order matches the source dictionary insertion order:
