@@ -210,7 +210,8 @@ public enum PrototypeCardSelectionResolutionKind
     MoveToHand,
     MoveToDiscard,
     MoveToExhaust,
-    MoveToDrawTop
+    MoveToDrawTop,
+    TransformRandom
 }
 
 public enum PrototypeEffectTarget

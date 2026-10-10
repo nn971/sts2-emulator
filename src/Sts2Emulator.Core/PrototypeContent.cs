@@ -1888,6 +1888,7 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Ancient,
                 Type: PrototypeCardType.Power)
         }.Concat(PrototypeColorlessCards.Implemented)
+            .Concat(PrototypeColorlessCards.UnsupportedMultiplayer)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Cards)
             .Concat(PrototypeNativeEndlessConveyor.EventCards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
@@ -3021,6 +3022,25 @@ public static class PrototypeContent
                 IsDebuff: true,
                 DoesNotStack: true,
                 LethalAfterUnblockedPoweredAttack: true),
+
+            new PrototypePowerDefinition(
+                "proto.power.entropy", "Entropy", 0,
+                Triggers:
+                [
+                    new PrototypePowerTriggerSpec(
+                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ChooseCards, 0,
+                                Selection: new PrototypeCardSelectionSpec(
+                                    PrototypeCardZone.Hand, 1, 1,
+                                    PrototypeCardSelectionResolutionKind.TransformRandom,
+                                    SelectionsPerPowerStack: 1))
+                        ])
+                ]),
+            new PrototypePowerDefinition(
+                "proto.power.stratagem", "Stratagem", 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>()),
             // Panache instances independently count five cards during each
             // turn, ignoring the card which originally applied the power.
             new PrototypePowerDefinition(
