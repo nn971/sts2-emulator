@@ -1,5 +1,10 @@
 # Project status
 
+**Active implementation plan:** [Full v111 single-player roadmap](docs/FULL_IMPLEMENTATION_ROADMAP.md).
+The target now includes both Act 1 variants, Hive, Glory and all five characters,
+with exhaustive eligible content and native-parity release gates. Earlier
+Overgrowth-only or deferred-Underdocks priorities below are historical context.
+
 **Stage:** Single-player mechanics expansion, with Overgrowth as the initial high-coverage act; native-oracle fidelity is a separate follow-up.
 
 **Project scope constraint:** this emulator targets **single-player STS2 only**. Multiplayer-only

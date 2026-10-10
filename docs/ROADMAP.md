@@ -1,5 +1,13 @@
 # Emulator roadmap
 
+The active plan is [Complete single-player STS2 emulator roadmap](FULL_IMPLEMENTATION_ROADMAP.md),
+recorded 2026-10-10 for v0.111.0. It covers both Act 1 variants, Hive, Glory,
+all five characters and all eligible single-player content, with explicit
+implementation and release gates. Multiplayer mechanics are excluded.
+
+The milestones below preserve the earlier prototype roadmap as historical context.
+Their checked boxes establish prototype progress, not full v111 completeness.
+
 The emulator should become useful for whole-run AI experimentation early, then converge toward
 native fidelity and high throughput.
 

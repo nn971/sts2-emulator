@@ -1,5 +1,10 @@
 # Immediate next steps
 
+Follow [the full v111 single-player roadmap](FULL_IMPLEMENTATION_ROADMAP.md) for
+current priorities: coverage/pin audit, character/act configuration, then missing
+Underdocks content. The sprints below document the earlier prototype sequence;
+AI integration and deferred Underdocks are no longer the active completion plan.
+
 The emulator now has a complete-run skeleton and a reasonably expressive prototype mechanics
 kernel. The near-term priority shifts from inventing engine primitives to making prototype runs
 strategically varied enough to exercise the future AI project.
