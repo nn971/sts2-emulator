@@ -398,13 +398,15 @@ public static class PrototypeNativeOvergrowthEvents
             "proto.native.event.sunken_statue",
             "Sunken Statue",
             [
-                new("grab", "Gain Sword of Stone (counter not yet modeled)",
+                new("grab", "Gain Sword of Stone (five-elite counter)",
                     [new(PrototypeRunEffectKind.GainRelic,
                         RelicId: "proto.native.event.sword_of_stone")]),
                 new("dive", "Lose 7 HP, gain 101–121 gold",
                     [
-                        new(PrototypeRunEffectKind.LoseHp, 7),
-                        new(PrototypeRunEffectKind.GainGold, 111)
+                        // Source SunkenStatue.DiveIntoWater grants gold
+                        // before its unblockable 7-HP damage.
+                        new(PrototypeRunEffectKind.GainGold, 111),
+                        new(PrototypeRunEffectKind.LoseHp, 7)
                     ])
             ],
             MaxAct: 1),
