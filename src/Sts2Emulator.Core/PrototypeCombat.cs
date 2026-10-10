@@ -298,6 +298,11 @@ public sealed partial class PrototypeGameEngine
             Act: world.Act,
             Ascension: state.Ascension);
 
+        if (enemies.Any(enemy => enemy.EnemyId ==
+            PrototypeNativeHiveBosses.RocketId))
+            combat = ApplyPlayerPower(combat,
+                PrototypeNativeHiveBosses.SurroundedId, 1);
+
         // Vital Spark afflicts every existing Skill before the opening
         // draw, without overriding a different native affliction.
         combat = RefreshNativeHiveVitalSpark(combat);
@@ -864,6 +869,7 @@ public sealed partial class PrototypeGameEngine
             EffectiveCardTarget(combat, definition),
             payload.TargetEnemyId,
             combat);
+        combat = ResolveKaiserCrabFacing(combat, payload.TargetEnemyId);
         var energySpent = isFreeByPower
             ? 0
             : ResolveCardEnergySpent(
@@ -985,6 +991,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
+        combat = ResolveKaiserCrabFacing(combat, payload.TargetEnemyId);
 
         var operations = new Queue<PrototypeQueuedOperation>();
         foreach (var effect in definition.Effects)
@@ -1556,6 +1563,19 @@ public sealed partial class PrototypeGameEngine
                 {
                     throw new InvalidOperationException("Enemy-status pipeline step is missing a stage.");
                 }
+
+                // Sandpit kills the affected player as it reaches
+                // zero at the enemy side-start. Native player/pet
+                // animation is outside the emulator scope.
+                if (automaticStep.Stage.Value ==
+                        PrototypeTurnStage.EnemyTurnStart
+                    && combat.Turn > 1
+                    && combat.Enemies.Any(enemy =>
+                        enemy.Hp > 0 && enemy.PowerStates.Any(power =>
+                            power.PowerId ==
+                                PrototypeNativeHiveBosses.SandpitId
+                            && power.Stacks == 1)))
+                    player = player with { Hp = 0 };
 
                 combat = ResolveEnemyStatusStage(
                     combat,
@@ -2383,8 +2403,23 @@ public sealed partial class PrototypeGameEngine
         var isFront = living.Length > 0
             && living[0].InstanceId == enemy.InstanceId;
 
+        // Knowledge Demon tracks the number of curse rounds in its
+        // owner-local move-use log, independent of observed intents.
+        var moveThreshold = branch.Value?.Split(':');
+        var used = moveThreshold is { Length: 2 }
+            ? enemy.MoveUseCounts?.GetValueOrDefault(moveThreshold[0]) ?? 0
+            : 0;
+        var hasThreshold = moveThreshold is { Length: 2 }
+            && int.TryParse(moveThreshold[1], out _);
+
         return branch.Condition switch
         {
+            PrototypeEnemyAiConditionKind.MoveUsedFewerThan =>
+                hasThreshold
+                && used < int.Parse(moveThreshold![1]),
+            PrototypeEnemyAiConditionKind.MoveUsedAtLeast =>
+                hasThreshold
+                && used >= int.Parse(moveThreshold![1]),
             PrototypeEnemyAiConditionKind.IsAlone =>
                 isAlone,
             PrototypeEnemyAiConditionKind.IsFront =>
@@ -2684,6 +2719,21 @@ public sealed partial class PrototypeGameEngine
                                 act,
                                 ascension,
                                 enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0);
+                            // Surrounded modifies attacks from the arm
+                            // opposite the side the player is facing.
+                            var facing = combat.PlayerPowers.FirstOrDefault(power =>
+                                power.PowerId ==
+                                    PrototypeNativeHiveBosses.SurroundedId);
+                            if (facing is not null
+                                && (facing.StoredValue == 0
+                                    && enemy.PowerStates.Any(power =>
+                                        power.PowerId ==
+                                            PrototypeNativeHiveBosses.BackLeftId)
+                                    || facing.StoredValue == 1
+                                    && enemy.PowerStates.Any(power =>
+                                        power.PowerId ==
+                                            PrototypeNativeHiveBosses.BackRightId)))
+                                damage = (int)Math.Floor(damage * 1.5m);
 
                             var absorbed = Math.Min(
                                 block,
@@ -2967,6 +3017,39 @@ public sealed partial class PrototypeGameEngine
                                 effect.CardId,
                                 amount);
                             break;
+
+                        case PrototypeEnemyEffectKind.RequireNativeChoice:
+                            throw new NotSupportedException(
+                                "Knowledge Demon Curse of Knowledge requires a " +
+                                "blocking player choice between two native " +
+                                "curse effects; enemy-choice UI is not yet " +
+                                "implemented. No choice is auto-selected.");
+
+                        case PrototypeEnemyEffectKind.AddCardsToRandomDiscard:
+                        {
+                            if (effect.CardId is null)
+                                throw new InvalidOperationException(
+                                    "Enemy discard insertion lacks a card ID.");
+                            for (var generated = 0; generated < amount; generated++)
+                            {
+                                var instance = new CombatCardInstance(
+                                    combat.NextCardInstanceId, null,
+                                    effect.CardId, 0, true,
+                                    PrototypeJson.EmptyObject());
+                                var insertion = PrototypeRng.NextInt(
+                                    rng, "combat", combat.DiscardPile.Length + 1);
+                                var pile = combat.DiscardPile.ToList();
+                                pile.Insert(insertion, instance.InstanceId);
+                                combat = combat with
+                                {
+                                    Cards = combat.Cards.Append(instance).ToArray(),
+                                    DiscardPile = pile.ToArray(),
+                                    NextCardInstanceId =
+                                        combat.NextCardInstanceId + 1
+                                };
+                            }
+                            break;
+                        }
 
                         case PrototypeEnemyEffectKind.AddCardsToRandomDraw:
                             if (effect.CardId is null)
@@ -8259,6 +8342,31 @@ public sealed partial class PrototypeGameEngine
             || combatEvent.CardId is null)
             return combat;
 
+        // Frantic Escape postpones the Sandpit countdown by one and
+        // increases this card instance's cost for the rest of combat.
+        if (combatEvent.CardId ==
+                PrototypeNativeHiveBosses.FranticEscapeId
+            && combatEvent.SourceCardInstanceId is { } escapeId)
+        {
+            var owner = combat.Enemies.FirstOrDefault(enemy =>
+                enemy.Hp > 0 && enemy.PowerStates.Any(power =>
+                    power.PowerId == PrototypeNativeHiveBosses.SandpitId));
+            if (owner is not null)
+                combat = ApplyEnemyPower(combat, owner.InstanceId,
+                    PrototypeNativeHiveBosses.SandpitId, 1);
+            combat = combat with
+            {
+                Cards = combat.Cards.Select(card =>
+                    card.InstanceId == escapeId
+                        ? card with
+                        {
+                            CombatEnergyCostDelta =
+                                card.CombatEnergyCostDelta + 1
+                        }
+                        : card).ToArray()
+            };
+        }
+
         // Each completed afflicted Skill inflicts Tainted equal to
         // the number of Vital Spark stacks stamped on the card.
         if (combatEvent.SourceCardInstanceId is { } playedId)
@@ -10214,6 +10322,7 @@ public sealed partial class PrototypeGameEngine
                     power.Stacks))
                 .Where(pair =>
                     pair.Definition.AllyDeathStrengthPerStack > 0
+                    || pair.Definition.AllyDeathBlockPerStack > 0
                     || pair.Definition.StunOnAllyDeath)
                 .ToArray();
             foreach (var reaction in reactions)
@@ -10224,6 +10333,29 @@ public sealed partial class PrototypeGameEngine
                         combat, owner.InstanceId, "proto.power.strength",
                         checked(reaction.Stacks
                             * reaction.Definition.AllyDeathStrengthPerStack));
+                }
+                if (reaction.Definition.AllyDeathBlockPerStack > 0
+                    || reaction.Definition.ConsumeOnAllyDeath)
+                {
+                    var enemies = combat.Enemies
+                        .Select(item => item.Fork()).ToArray();
+                    var idx = Array.FindIndex(enemies, item =>
+                        item.InstanceId == owner.InstanceId);
+                    if (idx >= 0 && enemies[idx].Hp > 0)
+                    {
+                        enemies[idx] = enemies[idx] with
+                        {
+                            Block = enemies[idx].Block + checked(
+                                reaction.Stacks *
+                                reaction.Definition.AllyDeathBlockPerStack),
+                            Powers = reaction.Definition.ConsumeOnAllyDeath
+                                ? enemies[idx].PowerStates.Where(power =>
+                                    power.PowerId != reaction.Definition.Id)
+                                    .ToArray()
+                                : enemies[idx].PowerStates
+                        };
+                        combat = combat with { Enemies = enemies };
+                    }
                 }
                 if (reaction.Definition.StunOnAllyDeath)
                 {
@@ -10710,6 +10842,34 @@ public sealed partial class PrototypeGameEngine
     // MinionPower identifies secondary enemies. A combat with primary
     // enemies is won when they fall even if a summoned egg or illusion
     // still survives; standalone minion fixtures require all-dead.
+    private static CombatState ResolveKaiserCrabFacing(
+        CombatState combat, int? targetEnemyId)
+    {
+        if (targetEnemyId is null)
+            return combat;
+        var target = combat.Enemies.FirstOrDefault(enemy =>
+            enemy.InstanceId == targetEnemyId.Value && enemy.Hp > 0);
+        if (target is null)
+            return combat;
+
+        // Facing defaults Right. Targeting the left arm turns Left,
+        // targeting the right arm turns Right, including non-attacks.
+        var direction = target.PowerStates.Any(power =>
+            power.PowerId == PrototypeNativeHiveBosses.BackLeftId) ? 1
+            : target.PowerStates.Any(power =>
+                power.PowerId == PrototypeNativeHiveBosses.BackRightId) ? 0
+            : -1;
+        if (direction < 0)
+            return combat;
+        return combat with
+        {
+            PlayerPowers = combat.PlayerPowers.Select(power =>
+                power.PowerId == PrototypeNativeHiveBosses.SurroundedId
+                    ? power with { StoredValue = direction } : power)
+                .ToArray()
+        };
+    }
+
     private static bool AllEnemiesDefeated(CombatState combat)
     {
         var primary = combat.Enemies.Where(enemy =>

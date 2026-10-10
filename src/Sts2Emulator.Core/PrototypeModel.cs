@@ -829,6 +829,8 @@ public sealed record PrototypePowerDefinition(
     string? AllEnemyTargetCardTag = null,
     bool OwnerDeathTriggersFatal = true,
     int AllyDeathStrengthPerStack = 0,
+    int AllyDeathBlockPerStack = 0,
+    bool ConsumeOnAllyDeath = false,
     bool StunOnAllyDeath = false,
     int EnemyStrengthAtSideTurnEndPerStack = 0,
     bool SkipInitialEnemySideTurnEnd = false,
@@ -911,7 +913,11 @@ public enum PrototypeEnemyEffectKind
     // Native Ovicopter egg hatching preserves the combat instance.
     TransformEnemy,
     // The Obscura's Wail buffs every living teammate.
-    ApplyAllEnemyPower
+    ApplyAllEnemyPower,
+    // Insatiable's Frantic Escapes enter draw/discard at random indices.
+    AddCardsToRandomDiscard,
+    // Knowledge Demon must ask the player to choose between curses.
+    RequireNativeChoice
 }
 
 public sealed record PrototypeAscensionDelta(
@@ -984,7 +990,9 @@ public enum PrototypeEnemyAiConditionKind
     HasEnemyPower,
     LacksEnemyPower,
     LivingEnemiesAtMost,
-    LivingEnemiesGreaterThan
+    LivingEnemiesGreaterThan,
+    MoveUsedFewerThan,
+    MoveUsedAtLeast
 }
 
 public enum PrototypeEnemyAiRepeatRule
