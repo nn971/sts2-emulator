@@ -9417,12 +9417,22 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            // A lethal-intercept script overrides the previously
+            // announced action immediately. If its destination is a
+            // deterministic move state, commit that move and its
+            // continuation without consuming a new RNG draw.
+            var moveState = PrototypeContent.Enemy(enemy.EnemyId)
+                .Ai?.States.FirstOrDefault(state =>
+                    StringComparer.Ordinal.Equals(state.Id, nextState)
+                    && state.Kind == PrototypeEnemyAiStateKind.Move);
             return enemy with
             {
                 Hp = definition.LastStandHp,
                 Block = 0,
                 LastStandTriggered = true,
-                AiStateId = nextState
+                AiStateId = nextState,
+                PlannedMoveIndex = moveState?.MoveIndex,
+                PlannedNextAiStateId = moveState?.NextStateId
             };
         }
 

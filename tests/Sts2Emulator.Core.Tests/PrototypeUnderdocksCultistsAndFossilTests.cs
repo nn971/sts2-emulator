@@ -150,7 +150,12 @@ public sealed class PrototypeUnderdocksCultistsAndFossilTests
                 Combat = combat with
                 {
                     PlayerBlock = playerBlock,
-                    Enemies = [fossil with { AiStateId = "lash" }]
+                    Enemies = [fossil with
+                    {
+                        AiStateId = "lash",
+                        PlannedMoveIndex = null,
+                        PlannedNextAiStateId = null
+                    }]
                 }
             }
         };

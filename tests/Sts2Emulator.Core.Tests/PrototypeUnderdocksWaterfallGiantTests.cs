@@ -110,6 +110,10 @@ public sealed class PrototypeUnderdocksWaterfallGiantTests
                         enemy with
                         {
                             AiStateId = "pressure_gun",
+                            // Synthetic state injection bypasses native
+                            // intent commitment: clear the old intent.
+                            PlannedMoveIndex = null,
+                            PlannedNextAiStateId = null,
                             MoveUseCounts = new Dictionary<string, int>
                             {
                                 ["pressure_gun"] = 2
