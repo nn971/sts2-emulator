@@ -241,6 +241,13 @@ This is an intermediate implementation. Final release gates remain open.
   and Verdict's Vulnerable and Soar removal. It is `Weight=0`,
   like the other test-only Glory models. The Soar modifier is
   typed and reusable for future incoming-attack rules.
+- Added gated **Globe Head Normal** with native 3-move loop,
+  A0/A8/A9 HP and damage, Frail and Strength, plus a source-owned
+  Galvanic affliction hook: Power cards present at combat entry
+  or newly created in combat become Galvanized, and playing one
+  takes 6/8 damage from the living source power. Damage observes
+  player Block and owner death; native damage-modifier parity
+  remains unverified.
 - Live-game Act 1 fidelity capture is currently unavailable to the user;
   this is an external evidence blocker, not a reason to stop content work.
   No current patch establishes new real-game fidelity measurements.

@@ -882,7 +882,9 @@ public sealed record PrototypePowerDefinition(
     string? AllyBlockTargetEnemyId = null,
     // Soar: powered incoming attacks are multiplied by this fraction.
     int EnemyIncomingPoweredAttackNumerator = 1,
-    int EnemyIncomingPoweredAttackDenominator = 1);
+    int EnemyIncomingPoweredAttackDenominator = 1,
+    // Galvanic: Power cards carry this affliction's damage amount.
+    int GalvanizePowerCardsPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

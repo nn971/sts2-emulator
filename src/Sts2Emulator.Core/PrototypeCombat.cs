@@ -321,6 +321,7 @@ public sealed partial class PrototypeGameEngine
         // Vital Spark afflicts every existing Skill before the opening
         // draw, without overriding a different native affliction.
         combat = RefreshNativeHiveVitalSpark(combat);
+        combat = RefreshNativeGloryGalvanic(combat);
 
         var openingHandTarget =
             PrototypeContent.Rules.HandSize
@@ -7839,6 +7840,31 @@ public sealed partial class PrototypeGameEngine
             CombatState combat,
             CombatCardInstance card)
     {
+        if (card.Affliction is null
+            && PrototypeContent.Card(card.CardId).Type
+                == PrototypeCardType.Power)
+        {
+            var source = combat.Enemies
+                .Where(enemy => enemy.Hp > 0)
+                .SelectMany(enemy => enemy.PowerStates
+                    .Where(power => power.Stacks > 0
+                        && PrototypeContent.Power(power.PowerId)
+                            .GalvanizePowerCardsPerStack > 0)
+                    .Select(power => (Enemy: enemy, Power: power)))
+                .FirstOrDefault();
+            if (source.Enemy is not null)
+            {
+                return card with
+                {
+                    Affliction = new PrototypeCardAffliction(
+                        PrototypeCardAfflictionKind.Galvanized,
+                        source.Power.Stacks * PrototypeContent.Power(
+                            source.Power.PowerId).GalvanizePowerCardsPerStack,
+                        source.Enemy.InstanceId)
+                };
+            }
+        }
+
         foreach (var power in combat.PlayerPowers
                      .OrderBy(item => item.ApplicationOrder))
         {
@@ -8367,6 +8393,40 @@ public sealed partial class PrototypeGameEngine
     // Tender restores only Strength/Dexterity actually lost (Artifact can
     // block either application), with counters stored on the power instance.
     // Curl Up waits for the *same card instance* that first attacked it.
+    private static CombatState RefreshNativeGloryGalvanic(
+        CombatState combat)
+    {
+        var galvanicSource = combat.Enemies
+            .Where(enemy => enemy.Hp > 0)
+            .SelectMany(enemy => enemy.PowerStates
+                .Where(power => power.Stacks > 0
+                    && PrototypeContent.Power(power.PowerId)
+                        .GalvanizePowerCardsPerStack > 0)
+                .Select(power => (
+                    Enemy: enemy,
+                    Amount: power.Stacks * PrototypeContent.Power(
+                        power.PowerId).GalvanizePowerCardsPerStack)))
+            .FirstOrDefault();
+        if (galvanicSource.Enemy is null)
+            return combat;
+
+        return combat with
+        {
+            Cards = combat.Cards.Select(card =>
+                card.Affliction is null
+                && PrototypeContent.Card(card.CardId).Type
+                    == PrototypeCardType.Power
+                    ? card with
+                    {
+                        Affliction = new PrototypeCardAffliction(
+                            PrototypeCardAfflictionKind.Galvanized,
+                            galvanicSource.Amount,
+                            galvanicSource.Enemy.InstanceId)
+                    }
+                    : card).ToArray()
+        };
+    }
+
     private static CombatState RefreshNativeHiveVitalSpark(
         CombatState combat)
     {
@@ -8587,7 +8647,38 @@ public sealed partial class PrototypeGameEngine
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
         combat = RefreshNativeHiveVitalSpark(combat);
+        combat = RefreshNativeGloryGalvanic(combat);
         combat = ResolveNativeCardCompletionPowers(combat, combatEvent);
+        // GalvanicPower.AfterCardPlayed is installed on the living
+        // Globe Head, not on the card: the card remains afflicted if
+        // the owner dies, but no further damage trigger fires.
+        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
+            && combatEvent.SourceCardInstanceId is { } galvanicCardId)
+        {
+            var card = combat.Cards.FirstOrDefault(item =>
+                item.InstanceId == galvanicCardId);
+            if (card?.Affliction?.Kind
+                    == PrototypeCardAfflictionKind.Galvanized)
+            {
+                var damage = combat.Enemies
+                    .Where(enemy => enemy.Hp > 0)
+                    .SelectMany(enemy => enemy.PowerStates)
+                    .Sum(power => Math.Max(0, power.Stacks)
+                        * PrototypeContent.Power(power.PowerId)
+                            .GalvanizePowerCardsPerStack);
+                var absorbed = Math.Min(combat.PlayerBlock,
+                    Math.Max(0, damage));
+                combat = combat with
+                {
+                    PlayerBlock = combat.PlayerBlock - absorbed
+                };
+                player = player with
+                {
+                    Hp = Math.Max(0, player.Hp -
+                        Math.Max(0, damage - absorbed))
+                };
+            }
+        }
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
         {
             var plating = combat.PlayerPowers.Sum(power =>
