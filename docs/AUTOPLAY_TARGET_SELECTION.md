@@ -71,7 +71,7 @@ Tests added:
   2 living targets, 1 living target, one RNG draw, exactly one poison
   recipient, identical replay from a fixed seed.
 - `PrototypeRandomTargetTests.GenericAutomaticShivDoesNotInheritSourceCardEnemyTarget`:
-  Knight Trap/Shiv source-target independence (card is named Knife Trap),
+  Knife Trap/Shiv source-target independence,
   one RNG draw and equal resulting target effects for different manually
   selected source targets.
 
