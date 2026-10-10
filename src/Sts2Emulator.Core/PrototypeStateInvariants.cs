@@ -1667,7 +1667,7 @@ public static class PrototypeStateInvariants
         foreach (var node in nodes)
         {
             if (node.Act != world.Act
-                || node.Floor is < 1 or > bossFloor
+                || (node.Floor < 1 || node.Floor > bossFloor)
                 || !TryNativeColumn(node.NodeId, world.Act, out var column)
                 || column is < 0 or >= PrototypeNativeOvergrowthMap.MapWidth)
             {
