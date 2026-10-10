@@ -58,8 +58,8 @@ public sealed class PrototypeColorlessFinalBatchTests
         Assert.Null(combat.PendingChoice);
         Assert.DoesNotContain(combat.Cards,
             card => card.InstanceId == candidate);
-        var transformedId = Assert.Single(combat.Hand.Where(id =>
-            !pending.CandidateCardInstanceIds.Contains(id)));
+        var transformedId = Assert.Single(combat.Hand, id =>
+            !pending.CandidateCardInstanceIds.Contains(id));
         var transformed = combat.Cards.Single(card =>
             card.InstanceId == transformedId);
         Assert.NotEqual("proto.silent.strike", transformed.CardId);
