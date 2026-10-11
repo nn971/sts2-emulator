@@ -121,12 +121,28 @@ public sealed class NativeActOneLiveCombatRngV111Tests
             Assert.Equal(CanonicalJson.Sha256(entered),
                 CanonicalJson.Sha256(restored.Fork()));
 
-            // The actual combat engine, not just the snapshot fixture,
-            // resolves an enemy turn and preserves its run-owned streams.
-            var endTurn = Engine.GetLegalActions(entered)
-                .Single(a => a.Kind == "end_turn");
-            var next = Engine.Step(entered, endTurn).State;
-            var replay = Engine.Step(restored, endTurn).State;
+            // Some Neow starts create a pending combat choice (e.g.
+            // a card selection) before ending the first turn is legal.
+            // Resolve the same public choices on both exact snapshots
+            // and then run the actual enemy turn.
+            var pending = entered;
+            var pendingReplay = restored;
+            for (var choiceIndex = 0; choiceIndex < 32; choiceIndex++)
+            {
+                var legal = Engine.GetLegalActions(pending);
+                if (legal.Any(action => action.Kind == "end_turn"))
+                    break;
+                Assert.NotEmpty(legal);
+                var choice = legal[0];
+                pending = Engine.Step(pending, choice).State;
+                pendingReplay = Engine.Step(pendingReplay, choice).State;
+                Assert.Equal(CanonicalJson.Sha256(pending),
+                    CanonicalJson.Sha256(pendingReplay));
+            }
+            var endTurn = Engine.GetLegalActions(pending)
+                .Single(action => action.Kind == "end_turn");
+            var next = Engine.Step(pending, endTurn).State;
+            var replay = Engine.Step(pendingReplay, endTurn).State;
             Assert.Equal(CanonicalJson.Sha256(next),
                 CanonicalJson.Sha256(replay));
             NativeRunRngV111.Validate(next);
