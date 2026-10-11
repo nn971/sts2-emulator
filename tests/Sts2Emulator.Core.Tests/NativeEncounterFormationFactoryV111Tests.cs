@@ -191,7 +191,7 @@ public sealed class NativeEncounterFormationFactoryV111Tests
         Assert.Equal(nativeEntry, generated.NativeEncounterEntry);
         Assert.Equal(totalFloor, generated.TotalFloor);
         Assert.NotEmpty(generated.Enemies);
-        Assert.Equal(encounter.RoomType, PrototypeRoomType.Combat);
+        Assert.Equal(PrototypeRoomType.Combat, encounter.RoomType);
         Assert.Equal(generated.Enemies.Length, generated.MonsterContexts.Length);
         Assert.All(generated.MonsterContexts,
             context => Assert.Equal(0,
