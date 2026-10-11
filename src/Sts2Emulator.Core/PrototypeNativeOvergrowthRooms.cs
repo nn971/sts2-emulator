@@ -9,11 +9,13 @@ public sealed partial class PrototypeGameEngine
     // Shops, chests and basic rest-site options are shared across
     // native acts. Do not confuse this predicate with the Act 1
     // encounter-region selector, which deliberately stays Act 1-only.
-    private static bool UsesNativeSharedRoomSystems(RunWorldState world) =>
-        UsesNativeActOneSystems(world)
-        || world.Map.GenerationProfileId is
+    private static bool UsesNativeLaterActMap(RunWorldState world) =>
+        world.Map.GenerationProfileId is
             PrototypeNativeLaterActMap.HiveProfileId
             or PrototypeNativeLaterActMap.GloryProfileId;
+
+    private static bool UsesNativeSharedRoomSystems(RunWorldState world) =>
+        UsesNativeActOneSystems(world) || UsesNativeLaterActMap(world);
 
     private static PrototypeRoomType ResolveUnknownMapRoom(
         ref RunWorldState world,
