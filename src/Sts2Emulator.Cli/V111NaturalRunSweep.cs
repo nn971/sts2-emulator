@@ -17,7 +17,7 @@ internal static class V111NaturalRunSweep
         int TerminalAct,
         int TerminalFloor,
         int HighestAct,
-        int Decisions,
+        long Decisions,
         string FinalHash,
         string? Blocker,
         string? LastAction,
