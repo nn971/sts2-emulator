@@ -24,7 +24,29 @@ jobs:
         run: python tools/v111_interface_smoke.py
       - name: Unassisted v111 Silent natural-run integrity sweep
         run: |
-          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-natural-sweep 8 0 | tee /tmp/v111-natural-smoke.json
+          set +e
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-natural-sweep 128 0 > /tmp/v111-natural-smoke.json
+          status=$?
+          set -e
+          python - <<'PY'
+          import json
+          r = json.load(open("/tmp/v111-natural-smoke.json"))
+          print("Natural Silent seeded smoke:",
+                "runs =", len(r["runs"]),
+                "terminal =", r["completed"],
+                "victory =", r["victories"],
+                "defeat =", r["defeats"],
+                "blocked =", r["blocked"],
+                "reached Hive =", r["reachedHive"],
+                "reached Glory =", r["reachedGlory"])
+          for run in r["runs"]:
+              if run["blocker"]:
+                  print("BLOCKER", run["seed"], run["terminalAct"],
+                        run["terminalFloor"], run["blocker"],
+                        "encounter =", run["lastEncounter"],
+                        "recent =", run["recentActions"])
+          PY
+          exit "$status"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
