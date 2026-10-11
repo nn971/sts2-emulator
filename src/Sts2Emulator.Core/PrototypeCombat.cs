@@ -228,9 +228,19 @@ public sealed partial class PrototypeGameEngine
                     .Select(power =>
                     {
                         _ = PrototypeContent.Power(power.PowerId);
+                        // PhrogParasite.AfterAddedToRoom applies FOUR
+                        // Infested stacks, even though the old prototype
+                        // recorded one. Correct only the source-pinned
+                        // native elite; retain default training semantics.
+                        var stacks = nativeFormation?.NativeEncounterEntry
+                                == "PhrogParasiteElite"
+                            && enemySpec.EnemyId == "proto.enemy.phrog_parasite"
+                            && power.PowerId == "proto.power.infested"
+                                ? 4
+                                : power.StacksAt(state.Ascension);
                         return new PrototypePowerInstanceState(
                             power.PowerId,
-                            power.StacksAt(state.Ascension),
+                            stacks,
                             nextPowerApplicationOrder++);
                     })
                     .Where(power => power.Stacks > 0)
@@ -3943,6 +3953,21 @@ public sealed partial class PrototypeGameEngine
             var orderedSummons = nativeMerc
                 ? summons.Reverse().ToArray()
                 : summons;
+            var nativePhrog =
+                combat.NativeRng?.Formation.NativeEncounterEntry
+                    == "PhrogParasiteElite"
+                && source.EnemyId == "proto.enemy.phrog_parasite";
+            if (nativePhrog
+                && (enemyActionSkips != 1
+                    || summons.Length != 4
+                    || summons.Select((summon, i) =>
+                        summon.EnemyId == "proto.enemy.wriggler"
+                        && summon.SlotName == $"wriggler{i + 1}")
+                        .Any(matches => !matches)))
+                throw new NotSupportedException(
+                    "Native InfestedPower currently supports the audited " +
+                    "player-turn death phase only; four fixed Wriggler " +
+                    "slots with SPAWNED_MOVE are required.");
             if (nativeMerc
                 && (summons.Length != 2
                     || summons[0].EnemyId != "proto.enemy.sneaky_gremlin"
@@ -4017,7 +4042,14 @@ public sealed partial class PrototypeGameEngine
                         SlotName: summon.SlotName,
                         StolenGold: summon.TransferStolenGold
                             ? source.StolenGold : 0,
-                        EnemyActionSkipsRemaining:
+                        // Source InfestedPower sets StartStunned before
+                        // CreatureCmd.Add. The Wriggler therefore has
+                        // a genuine visible SPAWNED_MOVE StunIntent,
+                        // not the prototype's silent skipped action.
+                        AiStateId: nativePhrog ? "spawned_move" : null,
+                        PlannedMoveIndex: nativePhrog ? 2 : null,
+                        PlannedNextAiStateId: nativePhrog ? "init" : null,
+                        EnemyActionSkipsRemaining: nativePhrog ? 0 :
                             summon.SkipEnemyActions == 1
                                 ? Math.Max(0, enemyActionSkips)
                                 : Math.Max(0, summon.SkipEnemyActions));
