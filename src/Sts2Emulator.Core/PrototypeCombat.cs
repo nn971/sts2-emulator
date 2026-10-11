@@ -14,6 +14,21 @@ public sealed partial class PrototypeGameEngine
         {
             encounter = scriptedEncounter;
         }
+        else if (world.Map.GenerationProfileId is
+            PrototypeNativeLaterActMap.HiveProfileId
+            or PrototypeNativeLaterActMap.GloryProfileId)
+        {
+            var pool = world.LaterActEncounterPool
+                ?? throw new NotSupportedException(
+                    "Native later-act encounter bag was not initialized.");
+            if (pool.Act != world.Act)
+                throw new InvalidOperationException(
+                    "Native later-act encounter bag belongs to another act.");
+            var selected = PrototypeNativeLaterActCombatPool.Pick(
+                pool, roomType, world.Floor, state.Rng);
+            encounter = selected.Encounter;
+            world = world with { LaterActEncounterPool = selected.Pool };
+        }
         else if (world.Act == 1
             && world.ActOneRegion == PrototypeActOneRegion.Underdocks)
         {
