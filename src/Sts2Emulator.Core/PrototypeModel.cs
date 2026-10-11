@@ -1540,7 +1540,10 @@ public sealed record CombatCardInstance(
     bool EnchantmentTriggeredThisCombat = false,
     PrototypeCardAffliction? Affliction = null,
     int SuppressedUpgradeLevels = 0,
-    int WitherFakeUpgradeLevel = 0)
+    int WitherFakeUpgradeLevel = 0,
+    // CreateDupe copies (currently History Course). Duplicated attacks
+    // are excluded from next-turn History Course history.
+    bool IsHistoryCourseDupe = false)
 {
     public CombatCardInstance Fork() => this with
     {
@@ -1661,7 +1664,11 @@ public sealed record PrototypeCombatCounters(
     int AttacksPlayedLastTurn = 0,
     int CardsPlayedThisCombat = 0,
     long[]? PlayedCardIdsThisTurn = null,
-    long[]? PlayedCardIdsLastTurn = null)
+    long[]? PlayedCardIdsLastTurn = null,
+    // Captured at the *finished* CardPlayed event; a copy is retained
+    // across turn boundaries and through deterministic snapshot forks.
+    PrototypeCombatCardSnapshot? LastOriginalAttackThisTurn = null,
+    PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();
@@ -1677,7 +1684,9 @@ public sealed record PrototypeCombatCounters(
         PlayedCardIdsThisTurn = PlayedCardIdsThisTurn is null
             ? null : (long[])PlayedCardIdsThisTurn.Clone(),
         PlayedCardIdsLastTurn = PlayedCardIdsLastTurn is null
-            ? null : (long[])PlayedCardIdsLastTurn.Clone()
+            ? null : (long[])PlayedCardIdsLastTurn.Clone(),
+        LastOriginalAttackThisTurn = LastOriginalAttackThisTurn?.Fork(),
+        LastOriginalAttackLastTurn = LastOriginalAttackLastTurn?.Fork()
     };
 }
 
