@@ -351,6 +351,21 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     int NextStepIndex,
     PrototypeCombatEventKind? PendingPostDispatchEventKind = null);
 
+/// <summary>
+/// A source-owned, blocking choice in the enemy-side action pipeline.
+/// The two displayed choices are ephemeral status-card models: choosing
+/// one applies its power immediately and never inserts a deck card.
+/// </summary>
+public sealed record PrototypeKnowledgeDemonChoiceState(
+    int EnemyInstanceId, int EnemyTurn, int CurseIndex,
+    string[] OptionCardIds)
+{
+    public PrototypeKnowledgeDemonChoiceState Fork() => this with
+    {
+        OptionCardIds = (string[])OptionCardIds.Clone()
+    };
+}
+
 public enum PrototypeAutomaticStepKind
 {
     ResolvePlayerEndTurnHandEffects,
@@ -1738,7 +1753,9 @@ public sealed record CombatState(
     bool BoundCardPlayedThisTurn = false,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    NativeCombatRngV111? NativeRng = null)
+    NativeCombatRngV111? NativeRng = null,
+    PrototypeKnowledgeDemonChoiceState? PendingKnowledgeDemonChoice = null,
+    int KnowledgeDemonChoiceResolvedTurn = 0)
 {
     public CombatState Fork() => this with
     {
@@ -1769,6 +1786,7 @@ public sealed record CombatState(
             ? null
             : (long[])TransformedPersistentCardIds.Clone(),
         PendingChoice = PendingChoice?.Fork(),
+        PendingKnowledgeDemonChoice = PendingKnowledgeDemonChoice?.Fork(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
             AutomaticPipelineContinuation is null
@@ -2277,6 +2295,7 @@ public sealed record ReplaceEventPotionPayload(int Slot);
 public sealed record UpgradeCardPayload(long CardInstanceId);
 public sealed record RemoveCardPayload(long CardInstanceId);
 public sealed record SelectCardsPayload(long[] CardInstanceIds);
+public sealed record ChooseKnowledgeCursePayload(string CardId);
 
 public static class PrototypeJson
 {

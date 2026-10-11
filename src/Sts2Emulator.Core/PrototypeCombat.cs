@@ -823,10 +823,10 @@ public sealed partial class PrototypeGameEngine
         var combat = RequireWorld(state).Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
+        if (combat.PendingKnowledgeDemonChoice is { } enemyChoice)
+            return GetKnowledgeDemonChoiceActions(enemyChoice);
         if (combat.PendingChoice is not null)
-        {
             return GetPendingChoiceActions(combat.PendingChoice);
-        }
 
         var actions = new List<GameAction>();
 
@@ -917,9 +917,11 @@ public sealed partial class PrototypeGameEngine
         var combat = RequireWorld(state).Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
-        var next = combat.PendingChoice is not null
-            ? ResolvePendingChoice(state, action)
-            : action.Kind switch
+        var next = combat.PendingKnowledgeDemonChoice is not null
+            ? ResolveKnowledgeDemonChoice(state, action)
+            : combat.PendingChoice is not null
+                ? ResolvePendingChoice(state, action)
+                : action.Kind switch
             {
                 "play_card" =>
                     PlayCard(
@@ -1421,11 +1423,13 @@ public sealed partial class PrototypeGameEngine
                 ?? throw new InvalidOperationException(
                     "Combat unexpectedly disappeared.");
 
-            if (currentCombat.PendingChoice is not null)
+            if (currentCombat.PendingChoice is not null
+                || currentCombat.PendingKnowledgeDemonChoice is not null)
             {
                 return SetAutomaticPipelineContinuation(
                     state,
-                    index + 1,
+                    currentCombat.PendingKnowledgeDemonChoice is not null
+                        ? index : index + 1,
                     automaticStep.Kind
                             == PrototypeAutomaticStepKind.DispatchCombatEvent
                         ? automaticStep.EventKind
@@ -1686,6 +1690,33 @@ public sealed partial class PrototypeGameEngine
                 player = dispatched.Player;
                 combat = dispatched.Combat;
 
+                // DisintegrationPower.AfterSideTurnEndLate applies an
+                // unpowered, blockable hit at the end of the player's
+                // side-turn. It is not an Attack and uses no enemy
+                // strength/damage modifiers.
+                if (automaticStep.EventKind ==
+                    PrototypeCombatEventKind.PlayerTurnEnded)
+                {
+                    var disintegration = combat.PlayerPowers
+                        .Where(power => power.PowerId ==
+                            PrototypeNativeHiveKnowledgeDemonChoice
+                                .DisintegrationPowerId)
+                        .Sum(power => Math.Max(0, power.Stacks));
+                    if (disintegration > 0)
+                    {
+                        var absorbed = Math.Min(
+                            combat.PlayerBlock, disintegration);
+                        combat = combat with
+                        {
+                            PlayerBlock = combat.PlayerBlock - absorbed
+                        };
+                        player = player with
+                        {
+                            Hp = Math.Max(0, player.Hp -
+                                (disintegration - absorbed))
+                        };
+                    }
+                }
                 break;
 
             case PrototypeAutomaticStepKind.DiscardPlayerHand:
@@ -1828,6 +1859,9 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.ResolveEnemyActions:
             {
+                combat = BeginKnowledgeDemonChoice(combat);
+                if (combat.PendingKnowledgeDemonChoice is not null)
+                    break;
                 var result = ResolveEnemyActions(
                     player,
                     combat,
@@ -1928,11 +1962,11 @@ public sealed partial class PrototypeGameEngine
                 var delayedEnergy = combat.PlayerPowers.Sum(power =>
                     PrototypeContent.Power(power.PowerId)
                         .EnergyAfterResetPerStack * power.Stacks);
-                if (delayedEnergy > 0)
+                if (delayedEnergy != 0)
                 {
                     combat = combat with
                     {
-                        Energy = combat.Energy + delayedEnergy
+                        Energy = Math.Max(0, combat.Energy + delayedEnergy)
                     };
                 }
 
@@ -1967,8 +2001,8 @@ public sealed partial class PrototypeGameEngine
                 var drawn = DrawCards(
                     player,
                     combat,
-                    PrototypeContent.Rules.HandSize
-                        + Math.Max(0, handDrawBonus),
+                    Math.Max(0, PrototypeContent.Rules.HandSize
+                        + handDrawBonus),
                     state.Rng,
                     fromHandDraw: true);
                 player = drawn.Player;
@@ -3493,11 +3527,15 @@ public sealed partial class PrototypeGameEngine
                             break;
 
                         case PrototypeEnemyEffectKind.RequireNativeChoice:
-                            throw new NotSupportedException(
-                                "Knowledge Demon Curse of Knowledge requires a " +
-                                "blocking player choice between two native " +
-                                "curse effects; enemy-choice UI is not yet " +
-                                "implemented. No choice is auto-selected.");
+                            if (enemy.EnemyId != PrototypeNativeHiveBosses.KnowledgeId
+                                || move.Id != "curse_of_knowledge"
+                                || combat.KnowledgeDemonChoiceResolvedTurn != combat.Turn)
+                                throw new InvalidOperationException(
+                                    "Knowledge Demon curse move was executed without its blocking player choice.");
+                            // The power was applied by the player's earlier
+                            // selected IChoosable option. Advance the
+                            // original committed enemy move exactly once.
+                            break;
 
                         case PrototypeEnemyEffectKind.AddCardsToRandomDiscard:
                         {

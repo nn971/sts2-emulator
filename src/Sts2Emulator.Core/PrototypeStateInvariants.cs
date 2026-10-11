@@ -2513,6 +2513,30 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Enemy HP/block cannot be negative.");
         }
 
+        if (combat.KnowledgeDemonChoiceResolvedTurn < 0
+            || combat.KnowledgeDemonChoiceResolvedTurn > combat.Turn)
+            throw new InvalidOperationException(
+                "Knowledge Demon resolved-choice turn is invalid.");
+        if (combat.PendingKnowledgeDemonChoice is { } curse)
+        {
+            if (combat.IsPlayerTurn || combat.PendingChoice is not null
+                || combat.AutomaticPipelineContinuation is null
+                || curse.EnemyTurn != combat.Turn
+                || combat.KnowledgeDemonChoiceResolvedTurn == combat.Turn
+                || curse.CurseIndex is < 0 or > 2
+                || !curse.OptionCardIds.SequenceEqual(
+                    PrototypeNativeHiveKnowledgeDemonChoice.Options(
+                        curse.CurseIndex))
+                || !combat.Enemies.Any(enemy =>
+                    enemy.InstanceId == curse.EnemyInstanceId
+                    && enemy.EnemyId == PrototypeNativeHiveBosses.KnowledgeId
+                    && enemy.Hp > 0 && enemy.PlannedMoveIndex == 0
+                    && (enemy.MoveUseCounts?.GetValueOrDefault(
+                        "curse_of_knowledge") ?? 0) == curse.CurseIndex))
+                throw new InvalidOperationException(
+                    "Pending Knowledge Demon curse choice is stale or malformed.");
+        }
+
         var known = combat.Cards.Select(card => card.InstanceId).ToHashSet();
         if (known.Count != combat.Cards.Length)
         {

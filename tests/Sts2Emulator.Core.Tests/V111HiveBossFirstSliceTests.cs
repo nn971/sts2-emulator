@@ -164,18 +164,162 @@ public sealed class V111HiveBossFirstSliceTests
     }
 
     [Fact]
-    public void KnowledgeDemonMandatoryCurseDoesNotAutoPick()
+    public void KnowledgeDemonOffersBlockingSourceChoicesAndNeverAutoPicks()
     {
         var engine = new PrototypeGameEngine();
         var state = StartBoss(PrototypeNativeHiveBosses.KnowledgeEncounterId,
             "demon-knowledge-choice");
-        var before = CanonicalJson.Sha256(state);
-        var action = engine.GetLegalActions(state)
-            .Single(a => a.Kind == "end_turn");
-        var error = Assert.Throws<NotSupportedException>(
-            () => engine.Step(state, action));
-        Assert.Contains("Curse of Knowledge", error.Message);
-        Assert.Equal(before, CanonicalJson.Sha256(state));
+        var initial = CanonicalJson.Sha256(state);
+        var pending = EndTurn(engine, state);
+        Assert.Equal(initial, CanonicalJson.Sha256(state));
+        Assert.False(pending.World!.Combat!.IsPlayerTurn);
+        var options = engine.GetLegalActions(pending);
+        Assert.Equal(2, options.Count);
+        Assert.All(options, a =>
+            Assert.Equal("choose_knowledge_curse", a.Kind));
+        Assert.Equal(
+            PrototypeNativeHiveKnowledgeDemonChoice.Options(0),
+            options.Select(a =>
+                a.ReadPayload<ChooseKnowledgeCursePayload>().CardId));
+
+        var untouched = CanonicalJson.Sha256(pending);
+        var chosen = engine.Step(pending, options[1]).State;
+        Assert.Equal(untouched, CanonicalJson.Sha256(pending));
+        var combat = chosen.World!.Combat!;
+        Assert.Equal(2, combat.Turn);
+        Assert.True(combat.IsPlayerTurn);
+        Assert.Null(combat.PendingKnowledgeDemonChoice);
+        Assert.Null(combat.AutomaticPipelineContinuation);
+        Assert.Equal(1, combat.Enemies.Single().MoveUseCounts![
+            "curse_of_knowledge"]);
+        Assert.Equal(1, combat.PlayerPowers.Single(power =>
+            power.PowerId ==
+                PrototypeNativeHiveKnowledgeDemonChoice.MindRotPowerId).Stacks);
+        Assert.DoesNotContain(combat.Cards, card =>
+            PrototypeNativeHiveKnowledgeDemonChoice.Options(0)
+                .Contains(card.CardId));
+        Assert.Equal(CanonicalJson.Sha256(chosen),
+            CanonicalJson.Sha256(
+                engine.Step(pending.Fork(), options[1]).State));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AllThreeKnowledgeDemonChoicesAreResumableAndForkSafe(
+        bool chooseDisintegration)
+    {
+        var engine = new PrototypeGameEngine();
+        var state = StartBoss(PrototypeNativeHiveBosses.KnowledgeEncounterId,
+            "demon-three-choices-" + chooseDisintegration);
+        var expected = chooseDisintegration
+            ? PrototypeNativeHiveKnowledgeDemonChoice.DisintegrationPowerId
+            : PrototypeNativeHiveKnowledgeDemonChoice.MindRotPowerId;
+        for (var index = 0; index < 3; index++)
+        {
+            for (var turns = 0; turns < 18; turns++)
+            {
+                state = EndTurn(engine, state);
+                if (state.World!.Combat!.PendingKnowledgeDemonChoice is not null)
+                    break;
+            }
+            var pending = Assert.IsType<PrototypeKnowledgeDemonChoiceState>(
+                state.World!.Combat!.PendingKnowledgeDemonChoice);
+            Assert.Equal(index, pending.CurseIndex);
+            Assert.Equal(
+                PrototypeNativeHiveKnowledgeDemonChoice.Options(index),
+                pending.OptionCardIds);
+            var action = engine.GetLegalActions(state)[
+                chooseDisintegration ? 0 : 1];
+            var before = CanonicalJson.Sha256(state);
+            var snapshot = System.Text.Json.JsonSerializer
+                .Deserialize<RunState>(
+                    System.Text.Json.JsonSerializer.Serialize(state))!;
+            var next = engine.Step(state, action).State;
+            Assert.Equal(before, CanonicalJson.Sha256(state));
+            Assert.Equal(CanonicalJson.Sha256(next),
+                CanonicalJson.Sha256(engine.Step(snapshot, action).State));
+            expected = chooseDisintegration
+                ? PrototypeNativeHiveKnowledgeDemonChoice.DisintegrationPowerId
+                : index switch
+                {
+                    0 => PrototypeNativeHiveKnowledgeDemonChoice.MindRotPowerId,
+                    1 => PrototypeNativeHiveKnowledgeDemonChoice.SlothPowerId,
+                    _ => PrototypeNativeHiveKnowledgeDemonChoice.WasteAwayPowerId
+                };
+            Assert.Contains(next.World!.Combat!.PlayerPowers,
+                power => power.PowerId == expected);
+            Assert.Equal(index + 1,
+                next.World.Combat.Enemies.Single().MoveUseCounts![
+                    "curse_of_knowledge"]);
+            state = next;
+        }
+    }
+
+    [Fact]
+    public void KnowledgeDemonRejectsForeignOptionsAndTamperedSnapshots()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = StartBoss(PrototypeNativeHiveBosses.KnowledgeEncounterId,
+            "demon-knowledge-guard");
+        var pending = EndTurn(engine, state);
+        var original = CanonicalJson.Sha256(pending);
+        Assert.Throws<InvalidOperationException>(() => engine.Step(
+            pending,
+            GameAction.Create("choose_knowledge_curse",
+                new ChooseKnowledgeCursePayload(
+                    PrototypeNativeHiveKnowledgeDemonChoice.WasteAwayCardId))));
+        Assert.Equal(original, CanonicalJson.Sha256(pending));
+
+        var combat = pending.World!.Combat!;
+        var malformed = pending with
+        {
+            World = pending.World with
+            {
+                Combat = combat with
+                {
+                    PendingKnowledgeDemonChoice =
+                        combat.PendingKnowledgeDemonChoice! with
+                        {
+                            OptionCardIds =
+                            [
+                                PrototypeNativeHiveKnowledgeDemonChoice.SlothCardId,
+                                PrototypeNativeHiveKnowledgeDemonChoice.MindRotCardId
+                            ]
+                        }
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(() =>
+            PrototypeStateInvariants.Validate(malformed));
+        Assert.Equal(original, CanonicalJson.Sha256(pending));
+    }
+
+    [Fact]
+    public void KnowledgeDemonSourcePowerModifiersAreRegisteredAndNotRewardCards()
+    {
+        foreach (var id in new[]
+        {
+            PrototypeNativeHiveKnowledgeDemonChoice.DisintegrationCardId,
+            PrototypeNativeHiveKnowledgeDemonChoice.MindRotCardId,
+            PrototypeNativeHiveKnowledgeDemonChoice.SlothCardId,
+            PrototypeNativeHiveKnowledgeDemonChoice.WasteAwayCardId
+        })
+        {
+            var card = PrototypeContent.Card(id);
+            Assert.False(card.RewardEligible);
+            Assert.False(card.CanBeGeneratedInCombat);
+            Assert.True(card.Unplayable);
+        }
+        Assert.Equal(-1, PrototypeContent.Power(
+            PrototypeNativeHiveKnowledgeDemonChoice.MindRotPowerId)
+            .HandDrawBonusPerStack);
+        Assert.Equal(3, PrototypeContent.Power(
+            PrototypeNativeHiveKnowledgeDemonChoice.SlothPowerId)
+            .MaxCardsPlayablePerTurn);
+        Assert.Equal(-1, PrototypeContent.Power(
+            PrototypeNativeHiveKnowledgeDemonChoice.WasteAwayPowerId)
+            .EnergyAfterResetPerStack);
     }
 
     [Theory]
