@@ -1025,6 +1025,9 @@ public sealed partial class PrototypeGameEngine
             return StepNativeRoundTeaParty(state, action);
         if (eventState.EventId == PrototypeNativeGloryEvents.TrialId)
             return StepNativeTrial(state, action);
+        if (eventState.EventId ==
+            PrototypeNativeGloryEvents.BattlewornDummyId)
+            return StepNativeBattlewornDummy(state, action);
 
         if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId)
         {
