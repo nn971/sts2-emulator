@@ -96,6 +96,16 @@ This is an intermediate implementation. Final release gates remain open.
   remaining combat effects still use prototype RNG and require
   native call-order audits. See
   [the live weak combat entry boundary](reference-builds/v0.111.0-live-weak-combat-entry-rng.md).
+- Extended the explicit native live-combat weak-entry path from six
+  fixed encounters to **all eight Act 1 weak encounters**. Slimes Weak
+  now consumes the exact three encounter-local draws (including the
+  singleton pick), and Corpse Slugs Weak consumes one encounter-local
+  draw for distinct first-move rotation. Their native encounter stream
+  cursors and starter offsets persist through combat and snapshots;
+  no duplicate prototype opening draw occurs. Cross-region inputs
+  and unsupported normal/elite/boss/event formations still fail
+  rather than silently approximate. Default training RNG unchanged.
+  See [native Act 1 weak entry](reference-builds/v0.111.0-live-weak-combat-entry-rng.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
