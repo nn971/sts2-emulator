@@ -146,8 +146,8 @@ public sealed class NativeDamageOnlyPhaseTriggersV111Tests
 
             // Unblocked damage hook did not fire. This raw HP loss
             // crosses the threshold, but the phase and power survive.
-            var poison = PrototypeGameEngine.LoseEnemyHp(
-                combat, enemy.InstanceId, 2).Combat;
+            var poison = PrototypeGameEngine.ApplyRawHpLossForSourceRegression(
+                combat, enemy.InstanceId, 2);
             var afterPoison = Assert.Single(poison.Enemies);
             Assert.Equal(threshold - 1, afterPoison.Hp);
             Assert.Contains(afterPoison.PowerStates,
@@ -158,11 +158,11 @@ public sealed class NativeDamageOnlyPhaseTriggersV111Tests
             NativeCombatRngEntryV111.Validate(poison);
 
             // A hit absorbed entirely by Block also cannot stun.
-            var blocked = PrototypeGameEngine.DamageEnemy(
+            var blocked = PrototypeGameEngine.ApplyHitForSourceRegression(
                 poison with
                 {
                     Enemies = [afterPoison with { Block = 6 }]
-                }, enemy.InstanceId, 5).Combat;
+                }, enemy.InstanceId, 5);
             var afterBlocked = Assert.Single(blocked.Enemies);
             Assert.Equal(threshold - 1, afterBlocked.Hp);
             Assert.Equal(1, afterBlocked.Block);
@@ -173,15 +173,15 @@ public sealed class NativeDamageOnlyPhaseTriggersV111Tests
             // Even though HP has already passed the threshold,
             // an *unblocked* hit now invokes AfterDamageReceived and
             // must consume the phase power and force Stun.
-            var unblocked = PrototypeGameEngine.DamageEnemy(
-                blocked, enemy.InstanceId, 1).Combat;
+            var unblocked = PrototypeGameEngine.ApplyHitForSourceRegression(
+                blocked, enemy.InstanceId, 1);
             var afterHit = Assert.Single(unblocked.Enemies);
             Assert.Equal(threshold - 1, afterHit.Hp);
             Assert.Contains(afterHit.PowerStates,
                 power => power.PowerId == thresholdPowerId);
             // Remaining Block consumed that entire hit.
-            var triggered = PrototypeGameEngine.DamageEnemy(
-                unblocked, enemy.InstanceId, 1).Combat;
+            var triggered = PrototypeGameEngine.ApplyHitForSourceRegression(
+                unblocked, enemy.InstanceId, 1);
             var afterTrigger = Assert.Single(triggered.Enemies);
             Assert.Equal(threshold - 2, afterTrigger.Hp);
             Assert.Equal(stunnedStateId, afterTrigger.AiStateId);
@@ -227,8 +227,8 @@ public sealed class NativeDamageOnlyPhaseTriggersV111Tests
             NativeRng = null,
             Enemies = [enemy]
         };
-        var result = PrototypeGameEngine.LoseEnemyHp(
+        var result = PrototypeGameEngine.ApplyRawHpLossForSourceRegression(
             legacy, enemy.InstanceId, 2);
-        Assert.Equal("stun", result.Combat.Enemies[0].AiStateId);
+        Assert.Equal("stun", result.Enemies[0].AiStateId);
     }
 }
