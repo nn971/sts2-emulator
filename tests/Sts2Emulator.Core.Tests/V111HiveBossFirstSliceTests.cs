@@ -256,6 +256,72 @@ public sealed class V111HiveBossFirstSliceTests
         }
     }
 
+    [Fact]
+    public void KnowledgeDemonRejectsForeignOptionsAndTamperedSnapshots()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = StartBoss(PrototypeNativeHiveBosses.KnowledgeEncounterId,
+            "demon-knowledge-guard");
+        var pending = EndTurn(engine, state);
+        var original = CanonicalJson.Sha256(pending);
+        Assert.Throws<InvalidOperationException>(() => engine.Step(
+            pending,
+            GameAction.Create("choose_knowledge_curse",
+                new ChooseKnowledgeCursePayload(
+                    PrototypeNativeHiveKnowledgeDemonChoice.WasteAwayCardId))));
+        Assert.Equal(original, CanonicalJson.Sha256(pending));
+
+        var combat = pending.World!.Combat!;
+        var malformed = pending with
+        {
+            World = pending.World with
+            {
+                Combat = combat with
+                {
+                    PendingKnowledgeDemonChoice =
+                        combat.PendingKnowledgeDemonChoice! with
+                        {
+                            OptionCardIds =
+                            [
+                                PrototypeNativeHiveKnowledgeDemonChoice.SlothCardId,
+                                PrototypeNativeHiveKnowledgeDemonChoice.MindRotCardId
+                            ]
+                        }
+                }
+            }
+        };
+        Assert.Throws<InvalidOperationException>(() =>
+            PrototypeStateInvariants.Validate(malformed));
+        Assert.Equal(original, CanonicalJson.Sha256(pending));
+    }
+
+    [Fact]
+    public void KnowledgeDemonSourcePowerModifiersAreRegisteredAndNotRewardCards()
+    {
+        foreach (var id in new[]
+        {
+            PrototypeNativeHiveKnowledgeDemonChoice.DisintegrationCardId,
+            PrototypeNativeHiveKnowledgeDemonChoice.MindRotCardId,
+            PrototypeNativeHiveKnowledgeDemonChoice.SlothCardId,
+            PrototypeNativeHiveKnowledgeDemonChoice.WasteAwayCardId
+        })
+        {
+            var card = PrototypeContent.Card(id);
+            Assert.False(card.RewardEligible);
+            Assert.False(card.CanBeGeneratedInCombat);
+            Assert.True(card.Unplayable);
+        }
+        Assert.Equal(-1, PrototypeContent.Power(
+            PrototypeNativeHiveKnowledgeDemonChoice.MindRotPowerId)
+            .HandDrawBonusPerStack);
+        Assert.Equal(3, PrototypeContent.Power(
+            PrototypeNativeHiveKnowledgeDemonChoice.SlothPowerId)
+            .MaxCardsPlayablePerTurn);
+        Assert.Equal(-1, PrototypeContent.Power(
+            PrototypeNativeHiveKnowledgeDemonChoice.WasteAwayPowerId)
+            .EnergyAfterResetPerStack);
+    }
+
     [Theory]
     [InlineData(0, true)]
     [InlineData(2, true)]
