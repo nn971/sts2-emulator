@@ -138,13 +138,17 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
 
         var nextPowerApplicationOrder = combatRelics.Length + 1L;
-        // Opt-in v111 live entry: source-audited fixed formations and
-        // independent encounter RNG. Other encounters fail explicitly
+        // Opt-in v111 live entry: source-audited weak and normal
+        // formations with independent encounter RNG. Other encounters
+        // fail explicitly
         // instead of silently consuming the prototype combat stream.
         var nativeFormation =
             state.Configuration?.UsesExperimentalNativeWeakCombatEntry == true
-                ? NativeActOneWeakCombatEntryV111.Prepare(
-                    state, world, encounter)
+                ? NativeActOneNormalCombatEntryV111.IsSupported(encounter.Id)
+                    ? NativeActOneNormalCombatEntryV111.Prepare(
+                        state, world, encounter)
+                    : NativeActOneWeakCombatEntryV111.Prepare(
+                        state, world, encounter)
                 : null;
         var enemySpecs = nativeFormation?.Enemies
             ?? encounter.ResolveEnemySpecs(state.Rng);
