@@ -1,0 +1,112 @@
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// v0.111.0 Glory event content, explicitly gated from random selection
+/// until the complete regional event bag is implemented.
+/// Source: HungryForMushrooms, BigMushroom, FragrantMushroom.
+/// </summary>
+public static class PrototypeNativeGloryEvents
+{
+    public const string HungryForMushroomsId =
+        "proto.native.glory.hungry_for_mushrooms";
+    public const string BigMushroomId =
+        "proto.native.glory.big_mushroom";
+    public const string FragrantMushroomId =
+        "proto.native.glory.fragrant_mushroom";
+
+    public static PrototypeRelicDefinition[] Relics { get; } =
+    [
+        // BigMushroom.AfterObtained grants 20 Max HP (also heals
+        // 20), then ModifyHandDraw subtracts two on turn one only.
+        // The pickup callback is implemented by the event handler;
+        // this relic is not in the ordinary relic reward pool.
+        new(BigMushroomId, "Big Mushroom", FirstTurnDrawBonus: -2),
+        // FragrantMushroom.AfterObtained deals 15 unblocked,
+        // unpowered damage and upgrades two different eligible cards.
+        new(FragrantMushroomId, "Fragrant Mushroom")
+    ];
+
+    public static PrototypeEventDefinition[] Events { get; } =
+    [
+        new(HungryForMushroomsId, "Hungry for Mushrooms",
+        [
+            new("big_mushroom", "Obtain Big Mushroom", []),
+            new("fragrant_mushroom", "Obtain Fragrant Mushroom", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0)
+    ];
+}
+
+/// <summary>
+/// Pinned singleton Glory event fixture: relic pickup effects are source
+/// ordered; Fragrant Mushroom selects TWO DISTINCT card instances, not
+/// two independent upgrade rolls that might revisit a multiupgrade card.
+/// </summary>
+public sealed partial class PrototypeGameEngine
+{
+    private static RunState StepNativeHungryForMushrooms(
+        RunState state, GameAction action)
+    {
+        RequireKind(action, "event_choice");
+        var world = RequireWorld(state);
+        if (world.Act != 3 || world.Event?.EventId !=
+            PrototypeNativeGloryEvents.HungryForMushroomsId)
+        {
+            throw new InvalidOperationException(
+                "Hungry for Mushrooms requires the forced Glory event fixture.");
+        }
+        var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
+        var relicId = choice switch
+        {
+            "big_mushroom" => PrototypeNativeGloryEvents.BigMushroomId,
+            "fragrant_mushroom" =>
+                PrototypeNativeGloryEvents.FragrantMushroomId,
+            _ => throw new InvalidOperationException(
+                $"Unsupported Hungry for Mushrooms choice '{choice}'.")
+        };
+
+        var player = state.Player with
+        {
+            Relics = state.Player.Relics.Append(
+                new RelicInstance(relicId,
+                    PrototypeJson.EmptyObject())).ToArray()
+        };
+        player = ApplyRelicRunEvent(
+            player, PrototypeRunEventKind.RelicAcquired,
+            acquiredRelicId: relicId, rng: state.Rng);
+
+        if (choice == "big_mushroom")
+        {
+            player = player with
+            {
+                MaxHp = checked(player.MaxHp + 20),
+                Hp = checked(player.Hp + 20)
+            };
+        }
+        else
+        {
+            // Pinned AfterObtained performs the damage before any
+            // upgrades. A fatal acquisition therefore terminates
+            // immediately without upgrading cards.
+            player = player with { Hp = Math.Max(0, player.Hp - 15) };
+            if (player.Hp <= 0)
+                return EndRun(state with { Player = player }, "defeat");
+
+            var ids = player.Deck
+                .Where(card => CanSelectEventDeckCard(card,
+                    PrototypePersistentDeckChoiceKind.Upgrade,
+                    null, null, false))
+                .Select(card => card.InstanceId).ToArray();
+            PrototypeRng.Shuffle(state.Rng, "event", ids);
+            var upgrades = ids.Take(2).ToHashSet();
+            player = player with
+            {
+                Deck = player.Deck.Select(card =>
+                    upgrades.Contains(card.InstanceId)
+                        ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
+                        : card).ToArray()
+            };
+        }
+
+        return CompleteRoomToMap(state with { Player = player });
+    }
+}
