@@ -466,6 +466,16 @@ This is an intermediate implementation. Final release gates remain open.
   and native replay parity remain unsupported.
   [Source audit](reference-builds/v0.111.0-glory-trial.md).
 
+- Added gated **Glory Battleworn Dummy**, including all three timed
+  event fights: inert 75/150/300 HP targets with an enemy-side
+  3-turn countdown and explicit timeout escape. Winning gives one
+  optional potion, two distinct random deck upgrades, or an optional
+  relic from the persistent front grab bag; timing out yields no
+  reward. Event combat completion is counted as one original
+  event room. The encounter models remain outside random regional
+  selection; native RNG, rewards and trace parity are unresolved.
+  [Source audit](reference-builds/v0.111.0-glory-battleworn-dummy.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
