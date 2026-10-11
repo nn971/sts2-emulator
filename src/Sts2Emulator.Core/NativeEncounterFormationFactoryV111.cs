@@ -25,7 +25,10 @@ public sealed record NativeEncounterFormationV111(
     int TotalFloor,
     PrototypeEncounterEnemySpec[] Enemies,
     RngStreamState EncounterRng,
-    NativeEncounterMonsterContextV111[] MonsterContexts)
+    NativeEncounterMonsterContextV111[] MonsterContexts,
+    // Encounter-specific initial AI state rotations are sampled during
+    // GenerateMonsters(), not by the combat's run.monster_ai stream.
+    int? EncounterOpeningOffset = null)
 {
     public NativeEncounterFormationV111 Fork() => this with
     {
@@ -54,7 +57,10 @@ public static class NativeEncounterFormationFactoryV111
         int currentActIndex,
         long firstMonsterCombatId,
         int? mapColumn = null,
-        int? mapRow = null)
+        int? mapRow = null,
+        Func<Func<int, int>,
+            (PrototypeEncounterEnemySpec[] Enemies, int? OpeningOffset)>?
+            sourceResolver = null)
     {
         ArgumentNullException.ThrowIfNull(encounter);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
@@ -72,9 +78,15 @@ public static class NativeEncounterFormationFactoryV111
         var ownedStream = NativeRngV111Contexts.ForEncounterFormation(
             seed, nativeEncounterEntry, totalFloor);
         var ownedBundle = new RngBundle([ownedStream]);
-        var formation = encounter.ResolveEnemySpecs(maxExclusive =>
+        Func<int, int> nextIndex = maxExclusive =>
             NativeRngV111.NextInt(
-                ownedBundle, ownedStream.StreamId, maxExclusive));
+                ownedBundle, ownedStream.StreamId, maxExclusive);
+        var (formation, openingOffset) = sourceResolver is null
+            ? (encounter.ResolveEnemySpecs(nextIndex), (int?)null)
+            : sourceResolver(nextIndex);
+        if (formation is null || openingOffset is < 0)
+            throw new InvalidOperationException(
+                "Native encounter source resolver returned an invalid formation or opener.");
 
         if (formation.Length > long.MaxValue - firstMonsterCombatId)
             throw new ArgumentOutOfRangeException(nameof(firstMonsterCombatId));
@@ -91,6 +103,7 @@ public static class NativeEncounterFormationFactoryV111
 
         return new NativeEncounterFormationV111(
             nativeEncounterEntry, totalFloor,
-            formation, ownedBundle.Streams[0].Fork(), monsters);
+            formation, ownedBundle.Streams[0].Fork(), monsters,
+            openingOffset);
     }
 }

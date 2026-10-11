@@ -185,13 +185,19 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' cyclic/fixed opening count does not match its formation.");
         }
-        if (nativeFormation is not null && openingAiStates is not null)
+        // Some encounters (CorpseSlugsWeak) initialize every monster's
+        // starter state as part of GenerateMonsters(), not combat AI.
+        // Consume the encounter's own opening roll exactly once above.
+        // All other cyclic native formations remain strictly gated.
+        if (nativeFormation is not null && openingAiStates is not null
+            && nativeFormation.EncounterOpeningOffset is null)
             throw new NotSupportedException(
-                "Experimental native combat entry does not yet audit encounter-local cyclic opening RNG.");
+                "Experimental native encounter lacks its audited opening rotation.");
         var openingOffset = openingAiStates is null
             ? 0
-            : PrototypeRng.NextInt(
-                state.Rng, "combat", openingAiStates.Length);
+            : nativeFormation?.EncounterOpeningOffset
+                ?? PrototypeRng.NextInt(
+                    state.Rng, "combat", openingAiStates.Length);
         var enemies = enemySpecs
             .Select((enemySpec, index) =>
             {
