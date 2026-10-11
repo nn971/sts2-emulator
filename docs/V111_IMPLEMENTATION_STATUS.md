@@ -396,8 +396,11 @@ This is an intermediate implementation. Final release gates remain open.
   obtains the event-only History Course relic. Chest gives two
   optional potion/relic reward pairs with all four values pre-rolled
   and fork-safe. Native one-screen chest UI, actual reward pools,
-  History Course's prior-turn Attack replay and live trace parity
-  remain explicitly unsupported/unverified.
+  native live trace parity remain explicitly unverified.
+  History Course now auto-plays the last non-dupe Attack completed on
+  the previous turn at the start of turn 2+, with normal targeting,
+  zero energy cost, a fork-owned source snapshot and dupe exclusion.
+  Exact native CardPlaysFinished history parity remains unverified.
   [Glory quest audit](reference-builds/v0.111.0-glory-repy-quest.md).
 
 ## Coverage interpretation
