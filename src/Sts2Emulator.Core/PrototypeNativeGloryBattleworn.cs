@@ -133,7 +133,8 @@ public sealed partial class PrototypeGameEngine
                             CardResolved: true,
                             PotionResolved: true,
                             RelicResolved: false,
-                            EndsAct: false)
+                            EndsAct: false,
+                            IndependentSelection: true)
                     },
                     Phase = RunPhase.Reward
                 };
