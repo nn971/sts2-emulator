@@ -376,6 +376,17 @@ This is an intermediate implementation. Final release gates remain open.
   leaving the opening shuffle unchanged. No unimplemented native
   routing or oracle validation is claimed.
 
+- Added gated Hive **The Lantern Key** event: Return grants 100 Gold;
+  Keep reveals a forced single-enemy Mysterious Knight fight inheriting
+  Flail Knight's moves, Strength 6 and Plating 6. Plating now reuses
+  native-shaped initial Block, enemy-end Block and later-side decay.
+  Combat victory offers an optional Quest-rarity Lantern Key through
+  a resumed event reward screen, with take/skip/leave semantics.
+  Glory Unknown-room redirection and War Historian Repy payoffs are
+  deliberately pending. Source-backed forced-fixture registration
+  is distinct from native Hive pool integration and live oracle parity.
+  See [Lantern Key audit](reference-builds/v0.111.0-hive-lantern-key.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
