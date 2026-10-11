@@ -789,6 +789,8 @@ public sealed partial class PrototypeGameEngine
             return GetNativeRoundTeaPartyActions(eventState);
         if (eventState.EventId == PrototypeNativeGloryEvents.TrialId)
             return GetNativeTrialActions(eventState);
+        if (eventState.EventId == PrototypeNativeGloryEvents.TinkerTimeId)
+            return GetNativeTinkerActions(eventState);
 
         if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId
             && eventState.NativePageIndex == 1)
@@ -1025,6 +1027,8 @@ public sealed partial class PrototypeGameEngine
             return StepNativeRoundTeaParty(state, action);
         if (eventState.EventId == PrototypeNativeGloryEvents.TrialId)
             return StepNativeTrial(state, action);
+        if (eventState.EventId == PrototypeNativeGloryEvents.TinkerTimeId)
+            return StepNativeTinker(state, action);
         if (eventState.EventId ==
             PrototypeNativeGloryEvents.BattlewornDummyId)
             return StepNativeBattlewornDummy(state, action);
