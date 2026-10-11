@@ -3860,7 +3860,7 @@ public sealed partial class PrototypeGameEngine
             combat);
     }
 
-    private static CombatState ResolveEnemyDeathSummons(
+    internal static CombatState ResolveEnemyDeathSummons(
         CombatState combat,
         RngBundle rng,
         int enemyActionSkips = 1)
