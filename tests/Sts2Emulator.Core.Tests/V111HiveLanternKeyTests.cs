@@ -140,6 +140,13 @@ public sealed class V111HiveLanternKeyTests
         var after = Engine.Step(fight,
             Engine.GetLegalActions(fight).Single(a =>
                 a.Kind == "end_turn")).State;
+        // The first enemy-side start occurs in round one; native
+        // Plating starts decaying at the second enemy-side start.
+        Assert.Equal(6, Assert.Single(after.World!.Combat!.Enemies)
+            .PowerStates.Single(p =>
+                p.PowerId == PrototypeNativeHiveEvents.PlatingPowerId).Stacks);
+        after = Engine.Step(after, Engine.GetLegalActions(after)
+            .Single(a => a.Kind == "end_turn")).State;
         Assert.Equal(RunPhase.Combat, after.Phase);
         var knight = Assert.Single(after.World!.Combat!.Enemies);
         Assert.Contains(knight.PowerStates, p =>
