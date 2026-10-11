@@ -2318,7 +2318,29 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var selected = SelectEnemyMove(definition, enemy, formation, nextIndex);
+            // InkletsNormal.GenerateMonsters passes null slot names,
+            // and sets MiddleInklet=true on its second monster. The
+            // prototype conditional AI originally tested left/middle/right
+            // slots instead. Supply a transient equivalent AI-only slot
+            // for this source-pinned native encounter without changing
+            // the serialized/native creature SlotName (which must be null).
+            var evaluating = ownedNative?.Formation.NativeEncounterEntry
+                    == "InkletsNormal"
+                && enemy.EnemyId == "proto.enemy.inklet"
+                && enemy.SlotName is null
+                    ? enemy with
+                    {
+                        SlotName = enemy.FormationPosition switch
+                        {
+                            0 => "left",
+                            1 => "middle",
+                            2 => "right",
+                            _ => null
+                        }
+                    }
+                    : enemy;
+            var selected = SelectEnemyMove(
+                definition, evaluating, formation, nextIndex);
             var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
             if (selectedIndex < 0)
             {
