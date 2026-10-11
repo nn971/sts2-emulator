@@ -197,7 +197,25 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
             }
             var end = Engine.GetLegalActions(advanced)
                 .Single(option => option.Kind == "end_turn");
-            var next = Engine.Step(advanced, end).State;
+            var priorHash = CanonicalJson.Sha256(advanced);
+            RunState next;
+            try
+            {
+                next = Engine.Step(advanced, end).State;
+            }
+            catch (NotSupportedException ex)
+            {
+                // A native source encounter can summon/transform during
+                // its first turn. The experimental sidecar owns only the
+                // initial creature context, and must reject rather than
+                // return a seemingly native, invalid run snapshot.
+                Assert.Contains("enemy formation change", ex.Message);
+                Assert.Throws<NotSupportedException>(() =>
+                    Engine.Step(loaded, end));
+                Assert.Equal(priorHash, CanonicalJson.Sha256(advanced));
+                NativeRunRngV111.Validate(advanced);
+                continue;
+            }
             var replay = Engine.Step(loaded, end).State;
             Assert.Equal(CanonicalJson.Sha256(next),
                 CanonicalJson.Sha256(replay));
