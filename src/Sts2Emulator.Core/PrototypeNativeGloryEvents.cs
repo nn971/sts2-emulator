@@ -23,8 +23,8 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.royal_poison";
     public const string GraveOfTheForgottenId =
         "proto.native.glory.grave_of_the_forgotten";
-    public const string DecayId =
-        "proto.native.glory.decay";
+    // Same source Curse model as the Hive Lost Wisp event.
+    public const string DecayId = PrototypeNativeHiveEvents.DecayId;
     public const string ForgottenSoulId =
         "proto.relic.forgotten_soul";
 
@@ -36,14 +36,7 @@ public static class PrototypeNativeGloryEvents
             Unplayable: true, Eternal: true, RewardEligible: false,
             CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse,
-            EndTurnDamageIfInHand: 13, EndTurnDamageUnblockable: true),
-        // Decay.OnTurnEndInHand: 2 unpowered Move damage.
-        // It is blockable, unlike Bad Luck.
-        new(DecayId, "Decay", -1, PrototypeCardTarget.None, [],
-            Unplayable: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
-            Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse,
-            EndTurnDamageIfInHand: 2)
+            EndTurnDamageIfInHand: 13, EndTurnDamageUnblockable: true)
     ];
 
     public static PrototypeRelicDefinition[] Relics { get; } =
