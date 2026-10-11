@@ -1381,6 +1381,20 @@ public static class PrototypeStateInvariants
                 || PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal));
 
+        var promotedNativeLaterEncounter =
+            world.LaterActEncounterPool is { } later
+            && later.Act == world.Act
+            && world.Map.GenerationProfileId ==
+                PrototypeNativeLaterActMap.ProfileId(world.Act)
+            && (PrototypeNativeLaterActCombatPool.Names(
+                    world.Act, world.ActiveRoom!.Value,
+                    weak: world.ActiveRoom == PrototypeRoomType.Combat)
+                    .Contains(encounter.Id, StringComparer.Ordinal)
+                || (world.ActiveRoom == PrototypeRoomType.Combat
+                    && PrototypeNativeLaterActCombatPool.Names(
+                        world.Act, PrototypeRoomType.Combat)
+                        .Contains(encounter.Id, StringComparer.Ordinal)));
+
         if (encounter.RoomType != world.ActiveRoom
             || world.Act < encounter.MinAct
             || world.Act > encounter.MaxAct
@@ -1388,7 +1402,8 @@ public static class PrototypeStateInvariants
             || world.Floor > encounter.MaxFloor
             || (encounter.Weight <= 0
                 && !promotedOvergrowthEncounter
-                && !promotedUnderdocksEncounter))
+                && !promotedUnderdocksEncounter
+                && !promotedNativeLaterEncounter))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");
