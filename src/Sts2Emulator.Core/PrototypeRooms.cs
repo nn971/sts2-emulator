@@ -28,7 +28,10 @@ public sealed partial class PrototypeGameEngine
             PrototypeNativeLaterActMap.HiveProfileId
             or PrototypeNativeLaterActMap.GloryProfileId;
         var forceRepy = ShouldForceWarHistorianRepy(world, state.Player);
+        var experimentalLaterRoute = nativeLaterMap
+            && state.Configuration?.UsesExperimentalSilentThreeActRoute == true;
         if (nativeLaterMap
+            && !experimentalLaterRoute
             && !(forceRepy
                 && node.RoomType is PrototypeRoomType.Event
                     or PrototypeRoomType.Unknown))
@@ -40,7 +43,10 @@ public sealed partial class PrototypeGameEngine
         // Its event replacement also applies to existing Event nodes.
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? forceRepy ? PrototypeRoomType.Event
-                : ResolveUnknownMapRoom(ref world, state.Rng)
+                : experimentalLaterRoute
+                    ? ExperimentalSilentThreeActRouteV111.ResolveUnknown(
+                        world, state.Rng)
+                    : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
 
         world = world with
@@ -62,11 +68,26 @@ public sealed partial class PrototypeGameEngine
 
         return room switch
         {
-            PrototypeRoomType.Combat => StartCombat(state, PrototypeRoomType.Combat),
-            PrototypeRoomType.Elite => StartCombat(state, PrototypeRoomType.Elite),
-            PrototypeRoomType.Boss => StartCombat(state, PrototypeRoomType.Boss),
+            PrototypeRoomType.Combat => experimentalLaterRoute
+                ? StartCombat(state, room,
+                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
+                        world, room, state.Rng))
+                : StartCombat(state, room),
+            PrototypeRoomType.Elite => experimentalLaterRoute
+                ? StartCombat(state, room,
+                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
+                        world, room, state.Rng))
+                : StartCombat(state, room),
+            PrototypeRoomType.Boss => experimentalLaterRoute
+                ? StartCombat(state, room,
+                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
+                        world, room, state.Rng))
+                : StartCombat(state, room),
             PrototypeRoomType.Event => forceRepy
-                ? StartNativeWarHistorianRepy(state) : StartEvent(state),
+                ? StartNativeWarHistorianRepy(state)
+                : experimentalLaterRoute
+                    ? ExperimentalSilentThreeActRouteV111.BeginEvent(state)
+                    : StartEvent(state),
             PrototypeRoomType.Shop => StartShop(state),
             PrototypeRoomType.Rest => state with { Phase = RunPhase.Rest },
             PrototypeRoomType.Treasure => StartTreasureRoom(state),
