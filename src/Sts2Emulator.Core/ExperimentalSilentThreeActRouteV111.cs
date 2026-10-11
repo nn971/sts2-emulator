@@ -166,32 +166,6 @@ public static class ExperimentalSilentThreeActRouteV111
     }
 
     /// <summary>
-    /// Native ?-room odds and room-history restrictions are not audited.
-    /// Never substitutes an unrelated prototype regional encounter/event.
-    /// </summary>
-    public static PrototypeRoomType ResolveUnknown(
-        RunWorldState world, RngBundle rng)
-    {
-        if (world.Act is < 2 or > 3)
-            throw new NotSupportedException(
-                "Later-act Unknown requires Hive or Glory.");
-        // Guarantee an eligible regional event choice early in the act,
-        // then distribute further visits among regional events, shops,
-        // fights and treasure (approximation awaiting reference traces).
-        if (!world.CompletedRooms.Any(room =>
-            room.Act == world.Act
-            && room.RoomType == PrototypeRoomType.Event))
-            return PrototypeRoomType.Event;
-        return PrototypeRng.NextInt(rng, "event", 4) switch
-        {
-            0 => PrototypeRoomType.Event,
-            1 => PrototypeRoomType.Shop,
-            2 => PrototypeRoomType.Treasure,
-            _ => PrototypeRoomType.Combat
-        };
-    }
-
-    /// <summary>
     /// Select without replacement from the regional weak/normal/elite
     /// bags, with one exhausted-bag refill and an act-pinned preselected
     /// boss. All semantics remain fork/snapshot safe. The contents are
