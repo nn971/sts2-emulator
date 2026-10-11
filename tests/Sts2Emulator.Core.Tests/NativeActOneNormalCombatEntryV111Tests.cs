@@ -268,8 +268,11 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
                 && node.NodeId
                     == choice.ReadPayload<ChooseMapNodePayload>().NodeId));
         var combat = Engine.Step(state, action).State.World!.Combat!;
+        Assert.All(combat.Enemies,
+            enemy => Assert.NotNull(enemy.PlannedMoveIndex));
         Assert.Equal(new[] { 0, 1, 0 },
-            combat.Enemies.Select(enemy => enemy.PlannedMoveIndex));
+            combat.Enemies.Select(enemy => enemy.PlannedMoveIndex!.Value)
+                .ToArray());
         Assert.All(combat.Enemies, enemy =>
             Assert.Null(enemy.SlotName));
         Assert.Equal(new[] { 0, 1, 2 },
