@@ -127,8 +127,9 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
-        // Event-only. The native after-auto-preplay replay effect still
-        // requires a dedicated combat-history hook, tracked as unsupported.
+        // Event-only. Its native after-auto-preplay replay hook lives
+        // in PrototypeNativeGloryHistoryCourse, with a per-turn Attack
+        // history snapshot and a genuine auto-play duplicate.
         new(HistoryCourseId, "History Course"),
         // PollinousCore.TurnsSeen persists across combats and supplies
         // +2 hand draws on each fourth hand draw (not fourth card drawn).
