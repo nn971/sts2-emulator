@@ -6,11 +6,22 @@ public sealed partial class PrototypeGameEngine
         world.Act == 1 && (world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
             || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId);
 
+    // The Act 1 economy/Unknown machinery is structurally reusable for
+    // configured Hive and Glory. Its encounter/event RNG distributions
+    // still need native oracle comparison, so legacy and isolated
+    // later-act fixtures are kept on their historical code paths.
+    private static bool UsesNativeRegionalSystems(RunWorldState world) =>
+        UsesNativeActOneSystems(world)
+        || (world.RulesetId == V111Build.RulesetId
+            && world.Act is 2 or 3
+            && world.Map.GenerationProfileId
+                == PrototypeNativeLaterActMap.ProfileId(world.Act));
+
     private static PrototypeRoomType ResolveUnknownMapRoom(
         ref RunWorldState world,
         RngBundle rng)
     {
-        if (!UsesNativeActOneSystems(world))
+        if (!UsesNativeRegionalSystems(world))
         {
             throw new InvalidOperationException(
                 "Unknown map rooms require a native-structure generation profile.");
@@ -57,7 +68,7 @@ public sealed partial class PrototypeGameEngine
 
         var world = RequireWorld(state);
         string? relicId;
-        if (UsesNativeActOneSystems(world))
+        if (UsesNativeRegionalSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
                 world, state.Player, state.Rng, merchant: false);
