@@ -2414,6 +2414,7 @@ public static class PrototypeStateInvariants
 
     private static void ValidateCombat(PlayerState player, CombatState combat)
     {
+        NativeCombatRngEntryV111.Validate(combat);
         if (combat.ToricShields is { } shields
             && shields.Any(shield =>
                 shield.BlockAmount <= 0
