@@ -10,6 +10,8 @@ using Sts2Emulator.Core;
 /// </summary>
 internal static class V111NaturalRunSweep
 {
+    public sealed record ActCheckpoint(int Act, string File, string ExactHash);
+
     public sealed record RunResult(
         string Seed,
         string FirstAct,
@@ -23,26 +25,31 @@ internal static class V111NaturalRunSweep
         string? LastAction,
         string? LastEncounter,
         string[] RecentActions,
-        int[] ActsEntered);
+        int[] ActsEntered,
+        ActCheckpoint[] Checkpoints);
 
     public sealed record Report(
         string Mode, string Policy, int Ascension, int RunsPerAct,
         int Completed, int Defeats, int Victories, int Blocked,
         int ReachedHive, int ReachedGlory, RunResult[] Runs);
 
-    public static Report Run(int count, int ascension, int offset = 0)
+    public static Report Run(int count, int ascension, int offset = 0,
+        string? checkpointDirectory = null)
     {
         if (count is < 1 or > 1000 || offset < 0
             || ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(count),
                 "Count must be 1..1000; offset >= 0; ascension 0..10.");
+        if (checkpointDirectory is not null)
+            Directory.CreateDirectory(checkpointDirectory);
         var runs = new List<RunResult>(2 * count);
         foreach (var first in new[] { ActIdentity.Overgrowth, ActIdentity.Underdocks })
         {
             for (var i = offset; i < count + offset; i++)
             {
                 var seed = $"natural-v111-{first.ToString().ToLowerInvariant()}-{i}";
-                runs.Add(RunOne(seed, first, ascension));
+                runs.Add(RunOne(seed, first, ascension,
+                    checkpointDirectory));
             }
         }
         var result = runs.ToArray();
@@ -68,21 +75,52 @@ internal static class V111NaturalRunSweep
         Console.WriteLine(JsonSerializer.Serialize(report, options));
     }
 
-    private static RunResult RunOne(
-        string seed, ActIdentity firstAct, int ascension)
+    public static void Write(RunResult result)
     {
-        var engine = new PrototypeGameEngine();
+        Console.WriteLine(JsonSerializer.Serialize(result,
+            new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            }));
+    }
+
+    public static RunResult Resume(string snapshotPath)
+    {
+        var state = RunSnapshot.Load(File.ReadAllText(snapshotPath));
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute != true
+            || state.Configuration.CharacterId != "silent"
+            || state.Phase == RunPhase.Terminal)
+            throw new NotSupportedException(
+                "Natural resume requires a nonterminal experimental v111 Silent checkpoint.");
+        return Drive(state, state.RunSeed,
+            state.Configuration.Acts[0], checkpointDirectory: null);
+    }
+
+    private static RunResult RunOne(
+        string seed, ActIdentity firstAct, int ascension,
+        string? checkpointDirectory)
+    {
         var config = RunConfiguration.Create(
             ascension: ascension, firstAct: firstAct) with
         {
             FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
         };
-        var state = V111RunFactory.Create(seed, config);
+        return Drive(V111RunFactory.Create(seed, config),
+            seed, firstAct, checkpointDirectory);
+    }
+
+    private static RunResult Drive(
+        RunState state, string seed, ActIdentity firstAct,
+        string? checkpointDirectory)
+    {
+        var engine = new PrototypeGameEngine();
         var recent = new Queue<string>();
         string? lastAction = null;
         string? blocker = null;
-        int maxAct = 1;
-        var acts = new List<int> { 1 };
+        var maxAct = state.World?.Act ?? 1;
+        var acts = new List<int> { maxAct };
+        var checkpoints = new List<ActCheckpoint>();
 
         for (var step = 0; step < 5000
             && state.Phase != RunPhase.Terminal; step++)
@@ -107,6 +145,16 @@ internal static class V111NaturalRunSweep
                 {
                     maxAct = act;
                     acts.Add(act);
+                    if (checkpointDirectory is not null)
+                    {
+                        var file = $"{seed}-act{act}-d{state.DecisionIndex}.snapshot.json";
+                        var checkpoint = RunSnapshot.Save(state);
+                        File.WriteAllText(Path.Combine(checkpointDirectory, file),
+                            checkpoint);
+                        var restored = RunSnapshot.Load(checkpoint);
+                        checkpoints.Add(new ActCheckpoint(
+                            act, file, CanonicalJson.Sha256(restored)));
+                    }
                 }
             }
             catch (Exception ex)
@@ -125,7 +173,7 @@ internal static class V111NaturalRunSweep
             world?.Act ?? 1, world?.Floor ?? 0, maxAct,
             state.DecisionIndex, CanonicalJson.Sha256(state),
             blocker, lastAction, world?.EncounterIds.LastOrDefault(),
-            recent.ToArray(), acts.ToArray());
+            recent.ToArray(), acts.ToArray(), checkpoints.ToArray());
     }
 
     private static GameAction PickAction(
