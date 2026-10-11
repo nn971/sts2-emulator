@@ -440,8 +440,10 @@ public static class PrototypeStateInvariants
 
         var active = PrototypeContent.Event(world.Event.EventId);
         if (world.Act < active.MinAct || world.Act > active.MaxAct
-            || (active.Weight <= 0 && active.Id
-                != PrototypeNativeHiveEvents.WarHistorianRepyId))
+            || (active.Weight <= 0
+                && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
+                && active.Id !=
+                    PrototypeNativeGloryEvents.HungryForMushroomsId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");

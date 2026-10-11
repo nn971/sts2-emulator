@@ -416,6 +416,16 @@ This is an intermediate implementation. Final release gates remain open.
   pruning/repair and generation parity remain open; see
   [later-act map audit](reference-builds/v0.111.0-hive-glory-map-geometry.md).
 
+- Implemented a gated **Glory Hungry for Mushrooms** source slice:
+  Big Mushroom grants 20 Max HP and reduces the first combat hand
+  draw by two; Fragrant Mushroom deals 15 immediate unpowered,
+  unblockable damage before upgrading two distinct upgradable deck
+  cards (none on fatal pickup). The event and its two event-only
+  relics run on an explicit full-Glory-map fixture, without enabling
+  the remaining random regional event bag. Exact native Niche RNG,
+  arbitrary relic acquisition hooks and game replay remain partial.
+  [Source audit](reference-builds/v0.111.0-glory-hungry-mushrooms.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
