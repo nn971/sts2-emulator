@@ -6353,11 +6353,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.lantern_key"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/LanternKey.cs#062853fba0b815dc9cbc7dea1fc4bc2517c743c1aca520c32fb821cdfc19a6cf"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -6365,7 +6367,7 @@
           "base"
         ],
         "native_id": "LANTERN_KEY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13259,17 +13261,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.encounter.mysterious_knight_event_encounter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/MysteriousKnightEventEncounter.cs#1a52b0b1b121fe2033471bb2d4d93941ac0dee5f2bb2dae8b7a5eadde2c6d07a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MYSTERIOUS_KNIGHT_EVENT_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16312,11 +16316,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.the_lantern_key"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TheLanternKey.cs#40fe0fcbfbf2f30267ddcf065c524452baa1079df4eb515908625a61ba911cac"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -16332,7 +16338,7 @@
         ],
         "missing_variants": [],
         "native_id": "THE_LANTERN_KEY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17841,17 +17847,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.mysterious_knight"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/MysteriousKnight.cs#12b1c152a9a7ebf62f730bcdd1b7900eafaea2f30337b3486b4e80921153ad24"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MYSTERIOUS_KNIGHT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -22740,6 +22748,7 @@
       {
         "catalogued": true,
         "engine_ids": [
+          "proto.native.hive.plating",
           "proto.power.plating"
         ],
         "evidence": [
@@ -29582,7 +29591,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 178,
+        "implemented": 179,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
