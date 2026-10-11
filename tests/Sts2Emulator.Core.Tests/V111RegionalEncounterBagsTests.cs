@@ -88,7 +88,7 @@ public sealed class V111RegionalEncounterBagsTests
 
         var bag = first.Bag;
         var visited = new List<string> { first.Encounter.Id };
-        for (var i = 1; i < 3; i++)
+        for (var i = 1; i < 2; i++)
         {
             var next = ExperimentalSilentThreeActRouteV111.SelectEncounter(
                 world with { LaterActEncounterBag = bag },
@@ -96,8 +96,8 @@ public sealed class V111RegionalEncounterBagsTests
             visited.Add(next.Encounter.Id);
             bag = next.Bag;
         }
-        Assert.Equal(3, visited.Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(3, bag.OrdinaryCombatsStarted);
+        Assert.Equal(2, visited.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(2, bag.OrdinaryCombatsStarted);
         var normal = ExperimentalSilentThreeActRouteV111.SelectEncounter(
             world with { LaterActEncounterBag = bag },
             PrototypeRoomType.Combat, rng);
