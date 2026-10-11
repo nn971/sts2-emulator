@@ -102,7 +102,9 @@ public static class NativeCombatRngEntryV111
             usedHp.Add(hp);
         }
 
-        return combat with { Enemies = enemies, NativeRng = fresh };
+        var attached = combat with { Enemies = enemies, NativeRng = fresh };
+        Validate(attached);
+        return attached;
     }
 
     /// <summary>
@@ -135,11 +137,33 @@ public static class NativeCombatRngEntryV111
             || formation.MonsterContexts.Length != combat.Enemies.Length)
             throw new InvalidOperationException(
                 "Native encounter RNG context has an invalid formation.");
+
+        // Encounter and creature RNG stream names encode their original
+        // owners. A valid xoshiro state from *another* encounter or
+        // monster must never be accepted as the current owner's cursor.
+        // Source provenance is optional only for older isolated fixtures.
+        // When present, it must be complete and agree with the combat act.
+        if ((formation.RunSeed is null) !=
+                (formation.NativeActIndex is null)
+            || formation.NativeActIndex is < 0 or > 2
+            || (formation.NativeActIndex is { } actIndex
+                && actIndex != combat.Act - 1)
+            || formation.MapColumn is < 0 or > 6
+            || formation.MapRow is < 0)
+            throw new InvalidOperationException(
+                "Native encounter creation provenance is invalid.");
+        var expectedEncounterStreamId =
+            $"context.encounter.{formation.NativeEncounterEntry}.floor_{formation.TotalFloor}";
+        if (formation.EncounterRng.StreamId != expectedEncounterStreamId)
+            throw new InvalidOperationException(
+                "Native encounter RNG belongs to a different encounter or floor.");
         _ = NativeRngV111.ToSnapshot(formation.EncounterRng);
         if (formation.MonsterContexts.Select(context => context.CombatId)
                 .Distinct().Count() != formation.MonsterContexts.Length)
             throw new InvalidOperationException(
                 "Native monster combat ids must be unique.");
+        var ownedMonsterStreamIds = new HashSet<string>(
+            StringComparer.Ordinal);
 
         for (var i = 0; i < combat.Enemies.Length; i++)
         {
@@ -164,6 +188,14 @@ public static class NativeCombatRngEntryV111
                 || enemy.SlotName != spec.SlotName)
                 throw new InvalidOperationException(
                     "Native monster RNG context does not match combat formation.");
+            if (!ownedMonsterStreamIds.Add(context.Rng.StreamId))
+                throw new InvalidOperationException(
+                    "Native monster-local RNG streams must have distinct owners.");
+            if (formation.NativeActIndex is { } nativeActIndex
+                && context.Rng.StreamId !=
+                    $"context.monster.{context.CombatId}.act_{nativeActIndex}.map_{formation.MapColumn ?? 0}_{formation.MapRow ?? 0}")
+                throw new InvalidOperationException(
+                    "Native monster-local RNG belongs to a different creature or map.");
             _ = NativeRngV111.ToSnapshot(context.Rng);
         }
     }

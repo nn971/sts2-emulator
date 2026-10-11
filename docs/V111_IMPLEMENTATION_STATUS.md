@@ -189,6 +189,14 @@ This is an intermediate implementation. Final release gates remain open.
   preserving native Stun intents, power cleanup and RNG isolation.
   Default prototype behavior is intentionally unchanged.
   See [native damage-triggered thresholds](reference-builds/v0.111.0-native-damage-only-boss-thresholds.md).
+- Hardened experimental native combat RNG snapshot validation against
+  **encounter/monster stream owner swaps**: native encounter and creature
+  stream IDs are now checked against entry/floor and native CombatId,
+  act and map provenance, with source-compatible optional fields for
+  older isolated snapshots. Attachment validates before publishing the
+  sidecar. Focused cross-act/JSON/fork and corruption tests establish
+  snapshot ownership, not exact game RNG call-order parity.
+  See [native snapshot identity](reference-builds/v0.111.0-native-combat-snapshot-identity.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
