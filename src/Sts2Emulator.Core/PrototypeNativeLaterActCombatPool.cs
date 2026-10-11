@@ -27,7 +27,7 @@ public sealed record PrototypeNativeLaterActEncounterPoolState(
 public static class PrototypeNativeLaterActCombatPool
 {
     public const string ConstructMenagerieId =
-        "proto.native.glory.encounter.construct_menagerie_normal";
+        PrototypeNativeAdditionalNormals.ConstructMenagerieNormalId;
 
     public static string[] HiveWeak { get; } =
     [
@@ -97,17 +97,6 @@ public static class PrototypeNativeLaterActCombatPool
         PrototypeNativeGloryBosses.AeonglassEncounterId,
         PrototypeNativeGloryBosses.QueenEncounterId,
         PrototypeNativeGloryBosses.TestSubjectEncounterId
-    ];
-
-    public static PrototypeEncounterDefinition[] AdditionalEncounters { get; } =
-    [
-        // ConstructMenagerieNormal.GenerateMonsters creates one mutable
-        // PunchConstruct followed by two CubexConstructs, no named slots.
-        new(ConstructMenagerieId, PrototypeRoomType.Combat,
-            ["proto.enemy.punch_construct",
-             "proto.enemy.cubex_construct",
-             "proto.enemy.cubex_construct"],
-            MinAct: 3, MaxAct: 3, Weight: 0)
     ];
 
     public static string[] Names(int act, PrototypeRoomType room,
