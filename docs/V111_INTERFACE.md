@@ -24,6 +24,16 @@ character configurations can be created/serialized, but starting unsupported
 character mechanics fails. Native later-act and restricted-profile mechanics
 also fail explicitly.
 
+For the **experimental** first whole-route slice, `reset_v111` additionally
+accepts `fidelity_id: "v111-experimental-silent-three-act-route-v1"`.
+The thin Python binding exposes the same keyword. This mode permits
+Silent Act 1 → Hive → Glory through a deliberately limited later-act
+encounter/event pool with provisional prototype selection/RNG rules; see
+[its scoped evidence note](reference-builds/v0.111.0-experimental-silent-three-act-route.md).
+Omitting `fidelity_id` preserves the existing configured v111 default.
+Unknown fidelity IDs are rejected. Multi-character and nonexperimental
+later-act execution remain gated.
+
 Configuration belongs to the state. Forks deep-copy profile/route arrays.
 Build/schema/ruleset/character/act mismatches fail on Step and restore. Exact
 snapshots encode enums as canonical numeric values; reset uses the names above.

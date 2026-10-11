@@ -99,11 +99,17 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException($"Invalid act {world.Act}.");
         }
 
-        if (world.Floor < 0 || world.Floor > (
-                world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
-                    || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId
-                    ? PrototypeNativeOvergrowthMap.BossFloor
-                    : PrototypeContent.Rules.FloorsPerAct))
+        var currentBossFloor = world.Map.GenerationProfileId switch
+        {
+            PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeUnderdocks.GenerationProfileId =>
+                PrototypeNativeOvergrowthMap.BossFloor,
+            PrototypeNativeLaterActMap.HiveProfileId
+                or PrototypeNativeLaterActMap.GloryProfileId =>
+                PrototypeNativeLaterActMap.RoomRows(world.Act) + 1,
+            _ => PrototypeContent.Rules.FloorsPerAct
+        };
+        if (world.Floor < 0 || world.Floor > currentBossFloor)
         {
             throw new InvalidOperationException($"Invalid floor {world.Floor}.");
         }
@@ -329,13 +335,12 @@ public static class PrototypeStateInvariants
             if (visit.Act < 1
                 || visit.Act > world.Act
                 || visit.Floor < 1
-                || visit.Floor > (world.Act == 1
-                    && (world.Map.GenerationProfileId
-                            == PrototypeNativeOvergrowthMap.GenerationProfileId
-                        || world.Map.GenerationProfileId
-                            == PrototypeNativeUnderdocks.GenerationProfileId)
+                || visit.Floor > (world.Map.GenerationProfileId
+                        == PrototypeContent.MapGenerationProfileId
+                    ? PrototypeContent.Rules.FloorsPerAct
+                    : visit.Act == 1
                         ? PrototypeNativeOvergrowthMap.BossFloor
-                        : PrototypeContent.Rules.FloorsPerAct)
+                        : PrototypeNativeLaterActMap.RoomRows(visit.Act) + 1)
                 || string.IsNullOrWhiteSpace(visit.NodeId))
             {
                 throw new InvalidOperationException(
@@ -355,10 +360,14 @@ public static class PrototypeStateInvariants
             }
 
             if (visit.Act == world.Act
-                && world.Map.GenerationProfileId
-                    is PrototypeContent.MapGenerationProfileId
-                        or PrototypeNativeOvergrowthMap.GenerationProfileId
-                        or PrototypeNativeUnderdocks.GenerationProfileId)
+                && (world.Map.GenerationProfileId is
+                    PrototypeContent.MapGenerationProfileId
+                    or PrototypeNativeOvergrowthMap.GenerationProfileId
+                    or PrototypeNativeUnderdocks.GenerationProfileId
+                    || (world.RulesetId == V111Build.RulesetId
+                        && world.Map.GenerationProfileId is
+                            PrototypeNativeLaterActMap.HiveProfileId
+                            or PrototypeNativeLaterActMap.GloryProfileId)))
             {
                 var node = world.Map.Nodes
                     .FirstOrDefault(candidate =>
@@ -380,13 +389,20 @@ public static class PrototypeStateInvariants
             }
         }
 
-        if (world.Map.GenerationProfileId
-            is not (PrototypeContent.MapGenerationProfileId
+        // Isolated Hive/Glory event fixtures deliberately start in the
+        // middle of an act. Consecutive history is required only by the
+        // configured whole-route engine, not by those source test seams.
+        var fullRouteMap =
+            world.Map.GenerationProfileId is
+                PrototypeContent.MapGenerationProfileId
                 or PrototypeNativeOvergrowthMap.GenerationProfileId
-                or PrototypeNativeUnderdocks.GenerationProfileId))
-        {
+                or PrototypeNativeUnderdocks.GenerationProfileId
+            || (world.RulesetId == V111Build.RulesetId
+                && world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId);
+        if (!fullRouteMap)
             return;
-        }
 
         var completedThisAct = history
             .Where(visit => visit.Act == world.Act)
@@ -443,6 +459,10 @@ public static class PrototypeStateInvariants
         if (world.Act < active.MinAct || world.Act > active.MaxAct
             || (active.Weight <= 0
                 && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
+                && !(world.Act == 2
+                    && world.Map.GenerationProfileId ==
+                        PrototypeNativeLaterActMap.HiveProfileId
+                    && active.Id == PrototypeNativeHiveEvents.InfestedAutomatonId)
                 && active.Id !=
                     PrototypeNativeGloryEvents.HungryForMushroomsId
                 && active.Id != PrototypeNativeGloryEvents.ReflectionsId
@@ -1323,7 +1343,12 @@ public static class PrototypeStateInvariants
             || world.Floor > encounter.MaxFloor
             || (encounter.Weight <= 0
                 && !promotedOvergrowthEncounter
-                && !promotedUnderdocksEncounter))
+                && !promotedUnderdocksEncounter
+                && !(world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId
+                    && ExperimentalSilentThreeActRouteV111.ContainsEncounter(
+                        encounter.Id, world.Act))))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");

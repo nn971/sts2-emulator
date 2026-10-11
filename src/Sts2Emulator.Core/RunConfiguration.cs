@@ -18,6 +18,10 @@ public static class V111Build
     // randomness is NOT made native by this combat-entry milestone.
     public const string NativeWeakCombatEntryFidelityId =
         "v111-experimental-native-weak-combat-entry-v1";
+    // Explicit opt-in to a deliberately restricted three-act Silent route.
+    // Its late-act encounter/event bags and combat RNG are provisional.
+    public const string ExperimentalSilentThreeActRouteFidelityId =
+        "v111-experimental-silent-three-act-route-v1";
 }
 
 public sealed record SimulationProfile(
@@ -39,6 +43,8 @@ public sealed record RunConfiguration(
 {
     public bool UsesExperimentalNativeWeakCombatEntry =>
         FidelityId == V111Build.NativeWeakCombatEntryFidelityId;
+    public bool UsesExperimentalSilentThreeActRoute =>
+        FidelityId == V111Build.ExperimentalSilentThreeActRouteFidelityId;
 
     public static RunConfiguration Create(
         string characterId = "silent", int ascension = 0,
@@ -61,7 +67,8 @@ public sealed record RunConfiguration(
             throw new ArgumentOutOfRangeException(nameof(Ascension), "v111 supports Ascension 0 through 10.");
         if (RulesetId != V111Build.RulesetId || BuildFingerprint != V111Build.Fingerprint
             || FidelityId is not ("v111-mechanics-prototype-rng-v1"
-                or V111Build.NativeWeakCombatEntryFidelityId))
+                or V111Build.NativeWeakCombatEntryFidelityId
+                or V111Build.ExperimentalSilentThreeActRouteFidelityId))
             throw new NotSupportedException("Configured runs require the pinned v111 ruleset and fingerprint.");
         if (Acts.Length != 3 || Acts[0] is not (ActIdentity.Overgrowth or ActIdentity.Underdocks)
             || Acts[1] != ActIdentity.Hive || Acts[2] != ActIdentity.Glory)
@@ -92,14 +99,27 @@ public sealed record RunConfiguration(
         {
             if (configuration.CharacterId != "silent")
                 throw new NotSupportedException("Initialized v111 character mechanics are currently limited to Silent.");
-            if (initialized.Act != 1)
-                throw new NotSupportedException("Initialized native Hive/Glory state is not supported yet.");
-            var region = configuration.Acts[0] == ActIdentity.Overgrowth
-                ? PrototypeActOneRegion.Overgrowth : PrototypeActOneRegion.Underdocks;
-            var mapProfile = region == PrototypeActOneRegion.Overgrowth
-                ? PrototypeNativeOvergrowthMap.GenerationProfileId : PrototypeNativeUnderdocks.GenerationProfileId;
-            if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile)
-                throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
+            if (initialized.Act > 1)
+            {
+                if (!configuration.UsesExperimentalSilentThreeActRoute)
+                    throw new NotSupportedException(
+                        "Initialized native Hive/Glory state requires an explicit experimental route opt-in.");
+                if (initialized.ActOneRegion is not null
+                    || initialized.ActOneEncounterPool is not null
+                    || initialized.Map.GenerationProfileId !=
+                        PrototypeNativeLaterActMap.ProfileId(initialized.Act))
+                    throw new InvalidDataException(
+                        "Later-act route must own its native map profile without Act 1 encounter bags.");
+            }
+            else
+            {
+                var region = configuration.Acts[0] == ActIdentity.Overgrowth
+                    ? PrototypeActOneRegion.Overgrowth : PrototypeActOneRegion.Underdocks;
+                var mapProfile = region == PrototypeActOneRegion.Overgrowth
+                    ? PrototypeNativeOvergrowthMap.GenerationProfileId : PrototypeNativeUnderdocks.GenerationProfileId;
+                if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile)
+                    throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
+            }
         }
     }
 }

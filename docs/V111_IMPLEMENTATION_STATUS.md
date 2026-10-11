@@ -656,6 +656,34 @@ This is an intermediate implementation. Final release gates remain open.
   remain unverified; region random event routing stays disabled.
   [Source audit](reference-builds/v0.111.0-glory-tinker-mad-science.md).
 
+## Experimental first three-act Silent route slice (opt-in)
+
+`v111-experimental-silent-three-act-route-v1` now permits configured Silent
+runs to continue after an Act 1 boss reward onto the native-shaped Hive and
+Glory maps, retaining HP/deck/relics/potions, native run RNG streams, legacy
+prototype RNG, history, and the run's versioned configuration. The ordinary
+v111 fidelity and original AI training modes retain their previous hard gates.
+
+Room entry admits a *restricted source-backed combat roster* in each act:
+Hive Tunneler/Exoskeleton weak, Spiny Toad/Mytes normal, Entomancer elite,
+Kaiser Crab boss; Glory Devoted Sculptor/Turret Operator weak,
+Frog Knight/Slimed Berserker normal, Soul Nexus elite, Queen boss.
+The first Unknown in each later act selects one implemented native event
+(Infested Automaton or Hungry for Mushrooms), with subsequent Unknowns
+explicitly restricted to combat/shop. Native later-act maps, native encounter
+identities, full boss/floor progression and existing typed rewards/shops/rest
+paths are used; map generation uses the pinned act-local RNG.
+
+**Fidelity warning:** encounter bag, Unknown room distribution, event history,
+combat shuffle/AI RNG, later-act rewards/economy and boss mechanics still use
+bounded prototype approximations. The slice is intended to enable whole-route
+integration, *not* a full native-compatible Silent run, a complete later-act
+catalogue, or live oracle parity. Additional unsupported content stays gated;
+do not report experimental sample coverage as native pool completeness.
+
+See [the route slice note](reference-builds/v0.111.0-experimental-silent-three-act-route.md)
+and `ExperimentalSilentThreeActRouteV111Tests`.
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

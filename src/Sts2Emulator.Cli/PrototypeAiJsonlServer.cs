@@ -127,6 +127,13 @@ internal static class PrototypeAiJsonlServer
                         var configuration = RunConfiguration.Create(character,
                             OptionalInt(request, "ascension") ?? 0,
                             Enum.Parse<ActIdentity>(region, ignoreCase: true));
+                        var requestedFidelity = OptionalString(request, "fidelity_id");
+                        if (requestedFidelity is not null)
+                            configuration = configuration with
+                            {
+                                FidelityId = requestedFidelity
+                            };
+                        configuration.Validate();
                         var state = V111RunFactory.Create(RequiredString(request, "seed"), configuration);
                         var handle = Store(state);
                         Write(new { requestId, ok = true, stateHandle = handle,

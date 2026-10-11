@@ -518,6 +518,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RequireKind(action, "continue_act");
         var world = RequireWorld(state);
 
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute == true)
+            return ExperimentalSilentThreeActRouteV111.ContinueAct(state);
+
         if (state.Configuration is not null)
             throw new NotSupportedException("Native Hive/Glory mechanics are not implemented; prototype later-act fallback is disabled for v111 runs.");
 
