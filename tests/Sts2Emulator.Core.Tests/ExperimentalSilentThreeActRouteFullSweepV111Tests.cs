@@ -140,6 +140,23 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
                     state = Engine.Step(state,
                         GameAction.Empty("continue_act")).State;
                     route.Add(state.World!.Act);
+                    // The synthetic victory sweep is a progression
+                    // smoke, not a boss resurrection mechanics test.
+                    // Pin Queen here; Test Subject's two revivals and
+                    // Nemesis are separately covered by boss tests.
+                    if (state.World.Act == 3)
+                        state = state with
+                        {
+                            World = state.World with
+                            {
+                                LaterActEncounterBag = state.World
+                                    .LaterActEncounterBag! with
+                                {
+                                    BossEncounterId =
+                                        PrototypeNativeGloryBosses.QueenEncounterId
+                                }
+                            }
+                        };
                     break;
                 default:
                     throw new InvalidOperationException(
