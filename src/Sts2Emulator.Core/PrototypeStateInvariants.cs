@@ -332,11 +332,31 @@ public static class PrototypeStateInvariants
     {
         var bag = world.LaterActEncounterBag
             ?? throw new InvalidOperationException(
-                "Configured Hive/Glory requires a regional encounter bag.");
-        if (world.Act is < 2 or > 3 || bag.Act != world.Act
-            || bag.OrdinaryCombatsStarted < 0)
+                "Configured Hive/Glory requires pre-generated encounter queues.");
+        var ordinaryRooms = ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(
+            world.Act);
+        if (bag.Act != world.Act
+            || bag.OrdinaryCombatsStarted < 0
+            || bag.OrdinaryCombatsStarted > ordinaryRooms)
             throw new InvalidOperationException(
-                "Regional encounter bag has an invalid act/count.");
+                "Regional encounter queues have an invalid act/count.");
+
+        // In v111 ActModel.GenerateRooms the act creates two weak encounters,
+        // ordinaryRooms - 2 normal encounters, and fifteen elite encounters
+        // before rooms are visited. Refill may duplicate IDs across bag cycles.
+        // Validate the queue cursor via its remaining lengths, not uniqueness.
+        var expectedWeak = Math.Max(0, 2 - bag.OrdinaryCombatsStarted);
+        var expectedNormal = ordinaryRooms - 2
+            - Math.Max(0, bag.OrdinaryCombatsStarted - 2);
+        if (bag.RemainingWeak is null
+            || bag.RemainingNormal is null
+            || bag.RemainingElite is null
+            || bag.RemainingWeak.Length != expectedWeak
+            || bag.RemainingNormal.Length != expectedNormal
+            || bag.RemainingElite.Length > 15)
+            throw new InvalidOperationException(
+                "Regional encounter queue lengths disagree with their cursors.");
+
         foreach (var (values, pool) in new[]
         {
             (bag.RemainingWeak,
@@ -350,11 +370,9 @@ public static class PrototypeStateInvariants
                     world.Act, PrototypeRoomType.Elite, false))
         })
         {
-            if (values is null
-                || values.Length != values.Distinct(StringComparer.Ordinal).Count()
-                || values.Any(id => !pool.Contains(id, StringComparer.Ordinal)))
+            if (values.Any(id => !pool.Contains(id, StringComparer.Ordinal)))
                 throw new InvalidOperationException(
-                    "Regional encounter bag has duplicate or foreign entries.");
+                    "Regional encounter queue contains foreign entries.");
         }
         if (!ExperimentalSilentThreeActRouteV111.Pool(
             world.Act, PrototypeRoomType.Boss, false)
