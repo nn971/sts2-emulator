@@ -157,6 +157,21 @@ public static class NativeCombatRngEntryV111
     }
 
     /// <summary>
+    /// Commit source-shaped enemy intents using run.monster_ai, returning
+    /// a forked combat. This API deliberately does not execute the entire
+    /// game turn, which still contains unmigrated RNG sources.
+    /// </summary>
+    public static CombatState CommitIntents(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (combat.NativeRng is null)
+            throw new InvalidOperationException(
+                "Only a native-RNG combat can use this isolated intent API.");
+        return PrototypeGameEngine.CommitEnemyIntents(
+            combat, RngBundle.Empty);
+    }
+
+    /// <summary>
     /// Audit/restore a separate monster-local stream without consuming the
     /// combat's run.monster_ai stream or the encounter formation cursor.
     /// Work is performed on a deep fork, never on the input combat.
