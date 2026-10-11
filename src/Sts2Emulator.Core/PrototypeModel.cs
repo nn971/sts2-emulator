@@ -1730,7 +1730,10 @@ public sealed record CombatState(
     long[]? PlayPile = null,
     PrototypeToricShield[]? ToricShields = null,
     long[]? TransformedPersistentCardIds = null,
-    bool BoundCardPlayedThisTurn = false)
+    bool BoundCardPlayedThisTurn = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    NativeCombatRngV111? NativeRng = null)
 {
     public CombatState Fork() => this with
     {
@@ -1739,6 +1742,7 @@ public sealed record CombatState(
         DiscardPile = (long[])DiscardPile.Clone(),
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
+        NativeRng = NativeRng?.Fork(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
         PlayerPowers = PlayerPowers.Select(power => power.Fork()).ToArray(),
         Relics = Relics is null
