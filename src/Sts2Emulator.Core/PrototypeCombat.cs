@@ -138,17 +138,20 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
 
         var nextPowerApplicationOrder = combatRelics.Length + 1L;
-        // Opt-in v111 live entry: source-audited weak and normal
-        // formations with independent encounter RNG. Other encounters
-        // fail explicitly
-        // instead of silently consuming the prototype combat stream.
+        // Opt-in v111 live entry: source-audited weak, normal,
+        // elite and boss initial formations, each with independent
+        // encounter RNG. Unsupported entries must never fall back
+        // to the prototype combat RNG.
         var nativeFormation =
             state.Configuration?.UsesExperimentalNativeWeakCombatEntry == true
-                ? NativeActOneNormalCombatEntryV111.IsSupported(encounter.Id)
-                    ? NativeActOneNormalCombatEntryV111.Prepare(
+                ? NativeActOneEliteBossCombatEntryV111.IsSupported(encounter.Id)
+                    ? NativeActOneEliteBossCombatEntryV111.Prepare(
                         state, world, encounter)
-                    : NativeActOneWeakCombatEntryV111.Prepare(
-                        state, world, encounter)
+                    : NativeActOneNormalCombatEntryV111.IsSupported(encounter.Id)
+                        ? NativeActOneNormalCombatEntryV111.Prepare(
+                            state, world, encounter)
+                        : NativeActOneWeakCombatEntryV111.Prepare(
+                            state, world, encounter)
                 : null;
         var enemySpecs = nativeFormation?.Enemies
             ?? encounter.ResolveEnemySpecs(state.Rng);
@@ -2318,14 +2321,13 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            // InkletsNormal.GenerateMonsters passes null slot names,
-            // and sets MiddleInklet=true on its second monster. The
-            // prototype conditional AI originally tested left/middle/right
-            // slots instead. Supply a transient equivalent AI-only slot
-            // for this source-pinned native encounter without changing
-            // the serialized/native creature SlotName (which must be null).
-            var evaluating = ownedNative?.Formation.NativeEncounterEntry
-                    == "InkletsNormal"
+            // InkletsNormal sets MiddleInklet explicitly despite null
+            // native slot names. TheKinBoss sets StartsWithDance=true
+            // only on its FIRST KinFollower (slot1). Evaluate their
+            // prototype slot-based conditional AI through transient
+            // aliases, without mutating native source slot identity.
+            var nativeEntry = ownedNative?.Formation.NativeEncounterEntry;
+            var evaluating = nativeEntry == "InkletsNormal"
                 && enemy.EnemyId == "proto.enemy.inklet"
                 && enemy.SlotName is null
                     ? enemy with
@@ -2338,7 +2340,19 @@ public sealed partial class PrototypeGameEngine
                             _ => null
                         }
                     }
-                    : enemy;
+                    : nativeEntry == "TheKinBoss"
+                        && enemy.EnemyId == "proto.enemy.kin_follower"
+                        ? enemy with
+                        {
+                            SlotName = enemy.SlotName switch
+                            {
+                                "slot1" => "dance",
+                                "slot2" => "quick",
+                                _ => throw new InvalidOperationException(
+                                    "Unknown native KinFollower starting slot.")
+                            }
+                        }
+                        : enemy;
             var selected = SelectEnemyMove(
                 definition, evaluating, formation, nextIndex);
             var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
