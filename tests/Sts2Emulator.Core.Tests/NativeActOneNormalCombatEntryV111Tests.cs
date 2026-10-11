@@ -267,7 +267,9 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
         var combat = state.World!.Combat!;
         Assert.Equal(2, combat.Enemies.Length);
         Assert.Equal("proto.enemy.gas_bomb", combat.Enemies[^1].EnemyId);
-        Assert.Equal("bomb5", combat.Enemies[^1].SlotName);
+        // LivingFog.BloatMove uses Encounter.GetNextSlot, which chooses
+        // the FIRST unoccupied slot from bomb1 through bomb5.
+        Assert.Equal("bomb1", combat.Enemies[^1].SlotName);
         Assert.Equal(2, combat.Enemies[^1].InstanceId);
         Assert.Equal(initialNiche.Counter + 1,
             NativeRngV111.ToSnapshot(state.NativeRunRng!.Streams.Single(
