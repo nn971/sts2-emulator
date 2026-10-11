@@ -100,8 +100,9 @@ public static class NativeActOneEliteBossCombatEntryV111
             throw new InvalidOperationException(
                 "Native elite/boss entry requires the experimental fidelity opt-in.");
         if (!Entries.TryGetValue(encounter.Id, out var entry)
+            || entry is null
             || world.Act != 1
-            || world.ActiveRoom != entry?.Room
+            || world.ActiveRoom != entry.Room
             || encounter.RoomType != entry.Room)
             throw new NotSupportedException(
                 $"Experimental native elite/boss entry does not support '{encounter.Id}'.");
