@@ -1690,6 +1690,33 @@ public sealed partial class PrototypeGameEngine
                 player = dispatched.Player;
                 combat = dispatched.Combat;
 
+                // DisintegrationPower.AfterSideTurnEndLate applies an
+                // unpowered, blockable hit at the end of the player's
+                // side-turn. It is not an Attack and uses no enemy
+                // strength/damage modifiers.
+                if (automaticStep.EventKind ==
+                    PrototypeCombatEventKind.PlayerTurnEnded)
+                {
+                    var disintegration = combat.PlayerPowers
+                        .Where(power => power.PowerId ==
+                            PrototypeNativeHiveKnowledgeDemonChoice
+                                .DisintegrationPowerId)
+                        .Sum(power => Math.Max(0, power.Stacks));
+                    if (disintegration > 0)
+                    {
+                        var absorbed = Math.Min(
+                            combat.PlayerBlock, disintegration);
+                        combat = combat with
+                        {
+                            PlayerBlock = combat.PlayerBlock - absorbed
+                        };
+                        player = player with
+                        {
+                            Hp = Math.Max(0, player.Hp -
+                                (disintegration - absorbed))
+                        };
+                    }
+                }
                 break;
 
             case PrototypeAutomaticStepKind.DiscardPlayerHand:
