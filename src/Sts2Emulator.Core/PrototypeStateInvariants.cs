@@ -447,7 +447,8 @@ public static class PrototypeStateInvariants
                 && active.Id != PrototypeNativeGloryEvents.ReflectionsId
                 && active.Id != PrototypeNativeGloryEvents.RoundTeaPartyId
                 && active.Id !=
-                    PrototypeNativeGloryEvents.GraveOfTheForgottenId))
+                    PrototypeNativeGloryEvents.GraveOfTheForgottenId
+                && active.Id != PrototypeNativeGloryEvents.TrialId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");
@@ -507,6 +508,8 @@ public static class PrototypeStateInvariants
                 : eventState.EventId ==
                     PrototypeNativeHiveEvents.WarHistorianRepyId
                     ? eventState.NativePageIndex > 2
+                : eventState.EventId == PrototypeNativeGloryEvents.TrialId
+                    ? eventState.NativePageIndex > 5
                 : eventState.EventId ==
                     PrototypeNativeGloryEvents.RoundTeaPartyId
                     ? eventState.NativePageIndex > 1
@@ -533,6 +536,7 @@ public static class PrototypeStateInvariants
 
         if (eventState.NativePageIndex > 0
             && eventState.ChosenChoiceId is not null
+            && eventState.EventId != PrototypeNativeGloryEvents.TrialId
             && eventState.EventId != PrototypeNativeEndlessConveyor.EventId
             && eventState.EventId != PrototypeNativePunchOff.EventId
             && eventState.EventId != "proto.native.underdocks.abyssal_baths")
