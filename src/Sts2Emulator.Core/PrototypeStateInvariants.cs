@@ -2616,25 +2616,40 @@ public static class PrototypeStateInvariants
                 continue;
             }
 
+            var source = combat.Enemies.FirstOrDefault(enemy =>
+                enemy.InstanceId == sourceEnemyId);
+            if (source is null)
+                throw new InvalidOperationException(
+                    "Source-owned card Affliction refers to an unknown enemy.");
+            // Two later-act card afflictions are installed by *enemy*
+            // powers, not player powers. Galvanized persists on the card
+            // after Globe Head dies, but its damage hook no longer fires.
+            // Vital Spark's Tainted instead clears when the source dies.
+            var enemyOwnedAffliction = card.Affliction.Kind switch
+            {
+                PrototypeCardAfflictionKind.Galvanized =>
+                    source.PowerStates.Any(power =>
+                        PrototypeContent.Power(power.PowerId)
+                            .GalvanizePowerCardsPerStack > 0)
+                    || source.Hp <= 0,
+                PrototypeCardAfflictionKind.Tainted =>
+                    source.Hp > 0 && source.PowerStates.Any(power =>
+                        power.PowerId == PrototypeNativeHiveElites.VitalSparkId
+                        && power.Stacks > 0),
+                _ => false
+            };
             var hasMatchingSourcePower =
-                combat.PlayerPowers.Any(power =>
+                enemyOwnedAffliction
+                || combat.PlayerPowers.Any(power =>
                 {
-                    if (power.SourceEnemyInstanceId
-                            != sourceEnemyId)
-                    {
+                    if (power.SourceEnemyInstanceId != sourceEnemyId)
                         return false;
-                    }
-
-                    var definition =
-                        PrototypeContent.Power(power.PowerId);
-                    return definition.SourceBoundCardAffliction
-                        == card.Affliction.Kind;
+                    return PrototypeContent.Power(power.PowerId)
+                        .SourceBoundCardAffliction == card.Affliction.Kind;
                 });
             if (!hasMatchingSourcePower)
-            {
                 throw new InvalidOperationException(
                     "Source-owned card Affliction has no matching active power.");
-            }
         }
 
         foreach (var enemy in combat.Enemies)
