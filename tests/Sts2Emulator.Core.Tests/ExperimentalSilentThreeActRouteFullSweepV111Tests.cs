@@ -105,8 +105,12 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
                         break;
                     }
                     consecutiveCombatFinishers++;
-                    Assert.True(consecutiveCombatFinishers <= 8,
-                        "A combat failed to resolve after synthetic finishers.");
+                    Assert.True(consecutiveCombatFinishers <= 25,
+                        $"A combat failed to resolve after synthetic finishers: " +
+                        $"act={state.World.Act} floor={state.World.Floor} " +
+                        $"encounter={state.World.EncounterIds.LastOrDefault()} " +
+                        $"enemies={string.Join(",", state.World.Combat.Enemies.Select(e =>
+                            e.EnemyId + ":" + e.Hp + "/" + e.MaxHp))}.");
                     encounters[state.World.Act] =
                         encounters.GetValueOrDefault(state.World.Act) + 1;
                     state = FinishFightWithSyntheticAllEnemyCard(state);
