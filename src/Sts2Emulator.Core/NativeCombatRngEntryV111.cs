@@ -205,7 +205,11 @@ public static class NativeCombatRngEntryV111
                 "Native spawn must create a living creature.");
         var range = PrototypeContent.Enemy(spawned.EnemyId)
             .HpRangeAt(combat.Act, combat.Ascension);
-        var usedHp = currentEnemies.Where(enemy => enemy.Hp > 0)
+        // Creature.SetUniqueMonsterHpValue reads every creature still
+        // attached to CombatState._enemies, even those whose HP reached
+        // zero but whose death hooks have not removed them yet.
+        // The typed emulator retains this history explicitly.
+        var usedHp = currentEnemies
             .Select(enemy => enemy.MaxHp).ToHashSet();
         var possible = Enumerable.Range(
                 range.Min, checked(range.Max - range.Min + 1))
@@ -246,6 +250,65 @@ public static class NativeCombatRngEntryV111
         };
         Validate(result);
         return result;
+    }
+
+    /// <summary>
+    /// Gremlin Merc's SurprisePower.AfterDeath calls CreateCreature on
+    /// Fat Gremlin BEFORE CreatureCmd.Add of Sneaky Gremlin, then calls
+    /// CreatureCmd.Add for the already-created Fat Gremlin. The native
+    /// CombatIds/RNG seeds follow creation order while their combat turn
+    /// order follows addition/slot order. Rearrange the three typed
+    /// enemies and their attached native contexts as an atomic permutation
+    /// without exchanging or re-seeding either native monster stream.
+    /// </summary>
+    public static CombatState SortGremlinMercDeathPair(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (combat.NativeRng?.Formation.NativeEncounterEntry
+            != "GremlinMercNormal")
+            throw new NotSupportedException(
+                "Only native GremlinMercNormal's audited death pair can reorder.");
+        Validate(combat);
+        if (combat.Enemies.Length != 3
+            || combat.Enemies.Count(enemy =>
+                enemy.EnemyId == "proto.enemy.gremlin_merc") != 1
+            || combat.Enemies.Count(enemy =>
+                enemy.EnemyId == "proto.enemy.sneaky_gremlin") != 1
+            || combat.Enemies.Count(enemy =>
+                enemy.EnemyId == "proto.enemy.fat_gremlin") != 1
+            || combat.Enemies[1].EnemyId != "proto.enemy.fat_gremlin"
+            || combat.Enemies[2].EnemyId != "proto.enemy.sneaky_gremlin")
+            throw new InvalidOperationException(
+                "Gremlin Merc pair must be created Fat then Sneaky.");
+        var native = combat.NativeRng.Fork();
+        var permutation = Enumerable.Range(0, combat.Enemies.Length)
+            .OrderBy(index => combat.Enemies[index].FormationPosition)
+            .ToArray();
+        var reordered = combat with
+        {
+            Enemies = permutation.Select(index =>
+                combat.Enemies[index].Fork()).ToArray(),
+            NativeRng = native with
+            {
+                Formation = native.Formation with
+                {
+                    Enemies = permutation.Select(index =>
+                        native.Formation.Enemies[index] with { }).ToArray(),
+                    MonsterContexts = permutation.Select(index =>
+                        native.Formation.MonsterContexts[index].Fork()).ToArray()
+                }
+            }
+        };
+        Validate(reordered);
+        if (reordered.Enemies[1].EnemyId
+                != "proto.enemy.sneaky_gremlin"
+            || reordered.Enemies[2].EnemyId
+                != "proto.enemy.fat_gremlin"
+            || reordered.NativeRng!.Formation.MonsterContexts[1].CombatId
+                != combat.NativeRng.Formation.MonsterContexts[2].CombatId)
+            throw new InvalidOperationException(
+                "Gremlin Merc native addition order was not preserved.");
+        return reordered;
     }
 
     /// <summary>
