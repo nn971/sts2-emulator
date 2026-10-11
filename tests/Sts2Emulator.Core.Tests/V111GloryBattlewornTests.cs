@@ -126,8 +126,7 @@ public sealed class V111GloryBattlewornTests
                 Assert.NotNull(reward.PotionOption);
                 Assert.Null(reward.RelicOption);
                 Assert.Contains(Engine.GetLegalActions(won), a =>
-                    a.Kind == "skip_reward_potion");
-                won = Step(won, GameAction.Empty("skip_reward_potion"));
+                    a.Kind == "leave_reward");
             }
             else
             {
@@ -135,9 +134,7 @@ public sealed class V111GloryBattlewornTests
                 Assert.NotNull(reward.RelicOption);
                 Assert.Contains(Engine.GetLegalActions(won), a =>
                     a.Kind == "take_reward_relic");
-                won = Step(won, GameAction.Empty("leave_reward"));
             }
-            Assert.Equal(RunPhase.Reward, won.Phase);
             won = Step(won, GameAction.Empty("leave_reward"));
             Assert.Equal(RunPhase.MapChoice, won.Phase);
         }
