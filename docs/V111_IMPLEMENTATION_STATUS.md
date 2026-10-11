@@ -440,6 +440,19 @@ This is an intermediate implementation. Final release gates remain open.
   incomplete Glory event bags or imply native RNG parity.
   [Source audit](reference-builds/v0.111.0-glory-reflections-tea-party.md).
 
+- Added gated **Glory Grave of the Forgotten**: source-correct
+  Confront eligibility, cursed Decay addition before choosing one
+  existing Exhaust card for the persistent Souls Power enchantment
+  (removing local Exhaust), and Accept acquisition of Forgotten Soul.
+  Reuses the existing Hive Decay curse definition and existing
+  Forgotten Soul `CardExhausted` randomized unpowered 1-damage hook,
+  rather than duplicating source models. Corrected Forgotten Soul's
+  erroneous ordinary reward-pool membership: native rarity is Event.
+  Souls Power's effect applies to both manual and automatic card play.
+  Detailed branch, persistence and combat tests remain emulator-only,
+  not native RNG/trace parity evidence.
+  [Source audit](reference-builds/v0.111.0-glory-grave-of-forgotten.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
