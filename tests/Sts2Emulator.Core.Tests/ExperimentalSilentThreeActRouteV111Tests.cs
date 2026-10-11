@@ -131,7 +131,7 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
-    public void FirstLaterActUnknownOpensAnImplementedEvent(int act)
+    public void LaterActUnknownUsesStatefulNativeShapedRoomOdds(int act)
     {
         var seed = "silent-route-event-" + act;
         var state = Transition(ActOneMap(seed));
@@ -160,9 +160,16 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
                 && option.ReadPayload<ChooseMapNodePayload>().NodeId
                     == entry.Child.NodeId);
         var started = Engine.Step(state, action).State;
-        Assert.Equal(RunPhase.Event, started.Phase);
-        Assert.True(ExperimentalSilentThreeActRouteV111.ContainsEvent(
-            started.World!.Event!.EventId, act));
+        Assert.Contains(started.Phase,
+            new[] { RunPhase.Event, RunPhase.Combat,
+                RunPhase.Shop, RunPhase.Reward });
+        Assert.NotNull(started.World!.UnknownRoomOdds);
+        if (started.Phase == RunPhase.Event)
+            Assert.True(ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                started.World.Event!.EventId, act));
+        if (started.Phase == RunPhase.Combat)
+            Assert.True(ExperimentalSilentThreeActRouteV111.ContainsEncounter(
+                started.World.EncounterIds.Last(), act));
         PrototypeStateInvariants.Validate(started);
         Assert.NotEmpty(Engine.GetLegalActions(started));
         Assert.Equal(CanonicalJson.Sha256(started),
