@@ -1262,6 +1262,14 @@ public sealed partial class PrototypeGameEngine
                 state.Rng)
         };
 
+        if (world.Event is { } battleworn
+            && battleworn.EventId ==
+                PrototypeNativeGloryEvents.BattlewornDummyId
+            && battleworn.NativePageIndex > 0)
+        {
+            return CompleteNativeBattlewornDummy(state, combat);
+        }
+
         if (world.Event is { } punchOff
             && punchOff.EventId == PrototypeNativePunchOff.EventId
             && punchOff.NativePageIndex == 2)
@@ -2175,8 +2183,19 @@ public sealed partial class PrototypeGameEngine
                         .ToArray()
                     : enemy.PowerStates;
 
+            // Native BattlewornDummyTimeLimitPower: the dummy
+            // escapes when its third enemy-side turn ends, and never
+            // grants the selected reward on such a timeout.
+            var timedOut = stage == PrototypeTurnStage.EnemyTurnEnd
+                && enemy.Hp > 0
+                && enemy.PowerStates.Any(power =>
+                    power.PowerId ==
+                        PrototypeNativeGloryEvents.BattlewornTimeLimitId
+                    && power.Stacks <= 1);
             enemies[enemyIndex] = enemy with
             {
+                Hp = timedOut ? 0 : enemy.Hp,
+                Escaped = timedOut || enemy.Escaped,
                 Statuses = statuses,
                 Powers = powers,
                 AiStateId = aiAfterExpiry ?? enemy.AiStateId,
@@ -2203,7 +2222,8 @@ public sealed partial class PrototypeGameEngine
                 combat = strengthened.Combat;
                 enemies[enemyIndex] = strengthened.Enemy;
             }
-            if (wasAlive && enemies[enemyIndex].Hp <= 0)
+            if (wasAlive && enemies[enemyIndex].Hp <= 0
+                && !enemies[enemyIndex].Escaped)
             {
                 // Scheduled poison damage is processed directly in this
                 // stage rather than through LoseEnemyHp. It must still
