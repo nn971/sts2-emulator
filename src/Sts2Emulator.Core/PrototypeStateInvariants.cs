@@ -1285,10 +1285,12 @@ public static class PrototypeStateInvariants
         }
 
         if (reward.IndependentSelection
-            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest"))
+            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest")
+            && !StringComparer.Ordinal.Equals(reward.SourceRoom,
+                "Event:" + PrototypeNativeHiveEvents.WarHistorianRepyId))
         {
             throw new InvalidOperationException(
-                "Independent reward selection requires a combat or rest reward.");
+                "Independent reward selection requires a combat, rest or Repy event reward.");
         }
 
         var extraCards = reward.ExtraCardOptions ?? Array.Empty<string[]>();
