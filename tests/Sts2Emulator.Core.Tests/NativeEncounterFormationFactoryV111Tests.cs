@@ -174,6 +174,80 @@ public sealed class NativeEncounterFormationFactoryV111Tests
     }
 
     [Theory]
+    [InlineData(2, PrototypeNativeHiveNormals.BowlbugsNormalId,
+        "BowlbugsNormal", 21)]
+    [InlineData(2, PrototypeNativeHiveNormals.ExoskeletonsNormalId,
+        "ExoskeletonsNormal", 26)]
+    [InlineData(3, PrototypeNativeGloryNormals.FrogKnightEncounterId,
+        "FrogKnightNormal", 38)]
+    public void PinnedLaterActFixtureProvidesIndependentNativeFormation(
+        int act, string emulatorEncounterId, string nativeEntry, int totalFloor)
+    {
+        const string seed = "pinned-later-act-encounter";
+        var generated = PrototypeNativeLaterActFixture.GenerateEncounterFormation(
+            seed, act, emulatorEncounterId, nativeEntry, totalFloor,
+            firstMonsterCombatId: 1, mapColumn: 3, mapRow: 6);
+        var encounter = PrototypeContent.Encounter(emulatorEncounterId);
+        Assert.Equal(nativeEntry, generated.NativeEncounterEntry);
+        Assert.Equal(totalFloor, generated.TotalFloor);
+        Assert.NotEmpty(generated.Enemies);
+        Assert.Equal(encounter.RoomType, PrototypeRoomType.Combat);
+        Assert.Equal(generated.Enemies.Length, generated.MonsterContexts.Length);
+        Assert.All(generated.MonsterContexts,
+            context => Assert.Equal(0,
+                NativeRngV111.ToSnapshot(context.Rng).Counter));
+        Assert.Equal(CanonicalJson.Sha256(generated),
+            CanonicalJson.Sha256(
+                PrototypeNativeLaterActFixture.GenerateEncounterFormation(
+                    seed, act, emulatorEncounterId, nativeEntry, totalFloor,
+                    firstMonsterCombatId: 1, mapColumn: 3, mapRow: 6)));
+    }
+
+    [Fact]
+    public void PinnedBowlbugsFormationChoosesTwoDistinctWorkers()
+    {
+        var expected = new[]
+        {
+            "proto.native.hive.bowlbug_egg",
+            "proto.native.hive.bowlbug_silk",
+            "proto.native.hive.bowlbug_nectar"
+        };
+        for (var i = 0; i < 32; i++)
+        {
+            var result = PrototypeNativeLaterActFixture.GenerateEncounterFormation(
+                $"pinned-bowlbug-formation-{i}", 2,
+                PrototypeNativeHiveNormals.BowlbugsNormalId,
+                "BowlbugsNormal", 20, firstMonsterCombatId: 2);
+            Assert.Equal(3, result.Enemies.Length);
+            Assert.Equal("proto.native.hive.bowlbug_rock",
+                result.Enemies[0].EnemyId);
+            Assert.Equal(new[] { "first", "middle", "last" },
+                result.Enemies.Select(enemy => enemy.SlotName).ToArray());
+            Assert.NotEqual(result.Enemies[1].EnemyId,
+                result.Enemies[2].EnemyId);
+            Assert.Contains(result.Enemies[1].EnemyId, expected);
+            Assert.Contains(result.Enemies[2].EnemyId, expected);
+            Assert.Equal(new long[] { 2, 3, 4 },
+                result.MonsterContexts.Select(context => context.CombatId));
+        }
+    }
+
+    [Fact]
+    public void LaterActFormationRejectsWrongActForPinnedRegistryId()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            PrototypeNativeLaterActFixture.GenerateEncounterFormation(
+                "wrong-act", 3,
+                PrototypeNativeHiveNormals.BowlbugsNormalId,
+                "BowlbugsNormal", 23, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            PrototypeNativeLaterActFixture.GenerateEncounterFormation(
+                "invalid-act", 1,
+                PrototypeNativeHiveNormals.BowlbugsNormalId,
+                "BowlbugsNormal", 12, 1));
+    }
+
+    [Theory]
     [InlineData(-1, 1)]
     [InlineData(3, 1)]
     [InlineData(1, -1)]
