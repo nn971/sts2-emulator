@@ -1510,7 +1510,12 @@ public sealed record EnemyCombatState(
     bool BossPendingRevival = false,
     int ExtraMultiClawCount = 0,
     int WitherUpgradeCount = 0,
-    bool NemesisIntangibleNext = false)
+    bool NemesisIntangibleNext = false,
+    // Native ToughEgg.Hatch changes the existing creature in place.
+    // HatchlingId below is a move/observation proxy, not a new model.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool NativeToughEggHatched = false)
 {
     public EnemyCombatState Fork() => this with
     {
