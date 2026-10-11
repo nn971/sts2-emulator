@@ -146,6 +146,9 @@ public static class PrototypeStateInvariants
         }
 
         ValidateActOneEncounterPool(world);
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute == true
+            && world.Act > 1)
+            ValidateLaterActEncounterBag(world);
         ValidateEncounterHistory(world);
         ValidateEventHistory(world);
         ValidateCompletedRoomHistory(world);
@@ -325,6 +328,41 @@ public static class PrototypeStateInvariants
         }
     }
 
+    private static void ValidateLaterActEncounterBag(RunWorldState world)
+    {
+        var bag = world.LaterActEncounterBag
+            ?? throw new InvalidOperationException(
+                "Configured Hive/Glory requires a regional encounter bag.");
+        if (world.Act is < 2 or > 3 || bag.Act != world.Act
+            || bag.OrdinaryCombatsStarted < 0)
+            throw new InvalidOperationException(
+                "Regional encounter bag has an invalid act/count.");
+        foreach (var (values, pool) in new[]
+        {
+            (bag.RemainingWeak,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Combat, true)),
+            (bag.RemainingNormal,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Combat, false)),
+            (bag.RemainingElite,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Elite, false))
+        })
+        {
+            if (values is null
+                || values.Length != values.Distinct(StringComparer.Ordinal).Count()
+                || values.Any(id => !pool.Contains(id, StringComparer.Ordinal)))
+                throw new InvalidOperationException(
+                    "Regional encounter bag has duplicate or foreign entries.");
+        }
+        if (!ExperimentalSilentThreeActRouteV111.Pool(
+            world.Act, PrototypeRoomType.Boss, false)
+            .Contains(bag.BossEncounterId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Regional preselected boss is not eligible for this act.");
+    }
+
     private static void ValidateCompletedRoomHistory(
         RunWorldState world)
     {
@@ -459,10 +497,11 @@ public static class PrototypeStateInvariants
         if (world.Act < active.MinAct || world.Act > active.MaxAct
             || (active.Weight <= 0
                 && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
-                && !(world.Act == 2
+                && !(world.Act is 2 or 3
                     && world.Map.GenerationProfileId ==
-                        PrototypeNativeLaterActMap.HiveProfileId
-                    && active.Id == PrototypeNativeHiveEvents.InfestedAutomatonId)
+                        PrototypeNativeLaterActMap.ProfileId(world.Act)
+                    && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                        active.Id, world.Act))
                 && active.Id !=
                     PrototypeNativeGloryEvents.HungryForMushroomsId
                 && active.Id != PrototypeNativeGloryEvents.ReflectionsId
