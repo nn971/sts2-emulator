@@ -222,7 +222,7 @@ public sealed class V111LaterActEventRoutingTests
     }
 
     [Fact]
-    public void UnsupportedRegularLaterActCombatStillFailsClosed()
+    public void NativeLaterActCombatEntriesUseRegionalEncounterPools()
     {
         foreach (var act in new[] { 2, 3 })
         {
@@ -234,9 +234,15 @@ public sealed class V111LaterActEventRoutingTests
                     .Any(n => n.NodeId ==
                         a.ReadPayload<ChooseMapNodePayload>().NodeId
                         && n.RoomType == PrototypeRoomType.Combat));
-            Assert.Throws<NotSupportedException>(() =>
-                Engine.Step(state, combat));
+            var entered = Engine.Step(state, combat).State;
+            Assert.Equal(RunPhase.Combat, entered.Phase);
+            Assert.Equal(PrototypeRoomType.Combat,
+                entered.World!.ActiveRoom);
+            Assert.Contains(entered.World.EncounterIds[^1],
+                PrototypeNativeLaterActCombatPool.Names(
+                    act, PrototypeRoomType.Combat, weak: true));
             Assert.Equal(hash, CanonicalJson.Sha256(state));
+            PrototypeStateInvariants.Validate(entered);
         }
     }
 
