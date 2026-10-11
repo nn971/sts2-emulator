@@ -70,6 +70,19 @@ This is an intermediate implementation. Final release gates remain open.
   source-specific hooks, cross-combat native run-stream history and
   end-to-end RNG parity are still incomplete. See
   [native combat HP/AI RNG](reference-builds/v0.111.0-native-combat-hp-ai-rng.md).
+- Added **long-lived native RNG ownership on RunState** as a separate
+  15-stream v111 `NativeRunRng` bundle. Configured v111 runs seed it on
+  creation and preserve it through run initialization, room decisions,
+  fork/JSON snapshots, and replay. Explicit `BeginEncounter`/
+  `ReplaceCombat`/`ReleaseCombat` APIs now transfer persistent run
+  stream cursors to/from the combat owner; native HP sampling resumes
+  from the current run cursor instead of resetting the seed. Engine-step
+  reconciliation retains advanced cursors when combat exits.
+  `SampleNextInt` provides an atomic, opt-in audit draw in and out of
+  combat. Run/combat cursor agreement is enforced by state invariants.
+  The prototype engine remains semantically unchanged: full native
+  live combat and cross-room RNG call-order parity are still open.
+  See [native run RNG persistence](reference-builds/v0.111.0-native-run-rng-persistence.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
