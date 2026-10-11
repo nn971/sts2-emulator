@@ -21,9 +21,9 @@ public sealed partial class PrototypeGameEngine
             option => StringComparer.Ordinal.Equals(option.NodeId, payload.NodeId))
             ?? throw new InvalidOperationException($"Unknown map node '{payload.NodeId}'.");
 
-        // Native Hive/Glory geometry may be inspected independently,
-        // but regional encounter/event/reward bags are not yet complete.
-        // Never silently substitute the six-floor prototype content.
+        // Hive and Glory have source-shaped encounter, event and shared
+        // utility-room paths. Native RNG, Ancients and profile unlock
+        // parity remain separate release gates.
         var nativeLaterMap = world.Map.GenerationProfileId is
             PrototypeNativeLaterActMap.HiveProfileId
             or PrototypeNativeLaterActMap.GloryProfileId;
@@ -34,16 +34,6 @@ public sealed partial class PrototypeGameEngine
             ? forceRepy ? PrototypeRoomType.Event
                 : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
-
-        if (nativeLaterMap
-            && room is not (PrototypeRoomType.Event
-                or PrototypeRoomType.Combat
-                or PrototypeRoomType.Elite
-                or PrototypeRoomType.Boss))
-            throw new NotSupportedException(
-                $"Native {world.Act} {room} room execution is gated. " +
-                "Event and combat models are source-listed, but shop, " +
-                "rest and treasure systems are not integrated.");
 
         world = world with
         {
@@ -1927,7 +1917,7 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartShop(RunState state)
     {
         var world = RequireWorld(state);
-        var nativeMerchant = UsesNativeActOneSystems(world);
+        var nativeMerchant = UsesNativeSharedRoomSystems(world);
         // MerchantInventory chooses one of the five character-card
         // slots before populating the inventory.
         var saleIndex = nativeMerchant
@@ -2553,7 +2543,11 @@ public sealed partial class PrototypeGameEngine
             actions.Add(GameAction.Empty("rest_heal"));
         }
 
-        if (PrototypeContent.Rules.RestTrainMaxHp > 0)
+        // The six-floor legacy prototype offers a fabricated +MaxHP
+        // Train choice. Native RestSiteOption.Generate supplies Heal,
+        // Smith and relic-granted extras, never this baseline action.
+        if (!UsesNativeSharedRoomSystems(RequireWorld(state))
+            && PrototypeContent.Rules.RestTrainMaxHp > 0)
         {
             actions.Add(GameAction.Empty("rest_train"));
         }
@@ -2613,6 +2607,9 @@ public sealed partial class PrototypeGameEngine
 
         if (StringComparer.Ordinal.Equals(action.Kind, "rest_train"))
         {
+            if (UsesNativeSharedRoomSystems(RequireWorld(state)))
+                throw new NotSupportedException(
+                    "Native rest sites do not offer prototype MaxHP training.");
             var gain = PrototypeContent.Rules.RestTrainMaxHp;
             if (gain <= 0)
             {
@@ -2654,7 +2651,7 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 found = true;
-                return card with { UpgradeLevel = 1 };
+                return card with { UpgradeLevel = card.UpgradeLevel + 1 };
             })
             .ToArray();
 
