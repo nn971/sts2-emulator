@@ -75,7 +75,7 @@ public sealed class V111GloryRepyQuestTests
         var reward1 = Choose(start, "unlock_chest");
         Assert.Equal(RunPhase.Reward, reward1.Phase);
         Assert.Equal(2, reward1.World!.Event!.NativePageIndex);
-        Assert.Empty(reward1.Player.Deck.Where(x => x.CardId == Key));
+        Assert.DoesNotContain(reward1.Player.Deck, x => x.CardId == Key);
         Assert.Equal(1, reward1.World.Event.RepyChestGroupsResolved);
         var storedPotions = reward1.World.Event.RepyChestPotionIds!;
         var storedRelics = reward1.World.Event.RepyChestRelicIds!;
@@ -109,7 +109,7 @@ public sealed class V111GloryRepyQuestTests
         Assert.DoesNotContain(end.Player.Relics,
             x => x.RelicId == PrototypeNativeHiveEvents.HistoryCourseId);
         Assert.Equal(start.Player.Relics.Length, end.Player.Relics.Length);
-        Assert.Empty(end.Player.PotionSlots.Where(x => x is not null));
+        Assert.DoesNotContain(end.Player.PotionSlots, x => x is not null);
         Assert.Equal(initialHash, CanonicalJson.Sha256(start));
         Assert.Equal(CanonicalJson.Sha256(end),
             CanonicalJson.Sha256(end.Fork()));
@@ -162,7 +162,7 @@ public sealed class V111GloryRepyQuestTests
             state = Act(Act(state, "leave_reward"), "leave_reward");
         }
         Assert.Equal(RunPhase.MapChoice, state.Phase);
-        Assert.Empty(state.Player.Deck.Where(x => x.CardId == Key));
+        Assert.DoesNotContain(state.Player.Deck, x => x.CardId == Key);
         Assert.True(state.World!.FreedRepy);
         Assert.Single(state.Player.Relics,
             x => x.RelicId == PrototypeNativeHiveEvents.HistoryCourseId);
