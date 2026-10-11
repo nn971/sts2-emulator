@@ -3996,7 +3996,8 @@ public sealed partial class PrototypeGameEngine
                         nativeMerc
                             && summon.EnemyId == "proto.enemy.sneaky_gremlin"
                             ? precreatedFatId
-                            : null);
+                            : null,
+                        dyingStillAttachedId: source.InstanceId);
                     enemies = combat.Enemies.ToList();
                     if (nativeMerc
                         && summon.EnemyId == "proto.enemy.fat_gremlin")
