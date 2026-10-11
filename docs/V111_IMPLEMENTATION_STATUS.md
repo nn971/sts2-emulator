@@ -701,6 +701,15 @@ other-character card pools. Underdocks already registers all 20 encounters
 and 10 regional events; tests now lock those catalogues to their supported
 registrations.
 
+Configured later-act Unknown rooms now use the same persistent,
+per-act monster/shop/treasure/event pity state as the Overgrowth
+native-shaped profile; later-act rewards, shops and treasure use the
+shared rarity, potion-pity and relic-grab-bag machinery instead of
+the historical prototype pools. This still requires exact native stream
+ownership, event/encounter sampling weights and oracle validation.
+Glory Battleworn's independently selectable custom event rewards now
+initialize proper per-group resolution state.
+
 The larger full-route CI smoke also uncovered and fixed two cross-content
 invariants: enemy-owned card afflictions (Galvanized/Tainted) must not be
 validated as player-power afflictions, and relics obtained directly from
