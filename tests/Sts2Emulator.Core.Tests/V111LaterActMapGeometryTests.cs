@@ -116,15 +116,29 @@ public sealed class V111LaterActMapGeometryTests
     }
 
     [Fact]
-    public void FullGloryMapWithoutKeyDoesNotResolvePrototypeUnknown()
+    public void FullGloryMapWithoutKeyResolvesOnlyExplicitlySupportedUnknownEvent()
     {
         var start = PrototypeNativeLaterActFixture.Create(
             "v111-no-key-full-glory", 3);
         var state = AtNode(start, FindUnknownPrecursor(start.World!.Map));
         var option = state.World!.Map.AvailableNodes()
             .First(n => n.RoomType == PrototypeRoomType.Unknown);
-        Assert.Throws<NotSupportedException>(() =>
-            ChooseNode(state, option.NodeId));
+        var sourceHash = CanonicalJson.Sha256(state);
+        try
+        {
+            var result = ChooseNode(state, option.NodeId);
+            Assert.Equal(RunPhase.Event, result.Phase);
+            Assert.Contains(result.World!.Event!.EventId,
+                PrototypeNativeLaterActEventPool.GloryEventIds);
+            Assert.Equal(PrototypeRoomType.Event, result.World.ActiveRoom);
+            PrototypeStateInvariants.Validate(result);
+        }
+        catch (NotSupportedException error)
+        {
+            // Monster/Shop/Treasure Unknown rolls still fail closed.
+            Assert.Contains("gated", error.Message);
+        }
+        Assert.Equal(sourceHash, CanonicalJson.Sha256(state));
     }
 
     [Fact]
