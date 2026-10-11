@@ -194,6 +194,12 @@ public static class PrototypeStateInvariants
                 ValidateReward(
                     state.Player,
                     world.Reward);
+                // Native event rewards retain a live event continuation.
+                // Check the quest's pre-rolled offers even while reward
+                // choices, rather than event choices, are displayed.
+                if (world.Event?.EventId ==
+                    PrototypeNativeHiveEvents.WarHistorianRepyId)
+                    ValidateEvent(state.Player, world.Event);
                 break;
 
             case RunPhase.Shop:
