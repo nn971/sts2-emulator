@@ -2963,6 +2963,7 @@ public static class PrototypeContent
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .Concat(PrototypeNativeHiveEvents.Relics)
+            .Concat(PrototypeNativeGloryEvents.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -6402,6 +6403,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeUnderdocksEvents.Definitions)
             .Concat(PrototypeNativeLaterActs.Events)
             .Concat(PrototypeNativeHiveEvents.Definitions)
+            .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
