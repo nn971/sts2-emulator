@@ -1774,6 +1774,164 @@ public static class PrototypeStateInvariants
         }
     }
 
+    private static void ValidateNativeLaterActMap(RunWorldState world)
+    {
+        if (world.Act is not (2 or 3)
+            || world.Map.GenerationProfileId !=
+                PrototypeNativeLaterActMap.ProfileId(world.Act))
+            throw new InvalidOperationException(
+                "Native Hive/Glory map profile disagrees with the act.");
+
+        var roomRows = PrototypeNativeLaterActMap.RoomRows(world.Act);
+        var bossFloor = roomRows + 1;
+        var treasureFloor = bossFloor - 7;
+        var map = world.Map;
+        var nodes = map.Nodes;
+        if (nodes.Length == 0
+            || nodes.Select(node => node.NodeId)
+                .Distinct(StringComparer.Ordinal).Count() != nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Native later-act map is empty or contains duplicate nodes.");
+        }
+
+        var byId = nodes.ToDictionary(
+            node => node.NodeId, StringComparer.Ordinal);
+        var entries = map.EntryNodeIds ?? Array.Empty<string>();
+        if (entries.Length < 2
+            || entries.Distinct(StringComparer.Ordinal).Count()
+                != entries.Length
+            || entries.Any(id => !byId.TryGetValue(id, out var node)
+                || node.Floor != 1))
+        {
+            throw new InvalidOperationException(
+                "Native later-act map must have distinct first-row entries.");
+        }
+
+        for (var floor = 1;
+             floor <= bossFloor;
+             floor++)
+        {
+            var layer = nodes.Where(node => node.Floor == floor).ToArray();
+            if (layer.Length == 0
+                || layer.Length > PrototypeNativeLaterActMap.MapWidth)
+            {
+                throw new InvalidOperationException(
+                    $"Native later-act floor {floor} has an invalid node count.");
+            }
+
+            if (floor == 1
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Combat)
+                || floor == treasureFloor
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Treasure)
+                || floor == roomRows
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Rest))
+            {
+                throw new InvalidOperationException(
+                    "Native later-act map has an invalid fixed room row.");
+            }
+
+            if (floor == bossFloor
+                && (layer.Length != 1
+                    || layer[0].RoomType != PrototypeRoomType.Boss
+                    || (layer[0].NextNodeIds?.Length ?? 0) != 0))
+            {
+                throw new InvalidOperationException(
+                    "Native later-act map does not terminate at one boss.");
+            }
+        }
+
+        foreach (var node in nodes)
+        {
+            if (node.Act != world.Act
+                || node.Floor < 1 || node.Floor > bossFloor
+                || !TryLaterActColumn(node.NodeId, world.Act, out var column)
+                || column is < 0 or >= PrototypeNativeLaterActMap.MapWidth)
+            {
+                throw new InvalidOperationException(
+                    "Native later-act map has an invalid node coordinate.");
+            }
+
+            var children = node.NextNodeIds ?? Array.Empty<string>();
+            if (children.Distinct(StringComparer.Ordinal).Count() != children.Length
+                || (node.Floor < bossFloor
+                    && children.Length == 0))
+            {
+                throw new InvalidOperationException(
+                    "Native later-act map has duplicate or missing outgoing edges.");
+            }
+
+            foreach (var id in children)
+            {
+                if (!byId.TryGetValue(id, out var child)
+                    || child.Floor != node.Floor + 1
+                    || (node.Floor < roomRows
+                        && (!TryLaterActColumn(id, world.Act, out var targetColumn)
+                            || Math.Abs(targetColumn - column) > 1)))
+                {
+                    throw new InvalidOperationException(
+                        "Native later-act map has an invalid path edge.");
+                }
+            }
+        }
+
+        var reachable = new HashSet<string>(entries, StringComparer.Ordinal);
+        var queue = new Queue<string>(entries);
+        while (queue.Count > 0)
+        {
+            foreach (var id in byId[queue.Dequeue()].NextNodeIds
+                     ?? Array.Empty<string>())
+            {
+                if (reachable.Add(id))
+                {
+                    queue.Enqueue(id);
+                }
+            }
+        }
+
+        if (reachable.Count != nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Native later-act map has unreachable nodes.");
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+            {
+                throw new InvalidOperationException(
+                    "Unentered native Overgrowth map must be at floor zero.");
+            }
+        }
+        else if (!byId.TryGetValue(map.CurrentNodeId, out var current)
+            || current.Floor != world.Floor)
+        {
+            throw new InvalidOperationException(
+                "Native later-act current position disagrees with run floor.");
+        }
+
+        if (world.UnknownRoomOdds is { } odds
+            && (odds.MonsterWeight < 0 || odds.ShopWeight < 0
+                || odds.TreasureWeight < 0))
+        {
+            throw new InvalidOperationException(
+                "Native later-act unknown-room weights must be nonnegative.");
+        }
+    }
+
+    private static bool TryLaterActColumn(
+        string id, int act, out int column)
+    {
+        column = -1;
+        var parts = id.Split(':');
+        return parts.Length == 3
+            && parts[0] == act.ToString(
+                System.Globalization.CultureInfo.InvariantCulture)
+            && int.TryParse(parts[1], out var floor)
+            && floor is >= 1 and <= 15
+            && int.TryParse(parts[2], out column);
+    }
+
     private static bool TryNativeColumn(string id, out int column)
     {
         column = -1;
@@ -1785,6 +1943,14 @@ public static class PrototypeStateInvariants
 
     private static void ValidateMap(RunWorldState world)
     {
+        if (world.Map.GenerationProfileId is
+            PrototypeNativeLaterActMap.HiveProfileId
+            or PrototypeNativeLaterActMap.GloryProfileId)
+        {
+            ValidateNativeLaterActMap(world);
+            return;
+        }
+
         if (world.Map.GenerationProfileId
             == PrototypeNativeHiveEvents.RepyFixtureMapProfileId)
         {

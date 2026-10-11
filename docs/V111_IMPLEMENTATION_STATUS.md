@@ -403,6 +403,19 @@ This is an intermediate implementation. Final release gates remain open.
   Exact native CardPlaysFinished history parity remains unverified.
   [Glory quest audit](reference-builds/v0.111.0-glory-repy-quest.md).
 
+- Added **source-shaped native-structure Hive/Glory map geometry** as a
+  deterministic opt-in fixture, without enabling incomplete regional
+  encounters/events. Hive's map has 14 ordinary rows and boss at 15;
+  Glory's has 13 ordinary rows and boss at 14. Both use a fixed first
+  combat row, middle treasure row, preboss rest row, 7-column path
+  layout and act-specific rest/unknown quotas. New validators check
+  topology, floor restrictions, room types and cursor consistency.
+  Full-sized Glory unknown rooms holding Lantern Key redirect to
+  War Historian Repy. Other later-act room execution is explicitly
+  unsupported to prevent prototype fallbacks. Native map stream,
+  pruning/repair and generation parity remain open; see
+  [later-act map audit](reference-builds/v0.111.0-hive-glory-map-geometry.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
