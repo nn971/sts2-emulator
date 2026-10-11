@@ -23,7 +23,7 @@ public static class PrototypeNativeHiveEvents
     public const string LanternKeyEventId = "proto.native.hive.the_lantern_key";
     public const string LanternKeyCardId = "proto.native.hive.lantern_key";
     public const string MysteriousKnightId = "proto.native.hive.mysterious_knight";
-    public const string MysteriousKnightEncounterId = "proto.native.hive.encounter.mysterious_knight_event";
+    public const string MysteriousKnightEncounterId = "proto.native.hive.encounter.mysterious_knight_event_encounter";
     public const string PlatingPowerId = "proto.native.hive.plating";
 
     public const string FieldOfManSizedHolesId =
