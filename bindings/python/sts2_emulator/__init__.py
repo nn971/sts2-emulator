@@ -85,14 +85,18 @@ class Session:
                 raise EmulatorError(f"{result.get('errorType')}: {result.get('error')}")
             return result
 
-    def reset(self, seed, *, mode="v111", character="silent", first_act="Overgrowth", ascension=0):
+    def reset(self, seed, *, mode="v111", character="silent", first_act="Overgrowth",
+              ascension=0, fidelity_id=None):
         if mode not in {"v111", "prototype"}:
             raise ValueError("mode must be v111 or prototype")
-        if mode == "prototype" and (character != "silent" or first_act != "Overgrowth"):
-            raise ValueError("Legacy prototype reset supports Silent/Overgrowth only")
+        if mode == "prototype" and (character != "silent" or first_act != "Overgrowth"
+                                    or fidelity_id is not None):
+            raise ValueError("Legacy prototype reset supports Silent/Overgrowth without v111 fidelity overrides")
         payload = {"seed": seed, "ascension": ascension}
         if mode == "v111":
             payload.update(character=character, first_act=first_act)
+            if fidelity_id is not None:
+                payload["fidelity_id"] = fidelity_id
         result = self.call("reset_v111" if mode == "v111" else "reset", **payload)
         return State(self, result["stateHandle"])
 
