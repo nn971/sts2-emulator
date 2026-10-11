@@ -445,7 +445,9 @@ public static class PrototypeStateInvariants
                 && active.Id !=
                     PrototypeNativeGloryEvents.HungryForMushroomsId
                 && active.Id != PrototypeNativeGloryEvents.ReflectionsId
-                && active.Id != PrototypeNativeGloryEvents.RoundTeaPartyId))
+                && active.Id != PrototypeNativeGloryEvents.RoundTeaPartyId
+                && active.Id !=
+                    PrototypeNativeGloryEvents.GraveOfTheForgottenId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");
