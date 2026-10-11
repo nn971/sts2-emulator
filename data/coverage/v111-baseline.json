@@ -12543,49 +12543,55 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battleworn_dummy_event_v1_encounter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BattlewornDummyEventV1Encounter.cs#29ac6e16942ae5e89132686c63868770abd1b46314d68d5ade8a0c20ad782d38"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLEWORN_DUMMY_EVENT_V1_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battleworn_dummy_event_v2_encounter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BattlewornDummyEventV2Encounter.cs#e45373df4dc5fb84d476239387b89a5913ba1fe55bc86b6413b2b812b002e0a5"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLEWORN_DUMMY_EVENT_V2_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battleworn_dummy_event_v3_encounter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BattlewornDummyEventV3Encounter.cs#de56dadeabf94116e356313d31a43c53c39a594aaaaf28c34226abcef5eb48ff"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLEWORN_DUMMY_EVENT_V3_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15007,11 +15013,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battleworn_dummy"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/BattlewornDummy.cs#4bfd480ac396230c2cff26cc3862d8df12c74e779f02ae55ea1657e04b254cf4"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15027,7 +15035,7 @@
         ],
         "missing_variants": [],
         "native_id": "BATTLEWORN_DUMMY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16867,49 +16875,55 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battle_friend_v1"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/BattleFriendV1.cs#e675c87e4cd530af1d66cf498ce9a8bf4082d1de096b9d14ab7968f9d2522349"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLE_FRIEND_V1",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battle_friend_v2"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/BattleFriendV2.cs#c2b1a8e116844e1f7ec9ef4d31f6c940188deb86a83615ad6465a07bae584a03"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLE_FRIEND_V2",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battle_friend_v3"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/BattleFriendV3.cs#7cecc92e35eb5f694fcea2f11480e257a8d8ada28c453b642d9b862797b0f218"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLE_FRIEND_V3",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -20244,17 +20258,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battleworn_dummy_time_limit"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/BattlewornDummyTimeLimitPower.cs#db7ef51bc50c7eeea99c83fc8777037f2ff0d2c0bf6f272561178c80bce939c6"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLEWORN_DUMMY_TIME_LIMIT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },

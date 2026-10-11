@@ -448,7 +448,8 @@ public static class PrototypeStateInvariants
                 && active.Id != PrototypeNativeGloryEvents.RoundTeaPartyId
                 && active.Id !=
                     PrototypeNativeGloryEvents.GraveOfTheForgottenId
-                && active.Id != PrototypeNativeGloryEvents.TrialId))
+                && active.Id != PrototypeNativeGloryEvents.TrialId
+                && active.Id != PrototypeNativeGloryEvents.BattlewornDummyId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");
@@ -508,6 +509,9 @@ public static class PrototypeStateInvariants
                 : eventState.EventId ==
                     PrototypeNativeHiveEvents.WarHistorianRepyId
                     ? eventState.NativePageIndex > 2
+                : eventState.EventId ==
+                    PrototypeNativeGloryEvents.BattlewornDummyId
+                    ? eventState.NativePageIndex > 3
                 : eventState.EventId == PrototypeNativeGloryEvents.TrialId
                     ? eventState.NativePageIndex > 5
                 : eventState.EventId ==
@@ -537,6 +541,7 @@ public static class PrototypeStateInvariants
         if (eventState.NativePageIndex > 0
             && eventState.ChosenChoiceId is not null
             && eventState.EventId != PrototypeNativeGloryEvents.TrialId
+            && eventState.EventId != PrototypeNativeGloryEvents.BattlewornDummyId
             && eventState.EventId != PrototypeNativeEndlessConveyor.EventId
             && eventState.EventId != PrototypeNativePunchOff.EventId
             && eventState.EventId != "proto.native.underdocks.abyssal_baths")
@@ -665,6 +670,18 @@ public static class PrototypeStateInvariants
             && eventState.PendingPotionReplacement is null)
         {
             // Initial and challenge/fight pages have their own choices.
+            return;
+        }
+
+        if (eventState.EventId ==
+                PrototypeNativeGloryEvents.BattlewornDummyId
+            && eventState.NativePageIndex > 0
+            && eventState.ChosenChoiceId is not null
+            && eventState.PendingDeckChoice is null
+            && eventState.PendingReward is null
+            && eventState.RemainingDeckChoices.Length == 0)
+        {
+            // Event combat occupies Combat phase and retains the choice.
             return;
         }
 

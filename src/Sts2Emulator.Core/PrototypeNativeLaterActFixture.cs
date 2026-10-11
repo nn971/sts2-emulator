@@ -24,7 +24,8 @@ public static class PrototypeNativeLaterActFixture
             or PrototypeNativeGloryEvents.ReflectionsId
             or PrototypeNativeGloryEvents.RoundTeaPartyId
             or PrototypeNativeGloryEvents.GraveOfTheForgottenId
-            or PrototypeNativeGloryEvents.TrialId))
+            or PrototypeNativeGloryEvents.TrialId
+            or PrototypeNativeGloryEvents.BattlewornDummyId))
             throw new NotSupportedException(
                 "The requested Glory event does not have a supported " +
                 "full-map isolated event fixture.");

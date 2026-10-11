@@ -3731,6 +3731,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryWeak.Powers)
             .Concat(PrototypeNativeGloryNewNormals.Powers)
             .Concat(PrototypeNativeGloryBosses.Powers)
+            .Concat(PrototypeNativeGloryEvents.Powers)
             .Concat(PrototypeNativeHiveEvents.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
@@ -6051,6 +6052,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryNewNormals.Enemies)
             .Concat(PrototypeNativeGloryElites.Enemies)
             .Concat(PrototypeNativeGloryBosses.Enemies)
+            .Concat(PrototypeNativeGloryEvents.Enemies)
             .Concat(PrototypeNativeHiveEvents.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
@@ -7023,6 +7025,7 @@ public static class PrototypeContent
         ..PrototypeNativeGloryNewNormals.Encounters,
         ..PrototypeNativeGloryElites.Encounters,
         ..PrototypeNativeGloryBosses.Encounters,
+        ..PrototypeNativeGloryEvents.Encounters,
         ..PrototypeNativeHiveEvents.Encounters
     ];
 

@@ -31,6 +31,23 @@ public static class PrototypeNativeGloryEvents
     public const string RegretId = "proto.native.glory.regret";
     public const string ShameId = "proto.native.glory.shame";
     public const string DoubtId = "proto.native.glory.doubt";
+    public const string BattlewornDummyId =
+        "proto.native.glory.battleworn_dummy";
+    public const string BattlewornTimeLimitId =
+        "proto.native.glory.battleworn_dummy_time_limit";
+    public const string BattleFriendV1Id =
+        "proto.native.glory.battle_friend_v1";
+    public const string BattleFriendV2Id =
+        "proto.native.glory.battle_friend_v2";
+    public const string BattleFriendV3Id =
+        "proto.native.glory.battle_friend_v3";
+    public const string BattlewornV1EncounterId =
+        "proto.native.glory.battleworn_dummy_event_v1_encounter";
+    public const string BattlewornV2EncounterId =
+        "proto.native.glory.battleworn_dummy_event_v2_encounter";
+    public const string BattlewornV3EncounterId =
+        "proto.native.glory.battleworn_dummy_event_v3_encounter";
+
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
@@ -108,6 +125,12 @@ public static class PrototypeNativeGloryEvents
         // The event registry includes every follow-up branch for
         // invariant validation. Trial's page resolver exposes only the
         // two current-page choices at any decision boundary.
+        new(BattlewornDummyId, "Battleworn Dummy",
+        [
+            new("setting_1", "Train against a 75 HP dummy", []),
+            new("setting_2", "Train against a 150 HP dummy", []),
+            new("setting_3", "Train against a 300 HP dummy", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
         new(TrialId, "Trial",
         [
             new("accept", "Stand trial", []),
@@ -124,6 +147,36 @@ public static class PrototypeNativeGloryEvents
             new("nondescript_innocent", "Find stranger innocent", [],
                 DeckChoice: new(PrototypePersistentDeckChoiceKind.Transform, 2))
         ], MinAct: 3, MaxAct: 3, Weight: 0)
+    ];
+
+    // Native Battleworn Time Limit counts down after the enemy side
+    // ends, starting at three. Expiry escapes and yields no prizes.
+    public static PrototypePowerDefinition[] Powers { get; } =
+    [
+        new(BattlewornTimeLimitId, "Battleworn Dummy Time Limit",
+            0, [], EnemyStacksDecayAtSideTurnEnd: 1)
+    ];
+
+    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    [
+        Dummy(BattleFriendV1Id, "Battle Friend V1", 75),
+        Dummy(BattleFriendV2Id, "Battle Friend V2", 150),
+        Dummy(BattleFriendV3Id, "Battle Friend V3", 300)
+    ];
+
+    private static PrototypeEnemyDefinition Dummy(string id, string name,
+        int hp) => new(id, name, hp, 0,
+        [new("nothing", [])],
+        StartingPowers: [new(BattlewornTimeLimitId, 3)]);
+
+    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    [
+        new(BattlewornV1EncounterId, PrototypeRoomType.Combat,
+            [BattleFriendV1Id], MinAct: 3, MaxAct: 3, Weight: 0),
+        new(BattlewornV2EncounterId, PrototypeRoomType.Combat,
+            [BattleFriendV2Id], MinAct: 3, MaxAct: 3, Weight: 0),
+        new(BattlewornV3EncounterId, PrototypeRoomType.Combat,
+            [BattleFriendV3Id], MinAct: 3, MaxAct: 3, Weight: 0)
     ];
 }
 
