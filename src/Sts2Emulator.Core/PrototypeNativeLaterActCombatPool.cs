@@ -168,9 +168,11 @@ public static class PrototypeNativeLaterActCombatPool
             return e.MinAct <= pool.Act && e.MaxAct >= pool.Act
                 && e.MinFloor <= floor && e.MaxFloor >= floor;
         }).ToArray();
+        var drawBag = available;
         if (eligible.Length == 0)
         {
-            eligible = source.Where(id =>
+            drawBag = source;
+            eligible = drawBag.Where(id =>
             {
                 var e = PrototypeContent.Encounter(id);
                 return e.MinAct <= pool.Act && e.MaxAct >= pool.Act
@@ -183,7 +185,7 @@ public static class PrototypeNativeLaterActCombatPool
 
         var selected = eligible[
             PrototypeRng.NextInt(rng, "combat", eligible.Length)];
-        var next = available.Where(id =>
+        var next = drawBag.Where(id =>
             !StringComparer.Ordinal.Equals(id, selected)).ToArray();
         pool = room switch
         {
