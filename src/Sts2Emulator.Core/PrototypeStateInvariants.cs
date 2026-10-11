@@ -433,7 +433,9 @@ public static class PrototypeStateInvariants
         }
 
         var active = PrototypeContent.Event(world.Event.EventId);
-        if (world.Act < active.MinAct || world.Act > active.MaxAct || active.Weight <= 0)
+        if (world.Act < active.MinAct || world.Act > active.MaxAct
+            || (active.Weight <= 0 && active.Id
+                != PrototypeNativeHiveEvents.WarHistorianRepyId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");
@@ -491,8 +493,11 @@ public static class PrototypeStateInvariants
                     PrototypeNativeTabletOfTruth.EventId
                 ? eventState.NativePageIndex > 4
                 : eventState.EventId ==
-                    PrototypeNativeHiveEvents.LanternKeyEventId
+                    PrototypeNativeHiveEvents.WarHistorianRepyId
                     ? eventState.NativePageIndex > 2
+                    : eventState.EventId ==
+                        PrototypeNativeHiveEvents.LanternKeyEventId
+                        ? eventState.NativePageIndex > 2
                     : eventState.EventId ==
                         PrototypeNativeDenseVegetation.EventId
                         ? eventState.NativePageIndex > 2
@@ -590,6 +595,38 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException(
                 "Conveyor-specific state leaked into another event.");
         }
+
+        if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+        {
+            if (eventState.NativePageIndex == 0
+                && eventState.RepyFirstChoiceId is not null
+                || eventState.NativePageIndex > 0
+                    && eventState.RepyFirstChoiceId is not
+                        ("unlock_chest" or "unlock_cage")
+                || (eventState.RepyChestPotionIds is null)
+                    != (eventState.RepyChestRelicIds is null)
+                || eventState.RepyChestGroupsResolved is < 0 or > 2
+                || eventState.RepyChestPotionIds is null
+                    && eventState.RepyChestGroupsResolved != 0
+                || eventState.RepyChestPotionIds is { } potions
+                    && (potions.Length != 2
+                        || potions.Any(id =>
+                            !PrototypeContent.Potions.ContainsKey(id)))
+                || eventState.RepyChestRelicIds is { } relics
+                    && (relics.Length != 2
+                        || relics.Distinct(StringComparer.Ordinal).Count() != 2
+                        || relics.Any(id =>
+                            !PrototypeContent.Relics.ContainsKey(id))))
+                throw new InvalidOperationException(
+                    "War Historian Repy has invalid page or chest reward state.");
+            return;
+        }
+        if (eventState.RepyFirstChoiceId is not null
+            || eventState.RepyChestPotionIds is not null
+            || eventState.RepyChestRelicIds is not null
+            || eventState.RepyChestGroupsResolved != 0)
+            throw new InvalidOperationException(
+                "Repy-specific reward state leaked into another event.");
 
         if (eventState.EventId == "proto.native.underdocks.abyssal_baths")
         {
