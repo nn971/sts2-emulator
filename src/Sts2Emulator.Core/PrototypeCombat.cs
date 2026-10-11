@@ -3317,6 +3317,10 @@ public sealed partial class PrototypeGameEngine
                             if (effect.EnemyId is null)
                                 throw new InvalidOperationException(
                                     "Enemy transformation requires a model ID.");
+                            if (combat.NativeRng is not null)
+                                throw new NotSupportedException(
+                                    "Native creature transformation has not been audited; " +
+                                    "do not reuse or reseed a native monster RNG context.");
                             var transformed = PrototypeContent.Enemy(effect.EnemyId);
                             var range = transformed.HpRangeAt(act, ascension);
                             var maxHp = range.Min == range.Max
@@ -3508,6 +3512,10 @@ public sealed partial class PrototypeGameEngine
                         case PrototypeEnemyEffectKind.SummonEnemy:
                         {
                             var summonId = effect.EnemyId;
+                            if (combat.NativeRng is not null
+                                && effect.SummonEnemyPool is { Length: > 0 })
+                                throw new NotSupportedException(
+                                    "Native summon pools need audited source RNG selection.");
                             if (effect.SummonEnemyPool is { Length: > 0 } pool)
                             {
                                 // Native Fabricator._lastSpawned persists
@@ -3537,16 +3545,21 @@ public sealed partial class PrototypeGameEngine
                                 summonedDefinition.HpRangeAt(
                                     act,
                                     ascension);
+                            // The native creation path rolls from
+                            // run.niche after selecting a legal summon
+                            // slot. Do not consume prototype combat RNG.
                             var summonedHp =
-                                hpRange.Min == hpRange.Max
-                                    ? hpRange.Min
-                                    : hpRange.Min
-                                        + PrototypeRng.NextInt(
-                                            rng,
-                                            "combat",
-                                            hpRange.Max
-                                                - hpRange.Min
-                                                + 1);
+                                combat.NativeRng is not null
+                                    ? hpRange.Max
+                                    : hpRange.Min == hpRange.Max
+                                        ? hpRange.Min
+                                        : hpRange.Min
+                                            + PrototypeRng.NextInt(
+                                                rng,
+                                                "combat",
+                                                hpRange.Max
+                                                    - hpRange.Min
+                                                    + 1);
                             var nextEnemyId =
                                 enemies.Count == 0
                                     ? 1
@@ -3602,7 +3615,7 @@ public sealed partial class PrototypeGameEngine
                                             Array.IndexOf(summonSlots!, selectedSlot)]
                                         : Array.IndexOf(summonSlots!, selectedSlot);
 
-                            enemies.Add(
+                            var spawnedEnemy =
                                 new EnemyCombatState(
                                     InstanceId: nextEnemyId,
                                     EnemyId: summonId,
@@ -3627,7 +3640,17 @@ public sealed partial class PrototypeGameEngine
                                     SharedSummonsUsed:
                                         definition.MaxCoordinatedSummons > 0
                                             ? enemy.SharedSummonsUsed + 1
-                                            : 0));
+                                            : 0);
+                            if (combat.NativeRng is not null)
+                            {
+                                combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
+                                    combat, enemies, spawnedEnemy);
+                                enemies = combat.Enemies.ToList();
+                            }
+                            else
+                            {
+                                enemies.Add(spawnedEnemy);
+                            }
                             if (definition.MaxCoordinatedSummons > 0)
                             {
                                 // Coordinated summons share a global
@@ -3876,15 +3899,17 @@ public sealed partial class PrototypeGameEngine
                     combat.Act,
                     combat.Ascension);
                 var hp =
-                    hpRange.Min == hpRange.Max
-                        ? hpRange.Min
-                        : hpRange.Min
-                            + PrototypeRng.NextInt(
-                                rng,
-                                "combat",
-                                hpRange.Max
-                                    - hpRange.Min
-                                    + 1);
+                    combat.NativeRng is not null
+                        ? hpRange.Max
+                        : hpRange.Min == hpRange.Max
+                            ? hpRange.Min
+                            : hpRange.Min
+                                + PrototypeRng.NextInt(
+                                    rng,
+                                    "combat",
+                                    hpRange.Max
+                                        - hpRange.Min
+                                        + 1);
                 var powers =
                     (definition.StartingPowers
                         ?? Array.Empty<
@@ -3908,7 +3933,7 @@ public sealed partial class PrototypeGameEngine
                         : enemies.Max(enemy =>
                             enemy.InstanceId) + 1;
 
-                enemies.Add(
+                var spawnedEnemy =
                     new EnemyCombatState(
                         InstanceId: nextEnemyId,
                         EnemyId: summon.EnemyId,
@@ -3934,7 +3959,17 @@ public sealed partial class PrototypeGameEngine
                         EnemyActionSkipsRemaining:
                             summon.SkipEnemyActions == 1
                                 ? Math.Max(0, enemyActionSkips)
-                                : Math.Max(0, summon.SkipEnemyActions)));
+                                : Math.Max(0, summon.SkipEnemyActions));
+                if (combat.NativeRng is not null)
+                {
+                    combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
+                        combat, enemies, spawnedEnemy);
+                    enemies = combat.Enemies.ToList();
+                }
+                else
+                {
+                    enemies.Add(spawnedEnemy);
+                }
             }
         }
 
