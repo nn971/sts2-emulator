@@ -43,10 +43,7 @@ public sealed partial class PrototypeGameEngine
         // Its event replacement also applies to existing Event nodes.
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? forceRepy ? PrototypeRoomType.Event
-                : experimentalLaterRoute
-                    ? ExperimentalSilentThreeActRouteV111.ResolveUnknown(
-                        world, state.Rng)
-                    : ResolveUnknownMapRoom(ref world, state.Rng)
+                : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
 
         world = world with
@@ -1417,7 +1414,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     string relicId;
                     if (effect.Kind == PrototypeRunEffectKind.GainRandomRelic
-                        && UsesNativeActOneSystems(world))
+                        && UsesNativeRegionalSystems(world))
                     {
                         var draw = PrototypeNativeRelicGrabBag.Draw(
                             world, player, state.Rng, merchant: false);
@@ -1484,7 +1481,7 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.GainPotion:
                 case PrototypeRunEffectKind.GainRandomPotion:
                 {
-                    var nativeOvergrowth = UsesNativeActOneSystems(world);
+                    var nativeOvergrowth = UsesNativeRegionalSystems(world);
                     var potionId = effect.Kind
                         == PrototypeRunEffectKind.GainRandomPotion
                         ? nativeOvergrowth && eventState.EventId
@@ -1967,7 +1964,7 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartShop(RunState state)
     {
         var world = RequireWorld(state);
-        var nativeMerchant = UsesNativeActOneSystems(world);
+        var nativeMerchant = UsesNativeRegionalSystems(world);
         // MerchantInventory chooses one of the five character-card
         // slots before populating the inventory.
         var saleIndex = nativeMerchant
@@ -3408,7 +3405,7 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        var nativeOvergrowth = UsesNativeActOneSystems(world);
+        var nativeOvergrowth = UsesNativeRegionalSystems(world);
 
         // RewardsSet.GenerateRewardsFor rolls the potion pity check
         // before rewards are populated; GoldReward.Populate runs first,
@@ -3542,7 +3539,7 @@ public sealed partial class PrototypeGameEngine
         string? relic = null;
         if (room == PrototypeRoomType.Elite)
         {
-            if (UsesNativeActOneSystems(world))
+            if (UsesNativeRegionalSystems(world))
             {
                 var draw = PrototypeNativeRelicGrabBag.Draw(
                     world, state.Player, state.Rng, merchant: false);
