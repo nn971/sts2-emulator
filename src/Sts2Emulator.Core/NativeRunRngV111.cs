@@ -76,6 +76,36 @@ public static class NativeRunRngV111
     }
 
     /// <summary>
+    /// Opt-in stream draw for auditing an entire run across room boundaries.
+    /// When a native combat is active, the draw updates both the combat
+    /// and run views atomically. Prototype RNG is never touched.
+    /// </summary>
+    public static RunState SampleNextInt(
+        RunState state, string streamId, int maxExclusive, out int value)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.NativeRunRng is null)
+            throw new InvalidOperationException(
+                "Native run RNG ownership is not enabled.");
+        Validate(state);
+        var advanced = state.NativeRunRng.Fork();
+        value = NativeRngV111.NextInt(advanced, streamId, maxExclusive);
+        if (state.World?.Combat?.NativeRng is { } active)
+        {
+            var combat = state.World.Combat with
+            {
+                NativeRng = active with { RunStreams = advanced.Fork() }
+            };
+            return state with
+            {
+                NativeRunRng = advanced,
+                World = state.World with { Combat = combat }
+            };
+        }
+        return state with { NativeRunRng = advanced };
+    }
+
+    /// <summary>
     /// Attach native formation and roll HP in a currently active typed
     /// combat using the *current*, not freshly seeded, native run cursors.
     /// Existing prototype formation/card setup is unchanged. The caller
