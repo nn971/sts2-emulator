@@ -1450,6 +1450,12 @@ public sealed partial class PrototypeGameEngine
         RunState state,
         PrototypeCombatEventKind eventKind)
     {
+        // The pinned native HistoryCourse.AfterAutoPrePlayPhaseEntered
+        // runs after the start-of-turn hooks. Reuse the existing
+        // automatic-pipeline resume protocol for any choice suspensions.
+        if (eventKind == PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
+            return ResolveHistoryCourseAutoPlay(state);
+
         if (eventKind != PrototypeCombatEventKind.PlayerTurnStarted)
         {
             return state;
@@ -1755,7 +1761,10 @@ public sealed partial class PrototypeGameEngine
                             combat.CounterState.PlayedCardIdsThisTurn,
                         PlayedCardIdsThisTurn = Array.Empty<long>(),
                         PlayedCardTagsThisTurn =
-                            Array.Empty<string>()
+                            Array.Empty<string>(),
+                        LastOriginalAttackLastTurn =
+                            combat.CounterState.LastOriginalAttackThisTurn?.Fork(),
+                        LastOriginalAttackThisTurn = null
                     }
                 };
                 break;
@@ -7539,6 +7548,22 @@ public sealed partial class PrototypeGameEngine
                 var cardDefinition =
                     PrototypeContent.Card(combatEvent.CardId);
                 var type = cardDefinition.Type;
+                // CardPlaysFinished is the native source for History
+                // Course. Capture a completed non-dupe attack rather than
+                // selecting an attack currently in hand/discard.
+                if (type == PrototypeCardType.Attack
+                    && combatEvent.SourceCardInstanceId is { } attackId
+                    && combat.RelicStates.Any(relic => relic.RelicId ==
+                        PrototypeNativeHiveEvents.HistoryCourseId))
+                {
+                    var attack = RequireCombatCard(combat, attackId);
+                    if (!attack.IsHistoryCourseDupe)
+                        counters = counters with
+                        {
+                            LastOriginalAttackThisTurn =
+                                HistoryCourseSnapshot(attack)
+                        };
+                }
                 counters = type switch
                 {
                     PrototypeCardType.Attack => counters with
