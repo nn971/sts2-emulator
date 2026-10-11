@@ -27,9 +27,27 @@ public static class PrototypeNativeGloryEvents
     public const string DecayId = PrototypeNativeHiveEvents.DecayId;
     public const string ForgottenSoulId =
         "proto.relic.forgotten_soul";
+    public const string TrialId = "proto.native.glory.trial";
+    public const string RegretId = "proto.native.glory.regret";
+    public const string ShameId = "proto.native.glory.shame";
+    public const string DoubtId = "proto.native.glory.doubt";
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        // Native Trial curses; combat hook handles Regret's hand-size
+        // unblockable damage and Shame/Doubt's turn-end debuffs.
+        new(RegretId, "Regret", -1, PrototypeCardTarget.None, [],
+            Unplayable: true, RewardEligible: false,
+            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
+        new(ShameId, "Shame", -1, PrototypeCardTarget.None, [],
+            Unplayable: true, RewardEligible: false,
+            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
+        new(DoubtId, "Doubt", -1, PrototypeCardTarget.None, [],
+            Unplayable: true, RewardEligible: false,
+            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
         // Native BadLuck: unplayable Eternal Curse, 13 unblockable
         // damage while in hand when the player ends their turn.
         new(BadLuckId, "Bad Luck", -1, PrototypeCardTarget.None, [],
@@ -86,6 +104,25 @@ public static class PrototypeNativeGloryEvents
             new("accept", "Obtain Forgotten Soul",
                 [new(PrototypeRunEffectKind.GainRelic,
                     RelicId: ForgottenSoulId)])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
+        // The event registry includes every follow-up branch for
+        // invariant validation. Trial's page resolver exposes only the
+        // two current-page choices at any decision boundary.
+        new(TrialId, "Trial",
+        [
+            new("accept", "Stand trial", []),
+            new("reject", "Reject the trial", []),
+            new("double_down", "Open run-abandon confirmation", []),
+            new("confirm_abandon", "Abandon the run", []),
+            new("cancel_abandon", "Keep playing", []),
+            new("merchant_guilty", "Find merchant guilty", []),
+            new("merchant_innocent", "Find merchant innocent", [],
+                DeckChoice: new(PrototypePersistentDeckChoiceKind.Upgrade, 2)),
+            new("noble_guilty", "Find noble guilty", []),
+            new("noble_innocent", "Find noble innocent", []),
+            new("nondescript_guilty", "Find stranger guilty", []),
+            new("nondescript_innocent", "Find stranger innocent", [],
+                DeckChoice: new(PrototypePersistentDeckChoiceKind.Transform, 2))
         ], MinAct: 3, MaxAct: 3, Weight: 0)
     ];
 }

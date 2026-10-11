@@ -899,7 +899,10 @@ public sealed record PrototypePowerInstanceState(
     bool SkipNextEnemySideTurnEnd = false,
     int StoredValue = 0,
     int[]? TriggerCounts = null,
-    long? PendingAttackingCardInstanceId = null)
+    long? PendingAttackingCardInstanceId = null,
+    // A curse applied at hand cleanup must survive its first
+    // immediately following player-turn-end duration tick.
+    bool SkipNextPlayerTurnEnd = false)
 {
     public PrototypePowerInstanceState Fork() => this with
     {

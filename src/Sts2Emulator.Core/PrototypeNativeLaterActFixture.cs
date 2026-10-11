@@ -23,7 +23,8 @@ public static class PrototypeNativeLaterActFixture
             PrototypeNativeGloryEvents.HungryForMushroomsId
             or PrototypeNativeGloryEvents.ReflectionsId
             or PrototypeNativeGloryEvents.RoundTeaPartyId
-            or PrototypeNativeGloryEvents.GraveOfTheForgottenId))
+            or PrototypeNativeGloryEvents.GraveOfTheForgottenId
+            or PrototypeNativeGloryEvents.TrialId))
             throw new NotSupportedException(
                 "The requested Glory event does not have a supported " +
                 "full-map isolated event fixture.");
