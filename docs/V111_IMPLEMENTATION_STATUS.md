@@ -178,6 +178,17 @@ This is an intermediate implementation. Final release gates remain open.
   and explicit unsupported enemy-turn-start poison-death timing.
   Other native elite/boss hooks remain provisional.
   See [Phrog native death phase](reference-builds/v0.111.0-native-phrog-parasite-death-phase.md).
+- Source-audited native **Ceremonial Beast PlowPower** and
+  **Terror Eel ShriekPower** damage-only threshold interrupts.
+  Both `AfterDamageReceived` hooks require positive unblocked
+  damage and HP at/below the threshold; raw poison/LoseHp cannot
+  stun the boss, even when HP crosses the threshold. Fully
+  blocked attacks cannot trigger, and an eventual unblocked hit
+  triggers even if HP was already below threshold. The opt-in
+  mode now separates direct HP-loss from damage callbacks,
+  preserving native Stun intents, power cleanup and RNG isolation.
+  Default prototype behavior is intentionally unchanged.
+  See [native damage-triggered thresholds](reference-builds/v0.111.0-native-damage-only-boss-thresholds.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
