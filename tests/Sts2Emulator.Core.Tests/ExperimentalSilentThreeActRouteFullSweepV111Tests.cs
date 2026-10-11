@@ -96,10 +96,18 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
                         actions.First(a => a.Kind == "choose_map_node")).State;
                     break;
                 case RunPhase.Combat:
+                    // Some source-backed cards/relics suspend the opening
+                    // combat pipeline for a legal card selection. Resolve
+                    // that existing decision before injecting a finisher.
+                    if (state.World!.Combat!.PendingChoice is not null)
+                    {
+                        state = Engine.Step(state, actions[0]).State;
+                        break;
+                    }
                     consecutiveCombatFinishers++;
                     Assert.True(consecutiveCombatFinishers <= 8,
                         "A combat failed to resolve after synthetic finishers.");
-                    encounters[state.World!.Act] =
+                    encounters[state.World.Act] =
                         encounters.GetValueOrDefault(state.World.Act) + 1;
                     state = FinishFightWithSyntheticAllEnemyCard(state);
                     break;
