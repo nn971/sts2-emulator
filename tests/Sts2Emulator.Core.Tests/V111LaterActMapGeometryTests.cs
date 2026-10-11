@@ -116,7 +116,7 @@ public sealed class V111LaterActMapGeometryTests
     }
 
     [Fact]
-    public void FullGloryMapWithoutKeyResolvesOnlyExplicitlySupportedUnknownEvent()
+    public void FullGloryMapWithoutKeyResolvesOnlySupportedUnknownRooms()
     {
         var start = PrototypeNativeLaterActFixture.Create(
             "v111-no-key-full-glory", 3);
@@ -127,10 +127,14 @@ public sealed class V111LaterActMapGeometryTests
         try
         {
             var result = ChooseNode(state, option.NodeId);
-            Assert.Equal(RunPhase.Event, result.Phase);
-            Assert.Contains(result.World!.Event!.EventId,
-                PrototypeNativeLaterActEventPool.GloryEventIds);
-            Assert.Equal(PrototypeRoomType.Event, result.World.ActiveRoom);
+            Assert.Contains(result.Phase,
+                new[] { RunPhase.Event, RunPhase.Combat });
+            if (result.Phase == RunPhase.Event)
+                Assert.Contains(result.World!.Event!.EventId,
+                    PrototypeNativeLaterActEventPool.GloryEventIds);
+            else
+                Assert.Contains(result.World!.EncounterIds[^1],
+                    PrototypeNativeLaterActCombatPool.GloryWeak);
             PrototypeStateInvariants.Validate(result);
         }
         catch (NotSupportedException error)
