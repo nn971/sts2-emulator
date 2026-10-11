@@ -3318,9 +3318,27 @@ public sealed partial class PrototypeGameEngine
                                 throw new InvalidOperationException(
                                     "Enemy transformation requires a model ID.");
                             if (combat.NativeRng is not null)
+                            {
+                                if (combat.NativeRng.Formation.NativeEncounterEntry
+                                        == "OvicopterNormal"
+                                    && enemy.EnemyId ==
+                                        PrototypeNativeHiveSummoningNormals.ToughEggId
+                                    && effect.EnemyId ==
+                                        PrototypeNativeHiveSummoningNormals.HatchlingId)
+                                {
+                                    // Native ToughEgg.Hatch preserves the
+                                    // MonsterModel and CombatId. The proxy
+                                    // HatchlingId selects its Nibble move,
+                                    // without creating a second RNG context.
+                                    combat = NativeCombatRngEntryV111.HatchToughEgg(
+                                        combat, enemy, out var nativeHatchling);
+                                    enemy = nativeHatchling;
+                                    break;
+                                }
                                 throw new NotSupportedException(
                                     "Native creature transformation has not been audited; " +
                                     "do not reuse or reseed a native monster RNG context.");
+                            }
                             var transformed = PrototypeContent.Enemy(effect.EnemyId);
                             var range = transformed.HpRangeAt(act, ascension);
                             var maxHp = range.Min == range.Max
