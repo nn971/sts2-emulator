@@ -1413,13 +1413,20 @@ public static class PrototypeStateInvariants
                 "Combat gold offer is invalid or unresolved without an offer.");
         }
 
+        // Native custom event rewards (such as Glory's Trial and
+        // Battleworn Dummy) may expose independent offers, just like
+        // combat rewards. Their event continuation is validated by
+        // CompleteReward/ValidatePhaseState rather than the source name.
+        var registeredEventReward =
+            reward.SourceRoom.StartsWith("Event:", StringComparison.Ordinal)
+            && PrototypeContent.Events.ContainsKey(
+                reward.SourceRoom["Event:".Length..]);
         if (reward.IndependentSelection
             && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest")
-            && !StringComparer.Ordinal.Equals(reward.SourceRoom,
-                "Event:" + PrototypeNativeHiveEvents.WarHistorianRepyId))
+            && !registeredEventReward)
         {
             throw new InvalidOperationException(
-                "Independent reward selection requires a combat, rest or Repy event reward.");
+                "Independent reward selection requires a recognized combat, rest or event reward.");
         }
 
         var extraCards = reward.ExtraCardOptions ?? Array.Empty<string[]>();
