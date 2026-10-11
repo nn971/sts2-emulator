@@ -231,7 +231,9 @@ public sealed class V111GloryRepyQuestTests
                 [
                     new("glory-event", 3, 1, room, ["next"]),
                     new("next", 3, 2, PrototypeRoomType.Rest, [])
-                ], EntryNodeIds: ["glory-event"]),
+                ], EntryNodeIds: ["glory-event"],
+                   GenerationProfileId:
+                       PrototypeNativeHiveEvents.RepyFixtureMapProfileId),
                 Event = null, Combat = null, Reward = null
             }
         };
