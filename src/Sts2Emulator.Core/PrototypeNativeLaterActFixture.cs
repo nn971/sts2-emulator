@@ -6,6 +6,34 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class PrototypeNativeLaterActFixture
 {
+    /// <summary>
+    /// Begin a specifically named, source-backed Glory event on a
+    /// generated Unknown node. This is an oracle/test fixture, not a
+    /// substitute for the unresolved native event selection bag.
+    /// </summary>
+    public static RunState CreateGloryHungryForMushrooms(
+        string seed, int ascension = 0)
+    {
+        var state = Create(seed, 3, ascension);
+        var world = state.World!;
+        var point = world.Map.Nodes.First(node =>
+            node.RoomType == PrototypeRoomType.Unknown
+            && node.NextNodeIds is { Length: > 0 });
+        var id = PrototypeNativeGloryEvents.HungryForMushroomsId;
+        return state with
+        {
+            World = world with
+            {
+                Floor = point.Floor,
+                ActiveRoom = PrototypeRoomType.Event,
+                Map = world.Map with { CurrentNodeId = point.NodeId },
+                Event = new EventState(id),
+                EventHistory = world.EventIds.Append(id).ToArray()
+            },
+            Phase = RunPhase.Event
+        };
+    }
+
     public static RunState Create(
         string seed, int act, int ascension = 0, int lanternKeys = 0)
     {
