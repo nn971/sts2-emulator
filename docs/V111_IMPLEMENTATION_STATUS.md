@@ -365,6 +365,17 @@ This is an intermediate implementation. Final release gates remain open.
   normal reward-pool cards. Event remains Weight=0 and native selection
   and oracle parity are unverified.
 
+- Added source-backed Hive **Field of Man-Sized Holes** forced event
+  (Weight=0), with eligibility requiring an enchantable persistent
+  card. Resist selects up to two removable cards, removes them, and
+  adds the Normality curse afterward. Enter Your Hole selects one
+  enchantable card to gain the persistent Perfect Fit enchantment.
+  Normality is unplayable and prohibits further manual card plays
+  when held after three plays in a turn (including autoplay). Perfect Fit moves its card
+  to the next-drawn position on non-initial draw-pile reshuffles,
+  leaving the opening shuffle unchanged. No unimplemented native
+  routing or oracle validation is claimed.
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
