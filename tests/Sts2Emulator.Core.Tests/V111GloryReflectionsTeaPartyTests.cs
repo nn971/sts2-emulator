@@ -230,8 +230,9 @@ public sealed class V111GloryReflectionsTeaPartyTests
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(start.Player.Hp - 11, result.Player.Hp);
         Assert.Single(result.Player.Relics.Except(start.Player.Relics));
-        Assert.Empty(result.World!.EventHistory.Where(id =>
-            id == PrototypeNativeGloryEvents.ReflectionsId));
+        Assert.DoesNotContain(
+            PrototypeNativeGloryEvents.ReflectionsId,
+            result.World!.EventIds);
         Assert.Equal(CanonicalJson.Sha256(result),
             CanonicalJson.Sha256(Choose(first.Fork(), "continue_fight")));
         PrototypeStateInvariants.Validate(result);
