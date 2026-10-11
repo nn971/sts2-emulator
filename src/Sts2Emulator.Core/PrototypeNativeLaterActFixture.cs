@@ -51,6 +51,38 @@ public static class PrototypeNativeLaterActFixture
         };
     }
 
+    /// <summary>
+    /// Prepare a named source-backed Hive/Glory formation in isolation,
+    /// with the native encounter-local RNG and the independent monster
+    /// contexts. Native entry names (e.g. BowlbugsNormal) must be supplied
+    /// explicitly; emulator registry ids are not native hash keys.
+    /// This does not start combat, roll HP or enable gated later-act rooms.
+    /// The caller must supply native total floor, map coordinates, and the
+    /// first enemy CombatId (after the player and any earlier creatures).
+    /// </summary>
+    public static NativeEncounterFormationV111 GenerateEncounterFormation(
+        string seed,
+        int act,
+        string emulatorEncounterId,
+        string nativeEncounterEntry,
+        int totalFloor,
+        long firstMonsterCombatId,
+        int? mapColumn = null,
+        int? mapRow = null)
+    {
+        _ = PrototypeNativeLaterActMap.ProfileId(act);
+        var encounter = PrototypeContent.Encounter(emulatorEncounterId);
+        if (encounter.MinAct > act || encounter.MaxAct < act)
+            throw new ArgumentException(
+                $"Encounter '{emulatorEncounterId}' is not valid in act {act}.",
+                nameof(emulatorEncounterId));
+
+        return NativeEncounterFormationFactoryV111.Generate(
+            seed, encounter, nativeEncounterEntry, totalFloor,
+            currentActIndex: act - 1,
+            firstMonsterCombatId, mapColumn, mapRow);
+    }
+
     public static RunState Create(
         string seed, int act, int ascension = 0, int lanternKeys = 0)
     {
