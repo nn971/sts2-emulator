@@ -763,6 +763,13 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
+        if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId
+            && eventState.NativePageIndex == 1)
+        {
+            return [GameAction.Create("event_choice",
+                new EventChoicePayload("fight"))];
+        }
+
         if (eventState.EventId == PrototypeNativeHiveEvents.ColossalFlowerId)
         {
             return GetColossalFlowerActions(eventState);
@@ -975,6 +982,11 @@ public sealed partial class PrototypeGameEngine
                 }
             };
             return AdvanceEventContinuations(state);
+        }
+
+        if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId)
+        {
+            return StepNativeLanternKey(state, action);
         }
 
         if (eventState.EventId == PrototypeNativeHiveEvents.InfestedAutomatonId)

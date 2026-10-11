@@ -1270,6 +1270,26 @@ public sealed partial class PrototypeGameEngine
             return EnterPunchOffReward(state);
         }
 
+        if (world.Event is { } lanternEvent
+            && lanternEvent.EventId == PrototypeNativeHiveEvents.LanternKeyEventId
+            && lanternEvent.NativePageIndex == 2)
+        {
+            // Native SpecialCardReward is optional: win the fight,
+            // then take or skip the Lantern Key before leaving event.
+            return state with
+            {
+                World = RequireWorld(state) with
+                {
+                    Combat = null,
+                    Reward = new RewardState(
+                        "Event:" + lanternEvent.EventId,
+                        [PrototypeNativeHiveEvents.LanternKeyCardId],
+                        null, null, false, true, true, false)
+                },
+                Phase = RunPhase.Reward
+            };
+        }
+
         if (world.Event is { } pendingEvent
             && pendingEvent.EventId == PrototypeNativeDenseVegetation.EventId
             && pendingEvent.NativePageIndex == 2)

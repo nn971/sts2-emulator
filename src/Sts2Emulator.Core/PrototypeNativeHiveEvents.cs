@@ -20,6 +20,12 @@ public static class PrototypeNativeHiveEvents
         "LostWisp", "SpiritGrafter", "TheLanternKey", "ZenWeaver"
     ];
 
+    public const string LanternKeyEventId = "proto.native.hive.the_lantern_key";
+    public const string LanternKeyCardId = "proto.native.hive.lantern_key";
+    public const string MysteriousKnightId = "proto.native.hive.mysterious_knight";
+    public const string MysteriousKnightEncounterId = "proto.native.hive.encounter.mysterious_knight_event_encounter";
+    public const string PlatingPowerId = "proto.native.hive.plating";
+
     public const string FieldOfManSizedHolesId =
         "proto.native.hive.field_of_man_sized_holes";
     public const string NormalityId = "proto.native.hive.normality";
@@ -40,7 +46,7 @@ public static class PrototypeNativeHiveEvents
     public const string LostWispRelicId = "proto.native.hive.lost_wisp_relic";
 
     public static bool IsNativeEvent(string id) =>
-        id is FieldOfManSizedHolesId or AmalgamatorId
+        id is LanternKeyEventId or FieldOfManSizedHolesId or AmalgamatorId
             or InfestedAutomatonId or LostWispId or ZenWeaverId
             or ColossalFlowerId or SpiritGrafterId;
 
@@ -70,6 +76,13 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        // Quest card from The Lantern Key event combat; the Glory
+        // continuation is explicitly deferred with native routing.
+        new(LanternKeyCardId, "Lantern Key", -1,
+            PrototypeCardTarget.None, [],
+            Rarity: PrototypeCardRarity.Quest,
+            Type: PrototypeCardType.Quest, Unplayable: true,
+            RewardEligible: false, MaxUpgradeLevel: 0),
         // Normality.ShouldPlay: while one is in hand, at most three
         // cards can be started per turn. An unplayable, unupgradable
         // Curse which is never offered in normal rewards.
@@ -119,8 +132,49 @@ public static class PrototypeNativeHiveEvents
             ])
     ];
 
+    // The Mysterious Knight inherits Flail Knight's move program.
+    // Source MysteriousKnight.AfterAddedToRoom adds Strength 6 and
+    // Plating 6; Plating grants opening and enemy-end Block, then
+    // decays by one at later enemy-side starts in solo combat.
+    public static PrototypePowerDefinition[] Powers { get; } =
+    [
+        new(PlatingPowerId, "Plating", 0, [],
+            EnemyStartingBlockPerStack: 1,
+            EnemyBlockAtSideTurnEndPerStack: 1,
+            EnemyStacksDecayAtSideTurnStartAfterFirst: 1)
+    ];
+
+    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    [
+        PrototypeNativeGloryBosses.Enemies.Single(enemy =>
+            enemy.Id == PrototypeNativeGloryBosses.FlailKnightId) with
+        {
+            Id = MysteriousKnightId,
+            Name = "Mysterious Knight",
+            StartingPowers =
+            [
+                new("proto.power.strength", 6),
+                new(PlatingPowerId, 6)
+            ]
+        }
+    ];
+
+    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    [
+        new(MysteriousKnightEncounterId, PrototypeRoomType.Combat,
+            [MysteriousKnightId], MinAct: 2, MaxAct: 2, Weight: 0)
+    ];
+
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Native event: return the key for 100 gold, or select Keep,
+        // then enter a single Mysterious Knight combat. On victory,
+        // Lantern Key is an optional special card reward.
+        new(LanternKeyEventId, "The Lantern Key",
+        [
+            new("return_key", "Return the key for 100 gold", []),
+            new("keep_key", "Keep the key and face the knight", [])
+        ], MinAct: 2, MaxAct: 2, Weight: 0),
         // Field of Man-Sized Holes: two removals then a curse, or
         // enchant one eligible persistent card with Perfect Fit.
         // The source's GoldVar(75) is display-only, not a reward.
