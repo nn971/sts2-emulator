@@ -10278,8 +10278,7 @@ public sealed partial class PrototypeGameEngine
         combat = playCountResult.Combat;
 
         var sourceDestination = CardExhaustsOnUse(
-                definition,
-                card.UpgradeLevel)
+                definition, card)
             ? PrototypeCardZone.ExhaustPile
             : PrototypeCardZone.DiscardPile;
 
