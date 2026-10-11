@@ -2543,10 +2543,11 @@ public sealed partial class PrototypeGameEngine
             actions.Add(GameAction.Empty("rest_heal"));
         }
 
-        // The six-floor legacy prototype offers a fabricated +MaxHP
-        // Train choice. Native RestSiteOption.Generate supplies Heal,
-        // Smith and relic-granted extras, never this baseline action.
-        if (!UsesNativeSharedRoomSystems(RequireWorld(state))
+        // The six-floor prototype and existing Act 1 regression
+        // fixtures retain MaxHP Train for compatibility. Pinned
+        // RestSiteOption.Generate does not include it; do not expose
+        // it on newly integrated Hive/Glory native maps.
+        if (!UsesNativeLaterActMap(RequireWorld(state))
             && PrototypeContent.Rules.RestTrainMaxHp > 0)
         {
             actions.Add(GameAction.Empty("rest_train"));
@@ -2607,9 +2608,9 @@ public sealed partial class PrototypeGameEngine
 
         if (StringComparer.Ordinal.Equals(action.Kind, "rest_train"))
         {
-            if (UsesNativeSharedRoomSystems(RequireWorld(state)))
+            if (UsesNativeLaterActMap(RequireWorld(state)))
                 throw new NotSupportedException(
-                    "Native rest sites do not offer prototype MaxHP training.");
+                    "Native Hive/Glory rest sites do not offer prototype MaxHP training.");
             var gain = PrototypeContent.Rules.RestTrainMaxHp;
             if (gain <= 0)
             {
