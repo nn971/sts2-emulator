@@ -212,7 +212,7 @@ public static class ExperimentalSilentThreeActRouteV111
             return (PrototypeContent.Encounter(bag.BossEncounterId), bag);
 
         var weak = room == PrototypeRoomType.Combat
-            && bag.OrdinaryCombatsStarted < 3;
+            && bag.OrdinaryCombatsStarted < 2;
         var pool = Pool(world.Act, room, weak);
         var remaining = room == PrototypeRoomType.Elite
             ? bag.RemainingElite
