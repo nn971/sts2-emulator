@@ -517,6 +517,18 @@ This is an intermediate implementation. Final release gates remain open.
   not native validated.
   [Source and fidelity audit](reference-builds/v0.111.0-native-later-combat-routing.md).
 
+- Enabled **native Hive/Glory merchant, rest and treasure nodes**
+  by reusing shared pinned-source-shaped Act 1 systems:
+  seven-card/three-potion/three-relic shops, persistent rarity
+  bag and card removal prices, treasure relic selection,
+  rest Heal/Smith and eligible relic-added options.
+  The prototype-only +4 MaxHP Train choice is excluded
+  and native Smith increments the card level by one.
+  Unknown nodes can resolve into all supported room types.
+  Native RNG, character unlocks, act-entry Ancients and
+  production Act 1→Hive full-run transition remain gated.
+  [Shared room routing audit](reference-builds/v0.111.0-native-later-utility-rooms.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

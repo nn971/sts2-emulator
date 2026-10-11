@@ -6,6 +6,17 @@ public sealed partial class PrototypeGameEngine
         world.Act == 1 && (world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
             || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId);
 
+    // Shops, chests and basic rest-site options are shared across
+    // native acts. Do not confuse this predicate with the Act 1
+    // encounter-region selector, which deliberately stays Act 1-only.
+    private static bool UsesNativeLaterActMap(RunWorldState world) =>
+        world.Map.GenerationProfileId is
+            PrototypeNativeLaterActMap.HiveProfileId
+            or PrototypeNativeLaterActMap.GloryProfileId;
+
+    private static bool UsesNativeSharedRoomSystems(RunWorldState world) =>
+        UsesNativeActOneSystems(world) || UsesNativeLaterActMap(world);
+
     private static PrototypeRoomType ResolveUnknownMapRoom(
         ref RunWorldState world,
         RngBundle rng)
@@ -22,7 +33,9 @@ public sealed partial class PrototypeGameEngine
 
         // Later acts currently share only this prototype room-type
         // prior and pity update, not the native Unknown-room RNG/odds.
-        // Non-event outcomes are rejected before room entry by StepMap.
+        // Later-act room outcomes are dispatched to the shared
+        // source-shaped room systems by StepMap. This resolution prior
+        // is not a native RNG parity claim.
 
         var odds = world.UnknownRoomOdds
             ?? new PrototypeUnknownRoomOddsState();
@@ -65,7 +78,7 @@ public sealed partial class PrototypeGameEngine
 
         var world = RequireWorld(state);
         string? relicId;
-        if (UsesNativeActOneSystems(world))
+        if (UsesNativeSharedRoomSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
                 world, state.Player, state.Rng, merchant: false);
