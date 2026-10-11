@@ -632,6 +632,8 @@ public static class PrototypeStateInvariants
                     eventState.NativeEventGold is >= 101 and <= 121,
                 "proto.native.underdocks.sunken_treasury" =>
                     eventState.NativeEventGold is >= 52 and <= 67,
+                PrototypeNativeHiveEvents.LostWispId =>
+                    eventState.NativeEventGold is >= 45 and <= 75,
                 PrototypeNativePunchOff.EventId =>
                     eventState.NativeEventGold is >= 91 and <= 98,
                 _ => false
