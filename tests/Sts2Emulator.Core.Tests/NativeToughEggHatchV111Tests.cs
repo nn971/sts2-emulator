@@ -164,6 +164,76 @@ public sealed class NativeToughEggHatchV111Tests
     }
 
     [Fact]
+    public void NativeForcedOvicopterCombatSummonsHatchesAndThenNibbles()
+    {
+        const string seed = "native-ovi-summon-hatch-integration";
+        var combat = PrototypeNativeLaterActFixture.CreateCombatRngSnapshot(
+            seed, 2, Ovicopter, "OvicopterNormal",
+            totalFloor: 20, mapColumn: 2, mapRow: 5,
+            commitInitialIntents: true);
+        var nativeInitial = Cursor(combat, "run.niche");
+        var player = new PlayerState(
+            9000, 9000, 0, [], [], new PotionInstance?[2]);
+        var state = new RunState(
+            "prototype-unbound", "prototype-0.1", seed, seed, 0,
+            RunPhase.Combat, player, PrototypeRng.CreateBundle(seed),
+            PrototypeJson.EmptyObject(),
+            new RunWorldState(
+                PrototypeContent.RulesetId,
+                PrototypeContent.CharacterId, 2, 1, 1,
+                PrototypeRoomType.Combat, new MapState([]),
+                combat, null, null, null, null))
+        {
+            NativeRunRng = combat.NativeRng!.RunStreams.Fork()
+        };
+        var engine = new PrototypeGameEngine();
+        NativeRunRngV111.Validate(state);
+        var copy = RunSnapshot.Load(RunSnapshot.Save(state));
+        for (var turn = 0; turn < 3; turn++)
+        {
+            var end = engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn");
+            state = engine.Step(state, end).State;
+            copy = engine.Step(copy, end).State;
+            Assert.Equal(CanonicalJson.Sha256(state),
+                CanonicalJson.Sha256(copy));
+            NativeRunRngV111.Validate(state);
+            if (turn == 0)
+            {
+                var eggs = state.World!.Combat!.Enemies
+                    .Where(enemy => enemy.EnemyId == Egg).ToArray();
+                Assert.Equal(3, eggs.Length);
+                Assert.All(eggs, egg => Assert.False(
+                    egg.NativeToughEggHatched));
+            }
+            else if (turn == 1)
+            {
+                var hatched = state.World!.Combat!.Enemies
+                    .Where(enemy => enemy.NativeToughEggHatched)
+                    .ToArray();
+                Assert.Equal(3, hatched.Length);
+                Assert.All(hatched, enemy =>
+                {
+                    Assert.Equal(Hatchling, enemy.EnemyId);
+                    Assert.Equal("hatch", enemy.LastMoveId);
+                    Assert.InRange(enemy.Hp, 19, 22);
+                });
+                Assert.All(state.World.Combat.NativeRng!.Formation
+                    .MonsterContexts.Skip(1), ctx =>
+                        Assert.Equal(Egg, ctx.Enemy.EnemyId));
+                Assert.Equal(nativeInitial.Counter + 6,
+                    Cursor(state.World.Combat, "run.niche").Counter);
+            }
+            else
+            {
+                Assert.All(state.World!.Combat!.Enemies
+                    .Where(enemy => enemy.NativeToughEggHatched),
+                    enemy => Assert.Equal("nibble", enemy.LastMoveId));
+            }
+        }
+    }
+
+    [Fact]
     public void HatchAfterEffectsDoNotAdvanceAnyMonsterLocalRng()
     {
         var combat = WithSpawnedEgg("egg-rng-cursor-isolation", 8);
