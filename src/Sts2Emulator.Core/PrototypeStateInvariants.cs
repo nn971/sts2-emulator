@@ -443,7 +443,9 @@ public static class PrototypeStateInvariants
             || (active.Weight <= 0
                 && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
                 && active.Id !=
-                    PrototypeNativeGloryEvents.HungryForMushroomsId))
+                    PrototypeNativeGloryEvents.HungryForMushroomsId
+                && active.Id != PrototypeNativeGloryEvents.ReflectionsId
+                && active.Id != PrototypeNativeGloryEvents.RoundTeaPartyId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");
@@ -503,6 +505,9 @@ public static class PrototypeStateInvariants
                 : eventState.EventId ==
                     PrototypeNativeHiveEvents.WarHistorianRepyId
                     ? eventState.NativePageIndex > 2
+                : eventState.EventId ==
+                    PrototypeNativeGloryEvents.RoundTeaPartyId
+                    ? eventState.NativePageIndex > 1
                     : eventState.EventId ==
                         PrototypeNativeHiveEvents.LanternKeyEventId
                         ? eventState.NativePageIndex > 2
