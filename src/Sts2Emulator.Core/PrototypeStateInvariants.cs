@@ -99,10 +99,15 @@ public static class PrototypeStateInvariants
         }
 
         if (world.Floor < 0 || world.Floor > (
-                world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
-                    || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId
-                    ? PrototypeNativeOvergrowthMap.BossFloor
-                    : PrototypeContent.Rules.FloorsPerAct))
+                world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId
+                    ? PrototypeNativeLaterActMap.RoomRows(world.Act) + 1
+                    : world.Map.GenerationProfileId
+                        is PrototypeNativeOvergrowthMap.GenerationProfileId
+                            or PrototypeNativeUnderdocks.GenerationProfileId
+                        ? PrototypeNativeOvergrowthMap.BossFloor
+                        : PrototypeContent.Rules.FloorsPerAct))
         {
             throw new InvalidOperationException($"Invalid floor {world.Floor}.");
         }
@@ -328,11 +333,15 @@ public static class PrototypeStateInvariants
             if (visit.Act < 1
                 || visit.Act > world.Act
                 || visit.Floor < 1
-                || visit.Floor > (world.Act == 1
-                    && (world.Map.GenerationProfileId
-                            == PrototypeNativeOvergrowthMap.GenerationProfileId
-                        || world.Map.GenerationProfileId
-                            == PrototypeNativeUnderdocks.GenerationProfileId)
+                || visit.Floor > (world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId
+                    ? PrototypeNativeLaterActMap.RoomRows(world.Act) + 1
+                    : world.Act == 1
+                        && (world.Map.GenerationProfileId
+                                == PrototypeNativeOvergrowthMap.GenerationProfileId
+                            || world.Map.GenerationProfileId
+                                == PrototypeNativeUnderdocks.GenerationProfileId)
                         ? PrototypeNativeOvergrowthMap.BossFloor
                         : PrototypeContent.Rules.FloorsPerAct)
                 || string.IsNullOrWhiteSpace(visit.NodeId))
