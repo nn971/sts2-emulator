@@ -35,7 +35,8 @@ public static class PrototypeNativeGloryEvents
     public const string MadScienceId = "proto.native.glory.mad_science";
     public const string CuriousId = "proto.native.glory.curious";
     public const string ImprovementId = "proto.native.glory.improvement";
-    public const string StrangleId = "proto.native.glory.strangle";
+    // Reuse the already implemented native Strangle trigger model.
+    public const string StrangleId = "proto.power.strangle";
     public const string BattlewornDummyId =
         "proto.native.glory.battleworn_dummy";
     public const string BattlewornTimeLimitId =
@@ -184,9 +185,7 @@ public static class PrototypeNativeGloryEvents
         new(BattlewornTimeLimitId, "Battleworn Dummy Time Limit",
             0, [], EnemyStacksDecayAtSideTurnEnd: 1),
         new(CuriousId, "Curious", 0, []),
-        new(ImprovementId, "Improvement", 0, []),
-        new(StrangleId, "Strangle", 0, [],
-            IsDebuff: true, RemoveAtEnemyTurnEnd: true)
+        new(ImprovementId, "Improvement", 0, []) 
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
