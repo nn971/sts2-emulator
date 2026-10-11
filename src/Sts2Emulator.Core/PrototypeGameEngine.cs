@@ -59,6 +59,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             _ => throw new NotSupportedException($"Prototype phase '{state.Phase}' is unsupported.")
         };
 
+        // Direct event and quest relic obtains bypass a bag draw. Keep
+        // the retained regional relic queues disjoint from owned relics
+        // at every decision boundary without introducing an RNG call.
+        if (next.World?.RelicBag is not null)
+            next = next with
+            {
+                World = PrototypeNativeRelicGrabBag.PruneOwned(
+                    next.World, next.Player)
+            };
         return new TransitionResult(
             NativeRunRngV111.ReconcileAfterStep(state, next),
             Array.Empty<string>());
