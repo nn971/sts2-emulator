@@ -106,6 +106,57 @@ public static class NativeCombatRngEntryV111
     }
 
     /// <summary>
+    /// Validate the separate ownership hierarchy and combat-formation
+    /// binding. This can be called by the whole-run state invariant checker
+    /// after deserializing a native combat snapshot.
+    /// </summary>
+    public static void Validate(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        var native = combat.NativeRng;
+        if (native is null)
+            return;
+        var expected = NativeRngV111.CreateBundle("validation-schema")
+            .Streams.Select(stream => stream.StreamId)
+            .Order(StringComparer.Ordinal).ToArray();
+        var actual = native.RunStreams.Streams
+            .Select(stream => stream.StreamId)
+            .Order(StringComparer.Ordinal).ToArray();
+        if (!actual.SequenceEqual(expected, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Native combat RNG must own all 12 run and 3 player streams exactly once.");
+        foreach (var stream in native.RunStreams.Streams)
+            _ = NativeRngV111.ToSnapshot(stream);
+
+        var formation = native.Formation;
+        if (formation.TotalFloor < 0
+            || string.IsNullOrWhiteSpace(formation.NativeEncounterEntry)
+            || formation.Enemies.Length != combat.Enemies.Length
+            || formation.MonsterContexts.Length != combat.Enemies.Length)
+            throw new InvalidOperationException(
+                "Native encounter RNG context has an invalid formation.");
+        _ = NativeRngV111.ToSnapshot(formation.EncounterRng);
+        if (formation.MonsterContexts.Select(context => context.CombatId)
+                .Distinct().Count() != formation.MonsterContexts.Length)
+            throw new InvalidOperationException(
+                "Native monster combat ids must be unique.");
+
+        for (var i = 0; i < combat.Enemies.Length; i++)
+        {
+            var spec = formation.Enemies[i];
+            var context = formation.MonsterContexts[i];
+            var enemy = combat.Enemies[i];
+            if (context.CombatId < 0 || context.Enemy != spec
+                || enemy.EnemyId != spec.EnemyId
+                || enemy.FormationPosition != spec.FormationPosition
+                || enemy.SlotName != spec.SlotName)
+                throw new InvalidOperationException(
+                    "Native monster RNG context does not match combat formation.");
+            _ = NativeRngV111.ToSnapshot(context.Rng);
+        }
+    }
+
+    /// <summary>
     /// Audit/restore a separate monster-local stream without consuming the
     /// combat's run.monster_ai stream or the encounter formation cursor.
     /// Work is performed on a deep fork, never on the input combat.
