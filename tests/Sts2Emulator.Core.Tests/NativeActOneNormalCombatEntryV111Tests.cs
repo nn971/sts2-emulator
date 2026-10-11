@@ -224,6 +224,63 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
     }
 
     [Fact]
+    public void LivingFogNativeSummonSurvivesTwoRealEnemyTurnsAndSnapshotReplay()
+    {
+        var seed = "v111-native-living-fog-spawn";
+        var state = SetupNormalRoom(
+            Initial(seed, ActIdentity.Underdocks),
+            "proto.encounter.living_fog_normal");
+        var mapAction = Engine.GetLegalActions(state)
+            .Where(option => option.Kind == "choose_map_node")
+            .First(option => state.World!.Map.Nodes.Any(node =>
+                node.RoomType == PrototypeRoomType.Combat
+                && node.NodeId
+                    == option.ReadPayload<ChooseMapNodePayload>().NodeId));
+        state = Engine.Step(state, mapAction).State;
+        Assert.Equal(RunPhase.Combat, state.Phase);
+        Assert.Single(state.World!.Combat!.Enemies);
+        var initialNiche = NativeRngV111.ToSnapshot(state.NativeRunRng!
+            .Streams.Single(stream => stream.StreamId == "run.niche"));
+        var replay = RunSnapshot.Load(RunSnapshot.Save(state));
+
+        // Living Fog: opening Advanced Gas, then Bloat creates a Gas
+        // Bomb with a newly allocated native RNG and a niche HP draw.
+        for (var turn = 0; turn < 2; turn++)
+        {
+            for (var i = 0; i < 32; i++)
+            {
+                var legal = Engine.GetLegalActions(state);
+                if (legal.Any(option => option.Kind == "end_turn"))
+                    break;
+                var choice = legal[0];
+                state = Engine.Step(state, choice).State;
+                replay = Engine.Step(replay, choice).State;
+            }
+            var end = Engine.GetLegalActions(state)
+                .Single(option => option.Kind == "end_turn");
+            state = Engine.Step(state, end).State;
+            replay = Engine.Step(replay, end).State;
+            Assert.Equal(CanonicalJson.Sha256(state),
+                CanonicalJson.Sha256(replay));
+            NativeRunRngV111.Validate(state);
+        }
+        var combat = state.World!.Combat!;
+        Assert.Equal(2, combat.Enemies.Length);
+        Assert.Equal("proto.enemy.gas_bomb", combat.Enemies[^1].EnemyId);
+        Assert.Equal("bomb5", combat.Enemies[^1].SlotName);
+        Assert.Equal(2, combat.Enemies[^1].InstanceId);
+        Assert.Equal(initialNiche.Counter + 1,
+            NativeRngV111.ToSnapshot(state.NativeRunRng!.Streams.Single(
+                stream => stream.StreamId == "run.niche")).Counter);
+        Assert.Equal(2, combat.NativeRng!.Formation.MonsterContexts.Length);
+        Assert.Equal(2,
+            combat.NativeRng.Formation.MonsterContexts[^1].CombatId);
+        Assert.Equal(CanonicalJson.Sha256(state),
+            CanonicalJson.Sha256(RunSnapshot.Load(
+                RunSnapshot.Save(state))));
+    }
+
+    [Fact]
     public void NativeFormationsCorrectKnownPrototypeSourceOrderAndSlots()
     {
         var state = Initial("normal-native-layout", ActIdentity.Overgrowth);

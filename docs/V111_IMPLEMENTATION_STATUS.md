@@ -117,6 +117,16 @@ This is an intermediate implementation. Final release gates remain open.
   and turns. Other gameplay and encounter selection still use
   prototype logic; elite/boss/event native paths remain unsupported.
   See [Act 1 normal RNG audit](reference-builds/v0.111.0-native-act1-normal-encounter-rng.md).
+- Extended the experimental v111 native combat RNG to **append-only
+  monster creation** in both enemy-action summons and death-triggered
+  summons. Source run seed / act index / map coordinates persist in the
+  encounter formation; every new lifetime CombatId receives a native
+  monster-local stream, and new HP comes from advancing `run.niche`
+  rather than the legacy prototype combat RNG. Existing/dead monster
+  RNG contexts and snapshots remain immutable. Unverified native
+  transformations and randomized summon pools are strictly gated;
+  summoning strategy and spawn-specific gameplay hooks remain
+  prototype-shaped. See [native creature creation RNG](reference-builds/v0.111.0-native-creature-creation-rng.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
