@@ -12277,17 +12277,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "PerfectFit"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/PerfectFit.cs#034bb8bd5daa7b987c0e4f1127f4d432cd029a10aef0fd7dab821b0a131f7a91"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PERFECT_FIT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
