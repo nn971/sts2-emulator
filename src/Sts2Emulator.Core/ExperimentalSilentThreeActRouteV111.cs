@@ -123,17 +123,92 @@ public static class ExperimentalSilentThreeActRouteV111
         (act == 2 ? HiveEvents : act == 3 ? GloryEvents : [])
             .Contains(eventId, StringComparer.Ordinal);
 
+    /// <summary>
+    /// Number of map rooms before the boss/Ancient in the pinned v111
+    /// single-player ActModel. These are queue lengths, not the number
+    /// of combats a particular map path must contain.
+    /// </summary>
+    public static int OrdinaryRoomCount(int act) => act switch
+    {
+        2 => 14, // Hive.BaseNumberOfRooms
+        3 => 13, // Glory.BaseNumberOfRooms
+        _ => throw new ArgumentOutOfRangeException(nameof(act))
+    };
+
+    // Source: EncounterModel.Tags and the individual encounter models at
+    // Flaaax/STS2-source@706ef1c9. EncounterTag.None is represented by null.
+    // The tag constraint spans the weak -> normal queue boundary.
+    public static string? EncounterTag(string encounterId) => encounterId switch
+    {
+        "proto.native.hive.encounter.bowlbugs_weak" => "Workers",
+        "proto.native.hive.encounter.exoskeletons_weak" => "Exoskeletons",
+        "proto.native.hive.encounter.thieving_hopper_weak" => "Thieves",
+        "proto.native.hive.encounter.tunneler_weak" => "Burrower",
+        PrototypeNativeHiveNormals.BowlbugsNormalId => "Workers",
+        PrototypeNativeHiveNormals.ChompersNormalId => "Chomper",
+        PrototypeNativeHiveNormals.ExoskeletonsNormalId => "Exoskeletons",
+        PrototypeNativeHiveNormals.SlumberingBeetleNormalId => "Workers",
+        PrototypeNativeGloryScrolls.WeakEncounterId => "Scrolls",
+        PrototypeNativeGloryScrolls.NormalEncounterId => "Scrolls",
+        PrototypeNativeGloryBosses.KnightsEncounterId => "Knights",
+        _ => null
+    };
+
+    /// <summary>
+    /// ActModel.GenerateRooms eagerly constructs the entire weak, normal and
+    /// elite histories using three separate refillable, without-replacement
+    /// grab bags. Its AddWithoutRepeatingTags checks the immediately preceding
+    /// encounter (including the weak -> normal boundary), and falls back to
+    /// the whole remaining bag if every entry conflicts.
+    ///
+    /// Here uniform eligible choices use the PROTOTYPE combat RNG. The queue
+    /// structure and exclusion distribution follow the pinned game rules;
+    /// exact native NextDouble rejection draws/stream ownership are pending.
+    /// </summary>
+    private static string[] GenerateSequence(
+        string[] pool, int count, RngBundle rng, List<string> history)
+    {
+        var remaining = new List<string>();
+        var result = new string[count];
+        for (var i = 0; i < result.Length; i++)
+        {
+            if (remaining.Count == 0)
+                remaining.AddRange(pool);
+            var previous = history.LastOrDefault();
+            var previousTag = previous is null ? null : EncounterTag(previous);
+            var eligible = remaining.Where(id =>
+                id != previous
+                && (previousTag is null
+                    || EncounterTag(id) != previousTag)).ToArray();
+            if (eligible.Length == 0)
+                eligible = remaining.ToArray();
+            var selected = eligible[PrototypeRng.NextInt(
+                rng, "combat", eligible.Length)];
+            remaining.Remove(selected);
+            history.Add(selected);
+            result[i] = selected;
+        }
+        return result;
+    }
+
     public static PrototypeLaterActEncounterBagV111 InitialBag(
         int act, RngBundle rng)
     {
-        if (act is < 2 or > 3)
-            throw new ArgumentOutOfRangeException(nameof(act));
+        var rooms = OrdinaryRoomCount(act);
+        var history = new List<string>(rooms);
+        var weak = GenerateSequence(
+            Pool(act, PrototypeRoomType.Combat, true), 2, rng, history);
+        var normal = GenerateSequence(
+            Pool(act, PrototypeRoomType.Combat, false),
+            rooms - 2, rng, history);
+        // The game's elite encounter sequence is prepared for 15 draws,
+        // independently of the weak and normal queues.
+        var elite = GenerateSequence(
+            Pool(act, PrototypeRoomType.Elite, false), 15, rng,
+            new List<string>(15));
         var bosses = Pool(act, PrototypeRoomType.Boss, false);
         return new PrototypeLaterActEncounterBagV111(
-            act, 0,
-            (string[])Pool(act, PrototypeRoomType.Combat, true).Clone(),
-            (string[])Pool(act, PrototypeRoomType.Combat, false).Clone(),
-            (string[])Pool(act, PrototypeRoomType.Elite, false).Clone(),
+            act, 0, weak, normal, elite,
             bosses[PrototypeRng.NextInt(rng, "combat", bosses.Length)]);
     }
 
@@ -166,10 +241,10 @@ public static class ExperimentalSilentThreeActRouteV111
     }
 
     /// <summary>
-    /// Select without replacement from the regional weak/normal/elite
-    /// bags, with one exhausted-bag refill and an act-pinned preselected
-    /// boss. All semantics remain fork/snapshot safe. The contents are
-    /// source-authored; selection weights/call order remain provisional.
+    /// Consume the next pre-generated regional encounter. Entering a room
+    /// does not re-roll its identity, matching ActModel.PullNextEncounter.
+    /// The first two ordinary combats consume weak entries; the subsequent
+    /// ones consume the normal entries. Queues survive exact snapshots.
     /// </summary>
     public static (PrototypeEncounterDefinition Encounter,
         PrototypeLaterActEncounterBagV111 Bag) SelectEncounter(
@@ -181,40 +256,33 @@ public static class ExperimentalSilentThreeActRouteV111
         if (world.Act is < 2 or > 3 || bag.Act != world.Act)
             throw new InvalidOperationException(
                 "Later-act encounter bag belongs to a different act.");
-
         if (room == PrototypeRoomType.Boss)
             return (PrototypeContent.Encounter(bag.BossEncounterId), bag);
+        if (room is not (PrototypeRoomType.Combat or PrototypeRoomType.Elite))
+            throw new ArgumentOutOfRangeException(nameof(room));
 
         var weak = room == PrototypeRoomType.Combat
             && bag.OrdinaryCombatsStarted < 2;
-        var pool = Pool(world.Act, room, weak);
         var remaining = room == PrototypeRoomType.Elite
             ? bag.RemainingElite
             : weak ? bag.RemainingWeak : bag.RemainingNormal;
         if (remaining.Length == 0)
-            remaining = (string[])pool.Clone();
-        var previous = world.EncounterIds.LastOrDefault();
-        var eligible = remaining.Length > 1
-            ? remaining.Where(id => id != previous).ToArray()
-            : remaining;
-        if (eligible.Length == 0)
-            eligible = remaining;
-        var selected = eligible[PrototypeRng.NextInt(
-            rng, "combat", eligible.Length)];
-        var updatedRemaining = remaining
-            .Where(id => id != selected).ToArray();
+            throw new InvalidOperationException(
+                "The pre-generated regional encounter sequence is exhausted.");
+        var selected = remaining[0];
+        var tail = remaining[1..];
         var updatedBag = room == PrototypeRoomType.Elite
-            ? bag with { RemainingElite = updatedRemaining }
+            ? bag with { RemainingElite = tail }
             : weak
                 ? bag with
                 {
                     OrdinaryCombatsStarted = bag.OrdinaryCombatsStarted + 1,
-                    RemainingWeak = updatedRemaining
+                    RemainingWeak = tail
                 }
                 : bag with
                 {
                     OrdinaryCombatsStarted = bag.OrdinaryCombatsStarted + 1,
-                    RemainingNormal = updatedRemaining
+                    RemainingNormal = tail
                 };
         var encounter = PrototypeContent.Encounter(selected);
         if (encounter.RoomType != room
@@ -226,6 +294,7 @@ public static class ExperimentalSilentThreeActRouteV111
                 "Regional encounter registration is ineligible here.");
         return (encounter, updatedBag);
     }
+
 }
 
 public sealed record PrototypeLaterActEncounterBagV111(
