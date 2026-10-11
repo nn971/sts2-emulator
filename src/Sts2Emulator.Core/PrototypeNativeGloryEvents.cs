@@ -21,6 +21,12 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.round_tea_party";
     public const string RoyalPoisonId =
         "proto.native.glory.royal_poison";
+    public const string GraveOfTheForgottenId =
+        "proto.native.glory.grave_of_the_forgotten";
+    public const string DecayId =
+        "proto.native.glory.decay";
+    public const string ForgottenSoulId =
+        "proto.relic.forgotten_soul";
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
@@ -30,7 +36,14 @@ public static class PrototypeNativeGloryEvents
             Unplayable: true, Eternal: true, RewardEligible: false,
             CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse,
-            EndTurnDamageIfInHand: 13, EndTurnDamageUnblockable: true)
+            EndTurnDamageIfInHand: 13, EndTurnDamageUnblockable: true),
+        // Decay.OnTurnEndInHand: 2 unpowered Move damage.
+        // It is blockable, unlike Bad Luck.
+        new(DecayId, "Decay", -1, PrototypeCardTarget.None, [],
+            Unplayable: true, RewardEligible: false,
+            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse,
+            EndTurnDamageIfInHand: 2)
     ];
 
     public static PrototypeRelicDefinition[] Relics { get; } =
@@ -65,6 +78,21 @@ public static class PrototypeNativeGloryEvents
         [
             new("enjoy_tea", "Enjoy tea and take Royal Poison", []),
             new("pick_fight", "Pick a fight", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
+        // Native IsAllowed requires at least one exhaust-keyword
+        // local deck card. Confront grants Decay before selecting one
+        // qualifying card for Souls Power, removing its Exhaust.
+        new(GraveOfTheForgottenId, "Grave of the Forgotten",
+        [
+            new("confront", "Take Decay and enchant an Exhaust card",
+                [new(PrototypeRunEffectKind.AddCard, CardId: DecayId)],
+                DeckChoice: new(
+                    PrototypePersistentDeckChoiceKind.Enchant,
+                    1, EnchantmentKind:
+                        PrototypeCardEnchantmentKind.SoulsPower)),
+            new("accept", "Obtain Forgotten Soul",
+                [new(PrototypeRunEffectKind.GainRelic,
+                    RelicId: ForgottenSoulId)])
         ], MinAct: 3, MaxAct: 3, Weight: 0)
     ];
 }
