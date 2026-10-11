@@ -31,6 +31,12 @@ public static class PrototypeNativeGloryEvents
     public const string RegretId = "proto.native.glory.regret";
     public const string ShameId = "proto.native.glory.shame";
     public const string DoubtId = "proto.native.glory.doubt";
+    public const string TinkerTimeId = "proto.native.glory.tinker_time";
+    public const string MadScienceId = "proto.native.glory.mad_science";
+    public const string CuriousId = "proto.native.glory.curious";
+    public const string ImprovementId = "proto.native.glory.improvement";
+    // Reuse the already implemented native Strangle trigger model.
+    public const string StrangleId = "proto.power.strangle";
     public const string BattlewornDummyId =
         "proto.native.glory.battleworn_dummy";
     public const string BattlewornTimeLimitId =
@@ -51,6 +57,13 @@ public static class PrototypeNativeGloryEvents
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        // The single native MadScience model persists its selected
+        // Type/Rider inside CardInstance.PersistentState. Runtime card
+        // definitions are synthesized from that state on every play.
+        new(MadScienceId, "Mad Science", 1, PrototypeCardTarget.Enemy,
+            [], Rarity: PrototypeCardRarity.Event,
+            Type: PrototypeCardType.Attack, RewardEligible: false,
+            InnateOnUpgrade: true, CanBeGeneratedInCombat: false),
         // Native Trial curses; combat hook handles Regret's hand-size
         // unblockable damage and Shame/Doubt's turn-end debuffs.
         new(RegretId, "Regret", -1, PrototypeCardTarget.None, [],
@@ -125,6 +138,22 @@ public static class PrototypeNativeGloryEvents
         // The event registry includes every follow-up branch for
         // invariant validation. Trial's page resolver exposes only the
         // two current-page choices at any decision boundary.
+        new(TinkerTimeId, "Tinker Time",
+        [
+            new("choose_card_type", "Choose a card type", []),
+            new("attack", "Make an Attack", []),
+            new("skill", "Make a Skill", []),
+            new("power", "Make a Power", []),
+            new("sapping", "Add Sapping", []),
+            new("violence", "Add Violence", []),
+            new("choking", "Add Choking", []),
+            new("energized", "Add Energized", []),
+            new("wisdom", "Add Wisdom", []),
+            new("chaos", "Add Chaos", []),
+            new("expertise", "Add Expertise", []),
+            new("curious", "Add Curious", []),
+            new("improvement", "Add Improvement", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
         new(BattlewornDummyId, "Battleworn Dummy",
         [
             new("setting_1", "Train against a 75 HP dummy", []),
@@ -154,7 +183,9 @@ public static class PrototypeNativeGloryEvents
     public static PrototypePowerDefinition[] Powers { get; } =
     [
         new(BattlewornTimeLimitId, "Battleworn Dummy Time Limit",
-            0, [], EnemyStacksDecayAtSideTurnEnd: 1)
+            0, [], EnemyStacksDecayAtSideTurnEnd: 1),
+        new(CuriousId, "Curious", 0, []),
+        new(ImprovementId, "Improvement", 0, []) 
     ];
 
     public static PrototypeEnemyDefinition[] Enemies { get; } =
