@@ -16546,11 +16546,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.war_historian_repy"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WarHistorianRepy.cs#407e38a628ad60779054bf55c71fcb8cc7f2b93d6a3d942493e4db341eb0a737"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -16566,7 +16568,7 @@
         ],
         "missing_variants": [],
         "native_id": "WAR_HISTORIAN_REPY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26322,17 +26324,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.history_course"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/HistoryCourse.cs#9416136b224fbb966f3d8c0f3f5d3397cccec2517281cf0d5dfc7a45244f6dac"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "HISTORY_COURSE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
