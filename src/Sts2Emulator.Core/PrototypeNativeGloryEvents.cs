@@ -116,11 +116,13 @@ public static class PrototypeNativeGloryEvents
             new("confirm_abandon", "Abandon the run", []),
             new("cancel_abandon", "Keep playing", []),
             new("merchant_guilty", "Find merchant guilty", []),
-            new("merchant_innocent", "Find merchant innocent", []),
+            new("merchant_innocent", "Find merchant innocent", [],
+                DeckChoice: new(PrototypePersistentDeckChoiceKind.Upgrade, 2)),
             new("noble_guilty", "Find noble guilty", []),
             new("noble_innocent", "Find noble innocent", []),
             new("nondescript_guilty", "Find stranger guilty", []),
-            new("nondescript_innocent", "Find stranger innocent", [])
+            new("nondescript_innocent", "Find stranger innocent", [],
+                DeckChoice: new(PrototypePersistentDeckChoiceKind.Transform, 2))
         ], MinAct: 3, MaxAct: 3, Weight: 0)
     ];
 }
