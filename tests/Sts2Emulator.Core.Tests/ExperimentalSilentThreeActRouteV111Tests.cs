@@ -68,6 +68,8 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
         Assert.Equal(0, hive.World.Floor);
         Assert.Null(hive.World.ActOneRegion);
         Assert.Null(hive.World.ActOneEncounterPool);
+        Assert.NotNull(hive.World.LaterActEncounterBag);
+        Assert.Equal(2, hive.World.LaterActEncounterBag!.Act);
         Assert.Equal(actOne.Player, actOne.Player);
         Assert.Equal(CanonicalJson.Sha256(actOne.Player),
             CanonicalJson.Sha256(hive.Player));
@@ -157,10 +159,8 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
                     == entry.Child.NodeId);
         var started = Engine.Step(state, action).State;
         Assert.Equal(RunPhase.Event, started.Phase);
-        Assert.Equal(act == 2
-            ? PrototypeNativeHiveEvents.InfestedAutomatonId
-            : PrototypeNativeGloryEvents.HungryForMushroomsId,
-            started.World!.Event!.EventId);
+        Assert.True(ExperimentalSilentThreeActRouteV111.ContainsEvent(
+            started.World!.Event!.EventId, act));
         PrototypeStateInvariants.Validate(started);
         Assert.NotEmpty(Engine.GetLegalActions(started));
         Assert.Equal(CanonicalJson.Sha256(started),
