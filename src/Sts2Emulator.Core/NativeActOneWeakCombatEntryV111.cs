@@ -1,10 +1,10 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Only those native v0.111.0 Act 1 weak encounter models whose
-/// GenerateMonsters() is a fixed, source-audited formation are enabled
-/// for experimental *live* combat entry. Encounter identity is explicit,
-/// never derived heuristically from the emulator registry id.
+/// Source-audited native v0.111.0 Act 1 weak encounter formation
+/// generation for opt-in live combat entry. Native encounter identity
+/// is explicit, never guessed from the emulator registry ID.
+/// Includes source-specific randomized Slimes and Corpse Slugs.
 /// </summary>
 public static class NativeActOneWeakCombatEntryV111
 {
@@ -18,7 +18,9 @@ public static class NativeActOneWeakCombatEntryV111
                 "ShrinkerBeetleWeak",
             ["proto.encounter.seapunk_weak"] = "SeapunkWeak",
             ["proto.encounter.sludge_spinner_weak"] = "SludgeSpinnerWeak",
-            ["proto.encounter.toadpoles_weak"] = "ToadpolesWeak"
+            ["proto.encounter.toadpoles_weak"] = "ToadpolesWeak",
+            ["proto.encounter.slimes_weak"] = "SlimesWeak",
+            ["proto.encounter.corpse_slugs_weak"] = "CorpseSlugsWeak"
         };
 
     public static string[] SupportedEncounterIds =>
@@ -58,18 +60,98 @@ public static class NativeActOneWeakCombatEntryV111
             throw new NotSupportedException(
                 "Experimental native combat entry requires a source-shaped Act 1 map coordinate.");
 
+        Func<Func<int, int>,
+            (PrototypeEncounterEnemySpec[] Enemies, int? OpeningOffset)>?
+            sourceResolver = encounter.Id switch
+            {
+                "proto.encounter.slimes_weak" => ResolveSlimesWeak,
+                "proto.encounter.corpse_slugs_weak" =>
+                    nextIndex => ResolveCorpseSlugsWeak(encounter, nextIndex),
+                _ => null
+            };
+
         var result = NativeEncounterFormationFactoryV111.Generate(
             state.RunSeed, encounter, nativeName,
             totalFloor: world.Floor, currentActIndex: 0,
             // CombatState.AddPlayer attaches the player as id 0 before
             // any monster is created; the first enemy's CombatId is 1.
             firstMonsterCombatId: 1,
-            mapColumn: column, mapRow: floor - 1);
+            mapColumn: column, mapRow: floor - 1,
+            sourceResolver: sourceResolver);
 
-        if (result.Enemies.Length != encounter.FixedEnemySpecs.Length
-            || !result.Enemies.SequenceEqual(encounter.FixedEnemySpecs))
+        if (sourceResolver is null
+            && (result.Enemies.Length != encounter.FixedEnemySpecs.Length
+                || !result.Enemies.SequenceEqual(encounter.FixedEnemySpecs)
+                || result.EncounterOpeningOffset is not null))
             throw new InvalidOperationException(
                 "Source-audited fixed weak encounter unexpectedly resolved a different formation.");
+        if (encounter.Id == "proto.encounter.slimes_weak"
+            && (result.Enemies.Length != 3
+                || result.Enemies[0].FormationPosition != 0
+                || result.Enemies[1].FormationPosition != 1
+                || result.Enemies[2].FormationPosition != 2
+                || result.EncounterOpeningOffset is not null))
+            throw new InvalidOperationException(
+                "Native SlimesWeak source formation is invalid.");
+        if (encounter.Id == "proto.encounter.corpse_slugs_weak"
+            && (result.Enemies.Length != 2
+                || result.EncounterOpeningOffset is not (>= 0 and < 3)))
+            throw new InvalidOperationException(
+                "Native CorpseSlugsWeak opening rotation is invalid.");
         return result;
+    }
+
+    /// <summary>
+    /// Source: SlimesWeak.GenerateMonsters(). NextItem is called THREE
+    /// times, including the one-item remaining-small list. The second
+    /// small slime is only added after the medium slime: [small, medium,
+    /// other small]. The generic grouped emulator resolver skips the
+    /// singleton roll and has a different draw order, so must not be used.
+    /// </summary>
+    private static (
+        PrototypeEncounterEnemySpec[] Enemies, int? OpeningOffset)
+        ResolveSlimesWeak(Func<int, int> nextIndex)
+    {
+        string[] small =
+        [
+            "proto.enemy.leaf_slime_s",
+            "proto.enemy.twig_slime_s"
+        ];
+        string[] medium =
+        [
+            "proto.enemy.leaf_slime_m",
+            "proto.enemy.twig_slime_m"
+        ];
+        var firstSmall = nextIndex(small.Length);
+        _ = nextIndex(1); // Rng.NextItem(singleton) still advances.
+        var chosenMedium = nextIndex(medium.Length);
+        return (
+        [
+            new(small[firstSmall], 0),
+            new(medium[chosenMedium], 1),
+            new(small[1 - firstSmall], 2)
+        ], null);
+    }
+
+    /// <summary>
+    /// Source: CorpseSlugsWeak.GenerateMonsters() invokes
+    /// CorpseSlug.EnsureCorpseSlugsStartWithDifferentMoves exactly once,
+    /// rolling NextInt(3), then assigns successive indices modulo 3.
+    /// The offset belongs to encounter RNG (NOT run.monster_ai).
+    /// The combat opening may not sample another rotation.
+    /// </summary>
+    private static (
+        PrototypeEncounterEnemySpec[] Enemies, int? OpeningOffset)
+        ResolveCorpseSlugsWeak(
+            PrototypeEncounterDefinition encounter, Func<int, int> nextIndex)
+    {
+        var specs = encounter.FixedEnemySpecs;
+        if (specs.Length != 2
+            || specs.Any(spec => spec.EnemyId != "proto.enemy.corpse_slug")
+            || encounter.CyclicOpeningAiStateIds is not { Length: 3 })
+            throw new InvalidOperationException(
+                "CorpseSlugsWeak source-shaped definition has changed.");
+        return (specs.Select(spec => spec with { }).ToArray(),
+            nextIndex(3));
     }
 }
