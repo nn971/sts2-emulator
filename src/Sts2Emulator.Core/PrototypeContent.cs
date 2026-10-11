@@ -1903,6 +1903,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryEvents.Cards)
             .Concat(PrototypeNativeHiveNormals.Cards)
             .Concat(PrototypeNativeHiveBosses.Cards)
+            .Concat(PrototypeNativeHiveKnowledgeDemonChoice.Cards)
             .Concat(PrototypeNativeGloryElites.Cards)
             .Concat(PrototypeNativeGloryBosses.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
@@ -3727,6 +3728,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeHiveSummoningNormals.Powers)
             .Concat(PrototypeNativeHiveElites.Powers)
             .Concat(PrototypeNativeHiveBosses.Powers)
+            .Concat(PrototypeNativeHiveKnowledgeDemonChoice.Powers)
             .Concat(PrototypeNativeGloryScrolls.Powers)
             .Concat(PrototypeNativeGloryWeak.Powers)
             .Concat(PrototypeNativeGloryNewNormals.Powers)
