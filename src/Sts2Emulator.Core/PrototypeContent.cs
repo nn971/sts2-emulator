@@ -7025,7 +7025,6 @@ public static class PrototypeContent
         ..PrototypeNativeGloryNewNormals.Encounters,
         ..PrototypeNativeGloryElites.Encounters,
         ..PrototypeNativeGloryBosses.Encounters,
-        ..PrototypeNativeLaterActCombatPool.AdditionalEncounters,
         ..PrototypeNativeGloryEvents.Encounters,
         ..PrototypeNativeHiveEvents.Encounters
     ];
