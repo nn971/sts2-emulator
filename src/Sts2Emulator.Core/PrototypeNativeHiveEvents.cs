@@ -20,6 +20,11 @@ public static class PrototypeNativeHiveEvents
         "LostWisp", "SpiritGrafter", "TheLanternKey", "ZenWeaver"
     ];
 
+    // The isolated two-node Glory quest fixture is never a production
+    // map-generation profile, and is validated independently.
+    public const string RepyFixtureMapProfileId =
+        "v111-glory-repy-quest-fixture-v1";
+
     public const string WarHistorianRepyId =
         "proto.native.glory.war_historian_repy";
     public const string HistoryCourseId =
