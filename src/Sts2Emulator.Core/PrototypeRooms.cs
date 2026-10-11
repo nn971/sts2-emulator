@@ -35,11 +35,15 @@ public sealed partial class PrototypeGameEngine
                 : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
 
-        if (nativeLaterMap && room != PrototypeRoomType.Event)
+        if (nativeLaterMap
+            && room is not (PrototypeRoomType.Event
+                or PrototypeRoomType.Combat
+                or PrototypeRoomType.Elite
+                or PrototypeRoomType.Boss))
             throw new NotSupportedException(
                 $"Native {world.Act} {room} room execution is gated. " +
-                "Only source-backed regional event rooms are enabled; " +
-                "ordinary later-act encounter and reward pools remain unsupported.");
+                "Event and combat models are source-listed, but shop, " +
+                "rest and treasure systems are not integrated.");
 
         world = world with
         {
