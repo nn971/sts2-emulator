@@ -83,6 +83,19 @@ This is an intermediate implementation. Final release gates remain open.
   The prototype engine remains semantically unchanged: full native
   live combat and cross-room RNG call-order parity are still open.
   See [native run RNG persistence](reference-builds/v0.111.0-native-run-rng-persistence.md).
+- Added an **explicit opt-in experimental native Act 1 live combat
+  entry path** for six source-audited fixed weak encounters (three
+  Overgrowth and three Underdocks). These entries use independent
+  native encounter RNG ownership, source-pinned native names and map
+  coordinates, persistent `run.niche` initial HP draws, and
+  `run.monster_ai` intent commitments. Unsupported dynamic weak
+  formations such as Slimes/Corpse Slugs and all normal/elite/boss
+  encounters reject rather than silently falling back. Default
+  configured runs and legacy prototype training remain unchanged.
+  Encounter bag selection, map geometry, deck shuffling and many
+  remaining combat effects still use prototype RNG and require
+  native call-order audits. See
+  [the live weak combat entry boundary](reference-builds/v0.111.0-live-weak-combat-entry-rng.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.

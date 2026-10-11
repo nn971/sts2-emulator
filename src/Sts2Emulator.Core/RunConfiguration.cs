@@ -14,6 +14,10 @@ public static class V111Build
     public const string Id = Version + "/" + Commit + "/" + Fingerprint;
     public const string RulesetId = "sts2-v111-single-player-v1";
     public const string StateSchema = "sts2-run-v111-v1";
+    // Explicit experimental opt-in. Prototype room selection/card/effect
+    // randomness is NOT made native by this combat-entry milestone.
+    public const string NativeWeakCombatEntryFidelityId =
+        "v111-experimental-native-weak-combat-entry-v1";
 }
 
 public sealed record SimulationProfile(
@@ -33,6 +37,9 @@ public sealed record RunConfiguration(
     string BuildFingerprint = V111Build.Fingerprint,
     string FidelityId = "v111-mechanics-prototype-rng-v1")
 {
+    public bool UsesExperimentalNativeWeakCombatEntry =>
+        FidelityId == V111Build.NativeWeakCombatEntryFidelityId;
+
     public static RunConfiguration Create(
         string characterId = "silent", int ascension = 0,
         ActIdentity firstAct = ActIdentity.Overgrowth,
@@ -53,7 +60,8 @@ public sealed record RunConfiguration(
         if (Ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(Ascension), "v111 supports Ascension 0 through 10.");
         if (RulesetId != V111Build.RulesetId || BuildFingerprint != V111Build.Fingerprint
-            || FidelityId != "v111-mechanics-prototype-rng-v1")
+            || FidelityId is not ("v111-mechanics-prototype-rng-v1"
+                or V111Build.NativeWeakCombatEntryFidelityId))
             throw new NotSupportedException("Configured runs require the pinned v111 ruleset and fingerprint.");
         if (Acts.Length != 3 || Acts[0] is not (ActIdentity.Overgrowth or ActIdentity.Underdocks)
             || Acts[1] != ActIdentity.Hive || Acts[2] != ActIdentity.Glory)

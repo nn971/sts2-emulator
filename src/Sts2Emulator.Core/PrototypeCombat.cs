@@ -138,8 +138,16 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
 
         var nextPowerApplicationOrder = combatRelics.Length + 1L;
-        var enemySpecs = encounter.ResolveEnemySpecs(
-            state.Rng);
+        // Opt-in v111 live entry: source-audited fixed formations and
+        // independent encounter RNG. Other encounters fail explicitly
+        // instead of silently consuming the prototype combat stream.
+        var nativeFormation =
+            state.Configuration?.UsesExperimentalNativeWeakCombatEntry == true
+                ? NativeActOneWeakCombatEntryV111.Prepare(
+                    state, world, encounter)
+                : null;
+        var enemySpecs = nativeFormation?.Enemies
+            ?? encounter.ResolveEnemySpecs(state.Rng);
         var instanceIdByFormationPosition =
             enemySpecs
                 .Select((enemySpec, index) =>
@@ -177,6 +185,9 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' cyclic/fixed opening count does not match its formation.");
         }
+        if (nativeFormation is not null && openingAiStates is not null)
+            throw new NotSupportedException(
+                "Experimental native combat entry does not yet audit encounter-local cyclic opening RNG.");
         var openingOffset = openingAiStates is null
             ? 0
             : PrototypeRng.NextInt(
@@ -189,13 +200,17 @@ public sealed partial class PrototypeGameEngine
                 var hpRange = definition.HpRangeAt(
                     world.Act,
                     state.Ascension);
-                var hp = hpRange.Min == hpRange.Max
-                    ? hpRange.Min
-                    : hpRange.Min
-                        + PrototypeRng.NextInt(
-                            state.Rng,
-                            "combat",
-                            hpRange.Max - hpRange.Min + 1);
+                // Native HP is rolled later from the persistent run.niche
+                // stream. Do not consume the prototype combat RNG here.
+                var hp = nativeFormation is not null
+                    ? hpRange.Max
+                    : hpRange.Min == hpRange.Max
+                        ? hpRange.Min
+                        : hpRange.Min
+                            + PrototypeRng.NextInt(
+                                state.Rng,
+                                "combat",
+                                hpRange.Max - hpRange.Min + 1);
                 var powers = (definition.StartingPowers ?? Array.Empty<PrototypeStartingPowerSpec>())
                     .Select(power =>
                     {
@@ -240,6 +255,10 @@ public sealed partial class PrototypeGameEngine
             })
             .ToArray();
 
+        if (nativeFormation is not null
+            && encounter.UniqueEvenEnemyHpWithinEncounter)
+            throw new NotSupportedException(
+                "Native unique-even-HP encounter hooks are not migrated.");
         if (encounter.UniqueEvenEnemyHpWithinEncounter)
         {
             var occupiedHp = new HashSet<int>();
@@ -313,6 +332,13 @@ public sealed partial class PrototypeGameEngine
             Act: world.Act,
             Ascension: state.Ascension);
 
+        // Bind the native owner before combat entry hooks and the first
+        // intent commitment. HP and all initial enemy maxima now use
+        // the advancing run.niche stream rather than the prototype RNG.
+        if (nativeFormation is not null)
+            combat = NativeCombatRngEntryV111.AttachAndRollInitialHp(
+                combat, nativeFormation, state.NativeRunRng!);
+
         if (enemies.Any(enemy => enemy.EnemyId ==
             PrototypeNativeHiveBosses.RocketId))
             combat = ApplyPlayerPower(combat,
@@ -356,6 +382,13 @@ public sealed partial class PrototypeGameEngine
         combat = GrantEnemyAllyBlockOnPlayerTurnStart(
             combatStarted.Combat);
         combat = CommitEnemyIntents(combat, state.Rng);
+        // Return the latest native run/player cursors to their persistent
+        // owner; later Step() calls continue from these precise positions.
+        if (combat.NativeRng is not null)
+            state = state with
+            {
+                NativeRunRng = combat.NativeRng.RunStreams.Fork()
+            };
 
         world = world with
         {
