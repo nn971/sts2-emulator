@@ -453,6 +453,19 @@ This is an intermediate implementation. Final release gates remain open.
   not native RNG/trace parity evidence.
   [Source audit](reference-builds/v0.111.0-glory-grave-of-forgotten.md).
 
+- Added a gated **Glory Trial** fixture with source-shaped Accept/Reject
+  and three randomized court cases. All six verdict outcomes now resolve
+  their native-shaped curse, gold/healing, distinct relic pickup,
+  two-card upgrade/transform prompts or two optional three-card rewards.
+  A separate page models the reject-page abandon confirmation without
+  silently terminating on the initial click. Trial's Regret, Shame and
+  Doubt curses are playable as unplayable hand-end effects: Regret
+  deals hand-size unblockable damage; Shame/Doubt apply Frail/Weak
+  with their first-duration tick skipped. The scenario RNG and
+  reward pools are provisional, and the regional random event bag
+  and native replay parity remain unsupported.
+  [Source audit](reference-builds/v0.111.0-glory-trial.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
