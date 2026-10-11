@@ -150,6 +150,21 @@ This is an intermediate implementation. Final release gates remain open.
   invalid in-place proxy mutations. Other native transformations,
   early/spawn hatching and random summon pools remain gated.
   See [native Tough Egg hatch](reference-builds/v0.111.0-native-tough-egg-hatch.md).
+- Extended the strictly opt-in live native Act 1 combat entry to **all
+  six elites and six bosses** (three each per region and room tier),
+  completing the ordinary/elite/boss **42** initial encounter entries
+  across Overgrowth and Underdocks (8 weak, 22 normal, 6 elite, 6 boss).
+  Source `GenerateMonsters()` shows all twelve elite/boss formations
+  are fixed and consume no encounter-local draws. The Kin's creation
+  order is two followers (slot1 starts on Dance, slot2 on Quick),
+  then the priest (leaderSlot), unlike the legacy prototype model
+  order; its conditional AI receives source-equivalent transient
+  slot aliases without changing native serialized slots. The entry
+  is guarded by room type, pinned map coordinate, region and
+  persistent RNG ownership. Combat still uses prototype move/effect,
+  reward and encounter-bag logic; actual native elite/boss
+  progression, special hooks and reference trace parity remain open.
+  See [native elite/boss entry](reference-builds/v0.111.0-native-act1-elite-boss-entry.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
