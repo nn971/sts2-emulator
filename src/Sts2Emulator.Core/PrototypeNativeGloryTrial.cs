@@ -54,7 +54,7 @@ public sealed partial class PrototypeGameEngine
                 }
             };
 
-        if (evt.NativePageIndex is 0 or 1 && choice == "accept")
+        if ((evt.NativePageIndex is 0 or 1) && choice == "accept")
             return state with
             {
                 World = world with
