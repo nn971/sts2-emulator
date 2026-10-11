@@ -451,9 +451,9 @@ public static class PrototypeStateInvariants
                 && active.Id != PrototypeNativeGloryEvents.TrialId
                 && active.Id != PrototypeNativeGloryEvents.BattlewornDummyId
                 && active.Id != PrototypeNativeGloryEvents.TinkerTimeId
-                && !(world.Map.GenerationProfileId is
+                && !((world.Map.GenerationProfileId is
                     PrototypeNativeLaterActMap.HiveProfileId
-                    or PrototypeNativeLaterActMap.GloryProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId)
                     && PrototypeNativeLaterActEventPool.NativeEventIds(world.Act)
                         .Contains(active.Id, StringComparer.Ordinal))))
         {
@@ -565,6 +565,8 @@ public static class PrototypeStateInvariants
             {
                 PrototypeNativeDenseVegetation.EventId =>
                     eventState.NativeEventGold is >= 61 and <= 99,
+                PrototypeNativeHiveEvents.LostWispId =>
+                    eventState.NativeEventGold is >= 45 and <= 75,
                 "proto.native.event.whispering_hollow" =>
                     eventState.NativeEventGold is >= 26 and <= 44,
                 "proto.native.event.sunken_statue" =>
