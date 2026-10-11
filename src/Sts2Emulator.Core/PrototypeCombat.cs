@@ -11095,7 +11095,17 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
-    internal static PrototypeDamageResult LoseEnemyHp(
+    // Narrow internal combat-state test seams: don't expose the
+    // implementation-private PrototypeDamageResult result type.
+    internal static CombatState ApplyRawHpLossForSourceRegression(
+        CombatState combat, int enemyId, int amount) =>
+        LoseEnemyHp(combat, enemyId, amount).Combat;
+
+    internal static CombatState ApplyHitForSourceRegression(
+        CombatState combat, int enemyId, int amount) =>
+        DamageEnemy(combat, enemyId, amount).Combat;
+
+    private static PrototypeDamageResult LoseEnemyHp(
         CombatState combat,
         int enemyId,
         int hpLoss)
@@ -11166,7 +11176,7 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
-    internal static PrototypeDamageResult DamageEnemy(
+    private static PrototypeDamageResult DamageEnemy(
         CombatState combat,
         int enemyId,
         int damage,
