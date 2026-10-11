@@ -59,7 +59,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             _ => throw new NotSupportedException($"Prototype phase '{state.Phase}' is unsupported.")
         };
 
-        return new TransitionResult(next, Array.Empty<string>());
+        return new TransitionResult(
+            NativeRunRngV111.ReconcileAfterStep(state, next),
+            Array.Empty<string>());
     }
 
     private static IReadOnlyList<GameAction>
