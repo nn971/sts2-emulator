@@ -83,7 +83,9 @@ public sealed partial class PrototypeGameEngine
                             PotionResolved: false,
                             RelicResolved: true,
                             EndsAct: false,
-                            IndependentSelection: true)
+                            IndependentSelection: true,
+                            ExtraCardGroupsResolved: [],
+                            ExtraRelicGroupsResolved: [])
                     },
                     Phase = RunPhase.Reward
                 };
@@ -134,7 +136,9 @@ public sealed partial class PrototypeGameEngine
                             PotionResolved: true,
                             RelicResolved: false,
                             EndsAct: false,
-                            IndependentSelection: true)
+                            IndependentSelection: true,
+                            ExtraCardGroupsResolved: [],
+                            ExtraRelicGroupsResolved: [])
                     },
                     Phase = RunPhase.Reward
                 };
