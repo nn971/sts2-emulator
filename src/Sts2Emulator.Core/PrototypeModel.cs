@@ -1724,6 +1724,17 @@ public sealed record PrototypeToricShield(
     int BlockAmount,
     int ClearsRemaining);
 
+/// <summary>
+/// Reproducible source-targeted auto-play outcome, kept in the *combat
+/// snapshot* rather than observed as a future random seed.
+/// </summary>
+public sealed record PrototypeAutoPlayTargetRoll(
+    long CardInstanceId,
+    int Turn,
+    int CandidateCount,
+    int SelectedIndex,
+    int TargetEnemyInstanceId);
+
 public sealed record CombatState(
     int Turn,
     int Energy,
@@ -1755,7 +1766,8 @@ public sealed record CombatState(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     NativeCombatRngV111? NativeRng = null,
     PrototypeKnowledgeDemonChoiceState? PendingKnowledgeDemonChoice = null,
-    int KnowledgeDemonChoiceResolvedTurn = 0)
+    int KnowledgeDemonChoiceResolvedTurn = 0,
+    PrototypeAutoPlayTargetRoll[]? AutoPlayTargetRolls = null)
 {
     public CombatState Fork() => this with
     {
@@ -1787,6 +1799,8 @@ public sealed record CombatState(
             : (long[])TransformedPersistentCardIds.Clone(),
         PendingChoice = PendingChoice?.Fork(),
         PendingKnowledgeDemonChoice = PendingKnowledgeDemonChoice?.Fork(),
+        AutoPlayTargetRolls = AutoPlayTargetRolls is null
+            ? null : (PrototypeAutoPlayTargetRoll[])AutoPlayTargetRolls.Clone(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
             AutomaticPipelineContinuation is null

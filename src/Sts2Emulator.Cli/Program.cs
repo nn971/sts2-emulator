@@ -9,6 +9,10 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  replay <trace.jsonl>    Replay normalized canonical decisions and stop at first divergence");
     Console.WriteLine("  v111-coverage [--missing] [--check]  Report pinned solo content and evidence gaps");
     Console.WriteLine("  v111-run [seed] [region] [ascension]  Start the explicit v111 mechanics profile");
+    Console.WriteLine("  v111-natural-sweep [runs-per-region] [ascension] [seed-offset] [checkpoint-dir]");
+    Console.WriteLine("                          Unassisted legal-action Silent runs in both Act 1 regions; blockers are errors");
+    Console.WriteLine("  v111-natural-resume <exact-snapshot.json>");
+    Console.WriteLine("                          Resume the same deterministic legal policy from an unmodified saved state");
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
     Console.WriteLine("  prototype-native-overgrowth-map [seed] [ascension]");
@@ -82,6 +86,41 @@ switch (args[0])
         Console.WriteLine(RunSnapshot.Save(state));
         break;
     }
+    case "v111-natural-sweep":
+    {
+        if (args.Length > 5)
+            throw new ArgumentException(
+                "v111-natural-sweep accepts count, ascension, offset and checkpoint dir.");
+        var count = args.Length >= 2
+            ? int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture)
+            : 8;
+        var ascension = args.Length >= 3
+            ? int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture)
+            : 0;
+        var offset = args.Length >= 4
+            ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture)
+            : 0;
+        var checkpointDirectory = args.Length >= 5 ? args[4] : null;
+        var report = V111NaturalRunSweep.Run(
+            count, ascension, offset, checkpointDirectory);
+        V111NaturalRunSweep.Write(report);
+        if (report.Blocked > 0)
+            Environment.ExitCode = 1;
+        break;
+    }
+
+    case "v111-natural-resume":
+    {
+        if (args.Length != 2)
+            throw new ArgumentException(
+                "v111-natural-resume requires one exact snapshot filename.");
+        var result = V111NaturalRunSweep.Resume(args[1]);
+        V111NaturalRunSweep.Write(result);
+        if (result.Blocker is not null)
+            Environment.ExitCode = 1;
+        break;
+    }
+
     case "doctor":
         Console.WriteLine($"Runtime: {Environment.Version}");
         Console.WriteLine($"OS: {Environment.OSVersion}");

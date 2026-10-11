@@ -160,6 +160,95 @@ public sealed class PrototypeSlyTests
         Assert.All(shivs, card => Assert.Equal("proto.silent.shiv", card.CardId));
     }
 
+    [Fact]
+    public void DiscardedSlyBubbleBubbleSelectsOneRandomLivingEnemyAndRecordsRoll()
+    {
+        var bubble = Card(2, "proto.silent.bubble_bubble") with
+        {
+            KeywordOverrides =
+            [
+                new PrototypeCardKeywordOverride(
+                    PrototypeCardKeyword.Sly,
+                    true,
+                    PrototypeCardKeywordOverrideExpiry.None)
+            ]
+        };
+        var state = CreateState(
+            energy: 3,
+            hand:
+            [
+                Card(1, "proto.silent.survivor"),
+                bubble,
+                Card(3, "proto.silent.strike")
+            ],
+            drawPile: []);
+        var original = state.World!.Combat!;
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = original with
+                {
+                    Enemies =
+                    [
+                        original.Enemies[0] with
+                        {
+                            Statuses = new Dictionary<string, int>
+                            {
+                                ["proto.status.poison"] = 1
+                            }
+                        },
+                        original.Enemies[0] with
+                        {
+                            InstanceId = 2,
+                            FormationPosition = 1,
+                            Statuses = new Dictionary<string, int>
+                            {
+                                ["proto.status.poison"] = 1
+                            }
+                        }
+                    ]
+                }
+            }
+        };
+
+        var engine = new PrototypeGameEngine();
+        var waiting = PlayCard(engine, state, 1);
+        var discard = engine.GetLegalActions(waiting).Single(action =>
+            action.Kind == "select_cards"
+            && action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.SequenceEqual([2]));
+        var snapshot = System.Text.Json.JsonSerializer
+            .Deserialize<RunState>(
+                System.Text.Json.JsonSerializer.Serialize(waiting))!;
+        var before = CanonicalJson.Sha256(waiting);
+
+        var resolved = engine.Step(waiting, discard).State;
+        var combat = resolved.World!.Combat!;
+        var roll = Assert.Single(combat.AutoPlayTargetRolls!);
+        Assert.Equal(2, roll.CardInstanceId);
+        Assert.Equal(1, roll.Turn);
+        Assert.Equal(2, roll.CandidateCount);
+        Assert.InRange(roll.SelectedIndex, 0, 1);
+        Assert.Equal(roll.SelectedIndex + 1, roll.TargetEnemyInstanceId);
+        Assert.Equal(10, combat.Enemies.Single(enemy =>
+            enemy.InstanceId == roll.TargetEnemyInstanceId)
+            .Statuses["proto.status.poison"]);
+        Assert.Equal(1, combat.Enemies.Single(enemy =>
+            enemy.InstanceId != roll.TargetEnemyInstanceId)
+            .Statuses["proto.status.poison"]);
+        Assert.Equal(2, combat.Energy); // Sly auto-play is free
+        PrototypeStateInvariants.Validate(resolved);
+        Assert.Equal(before, CanonicalJson.Sha256(waiting));
+
+        Assert.Equal(CanonicalJson.Sha256(resolved),
+            CanonicalJson.Sha256(engine.Step(snapshot, discard).State));
+        var fork = resolved.Fork();
+        Assert.Equal(roll, Assert.Single(fork.World!.Combat!.AutoPlayTargetRolls!));
+        Assert.NotSame(combat.AutoPlayTargetRolls,
+            fork.World.Combat.AutoPlayTargetRolls);
+    }
+
     private static RunState PlayCard(
         PrototypeGameEngine engine,
         RunState state,

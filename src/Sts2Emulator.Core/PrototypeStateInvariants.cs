@@ -2537,6 +2537,18 @@ public static class PrototypeStateInvariants
                     "Pending Knowledge Demon curse choice is stale or malformed.");
         }
 
+        if (combat.AutoPlayTargetRolls is { } rolls
+            && rolls.Any(roll =>
+                roll.CardInstanceId <= 0
+                || roll.Turn <= 0 || roll.Turn > combat.Turn
+                || roll.CandidateCount <= 0
+                || roll.SelectedIndex < 0
+                || roll.SelectedIndex >= roll.CandidateCount
+                || !combat.Enemies.Any(enemy =>
+                    enemy.InstanceId == roll.TargetEnemyInstanceId)))
+            throw new InvalidOperationException(
+                "Recorded Sly auto-play target roll has invalid identity or bounds.");
+
         var known = combat.Cards.Select(card => card.InstanceId).ToHashSet();
         if (known.Count != combat.Cards.Length)
         {
