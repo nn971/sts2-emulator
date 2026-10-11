@@ -984,8 +984,7 @@ public sealed partial class PrototypeGameEngine
         combat = playCountResult.Combat;
 
         var sourceDestination = CardExhaustsOnUse(
-                definition,
-                card.UpgradeLevel)
+                definition, card)
             ? PrototypeCardZone.ExhaustPile
             : PrototypeCardZone.DiscardPile;
 
@@ -5793,7 +5792,7 @@ public sealed partial class PrototypeGameEngine
                     var autoPlayDestination =
                         CardExhaustsOnUse(
                             autoPlayDefinition,
-                            autoPlayCard.UpgradeLevel)
+                            autoPlayCard)
                             ? PrototypeCardZone.ExhaustPile
                             : PrototypeCardZone.DiscardPile;
 
@@ -7169,9 +7168,13 @@ public sealed partial class PrototypeGameEngine
 
     private static bool CardExhaustsOnUse(
         PrototypeCardDefinition definition,
-        int upgradeLevel) =>
+        CombatCardInstance card) =>
         definition.ExhaustOnUse
-        && !(upgradeLevel > 0 && definition.LoseExhaustOnUpgrade);
+        && !(card.UpgradeLevel > 0 && definition.LoseExhaustOnUpgrade)
+        // SoulsPower.OnEnchant removes the LOCAL Exhaust keyword.
+        // This must hold for both normal plays and auto-played cards.
+        && card.Enchantment?.Kind !=
+            PrototypeCardEnchantmentKind.SoulsPower;
 
     private static int ResolveFixedCardEnergyCost(
         CombatState combat,
