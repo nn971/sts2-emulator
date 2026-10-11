@@ -83,6 +83,83 @@ public static class PrototypeNativeLaterActFixture
             firstMonsterCombatId, mapColumn, mapRow);
     }
 
+    /// <summary>
+    /// A fast, independent combat-entry RNG snapshot for pinned Hive/Glory
+    /// encounters. Unlike Create(...), this bypasses map-room entry entirely.
+    /// It samples native run.niche HP and commits native run.monster_ai
+    /// intents, but deliberately omits player deck, rewards, card draw,
+    /// combat hooks and cross-battle run-RNG history. It is not a playable run.
+    /// </summary>
+    public static CombatState CreateCombatRngSnapshot(
+        string seed,
+        int act,
+        string emulatorEncounterId,
+        string nativeEncounterEntry,
+        int totalFloor,
+        int ascension = 0,
+        long firstMonsterCombatId = 1,
+        int? mapColumn = null,
+        int? mapRow = null,
+        bool commitInitialIntents = true)
+    {
+        if (ascension is < 0 or > 10)
+            throw new ArgumentOutOfRangeException(nameof(ascension));
+        var formation = GenerateEncounterFormation(
+            seed, act, emulatorEncounterId, nativeEncounterEntry,
+            totalFloor, firstMonsterCombatId, mapColumn, mapRow);
+        var enemies = formation.Enemies.Select((spec, index) =>
+        {
+            var definition = PrototypeContent.Enemy(spec.EnemyId);
+            var starting = definition.HpRangeAt(act, ascension).Max;
+            var powers = (definition.StartingPowers
+                    ?? Array.Empty<PrototypeStartingPowerSpec>())
+                .Select((power, index) =>
+                    new PrototypePowerInstanceState(
+                        power.PowerId, power.StacksAt(ascension), index + 1))
+                .Where(power => power.Stacks > 0).ToArray();
+            return new EnemyCombatState(
+                InstanceId: index + 1,
+                EnemyId: spec.EnemyId,
+                Hp: starting,
+                MaxHp: starting,
+                Block: powers.Sum(power => power.Stacks
+                    * PrototypeContent.Power(power.PowerId)
+                        .EnemyStartingBlockPerStack),
+                MoveIndex: 0,
+                Statuses: new Dictionary<string, int>(StringComparer.Ordinal),
+                Powers: powers,
+                FormationPosition: spec.FormationPosition,
+                SlotName: spec.SlotName,
+                LeaderEnemyInstanceId: spec.LeaderFormationPosition is { } leader
+                    ? Array.FindIndex(formation.Enemies, other =>
+                        other.FormationPosition == leader) + 1
+                    : null,
+                NonSummonMovesUntilEligible: definition.NonSummonMovesBeforeEligible);
+        }).ToArray();
+
+        var bare = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies: enemies,
+            NextCardInstanceId: 1,
+            Cards: [],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Act: act,
+            Ascension: ascension);
+        var native = NativeCombatRngEntryV111.AttachAndRollInitialHp(
+            bare, formation, NativeRngV111.CreateBundle(seed));
+        return commitInitialIntents
+            ? PrototypeGameEngine.CommitEnemyIntents(
+                native, PrototypeRng.CreateBundle(seed))
+            : native;
+    }
+
     public static RunState Create(
         string seed, int act, int ascension = 0, int lanternKeys = 0)
     {
