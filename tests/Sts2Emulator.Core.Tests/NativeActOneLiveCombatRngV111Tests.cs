@@ -168,9 +168,34 @@ public sealed class NativeActOneLiveCombatRngV111Tests
             Assert.Equal(originalHash, CanonicalJson.Sha256(experimental));
         }
 
-        Assert.NotEmpty(implemented);
-        Assert.True(rejected > 0,
-            "Unsupported source-specific formations should fail explicitly.");
+        // All four ordinary weak encounters in both Act 1 regions now
+        // have source-audited native entry. Rejection is exercised
+        // separately for non-weak content and cross-region identities.
+        Assert.Equal(4, implemented.Count);
+        Assert.Equal(0, rejected);
+    }
+
+    [Theory]
+    [InlineData(ActIdentity.Overgrowth, "proto.encounter.nibbits_normal")]
+    [InlineData(ActIdentity.Underdocks, "proto.encounter.corpse_slugs_normal")]
+    public void UnmigratedNormalEncountersStillRejectWithoutFallback(
+        ActIdentity region, string encounterId)
+    {
+        var state = ToMap("native-unsupported-normal-" + region,
+            region, true);
+        var node = state.World!.Map.Nodes.First(point =>
+            point.Floor == 1);
+        var world = state.World with
+        {
+            Floor = 1,
+            ActiveRoom = PrototypeRoomType.Combat,
+            Map = state.World.Map with { CurrentNodeId = node.NodeId }
+        };
+        var hash = CanonicalJson.Sha256(state);
+        Assert.Throws<NotSupportedException>(() =>
+            NativeActOneWeakCombatEntryV111.Prepare(
+                state, world, PrototypeContent.Encounter(encounterId)));
+        Assert.Equal(hash, CanonicalJson.Sha256(state));
     }
 
     [Fact]
