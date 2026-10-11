@@ -35,7 +35,7 @@ public sealed class V111CompleteWeakEncounterTests
             var encounter = PrototypeContent.Encounter(item.EngineIds[0]);
             Assert.Equal((3, 3, 0),
                 (encounter.MinAct, encounter.MaxAct, encounter.Weight));
-            Assert.Equal("missing", item.Integration);
+            Assert.Equal("integrated", item.Integration);
             Assert.Equal("unverified", item.Validation);
         });
     }
