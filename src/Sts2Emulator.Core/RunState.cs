@@ -71,12 +71,16 @@ public sealed record RunState(
     RunWorldState? World = null,
     int Ascension = 0,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    RunConfiguration? Configuration = null)
+    RunConfiguration? Configuration = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    RngBundle? NativeRunRng = null)
 {
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
         Rng = Rng.Fork(),
+        NativeRunRng = NativeRunRng?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()
