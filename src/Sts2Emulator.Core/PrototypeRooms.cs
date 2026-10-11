@@ -43,10 +43,7 @@ public sealed partial class PrototypeGameEngine
         // Its event replacement also applies to existing Event nodes.
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? forceRepy ? PrototypeRoomType.Event
-                : experimentalLaterRoute
-                    ? ExperimentalSilentThreeActRouteV111.ResolveUnknown(
-                        world, state.Rng)
-                    : ResolveUnknownMapRoom(ref world, state.Rng)
+                : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
 
         world = world with
@@ -69,30 +66,37 @@ public sealed partial class PrototypeGameEngine
         return room switch
         {
             PrototypeRoomType.Combat => experimentalLaterRoute
-                ? StartCombat(state, room,
-                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
-                        world, room, state.Rng))
+                ? StartExperimentalLaterActCombat(state, room)
                 : StartCombat(state, room),
             PrototypeRoomType.Elite => experimentalLaterRoute
-                ? StartCombat(state, room,
-                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
-                        world, room, state.Rng))
+                ? StartExperimentalLaterActCombat(state, room)
                 : StartCombat(state, room),
             PrototypeRoomType.Boss => experimentalLaterRoute
-                ? StartCombat(state, room,
-                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
-                        world, room, state.Rng))
+                ? StartExperimentalLaterActCombat(state, room)
                 : StartCombat(state, room),
             PrototypeRoomType.Event => forceRepy
-                ? StartNativeWarHistorianRepy(state)
-                : experimentalLaterRoute
-                    ? ExperimentalSilentThreeActRouteV111.BeginEvent(state)
-                    : StartEvent(state),
+                ? StartNativeWarHistorianRepy(state) : StartEvent(state),
             PrototypeRoomType.Shop => StartShop(state),
             PrototypeRoomType.Rest => state with { Phase = RunPhase.Rest },
             PrototypeRoomType.Treasure => StartTreasureRoom(state),
             _ => throw new ArgumentOutOfRangeException()
         };
+    }
+
+    private static RunState StartExperimentalLaterActCombat(
+        RunState state, PrototypeRoomType room)
+    {
+        var world = RequireWorld(state);
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute != true
+            || world.Act is < 2 or > 3)
+            throw new NotSupportedException(
+                "Regional combat entry requires the experimental three-act route.");
+        var selected = ExperimentalSilentThreeActRouteV111.SelectEncounter(
+            world, room, state.Rng);
+        return StartCombat(state with
+        {
+            World = world with { LaterActEncounterBag = selected.Bag }
+        }, room, selected.Encounter);
     }
 
     private static MapState GenerateActMap(
@@ -652,14 +656,19 @@ public sealed partial class PrototypeGameEngine
         var nativeUnderdocks = world.Act == 1
             && world.Map.GenerationProfileId
                 == PrototypeNativeUnderdocks.GenerationProfileId;
+        var laterRoute = world.Act is 2 or 3
+            && state.Configuration?.UsesExperimentalSilentThreeActRoute == true;
         var eligible = PrototypeContent.Events.Values
             .Where(evt =>
-                (nativeUnderdocks
-                    ? PrototypeNativeUnderdocksEvents.IsSupported(evt.Id)
-                    : PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(evt.Id)
-                        == nativeOvergrowth
-                      && !PrototypeNativeUnderdocksEvents
-                          .IsNativeRegionEvent(evt.Id))
+                (laterRoute
+                    ? ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                        evt.Id, world.Act)
+                    : nativeUnderdocks
+                        ? PrototypeNativeUnderdocksEvents.IsSupported(evt.Id)
+                        : PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(evt.Id)
+                            == nativeOvergrowth
+                          && !PrototypeNativeUnderdocksEvents
+                              .IsNativeRegionEvent(evt.Id))
                 && (!nativeOvergrowth
                     || PrototypeNativeOvergrowthEvents.IsEligible(
                         evt, state.Player))
@@ -668,9 +677,11 @@ public sealed partial class PrototypeGameEngine
                         evt, state.Player)
                     && PrototypeNativeUnderdocksEvents.IsFloorEligible(
                         evt, world))
+                && (!laterRoute || world.Act != 2
+                    || PrototypeNativeHiveEvents.IsEligible(evt, state.Player))
                 && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
-                && evt.Weight > 0
+                && (laterRoute || evt.Weight > 0)
                 && (!evt.OncePerRun
                     || !world.EventIds.Contains(evt.Id, StringComparer.Ordinal)))
             .ToArray();
@@ -681,6 +692,17 @@ public sealed partial class PrototypeGameEngine
                 $"No prototype event is eligible in act {world.Act}.");
         }
 
+        if (laterRoute)
+        {
+            // Without replacement where possible; one-off native events
+            // stay excluded by OncePerRun. Pool exhaustion is deliberately
+            // provisional until the source event-bag rolls are audited.
+            var unseen = eligible.Where(evt =>
+                !world.EventIds.Contains(evt.Id, StringComparer.Ordinal))
+                .ToArray();
+            if (unseen.Length > 0)
+                eligible = unseen;
+        }
         var previousEvent = world.EventIds.LastOrDefault();
         if (previousEvent is not null && eligible.Length > 1)
         {
@@ -689,23 +711,24 @@ public sealed partial class PrototypeGameEngine
                     !StringComparer.Ordinal.Equals(evt.Id, previousEvent))
                 .ToArray();
             if (withoutImmediateRepeat.Length > 0)
-            {
                 eligible = withoutImmediateRepeat;
-            }
         }
 
-        var totalWeight = eligible.Sum(evt => evt.Weight);
+        // Gated later-act fixture registrations deliberately have Weight=0
+        // so legacy prototype runs cannot sample them. Only this explicit
+        // regional route opts in, using uniform provisional weights.
+        var totalWeight = eligible.Sum(evt => laterRoute ? 1 : evt.Weight);
         var roll = PrototypeRng.NextInt(state.Rng, "event", totalWeight);
         var selected = eligible[^1];
         foreach (var evt in eligible)
         {
-            if (roll < evt.Weight)
+            var weight = laterRoute ? 1 : evt.Weight;
+            if (roll < weight)
             {
                 selected = evt;
                 break;
             }
-
-            roll -= evt.Weight;
+            roll -= weight;
         }
 
         world = world with
@@ -1391,7 +1414,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     string relicId;
                     if (effect.Kind == PrototypeRunEffectKind.GainRandomRelic
-                        && UsesNativeActOneSystems(world))
+                        && UsesNativeRegionalSystems(world))
                     {
                         var draw = PrototypeNativeRelicGrabBag.Draw(
                             world, player, state.Rng, merchant: false);
@@ -1458,7 +1481,7 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.GainPotion:
                 case PrototypeRunEffectKind.GainRandomPotion:
                 {
-                    var nativeOvergrowth = UsesNativeActOneSystems(world);
+                    var nativeOvergrowth = UsesNativeRegionalSystems(world);
                     var potionId = effect.Kind
                         == PrototypeRunEffectKind.GainRandomPotion
                         ? nativeOvergrowth && eventState.EventId
@@ -1941,7 +1964,7 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartShop(RunState state)
     {
         var world = RequireWorld(state);
-        var nativeMerchant = UsesNativeActOneSystems(world);
+        var nativeMerchant = UsesNativeRegionalSystems(world);
         // MerchantInventory chooses one of the five character-card
         // slots before populating the inventory.
         var saleIndex = nativeMerchant
@@ -3382,7 +3405,7 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        var nativeOvergrowth = UsesNativeActOneSystems(world);
+        var nativeOvergrowth = UsesNativeRegionalSystems(world);
 
         // RewardsSet.GenerateRewardsFor rolls the potion pity check
         // before rewards are populated; GoldReward.Populate runs first,
@@ -3516,7 +3539,7 @@ public sealed partial class PrototypeGameEngine
         string? relic = null;
         if (room == PrototypeRoomType.Elite)
         {
-            if (UsesNativeActOneSystems(world))
+            if (UsesNativeRegionalSystems(world))
             {
                 var draw = PrototypeNativeRelicGrabBag.Draw(
                     world, state.Player, state.Rng, merchant: false);

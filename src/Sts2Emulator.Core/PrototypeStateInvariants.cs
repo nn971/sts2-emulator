@@ -146,6 +146,9 @@ public static class PrototypeStateInvariants
         }
 
         ValidateActOneEncounterPool(world);
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute == true
+            && world.Act > 1)
+            ValidateLaterActEncounterBag(world);
         ValidateEncounterHistory(world);
         ValidateEventHistory(world);
         ValidateCompletedRoomHistory(world);
@@ -325,6 +328,41 @@ public static class PrototypeStateInvariants
         }
     }
 
+    private static void ValidateLaterActEncounterBag(RunWorldState world)
+    {
+        var bag = world.LaterActEncounterBag
+            ?? throw new InvalidOperationException(
+                "Configured Hive/Glory requires a regional encounter bag.");
+        if (world.Act is < 2 or > 3 || bag.Act != world.Act
+            || bag.OrdinaryCombatsStarted < 0)
+            throw new InvalidOperationException(
+                "Regional encounter bag has an invalid act/count.");
+        foreach (var (values, pool) in new[]
+        {
+            (bag.RemainingWeak,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Combat, true)),
+            (bag.RemainingNormal,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Combat, false)),
+            (bag.RemainingElite,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Elite, false))
+        })
+        {
+            if (values is null
+                || values.Length != values.Distinct(StringComparer.Ordinal).Count()
+                || values.Any(id => !pool.Contains(id, StringComparer.Ordinal)))
+                throw new InvalidOperationException(
+                    "Regional encounter bag has duplicate or foreign entries.");
+        }
+        if (!ExperimentalSilentThreeActRouteV111.Pool(
+            world.Act, PrototypeRoomType.Boss, false)
+            .Contains(bag.BossEncounterId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Regional preselected boss is not eligible for this act.");
+    }
+
     private static void ValidateCompletedRoomHistory(
         RunWorldState world)
     {
@@ -459,10 +497,11 @@ public static class PrototypeStateInvariants
         if (world.Act < active.MinAct || world.Act > active.MaxAct
             || (active.Weight <= 0
                 && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
-                && !(world.Act == 2
+                && !(world.Act is 2 or 3
                     && world.Map.GenerationProfileId ==
-                        PrototypeNativeLaterActMap.HiveProfileId
-                    && active.Id == PrototypeNativeHiveEvents.InfestedAutomatonId)
+                        PrototypeNativeLaterActMap.ProfileId(world.Act)
+                    && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                        active.Id, world.Act))
                 && active.Id !=
                     PrototypeNativeGloryEvents.HungryForMushroomsId
                 && active.Id != PrototypeNativeGloryEvents.ReflectionsId
@@ -593,6 +632,8 @@ public static class PrototypeStateInvariants
                     eventState.NativeEventGold is >= 101 and <= 121,
                 "proto.native.underdocks.sunken_treasury" =>
                     eventState.NativeEventGold is >= 52 and <= 67,
+                PrototypeNativeHiveEvents.LostWispId =>
+                    eventState.NativeEventGold is >= 45 and <= 75,
                 PrototypeNativePunchOff.EventId =>
                     eventState.NativeEventGold is >= 91 and <= 98,
                 _ => false
@@ -1374,13 +1415,20 @@ public static class PrototypeStateInvariants
                 "Combat gold offer is invalid or unresolved without an offer.");
         }
 
+        // Native custom event rewards (such as Glory's Trial and
+        // Battleworn Dummy) may expose independent offers, just like
+        // combat rewards. Their event continuation is validated by
+        // CompleteReward/ValidatePhaseState rather than the source name.
+        var registeredEventReward =
+            reward.SourceRoom.StartsWith("Event:", StringComparison.Ordinal)
+            && PrototypeContent.Events.ContainsKey(
+                reward.SourceRoom["Event:".Length..]);
         if (reward.IndependentSelection
             && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest")
-            && !StringComparer.Ordinal.Equals(reward.SourceRoom,
-                "Event:" + PrototypeNativeHiveEvents.WarHistorianRepyId))
+            && !registeredEventReward)
         {
             throw new InvalidOperationException(
-                "Independent reward selection requires a combat, rest or Repy event reward.");
+                "Independent reward selection requires a recognized combat, rest or event reward.");
         }
 
         var extraCards = reward.ExtraCardOptions ?? Array.Empty<string[]>();
@@ -2577,25 +2625,40 @@ public static class PrototypeStateInvariants
                 continue;
             }
 
+            var source = combat.Enemies.FirstOrDefault(enemy =>
+                enemy.InstanceId == sourceEnemyId);
+            if (source is null)
+                throw new InvalidOperationException(
+                    "Source-owned card Affliction refers to an unknown enemy.");
+            // Two later-act card afflictions are installed by *enemy*
+            // powers, not player powers. Galvanized persists on the card
+            // after Globe Head dies, but its damage hook no longer fires.
+            // Vital Spark's Tainted instead clears when the source dies.
+            var enemyOwnedAffliction = card.Affliction.Kind switch
+            {
+                PrototypeCardAfflictionKind.Galvanized =>
+                    source.PowerStates.Any(power =>
+                        PrototypeContent.Power(power.PowerId)
+                            .GalvanizePowerCardsPerStack > 0)
+                    || source.Hp <= 0,
+                PrototypeCardAfflictionKind.Tainted =>
+                    source.Hp > 0 && source.PowerStates.Any(power =>
+                        power.PowerId == PrototypeNativeHiveElites.VitalSparkId
+                        && power.Stacks > 0),
+                _ => false
+            };
             var hasMatchingSourcePower =
-                combat.PlayerPowers.Any(power =>
+                enemyOwnedAffliction
+                || combat.PlayerPowers.Any(power =>
                 {
-                    if (power.SourceEnemyInstanceId
-                            != sourceEnemyId)
-                    {
+                    if (power.SourceEnemyInstanceId != sourceEnemyId)
                         return false;
-                    }
-
-                    var definition =
-                        PrototypeContent.Power(power.PowerId);
-                    return definition.SourceBoundCardAffliction
-                        == card.Affliction.Kind;
+                    return PrototypeContent.Power(power.PowerId)
+                        .SourceBoundCardAffliction == card.Affliction.Kind;
                 });
             if (!hasMatchingSourcePower)
-            {
                 throw new InvalidOperationException(
                     "Source-owned card Affliction has no matching active power.");
-            }
         }
 
         foreach (var enemy in combat.Enemies)

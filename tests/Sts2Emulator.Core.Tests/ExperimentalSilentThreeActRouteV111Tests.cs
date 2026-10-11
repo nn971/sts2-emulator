@@ -68,12 +68,16 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
         Assert.Equal(0, hive.World.Floor);
         Assert.Null(hive.World.ActOneRegion);
         Assert.Null(hive.World.ActOneEncounterPool);
+        Assert.NotNull(hive.World.LaterActEncounterBag);
+        Assert.Equal(2, hive.World.LaterActEncounterBag!.Act);
         Assert.Equal(actOne.Player, actOne.Player);
         Assert.Equal(CanonicalJson.Sha256(actOne.Player),
             CanonicalJson.Sha256(hive.Player));
         Assert.Equal(CanonicalJson.Sha256(actOne.NativeRunRng),
             CanonicalJson.Sha256(hive.NativeRunRng));
-        Assert.Equal(CanonicalJson.Sha256(actOne.Rng),
+        // Act-entry boss choice now belongs to an advancing encounter
+        // stream. All original cursors are fork-safe, not unchanged.
+        Assert.NotEqual(CanonicalJson.Sha256(actOne.Rng),
             CanonicalJson.Sha256(hive.Rng));
         Assert.Equal(originalHash, CanonicalJson.Sha256(actOne));
         PrototypeStateInvariants.Validate(hive);
@@ -127,7 +131,7 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
-    public void FirstLaterActUnknownOpensAnImplementedEvent(int act)
+    public void LaterActUnknownUsesStatefulNativeShapedRoomOdds(int act)
     {
         var seed = "silent-route-event-" + act;
         var state = Transition(ActOneMap(seed));
@@ -156,11 +160,16 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
                 && option.ReadPayload<ChooseMapNodePayload>().NodeId
                     == entry.Child.NodeId);
         var started = Engine.Step(state, action).State;
-        Assert.Equal(RunPhase.Event, started.Phase);
-        Assert.Equal(act == 2
-            ? PrototypeNativeHiveEvents.InfestedAutomatonId
-            : PrototypeNativeGloryEvents.HungryForMushroomsId,
-            started.World!.Event!.EventId);
+        Assert.Contains(started.Phase,
+            new[] { RunPhase.Event, RunPhase.Combat,
+                RunPhase.Shop, RunPhase.Reward });
+        Assert.NotNull(started.World!.UnknownRoomOdds);
+        if (started.Phase == RunPhase.Event)
+            Assert.True(ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                started.World.Event!.EventId, act));
+        if (started.Phase == RunPhase.Combat)
+            Assert.True(ExperimentalSilentThreeActRouteV111.ContainsEncounter(
+                started.World.EncounterIds.Last(), act));
         PrototypeStateInvariants.Validate(started);
         Assert.NotEmpty(Engine.GetLegalActions(started));
         Assert.Equal(CanonicalJson.Sha256(started),

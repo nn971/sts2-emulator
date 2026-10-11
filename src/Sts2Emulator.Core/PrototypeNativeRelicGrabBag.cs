@@ -211,6 +211,31 @@ public static class PrototypeNativeRelicGrabBag
         return (bag, null);
     }
 
+    /// <summary>
+    /// RelicCmd.Obtain can grant a specific relic outside the ordinary
+    /// grab-bag draw path (events, Ancients and special rewards). Such
+    /// acquired entries must be removed from all persistent queues before
+    /// the next decision boundary. Do not reshuffle or consume RNG.
+    /// </summary>
+    public static RunWorldState PruneOwned(
+        RunWorldState world, PlayerState player)
+    {
+        if (world.RelicBag is not { } bag)
+            return world;
+        var owned = player.Relics.Select(relic => relic.RelicId)
+            .ToHashSet(StringComparer.Ordinal);
+        static string[] Prune(string[] remaining, HashSet<string> owned) =>
+            remaining.Where(id => !owned.Contains(id)).ToArray();
+        var pruned = bag with
+        {
+            Common = Prune(bag.Common, owned),
+            Uncommon = Prune(bag.Uncommon, owned),
+            Rare = Prune(bag.Rare, owned),
+            Shop = Prune(bag.Shop, owned)
+        };
+        return world with { RelicBag = pruned };
+    }
+
     public static (RunWorldState World, string? Id) Draw(
         RunWorldState world, PlayerState player, RngBundle rng,
         bool merchant, PrototypeRelicRarity? forcedRarity = null)

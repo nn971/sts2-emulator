@@ -684,6 +684,44 @@ do not report experimental sample coverage as native pool completeness.
 See [the route slice note](reference-builds/v0.111.0-experimental-silent-three-act-route.md)
 and `ExperimentalSilentThreeActRouteV111Tests`.
 
+## Broader regional integration (experimental v111 three-act mode)
+
+The runnable configured Silent route now has explicit, fork-owned encounter
+bags covering all **20 Hive** and **18 Glory** native weak/normal/elite/boss
+registrations, rather than the initial two-per-tier smoke slice.
+The pinned native act classes specify **two weak ordinary combats** in both
+later acts, followed by normal encounters. Regional bosses are preselected;
+normal and elite pools use without-replacement selection and refill.
+
+The route also samples the **9 currently implemented Hive** and **all 7 Glory**
+regional event registrations under explicit eligibility and event-history
+filters, with no silent substitution of prototype events. Hive's remaining
+Colorful Philosophers is cross-character-only and remains gated pending its
+other-character card pools. Underdocks already registers all 20 encounters
+and 10 regional events; tests now lock those catalogues to their supported
+registrations.
+
+Configured later-act Unknown rooms now use the same persistent,
+per-act monster/shop/treasure/event pity state as the Overgrowth
+native-shaped profile; later-act rewards, shops and treasure use the
+shared rarity, potion-pity and relic-grab-bag machinery instead of
+the historical prototype pools. This still requires exact native stream
+ownership, event/encounter sampling weights and oracle validation.
+Glory Battleworn's independently selectable custom event rewards now
+initialize proper per-group resolution state.
+
+The larger full-route CI smoke also uncovered and fixed two cross-content
+invariants: enemy-owned card afflictions (Galvanized/Tainted) must not be
+validated as player-power afflictions, and relics obtained directly from
+events must be removed from remaining native relic queues. Neither change
+claims real-game source parity for these systems.
+
+**This is expanded implementation access, not completion certification.**
+Knowledge Demon's compulsory player curse choice and several other
+later-act combat/Ancient/reward interactions still need executable integration,
+all-seed generated-run sweeps, and native differential verification.
+See [regional integration audit](reference-builds/v0.111.0-regional-integration-bags.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

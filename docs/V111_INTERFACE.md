@@ -27,8 +27,9 @@ also fail explicitly.
 For the **experimental** first whole-route slice, `reset_v111` additionally
 accepts `fidelity_id: "v111-experimental-silent-three-act-route-v1"`.
 The thin Python binding exposes the same keyword. This mode permits
-Silent Act 1 → Hive → Glory through a deliberately limited later-act
-encounter/event pool with provisional prototype selection/RNG rules; see
+Silent Act 1 → Hive → Glory through the fully catalogued
+Hive/Glory encounter rosters and available regional events with provisional
+selection weights, runtime gaps and non-native combat RNG; see
 [its scoped evidence note](reference-builds/v0.111.0-experimental-silent-three-act-route.md).
 Omitting `fidelity_id` preserves the existing configured v111 default.
 Unknown fidelity IDs are rejected. Multi-character and nonexperimental
