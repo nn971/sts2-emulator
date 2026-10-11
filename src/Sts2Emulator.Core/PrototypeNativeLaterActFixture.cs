@@ -67,7 +67,9 @@ public static class PrototypeNativeLaterActFixture
         var world = state.World
             ?? throw new InvalidOperationException("Run did not initialize.");
 
-        // Do not inherit six-floor prototype map generation consumption.
+        // Remove unrelated six-floor prototype map consumption from the
+        // compatibility state. Native map generation itself uses a fresh
+        // act-local stream and leaves this bundle untouched.
         var rng = state.Rng.Fork();
         var clean = PrototypeRng.CreateBundle(seed);
         var index = Array.FindIndex(rng.Streams,
@@ -76,7 +78,7 @@ public static class PrototypeNativeLaterActFixture
             stream => stream.StreamId == "map");
         rng.Streams[index] = clean.Streams[cleanIndex].Fork();
 
-        var map = PrototypeNativeLaterActMap.Generate(rng, act, ascension);
+        var map = PrototypeNativeLaterActMap.GenerateNative(seed, act, ascension);
         var keyId = PrototypeNativeHiveEvents.LanternKeyCardId;
         var deck = state.Player.Deck.Concat(
             Enumerable.Range(0, lanternKeys).Select(i =>
