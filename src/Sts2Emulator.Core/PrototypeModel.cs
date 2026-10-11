@@ -2225,7 +2225,8 @@ public sealed record RunWorldState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     ActIdentity? ActIdentity = null,
     // Native IRunState.ExtraFields.FreedRepy, set by unlocking Repy's cage.
-    bool FreedRepy = false)
+    bool FreedRepy = false,
+    PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -2244,6 +2245,7 @@ public sealed record RunWorldState(
             ? null
             : (PrototypeCompletedRoomRecord[])CompletedRoomHistory.Clone(),
         ActOneEncounterPool = ActOneEncounterPool?.Fork(),
+        LaterActEncounterBag = LaterActEncounterBag?.Fork(),
         RelicBag = RelicBag?.Fork()
     };
 
