@@ -5,6 +5,7 @@ public static class PrototypeStateInvariants
     public static void Validate(RunState state)
     {
         RunConfiguration.ValidateState(state);
+        NativeRunRngV111.Validate(state);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

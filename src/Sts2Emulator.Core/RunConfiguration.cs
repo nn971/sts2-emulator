@@ -151,7 +151,8 @@ public static class V111RunFactory
         return PrototypeGameFactory.Create(seed, owned.Ascension) with
         {
             GameBuild = V111Build.Id, EmulatorSchema = V111Build.StateSchema,
-            RunId = $"v111-{owned.CharacterId}-{seed}", Configuration = owned
+            RunId = $"v111-{owned.CharacterId}-{seed}", Configuration = owned,
+            NativeRunRng = NativeRngV111.CreateBundle(seed)
         };
     }
 
@@ -175,6 +176,8 @@ public static class V111RunFactory
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
             RunId = input.RunId, DecisionIndex = input.DecisionIndex,
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
+            NativeRunRng = input.NativeRunRng?.Fork()
+                ?? NativeRngV111.CreateBundle(input.RunSeed),
             World = opening.World! with { RulesetId = config.RulesetId, ActIdentity = config.Acts[0] }
         };
     }
