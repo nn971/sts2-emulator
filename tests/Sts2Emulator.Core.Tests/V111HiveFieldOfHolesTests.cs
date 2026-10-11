@@ -144,7 +144,20 @@ public sealed class V111HiveFieldOfHolesTests
                         PrototypeCardEnchantmentKind.PerfectFit)
                 } : c).ToArray()
         };
-        state = state with { World = state.World with { Combat = combat } };
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Select(c =>
+                    c.InstanceId == topCard.PersistentCardInstanceId
+                    ? c with
+                    {
+                        Enchantment = new PrototypeCardEnchantment(
+                            PrototypeCardEnchantmentKind.PerfectFit)
+                    } : c).ToArray()
+            },
+            World = state.World with { Combat = combat }
+        };
         PrototypeStateInvariants.Validate(state);
         var initialHash = CanonicalJson.Sha256(state);
         var choice = Engine.GetLegalActions(state)
