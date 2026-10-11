@@ -127,6 +127,16 @@ This is an intermediate implementation. Final release gates remain open.
   transformations and randomized summon pools are strictly gated;
   summoning strategy and spawn-specific gameplay hooks remain
   prototype-shaped. See [native creature creation RNG](reference-builds/v0.111.0-native-creature-creation-rng.md).
+- Source-audited two native Act 1 summon-specific hooks:
+  Living Fog now occupies the **first** unoccupied bomb slot, not
+  the prototype's last; Gremlin Merc's SurprisePower death **precreates**
+  Fat Gremlin before adding Sneaky, producing native CombatId order
+  1/3/2 in final turn order, with Fat and Sneaky niche HP rolls in
+  source creation order and correct excluded attached-max-HP set.
+  Native creature contexts and slots are permuted atomically without
+  reseeding. General native transformation remains explicitly gated;
+  `ToughEgg.Hatch` is an in-place source-state change rather than
+  a species replacement. See [summon hook audit](reference-builds/v0.111.0-native-summon-hooks.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
