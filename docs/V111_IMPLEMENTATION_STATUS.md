@@ -137,6 +137,19 @@ This is an intermediate implementation. Final release gates remain open.
   reseeding. General native transformation remains explicitly gated;
   `ToughEgg.Hatch` is an in-place source-state change rather than
   a species replacement. See [summon hook audit](reference-builds/v0.111.0-native-summon-hooks.md).
+- Implemented the first tightly gated **native in-place monster
+  transformation**: ToughEgg.Hatch in the isolated Hive
+  OvicopterNormal combat. The source keeps the original ToughEgg
+  MonsterModel, CombatId and monster RNG while replacing its move
+  state with Nibble and rolling new HP directly from `run.niche`
+  (19–22 at A0, 20–23 at A8+). The existing prototype Hatchling
+  move ID is an explicitly marked proxy; native encounter specs and
+  creature-local RNG identities remain unchanged. Non-Minion powers
+  are removed, without clearing Block or creating a new monster.
+  Tests cover 192 seeds, ascension breakpoints, snapshots and
+  invalid in-place proxy mutations. Other native transformations,
+  early/spawn hatching and random summon pools remain gated.
+  See [native Tough Egg hatch](reference-builds/v0.111.0-native-tough-egg-hatch.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
