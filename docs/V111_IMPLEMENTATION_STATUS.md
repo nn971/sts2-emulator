@@ -354,8 +354,8 @@ This is an intermediate implementation. Final release gates remain open.
   `Weight=0`: Kaiser Crab (independently targetable Crusher and Rocket,
   5-move cycles, Surrounded directional damage, once-per-arm Crab Rage
   +6 Strength/+99 Block on the other arm's death), Knowledge Demon
-  (attack/heal state machine and finite three-curse schedule, but its
-  mandatory player curse selection explicitly raises Unsupported),
+  (attack/heal state machine, finite three-curse schedule, and
+  player-owned two-card curse choices with source-defined debuff powers),
   and The Insatiable (Liquify Sandpit countdown, six Frantic Escapes
   split between randomly inserted draw/discard, five-move loop, and
   Frantic Escape increasing Sandpit and its own cost). Source HP,
@@ -717,8 +717,9 @@ events must be removed from remaining native relic queues. Neither change
 claims real-game source parity for these systems.
 
 **This is expanded implementation access, not completion certification.**
-Knowledge Demon's compulsory player curse choice and several other
-later-act combat/Ancient/reward interactions still need executable integration,
+Knowledge Demon's compulsory curse selection now suspends and resumes the
+actual enemy turn without auto-selection. Additional later-act
+combat/Ancient/reward interactions still need completion, multi-boss
 all-seed generated-run sweeps, and native differential verification.
 See [regional integration audit](reference-builds/v0.111.0-regional-integration-bags.md).
 
@@ -771,3 +772,14 @@ diff. Native parity claims require a real reference fixture ledger.
 The workspace has neither the pinned game installation nor a real-game trace
 corpus. Source-backed implementation and synthetic validation can proceed,
 but those native release gates cannot be certified from the available files.
+
+## Knowledge Demon enemy-side choice (v111 opt-in route)
+
+The mandatory Curse of Knowledge is now executable across all three
+source-scripted choices. The choice is explicit, forkable, serializable,
+and resumed at the original committed enemy action; Disintegration,
+Mind Rot, Sloth and Waste Away have source-shaped immediate debuff
+semantics. No choice is silently selected and choice-only status
+cards do not enter normal rewards. See
+[the source audit](reference-builds/v0.111.0-knowledge-demon-player-choices.md).
+RNG/call-order parity with the real game remains unverified.
