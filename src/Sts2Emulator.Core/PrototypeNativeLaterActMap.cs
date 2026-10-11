@@ -3,8 +3,9 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Source-shaped single-player Hive and Glory map geometry for the pinned
 /// v0.111.0 reference. Geometry and placement restrictions are derived from
-/// StandardActMap, Hive, Glory and MapPointTypeCounts. The generator deliberately
-/// uses PrototypeRng rather than claiming native map RNG byte-for-byte parity.
+/// StandardActMap, Hive, Glory and MapPointTypeCounts. The opted-in native
+/// map stream uses the exact v111 seed and sampling codec; path traversal,
+/// pruning, and room placement still need call-order parity.
 /// </summary>
 public static class PrototypeNativeLaterActMap
 {
@@ -44,12 +45,66 @@ public static class PrototypeNativeLaterActMap
     }
 
     /// <summary>
-    /// Opt-in map content inventory, not a live Hive/Glory run.
-    /// Unimplemented regional rewards and encounter bags are gated
-    /// at room entry. Uses prototype map RNG until native ownership
-    /// and exact path/pruning call order are independently validated.
+    /// RNG adapter for the existing source-shaped map algorithm. The legacy
+    /// entry point retains its original six-stream behavior; the native path
+    /// consumes exclusively the independent act-local context stream.
+    /// </summary>
+    private sealed class MapRandom(RngBundle bundle, string streamId, bool native)
+    {
+        public int NextInt(int maxExclusive) =>
+            native ? NativeRngV111.NextInt(bundle, streamId, maxExclusive)
+                : PrototypeRng.NextInt(bundle, streamId, maxExclusive);
+
+        public void Shuffle<T>(IList<T> values)
+        {
+            if (native) NativeRngV111.Shuffle(bundle, streamId, values);
+            else PrototypeRng.Shuffle(bundle, streamId, values);
+        }
+
+        public int NextGaussianInt(int mean, int standardDeviation, int min, int max) =>
+            native ? NativeRngV111.NextGaussianInt(bundle, streamId,
+                mean, standardDeviation, min, max)
+                : SampleTruncatedGaussian(bundle, mean, standardDeviation, min, max);
+    }
+
+    /// <summary>
+    /// Historical prototype adapter. Retain for old fixtures and consumers.
+    /// This entry point advances only the supplied prototype 'map' stream.
     /// </summary>
     public static MapState Generate(RngBundle rng, int act, int ascension = 0)
+    {
+        ArgumentNullException.ThrowIfNull(rng);
+        return GenerateCore(new MapRandom(rng, "map", native: false),
+            act, ascension);
+    }
+
+    /// <summary>
+    /// Opt-in source-shaped Hive/Glory generator using the *native* map
+    /// context RNG. Neither the caller's persistent 12+3 native streams
+    /// nor its six legacy streams are consumed during map generation.
+    /// </summary>
+    public static MapState GenerateNative(string seed, int act, int ascension = 0) =>
+        GenerateNativeWithAudit(seed, act, ascension).Map;
+
+    /// <summary>
+    /// Return the final act-local PRNG snapshot for exact-seed auditing.
+    /// This measures the current emulator map algorithm's draws, not yet
+    /// the exact native StandardActMap call sequence.
+    /// </summary>
+    public static (MapState Map, NativeRngSnapshot Rng)
+        GenerateNativeWithAudit(string seed, int act, int ascension = 0)
+    {
+        _ = ProfileId(act);
+        var stream = NativeRngV111Contexts.ForActMap(seed, act);
+        var bundle = new RngBundle([stream]);
+        var map = GenerateCore(
+            new MapRandom(bundle, stream.StreamId, native: true),
+            act, ascension);
+        return (map, NativeRngV111.ToSnapshot(bundle.Streams[0]));
+    }
+
+    private static MapState GenerateCore(
+        MapRandom random, int act, int ascension)
     {
         var profile = ProfileId(act);
         if (ascension is < 0 or > 10)
@@ -81,12 +136,12 @@ public static class PrototypeNativeLaterActMap
         // starting column is forced to differ from the first.
         for (var path = 0; path < 7; path++)
         {
-            var start = PrototypeRng.NextInt(rng, "map", MapWidth);
+            var start = random.NextInt(MapWidth);
             if (path == 1)
             {
                 while (starts.Contains(start))
                 {
-                    start = PrototypeRng.NextInt(rng, "map", MapWidth);
+                    start = random.NextInt(MapWidth);
                 }
             }
             starts.Add(start);
@@ -95,7 +150,7 @@ public static class PrototypeNativeLaterActMap
             for (var row = 1; row < roomRows; row++)
             {
                 var deltas = new[] { -1, 0, 1 };
-                PrototypeRng.Shuffle(rng, "map", deltas);
+                random.Shuffle(deltas);
                 Point? chosen = null;
                 foreach (var delta in deltas)
                 {
@@ -162,10 +217,10 @@ public static class PrototypeNativeLaterActMap
         // Both have StandardRandomUnknownCount minus one (9..13).
         // Geometry/quota compatibility is not RNG stream parity.
         var restCount = act == 2
-            ? SampleTruncatedGaussian(rng, 6, 1, 6, 7)
-            : 5 + PrototypeRng.NextInt(rng, "map", 2);
+            ? random.NextGaussianInt(6, 1, 6, 7)
+            : 5 + random.NextInt(2);
         var unknownCount =
-            SampleTruncatedGaussian(rng, 12, 1, 10, 14) - 1;
+            random.NextGaussianInt(12, 1, 10, 14) - 1;
         var quotas = new (PrototypeRoomType Type, int Count)[]
         {
             (PrototypeRoomType.Rest, restCount),
@@ -185,7 +240,7 @@ public static class PrototypeNativeLaterActMap
                     .OrderBy(point => point.Floor)
                     .ThenBy(point => point.Column)
                     .ToArray();
-                PrototypeRng.Shuffle(rng, "map", order);
+                random.Shuffle(order);
                 foreach (var point in order)
                 {
                     if (remaining == 0)
