@@ -1,0 +1,208 @@
+# Desired RNG Implementation
+
+**Status:** proposed target architecture; documentation only (2026-10-12).  
+**Scope:** `sts2-emulator`, pinned STS2 v0.111.0, single-player first.  
+**Primary goal:** faithful mechanics and ordered triggers with an interchangeable source of random decisions.  
+**Related plans:** [RNG model](RNG.md), [v111 native RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md), [complete implementation roadmap](FULL_IMPLEMENTATION_ROADMAP.md), [configured v111 interface](V111_INTERFACE.md).
+
+This document records the **desired RNG implementation** for the next emulator architecture milestone. It specifies what we want to build; it does **not** claim that these interfaces, migrations, or probability calibrations are implemented today. The existing v111 native RNG work should be extended rather than discarded.
+
+## 1. Governing decision
+
+Separate **mechanical execution** from **the selection of random outcomes**.
+
+Conceptually, a player action executes ordinary game rules and ordered hooks. At each source-authentic random-choice call site, the mechanics request an outcome from a provider. The mechanics then resume using that outcome. Native RNG and externally controlled Nature use the *same* mechanical continuation.
+
+```text
+Player action
+    -> mechanics / ordered triggers
+       -> random-choice request (call site, stream, eligible outcomes)
+          -> native stream provider  OR  externally controlled provider
+       -> chosen outcome
+    -> mechanics / ordered triggers continue
+       -> another random choice, player choice, or terminal boundary
+```
+
+A random outcome may determine which hooks fire next, which random choices arise, and how many draws a later operation consumes. **Order is defined by executing mechanics**, not by requiring a predetermined list of RNG calls.
+
+### Priorities
+
+1. **Mechanical fidelity:** correct rules, eligibility, timing, side effects, hook order, and persistent state for a supplied sequence of outcomes.
+2. **Interchangeability:** native RNG, externally selected Nature outcomes, scripted replay, and finite enumeration use the same mechanics.
+3. **Native RNG fidelity:** retain stream-specific codecs, stream ownership, native draw order, and exact seeded replay as a separate, valuable validation mode.
+4. **Probability fidelity:** later validate original outcome laws, including conditional distributions given public history, before claiming unbiased importance-corrected training.
+
+Exact native RNG cursor agreement is required **in native-mode parity tests**. A Nature-controlled trajectory is an explicitly counterfactual run; it need not have a compatible native seed/cursor. A parallel shadow cursor is not required in controlled mode.
+
+For training, mechanically legal outcomes are sufficient to build and test the architecture. Optimization against the *original* stochastic game subsequently requires a defined and justified reference distribution.
+
+## 2. Boundaries and ownership
+
+| Component | Responsibility |
+| --- | --- |
+| Game mechanics | Execute card/enemy/relic/potion/map/event/reward effects, ordered hooks, choices, and state changes. |
+| Random-operation layer | Define typed source-authentic requests, stable call-site identity, stream ownership, eligibility, validation, and outcome application. |
+| Native provider | Resolve using v111 named/context streams and native primitive algorithms, mutating the correct stream state. |
+| Controlled provider | Pause at a choice, accept an external legal outcome, record intervention provenance, and resume mechanically. |
+| Trace/replay provider | Consume a recorded choice transcript, asserting call-site/order/eligibility agreement. |
+| Enumerator | Fork a supported finite-choice boundary once per eligible outcome for tests and search. |
+| `sts2-ai` | Implement/learn Nature policies, chance proposals, importance ratios, gradient objectives, search, and evaluation. |
+
+The emulator must remain independent of `sts2-ai`. Nature is a consumer-supplied outcome controller, never a policy/network embedded in the emulator.
+
+The RNG abstraction should live in the core gameplay path, **not** as a post-step mutation of a draw pile, target, enemy intent, or RNG state. Rewriting an already-resolved result can skip triggers or destroy hidden-state consistency.
+
+## 3. Two related abstractions
+
+### 3.1 Primitive native RNG operations
+
+Keep a low-level native stream API for `NextInt`, `NextDouble`, shuffle primitives, Gaussian/rejection routines, stream construction, and exact cursor state. The existing `NativeRngV111` implementation, 12 run + 3 player streams, and context-owned map/encounter/monster/event streams are the starting point.
+
+Native mode must preserve *every* audited draw, including `NextInt(1)` calls which consume a native generator step. Preserve source call ordering, stream lifetime, owner identity, and variable draw counts. Use the pinned source and trace evidence, never generic approximations where native behavior is audited.
+
+### 3.2 Mechanic-level random decisions
+
+At game call sites, request semantically described random outcomes. A conceptual API is:
+
+```csharp
+// Illustrative design, not an existing repository API.
+RandomChoiceRequest request = new(
+    SiteId: "combat.monster.unique_hp",
+    StreamId: "run.niche",
+    Operation: "choose_index",
+    Candidates: eligibleHpValues);
+
+RandomChoiceResult result = randomness.Resolve(request);
+int hp = eligibleHpValues[result.Index];
+```
+
+A request describes:
+
+- **Stable site ID:** identifies the mechanic, not an ephemeral stack trace.
+- **Stream owner:** named run/player stream or derived context/creature identity.
+- **Operation kind:** bounded integer, weighted choice, selection from a pool, shuffle swap, etc.
+- **Eligibility/candidates:** ordered identifiers or a compact, auditable generator/parameterization; preserve stable instance identity when relevant.
+- **Mechanical source version:** v111 pin, provenance, and supported fidelity status.
+- **Occurrence identity:** local sequence number within the current transition, with a stable pending-event identity for save/fork/replay.
+- **Reference probabilities (optional):** declared probability model and verification status, separate from the outcome itself.
+
+The interface must support compact non-enumerated outcomes (e.g., large shuffle spaces) as well as finite lists. For Fisher–Yates, start by treating each native swap/index draw as a separate operation; a higher-level shuffle summary can be layered on later. For Gaussian or other variable-consumption operations, preserve the native primitive sequence and expose controlled operation support incrementally.
+
+**Do not skip a mechanically meaningful RNG call merely because the eligible outcome set is a singleton.** In native mode, such calls must still consume the native draw if the original source does.
+
+When the legal set depends on current game state, compute it at the actual call site, after all preceding hooks have executed. Reject Nature selections not in that set.
+
+## 4. Providers and execution semantics
+
+### Native provider
+
+Uses the existing v111 native stream inventory and context ownership, generating the same primitive results and stream states for the same exact state and call sequence. It must reproduce observed native seeded behavior as independent RNG/whole-run fidelity work progresses.
+
+Preserve the legacy six-stream prototype behind its existing versioned profile. Do not silently switch old training/default consumers to the new mode.
+
+### Controlled Nature provider
+
+At each supported choice boundary, return a serializable pending decision. A caller chooses an outcome; the engine validates it and resumes from the same mechanical location. The controlled state records a mode identifier and intervention transcript rather than pretending to be native-seeded continuation.
+
+The provider may choose a bad or unlikely *legal* outcome; no reference probability is required for this first structural milestone. The engine need not advance a shadow native cursor merely to imitate an unselected random draw. State, replay, and compatibility identifiers must clearly distinguish controlled runs from native ones.
+
+One action may encounter **multiple chance decisions**, interleaved with ordinary effects and additional player-owned choices. Support nested/triggered randomness (death triggers, summoning, generated cards, random targeting), and preserve all intermediate state.
+
+### Trace/replay and enumeration providers
+
+A transcript provider supplies a fixed recorded sequence of choice identities/outcomes and fails at the first mismatch in operation, owner, candidates, or order. This enables mechanical differential testing using supplied native-observed outcomes even when the native seed differs.
+
+An enumeration provider forks at a pending small finite-support choice, resolves each legal outcome, and runs the shared continuation. Do not enumerate enormous shuffles or continuous supports by default.
+
+### Persisted continuations
+
+Extend existing forkable/serializable choice-boundary patterns (e.g., enemy-origin blocking player choices), rather than retaining non-serializable C# stack frames or replaying an action from its beginning after every intervention.
+
+The canonical exact state/snapshot of a controlled run must include the pending call-site, operation parameters, already-applied side effects, continuation position, provider mode, and transcript identity. Forking a pending chance boundary yields independent children. Invalid or stale outcomes fail without partial state mutation.
+
+**Compatibility:** an ordinary player-level `step` call in native mode can auto-resolve every intermediate chance decision, preserving current caller-visible APIs. Controlled execution opts into `advance_until_boundary` / `resolve_chance`-style operations via a versioned interface; exact names are implementation choices.
+
+## 5. Current code: initial migration targets
+
+The v111 code already includes `NativeRngV111`, native persistent run streams, context factories, `NativeEncounterFormationFactoryV111`, and `NativeCombatRngEntryV111` with source-specific HP and intent draws.
+
+Move call sites gradually, using small parity-protected batches:
+
+1. **`run.niche` monster initial HP**: current calls in `NativeCombatRngEntryV111.AttachAndRollInitialHp`. Retain duplicate-HP filtering, creation order, and singleton consumption.
+2. **`run.monster_ai` committed intent**: preserve move-state eligibility, no-repeat conditions, and commit timing.
+3. **Encounter-local formation picks**: `NativeActOneWeakCombatEntryV111` and `NativeEncounterFormationFactoryV111`, including Slimes Weak's three draws and Corpse Slugs Weak's rotation.
+4. **Monster-local and summoned-unit randomness**: retain stream-owner/combat-ID identity across creation, death, hatch, and replay.
+5. **Shuffle, card selection, random targets, generated cards/costs, and reward streams** in audited source call order.
+6. **Act map, events, shops, treasures, encounter selection, and other context streams**, then remaining single-player content.
+
+Per migration, the native provider must give identical old/new selected results, exact hashes, named stream counters and final native stream words on the same seeds. Controlled mode must pass legality and hook-order tests. Keep unrevised mechanics explicitly marked as native-only/unsupported in controlled mode; never silently fall back to an unrelated prototype RNG.
+
+## 6. Test contract: separate kinds of fidelity
+
+### A. Mechanical equivalence (highest priority)
+
+With the same mechanically valid initial state, player decisions, and matching supplied chance outcomes:
+
+- identical ordered event/hook transcript, including dynamically triggered calls;
+- identical resulting *game-mechanics* state (HP, statuses, card instances, enemy IDs, rewards, phase, etc.);
+- identical player legal-action menu and public observation at boundaries;
+- correct fork isolation, snapshot/restore, deferred choices, and terminal transitions;
+- fail-closed invalid outcome, out-of-order transcript, wrong stream owner, stale pending event, and unsupported call sites.
+
+Compare state while deliberately excluding provider-specific cursor/provenance fields. A mechanically meaningful difference is a failure.
+
+### B. Native seeded RNG parity (separate gate)
+
+Under the native provider, reproduce the source's stream ownership, draw count/order, outcomes, exact post-call cursors, and eventually real-game trace agreement. This gate remains part of the v111 emulator roadmap and must not be weakened by introducing Nature.
+
+### C. Conditional chance-law calibration (later milestone)
+
+After structural correctness, establish and test reference probability kernels, distinguishing:
+
+- primitive/declared synthetic law;
+- audited mechanic-level law with verified eligibility and weights;
+- correctly conditioned law given public history, including hidden state correlations.
+
+Do not label unverified `p` as the original game's probability. Machine learning with exact `p/q` weighting must require an appropriate calibrated/declared target kernel. Mechanics and controlled Nature demonstrations may proceed earlier.
+
+### D. Throughput and compatibility
+
+Measure native transition/whole-run throughput against the pre-refactor baseline and controlled boundary/fork overhead separately. Keep provider resolution inexpensive in native mode; no Python round trip for native RNG, and no intermediate chance traces unless requested. Restore existing snapshot and JSONL behavior unless an explicit new schema/profile is chosen.
+
+## 7. Implementation batches and acceptance gates
+
+| Batch | Deliverable | Acceptance gate |
+| --- | --- | --- |
+| **D0 — Spec + inventory** | This document; audit gameplay RNG call sites and classify stream, source operation, conditional support, and migration status. | Versioned inventory with ambiguous call sites called out. |
+| **D1 — Core providers** | Shared request/result types, native adapter, scripted replay adapter, outcome validation. | Native zero-behavior-change tests for initial migrated operations. |
+| **D2 — First migrated mechanics** | Monster HP, committed enemy intents, then audited formation picks. | Seeded native result/cursor parity + controlled fixed-outcome hook parity. |
+| **D3 — Serializable choice boundaries** | Suspend/resume controlled choice in existing engine continuation framework; pending IDs, fork/save/load. | Nested calls and interrupted enemy-turn/trigger chains replay identically. |
+| **D4 — Consumer protocol** | Add opt-in capability/version negotiation, controlled advance/resolve, traces, optional enumerator and Python binding. | Full supported combat segments under native and scripted Nature; legacy `step` unchanged. |
+| **D5 — Broad RNG migration** | Draw/shuffle, targeting, generation, reward, room/map and remaining mechanics. | Each audited mechanic supports both providers; unsupported contexts fail explicitly. |
+| **D6 — Reference-law audit** | Conditional probability research, model/version tags, statistical and exact-support checks. | Probability-sensitive consumers can certify target law and compute valid ratios. |
+| **D7 — Optimization** | Batch event resolution, lower overhead, cheap forks, provenance/reporting. | Reproducible performance and accuracy regressions. |
+
+Keep a **per-call-site completion matrix** with independent flags: source-audited, native-implemented, native-parity-tested, controlled-implemented, controlled-mechanically-tested, and reference-law-calibrated. Checkmarks in one category do not imply the others.
+
+## 8. First concrete PRs
+
+**PR 1 — D0/D1 scaffolding:** introduce typed random-decision descriptors and a native adapter around existing `NativeRngV111` calls; add a scripted recording/replay provider, a migration inventory and strict no-behavior-change regression tests. Preserve the legacy prototype path and v111 default modes.
+
+**PR 2 — D2 first seam:** route `run.niche` initial HP and `run.monster_ai` intent selection through the shared interface; cover singleton rolls, filtering, ordered summons, and native cursor equality.
+
+**PR 3 — D3 controlled suspension:** implement a serializable pending chance boundary and external outcome resolution using the common mechanics; test trigger cascades, snapshots, forks, and invalid-outcome rejection.
+
+**PR 4 — D4 bridge:** expose controlled opt-in commands and capabilities through the existing JSONL/Python bindings; run complete supported combat snapshots using scripted Nature.
+
+Subsequent PRs broaden source-audited RNG migration. `sts2-ai` implements neural Nature and its training objectives **after** the controlled bridge exists; those changes belong in the AI repository.
+
+## 9. Non-goals of this initial milestone
+
+- Training or embedding a Nature neural network in the emulator.
+- Proving the native RNG posterior conditional on public player history.
+- Implementing unbiased importance-weighted learning before a justified target probability law exists.
+- Forcing Nature-controlled trajectories to match any specific native RNG seed/cursor.
+- Replacing the source-audited v111 native codec or weakening native deterministic replay.
+- Enabling multiplayer-only mechanics or silently broadening cross-character features.
+
+**Success for the desired RNG implementation:** we can run the same source-authentic game mechanics with (a) native seeded streams or (b) independently selected legal outcomes, preserving hook order, explicit mode provenance, serializable forks, and an unchanged native replay gate. Conditional probability correctness is a later, separately verifiable milestone.
