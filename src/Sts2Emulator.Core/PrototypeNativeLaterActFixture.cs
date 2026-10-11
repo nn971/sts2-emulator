@@ -12,14 +12,27 @@ public static class PrototypeNativeLaterActFixture
     /// substitute for the unresolved native event selection bag.
     /// </summary>
     public static RunState CreateGloryHungryForMushrooms(
-        string seed, int ascension = 0)
+        string seed, int ascension = 0) =>
+        CreateGloryEvent(seed,
+            PrototypeNativeGloryEvents.HungryForMushroomsId, ascension);
+
+    public static RunState CreateGloryEvent(
+        string seed, string eventId, int ascension = 0)
     {
+        if (eventId is not (
+            PrototypeNativeGloryEvents.HungryForMushroomsId
+            or PrototypeNativeGloryEvents.ReflectionsId
+            or PrototypeNativeGloryEvents.RoundTeaPartyId))
+            throw new NotSupportedException(
+                "The requested Glory event does not have a supported " +
+                "full-map isolated event fixture.");
+
         var state = Create(seed, 3, ascension);
         var world = state.World!;
         var point = world.Map.Nodes.First(node =>
             node.RoomType == PrototypeRoomType.Unknown
             && node.NextNodeIds is { Length: > 0 });
-        var id = PrototypeNativeGloryEvents.HungryForMushroomsId;
+        var id = eventId;
         return state with
         {
             World = world with

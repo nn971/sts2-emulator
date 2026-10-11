@@ -426,6 +426,20 @@ This is an intermediate implementation. Final release gates remain open.
   arbitrary relic acquisition hooks and game replay remain partial.
   [Source audit](reference-builds/v0.111.0-glory-hungry-mushrooms.md).
 
+- Added two more **gated source-backed Glory events**, Reflections and
+  Round Tea Party, plus Bad Luck (13 unblockable hand-end damage) and
+  Royal Poison (4 unblockable HP on the opening turn of each combat).
+  Reflections samples two distinct upgraded cards to downgrade, then
+  recomputes upgradability and upgrades up to four distinct cards; its
+  alternate route duplicates the original deck only, preserving typed
+  card payloads before appending one Bad Luck. Round Tea Party's
+  fight opens a distinct follow-up page: damage 11 first, then pull
+  one relic from the persistent reward bag, or die with no reward.
+  Its peaceful option obtains Royal Poison and heals to full.
+  The full-map fixtures and fork/phase/callback tests do **not** enable
+  incomplete Glory event bags or imply native RNG parity.
+  [Source audit](reference-builds/v0.111.0-glory-reflections-tea-party.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.

@@ -363,11 +363,11 @@ public sealed partial class PrototypeGameEngine
             EncounterHistory = world.EncounterIds.Append(encounter.Id).ToArray()
         };
 
-        return state with
+        return ApplyOpeningRoyalPoison(state with
         {
             World = world,
             Phase = RunPhase.Combat
-        };
+        });
     }
 
     private static PrototypeEncounterDefinition?

@@ -13,6 +13,25 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.big_mushroom";
     public const string FragrantMushroomId =
         "proto.native.glory.fragrant_mushroom";
+    public const string ReflectionsId =
+        "proto.native.glory.reflections";
+    public const string BadLuckId =
+        "proto.native.glory.bad_luck";
+    public const string RoundTeaPartyId =
+        "proto.native.glory.round_tea_party";
+    public const string RoyalPoisonId =
+        "proto.native.glory.royal_poison";
+
+    public static PrototypeCardDefinition[] Cards { get; } =
+    [
+        // Native BadLuck: unplayable Eternal Curse, 13 unblockable
+        // damage while in hand when the player ends their turn.
+        new(BadLuckId, "Bad Luck", -1, PrototypeCardTarget.None, [],
+            Unplayable: true, Eternal: true, RewardEligible: false,
+            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse,
+            EndTurnDamageIfInHand: 13, EndTurnDamageUnblockable: true)
+    ];
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
@@ -23,7 +42,11 @@ public static class PrototypeNativeGloryEvents
         new(BigMushroomId, "Big Mushroom", FirstTurnDrawBonus: -2),
         // FragrantMushroom.AfterObtained deals 15 unblocked,
         // unpowered damage and upgrades two different eligible cards.
-        new(FragrantMushroomId, "Fragrant Mushroom")
+        new(FragrantMushroomId, "Fragrant Mushroom"),
+        // RoundTeaParty.EnjoyTea grants this relic and heals to full.
+        // RoyalPoison.AfterPlayerTurnStart deals 4 unblockable HP
+        // damage to its owner on turn one of every combat.
+        new(RoyalPoisonId, "Royal Poison")
     ];
 
     public static PrototypeEventDefinition[] Events { get; } =
@@ -32,6 +55,16 @@ public static class PrototypeNativeGloryEvents
         [
             new("big_mushroom", "Obtain Big Mushroom", []),
             new("fragrant_mushroom", "Obtain Fragrant Mushroom", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
+        new(ReflectionsId, "Reflections",
+        [
+            new("touch_mirror", "Touch a mirror", []),
+            new("shatter", "Shatter the mirrors", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
+        new(RoundTeaPartyId, "Round Tea Party",
+        [
+            new("enjoy_tea", "Enjoy tea and take Royal Poison", []),
+            new("pick_fight", "Pick a fight", [])
         ], MinAct: 3, MaxAct: 3, Weight: 0)
     ];
 }
