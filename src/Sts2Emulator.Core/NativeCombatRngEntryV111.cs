@@ -157,6 +157,98 @@ public static class NativeCombatRngEntryV111
     }
 
     /// <summary>
+    /// Append a creature created by an already-audited native normal
+    /// encounter effect. Native CombatState.CreateCreature rolls HP from
+    /// run.niche, then assigns the next lifetime CombatId, and creates a
+    /// per-creature RNG from the run seed, current map coordinate, act
+    /// index and newly assigned id. The typed emulator retains defeated
+    /// enemies, so their identities must never be recycled.
+    ///
+    /// This handles creation only. It intentionally does not implement
+    /// source-specific summon eligibility, spawn animations, on-spawn
+    /// power interactions or model transformations.
+    /// </summary>
+    public static CombatState AppendSummonedEnemy(
+        CombatState combat,
+        IReadOnlyList<EnemyCombatState> currentEnemies,
+        EnemyCombatState spawned)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(currentEnemies);
+        ArgumentNullException.ThrowIfNull(spawned);
+        if (combat.NativeRng is null)
+            throw new InvalidOperationException(
+                "Native creature creation requires native combat ownership.");
+
+        var before = combat with
+        {
+            Enemies = currentEnemies.Select(enemy => enemy.Fork()).ToArray()
+        };
+        Validate(before);
+        var native = combat.NativeRng.Fork();
+        var formation = native.Formation;
+        if (formation.RunSeed is null
+            || formation.NativeActIndex is null
+            || formation.MapColumn is null
+            || formation.MapRow is null)
+            throw new NotSupportedException(
+                "Native summon requires pinned run seed and map-coordinate provenance.");
+        if (spawned.InstanceId <= 0
+            || currentEnemies.Any(enemy =>
+                enemy.InstanceId == spawned.InstanceId)
+            || formation.MonsterContexts.Any(context =>
+                context.CombatId >= spawned.InstanceId))
+            throw new InvalidOperationException(
+                "Native spawn must have a new monotonically increasing combat ID.");
+        if (spawned.Hp <= 0)
+            throw new InvalidOperationException(
+                "Native spawn must create a living creature.");
+        var range = PrototypeContent.Enemy(spawned.EnemyId)
+            .HpRangeAt(combat.Act, combat.Ascension);
+        var usedHp = currentEnemies.Where(enemy => enemy.Hp > 0)
+            .Select(enemy => enemy.MaxHp).ToHashSet();
+        var possible = Enumerable.Range(
+                range.Min, checked(range.Max - range.Min + 1))
+            .Where(hp => !usedHp.Contains(hp))
+            .ToArray();
+        var values = possible.Length > 0
+            ? possible
+            : Enumerable.Range(
+                range.Min, checked(range.Max - range.Min + 1)).ToArray();
+        // Even the fixed-range/singleton case advances run.niche.
+        var selection = NativeRngV111.NextInt(
+            native.RunStreams, "run.niche", values.Length);
+        var hp = values[selection];
+        var updatedSpawn = spawned with { Hp = hp, MaxHp = hp };
+        var spec = new PrototypeEncounterEnemySpec(
+            updatedSpawn.EnemyId, updatedSpawn.FormationPosition,
+            updatedSpawn.SlotName);
+        var context = new NativeEncounterMonsterContextV111(
+            updatedSpawn.InstanceId, spec,
+            NativeRngV111Contexts.ForMonster(
+                formation.RunSeed,
+                formation.NativeActIndex.Value,
+                updatedSpawn.InstanceId,
+                formation.MapColumn, formation.MapRow));
+        native = native with
+        {
+            Formation = formation with
+            {
+                Enemies = formation.Enemies.Append(spec).ToArray(),
+                MonsterContexts =
+                    formation.MonsterContexts.Append(context).ToArray()
+            }
+        };
+        var result = combat with
+        {
+            Enemies = before.Enemies.Append(updatedSpawn).ToArray(),
+            NativeRng = native
+        };
+        Validate(result);
+        return result;
+    }
+
+    /// <summary>
     /// Commit source-shaped enemy intents using run.monster_ai, returning
     /// a forked combat. This API deliberately does not execute the entire
     /// game turn, which still contains unmigrated RNG sources.
