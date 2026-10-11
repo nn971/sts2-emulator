@@ -4442,7 +4442,13 @@ public static class PrototypeContent
                                 PrototypeEnemyEffectKind.ApplyEnemyPower,
                                 2,
                                 PowerId: "proto.power.strength")
-                        ])
+                        ]),
+                    // Native Wriggler.StartStunned uses SPAWNED_MOVE: a
+                    // telegraphed StunIntent with no effects, followed by
+                    // INIT_MOVE's slot-based first attack/buff selection.
+                    // The extra move is unreachable in default prototypes
+                    // unless the native death hook explicitly selects it.
+                    new PrototypeEnemyMoveDefinition("spawned", [])
                 ],
                 MovePolicy:
                     PrototypeEnemyMovePolicy.StateMachine,
@@ -4468,6 +4474,11 @@ public static class PrototypeContent
                             PrototypeEnemyAiStateKind.Move,
                             MoveIndex: 1,
                             NextStateId: "bite_move"),
+                        new PrototypeEnemyAiStateDefinition(
+                            "spawned_move",
+                            PrototypeEnemyAiStateKind.Move,
+                            MoveIndex: 2,
+                            NextStateId: "init"),
                         new PrototypeEnemyAiStateDefinition(
                             "init",
                             PrototypeEnemyAiStateKind.Conditional,
