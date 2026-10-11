@@ -3588,7 +3588,17 @@ public sealed partial class PrototypeGameEngine
                             string? selectedSlot = null;
                             if (summonSlots is { Length: > 0 })
                             {
-                                selectedSlot = (effect.SelectFirstAvailableSummonSlot
+                                // LivingFog.Bloat calls
+                                // Encounter.GetNextSlot(): FIRST unoccupied
+                                // source slot (bomb1 -> bomb5). The
+                                // prototype's default last-slot preference
+                                // remains intact for all other encounters.
+                                var sourceFirst = combat.NativeRng?.Formation
+                                        .NativeEncounterEntry == "LivingFogNormal"
+                                    && enemy.EnemyId == "proto.enemy.living_fog"
+                                    && summonId == "proto.enemy.gas_bomb";
+                                selectedSlot = (sourceFirst
+                                        || effect.SelectFirstAvailableSummonSlot
                                         ? summonSlots
                                         : summonSlots.Reverse())
                                     .FirstOrDefault(slot =>
@@ -3890,7 +3900,25 @@ public sealed partial class PrototypeGameEngine
             };
             changed = true;
 
-            foreach (var summon in summons)
+            // SurprisePower.AfterDeath first CreateCreature(FatGremlin)
+            // (assigning native CombatId and niche HP), then Add<SneakyGremlin>
+            // (new CombatId, new niche roll), then Add(precreated Fat).
+            // The legacy emulator lists Sneaky first: reorder only the
+            // opt-in native creation calls, not legacy behavior.
+            var nativeMerc = combat.NativeRng?.Formation.NativeEncounterEntry
+                    == "GremlinMercNormal"
+                && source.EnemyId == "proto.enemy.gremlin_merc";
+            var orderedSummons = nativeMerc
+                ? summons.Reverse().ToArray()
+                : summons;
+            if (nativeMerc
+                && (summons.Length != 2
+                    || summons[0].EnemyId != "proto.enemy.sneaky_gremlin"
+                    || summons[1].EnemyId != "proto.enemy.fat_gremlin"))
+                throw new NotSupportedException(
+                    "Pinned native SurprisePower death summons have changed.");
+
+            foreach (var summon in orderedSummons)
             {
                 var definition =
                     PrototypeContent.Enemy(
@@ -3970,6 +3998,13 @@ public sealed partial class PrototypeGameEngine
                 {
                     enemies.Add(spawnedEnemy);
                 }
+            }
+
+            if (nativeMerc)
+            {
+                combat = NativeCombatRngEntryV111.SortGremlinMercDeathPair(
+                    combat with { Enemies = enemies.ToArray() });
+                enemies = combat.Enemies.ToList();
             }
         }
 
