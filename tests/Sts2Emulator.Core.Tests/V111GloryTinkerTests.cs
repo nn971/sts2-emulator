@@ -334,9 +334,11 @@ public sealed class V111GloryTinkerTests
         var card = combat.Cards.Single(c => c.InstanceId == id);
         return Engine.Step(state, GameAction.Create("play_card",
             new PlayCardPayload(id,
-                card.CardId == Science && card.State.GetProperty(
-                    "tinkerType").GetString() != "attack"
-                    ? null : 1))).State;
+                card.CardId == Science
+                    ? card.State.GetProperty("tinkerType").GetString()
+                        == "attack" ? 1 : null
+                    : PrototypeContent.Card(card.CardId).Target
+                        == PrototypeCardTarget.Enemy ? 1 : null))).State;
     }
 
     private static string AnotherType(string selected) =>
