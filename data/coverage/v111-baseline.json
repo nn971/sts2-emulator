@@ -3645,11 +3645,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.doubt"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Doubt.cs#881307a1a2b5264562a6f7b3239ed594840a9211650ce4060c38fe8195595581"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -3657,7 +3659,7 @@
           "base"
         ],
         "native_id": "DOUBT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -8755,11 +8757,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.regret"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Regret.cs#6923cd80bb010ce6aa67b5c99f5843e6e1cba7198e48939fe00afb6c5c1b65b3"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -8767,7 +8771,7 @@
           "base"
         ],
         "native_id": "REGRET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -9427,11 +9431,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.shame"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Shame.cs#44e3972a61d1331288af6c3ae50102b58c6c8af9a2c3ee28c05ed11ea0a06d3c"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -9439,7 +9445,7 @@
           "base"
         ],
         "native_id": "SHAME",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16465,11 +16471,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.trial"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Trial.cs#ca4a1dcf6495ff8e8222b59748dc7425ff01cc0ab217104552d05a94a68acf7f"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -16499,7 +16507,7 @@
         ],
         "missing_variants": [],
         "native_id": "TRIAL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29613,7 +29621,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 180,
+        "implemented": 183,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
