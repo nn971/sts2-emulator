@@ -171,7 +171,8 @@ public static class NativeCombatRngEntryV111
     public static CombatState AppendSummonedEnemy(
         CombatState combat,
         IReadOnlyList<EnemyCombatState> currentEnemies,
-        EnemyCombatState spawned)
+        EnemyCombatState spawned,
+        int? precreatedUnattachedId = null)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(currentEnemies);
@@ -193,6 +194,14 @@ public static class NativeCombatRngEntryV111
             || formation.MapRow is null)
             throw new NotSupportedException(
                 "Native summon requires pinned run seed and map-coordinate provenance.");
+        if (precreatedUnattachedId is not null
+            && (native.Formation.NativeEncounterEntry != "GremlinMercNormal"
+                || spawned.EnemyId != "proto.enemy.sneaky_gremlin"
+                || currentEnemies.Count(enemy =>
+                    enemy.InstanceId == precreatedUnattachedId
+                    && enemy.EnemyId == "proto.enemy.fat_gremlin") != 1))
+            throw new NotSupportedException(
+                "Native precreated-unattached HP exclusion is audited only for SurprisePower.");
         if (spawned.InstanceId <= 0
             || currentEnemies.Any(enemy =>
                 enemy.InstanceId == spawned.InstanceId)
@@ -209,7 +218,12 @@ public static class NativeCombatRngEntryV111
         // attached to CombatState._enemies, even those whose HP reached
         // zero but whose death hooks have not removed them yet.
         // The typed emulator retains this history explicitly.
+        // SurprisePower precreates Fat Gremlin but does not add it
+        // until AFTER CreateCreature(SneakyGremlin). The second HP
+        // draw therefore excludes only already-attached creatures,
+        // not Fat's earlier rolled maximum.
         var usedHp = currentEnemies
+            .Where(enemy => enemy.InstanceId != precreatedUnattachedId)
             .Select(enemy => enemy.MaxHp).ToHashSet();
         var possible = Enumerable.Range(
                 range.Min, checked(range.Max - range.Min + 1))
