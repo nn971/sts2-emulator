@@ -501,6 +501,22 @@ This is an intermediate implementation. Final release gates remain open.
   RNG remain unresolved. Native map floor invariants now accept
   the correct 14/13 room rows. [Routing audit](reference-builds/v0.111.0-native-later-event-routing.md).
 
+- Connected the pinned **20 Hive and 18 Glory encounters** to
+  native-map Combat/Elite/Boss nodes with per-act fork-owned
+  selection bags (first two ordinary combats are weak),
+  preselected boss, encounter histories and source-typed
+  formations. Reused the existing Construct Menagerie model.
+  Combat victories now use prototype implementations of native
+  reward bounds/pity/card rarity/relic bags and advance back
+  to the native map; opt-in Hive boss transition generates a
+  Glory map with a fresh independent encounter bag. Combat
+  event fights do not consume ordinary pools. Rest/shop/
+  treasure remain gated, as do production v111 Act 1 →
+  Hive transition, act-entry Ancients and native RNG parity.
+  38 regional encounters are marked emulator integrated,
+  not native validated.
+  [Source and fidelity audit](reference-builds/v0.111.0-native-later-combat-routing.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
