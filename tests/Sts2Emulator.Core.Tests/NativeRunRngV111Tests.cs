@@ -11,8 +11,14 @@ public sealed class NativeRunRngV111Tests
     private static RunState Initialized(string seed)
     {
         var engine = new PrototypeGameEngine();
-        return engine.Step(V111RunFactory.Create(seed),
+        var state = engine.Step(V111RunFactory.Create(seed),
             GameAction.Empty("start_run")).State;
+        for (var decision = 0;
+             decision < 30 && state.Phase is RunPhase.Event or RunPhase.Reward;
+             decision++)
+            state = engine.Step(state, engine.GetLegalActions(state)[0]).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        return state;
     }
 
     private static RunState EnterNativeOwnedCombat(string seed)
@@ -58,6 +64,11 @@ public sealed class NativeRunRngV111Tests
         var before = CanonicalJson.Sha256(factory.NativeRunRng);
         var engine = new PrototypeGameEngine();
         var map = engine.Step(factory, GameAction.Empty("start_run")).State;
+        for (var decision = 0;
+             decision < 30 && map.Phase is RunPhase.Event or RunPhase.Reward;
+             decision++)
+            map = engine.Step(map, engine.GetLegalActions(map)[0]).State;
+        Assert.Equal(RunPhase.MapChoice, map.Phase);
         Assert.Equal(before, CanonicalJson.Sha256(map.NativeRunRng));
         Assert.Equal(before, CanonicalJson.Sha256(factory.NativeRunRng));
         PrototypeStateInvariants.Validate(map);
