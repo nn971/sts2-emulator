@@ -27,26 +27,52 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
         RunState state, string encounterId)
     {
         var world = state.World!;
-        var node = world.Map.Nodes.First(node =>
-            node.Floor >= 4 && node.Floor < 15
-            && node.RoomType == PrototypeRoomType.Combat);
+        // Reach an actual normal-combat node through a pre-existing
+        // map edge. Never rewrite first-row entries or the native map
+        // geometry just to force the encounter in a test.
+        var nodes = world.Map.Nodes.ToDictionary(
+            node => node.NodeId, StringComparer.Ordinal);
+        var edge = world.Map.Nodes
+            .Where(parent => parent.Floor >= 3 && parent.Floor < 14)
+            .SelectMany(parent => (parent.NextNodeIds
+                ?? Array.Empty<string>()).Select(id =>
+                    (Parent: parent, Child: nodes[id])))
+            .First(pair => pair.Child.RoomType
+                == PrototypeRoomType.Combat
+                && pair.Child.Floor >= 4);
         var pool = world.ActOneEncounterPool!;
+        // The pool invariant tracks every not-yet-drawn normal model.
+        // Arrange the full native-shaped bag so the legacy encounter
+        // choice selects the requested model with its next draw.
+        var bag = (string[])(pool.RemainingNormalEncounterIds
+            ?? throw new InvalidOperationException(
+                "Run is missing its normal encounter bag.")).Clone();
+        var selection = PrototypeRng.NextInt(
+            state.Rng.Fork(), "combat", bag.Length);
+        var requestedIndex = Array.IndexOf(bag, encounterId);
+        if (requestedIndex < 0)
+            throw new InvalidOperationException(
+                "Requested normal encounter is not in the regional bag.");
+        (bag[requestedIndex], bag[selection]) =
+            (bag[selection], bag[requestedIndex]);
         return state with
         {
             Phase = RunPhase.MapChoice,
             World = world with
             {
-                Floor = node.Floor - 1,
+                Floor = edge.Parent.Floor,
                 ActiveRoom = null,
                 ActOneEncounterPool = pool with
                 {
                     OrdinaryCombatsStarted = 3,
-                    RemainingNormalEncounterIds = [encounterId]
+                    RemainingWeakEncounterIds =
+                        pool.RemainingWeakEncounterIds.Take(
+                            pool.RemainingWeakEncounterIds.Length - 3).ToArray(),
+                    RemainingNormalEncounterIds = bag
                 },
                 Map = world.Map with
                 {
-                    CurrentNodeId = null,
-                    EntryNodeIds = [node.NodeId]
+                    CurrentNodeId = edge.Parent.NodeId
                 }
             }
         };
