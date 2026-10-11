@@ -225,8 +225,10 @@ public static class NativeCombatRngEntryV111
                 power.PowerId == "proto.power.minion").ToArray(),
             AiStateId = null
         };
+        // C# out parameters cannot be captured by LINQ lambdas.
+        var hatchedSnapshot = hatched.Fork();
         var updatedEnemies = combat.Enemies.Select((enemy, i) =>
-            i == index ? hatched.Fork() : enemy.Fork()).ToArray();
+            i == index ? hatchedSnapshot : enemy.Fork()).ToArray();
         var updated = combat with
         {
             Enemies = updatedEnemies,
