@@ -55,7 +55,7 @@ public static class PrototypeNativeLaterActMap
             native ? NativeRngV111.NextInt(bundle, streamId, maxExclusive)
                 : PrototypeRng.NextInt(bundle, streamId, maxExclusive);
 
-        public void Shuffle<T>(IList<T> values)
+        public void Shuffle<T>(T[] values)
         {
             if (native) NativeRngV111.Shuffle(bundle, streamId, values);
             else PrototypeRng.Shuffle(bundle, streamId, values);
