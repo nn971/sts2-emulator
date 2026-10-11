@@ -44,6 +44,21 @@ public static class NativeActOneWeakCombatEntryV111
                 $"Experimental native combat entry does not support '{encounter.Id}'. " +
                 "No prototype encounter-formation or HP fallback is allowed.");
         }
+        var expectedRegion = encounter.Id is
+            "proto.encounter.seapunk_weak"
+            or "proto.encounter.sludge_spinner_weak"
+            or "proto.encounter.toadpoles_weak"
+            or "proto.encounter.corpse_slugs_weak"
+                ? PrototypeActOneRegion.Underdocks
+                : PrototypeActOneRegion.Overgrowth;
+        var expectedMapProfile = expectedRegion
+            == PrototypeActOneRegion.Underdocks
+                ? PrototypeNativeUnderdocks.GenerationProfileId
+                : PrototypeNativeOvergrowthMap.GenerationProfileId;
+        if (world.ActOneRegion != expectedRegion
+            || world.Map.GenerationProfileId != expectedMapProfile)
+            throw new NotSupportedException(
+                "Native weak encounter must belong to the active pinned Act 1 region.");
         if (state.NativeRunRng is null)
             throw new InvalidOperationException(
                 "Persistent native RNG must be enabled before live combat entry.");
