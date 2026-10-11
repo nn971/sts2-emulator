@@ -23,7 +23,7 @@ public sealed partial class PrototypeGameEngine
     private static IReadOnlyList<GameAction> GetNativeTinkerActions(
         EventState evt)
     {
-        var ids = evt.NativePageIndex switch
+        string[] ids = evt.NativePageIndex switch
         {
             0 => ["choose_card_type"],
             1 or 2 => evt.OfferedChoiceIds
@@ -265,28 +265,4 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static CombatState ResolveMadScienceStrangle(
-        CombatState combat, PrototypeCombatEvent evt)
-    {
-        if (evt.Kind != PrototypeCombatEventKind.CardPlayed
-            || evt.PowerApplicationOrderCeiling is not { } ceiling)
-            return combat;
-
-        // The native Strangle records stacks in BeforeCardPlayed, so
-        // Choking does not damage on the play that applies the debuff.
-        var updated = combat.Enemies.Select(enemy =>
-        {
-            if (enemy.Hp <= 0)
-                return enemy;
-            var damage = enemy.PowerStates
-                .Where(power =>
-                    power.PowerId == PrototypeNativeGloryEvents.StrangleId
-                    && power.ApplicationOrder <= ceiling)
-                .Sum(power => Math.Max(0, power.Stacks));
-            return damage > 0
-                ? enemy with { Hp = Math.Max(0, enemy.Hp - damage) }
-                : enemy;
-        }).ToArray();
-        return combat with { Enemies = updated };
-    }
 }
