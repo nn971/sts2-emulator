@@ -360,12 +360,14 @@ public static class PrototypeStateInvariants
             }
 
             if (visit.Act == world.Act
-                && world.Map.GenerationProfileId
-                    is PrototypeContent.MapGenerationProfileId
-                        or PrototypeNativeOvergrowthMap.GenerationProfileId
-                        or PrototypeNativeUnderdocks.GenerationProfileId
-                        or PrototypeNativeLaterActMap.HiveProfileId
-                        or PrototypeNativeLaterActMap.GloryProfileId)
+                && (world.Map.GenerationProfileId is
+                    PrototypeContent.MapGenerationProfileId
+                    or PrototypeNativeOvergrowthMap.GenerationProfileId
+                    or PrototypeNativeUnderdocks.GenerationProfileId
+                    || (world.RulesetId == V111Build.RulesetId
+                        && world.Map.GenerationProfileId is
+                            PrototypeNativeLaterActMap.HiveProfileId
+                            or PrototypeNativeLaterActMap.GloryProfileId)))
             {
                 var node = world.Map.Nodes
                     .FirstOrDefault(candidate =>
@@ -387,15 +389,20 @@ public static class PrototypeStateInvariants
             }
         }
 
-        if (world.Map.GenerationProfileId
-            is not (PrototypeContent.MapGenerationProfileId
+        // Isolated Hive/Glory event fixtures deliberately start in the
+        // middle of an act. Consecutive history is required only by the
+        // configured whole-route engine, not by those source test seams.
+        var fullRouteMap =
+            world.Map.GenerationProfileId is
+                PrototypeContent.MapGenerationProfileId
                 or PrototypeNativeOvergrowthMap.GenerationProfileId
                 or PrototypeNativeUnderdocks.GenerationProfileId
-                or PrototypeNativeLaterActMap.HiveProfileId
-                or PrototypeNativeLaterActMap.GloryProfileId))
-        {
+            || (world.RulesetId == V111Build.RulesetId
+                && world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId);
+        if (!fullRouteMap)
             return;
-        }
 
         var completedThisAct = history
             .Where(visit => visit.Act == world.Act)
