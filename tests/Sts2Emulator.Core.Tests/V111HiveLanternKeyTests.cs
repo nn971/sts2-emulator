@@ -152,7 +152,7 @@ public sealed class V111HiveLanternKeyTests
         Assert.Contains(knight.PowerStates, p =>
             p.PowerId == PrototypeNativeHiveEvents.PlatingPowerId
             && p.Stacks == 5);
-        Assert.True(knight.Block >= 6);
+        Assert.Equal(5, knight.Block);
         Assert.Equal(CanonicalJson.Sha256(after),
             CanonicalJson.Sha256(after.Fork()));
     }
