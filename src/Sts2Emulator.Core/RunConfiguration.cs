@@ -106,6 +106,7 @@ public sealed record RunConfiguration(
                         "Initialized native Hive/Glory state requires an explicit experimental route opt-in.");
                 if (initialized.ActOneRegion is not null
                     || initialized.ActOneEncounterPool is not null
+                    || initialized.LaterActEncounterBag?.Act != initialized.Act
                     || initialized.Map.GenerationProfileId !=
                         PrototypeNativeLaterActMap.ProfileId(initialized.Act))
                     throw new InvalidDataException(
