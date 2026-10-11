@@ -1635,6 +1635,19 @@ public sealed partial class PrototypeGameEngine
         PrototypeEventChoiceDefinition choice,
         RunWorldState world)
     {
+        // Native Grave.IsAllowed gates the event on at least one
+        // exhaustible deck card. Its Confront option is additionally
+        // displayed as locked when no such card exists.
+        if (world.Event?.EventId ==
+                PrototypeNativeGloryEvents.GraveOfTheForgottenId
+            && choice.Id == "confront"
+            && !player.Deck.Any(card => CanSelectEventDeckCard(
+                card, PrototypePersistentDeckChoiceKind.Enchant,
+                null, PrototypeCardEnchantmentKind.SoulsPower, false)))
+        {
+            return false;
+        }
+
         if (!MatchesRouteCondition(
                 world,
                 choice.RouteCondition))

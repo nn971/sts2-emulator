@@ -12365,17 +12365,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "SoulsPower"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/SoulsPower.cs#b14a2c28cbbff4411d4a9199965f10ed7ec5e1792c6368bfc72ceef1ff50614b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SOULS_POWER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15406,11 +15408,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.grave_of_the_forgotten"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/GraveOfTheForgotten.cs#d33803392dbe3cb11ee5154bd847a694228f90ab78253ba4e7ce5f83c39ef957"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15426,7 +15430,7 @@
         ],
         "missing_variants": [],
         "native_id": "GRAVE_OF_THE_FORGOTTEN",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },

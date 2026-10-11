@@ -7154,7 +7154,8 @@ public static class PrototypeContent
         "proto.relic.charons_ashes",
         "proto.relic.joss_paper",
         "proto.relic.burning_sticks",
-        "proto.relic.forgotten_soul",
+        // Forgotten Soul is an Event relic (Grave of the Forgotten),
+        // never an ordinary reward/merchant draw.
         "proto.relic.toolbox",
         "proto.relic.gambling_chip"
     ];

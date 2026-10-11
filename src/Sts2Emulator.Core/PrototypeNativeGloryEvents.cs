@@ -21,6 +21,12 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.round_tea_party";
     public const string RoyalPoisonId =
         "proto.native.glory.royal_poison";
+    public const string GraveOfTheForgottenId =
+        "proto.native.glory.grave_of_the_forgotten";
+    // Same source Curse model as the Hive Lost Wisp event.
+    public const string DecayId = PrototypeNativeHiveEvents.DecayId;
+    public const string ForgottenSoulId =
+        "proto.relic.forgotten_soul";
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
@@ -65,6 +71,21 @@ public static class PrototypeNativeGloryEvents
         [
             new("enjoy_tea", "Enjoy tea and take Royal Poison", []),
             new("pick_fight", "Pick a fight", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
+        // Native IsAllowed requires at least one exhaust-keyword
+        // local deck card. Confront grants Decay before selecting one
+        // qualifying card for Souls Power, removing its Exhaust.
+        new(GraveOfTheForgottenId, "Grave of the Forgotten",
+        [
+            new("confront", "Take Decay and enchant an Exhaust card",
+                [new(PrototypeRunEffectKind.AddCard, CardId: DecayId)],
+                DeckChoice: new(
+                    PrototypePersistentDeckChoiceKind.Enchant,
+                    1, EnchantmentKind:
+                        PrototypeCardEnchantmentKind.SoulsPower)),
+            new("accept", "Obtain Forgotten Soul",
+                [new(PrototypeRunEffectKind.GainRelic,
+                    RelicId: ForgottenSoulId)])
         ], MinAct: 3, MaxAct: 3, Weight: 0)
     ];
 }
