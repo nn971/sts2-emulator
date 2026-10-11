@@ -28,7 +28,13 @@ public sealed record NativeEncounterFormationV111(
     NativeEncounterMonsterContextV111[] MonsterContexts,
     // Encounter-specific initial AI state rotations are sampled during
     // GenerateMonsters(), not by the combat's run.monster_ai stream.
-    int? EncounterOpeningOffset = null)
+    int? EncounterOpeningOffset = null,
+    // Immutable provenance for native mid-combat creature creation.
+    // Older serialized fixtures can omit these nullable fields.
+    string? RunSeed = null,
+    int? NativeActIndex = null,
+    int? MapColumn = null,
+    int? MapRow = null)
 {
     public NativeEncounterFormationV111 Fork() => this with
     {
@@ -104,6 +110,6 @@ public static class NativeEncounterFormationFactoryV111
         return new NativeEncounterFormationV111(
             nativeEncounterEntry, totalFloor,
             formation, ownedBundle.Streams[0].Fork(), monsters,
-            openingOffset);
+            openingOffset, seed, currentActIndex, mapColumn, mapRow);
     }
 }
