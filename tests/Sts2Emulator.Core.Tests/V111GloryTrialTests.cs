@@ -169,13 +169,19 @@ public sealed class V111GloryTrialTests
             "take_reward_card", new ChooseCardPayload(0)));
         Assert.Equal(RunPhase.Reward, first.Phase);
         var second = Step(first, GameAction.Empty("skip_reward_card"));
-        Assert.Equal(RunPhase.MapChoice, second.Phase);
-        Assert.Equal(before + 2, second.Player.Deck.Length);
-        Assert.Equal(CanonicalJson.Sha256(second),
-            CanonicalJson.Sha256(Step(Step(result.Fork(), GameAction.Create(
-                "take_reward_card", new ChooseCardPayload(0))),
-                GameAction.Empty("skip_reward_card"))));
-        PrototypeStateInvariants.Validate(second);
+        Assert.Equal(RunPhase.Reward, second.Phase);
+        Assert.Equal(new[] { "leave_reward" },
+            Engine.GetLegalActions(second).Select(a => a.Kind));
+        var completed = Step(second, GameAction.Empty("leave_reward"));
+        Assert.Equal(RunPhase.MapChoice, completed.Phase);
+        Assert.Equal(before + 2, completed.Player.Deck.Length);
+        Assert.Equal(CanonicalJson.Sha256(completed),
+            CanonicalJson.Sha256(Step(Step(Step(result.Fork(),
+                GameAction.Create("take_reward_card",
+                    new ChooseCardPayload(0))),
+                GameAction.Empty("skip_reward_card")),
+                GameAction.Empty("leave_reward"))));
+        PrototypeStateInvariants.Validate(completed);
     }
 
     [Fact]
