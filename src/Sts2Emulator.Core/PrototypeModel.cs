@@ -2210,7 +2210,10 @@ public sealed record RunWorldState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     ActIdentity? ActIdentity = null,
     // Native IRunState.ExtraFields.FreedRepy, set by unlocking Repy's cage.
-    bool FreedRepy = false)
+    bool FreedRepy = false,
+    // Fork-owned native Hive/Glory encounter bags (never reused for
+    // event combats or prototype six-floor runs).
+    PrototypeNativeLaterActEncounterPoolState? LaterActEncounterPool = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -2229,6 +2232,7 @@ public sealed record RunWorldState(
             ? null
             : (PrototypeCompletedRoomRecord[])CompletedRoomHistory.Clone(),
         ActOneEncounterPool = ActOneEncounterPool?.Fork(),
+        LaterActEncounterPool = LaterActEncounterPool?.Fork(),
         RelicBag = RelicBag?.Fork()
     };
 

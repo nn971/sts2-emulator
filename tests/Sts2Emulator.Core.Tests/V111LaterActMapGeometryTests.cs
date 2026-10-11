@@ -70,14 +70,18 @@ public sealed class V111LaterActMapGeometryTests
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
-    public void IncompleteLaterActEncounterPoolsAreExplicitlyGated(int act)
+    public void NativeLaterActFirstRoomUsesSourceWeakEncounter(int act)
     {
         var state = PrototypeNativeLaterActFixture.Create(
             "v111-gated-later-room", act);
         var first = state.World!.Map.AvailableNodes()[0];
         var hash = CanonicalJson.Sha256(state);
-        Assert.Throws<NotSupportedException>(() =>
-            ChooseNode(state, first.NodeId));
+        var entered = ChooseNode(state, first.NodeId);
+        Assert.Equal(RunPhase.Combat, entered.Phase);
+        Assert.Contains(entered.World!.EncounterIds[^1],
+            PrototypeNativeLaterActCombatPool.Names(
+                act, PrototypeRoomType.Combat, weak: true));
+        PrototypeStateInvariants.Validate(entered);
         Assert.Equal(hash, CanonicalJson.Sha256(state));
     }
 
@@ -116,7 +120,7 @@ public sealed class V111LaterActMapGeometryTests
     }
 
     [Fact]
-    public void FullGloryMapWithoutKeyResolvesOnlyExplicitlySupportedUnknownEvent()
+    public void FullGloryMapWithoutKeyResolvesOnlySupportedUnknownRooms()
     {
         var start = PrototypeNativeLaterActFixture.Create(
             "v111-no-key-full-glory", 3);
@@ -127,10 +131,14 @@ public sealed class V111LaterActMapGeometryTests
         try
         {
             var result = ChooseNode(state, option.NodeId);
-            Assert.Equal(RunPhase.Event, result.Phase);
-            Assert.Contains(result.World!.Event!.EventId,
-                PrototypeNativeLaterActEventPool.GloryEventIds);
-            Assert.Equal(PrototypeRoomType.Event, result.World.ActiveRoom);
+            Assert.Contains(result.Phase,
+                new[] { RunPhase.Event, RunPhase.Combat });
+            if (result.Phase == RunPhase.Event)
+                Assert.Contains(result.World!.Event!.EventId,
+                    PrototypeNativeLaterActEventPool.GloryEventIds);
+            else
+                Assert.Contains(result.World!.EncounterIds[^1],
+                    PrototypeNativeLaterActCombatPool.GloryWeak);
             PrototypeStateInvariants.Validate(result);
         }
         catch (NotSupportedException error)

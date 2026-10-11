@@ -77,6 +77,7 @@ public static class PrototypeNativeLaterActFixture
         rng.Streams[index] = clean.Streams[cleanIndex].Fork();
 
         var map = PrototypeNativeLaterActMap.Generate(rng, act, ascension);
+        var encounters = PrototypeNativeLaterActCombatPool.Create(act, rng);
         var keyId = PrototypeNativeHiveEvents.LanternKeyCardId;
         var deck = state.Player.Deck.Concat(
             Enumerable.Range(0, lanternKeys).Select(i =>
@@ -99,6 +100,7 @@ public static class PrototypeNativeLaterActFixture
                 Shop = null,
                 ActOneRegion = null,
                 ActOneEncounterPool = null,
+                LaterActEncounterPool = encounters,
                 NativeOvergrowthOpening = false,
                 NextCardInstanceId = world.NextCardInstanceId + lanternKeys
             },

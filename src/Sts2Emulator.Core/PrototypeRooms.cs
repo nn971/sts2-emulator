@@ -35,11 +35,15 @@ public sealed partial class PrototypeGameEngine
                 : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
 
-        if (nativeLaterMap && room != PrototypeRoomType.Event)
+        if (nativeLaterMap
+            && room is not (PrototypeRoomType.Event
+                or PrototypeRoomType.Combat
+                or PrototypeRoomType.Elite
+                or PrototypeRoomType.Boss))
             throw new NotSupportedException(
                 $"Native {world.Act} {room} room execution is gated. " +
-                "Only source-backed regional event rooms are enabled; " +
-                "ordinary later-act encounter and reward pools remain unsupported.");
+                "Event and combat models are source-listed, but shop, " +
+                "rest and treasure systems are not integrated.");
 
         world = world with
         {
@@ -3364,14 +3368,17 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        var nativeOvergrowth = UsesNativeActOneSystems(world);
+        var nativeCombatRewards = UsesNativeActOneSystems(world)
+            || world.Map.GenerationProfileId is
+                PrototypeNativeLaterActMap.HiveProfileId
+                or PrototypeNativeLaterActMap.GloryProfileId;
 
         // RewardsSet.GenerateRewardsFor rolls the potion pity check
         // before rewards are populated; GoldReward.Populate runs first,
         // then PotionReward.Populate, then the base CardReward.
         // Forced potion rewards do not consume a pity RNG draw.
         var nativePotionOffered = false;
-        if (nativeOvergrowth)
+        if (nativeCombatRewards)
         {
             var forced = state.Player.Relics.Any(relic =>
                 PrototypeContent.Relic(relic.RelicId)
@@ -3390,11 +3397,11 @@ public sealed partial class PrototypeGameEngine
 
         // GoldReward.Populate is the first reward population RNG draw.
         // Its amount is only credited if the player claims the offer.
-        var nativeGold = nativeOvergrowth
+        var nativeGold = nativeCombatRewards
             ? PrototypeNativeCombatGoldReward.Roll(
                 room, state.Ascension, state.Rng)
             : null;
-        var gold = nativeOvergrowth
+        var gold = nativeCombatRewards
             ? nativeGold ?? 0
             : room switch
             {
@@ -3424,7 +3431,7 @@ public sealed partial class PrototypeGameEngine
             .Sum(enemy => enemy.StolenGold);
 
         // PotionReward.Populate precedes CardReward.Populate.
-        string? potion = nativeOvergrowth
+        string? potion = nativeCombatRewards
             && nativePotionOffered
             && CanAcquirePotion(state.Player)
                 ? PrototypeNativePotionShop.PickWeighted(
@@ -3445,7 +3452,7 @@ public sealed partial class PrototypeGameEngine
         string[][] extraCardOptions;
         bool[]? cardUpgradeFlags = null;
         bool[][]? extraCardUpgradeFlags = null;
-        if (nativeOvergrowth)
+        if (nativeCombatRewards)
         {
             var offset = world.CardRarityOffsetBasisPoints;
             var first = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
@@ -3482,7 +3489,7 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
-        if (!nativeOvergrowth)
+        if (!nativeCombatRewards)
         {
             potion = CanAcquirePotion(state.Player)
                 && PrototypeRng.NextBool(
@@ -3514,7 +3521,7 @@ public sealed partial class PrototypeGameEngine
                         PrototypeContent.RelicPool.Length)];
             }
         }
-        if (nativeOvergrowth && prayerWheelGroups > 0)
+        if (nativeCombatRewards && prayerWheelGroups > 0)
         {
             // Hook.ModifyRewards happens after the original reward
             // list has been populated. Prayer Wheel appends a separate
@@ -3580,17 +3587,17 @@ public sealed partial class PrototypeGameEngine
             ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
             CardOptionUpgradeFlags: cardUpgradeFlags,
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
-            GoldOption: nativeOvergrowth ? nativeGold : recoveredGold > 0 ? recoveredGold : null,
-            GoldResolved: nativeOvergrowth ? nativeGold is null : recoveredGold == 0,
-            IndependentSelection: nativeOvergrowth || recoveredGold > 0,
-            ExtraCardGroupsResolved: nativeOvergrowth
+            GoldOption: nativeCombatRewards ? nativeGold : recoveredGold > 0 ? recoveredGold : null,
+            GoldResolved: nativeCombatRewards ? nativeGold is null : recoveredGold == 0,
+            IndependentSelection: nativeCombatRewards || recoveredGold > 0,
+            ExtraCardGroupsResolved: nativeCombatRewards
                 ? new bool[extraCardOptions.Length]
                 : null,
-            ExtraRelicGroupsResolved: nativeOvergrowth
+            ExtraRelicGroupsResolved: nativeCombatRewards
                 ? new bool[lavaRock.AdditionalRelicIds.Length]
                 : null,
-            ExtraGoldOptions: nativeOvergrowth && recoveredGold > 0 ? [recoveredGold] : null,
-            ExtraGoldGroupsResolved: nativeOvergrowth && recoveredGold > 0 ? [false] : null,
+            ExtraGoldOptions: nativeCombatRewards && recoveredGold > 0 ? [recoveredGold] : null,
+            ExtraGoldGroupsResolved: nativeCombatRewards && recoveredGold > 0 ? [false] : null,
             ReturnedStolenCards: returnedCards.Length == 0
                 ? null : returnedCards);
 
@@ -3606,7 +3613,7 @@ public sealed partial class PrototypeGameEngine
             {
                 // Legacy prototype combat rewards retain auto-credit.
                 Gold = lavaRock.Player.Gold
-                    + (nativeOvergrowth ? 0 : gold)
+                    + (nativeCombatRewards ? 0 : gold)
             },
             World = world,
             Phase = RunPhase.Reward

@@ -144,6 +144,7 @@ public static class PrototypeStateInvariants
         }
 
         ValidateActOneEncounterPool(world);
+        ValidateNativeLaterEncounterPool(world);
         ValidateEncounterHistory(world);
         ValidateEventHistory(world);
         ValidateCompletedRoomHistory(world);
@@ -323,6 +324,56 @@ public static class PrototypeStateInvariants
         }
     }
 
+    private static void ValidateNativeLaterEncounterPool(RunWorldState world)
+    {
+        var native = world.Map.GenerationProfileId is
+            PrototypeNativeLaterActMap.HiveProfileId
+            or PrototypeNativeLaterActMap.GloryProfileId;
+        var pool = world.LaterActEncounterPool;
+        if (!native)
+        {
+            if (pool is not null)
+                throw new InvalidOperationException(
+                    "Native later-act encounter bag leaked outside its map.");
+            return;
+        }
+        if (pool is null || pool.Act != world.Act
+            || pool.OrdinaryCombatsStarted < 0
+            || pool.OrdinaryCombatsStarted
+                > world.EncounterIds.Count(id =>
+                    PrototypeNativeLaterActCombatPool.Names(
+                        world.Act, PrototypeRoomType.Combat, true).Contains(id)
+                    || PrototypeNativeLaterActCombatPool.Names(
+                        world.Act, PrototypeRoomType.Combat).Contains(id)))
+            throw new InvalidOperationException(
+                "Missing or invalid native later-act encounter bag.");
+
+        foreach (var (room, weak, remaining) in new[]
+        {
+            (PrototypeRoomType.Combat, true,
+                pool.RemainingWeakEncounterIds),
+            (PrototypeRoomType.Combat, false,
+                pool.RemainingNormalEncounterIds),
+            (PrototypeRoomType.Elite, false,
+                pool.RemainingEliteEncounterIds)
+        })
+        {
+            var source = PrototypeNativeLaterActCombatPool.Names(
+                pool.Act, room, weak);
+            if (remaining.Length != remaining.Distinct(
+                    StringComparer.Ordinal).Count()
+                || remaining.Any(id => !source.Contains(
+                    id, StringComparer.Ordinal)))
+                throw new InvalidOperationException(
+                    "Native later-act encounter bag contains invalid or duplicated IDs.");
+        }
+        if (!PrototypeNativeLaterActCombatPool.Names(
+                pool.Act, PrototypeRoomType.Boss)
+            .Contains(pool.BossEncounterId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Native later-act selected boss is outside its act.");
+    }
+
     private static void ValidateCompletedRoomHistory(
         RunWorldState world)
     {
@@ -333,10 +384,9 @@ public static class PrototypeStateInvariants
             if (visit.Act < 1
                 || visit.Act > world.Act
                 || visit.Floor < 1
-                || visit.Floor > (world.Map.GenerationProfileId is
-                    PrototypeNativeLaterActMap.HiveProfileId
-                    or PrototypeNativeLaterActMap.GloryProfileId
-                    ? PrototypeNativeLaterActMap.RoomRows(world.Act) + 1
+                || visit.Floor > (visit.Act is 2 or 3
+                    && world.LaterActEncounterPool is not null
+                    ? PrototypeNativeLaterActMap.RoomRows(visit.Act) + 1
                     : world.Act == 1
                         && (world.Map.GenerationProfileId
                                 == PrototypeNativeOvergrowthMap.GenerationProfileId
@@ -1331,6 +1381,20 @@ public static class PrototypeStateInvariants
                 || PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal));
 
+        var promotedNativeLaterEncounter =
+            world.LaterActEncounterPool is { } later
+            && later.Act == world.Act
+            && world.Map.GenerationProfileId ==
+                PrototypeNativeLaterActMap.ProfileId(world.Act)
+            && (PrototypeNativeLaterActCombatPool.Names(
+                    world.Act, world.ActiveRoom!.Value,
+                    weak: world.ActiveRoom == PrototypeRoomType.Combat)
+                    .Contains(encounter.Id, StringComparer.Ordinal)
+                || (world.ActiveRoom == PrototypeRoomType.Combat
+                    && PrototypeNativeLaterActCombatPool.Names(
+                        world.Act, PrototypeRoomType.Combat)
+                        .Contains(encounter.Id, StringComparer.Ordinal)));
+
         if (encounter.RoomType != world.ActiveRoom
             || world.Act < encounter.MinAct
             || world.Act > encounter.MaxAct
@@ -1338,7 +1402,8 @@ public static class PrototypeStateInvariants
             || world.Floor > encounter.MaxFloor
             || (encounter.Weight <= 0
                 && !promotedOvergrowthEncounter
-                && !promotedUnderdocksEncounter))
+                && !promotedUnderdocksEncounter
+                && !promotedNativeLaterEncounter))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");

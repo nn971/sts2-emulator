@@ -517,13 +517,16 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var world = RequireWorld(state);
 
         if (state.Configuration is not null)
-            throw new NotSupportedException("Native Hive/Glory mechanics are not implemented; prototype later-act fallback is disabled for v111 runs.");
+            throw new NotSupportedException("Native v111 full-route transition awaits Ancient and profile integration.");
 
         if (world.Act >= PrototypeContent.Rules.Acts)
         {
             throw new InvalidOperationException("The final act cannot transition to another act.");
         }
 
+        var cameFromNativeHive = world.Act == 2
+            && world.Map.GenerationProfileId
+                == PrototypeNativeLaterActMap.HiveProfileId;
         world = world with
         {
             Act = world.Act + 1,
@@ -534,7 +537,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Shop = null,
             Event = null
         };
-        world = world with { Map = GenerateActMap(world.Act, state.Rng) };
+        world = cameFromNativeHive
+            ? world with
+            {
+                Map = PrototypeNativeLaterActMap.Generate(
+                    state.Rng, 3, state.Ascension),
+                LaterActEncounterPool =
+                    PrototypeNativeLaterActCombatPool.Create(3, state.Rng),
+                UnknownRoomOdds = new PrototypeUnknownRoomOddsState(),
+                ActOneEncounterPool = null,
+                ActOneRegion = null
+            }
+            : world with { Map = GenerateActMap(world.Act, state.Rng) };
 
         return state with
         {
