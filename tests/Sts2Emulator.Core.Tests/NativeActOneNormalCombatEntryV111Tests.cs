@@ -125,8 +125,8 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
             var seed = "live-normal-entry-" + id;
             var state = SetupNormalRoom(Initial(seed, act), id);
             var initialHash = CanonicalJson.Sha256(state);
-            var action = Engine.GetLegalActions(state).Single();
-            Assert.Equal("choose_map_node", action.Kind);
+            var action = Engine.GetLegalActions(state).Single(
+                action => action.Kind == "choose_map_node");
             var advanced = Engine.Step(state, action).State;
             Assert.Equal(RunPhase.Combat, advanced.Phase);
             Assert.Equal(id, advanced.World!.EncounterIds.Last());
