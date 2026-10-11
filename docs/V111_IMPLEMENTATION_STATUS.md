@@ -165,6 +165,19 @@ This is an intermediate implementation. Final release gates remain open.
   reward and encounter-bag logic; actual native elite/boss
   progression, special hooks and reference trace parity remain open.
   See [native elite/boss entry](reference-builds/v0.111.0-native-act1-elite-boss-entry.md).
+- Implemented a native **Phrog Parasite elite death-phase** slice:
+  source `AfterAddedToRoom` gives four Infested stacks, and its
+  `AfterDeath` creates four Wrigglers in source slot order,
+  preserving native lifetime IDs and persistent `run.niche` HP
+  draws. Each newly created Wriggler carries a real committed
+  `SPAWNED_MOVE` / StunIntent with no effect before its native
+  odd-slot Bite/even-slot Wriggle opening and alternating cycle,
+  not the legacy prototype's invisible skipped turn. Tests cover
+  independent source-oracle HP rolls over 144 deaths, full
+  map-entry/player-card death and 2-turn replay, source identity
+  and explicit unsupported enemy-turn-start poison-death timing.
+  Other native elite/boss hooks remain provisional.
+  See [Phrog native death phase](reference-builds/v0.111.0-native-phrog-parasite-death-phase.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
