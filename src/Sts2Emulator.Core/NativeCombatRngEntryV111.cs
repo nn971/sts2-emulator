@@ -172,7 +172,8 @@ public static class NativeCombatRngEntryV111
         CombatState combat,
         IReadOnlyList<EnemyCombatState> currentEnemies,
         EnemyCombatState spawned,
-        int? precreatedUnattachedId = null)
+        int? precreatedUnattachedId = null,
+        int? dyingStillAttachedId = null)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(currentEnemies);
@@ -202,6 +203,12 @@ public static class NativeCombatRngEntryV111
                     && enemy.EnemyId == "proto.enemy.fat_gremlin") != 1))
             throw new NotSupportedException(
                 "Native precreated-unattached HP exclusion is audited only for SurprisePower.");
+        if (dyingStillAttachedId is not null
+            && currentEnemies.Count(enemy =>
+                enemy.InstanceId == dyingStillAttachedId
+                && enemy.Hp <= 0) != 1)
+            throw new InvalidOperationException(
+                "Native AfterDeath HP pool must identify exactly one dying attached creature.");
         if (spawned.InstanceId <= 0
             || currentEnemies.Any(enemy =>
                 enemy.InstanceId == spawned.InstanceId)
@@ -214,16 +221,18 @@ public static class NativeCombatRngEntryV111
                 "Native spawn must create a living creature.");
         var range = PrototypeContent.Enemy(spawned.EnemyId)
             .HpRangeAt(combat.Act, combat.Ascension);
-        // Creature.SetUniqueMonsterHpValue reads every creature still
-        // attached to CombatState._enemies, even those whose HP reached
-        // zero but whose death hooks have not removed them yet.
-        // The typed emulator retains this history explicitly.
-        // SurprisePower precreates Fat Gremlin but does not add it
-        // until AFTER CreateCreature(SneakyGremlin). The second HP
-        // draw therefore excludes only already-attached creatures,
-        // not Fat's earlier rolled maximum.
+        // Creature.SetUniqueMonsterHpValue excludes maxima belonging
+        // to *attached* enemy creatures. The prototype retains dead
+        // monsters forever in its history; native combat removes them
+        // after their death hooks. Include the dying source while its
+        // AfterDeath hook is executing, but never stale historical dead
+        // bodies. SurprisePower precreates Fat without attaching it
+        // before Sneaky's HP roll, so that one model is excluded.
         var usedHp = currentEnemies
-            .Where(enemy => enemy.InstanceId != precreatedUnattachedId)
+            .Where(enemy =>
+                (enemy.Hp > 0
+                    || enemy.InstanceId == dyingStillAttachedId)
+                && enemy.InstanceId != precreatedUnattachedId)
             .Select(enemy => enemy.MaxHp).ToHashSet();
         var possible = Enumerable.Range(
                 range.Min, checked(range.Max - range.Min + 1))
