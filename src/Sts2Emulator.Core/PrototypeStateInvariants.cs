@@ -194,6 +194,12 @@ public static class PrototypeStateInvariants
                 ValidateReward(
                     state.Player,
                     world.Reward);
+                // Native event rewards retain a live event continuation.
+                // Check the quest's pre-rolled offers even while reward
+                // choices, rather than event choices, are displayed.
+                if (world.Event?.EventId ==
+                    PrototypeNativeHiveEvents.WarHistorianRepyId)
+                    ValidateEvent(state.Player, world.Event);
                 break;
 
             case RunPhase.Shop:
@@ -433,7 +439,9 @@ public static class PrototypeStateInvariants
         }
 
         var active = PrototypeContent.Event(world.Event.EventId);
-        if (world.Act < active.MinAct || world.Act > active.MaxAct || active.Weight <= 0)
+        if (world.Act < active.MinAct || world.Act > active.MaxAct
+            || (active.Weight <= 0 && active.Id
+                != PrototypeNativeHiveEvents.WarHistorianRepyId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");
@@ -491,8 +499,11 @@ public static class PrototypeStateInvariants
                     PrototypeNativeTabletOfTruth.EventId
                 ? eventState.NativePageIndex > 4
                 : eventState.EventId ==
-                    PrototypeNativeHiveEvents.LanternKeyEventId
+                    PrototypeNativeHiveEvents.WarHistorianRepyId
                     ? eventState.NativePageIndex > 2
+                    : eventState.EventId ==
+                        PrototypeNativeHiveEvents.LanternKeyEventId
+                        ? eventState.NativePageIndex > 2
                     : eventState.EventId ==
                         PrototypeNativeDenseVegetation.EventId
                         ? eventState.NativePageIndex > 2
@@ -590,6 +601,38 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException(
                 "Conveyor-specific state leaked into another event.");
         }
+
+        if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+        {
+            if (eventState.NativePageIndex == 0
+                && eventState.RepyFirstChoiceId is not null
+                || eventState.NativePageIndex > 0
+                    && eventState.RepyFirstChoiceId is not
+                        ("unlock_chest" or "unlock_cage")
+                || (eventState.RepyChestPotionIds is null)
+                    != (eventState.RepyChestRelicIds is null)
+                || eventState.RepyChestGroupsResolved is < 0 or > 2
+                || eventState.RepyChestPotionIds is null
+                    && eventState.RepyChestGroupsResolved != 0
+                || eventState.RepyChestPotionIds is { } potions
+                    && (potions.Length != 2
+                        || potions.Any(id =>
+                            !PrototypeContent.Potions.ContainsKey(id)))
+                || eventState.RepyChestRelicIds is { } relics
+                    && (relics.Length != 2
+                        || relics.Distinct(StringComparer.Ordinal).Count() != 2
+                        || relics.Any(id =>
+                            !PrototypeContent.Relics.ContainsKey(id))))
+                throw new InvalidOperationException(
+                    "War Historian Repy has invalid page or chest reward state.");
+            return;
+        }
+        if (eventState.RepyFirstChoiceId is not null
+            || eventState.RepyChestPotionIds is not null
+            || eventState.RepyChestRelicIds is not null
+            || eventState.RepyChestGroupsResolved != 0)
+            throw new InvalidOperationException(
+                "Repy-specific reward state leaked into another event.");
 
         if (eventState.EventId == "proto.native.underdocks.abyssal_baths")
         {
@@ -1248,10 +1291,12 @@ public static class PrototypeStateInvariants
         }
 
         if (reward.IndependentSelection
-            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest"))
+            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest")
+            && !StringComparer.Ordinal.Equals(reward.SourceRoom,
+                "Event:" + PrototypeNativeHiveEvents.WarHistorianRepyId))
         {
             throw new InvalidOperationException(
-                "Independent reward selection requires a combat or rest reward.");
+                "Independent reward selection requires a combat, rest or Repy event reward.");
         }
 
         var extraCards = reward.ExtraCardOptions ?? Array.Empty<string[]>();
@@ -1741,6 +1786,13 @@ public static class PrototypeStateInvariants
     private static void ValidateMap(RunWorldState world)
     {
         if (world.Map.GenerationProfileId
+            == PrototypeNativeHiveEvents.RepyFixtureMapProfileId)
+        {
+            ValidateRepyForcedFixtureMap(world);
+            return;
+        }
+
+        if (world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId
             || world.Map.GenerationProfileId
                 == PrototypeNativeUnderdocks.GenerationProfileId)
@@ -1893,6 +1945,64 @@ public static class PrototypeStateInvariants
             {
                 throw new InvalidOperationException("World floor disagrees with current map node.");
             }
+        }
+    }
+
+    /// <summary>
+    /// The Glory quest slice deliberately supplies two manual nodes.
+    /// The profile is explicit and is forbidden outside act 3; full
+    /// production map validation continues through the existing path.
+    /// </summary>
+    private static void ValidateRepyForcedFixtureMap(RunWorldState world)
+    {
+        var map = world.Map;
+        if (world.Act != 3 || map.Nodes.Length == 0)
+            throw new InvalidOperationException(
+                "Repy forced map requires a non-empty Glory fixture.");
+        var nodes = map.Nodes.ToDictionary(node => node.NodeId,
+            StringComparer.Ordinal);
+        if (nodes.Count != map.Nodes.Length
+            || map.EntryNodeIds is not { Length: > 0 }
+            || map.EntryNodeIds.Distinct(StringComparer.Ordinal).Count()
+                != map.EntryNodeIds.Length)
+            throw new InvalidOperationException(
+                "Repy fixture map has duplicate or missing entry nodes.");
+        foreach (var entry in map.EntryNodeIds)
+        {
+            if (!nodes.TryGetValue(entry, out var node)
+                || node.Floor != 1)
+                throw new InvalidOperationException(
+                    "Repy fixture entry must be on floor one.");
+        }
+        foreach (var node in map.Nodes)
+        {
+            if (node.Act != 3 || node.Floor is < 1 or > 6
+                || node.NextNodeIds is { } next
+                    && next.Distinct(StringComparer.Ordinal).Count()
+                        != next.Length)
+                throw new InvalidOperationException(
+                    "Invalid Glory quest fixture node.");
+            foreach (var target in node.NextNodeIds
+                ?? Array.Empty<string>())
+            {
+                if (!nodes.TryGetValue(target, out var other)
+                    || other.Floor != node.Floor + 1)
+                    throw new InvalidOperationException(
+                        "Glory quest fixture edges must advance one floor.");
+            }
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+                throw new InvalidOperationException(
+                    "Unentered quest fixture must start at floor zero.");
+        }
+        else if (!nodes.TryGetValue(map.CurrentNodeId, out var current)
+            || current.Floor != world.Floor)
+        {
+            throw new InvalidOperationException(
+                "Glory quest fixture cursor disagrees with run floor.");
         }
     }
 

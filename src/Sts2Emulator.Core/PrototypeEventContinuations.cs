@@ -182,6 +182,9 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
+            if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+                return ContinueNativeWarHistorianRepy(state);
+
             if (StringComparer.Ordinal.Equals(
                     eventState.EventId,
                     PrototypeNativeOvergrowthEvents.NeowEventId)

@@ -2106,7 +2106,13 @@ public sealed record EventState(
     string? NativeLastDishId = null,
     int NativeDishCount = 0,
     bool NativeDishRollPending = false,
-    int DeferredGoldLoss = 0)
+    int DeferredGoldLoss = 0,
+    // Native Glory quest continuation; these rolls are fixed when the
+    // chest is opened, independent of reward selection or fork order.
+    string? RepyFirstChoiceId = null,
+    string[]? RepyChestPotionIds = null,
+    string[]? RepyChestRelicIds = null,
+    int RepyChestGroupsResolved = 0)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -2132,7 +2138,11 @@ public sealed record EventState(
             OfferedChoiceIds is null
                 ? null
                 : (string[])OfferedChoiceIds.Clone(),
-        PendingReward = PendingReward?.Fork()
+        PendingReward = PendingReward?.Fork(),
+        RepyChestPotionIds = RepyChestPotionIds is null
+            ? null : (string[])RepyChestPotionIds.Clone(),
+        RepyChestRelicIds = RepyChestRelicIds is null
+            ? null : (string[])RepyChestRelicIds.Clone()
     };
 }
 
@@ -2182,7 +2192,9 @@ public sealed record RunWorldState(
         PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints,
     bool NativeOvergrowthOpening = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    ActIdentity? ActIdentity = null)
+    ActIdentity? ActIdentity = null,
+    // Native IRunState.ExtraFields.FreedRepy, set by unlocking Repy's cage.
+    bool FreedRepy = false)
 {
     public RunWorldState Fork() => this with
     {

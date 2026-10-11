@@ -387,6 +387,19 @@ This is an intermediate implementation. Final release gates remain open.
   is distinct from native Hive pool integration and live oracle parity.
   See [Lantern Key audit](reference-builds/v0.111.0-hive-lantern-key.md).
 
+- Implemented **gated Glory Lantern Key → War Historian Repy**:
+  a carried Key forces a Glory Unknown or Event room into the
+  quest continuation without enabling unrelated later-act maps.
+  The initial choice consumes one Key; in solo runs with further
+  Keys the opposite option is offered after rewards, then removes
+  all remaining Keys. Cage sets the persistent FreedRepy flag and
+  obtains the event-only History Course relic. Chest gives two
+  optional potion/relic reward pairs with all four values pre-rolled
+  and fork-safe. Native one-screen chest UI, actual reward pools,
+  History Course's prior-turn Attack replay and live trace parity
+  remain explicitly unsupported/unverified.
+  [Glory quest audit](reference-builds/v0.111.0-glory-repy-quest.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
