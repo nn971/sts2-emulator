@@ -123,7 +123,8 @@ public enum PrototypeCombatEffectKind
     ModifyEventSourceCardKeyword,
     GainPlayerBlockFromEnemyStatusTotal,
     CreateRandomCharacterSkillCardsInHand,
-    CreateDistinctCharacterCommonCardsInHand
+    CreateDistinctCharacterCommonCardsInHand,
+    CreateRandomFreeCharacterCardInHand
 }
 
 public enum PrototypeCardKeyword
@@ -2124,7 +2125,10 @@ public sealed record EventState(
     string? RepyFirstChoiceId = null,
     string[]? RepyChestPotionIds = null,
     string[]? RepyChestRelicIds = null,
-    int RepyChestGroupsResolved = 0)
+    int RepyChestGroupsResolved = 0,
+    // Glory Tinker Time chooses type and rider on separate pages;
+    // the type is persisted independently of the random rider offer.
+    string? NativeTinkerType = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
