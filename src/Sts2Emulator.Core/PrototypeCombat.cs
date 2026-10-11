@@ -5873,8 +5873,7 @@ public sealed partial class PrototypeGameEngine
                     }
 
                     var autoPlayDefinition =
-                        PrototypeContent.Card(
-                            autoPlayCard.CardId);
+                        RuntimeCardDefinition(autoPlayCard);
                     // Unplayable cards have no on-play behavior. The autoplay
                     // stage still moves them to their destination, even when
                     // their *play* mechanics are deliberately unsupported (for
@@ -7353,7 +7352,7 @@ public sealed partial class PrototypeGameEngine
                     return card;
                 }
 
-                var definition = PrototypeContent.Card(card.CardId);
+                var definition = RuntimeCardDefinition(card);
                 if (definition.Cost.Kind == PrototypeCardCostKind.X
                     || definition.Cost.Amount < 0)
                 {
