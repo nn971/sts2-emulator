@@ -777,7 +777,7 @@ public sealed partial class PrototypeGameEngine
         foreach (var instanceId in combat.Hand)
         {
             var card = RequireCombatCard(combat, instanceId);
-            var definition = PrototypeContent.Card(card.CardId);
+            var definition = RuntimeCardDefinition(card);
             if (card.Affliction?.Kind == PrototypeCardAfflictionKind.Bound
                 && combat.BoundCardPlayedThisTurn)
                 continue;
@@ -907,7 +907,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "A player effect prevents playing this card this turn.");
         }
-        var definition = PrototypeContent.Card(card.CardId);
+        var definition = RuntimeCardDefinition(card);
         if (!definition.MechanicsImplemented)
         {
             throw new NotSupportedException(
@@ -1256,10 +1256,12 @@ public sealed partial class PrototypeGameEngine
 
         state = state with
         {
-            Player = ApplyNativePersistentCombatEnd(
-                state.Player,
-                world.ActiveRoom,
-                state.Rng)
+            Player = ApplyMadScienceImprovement(
+                ApplyNativePersistentCombatEnd(
+                    state.Player,
+                    world.ActiveRoom,
+                    state.Rng),
+                combat, state.Rng)
         };
 
         if (world.Event is { } battleworn
@@ -4908,6 +4910,40 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand:
+                {
+                    // Chaos makes any eligible character card free for
+                    // the current turn, independently of its normal cost.
+                    var pool = PrototypeContent.RewardCardPool
+                        .Where(id =>
+                        {
+                            var candidate = PrototypeContent.Card(id);
+                            return candidate.MechanicsImplemented
+                                && candidate.CanBeGeneratedInCombat
+                                && !candidate.MultiplayerOnly
+                                && candidate.Type is PrototypeCardType.Attack
+                                    or PrototypeCardType.Skill
+                                    or PrototypeCardType.Power;
+                        })
+                        .ToArray();
+                    if (operation.Amount > 0 && pool.Length == 0)
+                        throw new NotSupportedException(
+                            "Chaos has no supported single-player card pool.");
+                    for (var index = 0; index < operation.Amount; index++)
+                    {
+                        var id = pool[PrototypeRng.NextInt(
+                            rng, "combat", pool.Length)];
+                        combat = AddGeneratedCardCopies(combat,
+                            new PrototypeCombatCardSnapshot(
+                                id, 0, PrototypeJson.EmptyObject(),
+                                TemporaryEnergyCost: new(
+                                    0, PrototypeTemporaryCardCostExpiry.EndOfTurn
+                                        | PrototypeTemporaryCardCostExpiry.WhenPlayed)),
+                            1);
+                    }
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.AddRandomZeroCostCardsToHand:
                 {
                     var pool = PrototypeContent.RewardCardPool
@@ -6525,7 +6561,7 @@ public sealed partial class PrototypeGameEngine
         var card = RequireCombatCard(
             combat,
             series.SourceCardInstanceId);
-        var definition = PrototypeContent.Card(card.CardId);
+        var definition = RuntimeCardDefinition(card);
         if (series.NextPlayIndex == 0 && !series.RemoveSourceCardOnCompletion
             && series.SourceCardDestination == PrototypeCardZone.DiscardPile
             && combat.PlayerPowers.Any(power => power.Stacks > 0
@@ -7270,9 +7306,16 @@ public sealed partial class PrototypeGameEngine
                         : 0;
             });
 
+        var curiousDiscount = definition.Type == PrototypeCardType.Power
+            ? combat.PlayerPowers
+                .Where(power =>
+                    power.PowerId == PrototypeNativeGloryEvents.CuriousId)
+                .Sum(power => Math.Max(0, power.Stacks))
+            : 0;
+
         return Math.Max(
             0,
-            baseCost + afflictionSurcharge);
+            baseCost + afflictionSurcharge - curiousDiscount);
     }
 
     private static CombatState SetCardTemporaryEnergyCost(
@@ -7612,8 +7655,12 @@ public sealed partial class PrototypeGameEngine
                             : counters.PlayedCardIdsThisTurn
                 };
 
-                var cardDefinition =
-                    PrototypeContent.Card(combatEvent.CardId);
+                var matchingCard = combatEvent.SourceCardInstanceId is { } sourceId
+                    ? combat.Cards.FirstOrDefault(c => c.InstanceId == sourceId)
+                    : null;
+                var cardDefinition = matchingCard is null
+                    ? PrototypeContent.Card(combatEvent.CardId)
+                    : RuntimeCardDefinition(matchingCard);
                 var type = cardDefinition.Type;
                 // CardPlaysFinished is the native source for History
                 // Course. Capture a completed non-dupe attack rather than
@@ -9223,6 +9270,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
+        combat = ResolveMadScienceStrangle(combat, combatEvent);
         combat = ResolveNativeGloryBossCardHooks(combat, combatEvent);
         combat = RefreshNativeHiveVitalSpark(combat);
         combat = RefreshNativeGloryGalvanic(combat);
