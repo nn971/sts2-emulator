@@ -75,7 +75,9 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
             CanonicalJson.Sha256(hive.Player));
         Assert.Equal(CanonicalJson.Sha256(actOne.NativeRunRng),
             CanonicalJson.Sha256(hive.NativeRunRng));
-        Assert.Equal(CanonicalJson.Sha256(actOne.Rng),
+        // Act-entry boss choice now belongs to an advancing encounter
+        // stream. All original cursors are fork-safe, not unchanged.
+        Assert.NotEqual(CanonicalJson.Sha256(actOne.Rng),
             CanonicalJson.Sha256(hive.Rng));
         Assert.Equal(originalHash, CanonicalJson.Sha256(actOne));
         PrototypeStateInvariants.Validate(hive);
