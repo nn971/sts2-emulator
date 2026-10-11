@@ -57,10 +57,18 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
         {
             World = state.World with { Combat = updated }
         };
-        var action = Engine.GetLegalActions(prepared)
-            .Single(option => option.Kind == "play_card"
-                && option.ReadPayload<PlayCardPayload>().CardInstanceId
-                    == instanceId);
+        var allActions = Engine.GetLegalActions(prepared);
+        var action = allActions.FirstOrDefault(option =>
+            option.Kind == "play_card"
+            && option.ReadPayload<PlayCardPayload>().CardInstanceId
+                == instanceId);
+        if (action is null)
+            throw new InvalidOperationException(
+                $"Synthetic finisher unavailable on act {prepared.World!.Act} " +
+                $"floor {prepared.World.Floor}, turn {updated.Turn}, " +
+                $"energy {updated.Energy}, hand {updated.Hand.Length}; " +
+                $"available: {string.Join(",", allActions.Select(a => a.Kind))}; " +
+                $"powers: {string.Join(",", updated.PlayerPowers.Select(p => p.PowerId))}.");
         return Engine.Step(prepared, action).State;
     }
 
