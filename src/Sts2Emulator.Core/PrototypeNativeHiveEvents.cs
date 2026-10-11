@@ -20,6 +20,11 @@ public static class PrototypeNativeHiveEvents
         "LostWisp", "SpiritGrafter", "TheLanternKey", "ZenWeaver"
     ];
 
+    public const string WarHistorianRepyId =
+        "proto.native.glory.war_historian_repy";
+    public const string HistoryCourseId =
+        "proto.native.glory.history_course";
+
     public const string LanternKeyEventId = "proto.native.hive.the_lantern_key";
     public const string LanternKeyCardId = "proto.native.hive.lantern_key";
     public const string MysteriousKnightId = "proto.native.hive.mysterious_knight";
@@ -117,6 +122,9 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Event-only. The native after-auto-preplay replay effect still
+        // requires a dedicated combat-history hook, tracked as unsupported.
+        new(HistoryCourseId, "History Course"),
         // PollinousCore.TurnsSeen persists across combats and supplies
         // +2 hand draws on each fourth hand draw (not fourth card drawn).
         new(PollinousCoreId, "Pollinous Core"),
@@ -167,6 +175,14 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // IsAllowed=false in native source: only the Lantern Key's
+        // ModifyNextEvent hook can install this event in Glory.
+        new(WarHistorianRepyId, "War Historian Repy",
+        [
+            new("unlock_cage", "Free Repy and gain History Course", []),
+            new("unlock_chest", "Open the four-reward chest", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0,
+           OncePerRun: false),
         // Native event: return the key for 100 gold, or select Keep,
         // then enter a single Mysterious Knight combat. On victory,
         // Lantern Key is an optional special card reward.
