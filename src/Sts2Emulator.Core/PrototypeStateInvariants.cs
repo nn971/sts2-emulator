@@ -1780,6 +1780,13 @@ public static class PrototypeStateInvariants
     private static void ValidateMap(RunWorldState world)
     {
         if (world.Map.GenerationProfileId
+            == PrototypeNativeHiveEvents.RepyFixtureMapProfileId)
+        {
+            ValidateRepyForcedFixtureMap(world);
+            return;
+        }
+
+        if (world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId
             || world.Map.GenerationProfileId
                 == PrototypeNativeUnderdocks.GenerationProfileId)
@@ -1932,6 +1939,64 @@ public static class PrototypeStateInvariants
             {
                 throw new InvalidOperationException("World floor disagrees with current map node.");
             }
+        }
+    }
+
+    /// <summary>
+    /// The Glory quest slice deliberately supplies two manual nodes.
+    /// The profile is explicit and is forbidden outside act 3; full
+    /// production map validation continues through the existing path.
+    /// </summary>
+    private static void ValidateRepyForcedFixtureMap(RunWorldState world)
+    {
+        var map = world.Map;
+        if (world.Act != 3 || map.Nodes.Length == 0)
+            throw new InvalidOperationException(
+                "Repy forced map requires a non-empty Glory fixture.");
+        var nodes = map.Nodes.ToDictionary(node => node.NodeId,
+            StringComparer.Ordinal);
+        if (nodes.Count != map.Nodes.Length
+            || map.EntryNodeIds is not { Length: > 0 }
+            || map.EntryNodeIds.Distinct(StringComparer.Ordinal).Count()
+                != map.EntryNodeIds.Length)
+            throw new InvalidOperationException(
+                "Repy fixture map has duplicate or missing entry nodes.");
+        foreach (var entry in map.EntryNodeIds)
+        {
+            if (!nodes.TryGetValue(entry, out var node)
+                || node.Floor != 1)
+                throw new InvalidOperationException(
+                    "Repy fixture entry must be on floor one.");
+        }
+        foreach (var node in map.Nodes)
+        {
+            if (node.Act != 3 || node.Floor is < 1 or > 6
+                || node.NextNodeIds is { } next
+                    && next.Distinct(StringComparer.Ordinal).Count()
+                        != next.Length)
+                throw new InvalidOperationException(
+                    "Invalid Glory quest fixture node.");
+            foreach (var target in node.NextNodeIds
+                ?? Array.Empty<string>())
+            {
+                if (!nodes.TryGetValue(target, out var other)
+                    || other.Floor != node.Floor + 1)
+                    throw new InvalidOperationException(
+                        "Glory quest fixture edges must advance one floor.");
+            }
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+                throw new InvalidOperationException(
+                    "Unentered quest fixture must start at floor zero.");
+        }
+        else if (!nodes.TryGetValue(map.CurrentNodeId, out var current)
+            || current.Floor != world.Floor)
+        {
+            throw new InvalidOperationException(
+                "Glory quest fixture cursor disagrees with run floor.");
         }
     }
 
