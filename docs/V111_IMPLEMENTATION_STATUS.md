@@ -371,7 +371,7 @@ This is an intermediate implementation. Final release gates remain open.
   adds the Normality curse afterward. Enter Your Hole selects one
   enchantable card to gain the persistent Perfect Fit enchantment.
   Normality is unplayable and prohibits further manual card plays
-  when held after three plays in a turn. Perfect Fit moves its card
+  when held after three plays in a turn (including autoplay). Perfect Fit moves its card
   to the next-drawn position on non-initial draw-pile reshuffles,
   leaving the opening shuffle unchanged. No unimplemented native
   routing or oracle validation is claimed.

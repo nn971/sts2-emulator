@@ -5663,7 +5663,8 @@ public sealed partial class PrototypeGameEngine
                                 rng,
                                 "combat",
                                 shuffled);
-                            draw.AddRange(shuffled);
+                            draw.AddRange(ApplyPerfectFitShuffleOrder(
+                                combat, shuffled));
                             discard.Clear();
                         }
 
@@ -5767,7 +5768,11 @@ public sealed partial class PrototypeGameEngine
                             ? PrototypeCardZone.ExhaustPile
                             : PrototypeCardZone.DiscardPile;
 
-                    if (autoPlayDefinition.Unplayable)
+                    // Native Normality.ShouldPlay also guards
+                    // auto-play (cards staged in the play pile) while
+                    // Normality stays in hand.
+                    if (autoPlayDefinition.Unplayable
+                        || NormalityPreventsCardPlay(combat))
                     {
                         combat = SetZone(
                             combat,
@@ -7024,6 +7029,33 @@ public sealed partial class PrototypeGameEngine
         return combat with { PlayerPowers = powers.ToArray() };
     }
 
+    // As in native Normality.ShouldPlay, the owner is prohibited
+    // after three card-play starts only while the curse is in hand.
+    private static bool NormalityPreventsCardPlay(CombatState combat) =>
+        combat.CounterState.CardsPlayedThisTurn >= 3
+        && combat.Hand.Any(id =>
+            RequireCombatCard(combat, id).CardId
+                == PrototypeNativeHiveEvents.NormalityId);
+
+    // Native PerfectFit.ModifyShuffleOrder inserts at the top of a
+    // non-initial shuffle. Our engine draws from the LAST index, hence
+    // the selected card(s) move to the end of the shuffled array.
+    private static long[] ApplyPerfectFitShuffleOrder(
+        CombatState combat, long[] shuffled)
+    {
+        var enchanted = shuffled.Where(id =>
+            RequireCombatCard(combat, id).Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.PerfectFit).ToArray();
+        if (enchanted.Length == 0)
+        {
+            return shuffled;
+        }
+
+        var selected = enchanted.ToHashSet();
+        return shuffled.Where(id => !selected.Contains(id))
+            .Concat(enchanted).ToArray();
+    }
+
     private static bool CanPlayAnotherCardThisTurn(
         PlayerState player,
         CombatState combat,
@@ -7032,10 +7064,7 @@ public sealed partial class PrototypeGameEngine
         // Native Normality.ShouldPlay only intervenes while the
         // unplayable Curse is physically in the player's hand. The
         // limit uses play-start counts, not energy or card draws.
-        if (combat.CounterState.CardsPlayedThisTurn >= 3
-            && combat.Hand.Any(id =>
-                RequireCombatCard(combat, id).CardId
-                    == PrototypeNativeHiveEvents.NormalityId))
+        if (NormalityPreventsCardPlay(combat))
         {
             return false;
         }
@@ -11448,21 +11477,8 @@ public sealed partial class PrototypeGameEngine
                 var recycled = discard.ToArray();
                 discard.Clear();
                 PrototypeRng.Shuffle(rng, "combat", recycled);
-                // PerfectFit.ModifyShuffleOrder runs only on later
-                // shuffles. Native inserts these at the TOP. Our
-                // draw pile removes from the last array position, so
-                // the equivalent is to move enchanted cards to end.
-                var perfectFitCards = recycled.Where(id =>
-                    RequireCombatCard(combat, id).Enchantment?.Kind
-                        == PrototypeCardEnchantmentKind.PerfectFit).ToArray();
-                if (perfectFitCards.Length > 0)
-                {
-                    var perfectFitIds = perfectFitCards.ToHashSet();
-                    recycled = recycled.Where(id =>
-                        !perfectFitIds.Contains(id))
-                        .Concat(perfectFitCards).ToArray();
-                }
-                draw.AddRange(recycled);
+                draw.AddRange(ApplyPerfectFitShuffleOrder(
+                    combat, recycled));
                 var stratagem = combat.PlayerPowers.Sum(power =>
                     power.PowerId == "proto.power.stratagem"
                         ? Math.Max(0, power.Stacks) : 0);
