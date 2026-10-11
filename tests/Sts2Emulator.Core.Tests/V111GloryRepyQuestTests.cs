@@ -194,12 +194,13 @@ public sealed class V111GloryRepyQuestTests
         };
         Assert.Throws<InvalidOperationException>(() =>
             PrototypeStateInvariants.Validate(invalid));
-        var nonNative = EnterRoom(Fixture(2)) with
+        var other = EnterRoom(Fixture(2));
+        var nonNative = other with
         {
-            World = result.World with
+            World = other.World! with
             {
-                Event = new EventState(
-                    PrototypeNativeHiveEvents.LanternKeyEventId,
+                EventHistory = ["proto.event.fountain"],
+                Event = new EventState("proto.event.fountain",
                     RepyFirstChoiceId: "unlock_cage")
             }
         };
