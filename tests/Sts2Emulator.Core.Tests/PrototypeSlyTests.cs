@@ -201,6 +201,7 @@ public sealed class PrototypeSlyTests
                         original.Enemies[0] with
                         {
                             InstanceId = 2,
+                            FormationPosition = 1,
                             Statuses = new Dictionary<string, int>
                             {
                                 ["proto.status.poison"] = 1
