@@ -21,9 +21,23 @@ public sealed partial class PrototypeGameEngine
             option => StringComparer.Ordinal.Equals(option.NodeId, payload.NodeId))
             ?? throw new InvalidOperationException($"Unknown map node '{payload.NodeId}'.");
 
+        // Native Hive/Glory geometry may be inspected independently,
+        // but regional encounter/event/reward bags are not yet complete.
+        // Never silently substitute the six-floor prototype content.
+        var nativeLaterMap = world.Map.GenerationProfileId is
+            PrototypeNativeLaterActMap.HiveProfileId
+            or PrototypeNativeLaterActMap.GloryProfileId;
+        var forceRepy = ShouldForceWarHistorianRepy(world, state.Player);
+        if (nativeLaterMap
+            && !(forceRepy
+                && node.RoomType is PrototypeRoomType.Event
+                    or PrototypeRoomType.Unknown))
+            throw new NotSupportedException(
+                "Native Hive/Glory room execution is gated until " +
+                "its regional encounter/event/reward pools are integrated.");
+
         // Native LanternKey converts Glory '?' rooms into Event rooms.
         // Its event replacement also applies to existing Event nodes.
-        var forceRepy = ShouldForceWarHistorianRepy(world, state.Player);
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? forceRepy ? PrototypeRoomType.Event
                 : ResolveUnknownMapRoom(ref world, state.Rng)
