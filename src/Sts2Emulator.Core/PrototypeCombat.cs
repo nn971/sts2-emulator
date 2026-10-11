@@ -9270,7 +9270,6 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = RecordCombatCounterEvent(combat, combatEvent);
-        combat = ResolveMadScienceStrangle(combat, combatEvent);
         combat = ResolveNativeGloryBossCardHooks(combat, combatEvent);
         combat = RefreshNativeHiveVitalSpark(combat);
         combat = RefreshNativeGloryGalvanic(combat);
