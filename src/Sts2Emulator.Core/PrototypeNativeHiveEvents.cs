@@ -20,6 +20,10 @@ public static class PrototypeNativeHiveEvents
         "LostWisp", "SpiritGrafter", "TheLanternKey", "ZenWeaver"
     ];
 
+    public const string FieldOfManSizedHolesId =
+        "proto.native.hive.field_of_man_sized_holes";
+    public const string NormalityId = "proto.native.hive.normality";
+
     public const string AmalgamatorId = "proto.native.hive.amalgamator";
     public const string UltimateStrikeId = "proto.colorless.ultimate_strike";
     public const string UltimateDefendId = "proto.colorless.ultimate_defend";
@@ -36,17 +40,23 @@ public static class PrototypeNativeHiveEvents
     public const string LostWispRelicId = "proto.native.hive.lost_wisp_relic";
 
     public static bool IsNativeEvent(string id) =>
-        id is AmalgamatorId or InfestedAutomatonId or LostWispId or ZenWeaverId
+        id is FieldOfManSizedHolesId or AmalgamatorId
+            or InfestedAutomatonId or LostWispId or ZenWeaverId
             or ColossalFlowerId or SpiritGrafterId;
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
-        eventId == SpiritGrafterId;
+        eventId is SpiritGrafterId or FieldOfManSizedHolesId;
 
     public static bool IsEligible(PrototypeEventDefinition evt,
         PlayerState player) =>
         (evt.Id != AmalgamatorId
             || (CountBasic(player, "Strike") >= 2
                 && CountBasic(player, "Defend") >= 2))
+        && (evt.Id != FieldOfManSizedHolesId
+            || player.Deck.Any(card =>
+                PrototypeGameEngine.CanSelectEventDeckCard(
+                    card, PrototypePersistentDeckChoiceKind.Enchant,
+                    null, PrototypeCardEnchantmentKind.PerfectFit, false)))
         && (evt.Id != ZenWeaverId || player.Gold >= 125)
         && (evt.Id != ColossalFlowerId || player.Hp >= 19);
 
@@ -60,6 +70,14 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        // Normality.ShouldPlay: while one is in hand, at most three
+        // cards can be started per turn. An unplayable, unupgradable
+        // Curse which is never offered in normal rewards.
+        new(NormalityId, "Normality", -1,
+            PrototypeCardTarget.None, [],
+            Rarity: PrototypeCardRarity.Curse,
+            Type: PrototypeCardType.Curse, Unplayable: true,
+            RewardEligible: false, MaxUpgradeLevel: 0),
         // Metamorphosis: 3 (5) random character Attacks, each made
         // free for this combat and inserted at a random draw-pile index.
         new(MetamorphosisId, "Metamorphosis", 2,
@@ -103,6 +121,21 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Field of Man-Sized Holes: two removals then a curse, or
+        // enchant one eligible persistent card with Perfect Fit.
+        // The source's GoldVar(75) is display-only, not a reward.
+        new(FieldOfManSizedHolesId, "Field of Man-Sized Holes",
+        [
+            new("resist", "Remove up to two cards and gain Normality",
+            [new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
+                CardId: NormalityId)],
+            new PrototypeEventDeckChoiceSpec(
+                PrototypePersistentDeckChoiceKind.Remove, 2)),
+            new("enter_your_hole", "Enchant a card with Perfect Fit", [],
+            new PrototypeEventDeckChoiceSpec(
+                PrototypePersistentDeckChoiceKind.Enchant, 1,
+                EnchantmentKind: PrototypeCardEnchantmentKind.PerfectFit))
+        ], MinAct: 2, MaxAct: 2, Weight: 0),
         new(AmalgamatorId, "Amalgamator",
         [
             new("combine_strikes", "Combine two Strikes",
