@@ -256,6 +256,28 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
     }
 
     [Fact]
+    public void InkletsNativeMiddleFlagCommitsOpeningAiWithoutFabricatingSlots()
+    {
+        var state = SetupNormalRoom(
+            Initial("inklets-middle-source-flag", ActIdentity.Overgrowth),
+            "proto.encounter.inklets_normal");
+        var action = Engine.GetLegalActions(state)
+            .Where(choice => choice.Kind == "choose_map_node")
+            .First(choice => state.World!.Map.Nodes.Any(node =>
+                node.RoomType == PrototypeRoomType.Combat
+                && node.NodeId
+                    == choice.ReadPayload<ChooseMapNodePayload>().NodeId));
+        var combat = Engine.Step(state, action).State.World!.Combat!;
+        Assert.Equal(new[] { 0, 1, 0 },
+            combat.Enemies.Select(enemy => enemy.PlannedMoveIndex));
+        Assert.All(combat.Enemies, enemy =>
+            Assert.Null(enemy.SlotName));
+        Assert.Equal(new[] { 0, 1, 2 },
+            combat.Enemies.Select(enemy => enemy.FormationPosition));
+        NativeCombatRngEntryV111.Validate(combat);
+    }
+
+    [Fact]
     public void DynamicNormalEncounterRngMatchesIndependentSourceOracles()
     {
         const int floor = 5;
