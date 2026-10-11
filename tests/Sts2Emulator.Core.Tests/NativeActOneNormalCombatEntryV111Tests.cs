@@ -151,8 +151,12 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
             var seed = "live-normal-entry-" + id;
             var state = SetupNormalRoom(Initial(seed, act), id);
             var initialHash = CanonicalJson.Sha256(state);
-            var action = Engine.GetLegalActions(state).Single(
-                action => action.Kind == "choose_map_node");
+            var action = Engine.GetLegalActions(state)
+                .Where(action => action.Kind == "choose_map_node")
+                .First(action => state.World!.Map.Nodes
+                    .Any(node => node.RoomType == PrototypeRoomType.Combat
+                        && node.NodeId == action
+                            .ReadPayload<ChooseMapNodePayload>().NodeId));
             var advanced = Engine.Step(state, action).State;
             Assert.Equal(RunPhase.Combat, advanced.Phase);
             Assert.Equal(id, advanced.World!.EncounterIds.Last());
