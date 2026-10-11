@@ -70,14 +70,18 @@ public sealed class V111LaterActMapGeometryTests
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
-    public void IncompleteLaterActEncounterPoolsAreExplicitlyGated(int act)
+    public void NativeLaterActFirstRoomUsesSourceWeakEncounter(int act)
     {
         var state = PrototypeNativeLaterActFixture.Create(
             "v111-gated-later-room", act);
         var first = state.World!.Map.AvailableNodes()[0];
         var hash = CanonicalJson.Sha256(state);
-        Assert.Throws<NotSupportedException>(() =>
-            ChooseNode(state, first.NodeId));
+        var entered = ChooseNode(state, first.NodeId);
+        Assert.Equal(RunPhase.Combat, entered.Phase);
+        Assert.Contains(entered.World!.EncounterIds[^1],
+            PrototypeNativeLaterActCombatPool.Names(
+                act, PrototypeRoomType.Combat, weak: true));
+        PrototypeStateInvariants.Validate(entered);
         Assert.Equal(hash, CanonicalJson.Sha256(state));
     }
 
