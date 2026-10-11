@@ -907,7 +907,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/BadLuck.cs#218172d60d13c06570e9360104264936087d83cf217cb49dcb69f56a37cacd9f"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -29609,7 +29609,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 179,
+        "implemented": 180,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
