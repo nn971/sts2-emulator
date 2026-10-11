@@ -488,6 +488,19 @@ This is an intermediate implementation. Final release gates remain open.
   remain unverified; region random event routing stays disabled.
   [Source audit](reference-builds/v0.111.0-glory-tinker-mad-science.md).
 
+- Integrated **source-ordered native Hive/Glory event candidate lists**
+  into opt-in native map Event nodes, with act separation, one-time
+  history and source-known gold/deck/HP eligibility. Unknown nodes
+  can resolve to these events; all non-Event later-act rooms still
+  fail closed until native regional pools exist. The ten-event
+  Hive roster includes the catalogued-but-unimplemented
+  Colorful Philosophers, which explicitly throws when selected
+  rather than biasing the pool or fabricating another character's
+  cards. Seven Glory events are source-shaped but not oracle-
+  validated. Event bag weights, unlock state and native event
+  RNG remain unresolved. Native map floor invariants now accept
+  the correct 14/13 room rows. [Routing audit](reference-builds/v0.111.0-native-later-event-routing.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
