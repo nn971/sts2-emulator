@@ -11095,6 +11095,16 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
+    // Narrow internal combat-state test seams: don't expose the
+    // implementation-private PrototypeDamageResult result type.
+    internal static CombatState ApplyRawHpLossForSourceRegression(
+        CombatState combat, int enemyId, int amount) =>
+        LoseEnemyHp(combat, enemyId, amount).Combat;
+
+    internal static CombatState ApplyHitForSourceRegression(
+        CombatState combat, int enemyId, int amount) =>
+        DamageEnemy(combat, enemyId, amount).Combat;
+
     private static PrototypeDamageResult LoseEnemyHp(
         CombatState combat,
         int enemyId,
@@ -11121,9 +11131,21 @@ public sealed partial class PrototypeGameEngine
                 false);
         }
 
+        // Native PlowPower/ShriekPower trigger only from
+        // PowerModel.AfterDamageReceived when result.UnblockedDamage > 0.
+        // Poison, direct LoseHp effects and health costs are not damage
+        // callbacks. Preserve the default prototype's historical
+        // generalized HP-threshold behavior unless native combat owns
+        // one of these source-audited bosses.
+        var nativeDamageOnlyThreshold =
+            (combat.NativeRng?.Formation.NativeEncounterEntry,
+                enemy.EnemyId) is
+            ("CeremonialBeastBoss", "proto.enemy.ceremonial_beast")
+            or ("TerrorEelElite", "proto.enemy.terror_eel");
         var modified = ModifyEnemyHpLoss(
             enemy,
-            hpLoss);
+            hpLoss,
+            allowDamageTriggeredThreshold: !nativeDamageOnlyThreshold);
         enemy = modified.Enemy;
         var nextHp = Math.Max(
             0,
@@ -11530,7 +11552,8 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypeEnemyHpLossResult ModifyEnemyHpLoss(
         EnemyCombatState enemy,
-        int requestedHpLoss)
+        int requestedHpLoss,
+        bool allowDamageTriggeredThreshold = true)
     {
         var hpLoss = Math.Max(0, requestedHpLoss);
         if (hpLoss == 0 || enemy.Hp <= 0 || enemy.BossPendingRevival)
@@ -11610,7 +11633,8 @@ public sealed partial class PrototypeGameEngine
 
                 var definition = PrototypeContent.Power(
                     power.PowerId);
-                return definition.TriggerOwnerAtHpAtOrBelowStacks
+                return allowDamageTriggeredThreshold
+                    && definition.TriggerOwnerAtHpAtOrBelowStacks
                     && nextHp <= power.Stacks;
             })
             .OrderBy(power => power.ApplicationOrder)
