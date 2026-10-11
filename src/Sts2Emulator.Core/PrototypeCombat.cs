@@ -10618,15 +10618,38 @@ public sealed partial class PrototypeGameEngine
                 $"Card {cardInstanceId} is not Sly.");
         }
 
-        // Native CardCmd.AutoPlay receives target=null for SlyDiscard. Self,
-        // all-enemy and intrinsically-random cards resolve targeting inside
-        // their own effect implementation. Explicit enemy-target Sly cards
-        // remain unsupported until native target resolution is modeled.
+        // Source CardCmd.AutoPlay(choiceContext, card, target: null,
+        // AutoPlayType.SlyDiscard) chooses an enemy with
+        // RunState.Rng.CombatTargets.NextItem(combatState.HittableEnemies)
+        // for TargetType.AnyEnemy. Preserve the ordered eligible set and
+        // selected result in combat history. Prototype combat-stream
+        // ownership remains provisional until v111 CombatTargets parity.
+        int? autoPlayTarget = null;
         if (definition.Target == PrototypeCardTarget.Enemy)
         {
-            throw new NotSupportedException(
-                $"Sly auto-play for explicit enemy-target card '{definition.Name}' " +
-                "requires native target-resolution semantics.");
+            var eligible = combat.Enemies
+                .Where(enemy => enemy.Hp > 0 && !enemy.Escaped)
+                .ToArray();
+            if (eligible.Length == 0)
+            {
+                // Source moves an un-targetable auto-play into its result
+                // pile without activating effects. This is normally
+                // intercepted earlier by the end-of-combat guard.
+                return (player, combat);
+            }
+            var selectedIndex = PrototypeRng.NextInt(
+                rng, "combat", eligible.Length);
+            autoPlayTarget = eligible[selectedIndex].InstanceId;
+            combat = combat with
+            {
+                AutoPlayTargetRolls =
+                    (combat.AutoPlayTargetRolls
+                     ?? Array.Empty<PrototypeAutoPlayTargetRoll>())
+                    .Append(new PrototypeAutoPlayTargetRoll(
+                        cardInstanceId, combat.Turn, eligible.Length,
+                        selectedIndex, autoPlayTarget.Value))
+                    .ToArray()
+            };
         }
 
         combat = combat with
@@ -10660,7 +10683,7 @@ public sealed partial class PrototypeGameEngine
             new PrototypeCardPlaySeriesState(
                 SourceCardInstanceId: cardInstanceId,
                 SourceCardDestination: sourceDestination,
-                TargetEnemyId: null,
+                TargetEnemyId: autoPlayTarget,
                 EnergySpent: 0,
                 PlayCount: playCountResult.PlayCount,
                 NextPlayIndex: 0,
