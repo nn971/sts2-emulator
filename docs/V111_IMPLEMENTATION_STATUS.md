@@ -36,6 +36,16 @@ This is an intermediate implementation. Final release gates remain open.
   The constructors are standalone: native context-stream ownership and
   gameplay call-site integration remain open. See
   [the context RNG audit](reference-builds/v0.111.0-native-context-rng-factories.md).
+- Migrated the opt-in Hive/Glory map fixture to the pinned
+  independent `act_2_map`/`act_3_map` streams. The native map entry point
+  now applies v111 xoshiro bounded draws, Gaussian and Fisher-Yates
+  without advancing the persistent run/player or legacy RNG streams,
+  and exports the final context snapshot for auditing. The prior
+  `Generate(RngBundle, ...)` adapter remains prototype-compatible.
+  Fork/restore, multi-seed geometry and stream-isolation tests cover
+  the new boundary. Source-shaped map path/pruning/placement call-order
+  parity remains unverified; native Hive/Glory event and reward bags stay gated.
+  See [later-act map geometry](reference-builds/v0.111.0-hive-glory-map-geometry.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
