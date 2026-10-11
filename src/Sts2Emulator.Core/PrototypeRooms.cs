@@ -69,30 +69,37 @@ public sealed partial class PrototypeGameEngine
         return room switch
         {
             PrototypeRoomType.Combat => experimentalLaterRoute
-                ? StartCombat(state, room,
-                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
-                        world, room, state.Rng))
+                ? StartExperimentalLaterActCombat(state, room)
                 : StartCombat(state, room),
             PrototypeRoomType.Elite => experimentalLaterRoute
-                ? StartCombat(state, room,
-                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
-                        world, room, state.Rng))
+                ? StartExperimentalLaterActCombat(state, room)
                 : StartCombat(state, room),
             PrototypeRoomType.Boss => experimentalLaterRoute
-                ? StartCombat(state, room,
-                    ExperimentalSilentThreeActRouteV111.SelectEncounter(
-                        world, room, state.Rng))
+                ? StartExperimentalLaterActCombat(state, room)
                 : StartCombat(state, room),
             PrototypeRoomType.Event => forceRepy
-                ? StartNativeWarHistorianRepy(state)
-                : experimentalLaterRoute
-                    ? ExperimentalSilentThreeActRouteV111.BeginEvent(state)
-                    : StartEvent(state),
+                ? StartNativeWarHistorianRepy(state) : StartEvent(state),
             PrototypeRoomType.Shop => StartShop(state),
             PrototypeRoomType.Rest => state with { Phase = RunPhase.Rest },
             PrototypeRoomType.Treasure => StartTreasureRoom(state),
             _ => throw new ArgumentOutOfRangeException()
         };
+    }
+
+    private static RunState StartExperimentalLaterActCombat(
+        RunState state, PrototypeRoomType room)
+    {
+        var world = RequireWorld(state);
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute != true
+            || world.Act is < 2 or > 3)
+            throw new NotSupportedException(
+                "Regional combat entry requires the experimental three-act route.");
+        var selected = ExperimentalSilentThreeActRouteV111.SelectEncounter(
+            world, room, state.Rng);
+        return StartCombat(state with
+        {
+            World = world with { LaterActEncounterBag = selected.Bag }
+        }, room, selected.Encounter);
     }
 
     private static MapState GenerateActMap(
