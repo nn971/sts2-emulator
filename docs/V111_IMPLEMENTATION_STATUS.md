@@ -476,6 +476,18 @@ This is an intermediate implementation. Final release gates remain open.
   selection; native RNG, rewards and trace parity are unresolved.
   [Source audit](reference-builds/v0.111.0-glory-battleworn-dummy.md).
 
+- Added gated **Glory Tinker Time**: source-shaped, two-of-three
+  selectable card types followed by two-of-three riders from the
+  chosen type. The single Mad Science card keeps its type/rider in
+  persistent per-instance JSON, and all nine rider effects have
+  typed combat execution, including Chaos free-card generation,
+  Curious discounts, Improvement postcombat upgrades and existing
+  Strangle completion hooks. Tests exercise selection, instance
+  identity, invalid choices, all nine effects and deterministic
+  forks. Exact native card-generation, event RNG and trigger parity
+  remain unverified; region random event routing stays disabled.
+  [Source audit](reference-builds/v0.111.0-glory-tinker-mad-science.md).
+
 ## Coverage interpretation
 
 Run `dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage`.
