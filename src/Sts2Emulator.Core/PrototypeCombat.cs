@@ -1524,12 +1524,46 @@ public sealed partial class PrototypeGameEngine
                         instanceId);
                     var definition =
                         PrototypeContent.Card(card.CardId);
+                    // Trial Shame/Doubt apply one debuff while in hand.
+                    // Newly created Weak/Frail survives the imminent
+                    // PlayerTurnEnded power-decrement stage, following
+                    // native SkipNextDurationTick semantics.
+                    var cursePower = card.CardId switch
+                    {
+                        PrototypeNativeGloryEvents.ShameId => "proto.power.frail",
+                        PrototypeNativeGloryEvents.DoubtId => "proto.power.weak",
+                        _ => null
+                    };
+                    if (cursePower is not null)
+                    {
+                        var alreadyPresent = combat.PlayerPowers.Any(power =>
+                            power.PowerId == cursePower);
+                        combat = ApplyPlayerPower(combat, cursePower, 1);
+                        if (!alreadyPresent)
+                        {
+                            combat = combat with
+                            {
+                                PlayerPowers = combat.PlayerPowers
+                                    .Select(power => power.PowerId == cursePower
+                                        ? power with { SkipNextPlayerTurnEnd = true }
+                                        : power).ToArray()
+                            };
+                        }
+                    }
+
+                    // Regret snapshots the count of cards in hand
+                    // before side-turn end, dealing unblockable
+                    // unpowered damage equal to that count.
+                    var handDamage =
+                        card.CardId == PrototypeNativeGloryEvents.RegretId
+                            ? combat.Hand.Length
+                            : definition.EndTurnDamageIfInHand;
                     var damage =
                         ApplyPlayerIncomingDamageCap(
                             combat,
                             Math.Max(
                                 0,
-                                definition.EndTurnDamageIfInHand
+                                handDamage
                                     + (card.CardId == PrototypeNativeGloryBosses.WitherId
                                         ? 3 * card.WitherFakeUpgradeLevel : 0)));
                     if (damage <= 0)
@@ -1538,6 +1572,7 @@ public sealed partial class PrototypeGameEngine
                     }
 
                     var absorbed = definition.EndTurnDamageUnblockable
+                        || card.CardId == PrototypeNativeGloryEvents.RegretId
                         ? 0
                         : Math.Min(combat.PlayerBlock, damage);
                     combat = combat with
@@ -6612,6 +6647,15 @@ public sealed partial class PrototypeGameEngine
             if (!predicate(definition))
             {
                 powers.Add(power);
+                continue;
+            }
+
+            // Native Shame/Doubt skip the same turn's first duration
+            // decrement when they create a previously absent debuff.
+            if (power.SkipNextPlayerTurnEnd
+                && definition.DecrementAtPlayerTurnEnd)
+            {
+                powers.Add(power with { SkipNextPlayerTurnEnd = false });
                 continue;
             }
 
