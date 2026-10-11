@@ -15120,7 +15120,9 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.colorful_philosophers"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ColorfulPhilosophers.cs#55f23ee2600a050c6bde86a3460eb6f02d01a57d5744a85ecff27d4796e9b996"
         ],
@@ -15143,7 +15145,7 @@
         ],
         "missing_variants": [],
         "native_id": "COLORFUL_PHILOSOPHERS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
