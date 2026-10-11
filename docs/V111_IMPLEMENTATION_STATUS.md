@@ -58,6 +58,18 @@ This is an intermediate implementation. Final release gates remain open.
   HP/AI, encounter-specific generation call order, and full-game
   cross-boundary parity remain open. See
   [the encounter formation audit](reference-builds/v0.111.0-native-encounter-formation-rng.md).
+- Added **opt-in native combat RNG ownership**: `CombatState.NativeRng`
+  holds the complete 12 run + 3 player streams, the post-formation
+  encounter RNG, and separately seeded monster-local streams, all
+  deep-forked/serializable/validated. Initial monster HP is sampled
+  from `run.niche` in the pinned source's unique-HP order; native-owned
+  intent commits now use `run.monster_ai` rather than the shared
+  prototype combat RNG. Fast named Hive/Glory combat-entry snapshots
+  expose HP, formation, AI intents and all cursor counters without a
+  full run or deck. The default `StartCombat` remains legacy;
+  source-specific hooks, cross-combat native run-stream history and
+  end-to-end RNG parity are still incomplete. See
+  [native combat HP/AI RNG](reference-builds/v0.111.0-native-combat-hp-ai-rng.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
