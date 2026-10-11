@@ -28,20 +28,18 @@ public sealed partial class PrototypeGameEngine
             PrototypeNativeLaterActMap.HiveProfileId
             or PrototypeNativeLaterActMap.GloryProfileId;
         var forceRepy = ShouldForceWarHistorianRepy(world, state.Player);
-        if (nativeLaterMap
-            && !(forceRepy
-                && node.RoomType is PrototypeRoomType.Event
-                    or PrototypeRoomType.Unknown))
-            throw new NotSupportedException(
-                "Native Hive/Glory room execution is gated until " +
-                "its regional encounter/event/reward pools are integrated.");
-
         // Native LanternKey converts Glory '?' rooms into Event rooms.
         // Its event replacement also applies to existing Event nodes.
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? forceRepy ? PrototypeRoomType.Event
                 : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
+
+        if (nativeLaterMap && room != PrototypeRoomType.Event)
+            throw new NotSupportedException(
+                $"Native {world.Act} {room} room execution is gated. " +
+                "Only source-backed regional event rooms are enabled; " +
+                "ordinary later-act encounter and reward pools remain unsupported.");
 
         world = world with
         {
@@ -625,6 +623,11 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartEvent(RunState state)
     {
         var world = RequireWorld(state);
+        if (world.Map.GenerationProfileId is
+            PrototypeNativeLaterActMap.HiveProfileId
+            or PrototypeNativeLaterActMap.GloryProfileId)
+            return StartNativeLaterActEvent(state);
+
         var nativeOvergrowth = world.Act == 1
             && world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId;

@@ -10,11 +10,19 @@ public sealed partial class PrototypeGameEngine
         ref RunWorldState world,
         RngBundle rng)
     {
-        if (!UsesNativeActOneSystems(world))
+        if (!UsesNativeActOneSystems(world)
+            && world.Map.GenerationProfileId
+                != PrototypeNativeLaterActMap.HiveProfileId
+            && world.Map.GenerationProfileId
+                != PrototypeNativeLaterActMap.GloryProfileId)
         {
             throw new InvalidOperationException(
                 "Unknown map rooms require a native-structure generation profile.");
         }
+
+        // Later acts currently share only this prototype room-type
+        // prior and pity update, not the native Unknown-room RNG/odds.
+        // Non-event outcomes are rejected before room entry by StepMap.
 
         var odds = world.UnknownRoomOdds
             ?? new PrototypeUnknownRoomOddsState();

@@ -181,6 +181,13 @@ public static class PrototypeNativeHiveEvents
 
     public static PrototypeEventDefinition[] Definitions { get; } =
     [
+        // Native IsAllowed requires more than one unlocked character
+        // card pool. The emulator does not yet model that unlock list
+        // or cross-character generation. Keep this source-listed event
+        // as a fail-closed catalog entry, not a fake reward.
+        new(PrototypeNativeLaterActEventPool.ColorfulPhilosophersId,
+            "Colorful Philosophers", [],
+            MinAct: 2, MaxAct: 2, Weight: 0),
         // IsAllowed=false in native source: only the Lantern Key's
         // ModifyNextEvent hook can install this event in Glory.
         new(WarHistorianRepyId, "War Historian Repy",

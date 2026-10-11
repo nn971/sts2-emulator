@@ -99,10 +99,15 @@ public static class PrototypeStateInvariants
         }
 
         if (world.Floor < 0 || world.Floor > (
-                world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
-                    || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId
-                    ? PrototypeNativeOvergrowthMap.BossFloor
-                    : PrototypeContent.Rules.FloorsPerAct))
+                world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId
+                    ? PrototypeNativeLaterActMap.RoomRows(world.Act) + 1
+                    : world.Map.GenerationProfileId
+                        is PrototypeNativeOvergrowthMap.GenerationProfileId
+                            or PrototypeNativeUnderdocks.GenerationProfileId
+                        ? PrototypeNativeOvergrowthMap.BossFloor
+                        : PrototypeContent.Rules.FloorsPerAct))
         {
             throw new InvalidOperationException($"Invalid floor {world.Floor}.");
         }
@@ -328,11 +333,15 @@ public static class PrototypeStateInvariants
             if (visit.Act < 1
                 || visit.Act > world.Act
                 || visit.Floor < 1
-                || visit.Floor > (world.Act == 1
-                    && (world.Map.GenerationProfileId
-                            == PrototypeNativeOvergrowthMap.GenerationProfileId
-                        || world.Map.GenerationProfileId
-                            == PrototypeNativeUnderdocks.GenerationProfileId)
+                || visit.Floor > (world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId
+                    ? PrototypeNativeLaterActMap.RoomRows(world.Act) + 1
+                    : world.Act == 1
+                        && (world.Map.GenerationProfileId
+                                == PrototypeNativeOvergrowthMap.GenerationProfileId
+                            || world.Map.GenerationProfileId
+                                == PrototypeNativeUnderdocks.GenerationProfileId)
                         ? PrototypeNativeOvergrowthMap.BossFloor
                         : PrototypeContent.Rules.FloorsPerAct)
                 || string.IsNullOrWhiteSpace(visit.NodeId))
@@ -450,7 +459,12 @@ public static class PrototypeStateInvariants
                     PrototypeNativeGloryEvents.GraveOfTheForgottenId
                 && active.Id != PrototypeNativeGloryEvents.TrialId
                 && active.Id != PrototypeNativeGloryEvents.BattlewornDummyId
-                && active.Id != PrototypeNativeGloryEvents.TinkerTimeId))
+                && active.Id != PrototypeNativeGloryEvents.TinkerTimeId
+                && !((world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId)
+                    && PrototypeNativeLaterActEventPool.NativeEventIds(world.Act)
+                        .Contains(active.Id, StringComparer.Ordinal))))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");
@@ -560,6 +574,8 @@ public static class PrototypeStateInvariants
             {
                 PrototypeNativeDenseVegetation.EventId =>
                     eventState.NativeEventGold is >= 61 and <= 99,
+                PrototypeNativeHiveEvents.LostWispId =>
+                    eventState.NativeEventGold is >= 45 and <= 75,
                 "proto.native.event.whispering_hollow" =>
                     eventState.NativeEventGold is >= 26 and <= 44,
                 "proto.native.event.sunken_statue" =>
