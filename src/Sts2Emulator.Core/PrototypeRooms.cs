@@ -21,8 +21,12 @@ public sealed partial class PrototypeGameEngine
             option => StringComparer.Ordinal.Equals(option.NodeId, payload.NodeId))
             ?? throw new InvalidOperationException($"Unknown map node '{payload.NodeId}'.");
 
+        // Native LanternKey converts Glory '?' rooms into Event rooms.
+        // Its event replacement also applies to existing Event nodes.
+        var forceRepy = ShouldForceWarHistorianRepy(world, state.Player);
         var room = node.RoomType == PrototypeRoomType.Unknown
-            ? ResolveUnknownMapRoom(ref world, state.Rng)
+            ? forceRepy ? PrototypeRoomType.Event
+                : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
 
         world = world with
@@ -47,7 +51,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeRoomType.Combat => StartCombat(state, PrototypeRoomType.Combat),
             PrototypeRoomType.Elite => StartCombat(state, PrototypeRoomType.Elite),
             PrototypeRoomType.Boss => StartCombat(state, PrototypeRoomType.Boss),
-            PrototypeRoomType.Event => StartEvent(state),
+            PrototypeRoomType.Event => forceRepy
+                ? StartNativeWarHistorianRepy(state) : StartEvent(state),
             PrototypeRoomType.Shop => StartShop(state),
             PrototypeRoomType.Rest => state with { Phase = RunPhase.Rest },
             PrototypeRoomType.Treasure => StartTreasureRoom(state),
@@ -763,6 +768,9 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
         }
 
+        if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+            return GetNativeWarHistorianRepyActions(eventState);
+
         if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId
             && eventState.NativePageIndex == 1)
         {
@@ -983,6 +991,9 @@ public sealed partial class PrototypeGameEngine
             };
             return AdvanceEventContinuations(state);
         }
+
+        if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+            return StepNativeWarHistorianRepy(state, action);
 
         if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId)
         {
