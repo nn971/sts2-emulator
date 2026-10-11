@@ -135,7 +135,16 @@ public static class V111Coverage
                 .Concat(PrototypeNativeUnderdocks.SupportedWeakEncounterIds)
                 .Concat(PrototypeNativeUnderdocks.SupportedNormalEncounterIds)
                 .Concat(PrototypeNativeUnderdocks.SupportedEliteEncounterIds)
-                .Concat(PrototypeNativeUnderdocks.NativeBossEncounterIds).ToHashSet(StringComparer.Ordinal);
+                .Concat(PrototypeNativeUnderdocks.NativeBossEncounterIds)
+                .Concat(PrototypeNativeLaterActCombatPool.HiveWeak)
+                .Concat(PrototypeNativeLaterActCombatPool.HiveNormal)
+                .Concat(PrototypeNativeLaterActCombatPool.HiveElite)
+                .Concat(PrototypeNativeLaterActCombatPool.HiveBoss)
+                .Concat(PrototypeNativeLaterActCombatPool.GloryWeak)
+                .Concat(PrototypeNativeLaterActCombatPool.GloryNormal)
+                .Concat(PrototypeNativeLaterActCombatPool.GloryElite)
+                .Concat(PrototypeNativeLaterActCombatPool.GloryBoss)
+                .ToHashSet(StringComparer.Ordinal);
             if (engineIds.Any(pools.Contains))
             {
                 implementation = "implemented";
