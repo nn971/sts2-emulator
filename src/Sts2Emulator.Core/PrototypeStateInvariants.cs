@@ -449,7 +449,8 @@ public static class PrototypeStateInvariants
                 && active.Id !=
                     PrototypeNativeGloryEvents.GraveOfTheForgottenId
                 && active.Id != PrototypeNativeGloryEvents.TrialId
-                && active.Id != PrototypeNativeGloryEvents.BattlewornDummyId))
+                && active.Id != PrototypeNativeGloryEvents.BattlewornDummyId
+                && active.Id != PrototypeNativeGloryEvents.TinkerTimeId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");
@@ -510,6 +511,9 @@ public static class PrototypeStateInvariants
                     PrototypeNativeHiveEvents.WarHistorianRepyId
                     ? eventState.NativePageIndex > 2
                 : eventState.EventId ==
+                    PrototypeNativeGloryEvents.TinkerTimeId
+                    ? eventState.NativePageIndex > 2
+                : eventState.EventId ==
                     PrototypeNativeGloryEvents.BattlewornDummyId
                     ? eventState.NativePageIndex > 3
                 : eventState.EventId == PrototypeNativeGloryEvents.TrialId
@@ -541,6 +545,7 @@ public static class PrototypeStateInvariants
         if (eventState.NativePageIndex > 0
             && eventState.ChosenChoiceId is not null
             && eventState.EventId != PrototypeNativeGloryEvents.TrialId
+            && eventState.EventId != PrototypeNativeGloryEvents.TinkerTimeId
             && eventState.EventId != PrototypeNativeGloryEvents.BattlewornDummyId
             && eventState.EventId != PrototypeNativeEndlessConveyor.EventId
             && eventState.EventId != PrototypeNativePunchOff.EventId
@@ -672,6 +677,29 @@ public static class PrototypeStateInvariants
             // Initial and challenge/fight pages have their own choices.
             return;
         }
+
+        if (eventState.EventId == PrototypeNativeGloryEvents.TinkerTimeId)
+        {
+            var expected = eventState.NativePageIndex switch
+            {
+                0 => 0,
+                1 or 2 => 2,
+                _ => throw new InvalidOperationException(
+                    "Tinker event page is out of range.")
+            };
+            if (eventState.ChosenChoiceId is not null
+                || (eventState.OfferedChoiceIds?.Length ?? 0) != expected
+                || (eventState.NativePageIndex == 2
+                    ? eventState.NativeTinkerType is not
+                        ("attack" or "skill" or "power")
+                    : eventState.NativeTinkerType is not null))
+                throw new InvalidOperationException(
+                    "Tinker selected type and choice offers are inconsistent.");
+            return;
+        }
+        if (eventState.NativeTinkerType is not null)
+            throw new InvalidOperationException(
+                "Tinker-only state leaked into another event.");
 
         if (eventState.EventId ==
                 PrototypeNativeGloryEvents.BattlewornDummyId
