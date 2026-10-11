@@ -1217,18 +1217,30 @@ public sealed record PrototypeEncounterDefinition(
                         index))
                 .ToArray());
 
+    /// <summary>
+    /// Legacy compatibility adapter. Shared prototype-combat stream
+    /// behavior and its exact draw order are unchanged.
+    /// </summary>
+    public PrototypeEncounterEnemySpec[] ResolveEnemySpecs(RngBundle rng) =>
+        ResolveEnemySpecs(maxExclusive =>
+            PrototypeRng.NextInt(rng, "combat", maxExclusive));
+
+    /// <summary>
+    /// Per-encounter choice hook used by pinned native context RNGs.
+    /// Callers must supply the native EncounterModel.Id.Entry and lifetime;
+    /// this selection algorithm is still source-shaped, not a general
+    /// proof of exact native GenerateMonsters() parity.
+    /// </summary>
     public PrototypeEncounterEnemySpec[] ResolveEnemySpecs(
-        RngBundle rng)
+        Func<int, int> nextIndex)
     {
+        ArgumentNullException.ThrowIfNull(nextIndex);
         PrototypeEncounterFormationVariant? variant = null;
         if (FormationVariants is { Length: > 0 } variants)
         {
             var variantIndex = variants.Length == 1
                 ? 0
-                : PrototypeRng.NextInt(
-                    rng,
-                    "combat",
-                    variants.Length);
+                : nextIndex(variants.Length);
             variant = variants[variantIndex];
         }
 
@@ -1254,10 +1266,7 @@ public sealed record PrototypeEncounterDefinition(
             {
                 var index = candidates.Count == 1
                     ? 0
-                    : PrototypeRng.NextInt(
-                        rng,
-                        "combat",
-                        candidates.Count);
+                    : nextIndex(candidates.Count);
                 resolved.Add(
                     new PrototypeEncounterEnemySpec(
                         candidates[index],
@@ -1303,10 +1312,7 @@ public sealed record PrototypeEncounterDefinition(
             {
                 var choiceIndex = candidates.Count == 1
                     ? 0
-                    : PrototypeRng.NextInt(
-                        rng,
-                        "combat",
-                        candidates.Count);
+                    : nextIndex(candidates.Count);
                 var selected = candidates[choiceIndex];
                 resolved.Add(
                     new PrototypeEncounterEnemySpec(
