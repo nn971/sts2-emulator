@@ -25,8 +25,8 @@ public sealed class V111GloryGraveForgottenSoulTests
             PrototypeContent.Card(Decay).EndTurnDamageIfInHand);
         Assert.False(PrototypeContent.Card(Decay).EndTurnDamageUnblockable);
         Assert.True(PrototypeContent.Card(Decay).Unplayable);
-        Assert.True(PrototypeContent.Relic(Soul).Triggers!.Any(t =>
-            t.EventKind == PrototypeCombatEventKind.CardExhausted));
+        Assert.Contains(PrototypeContent.Relic(Soul).Triggers!,
+            t => t.EventKind == PrototypeCombatEventKind.CardExhausted);
         Assert.DoesNotContain(Soul, PrototypeContent.RelicPool);
         Assert.DoesNotContain(Decay, PrototypeContent.RewardCardPool);
         Assert.Contains(PrototypeCardEnchantmentKind.SoulsPower,
