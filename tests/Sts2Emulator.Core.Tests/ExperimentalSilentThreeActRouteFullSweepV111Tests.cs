@@ -75,6 +75,14 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
     [Theory]
     [InlineData("silent-route-full-synthetic-one")]
     [InlineData("silent-route-full-synthetic-two")]
+    [InlineData("silent-route-full-synthetic-three")]
+    [InlineData("silent-route-full-synthetic-four")]
+    [InlineData("silent-route-full-synthetic-five")]
+    [InlineData("silent-route-full-synthetic-six")]
+    [InlineData("silent-route-full-synthetic-seven")]
+    [InlineData("silent-route-full-synthetic-eight")]
+    [InlineData("silent-route-full-synthetic-nine")]
+    [InlineData("silent-route-full-synthetic-ten")]
     public void SyntheticCombatFinishersExerciseBothLaterActsToVictory(
         string seed)
     {
