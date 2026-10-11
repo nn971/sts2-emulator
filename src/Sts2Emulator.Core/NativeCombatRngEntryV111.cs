@@ -146,14 +146,94 @@ public static class NativeCombatRngEntryV111
             var spec = formation.Enemies[i];
             var context = formation.MonsterContexts[i];
             var enemy = combat.Enemies[i];
+            // ToughEgg.Hatch mutates its original MonsterModel in
+            // place. The prototype swaps the effective move proxy to
+            // HatchlingId; the native formation/spec/context must keep
+            // the original ToughEgg model and CombatId.
+            var hatchedToughEgg =
+                enemy.NativeToughEggHatched
+                && formation.NativeEncounterEntry == "OvicopterNormal"
+                && spec.EnemyId ==
+                    PrototypeNativeHiveSummoningNormals.ToughEggId
+                && enemy.EnemyId ==
+                    PrototypeNativeHiveSummoningNormals.HatchlingId;
             if (context.CombatId < 0 || context.Enemy != spec
-                || enemy.EnemyId != spec.EnemyId
+                || (!hatchedToughEgg && enemy.EnemyId != spec.EnemyId)
+                || (enemy.NativeToughEggHatched && !hatchedToughEgg)
                 || enemy.FormationPosition != spec.FormationPosition
                 || enemy.SlotName != spec.SlotName)
                 throw new InvalidOperationException(
                     "Native monster RNG context does not match combat formation.");
             _ = NativeRngV111.ToSnapshot(context.Rng);
         }
+    }
+
+    /// <summary>
+    /// Source ToughEgg.Hatch is NOT a monster replacement. It uses
+    /// RunRng.Niche.NextInt(HatchlingMinHp, HatchlingMaxHp + 1),
+    /// sets current/max HP in-place and removes all powers except
+    /// Minion. The existing monster-local RNG, creature CombatId,
+    /// formation spec and model identity are preserved. HatchlingId
+    /// remains the prototype's proxy for the post-hatch Nibble move.
+    /// This source path is allowed ONLY in the explicit Ovicopter
+    /// isolated native combat fixture; native Hive route execution
+    /// remains gated.
+    /// </summary>
+    public static CombatState HatchToughEgg(
+        CombatState combat, EnemyCombatState currentEgg,
+        out EnemyCombatState hatched)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(currentEgg);
+        var native = combat.NativeRng?.Fork() ??
+            throw new InvalidOperationException(
+                "Native Tough Egg hatching requires native combat ownership.");
+        if (native.Formation.NativeEncounterEntry != "OvicopterNormal"
+            || combat.Act != 2
+            || currentEgg.EnemyId !=
+                PrototypeNativeHiveSummoningNormals.ToughEggId
+            || currentEgg.NativeToughEggHatched)
+            throw new NotSupportedException(
+                "Only a source-unhatched native Ovicopter Tough Egg can hatch.");
+        Validate(combat);
+        var index = Array.FindIndex(combat.Enemies, enemy =>
+            enemy.InstanceId == currentEgg.InstanceId);
+        if (index < 0
+            || combat.Enemies[index].EnemyId != currentEgg.EnemyId
+            || native.Formation.Enemies[index].EnemyId
+                != PrototypeNativeHiveSummoningNormals.ToughEggId
+            || native.Formation.MonsterContexts[index].Enemy
+                != native.Formation.Enemies[index]
+            || currentEgg.Hp <= 0)
+            throw new InvalidOperationException(
+                "Native Tough Egg must retain its original live combat identity.");
+
+        // ToughEgg.Hatch direct NextInt is *not* the unique HP sampler:
+        // no surrounding monster HP exclusions, exactly one niche draw.
+        // Ascension 8+ uses [20,23] instead of [19,22].
+        var min = combat.Ascension >= 8 ? 20 : 19;
+        var max = combat.Ascension >= 8 ? 23 : 22;
+        var hp = min + NativeRngV111.NextInt(
+            native.RunStreams, "run.niche", max - min + 1);
+        hatched = currentEgg with
+        {
+            EnemyId = PrototypeNativeHiveSummoningNormals.HatchlingId,
+            NativeToughEggHatched = true,
+            Hp = hp,
+            MaxHp = hp,
+            Powers = currentEgg.PowerStates.Where(power =>
+                power.PowerId == "proto.power.minion").ToArray(),
+            AiStateId = null
+        };
+        var updatedEnemies = combat.Enemies.Select((enemy, i) =>
+            i == index ? hatched.Fork() : enemy.Fork()).ToArray();
+        var updated = combat with
+        {
+            Enemies = updatedEnemies,
+            NativeRng = native
+        };
+        Validate(updated);
+        return updated;
     }
 
     /// <summary>
