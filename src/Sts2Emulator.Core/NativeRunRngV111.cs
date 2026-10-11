@@ -194,6 +194,27 @@ public static class NativeRunRngV111
         var ended = before.World?.Combat?.NativeRng;
         if (live is null && ended is null)
             return after;
+        if (live is not null)
+        {
+            // The native sidecar currently binds the initial source
+            // encounter formation. Prototype summoning, transformation
+            // or enemy removal cannot silently invalidate that binding:
+            // future creature-local RNG ownership and native call order
+            // are not migrated yet. Refuse to return an unsnapshotable
+            // combat state until those mechanics have dedicated support.
+            try
+            {
+                NativeCombatRngEntryV111.Validate(after.World!.Combat!);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new NotSupportedException(
+                    "Experimental native combat cannot continue after " +
+                    "an unimplemented enemy formation change (summon, " +
+                    "transformation or removal). Source-specific creature " +
+                    "RNG and lifecycle integration is required.", ex);
+            }
+        }
         var source = live?.RunStreams ?? ended!.RunStreams;
         ValidateBundle(source);
         return after with { NativeRunRng = source.Fork() };

@@ -106,6 +106,17 @@ This is an intermediate implementation. Final release gates remain open.
   and unsupported normal/elite/boss/event formations still fail
   rather than silently approximate. Default training RNG unchanged.
   See [native Act 1 weak entry](reference-builds/v0.111.0-live-weak-combat-entry-rng.md).
+- Expanded the opt-in native combat entry to **22 source-audited
+  Act 1 normal encounter formations** (12 Overgrowth, 10 Underdocks),
+  in addition to all eight weak encounters. Fixed layouts, native
+  slot/order differences, Flyconid/Ruby Raider/Slimes/Strangler random
+  selections and encounter-local Corpse Slug/Two-Tailed Rat starter
+  rotations now follow pinned `GenerateMonsters()` source logic.
+  Initial HP continues from persistent `run.niche`, intent commitment
+  uses `run.monster_ai`, and all native RNG cursors survive snapshots
+  and turns. Other gameplay and encounter selection still use
+  prototype logic; elite/boss/event native paths remain unsupported.
+  See [Act 1 normal RNG audit](reference-builds/v0.111.0-native-act1-normal-encounter-rng.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.

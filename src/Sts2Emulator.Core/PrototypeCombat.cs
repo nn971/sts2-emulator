@@ -138,13 +138,17 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
 
         var nextPowerApplicationOrder = combatRelics.Length + 1L;
-        // Opt-in v111 live entry: source-audited fixed formations and
-        // independent encounter RNG. Other encounters fail explicitly
+        // Opt-in v111 live entry: source-audited weak and normal
+        // formations with independent encounter RNG. Other encounters
+        // fail explicitly
         // instead of silently consuming the prototype combat stream.
         var nativeFormation =
             state.Configuration?.UsesExperimentalNativeWeakCombatEntry == true
-                ? NativeActOneWeakCombatEntryV111.Prepare(
-                    state, world, encounter)
+                ? NativeActOneNormalCombatEntryV111.IsSupported(encounter.Id)
+                    ? NativeActOneNormalCombatEntryV111.Prepare(
+                        state, world, encounter)
+                    : NativeActOneWeakCombatEntryV111.Prepare(
+                        state, world, encounter)
                 : null;
         var enemySpecs = nativeFormation?.Enemies
             ?? encounter.ResolveEnemySpecs(state.Rng);
@@ -2314,7 +2318,29 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var selected = SelectEnemyMove(definition, enemy, formation, nextIndex);
+            // InkletsNormal.GenerateMonsters passes null slot names,
+            // and sets MiddleInklet=true on its second monster. The
+            // prototype conditional AI originally tested left/middle/right
+            // slots instead. Supply a transient equivalent AI-only slot
+            // for this source-pinned native encounter without changing
+            // the serialized/native creature SlotName (which must be null).
+            var evaluating = ownedNative?.Formation.NativeEncounterEntry
+                    == "InkletsNormal"
+                && enemy.EnemyId == "proto.enemy.inklet"
+                && enemy.SlotName is null
+                    ? enemy with
+                    {
+                        SlotName = enemy.FormationPosition switch
+                        {
+                            0 => "left",
+                            1 => "middle",
+                            2 => "right",
+                            _ => null
+                        }
+                    }
+                    : enemy;
+            var selected = SelectEnemyMove(
+                definition, evaluating, formation, nextIndex);
             var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
             if (selectedIndex < 0)
             {
