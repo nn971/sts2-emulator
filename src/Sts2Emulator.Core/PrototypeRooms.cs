@@ -1009,6 +1009,10 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
             return StepNativeWarHistorianRepy(state, action);
 
+        if (eventState.EventId ==
+            PrototypeNativeGloryEvents.HungryForMushroomsId)
+            return StepNativeHungryForMushrooms(state, action);
+
         if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId)
         {
             return StepNativeLanternKey(state, action);
