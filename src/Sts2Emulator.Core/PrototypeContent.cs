@@ -1900,6 +1900,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeEndlessConveyor.EventCards)
             .Concat(PrototypeNativeLaterActs.Cards)
             .Concat(PrototypeNativeHiveEvents.Cards)
+            .Concat(PrototypeNativeGloryEvents.Cards)
             .Concat(PrototypeNativeHiveNormals.Cards)
             .Concat(PrototypeNativeHiveBosses.Cards)
             .Concat(PrototypeNativeGloryElites.Cards)
