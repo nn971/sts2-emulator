@@ -2250,6 +2250,13 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         RngBundle rng)
     {
+        // Clone persistent native streams before selecting intents. Legacy
+        // states continue consuming their original prototype combat stream.
+        var ownedNative = combat.NativeRng?.Fork();
+        Func<int, int> nextIndex = ownedNative is null
+            ? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)
+            : maxExclusive => NativeRngV111.NextInt(
+                ownedNative.RunStreams, "run.monster_ai", maxExclusive);
         var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         for (var index = 0; index < formation.Length; index++)
         {
@@ -2268,7 +2275,7 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var selected = SelectEnemyMove(definition, enemy, formation, rng);
+            var selected = SelectEnemyMove(definition, enemy, formation, nextIndex);
             var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
             if (selectedIndex < 0)
             {
@@ -2283,7 +2290,11 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        return combat with { Enemies = formation };
+        return combat with
+        {
+            Enemies = formation,
+            NativeRng = ownedNative
+        };
     }
 
     private static (
@@ -2293,7 +2304,18 @@ public sealed partial class PrototypeGameEngine
             PrototypeEnemyDefinition definition,
             EnemyCombatState enemy,
             IReadOnlyList<EnemyCombatState> formation,
-            RngBundle rng)
+            RngBundle rng) =>
+        SelectEnemyMove(definition, enemy, formation,
+            maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive));
+
+    private static (
+        PrototypeEnemyMoveDefinition Move,
+        string? NextAiStateId)
+        SelectEnemyMove(
+            PrototypeEnemyDefinition definition,
+            EnemyCombatState enemy,
+            IReadOnlyList<EnemyCombatState> formation,
+            Func<int, int> nextIndex)
     {
         if (definition.Moves.Length == 0)
         {
@@ -2387,11 +2409,7 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 return (
-                    candidates[
-                        PrototypeRng.NextInt(
-                            rng,
-                            "combat",
-                            candidates.Length)],
+                    candidates[nextIndex(candidates.Length)],
                     enemy.AiStateId);
             }
 
@@ -2400,7 +2418,7 @@ public sealed partial class PrototypeGameEngine
                     definition,
                     enemy,
                     formation,
-                    rng);
+                    nextIndex);
 
             default:
                 throw new ArgumentOutOfRangeException(
@@ -2415,7 +2433,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeEnemyDefinition definition,
             EnemyCombatState enemy,
             IReadOnlyList<EnemyCombatState> formation,
-            RngBundle rng)
+            Func<int, int> nextIndex)
     {
         var ai = definition.Ai
             ?? throw new InvalidOperationException(
@@ -2486,10 +2504,7 @@ public sealed partial class PrototypeGameEngine
                     var totalWeight =
                         legal.Sum(branch =>
                             branch.Weight);
-                    var roll = PrototypeRng.NextInt(
-                        rng,
-                        "combat",
-                        totalWeight);
+                    var roll = nextIndex(totalWeight);
                     var selected = legal[^1];
                     foreach (var branch in legal)
                     {
