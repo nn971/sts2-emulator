@@ -3918,6 +3918,7 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "Pinned native SurprisePower death summons have changed.");
 
+            int? precreatedFatId = null;
             foreach (var summon in orderedSummons)
             {
                 var definition =
@@ -3991,8 +3992,15 @@ public sealed partial class PrototypeGameEngine
                 if (combat.NativeRng is not null)
                 {
                     combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
-                        combat, enemies, spawnedEnemy);
+                        combat, enemies, spawnedEnemy,
+                        nativeMerc
+                            && summon.EnemyId == "proto.enemy.sneaky_gremlin"
+                            ? precreatedFatId
+                            : null);
                     enemies = combat.Enemies.ToList();
+                    if (nativeMerc
+                        && summon.EnemyId == "proto.enemy.fat_gremlin")
+                        precreatedFatId = spawnedEnemy.InstanceId;
                 }
                 else
                 {
