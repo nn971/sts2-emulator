@@ -77,9 +77,28 @@ public sealed class NativeActOneLiveCombatRngV111Tests
                 combat.NativeRng!.Formation.Enemies.Length);
             Assert.Equal(combat.Enemies.Length,
                 combat.NativeRng.Formation.MonsterContexts.Length);
-            Assert.Equal(0,
+            var expectedEncounterCalls = encounterId switch
+            {
+                "proto.encounter.slimes_weak" => 3,
+                "proto.encounter.corpse_slugs_weak" => 1,
+                _ => 0
+            };
+            Assert.Equal(expectedEncounterCalls,
                 NativeRngV111.ToSnapshot(
                     combat.NativeRng.Formation.EncounterRng).Counter);
+            if (encounterId == "proto.encounter.corpse_slugs_weak")
+            {
+                var opener = combat.NativeRng.Formation.EncounterOpeningOffset;
+                Assert.InRange(opener!.Value, 0, 2);
+                Assert.Equal(opener, Array.IndexOf(
+                    PrototypeContent.Encounter(encounterId)
+                        .CyclicOpeningAiStateIds!,
+                    combat.Enemies[0].AiStateId));
+                Assert.Equal((opener.Value + 1) % 3, Array.IndexOf(
+                    PrototypeContent.Encounter(encounterId)
+                        .CyclicOpeningAiStateIds!,
+                    combat.Enemies[1].AiStateId));
+            }
 
             var assignedHp = new HashSet<int>();
             foreach (var enemy in combat.Enemies)
@@ -177,10 +196,10 @@ public sealed class NativeActOneLiveCombatRngV111Tests
     }
 
     [Fact]
-    public void OptInRegistryMatchesSixFixedPinnedSourceEncounters()
+    public void OptInRegistryMatchesEightPinnedSourceEncounters()
     {
         var ids = NativeActOneWeakCombatEntryV111.SupportedEncounterIds;
-        Assert.Equal(6, ids.Length);
+        Assert.Equal(8, ids.Length);
         Assert.All(ids, id =>
         {
             var definition = PrototypeContent.Encounter(id);
@@ -188,11 +207,22 @@ public sealed class NativeActOneLiveCombatRngV111Tests
             Assert.Single(new[] { definition.MinAct });
             Assert.Equal((1, 1, 0),
                 (definition.MinAct, definition.MaxAct, definition.Weight));
-            Assert.NotEmpty(definition.FixedEnemySpecs);
-            Assert.Null(definition.SelectionGroups);
-            Assert.Null(definition.CyclicOpeningAiStateIds);
+            if (id == "proto.encounter.slimes_weak")
+            {
+                Assert.Empty(definition.FixedEnemySpecs);
+                Assert.NotNull(definition.SelectionGroups);
+            }
+            else
+            {
+                Assert.NotEmpty(definition.FixedEnemySpecs);
+                Assert.Null(definition.SelectionGroups);
+            }
+            if (id == "proto.encounter.corpse_slugs_weak")
+                Assert.Equal(3, definition.CyclicOpeningAiStateIds!.Length);
+            else
+                Assert.Null(definition.CyclicOpeningAiStateIds);
         });
-        Assert.DoesNotContain("proto.encounter.slimes_weak", ids);
-        Assert.DoesNotContain("proto.encounter.corpse_slugs_weak", ids);
+        Assert.Contains("proto.encounter.slimes_weak", ids);
+        Assert.Contains("proto.encounter.corpse_slugs_weak", ids);
     }
 }
