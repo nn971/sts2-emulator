@@ -46,6 +46,18 @@ This is an intermediate implementation. Final release gates remain open.
   the new boundary. Source-shaped map path/pruning/placement call-order
   parity remains unverified; native Hive/Glory event and reward bags stay gated.
   See [later-act map geometry](reference-builds/v0.111.0-hive-glory-map-geometry.md).
+- Added the opt-in v111 *encounter-formation ownership* path:
+  `NativeEncounterFormationFactoryV111` consumes a native per-encounter
+  RNG seeded by native model entry and total floor, returns its advanced
+  cursor alongside source-shaped formation, and initializes untouched
+  per-creature RNGs from act index, map coordinates and combat IDs.
+  `PrototypeNativeLaterActFixture.GenerateEncounterFormation` exercises
+  pinned Hive and Glory entries, including distinct Bowlbug worker
+  choices. The legacy `ResolveEnemySpecs(RngBundle)` adapter remains
+  unchanged, and live `StartCombat` is not yet migrated. Native monster
+  HP/AI, encounter-specific generation call order, and full-game
+  cross-boundary parity remain open. See
+  [the encounter formation audit](reference-builds/v0.111.0-native-encounter-formation-rng.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
