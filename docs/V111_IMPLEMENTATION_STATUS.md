@@ -29,6 +29,13 @@ This is an intermediate implementation. Final release gates remain open.
   rounding, Gaussian sampling and shuffle. Independent vectors and fork/restore
   tests pass. **The engine still uses six prototype streams**; context ownership,
   call order and outcome pool order remain to be integrated.
+- Added pinned v111 context-specific RNG constructors for act maps,
+  encounter formations, monsters, events and player-owned content, using
+  audited run-seed/hash/slot/floor/model-ID formulas. Five independent
+  initial-state vectors and fork/restore tests cover the new boundaries.
+  The constructors are standalone: native context-stream ownership and
+  gameplay call-site integration remain open. See
+  [the context RNG audit](reference-builds/v0.111.0-native-context-rng-factories.md).
 - Added exact snapshots, ordered deterministic batches, a Python binding and
   canonical replay. Replay checks legal actions, state and RNG, and reports
   the first divergent JSON path. Synthetic tests do not establish native parity.
