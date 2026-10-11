@@ -11,7 +11,8 @@ public enum PrototypeCardEnchantmentKind
     Slither,
     Nimble,
     Steady,
-    PerfectFit
+    PerfectFit,
+    SoulsPower
 }
 
 public sealed record PrototypeCardEnchantment(
