@@ -491,8 +491,11 @@ public static class PrototypeStateInvariants
                     PrototypeNativeTabletOfTruth.EventId
                 ? eventState.NativePageIndex > 4
                 : eventState.EventId ==
-                    PrototypeNativeDenseVegetation.EventId
+                    PrototypeNativeHiveEvents.LanternKeyEventId
                     ? eventState.NativePageIndex > 2
+                    : eventState.EventId ==
+                        PrototypeNativeDenseVegetation.EventId
+                        ? eventState.NativePageIndex > 2
                     : eventState.EventId ==
                         PrototypeNativeEndlessConveyor.EventId
                         ? eventState.NativePageIndex > 1
