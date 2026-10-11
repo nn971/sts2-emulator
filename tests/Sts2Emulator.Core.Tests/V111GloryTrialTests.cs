@@ -47,7 +47,7 @@ public sealed class V111GloryTrialTests
             Assert.Equal(2, Choices(caseState).Length);
             PrototypeStateInvariants.Validate(caseState);
         }
-        Assert.Equal(new HashSet<int> { 2, 3, 4 }, seen);
+        Assert.True(seen.SetEquals(new[] { 2, 3, 4 }));
     }
 
     [Fact]
@@ -75,9 +75,10 @@ public sealed class V111GloryTrialTests
     [Fact]
     public void MerchantGuiltyAddsRegretAndObtainsTwoIndependentRelics()
     {
-        var state = AtPage("merchant-guilty", 2) with
+        var initial = AtPage("merchant-guilty", 2);
+        var state = initial with
         {
-            World = AtPage("merchant-guilty", 2).World! with
+            World = initial.World! with
             {
                 RelicBag = new PrototypeRelicBagState(
                     ["proto.relic.lantern", "proto.relic.anchor"],
