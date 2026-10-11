@@ -22,6 +22,15 @@ jobs:
         run: python tools/check_v111_coverage.py
       - name: v111 Python binding, snapshots and deterministic batches
         run: python tools/v111_interface_smoke.py
+      - name: Unassisted v111 Silent natural-run integrity sweep
+        run: |
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-natural-sweep 8 0 | tee /tmp/v111-natural-smoke.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v111-natural-run-smoke
+          path: /tmp/v111-natural-smoke.json
+          if-no-files-found: ignore
       - name: Reproducible v111 coverage and performance reports
         run: |
           dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage > /tmp/v111-coverage.json
