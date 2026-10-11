@@ -34,7 +34,7 @@ public static class PrototypeNativeGloryEvents
     public const string BattlewornDummyId =
         "proto.native.glory.battleworn_dummy";
     public const string BattlewornTimeLimitId =
-        "proto.native.glory.battleworn_time_limit";
+        "proto.native.glory.battleworn_dummy_time_limit";
     public const string BattleFriendV1Id =
         "proto.native.glory.battle_friend_v1";
     public const string BattleFriendV2Id =
@@ -42,11 +42,11 @@ public static class PrototypeNativeGloryEvents
     public const string BattleFriendV3Id =
         "proto.native.glory.battle_friend_v3";
     public const string BattlewornV1EncounterId =
-        "proto.native.glory.battleworn_dummy_v1";
+        "proto.native.glory.battleworn_dummy_event_v1_encounter";
     public const string BattlewornV2EncounterId =
-        "proto.native.glory.battleworn_dummy_v2";
+        "proto.native.glory.battleworn_dummy_event_v2_encounter";
     public const string BattlewornV3EncounterId =
-        "proto.native.glory.battleworn_dummy_v3";
+        "proto.native.glory.battleworn_dummy_event_v3_encounter";
 
 
     public static PrototypeCardDefinition[] Cards { get; } =
