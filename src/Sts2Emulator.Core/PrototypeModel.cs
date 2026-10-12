@@ -106,6 +106,7 @@ public enum PrototypeCombatEffectKind
     CreateEventSourceCardCopyInHand,
     AutoPlayTaggedCardsFromZone,
     AutoPlayTopDrawCards,
+    AutoPlayPlayableCardsFromHand,
     AutoPlayCombatCard,
     ApplyPlayerPower,
     ApplyEnemyPower,
@@ -370,6 +371,7 @@ public enum PrototypeOpeningCombatStage
     PlayerTurnStarted,
     AutoPrePlay,
     ImbuedAutoPlay,
+    LateRelicAutoPlay,
     Complete
 }
 
@@ -405,7 +407,8 @@ public enum PrototypeAutomaticStepKind
     AdvanceTurn,
     ResetPlayerBlock,
     RefreshPlayerEnergy,
-    DrawPlayerHand
+    DrawPlayerHand,
+    ResolveLateRelicAutoplay
 }
 
 public sealed record PrototypeAutomaticStep(
@@ -682,7 +685,8 @@ public sealed record PrototypeQueuedOperation(
     int PlayerGoldCost = 0,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool FromHandDraw = false,
-    bool GeneratedCharacterCardsFreeThisTurn = false);
+    bool GeneratedCharacterCardsFreeThisTurn = false,
+    int? EnergySpent = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,

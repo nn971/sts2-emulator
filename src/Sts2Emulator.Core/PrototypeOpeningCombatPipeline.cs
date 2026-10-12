@@ -34,6 +34,8 @@ public sealed partial class PrototypeGameEngine
             }
             else if (stage == PrototypeOpeningCombatStage.ImbuedAutoPlay)
                 state = ResolveImbuedAutoPlay(state);
+            else if (stage == PrototypeOpeningCombatStage.LateRelicAutoPlay)
+                state = ResolveWhisperingEarringAutoPlay(state);
             else if (stage == PrototypeOpeningCombatStage.DrawHand)
                 state = DrawOpeningHand(state);
             else if (stage == PrototypeOpeningCombatStage.AfterHandDraw)

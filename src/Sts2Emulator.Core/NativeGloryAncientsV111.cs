@@ -11,6 +11,8 @@ public static class NativeGloryAncientsV111
     public const string BeautifulBraceletId = "proto.native.ancient.beautiful_bracelet";
     public const string FurCoatId = "proto.native.ancient.fur_coat";
     public const string FiddleId = "proto.native.ancient.fiddle";
+    public const string WhisperingEarringId = "proto.native.ancient.whispering_earring";
+    public const int WhisperingEarringMaxCards = 13;
     public const string BloodSoakedRoseId = "proto.native.ancient.blood_soaked_rose";
     public const string EnthralledCardId = "proto.native.ancient.enthralled";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
@@ -48,6 +50,8 @@ public static class NativeGloryAncientsV111
         new(BeautifulBraceletId, "Beautiful Bracelet"),
         new(FurCoatId, "Fur Coat"),
         new(FiddleId, "Fiddle", HandDrawBonus: 2),
+        new(WhisperingEarringId, "Whispering Earring",
+            EnergyPerTurnBonus: 1),
         new(BloodSoakedRoseId, "Blood-Soaked Rose",
             EnergyPerTurnBonus: 1,
             RunTriggers:

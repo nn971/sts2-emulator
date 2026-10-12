@@ -2157,6 +2157,13 @@ public sealed partial class PrototypeGameEngine
                 break;
             }
 
+            case PrototypeAutomaticStepKind.ResolveLateRelicAutoplay:
+                state = ResolveWhisperingEarringAutoPlay(state);
+                world = RequireWorld(state);
+                combat = world.Combat!;
+                player = state.Player;
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }
@@ -6511,6 +6518,89 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.AutoPlayPlayableCardsFromHand:
+                {
+                    if (operation.Amount <= 0
+                        || combat.Turn != 1
+                        || !combat.IsPlayerTurn
+                        || player.Hp <= 0
+                        || AllEnemiesDefeated(combat))
+                    {
+                        break;
+                    }
+
+                    var playableCard = combat.Hand
+                        .Select(id => RequireCombatCard(combat, id))
+                        .FirstOrDefault(candidate =>
+                        {
+                            var definition = RuntimeCardDefinition(candidate);
+                            return definition.MechanicsImplemented
+                                && !definition.Unplayable
+                                && CanPlayAnotherCardThisTurn(
+                                    player, combat, candidate)
+                                && IsCardAffordable(
+                                    combat, candidate, definition);
+                        });
+                    if (playableCard is null)
+                    {
+                        break;
+                    }
+
+                    var playableDefinition =
+                        RuntimeCardDefinition(playableCard);
+                    int? targetEnemy = null;
+                    if (EffectiveCardTarget(combat, playableDefinition)
+                        == PrototypeCardTarget.Enemy)
+                    {
+                        targetEnemy = combat.Enemies.FirstOrDefault(enemy =>
+                            enemy.Hp > 0 && !enemy.Escaped)?.InstanceId;
+                        if (targetEnemy is null)
+                        {
+                            break;
+                        }
+                    }
+
+                    var xValue = playableDefinition.Cost.Kind
+                            == PrototypeCardCostKind.X
+                        ? combat.Energy + player.ActiveRelics.Sum(relic =>
+                            PrototypeContent.Relic(relic.RelicId)
+                                .XValueBonus)
+                        : 0;
+                    var energyCost = playableDefinition.Cost.Kind
+                            == PrototypeCardCostKind.X
+                        ? combat.Energy
+                        : ResolveFixedCardEnergyCost(
+                            combat, playableCard, playableDefinition);
+                    combat = combat with
+                    {
+                        Energy = Math.Max(0, combat.Energy - energyCost)
+                    };
+                    combat = SetZone(combat, PrototypeCardZone.Hand,
+                        combat.Hand.Where(id =>
+                            id != playableCard.InstanceId).ToArray());
+                    combat = SetZone(combat, PrototypeCardZone.PlayPile,
+                        combat.PlayCardIds.Append(
+                            playableCard.InstanceId).ToArray());
+
+                    var remaining = operation with
+                    {
+                        Amount = operation.Amount - 1
+                    };
+                    operations = new Queue<PrototypeQueuedOperation>(
+                        new[]
+                        {
+                            new PrototypeQueuedOperation(
+                                PrototypeCombatEffectKind.AutoPlayCombatCard,
+                                0,
+                                TargetEnemyId: targetEnemy,
+                                SourceKind: operation.SourceKind,
+                                CardInstanceId: playableCard.InstanceId,
+                                EnergySpent: xValue),
+                            remaining
+                        }.Concat(operations));
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.AutoPlayCombatCard:
                 {
                     if (operation.CardInstanceId is not
@@ -6666,11 +6756,12 @@ public sealed partial class PrototypeGameEngine
                     var autoPlayXValue =
                         autoPlayDefinition.Cost.Kind
                             == PrototypeCardCostKind.X
-                            ? combat.Energy
-                                + player.ActiveRelics.Sum(relic =>
-                                    PrototypeContent.Relic(
-                                            relic.RelicId)
-                                        .XValueBonus)
+                            ? operation.EnergySpent
+                                ?? combat.Energy
+                                    + player.ActiveRelics.Sum(relic =>
+                                        PrototypeContent.Relic(
+                                                relic.RelicId)
+                                            .XValueBonus)
                             : 0;
 
                     var autoPlaySeries =

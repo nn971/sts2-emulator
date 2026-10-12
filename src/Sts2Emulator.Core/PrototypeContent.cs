@@ -129,7 +129,8 @@ public static class PrototypeContent
             // Native auto-preplay occurs after energy/hand-draw/start hooks.
             new(
                 PrototypeAutomaticStepKind.DispatchCombatEvent,
-                EventKind: PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
+                EventKind: PrototypeCombatEventKind.AutoPrePlayPhaseEntered),
+            new(PrototypeAutomaticStepKind.ResolveLateRelicAutoplay)
         ]);
 
     public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =

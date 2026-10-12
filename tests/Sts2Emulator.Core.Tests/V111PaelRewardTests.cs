@@ -267,6 +267,93 @@ public sealed class V111PaelRewardTests
                 == strike.InstanceId);
     }
 
+    [Fact]
+    public void WhisperingEarringPaysForPlayableOpeningCardsInHandOrder()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var state = PrototypeNativeLaterActFixture.Create(
+            "whispering-earring-first-turn", 2);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = Enumerable.Range(1, 5)
+                    .Select(id => new CardInstance(id,
+                        "proto.silent.strike", 0, empty)).ToArray(),
+                Relics = [..state.Player.Relics,
+                    new(NativeGloryAncientsV111.WhisperingEarringId,
+                        empty)]
+            },
+            World = state.World! with { NextCardInstanceId = 6 }
+        };
+
+        var baselineState = state.Fork() with
+        {
+            Player = state.Player with
+            {
+                Relics = state.Player.Relics.Where(relic =>
+                    relic.RelicId
+                        != NativeGloryAncientsV111.WhisperingEarringId)
+                    .ToArray()
+            }
+        };
+        var baseline = Combat(baselineState).World!.Combat!;
+
+        state = Combat(state.Fork());
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(1, combat.Turn);
+        Assert.Equal(0, combat.Energy);
+        Assert.Single(combat.Hand);
+        Assert.Equal(4, combat.DiscardPile.Length);
+        Assert.Equal(4, combat.CounterState.CardsPlayedThisTurn);
+        Assert.Equal(0, combat.CounterState.ManualCardsPlayedThisTurn);
+        Assert.Equal(24, baseline.Enemies.Sum(enemy => enemy.Hp)
+            - combat.Enemies.Sum(enemy => enemy.Hp));
+
+        state = EndTurn(state);
+        combat = state.World!.Combat!;
+        Assert.Equal(2, combat.Turn);
+        Assert.Equal(4, combat.Energy);
+        Assert.Equal(5, combat.Hand.Length);
+        Assert.Equal(0, combat.CounterState.CardsPlayedThisTurn);
+    }
+
+    [Fact]
+    public void WhisperingEarringHonorsEnthralledDuringItsCanPlayScan()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var state = PrototypeNativeLaterActFixture.Create(
+            "whispering-earring-enthralled", 2);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new(1, NativeGloryAncientsV111.EnthralledCardId, 0,
+                        empty),
+                    .. Enumerable.Range(2, 4).Select(id => new CardInstance(
+                        id, "proto.silent.strike", 0, empty))
+                ],
+                Relics = [..state.Player.Relics,
+                    new(NativeGloryAncientsV111.WhisperingEarringId,
+                        empty)]
+            },
+            World = state.World! with { NextCardInstanceId = 6 }
+        };
+
+        state = Combat(state);
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(3, combat.CounterState.CardsPlayedThisTurn);
+        Assert.Equal(0, combat.CounterState.ManualCardsPlayedThisTurn);
+        Assert.Equal(0, combat.Energy);
+        Assert.Contains(combat.Cards.Single(card => card.CardId
+            == NativeGloryAncientsV111.EnthralledCardId).InstanceId,
+            combat.DiscardPile);
+    }
+
     [Theory]
     [InlineData(0, false, 3)]
     [InlineData(1, false, 5)]

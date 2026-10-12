@@ -133,8 +133,11 @@ Beautiful Bracelet's four-card Swift acquisition now uses run.niche and its
 two-card draw enchant triggers on the first play per combat. Fiddle adds two
 opening cards and prevents additional draws during the player's turn.
 Blood-Soaked Rose adds one energy and the Eternal Enthralled curse, which
-blocks other manual card plays while it remains in hand. Vakuu's event and
-remaining relic dependencies stay gated. Fur Coat marks up
+blocks other manual card plays while it remains in hand. Whispering Earring
+adds one energy and pays to auto-play the first playable hand cards in order
+on turn one, up to the source cap of 13; it reuses the resumable card-play
+pipeline. Vakuu's event and remaining relic dependencies stay gated. Fur Coat
+marks up
 to eight current-act Monster/Elite rooms and reduces initial and summoned
 enemies there to 1 HP while persisting its map selection and content RNG
 snapshot. Delicate Frond now
