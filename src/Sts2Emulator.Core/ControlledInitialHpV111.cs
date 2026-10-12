@@ -80,7 +80,7 @@ public static class ControlledInitialHpV111
             nativeAct != initial.Act - 1)
             throw new InvalidOperationException(
                 "Native encounter act index belongs to another combat.");
-        _ = NativeRngV111.ToSnapshot(formation.EncounterRng);
+        ValidateFormationOwners(formation);
         for (var index = 0; index < initial.Enemies.Length; index++)
             NativeCombatRngEntryV111.ValidateInitialHpEnemyBinding(
                 initial.Enemies[index],
@@ -142,7 +142,7 @@ public static class ControlledInitialHpV111
                 act != state.Combat.Act - 1)
             throw new InvalidDataException(
                 "Invalid controlled initial-HP continuation metadata.");
-        _ = NativeRngV111.ToSnapshot(state.Formation.EncounterRng);
+        ValidateFormationOwners(state.Formation);
 
         var consumed = new HashSet<int>();
         for (int index = 0; index < state.Combat.Enemies.Length; index++)
@@ -216,6 +216,34 @@ public static class ControlledInitialHpV111
     {
         Validate(state);
         return JsonSerializer.Serialize(state);
+    }
+
+    private static void ValidateFormationOwners(NativeEncounterFormationV111 formation)
+    {
+        if (formation.TotalFloor < 0 ||
+            string.IsNullOrWhiteSpace(formation.NativeEncounterEntry) ||
+            formation.MapColumn is < 0 or > 6 ||
+            formation.MapRow is < 0 ||
+            (formation.RunSeed is null) != (formation.NativeActIndex is null) ||
+            formation.NativeActIndex is < 0 or > 2 ||
+            formation.EncounterRng.StreamId !=
+                $"context.encounter.{formation.NativeEncounterEntry}.floor_{formation.TotalFloor}" ||
+            formation.MonsterContexts.Select(x => x.CombatId).Distinct().Count() !=
+                formation.MonsterContexts.Length ||
+            formation.MonsterContexts.Select(x => x.Rng.StreamId).Distinct(
+                StringComparer.Ordinal).Count() != formation.MonsterContexts.Length)
+            throw new InvalidDataException(
+                "Controlled initial-HP source formation/owners are invalid.");
+        _ = NativeRngV111.ToSnapshot(formation.EncounterRng);
+        foreach (var context in formation.MonsterContexts)
+        {
+            if (formation.NativeActIndex is { } act &&
+                context.Rng.StreamId !=
+                    $"context.monster.{context.CombatId}.act_{act}.map_{formation.MapColumn ?? 0}_{formation.MapRow ?? 0}")
+                throw new InvalidDataException(
+                    "Controlled initial-HP monster context is owned by another creature.");
+            _ = NativeRngV111.ToSnapshot(context.Rng);
+        }
     }
 
     private static ControlledInitialHpContinuationV111 Create(
