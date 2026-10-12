@@ -41,7 +41,7 @@ internal static class PrototypeAiJsonlServer
             return handle;
         }
 
-        string StoreNature(ControlledIntentStateV111 state)
+        string StoreNatureIntent(ControlledIntentStateV111 state)
         {
             string handle = "n" + nextNatureHandle++;
             natureIntents.Add(handle, state.Fork());
@@ -187,7 +187,7 @@ internal static class PrototypeAiJsonlServer
                                 ascension, 1, column, row,
                                 commitInitialIntents: false);
                             var state = ControlledIntentsV111.Begin(pre);
-                            var handle = StoreNature(state);
+                            var handle = StoreNatureIntent(state);
                             Write(new { requestId, ok = true,
                                 schemaId = NatureBoundarySchemaId,
                                 kind, natureHandle = handle,
@@ -223,7 +223,7 @@ internal static class PrototypeAiJsonlServer
                         {
                             var child = ControlledIntentsV111.Resolve(
                                 intent, fingerprint, selectedIndex);
-                            string childHandle = StoreNature(child);
+                            string childHandle = StoreNatureIntent(child);
                             Write(new { requestId, ok = true,
                                 schemaId = NatureBoundarySchemaId,
                                 kind = "intents", parent = handle,
@@ -254,7 +254,7 @@ internal static class PrototypeAiJsonlServer
                         {
                             var child = ControlledIntentsV111.Restore(
                                 ControlledIntentsV111.Save(intent));
-                            string newHandle = StoreNature(child);
+                            string newHandle = StoreNatureIntent(child);
                             Write(new { requestId, ok = true,
                                 kind = "intents", parent = handle,
                                 natureHandle = newHandle,
@@ -301,7 +301,7 @@ internal static class PrototypeAiJsonlServer
                         else if (kind == "intents")
                         {
                             var state = ControlledIntentsV111.Restore(snapshot);
-                            string handle = StoreNature(state);
+                            string handle = StoreNatureIntent(state);
                             Write(new { requestId, ok = true,
                                 schemaId = NatureBoundarySchemaId, kind,
                                 natureHandle = handle,
