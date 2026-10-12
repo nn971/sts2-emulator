@@ -59,11 +59,11 @@ if test -n "$godot"
     or exit 1
     cp "$project/mod_manifest.json" "$pack_project/mod_manifest.json"
     cp "$project/export_presets.cfg" "$pack_project/export_presets.cfg"
-    printf '%s\\n' 'config_version=5' '' '[application]' 'config/name="Sts2ReferenceModPackOnly"' 'config/features=PackedStringArray("4.5")' > "$pack_project/project.godot"
+    printf '%s\n' 'config_version=5' '' '[application]' 'config/name="Sts2ReferenceModPackOnly"' 'config/features=PackedStringArray("4.5")' > "$pack_project/project.godot"
     "$godot" --headless --path "$pack_project" --import
     set -l result $status
     if test $result -eq 0
-        "$godot" --headless --path "$pack_project" \\
+        "$godot" --headless --path "$pack_project" \
             --export-pack BasicExport "$dest/Sts2ReferenceMod.pck"
         set result $status
     end
