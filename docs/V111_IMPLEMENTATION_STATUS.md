@@ -6,10 +6,11 @@ Orobas's eight Silent relic offers reuse the existing acquisition
 handlers and continuations. Coffer capacity metadata now records its four
 added potion slots. Cross-character card mechanics (including Sea Glass,
 Prismatic Gem's foreign pools and Colorful Philosophers) are postponed by user
-scope. Shared Darv now has revealed-profile assignment and ten executable
-Silent relic choices, including Calling Bell's Eternal Curse and three
-rarity-specific relic rewards. Pandora's Box and Dusty Tome remain outstanding.
-Exact RNG and fidelity inspection are follow-up work; the current assignment
+scope. Shared Darv now has revealed-profile assignment and all twelve Silent
+relic branches. Calling Bell adds its Eternal Curse and Common, Uncommon and
+Rare relic rewards; Dusty Tome adds an upgraded Wraith Form; Pandora's Box
+transforms Strike and Defend cards. Ectoplasm and Sozu are offered only in
+Hive. Exact RNG and fidelity inspection are follow-up work; act assignment
 still uses prototype event randomness.
 Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C# tests
 passed, including the eight synthetic full-route cases and Ancient

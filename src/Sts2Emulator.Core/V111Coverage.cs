@@ -130,6 +130,13 @@ public static class V111Coverage
                 && NativeDarvEventV111.SupportedRelicIds.Contains(
                     NativeDarvEventV111.CallingBellId, StringComparer.Ordinal))
                 integration = "integrated";
+            if (engineIds.Contains(NativeDarvEventV111.DustyTomeCardId,
+                    StringComparer.Ordinal)
+                && NativeDarvEventV111.SupportedRelicIds.Contains(
+                    NativeDarvEventV111.DustyTomeId, StringComparer.Ordinal)
+                && PrototypeContent.Card(
+                    NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel > 0)
+                integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "encounters")
         {
@@ -163,6 +170,12 @@ public static class V111Coverage
             if (engineIds.Any(IsIntegratedEvent))
                 integration = "integrated";
         }
+        var missingBranches = MissingBranches(item);
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DARV" && missingBranches.Length == 0
+            && engineIds.Contains(NativeDarvEventV111.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
@@ -180,8 +193,20 @@ public static class V111Coverage
                         NativeDarvEventV111.CurseOfTheBellCardId).Eternal
                     && NativeDarvEventV111.SupportedRelicIds.Contains(id,
                         StringComparer.Ordinal);
+                var dustyTomeIntegrated = id == NativeDarvEventV111.DustyTomeId
+                    && NativeDarvEventV111.SupportedRelicIds.Contains(id,
+                        StringComparer.Ordinal)
+                    && PrototypeContent.Card(
+                        NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel > 0;
+                var pandorasBoxIntegrated = id == NativeDarvEventV111.PandorasBoxId
+                    && NativeDarvEventV111.SupportedRelicIds.Contains(id,
+                        StringComparer.Ordinal)
+                    && PrototypeContent.NativeSilentCardPool.Any(cardId =>
+                        PrototypeContent.Card(cardId).Tags?.Any(tag =>
+                            tag is "Strike" or "Defend") == true);
                 return blackStarIntegrated || ectoplasmIntegrated
-                    || callingBellIntegrated;
+                    || callingBellIntegrated || dustyTomeIntegrated
+                    || pandorasBoxIntegrated;
             }))
         {
             implementation = "implemented";
@@ -195,7 +220,7 @@ public static class V111Coverage
         return new V111CoverageItem(item.Kind, item.Id, item.Scope, engineIds,
             true, engineIds.Length > 0, implementation, integration, "unverified",
             item.Variants ?? [],
-            MissingBranches(item),
+            missingBranches,
             item.Source is null ? [] : [$"{V111Build.SourceCommit}:{item.Source}#{item.SourceSha256}"]);
     }
 

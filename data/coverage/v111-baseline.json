@@ -11999,7 +11999,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/WraithForm.cs#875b2f5381e6b2ade6c09ca0d013c041d58921d8d0eed42562067458311e6161"
         ],
         "implementation": "implemented",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "cards",
         "missing_branches": [],
         "missing_variants": [
@@ -15240,13 +15240,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Darv.cs#fdf4833d35d438893902dd4627ea3f89cbcfa22b924a6c8e6327c45ef4f87722"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "relic/DUSTY_TOME",
-          "relic/PANDORAS_BOX"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "DARV",
         "registered": true,
@@ -25650,17 +25647,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.dusty_tome"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DustyTome.cs#077a4d84772a1c4f6a98bd3e43112a69d2caa7cbc48e8e28dc1b45aab53bf4b5"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DUSTY_TOME",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -27668,17 +27667,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.pandoras_box"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PandorasBox.cs#db85af4910816592c10fe4c353a1901f6a91544bc3af9d1790b4b166ee1eb99a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PANDORAS_BOX",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29748,7 +29749,7 @@
         "eligible": 558,
         "excluded": 37,
         "implemented": 203,
-        "integrated": 138,
+        "integrated": 139,
         "kind": "cards",
         "scope_review_required": 0,
         "validated": 0
@@ -29797,7 +29798,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 0,
+        "implemented": 1,
         "integrated": 47,
         "kind": "events",
         "scope_review_required": 0,
@@ -29847,8 +29848,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 3,
-        "integrated": 3,
+        "implemented": 5,
+        "integrated": 5,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

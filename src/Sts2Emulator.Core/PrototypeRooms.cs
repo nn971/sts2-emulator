@@ -1532,6 +1532,41 @@ public sealed partial class PrototypeGameEngine
                         rng: state.Rng, allocateCardId: () => nextId++,
                         nativeRunRng: nativeRunRng);
 
+                    if (eventState.EventId == NativeDarvEventV111.EventId
+                        && relicId == NativeDarvEventV111.DustyTomeId)
+                    {
+                        var cardInstanceId = nextId++;
+                        player = AppendCard(
+                            player, cardInstanceId,
+                            NativeDarvEventV111.DustyTomeCardId,
+                            state.Rng);
+                        var maxUpgradeLevel = PrototypeContent.Card(
+                            NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel;
+                        player = player with
+                        {
+                            Deck = player.Deck.Select(card =>
+                                card.InstanceId == cardInstanceId
+                                    ? card with
+                                    {
+                                        UpgradeLevel = maxUpgradeLevel
+                                    }
+                                    : card).ToArray()
+                        };
+                    }
+                    else if (eventState.EventId == NativeDarvEventV111.EventId
+                        && relicId == NativeDarvEventV111.PandorasBoxId)
+                    {
+                        var transformedCardIds = player.Deck
+                            .Where(NativeDarvEventV111.IsPandorasBoxTarget)
+                            .Select(card => card.InstanceId)
+                            .ToArray();
+                        foreach (var cardInstanceId in transformedCardIds)
+                        {
+                            player = TransformPersistentDeckCard(
+                                player, cardInstanceId, false, state.Rng);
+                        }
+                    }
+
                     if (relicDefinition.CardIdAfterAcquisitionDeckChoices
                         is { } postChoiceCardId)
                     {
@@ -1802,6 +1837,12 @@ public sealed partial class PrototypeGameEngine
         PrototypeEventChoiceDefinition choice,
         RunWorldState world)
     {
+        if (world.Event?.EventId == NativeDarvEventV111.EventId
+            && choice.Effects.Any(effect =>
+                effect.RelicId == NativeDarvEventV111.PandorasBoxId)
+            && !NativeDarvEventV111.HasPandorasBoxTarget(player))
+            return false;
+
         if (world.Event?.EventId == NativeOrobasEventV111.EventId
             && !NativeOrobasEventV111.IsChoiceEligible(player, choice.Id))
             return false;

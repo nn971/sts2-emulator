@@ -64,13 +64,14 @@ reused. Orobas executes its eight Silent relic options with a locked third
 pool when both starter dependencies are absent. Cross-character Sea Glass and
 Prismatic Gem offers, plus Colorful Philosophers, are explicitly postponed by
 the current user scope. Shared Darv now participates in revealed-profile
-assignment and offers ten modeled relics. Philosopher's Stone adds one energy
-per turn and gives living enemies one Strength at combat start. Black Star adds
-one relic to elite rewards. Calling Bell adds its Eternal Curse and three
-rarity-specific relic rewards. Darv offers Ectoplasm only in Hive; it adds one
-energy and blocks gold gains. Pandora's Box and Dusty Tome remain open.
-Assignment uses
-prototype event randomness;
+assignment and executes all twelve Silent relic branches. Philosopher's Stone
+adds one energy per turn and gives living enemies one Strength at combat start.
+Black Star adds one relic to elite rewards. Calling Bell adds its Eternal Curse
+and three rarity-specific relic rewards; Dusty Tome adds an upgraded Wraith
+Form; Pandora's Box transforms Strike and Defend cards. Darv offers Ectoplasm
+and Sozu only in Hive. Its 50/50 Dusty Tome offer branch is implemented, while
+native offer RNG and act-assignment parity remain for the fidelity pass.
+Assignment uses prototype event randomness;
 native UpFront scheduling and source offer parity are left for the RNG pass.
 See [the assignment ledger](reference-builds/v0.111.0-ancient-assignment.md).
 Seven
@@ -201,8 +202,8 @@ Overgrowth, with no regional fallback or reachable unsupported behavior.
   source assignment call order is audited in
   [the Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md),
   with all three Hive act-local Ancients now executable. Shared Darv assignment
-  and ten Silent relic choices are integrated; Pandora's Box, Dusty Tome and
-  run-start UpFront integration remain open, with the latter deferred to RNG work.
+  and all twelve Silent relic branches are integrated; run-start UpFront
+  integration remains open for the RNG work.
 - Remove Hive/Glory initialization rejection only after supported regional
   policies exist. Keep unfinished paths explicitly gated during development.
 - Establish an explicit deterministic test route through Act 1 → Hive → Glory

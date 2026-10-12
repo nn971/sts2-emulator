@@ -9,6 +9,9 @@ public static class NativeDarvEventV111
     public const string EventId = "proto.native.shared.darv";
     public const string EpochId = "DARV_EPOCH";
     public const string CallingBellId = "proto.relic.calling_bell";
+    public const string DustyTomeId = "proto.relic.dusty_tome";
+    public const string PandorasBoxId = "proto.relic.pandoras_box";
+    public const string DustyTomeCardId = "proto.silent.wraith_form";
     public const string CurseOfTheBellCardId = "proto.native.shared.curse_of_the_bell";
     private const string RngEventId = "DARV";
 
@@ -29,20 +32,26 @@ public static class NativeDarvEventV111
     ];
 
     public static PrototypeRelicDefinition[] Relics =>
-    [new PrototypeRelicDefinition(CallingBellId, "Calling Bell")];
+    [
+        new PrototypeRelicDefinition(CallingBellId, "Calling Bell"),
+        new PrototypeRelicDefinition(DustyTomeId, "Dusty Tome"),
+        new PrototypeRelicDefinition(PandorasBoxId, "Pandora's Box")
+    ];
 
     public static readonly string[] SupportedRelicIds =
     [
         "proto.relic.astrolabe",
         "proto.relic.black_star",
         CallingBellId,
+        PandorasBoxId,
         "proto.relic.empty_cage",
         "proto.relic.runic_pyramid",
         "proto.relic.snecko_eye",
         "proto.relic.ectoplasm",
         "proto.relic.sozu",
         "proto.relic.philosophers_stone",
-        "proto.relic.velvet_choker"
+        "proto.relic.velvet_choker",
+        DustyTomeId
     ];
 
     public static PrototypeEventDefinition Definition { get; } = new(
@@ -64,11 +73,29 @@ public static class NativeDarvEventV111
                 && id != "proto.relic.ectoplasm") || act == 2).ToArray();
     }
 
+    private static string[] PoolOneRelicIdsForAct(
+        int act, PlayerState player) => SupportedRelicIdsForAct(act)
+        .Where(id => id != DustyTomeId
+            && (id != PandorasBoxId || HasPandorasBoxTarget(player)))
+        .ToArray();
+
+    public static bool IsPandorasBoxTarget(CardInstance card)
+    {
+        var definition = PrototypeContent.Card(card.CardId);
+        return !PrototypeCardRules.IsEternal(card)
+            && definition.Tags?.Any(tag => tag is "Strike" or "Defend") == true;
+    }
+
+    public static bool HasPandorasBoxTarget(PlayerState player) =>
+        player.Deck.Any(IsPandorasBoxTarget);
+
     private static string RelicName(string id) => id switch
     {
         "proto.relic.astrolabe" => "Astrolabe",
         "proto.relic.black_star" => "Black Star",
         CallingBellId => "Calling Bell",
+        DustyTomeId => "Dusty Tome",
+        PandorasBoxId => "Pandora's Box",
         "proto.relic.empty_cage" => "Empty Cage",
         "proto.relic.runic_pyramid" => "Runic Pyramid",
         "proto.relic.snecko_eye" => "Snecko Eye",
@@ -99,9 +126,14 @@ public static class NativeDarvEventV111
             fork.RunSeed, RngEventId)]);
         // Source sets do not exclude relics already owned by the player.
         // Sozu is only eligible in Hive; its source set is filtered in Glory.
-        var relics = SupportedRelicIdsForAct(world.Act);
-        NativeRngV111.Shuffle(bundle, bundle.Streams[0].StreamId, relics);
-        var offers = relics.Take(3).Select(ChoiceId).ToArray();
+        var streamId = bundle.Streams[0].StreamId;
+        var offerDustyTome = NativeRngV111.NextInt(bundle, streamId, 2) == 0;
+        var relics = PoolOneRelicIdsForAct(world.Act, state.Player);
+        NativeRngV111.Shuffle(bundle, streamId, relics);
+        var offers = relics.Take(offerDustyTome ? 2 : 3)
+            .Select(ChoiceId)
+            .Concat(offerDustyTome ? [ChoiceId(DustyTomeId)] : [])
+            .ToArray();
         return fork with
         {
             Phase = RunPhase.Event,
@@ -133,6 +165,13 @@ public static class NativeDarvEventV111
                 .Contains(id, StringComparer.Ordinal)))
             throw new InvalidOperationException(
                 "Darv requires three distinct supported relic offers and its event RNG context.");
+        var dustyTomeChoice = ChoiceId(DustyTomeId);
+        if (offers.Contains(dustyTomeChoice, StringComparer.Ordinal)
+            ? !StringComparer.Ordinal.Equals(offers[^1], dustyTomeChoice)
+                || offers.Take(2).Any(id => id == dustyTomeChoice)
+            : offers.Any(id => id == dustyTomeChoice))
+            throw new InvalidOperationException(
+                "Darv can offer Dusty Tome only as the third choice beside two pool-one relics.");
         _ = NativeRngV111.ToSnapshot(stream);
         if (evt.ChosenChoiceId is { } selected
             && !offers.Contains(selected, StringComparer.Ordinal))
