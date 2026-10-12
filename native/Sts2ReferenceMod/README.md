@@ -7,7 +7,11 @@ install**; gameplay compatibility and passive/no-perturbation remain acceptance
 gates. No real native trace or emulator parity success is claimed.
 
 The .NET 9 / Python contracts are tested without game assets. STS2-specific
-code is compiled only with `Sts2DataDir` set.
+code is compiled only with `Sts2DataDir` set. In a native build the
+Sts2Emulator.Core and Sts2Emulator.Trace protocol sources are **embedded in
+Sts2ReferenceMod.dll** rather than loaded as separate assemblies. The game
+mod loader's managed dependency resolution is not guaranteed to find
+additional DLLs in the mod directory.
 
 ## Build and pin a native installation (fish / WSL)
 
@@ -121,3 +125,27 @@ the canonical snapshot without game assemblies. It validates identities,
 scalar ranges and card zones, returning a typed **PARTIAL** state for inspection.
 Actual deterministic replay remains gated on hidden continuation state and
 a verified emulator action engine.
+
+## Windows mod loader: PCK + one DLL
+
+The game's loader detects a mod by scanning `mods` recursively for
+`*.pck`; it then loads the matching `<pck_name>.dll` if present.
+A loose DLL-only folder is **not** a supported installation procedure for
+this pinned API. The exported PCK must include a root-level
+`mod_manifest.json` with `pck_name` matching the PCK basename.
+
+The native build now ships just `Sts2ReferenceMod.dll` and
+`Sts2ReferenceMod.pck` (plus descriptive manifests). Do not copy
+`Sts2Emulator.Trace.dll` or `Sts2Emulator.Core.dll`: their code is
+compiled into the native DLL. This change addresses the launch-time
+`FileNotFoundException: Sts2Emulator.Trace` observed in the first
+game-local smoke test. Runtime confirmation is still pending.
+
+When testing in WSL, the Windows Steam library may be mounted at
+`/mnt/d/SteamLibrary`. Always use that path if it matches your
+installation, not `/d/SteamLibrary`.
+
+If another incompatible mod is active, disable it separately. The first
+local crash log also contained an unrelated
+`UndoAndRedoForkCode.UndoInputBindings` missing-field exception;
+the inspector fix cannot repair that other mod.
