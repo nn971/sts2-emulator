@@ -76,7 +76,7 @@ emulator checkpoint comparison from the existing fixture.
 | Native capture structurally valid | Inspector 2 decisions, 2 actions, 8 events | Demonstrated on user machine |
 | Restricted rule projection | 7 of 7 Strike fields | Demonstrated on user machine |
 | Strict visible-slice projection | Full recorded JSON checkpoint | Demonstrated on user machine |
-| **Actual engine checkpoint comparison** | Imported native pre-state → unchanged `PrototypeGameEngine.Step` → independent native post-state | **User-local command pending**; synthetic CI tests cover contract |
+| **Actual engine checkpoint comparison** | Imported native pre-state → unchanged `PrototypeGameEngine.Step` → independent native post-state | **PASSED on one authentic native Strike (47/47 checked fields)**; broader parity remains untested |
 | Native effect/hook ordering | Independently observed phase/event-order correlation | **Not tested** |
 | Complete native run parity | All player/combat/hidden state, RNG and event/choice semantics | **Not tested** |
 
@@ -108,6 +108,20 @@ they still do not establish native hook ordering, hidden state fidelity,
 or complete game parity. Diagnostic event types in the original
 Inspector trace remain observations rather than a validated full
 source-hook execution journal.
+
+
+## Authentic native Strike result (2026-10-13)
+
+The user executed the actual first-strike native expectation against the
+working v111 engine using the stronger creature-identity bridge. Their
+`first-strike-actual-engine.json` recorded `CORE_ENGINE_CHECKPOINT_CONSISTENT`,
+`executed_actual_engine_step=true`, **47 of 47 supported observable fields
+matched**, no blockers, no differences and no engine failure. Sludge Spinner
+finished at 35 HP, Silent at 56 HP and 2 energy, and card zones agreed exactly.
+This proves the **one isolated real-engine checkpoint** gate. The user's
+uploaded output predates the ordered engine event journal added later, so
+native source-hook ordering has not yet been compared. `native_game_parity`
+correctly remains `NOT_TESTED`.
 
 ## Ordered emulator-side event journal (diagnostic only)
 
