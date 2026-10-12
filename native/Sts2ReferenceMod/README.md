@@ -8,7 +8,7 @@ Implemented: JSONL 0.2 trace DTOs and async bounded writer; append-only event
 journal with independent readers; scenario-local identity registry; decision
 coordinator with step, pause, resume, stop, replay-ID binding, and one
 in-flight action; passive recording facade and typed adapter contract; strict
-offline comparison and import-coverage reporting.
+offline comparison and import-coverage reporting; optional authenticated loopback HTTP transport.
 
 ## Local build (fish shell)
 
@@ -44,3 +44,19 @@ passive instrumentation mod. See docs/NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_S
 The comparator requires a post-action boundary, verified equivalent pre-state,
 same normalized action and legal actions, and declared event/field coverage.
 A synthetic test comparison is evidence of protocol behavior only.
+
+## Optional loopback controller protocol
+
+LocalBridgeServer is instantiated by the native host only after controlled action
+hooks have been audited. It binds 127.0.0.1 (default port 39221), requires
+Authorization: Bearer <configured-secret> and exposes:
+
+- GET /v1/status — current decision ID/revision/hash and controller phase.
+- GET /v1/events?after_seq=42 — independent chronological reader cursor.
+- POST /v1/actions — JSON ActionSubmission with request_id, decision_id,
+  revision, observation_hash and normalized action.
+- POST /v1/pause, /v1/step, /v1/resume, /v1/stop — safe semantic controls.
+
+Request handlers authorize commands only. Dispatch must happen on the Godot main
+thread at a proven decision boundary; no transport thread touches native game
+objects. The server is intentionally not started by the current loader entrypoint.
