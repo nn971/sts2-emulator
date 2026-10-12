@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "63045025ba5d04487723b211e8d7c0781b96905d9c981791c06235f07159aeb1",
+  "inventory_file_sha256": "3310b581f74ff2c2cc5e3296ac0aff9b731eede3e1dfbd1451e4d18cde4e0c12",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "d8029c4572f77f3086bc03bd4cc384a11820b452533f77ecccd140229f7cd31a",
+    "inventory_hash": "71c7d87c75763d028e993da95c1178ad7533cf50b61266a4c172f412b35781ad",
     "items": [
       {
         "catalogued": true,
@@ -16140,15 +16140,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/FIRST_CHEST",
-          "initial/SECOND_CHEST",
-          "page/FIRST_CHEST",
-          "page/INITIAL",
-          "page/INITIAL/FIRST_CHEST",
-          "page/INITIAL/SECOND_CHEST",
-          "page/SECOND_CHEST"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "SUNKEN_TREASURY",
         "registered": true,

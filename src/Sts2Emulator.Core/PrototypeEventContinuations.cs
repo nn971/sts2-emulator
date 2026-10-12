@@ -182,10 +182,10 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
-            if (PrototypeNativeHiveEvents.HasTerminalChoicePage(
+            if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                     eventState.EventId)
                 && eventState.NativePageIndex == 0
-                && PrototypeNativeHiveEvents.HasTerminalChoice(
+                && PrototypeNativeEventCompletionPages.HasTerminalChoice(
                     eventState.EventId, eventState.ChosenChoiceId))
             {
                 // These events call SetEventFinished after their effects

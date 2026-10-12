@@ -52,6 +52,12 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             var originalGold = state.Player.Gold;
             var first = Select(engine, state, "first_chest");
             var second = Select(engine, state, "second_chest");
+            Assert.Equal(RunPhase.Event, first.Phase);
+            Assert.Equal(1, first.World!.Event!.NativePageIndex);
+            Assert.Equal(RunPhase.Event, second.Phase);
+            Assert.Equal(1, second.World!.Event!.NativePageIndex);
+            first = Continue(engine, first);
+            second = Continue(engine, second);
             Assert.Equal(originalGold + evt.NativeEventGold,
                 first.Player.Gold);
             Assert.Equal(originalGold + evt.NativeEventSecondaryGold,
@@ -211,6 +217,10 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             && item.Payload.GetProperty("ChoiceId").GetString() == choice);
         return engine.Step(state, action).State;
     }
+
+    private static RunState Continue(
+        PrototypeGameEngine engine, RunState state) =>
+        engine.Step(state, GameAction.Empty("continue_event")).State;
 
     private static RunState StartUnderdocksEvent(
         PrototypeGameEngine engine, string seed)

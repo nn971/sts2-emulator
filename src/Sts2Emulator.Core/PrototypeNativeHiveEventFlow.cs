@@ -115,7 +115,7 @@ public sealed partial class PrototypeGameEngine
                 Event = eventState with
                 {
                     NativePageIndex =
-                        PrototypeNativeHiveEvents.TerminalChoicePageIndex(
+                        PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
                             eventState.EventId),
                     ChosenChoiceId = choice
                 }

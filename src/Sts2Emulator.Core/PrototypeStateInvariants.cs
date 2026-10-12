@@ -739,10 +739,10 @@ public static class PrototypeStateInvariants
                         : eventState.EventId ==
                             PrototypeNativePunchOff.EventId
                             ? eventState.NativePageIndex > 2
-                            : PrototypeNativeHiveEvents.HasTerminalChoicePage(
+                            : PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                                 eventState.EventId)
                                 ? eventState.NativePageIndex >
-                                    PrototypeNativeHiveEvents.TerminalChoicePageIndex(
+                                    PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
                                         eventState.EventId)
                                 : eventState.EventId ==
                                 "proto.native.underdocks.abyssal_baths"
@@ -760,7 +760,7 @@ public static class PrototypeStateInvariants
             && eventState.EventId != PrototypeNativeGloryEvents.BattlewornDummyId
             && eventState.EventId != PrototypeNativeEndlessConveyor.EventId
             && eventState.EventId != PrototypeNativePunchOff.EventId
-            && !PrototypeNativeHiveEvents.HasTerminalChoicePage(
+            && !PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                 eventState.EventId)
             && eventState.EventId != "proto.native.underdocks.abyssal_baths")
         {
@@ -768,13 +768,13 @@ public static class PrototypeStateInvariants
                 "Native followup page cannot have a completed choice.");
         }
 
-        if (PrototypeNativeHiveEvents.HasTerminalChoicePage(
+        if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                 eventState.EventId)
             && eventState.NativePageIndex ==
-                PrototypeNativeHiveEvents.TerminalChoicePageIndex(
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
                     eventState.EventId))
         {
-            if (!PrototypeNativeHiveEvents.HasTerminalChoice(
+            if (!PrototypeNativeEventCompletionPages.HasTerminalChoice(
                     eventState.EventId, eventState.ChosenChoiceId)
                 || eventState.PendingDeckChoice is not null
                 || eventState.PendingPotionReplacement is not null
