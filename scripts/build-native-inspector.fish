@@ -7,11 +7,18 @@ if test (count $argv) -ne 2
 end
 set -l root (realpath $argv[1])
 set -l godot (realpath $argv[2])
-set -l platform windows
-if test (uname) = Linux
-    set platform linuxbsd
+set -l data ""
+# WSL host is Linux, but its mounted Steam game may be the Windows build.
+for candidate in "$root/data_sts2_windows_x86_64" "$root/data_sts2_linuxbsd_x86_64"
+    if test -f "$candidate/sts2.dll"
+        set data "$candidate"
+        break
+    end
 end
-set -l data "$root/data_sts2_"$platform"_x86_64"
+if test -z "$data"
+    echo "No supported STS2 data directory found under $root" >&2
+    exit 1
+end
 set -l project native/Sts2ReferenceMod
 set -l dest "$root/mods/Sts2ReferenceMod"
 for file in "$data/sts2.dll" "$data/0Harmony.dll" "$data/GodotSharp.dll" "$godot"
