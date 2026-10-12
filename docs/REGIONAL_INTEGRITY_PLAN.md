@@ -63,10 +63,11 @@ Explosive Ampoule, Bottled Potential, Heart of Iron, Shackling Potion,
 Mazaleth's Gift, Radiant Tincture, Beetle Juice, Gigantification Potion,
 Clarity, Colorless Potion, Powdered Demise, Lucky Tonic and Orobic Acid, and
 excludes Ironclad-only Blood Potion and the off-pool legacy Explosive Potion;
-the 48 source pool entries are now registered.
-source-pool entries remain unimplemented.
-The full source potion pool, native replacement continuation and native RNG
-parity remain open. Prismatic Gem now implements
+all 48 pinned Silent/shared pool entries are now registered, with executable
+effects for the newly covered entries. The remaining potion gaps are the
+Alchemical Coffer's source acquisition/offer flow and RNG parity; Colorless
+Potion and Orobic Acid also draw only from currently implemented card
+catalogues. Prismatic Gem now implements
 its persistent +1 energy component, but its foreign card-pool effect is still
 missing; Sea Glass remains unimplemented. See [the Orobas
 dependency ledger](reference-builds/v0.111.0-hive-orobas-ancient.md).
