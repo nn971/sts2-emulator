@@ -6,7 +6,7 @@
 |---|---|---|
 | P0 | PARTIAL | Native-conditional loader entry; pin local v111 game, hook audit, smoke test, packaging pending |
 | P1 | PARTIAL | 0.2 records, writer, journal, identity, capture facade; real game adapters absent |
-| P2 | PARTIAL | Strict offline comparator/import coverage; actual emulator continuation and native traces absent |
+| P2 | PARTIAL | Strict offline comparator/import coverage and HTML timeline; actual emulator continuation and native traces absent |
 | P3 | PARTIAL | Decision controller contracts; native dispatcher and Godot overlay absent; optional loopback transport is implemented but not attached |
 | P4 | NOT STARTED | Broader native coverage and regression corpus |
 | P5 | DEFERRED | Exact RNG/Nature training is a separate milestone |
