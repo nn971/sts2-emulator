@@ -575,6 +575,13 @@ public static class V111Coverage
                         NativeAncientRewardsV111.TezcataraId, choice.Id)))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id is ("PAEL" or "TANX" or "VAKUU" or "NONUPEIPE")
+            && missingBranches.Length == 0
+            && engineIds.Length == 1
+            && IsIntegratedEvent(engineIds[0])
+            && HasCompleteAncientRelicBranches(engineIds[0], 10))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "TINKER_TIME" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeGloryEvents.TinkerTimeId,
                 StringComparer.Ordinal))
@@ -884,6 +891,18 @@ public static class V111Coverage
 
     private static string[] MissingBranches(V111InventoryItem item)
     {
+        if (item.Kind == "events" && item.Id == "OROBAS")
+        {
+            var supported = NativeOrobasEventV111.Definition.Choices
+                .SelectMany(choice => choice.Effects)
+                .Where(effect => effect.Kind
+                        == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId is not null)
+                .Select(effect => $"relic/{effect.RelicId!.Split('.').Last().ToUpperInvariant()}")
+                .ToHashSet(StringComparer.Ordinal);
+            return (item.Branches ?? [])
+                .Where(branch => !supported.Contains(branch)).ToArray();
+        }
         if (item.Kind == "events" && item.Id == "DARV")
         {
             var supported = NativeDarvEventV111.SupportedRelicIds
@@ -935,6 +954,35 @@ public static class V111Coverage
             or NativeTanxEventV111.EventId
             or NativeVakuuEventV111.EventId
             or NativeNonupeipeEventV111.EventId;
+    }
+
+    private static bool HasCompleteAncientRelicBranches(
+        string eventId, int expectedCount)
+    {
+        if (!PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventId))
+            return false;
+
+        var choices = PrototypeContent.Event(eventId).Choices
+            .Where(choice => choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId is not null))
+            .ToArray();
+        if (choices.Length != expectedCount)
+            return false;
+
+        var relicIds = choices.Select(choice => choice.Effects
+            .Where(effect => effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId is not null)
+            .Select(effect => effect.RelicId!)
+            .Single()).ToArray();
+        return relicIds.Distinct(StringComparer.Ordinal).Count()
+                == expectedCount
+            && relicIds.All(relicId =>
+                PrototypeContent.Relic(relicId).Id == relicId)
+            && choices.All(choice =>
+                PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                    eventId, choice.Id));
     }
 
     private static string Normalize(string value) =>

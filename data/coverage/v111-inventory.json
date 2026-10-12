@@ -11698,7 +11698,7 @@
         "relic/LOOMING_FRUIT",
         "relic/SIGNET_RING"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
@@ -11744,7 +11744,7 @@
         "relic/PAELS_TOOTH",
         "relic/PAELS_WING"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
@@ -12163,7 +12163,7 @@
         "relic/TRI_BOOMERANG",
         "relic/WAR_HAMMER"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
@@ -12433,7 +12433,7 @@
         "relic/SERE_TALON",
         "relic/WHISPERING_EARRING"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

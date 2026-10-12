@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "c14320693ac48c78827a1e11c56a9a6824221626d8adce53dfa0e83abe641042",
+  "inventory_file_sha256": "5223345c7280ece663b523785293cede4978d6141b790674469685f0883b4052",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "63d9cf3a5f6499008b01a55a3131eaeab578ffd95684149b16cb728ceea8f19c",
+    "inventory_hash": "db0afe52428df5393d6b9551ed48aa27c6e1404f71ee19f7e8de7d7e3ea884ac",
     "items": [
       {
         "catalogued": true,
@@ -15496,21 +15496,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Nonupeipe.cs#beaf1b558150881c7072e07b7481d1671b52489d79a4eccb2f409c5c3b9c8d0f"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "relic/BEAUTIFUL_BRACELET",
-          "relic/BLESSED_ANTLER",
-          "relic/BRILLIANT_SCARF",
-          "relic/DELICATE_FROND",
-          "relic/DIAMOND_DIADEM",
-          "relic/FUR_COAT",
-          "relic/GLITTER",
-          "relic/JEWELRY_BOX",
-          "relic/LOOMING_FRUIT",
-          "relic/SIGNET_RING"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "NONUPEIPE",
         "registered": true,
@@ -15529,16 +15518,8 @@
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [
-          "relic/ALCHEMICAL_COFFER",
-          "relic/ARCHAIC_TOOTH",
-          "relic/DRIFTWOOD",
-          "relic/ELECTRIC_SHRYMP",
-          "relic/GLASS_EYE",
           "relic/PRISMATIC_GEM",
-          "relic/RADIANT_PEARL",
-          "relic/SAND_CASTLE",
-          "relic/SEA_GLASS",
-          "relic/TOUCH_OF_OROBAS"
+          "relic/SEA_GLASS"
         ],
         "missing_variants": [],
         "native_id": "OROBAS",
@@ -15554,21 +15535,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Pael.cs#786e42c9c20f1c2e2da81ee7d7996af01857f14535fe81d5c1d74b1edf3c5fc0"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "relic/PAELS_BLOOD",
-          "relic/PAELS_CLAW",
-          "relic/PAELS_EYE",
-          "relic/PAELS_FLESH",
-          "relic/PAELS_GROWTH",
-          "relic/PAELS_HORN",
-          "relic/PAELS_LEGION",
-          "relic/PAELS_TEARS",
-          "relic/PAELS_TOOTH",
-          "relic/PAELS_WING"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "PAEL",
         "registered": true,
@@ -15953,21 +15923,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Tanx.cs#d2b62cb767fa7d510f0ae4900a29bd22df0fbb933fcdaebebbd13da6c1475c56"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "relic/CLAWS",
-          "relic/CROSSBOW",
-          "relic/IRON_CLUB",
-          "relic/MEAT_CLEAVER",
-          "relic/SAI",
-          "relic/SPIKED_GAUNTLETS",
-          "relic/TANXS_WHISTLE",
-          "relic/THROWING_AXE",
-          "relic/TRI_BOOMERANG",
-          "relic/WAR_HAMMER"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "TANX",
         "registered": true,
@@ -16187,21 +16146,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Vakuu.cs#f889c0428921f664bc52c119574ef8978a910f85a5cfffac70f71e1fc690a84b"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "relic/BLOOD_SOAKED_ROSE",
-          "relic/CHOICES_PARADOX",
-          "relic/DISTINGUISHED_CAPE",
-          "relic/FIDDLE",
-          "relic/JEWELED_MASK",
-          "relic/LORDS_PARASOL",
-          "relic/MUSIC_BOX",
-          "relic/PRESERVED_FOG",
-          "relic/SERE_TALON",
-          "relic/WHISPERING_EARRING"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "VAKUU",
         "registered": true,
@@ -29498,7 +29446,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 46,
+        "implemented": 50,
         "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,

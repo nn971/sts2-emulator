@@ -126,8 +126,9 @@ pet identity, doubles positive player card block while ready, then cools down
 for two player turns. Pael's act-entry fixture now builds the three ordered
 source pools, applies the deck and event-pet eligibility rules, samples with
 three persisted native event-context draws, and validates the exact offers and
-cursor after snapshot/fork. This does not yet select Pael as Hive's normal
-Ancient or establish live RNG parity. Pael's conditional Legion offer and
+cursor after snapshot/fork. Configured run-start assignments dispatch Pael at
+the Hive boundary; native UpFront assignment and offer cursor parity remain
+open. Pael's conditional Legion offer and
 Overgrowth's Byrdonis Nest now use the same source `HasEventPet` rule. See the
 [Pael dependency audit](reference-builds/v0.111.0-pael-reward-dependencies.md).
 
