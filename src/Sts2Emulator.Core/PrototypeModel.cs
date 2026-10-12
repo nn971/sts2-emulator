@@ -809,7 +809,8 @@ public sealed record PrototypeRelicDefinition(
     bool AddsPet = false,
     int PowerCardEnergyCostIncrease = 0,
     string? PersistentTriggerCountProperty = null,
-    int AdditionalCardPlayCountOncePerCombat = 0);
+    int AdditionalCardPlayCountOncePerCombat = 0,
+    int? FreeCardAtManualCardPlayCount = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

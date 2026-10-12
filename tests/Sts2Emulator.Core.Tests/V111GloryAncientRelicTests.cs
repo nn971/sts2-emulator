@@ -159,6 +159,91 @@ public sealed class V111GloryAncientRelicTests
     }
 
     [Fact]
+    public void BrilliantScarfMakesTheFifthManualCardPlayFree()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-brilliant-scarf");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var empty = PrototypeJson.EmptyObject();
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new(1, "proto.silent.strike", 0, empty),
+                    new(2, "proto.silent.strike", 0, empty),
+                    new(3, "proto.silent.strike", 0, empty),
+                    new(4, "proto.silent.strike", 0, empty),
+                    new(5, "proto.silent.strike", 0, empty)
+                ],
+                Relics = [..state.Player.Relics,
+                    new RelicInstance(
+                        NativeGloryAncientsV111.BrilliantScarfId, empty)]
+            },
+            World = state.World! with
+            {
+                NextCardInstanceId = 6,
+                Map = new MapState(
+                    [new MapNodeState("scarf-combat", 1, 1,
+                        PrototypeRoomType.Combat, [])],
+                    EntryNodeIds: ["scarf-combat"])
+            }
+        };
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload("scarf-combat"))).State;
+        var combat = state.World!.Combat!;
+        var cardInstanceId = combat.Hand[0];
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Energy = 0,
+                    Counters = combat.CounterState with
+                    {
+                        CardsPlayedThisTurn = 3,
+                        ManualCardsPlayedThisTurn = 3
+                    }
+                }
+            }
+        };
+
+        Assert.DoesNotContain(engine.GetLegalActions(state), action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == cardInstanceId);
+
+        combat = state.World!.Combat!;
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Counters = combat.CounterState with
+                    {
+                        CardsPlayedThisTurn = 4,
+                        ManualCardsPlayedThisTurn = 4
+                    }
+                }
+            }
+        };
+        var fifthPlay = engine.GetLegalActions(state).First(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == cardInstanceId);
+
+        state = engine.Step(state, fifthPlay).State;
+
+        Assert.Equal(0, state.World!.Combat!.Energy);
+        Assert.Equal(5,
+            state.World.Combat.CounterState.ManualCardsPlayedThisTurn);
+    }
+
+    [Fact]
     public void LoomingFruitAdds31CurrentAndMaximumHpWhenAcquired()
     {
         var initial = PrototypeNativeUnderdocksRunFactory.Create(

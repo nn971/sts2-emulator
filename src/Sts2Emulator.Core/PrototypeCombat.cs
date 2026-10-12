@@ -8009,6 +8009,15 @@ public sealed partial class PrototypeGameEngine
         CombatCardInstance card,
         PrototypeCardDefinition definition)
     {
+        if ((combat.Relics ?? Array.Empty<CombatRelicState>())
+            .Where(relic => !relic.IsMelted)
+            .Any(relic => PrototypeContent.Relic(relic.RelicId)
+                .FreeCardAtManualCardPlayCount
+                    == combat.CounterState.ManualCardsPlayedThisTurn))
+        {
+            return 0;
+        }
+
         var baseCost = card.TemporaryEnergyCost is not null
             ? card.TemporaryEnergyCost.Cost
             : (card.Enchantment?.Kind == PrototypeCardEnchantmentKind.TezcatarasEmber

@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,783 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,784 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -185,8 +185,10 @@ regional entry/branch has direct integration and semantic coverage.
   dependencies are implemented and tested through reward/combat resolution.
   Tanx's offer generation and all ten relic branches run through a named
   Ancient fixture; ordinary Glory Ancient assignment remains gated. This
-  does not add Nonupeipe or Vakuu, or complete normal Tanx run integration. See the
-  [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
+  does not complete normal Tanx run integration. Individual Nonupeipe
+  dependencies now include Jewelry Box/Apotheosis and Brilliant Scarf; the
+  event offer sequence and ordinary Ancient assignment remain gated. Vakuu
+  remains unavailable. See the [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.
 

@@ -17,6 +17,7 @@ public static class NativeGloryAncientsV111
     public const string SpikedGauntletsId = "proto.native.ancient.spiked_gauntlets";
     public const string SignetRingId = "proto.native.ancient.signet_ring";
     public const string JewelryBoxId = "proto.native.ancient.jewelry_box";
+    public const string BrilliantScarfId = "proto.native.ancient.brilliant_scarf";
     public const string ApotheosisCardId = "proto.native.ancient.apotheosis";
     public const string TriBoomerangId = "proto.native.ancient.tri_boomerang";
     public const string ClawsId = "proto.native.ancient.claws";
@@ -91,7 +92,9 @@ public static class NativeGloryAncientsV111
             new(PrototypeRunEventKind.RelicAcquired,
                 [new(PrototypeRunEffectKind.AddCard,
                     CardId: ApotheosisCardId)])
-        ])
+        ]),
+        new(BrilliantScarfId, "Brilliant Scarf",
+            FreeCardAtManualCardPlayCount: 4)
     ];
 
     public static PrototypeCardDefinition[] Cards { get; } =
