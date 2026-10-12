@@ -78,6 +78,52 @@ public sealed partial class PrototypeGameEngine
                         world.Act)]);
             }
 
+            case PrototypeRunEffectKind.OfferFiveClassCards:
+            {
+                var cards = PickRewardCards(world.Act, 5, state.Rng);
+                if (cards.Length != 5)
+                {
+                    throw new InvalidOperationException(
+                        "Brain Leech requires five distinct class cards.");
+                }
+
+                return new RewardState(
+                    SourceRoom: prefix,
+                    CardOptions: cards,
+                    PotionOption: null,
+                    RelicOption: null,
+                    CardResolved: false,
+                    PotionResolved: true,
+                    RelicResolved: true,
+                    EndsAct: false,
+                    CardRewardGenerators:
+                    [new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RewardPool,
+                        world.Act)]);
+            }
+
+            case PrototypeRunEffectKind.OfferThreeColorlessCards:
+            {
+                var pool = PrototypeColorlessCards
+                    .ImplementedCombatGenerationPool;
+                if (pool.Length < 3)
+                {
+                    throw new InvalidOperationException(
+                        "Brain Leech requires three implemented colorless cards.");
+                }
+
+                return new RewardState(
+                    SourceRoom: prefix,
+                    CardOptions: PickDistinct(
+                        pool, 3, state.Rng, "reward"),
+                    PotionOption: null,
+                    RelicOption: null,
+                    CardResolved: false,
+                    PotionResolved: true,
+                    RelicResolved: true,
+                    EndsAct: false);
+            }
+
             case PrototypeRunEffectKind.OfferCardBundles:
             {
                 var commons = PrototypeContent.NativeSilentRewardCardPool

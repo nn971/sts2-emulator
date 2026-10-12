@@ -90,6 +90,7 @@ public static class ExperimentalSilentThreeActRouteV111
     // misrepresented as an executable event despite its native ID.
     public static readonly string[] HiveEvents =
     [
+        PrototypeNativeBrainLeech.EventId,
         PrototypeNativeHiveEvents.AmalgamatorId,
         PrototypeNativeLaterActs.HiveBugslayerId,
         PrototypeNativeHiveEvents.ColossalFlowerId,

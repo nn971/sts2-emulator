@@ -6760,6 +6760,7 @@ public static class PrototypeContent
         }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
             .Concat(PrototypeNativeUnderdocksEvents.Definitions)
             .Concat(PrototypeNativeLaterActs.Events)
+            .Append(PrototypeNativeBrainLeech.Definition)
             .Concat(PrototypeNativeHiveEvents.Definitions)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)

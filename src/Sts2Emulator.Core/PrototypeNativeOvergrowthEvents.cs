@@ -292,6 +292,7 @@ public static class PrototypeNativeOvergrowthEvents
     public static string[] RegionEventIds { get; } =
     [
         "proto.native.event.aroma_of_chaos",
+        PrototypeNativeBrainLeech.EventId,
         "proto.native.event.byrdonis_nest",
         "proto.native.event.dense_vegetation",
         "proto.native.event.jungle_maze_adventure",

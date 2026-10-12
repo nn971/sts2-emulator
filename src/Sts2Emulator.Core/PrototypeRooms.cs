@@ -1420,6 +1420,8 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeRunEffectKind.OfferThreeRareCards:
                 case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
+                case PrototypeRunEffectKind.OfferFiveClassCards:
+                case PrototypeRunEffectKind.OfferThreeColorlessCards:
                 case PrototypeRunEffectKind.OfferCardBundles:
                 case PrototypeRunEffectKind.OfferNeowsBonesRelics:
                 case PrototypeRunEffectKind.OfferRandomRelic:
@@ -3423,7 +3425,9 @@ public sealed partial class PrototypeGameEngine
                     "take_reward_card",
                     new ChooseCardPayload(index)))
                 .ToList();
-            actions.Add(GameAction.Empty("skip_reward_card"));
+            if (!PrototypeNativeBrainLeech.IsForcedClassCardReward(
+                    RequireWorld(state).Event, reward))
+                actions.Add(GameAction.Empty("skip_reward_card"));
             if (CreateDriftwoodRerollAction(
                     state.Player, reward, 0) is { } reroll)
                 actions.Add(reroll);
@@ -3524,6 +3528,14 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var reward = world.Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
+        if (PrototypeNativeBrainLeech.IsForcedClassCardReward(
+                world.Event, reward)
+            && !reward.CardResolved
+            && action.Kind is "skip_reward_card" or "leave_reward")
+        {
+            throw new InvalidOperationException(
+                "Brain Leech's Share Knowledge reward requires choosing a card.");
+        }
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
         var nativeRunRng = state.NativeRunRng?.Fork();

@@ -11,12 +11,17 @@ relic branches. Calling Bell adds its Eternal Curse and Common, Uncommon and
 Rare relic rewards; Dusty Tome adds an upgraded Wraith Form; Pandora's Box
 transforms Strike and Defend cards. Ectoplasm and Sozu are offered only in
 Hive. Exact RNG and fidelity inspection are follow-up work; act assignment
-still uses prototype event randomness.
+still uses prototype event randomness. Aroma of Chaos preserves its
+choice-specific follow-up page after transforming or upgrading a card. Brain
+Leech is integrated in Overgrowth, Underdocks and Hive: Share Knowledge offers
+five Silent cards and requires one selection, while Rip the Leech Off costs
+5 HP and offers three implemented colorless cards.
 Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C# tests
 passed, including the eight synthetic full-route cases and Ancient
 acquisition/assignment coverage. The latest solution build and coverage-baseline
-check pass; the new paths were not tested in these updates. The coverage report
-records 47 integrated event paths, with native validation unverified.
+check pass; the event paths in this update were not tested. The coverage report
+records 48 integrated event paths and three complete event implementations;
+native validation remains unverified.
 
 # v111 implementation status
 

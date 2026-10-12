@@ -440,6 +440,8 @@ public enum PrototypeRunEffectKind
     GainRandomRareCard,
     OfferThreeRareCards,
     OfferThreeCardsAndPotion,
+    OfferFiveClassCards,
+    OfferThreeColorlessCards,
     OfferCardBundles,
     OfferRandomRelic,
     OfferNeowsBonesRelics,

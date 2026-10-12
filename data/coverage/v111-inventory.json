@@ -11200,7 +11200,7 @@
         "page/RIP",
         "page/SHARE_KNOWLEDGE"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
