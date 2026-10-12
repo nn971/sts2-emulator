@@ -128,6 +128,41 @@ public sealed class V111GloryAncientRelicTests
         Assert.Equal(20, state.World.Combat.PlayerBlock);
     }
 
+    [Fact]
+    public void SaiGrants7BlockAtEachPlayerSideTurnStart()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-sai");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = [..state.Player.Relics,
+                    new RelicInstance(NativeGloryAncientsV111.SaiId,
+                        PrototypeJson.EmptyObject())]
+            },
+            World = state.World! with
+            {
+                Map = new MapState(
+                    [new MapNodeState("sai-combat", 1, 1,
+                        PrototypeRoomType.Combat, [])],
+                    EntryNodeIds: ["sai-combat"])
+            }
+        };
+
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload("sai-combat"))).State;
+        Assert.Equal(7, state.World!.Combat!.PlayerBlock);
+
+        state = engine.Step(state, engine.GetLegalActions(state)
+            .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(2, state.World!.Combat!.Turn);
+        Assert.Equal(7, state.World.Combat.PlayerBlock);
+    }
+
     private static RelicInstance Relic(string id) =>
         new(id, PrototypeJson.EmptyObject());
 }

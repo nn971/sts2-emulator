@@ -7,6 +7,7 @@ public static class NativeGloryAncientsV111
 {
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
     public const string LoomingFruitId = "proto.native.ancient.looming_fruit";
+    public const string SaiId = "proto.native.ancient.sai";
     public const string SignetRingId = "proto.native.ancient.signet_ring";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
@@ -20,6 +21,11 @@ public static class NativeGloryAncientsV111
         [
             new(PrototypeRunEventKind.RelicAcquired,
                 [new(PrototypeRunEffectKind.GainMaxHp, 31)])
+        ]),
+        new(SaiId, "Sai", Triggers:
+        [
+            new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                [new(PrototypeCombatEffectKind.GainPlayerBlock, 7)])
         ]),
         new(SignetRingId, "Signet Ring", RunTriggers:
         [
