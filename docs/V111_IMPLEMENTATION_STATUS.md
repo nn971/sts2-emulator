@@ -1048,3 +1048,10 @@ Added the Silent rare relic **Paper Krane**. Weak enemy attacks against the
 player use a 60% damage multiplier (the base Weak multiplier is 75%); Weak
 does not reduce enemy non-attack damage. Source:
 [PaperKrane.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/PaperKrane.cs).
+Tingsha and Tough Bandages now require a player-side discard, matching their
+native owner/current-side guard. End-of-turn hand cleanup now dispatches
+discard hooks before player hand-cleanup powers expire. Tingsha deals 3
+unpowered damage to a random living enemy; Tough Bandages grants 3 Block. Both
+remain in their native Uncommon/Rare reward pools. Sources:
+[Tingsha.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/Tingsha.cs),
+[ToughBandages.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/ToughBandages.cs).

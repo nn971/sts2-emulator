@@ -28775,8 +28775,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Tingsha.cs#6229a87a90dd90e48a3af54bfbcc67424cf853f175760da6dc70dbb34ff800a7"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28863,8 +28863,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ToughBandages.cs#860aa8aff3813a08399488e6eadebcf486f5e02f19c1bf46dfb43f674867827d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29614,8 +29614,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 11,
-        "integrated": 11,
+        "implemented": 13,
+        "integrated": 13,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

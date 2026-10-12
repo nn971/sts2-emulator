@@ -762,7 +762,8 @@ public sealed record PrototypeRelicTriggerSpec(
     int? MaxTriggersPerCounterWindow = null,
     int? MaxAttacksPlayedLastTurn = null,
     bool RequiresEmptyHand = false,
-    string? RequiredSourceCardTag = null);
+    string? RequiredSourceCardTag = null,
+    bool RequiresPlayerSide = false);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
@@ -1745,7 +1746,8 @@ public sealed record PrototypeChoiceResolutionContinuationState(
     bool RemoveSourceCardOnCompletion = false,
     bool SourceCardAlreadyMoved = false,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
-    PrototypeChoiceResolutionContinuationState? Parent = null)
+    PrototypeChoiceResolutionContinuationState? Parent = null,
+    bool CompletePlayerHandCleanup = false)
 {
     public PrototypeChoiceResolutionContinuationState Fork() => this with
     {
@@ -1893,7 +1895,8 @@ public sealed record CombatState(
     PrototypeCombatPetState[]? Pets = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string? CurrentMapNodeId = null,
-    int PotionExtraTurnsPending = 0)
+    int PotionExtraTurnsPending = 0,
+    bool IsPlayerSideActive = true)
 {
     public CombatState Fork() => this with
     {

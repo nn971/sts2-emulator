@@ -481,6 +481,48 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TINGSHA"
+            && engineIds.Contains("proto.relic.tingsha",
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains("proto.relic.tingsha",
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                "proto.relic.tingsha", out var tingshaRarity)
+            && tingshaRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic("proto.relic.tingsha").Triggers?.Any(
+                trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.CardDiscarded
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                        && effect.Amount == 3
+                        && effect.Target
+                            == PrototypeEffectTarget.RandomEnemy)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TOUGH_BANDAGES"
+            && engineIds.Contains("proto.relic.tough_bandages",
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                "proto.relic.tough_bandages", StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                "proto.relic.tough_bandages", out var bandagesRarity)
+            && bandagesRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic("proto.relic.tough_bandages").Triggers?
+                .Any(trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.CardDiscarded
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.GainPlayerBlock
+                        && effect.Amount == 3)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";

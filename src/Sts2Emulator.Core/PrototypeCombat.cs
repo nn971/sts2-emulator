@@ -1900,6 +1900,14 @@ public sealed partial class PrototypeGameEngine
                         !etherealSet.Contains(instanceId)
                         && !retainedSet.Contains(instanceId))
                     .ToArray();
+                var discardEvents = discarded.Select(cardInstanceId =>
+                {
+                    var card = RequireCombatCard(combat, cardInstanceId);
+                    return new PrototypeCombatEvent(
+                        PrototypeCombatEventKind.CardDiscarded,
+                        SourceCardInstanceId: cardInstanceId,
+                        CardId: card.CardId);
+                }).ToArray();
 
                 combat = combat with
                 {
@@ -1923,13 +1931,21 @@ public sealed partial class PrototypeGameEngine
                     combat = exhausted.Combat;
                 }
 
-                combat = ClearTemporaryCardKeywordOverrides(
+                var discardHooks = ResumeChoiceResolutionContinuation(
+                    player,
                     combat,
-                    PrototypeCardKeywordOverrideExpiry.EndOfTurn);
-                combat = DecrementPlayerPowers(
-                    combat,
-                    definition =>
-                        definition.DecrementAfterHandCleanup);
+                    state.Rng,
+                    new PrototypeChoiceResolutionContinuationState(
+                        SourceCardInstanceId: null,
+                        SourceCardDestination: PrototypeCardZone.DiscardPile,
+                        Operations: [],
+                        PendingDiscardEvents: discardEvents,
+                        PendingSlyCardInstanceIds: [],
+                        CompletionEvents: [],
+                        CompletePlayerHandCleanup: true),
+                    resumeCardPlaySeries: false);
+                player = discardHooks.Player;
+                combat = discardHooks.Combat;
 
                 break;
             }
@@ -1938,6 +1954,12 @@ public sealed partial class PrototypeGameEngine
                 if (automaticStep.Stage is null)
                 {
                     throw new InvalidOperationException("Enemy-status pipeline step is missing a stage.");
+                }
+
+                if (automaticStep.Stage.Value
+                    == PrototypeTurnStage.EnemyTurnStart)
+                {
+                    combat = combat with { IsPlayerSideActive = false };
                 }
 
                 // Sandpit kills the affected player as it reaches
@@ -10520,6 +10542,12 @@ public sealed partial class PrototypeGameEngine
             combat = GrantEnemyAllyBlockOnPlayerTurnStart(combat);
         }
 
+        if (combatEvent.Kind
+            == PrototypeCombatEventKind.PlayerSideTurnStarted)
+        {
+            combat = combat with { IsPlayerSideActive = true };
+        }
+
         combat = RecordCombatCounterEvent(combat, combatEvent);
         combat = ResolveNativeGloryBossCardHooks(combat, combatEvent);
         combat = RefreshNativeHiveVitalSpark(combat);
@@ -10750,6 +10778,8 @@ public sealed partial class PrototypeGameEngine
             {
                 var trigger = triggers[triggerIndex];
                 if (trigger.EventKind != combatEvent.Kind
+                    || (trigger.RequiresPlayerSide
+                        && !combat.IsPlayerSideActive)
                     || (trigger.RequiredSourceCardType is not null
                         && (combatEvent.CardId is null
                             || PrototypeContent.Card(
@@ -11460,7 +11490,8 @@ public sealed partial class PrototypeGameEngine
                 player,
                 combat,
                 continuation.PendingDiscardEvents[eventIndex],
-                rng);
+                rng,
+                allowSuspension: true);
             player = dispatched.Player;
             combat = dispatched.Combat;
 
@@ -11478,6 +11509,20 @@ public sealed partial class PrototypeGameEngine
                     remaining);
                 return (player, combat);
             }
+        }
+
+        if (continuation.CompletePlayerHandCleanup)
+        {
+            combat = ClearTemporaryCardKeywordOverrides(
+                combat,
+                PrototypeCardKeywordOverrideExpiry.EndOfTurn);
+            combat = DecrementPlayerPowers(
+                combat,
+                definition => definition.DecrementAfterHandCleanup);
+            continuation = continuation with
+            {
+                CompletePlayerHandCleanup = false
+            };
         }
 
         for (var slyIndex = 0;

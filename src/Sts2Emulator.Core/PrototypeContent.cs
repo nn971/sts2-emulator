@@ -3032,7 +3032,8 @@ public static class PrototypeContent
                             new(
                                 PrototypeCombatEffectKind.GainPlayerBlock,
                                 3)
-                        ])
+                        ],
+                        RequiresPlayerSide: true)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.tingsha",
@@ -3047,7 +3048,8 @@ public static class PrototypeContent
                                 3,
                                 Target:
                                     PrototypeEffectTarget.RandomEnemy)
-                        ])
+                        ],
+                        RequiresPlayerSide: true)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.hovering_kite",
