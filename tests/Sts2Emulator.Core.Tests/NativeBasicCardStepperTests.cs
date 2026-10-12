@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Sts2Emulator.Core;
 
 namespace Sts2Emulator.Core.Tests;
@@ -158,4 +159,95 @@ public sealed class NativeBasicCardStepperTests
         Assert.Equal("RULE_PROJECTION_MISMATCH", mismatch.Status);
         Assert.Equal("NOT_TESTED", mismatch.EmulatorParity);
     }
+    [Fact]
+    public void IndependentVisibleStepMatchesAllCapturedFieldsInSyntheticStrike()
+    {
+        using var before = JsonDocument.Parse(BeforeState());
+        // Synthetic expectation is independently assembled by the test: no
+        // native fixture post-state feeds the actual state stepper.
+        var expected = JsonNode.Parse(BeforeState())!.AsObject();
+        var combat = expected["combat"]!.AsObject();
+        combat["energy"] = 2;
+        combat["creatures"]!.AsArray()[1]!["hp"] = 35;
+        var hand = combat["hand"]!.AsArray();
+        var card = hand[0]!.DeepClone();
+        hand.RemoveAt(0);
+        combat["discard_pile"]!.AsArray().Add(card);
+
+        var action = new {
+            kind = "play_card",
+            payload = new { card_instance_id = 0, target_id = "creature:1" }
+        };
+        var fixture = JsonSerializer.SerializeToElement(new {
+            status = "RECORDED_NATIVE_EXPECTATION",
+            pre_state = before.RootElement,
+            post_state = expected,
+            selected_action = action
+        });
+        var result = NativeVisibleSliceComparer.Check(fixture);
+        Assert.Equal("VISIBLE_SLICE_CONSISTENT", result.Status);
+        Assert.Equal("NOT_TESTED", result.EmulatorParity);
+        Assert.Null(result.FirstDifferencePath);
+        Assert.NotNull(result.ProjectedPostState);
+        Assert.Contains("RNG_CONTINUATION_UNOBSERVED", result.UnverifiedContinuation);
+
+        // Perturb actual observation, not the independent computation.
+        expected["combat"]!["creatures"]![1]!["hp"] = 36;
+        var mismatchedFixture = JsonSerializer.SerializeToElement(new {
+            status = "RECORDED_NATIVE_EXPECTATION",
+            pre_state = before.RootElement,
+            post_state = expected,
+            selected_action = action
+        });
+        var mismatch = NativeVisibleSliceComparer.Check(mismatchedFixture);
+        Assert.Equal("VISIBLE_SLICE_MISMATCH", mismatch.Status);
+        Assert.Equal("$.combat.creatures[1].hp", mismatch.FirstDifferencePath);
+        Assert.Equal("NOT_TESTED", mismatch.EmulatorParity);
+    }
+
+    [Fact]
+    public void VisibleStepRejectsPowersRatherThanClaimingReplay()
+    {
+        using var before = JsonDocument.Parse(BeforeState(playerPowers:
+            """[{"model_id":"Strength","amount":1}]"""));
+        var fixture = JsonSerializer.SerializeToElement(new {
+            status = "RECORDED_NATIVE_EXPECTATION",
+            pre_state = before.RootElement,
+            post_state = before.RootElement,
+            selected_action = new {
+                kind = "play_card",
+                payload = new { card_instance_id = 0, target_id = "creature:1" }
+            }
+        });
+        var result = NativeVisibleSliceComparer.Check(fixture);
+        Assert.Equal("UNSUPPORTED", result.Status);
+        Assert.Equal("NOT_TESTED", result.EmulatorParity);
+    }
+
+    [Fact]
+    public void VisibleStepUpdatesBothPlayerBlockRepresentationsForDefend()
+    {
+        using var before = JsonDocument.Parse(BeforeState("DEFEND_SILENT", "Self"));
+        var native = JsonNode.Parse(BeforeState("DEFEND_SILENT", "Self"))!.AsObject();
+        native["player"]!["block"] = 5;
+        native["combat"]!["creatures"]![0]!["block"] = 5;
+        native["combat"]!["energy"] = 2;
+        var hand = native["combat"]!["hand"]!.AsArray();
+        var played = hand[0]!.DeepClone();
+        hand.RemoveAt(0);
+        native["combat"]!["discard_pile"]!.AsArray().Add(played);
+        var fixture = JsonSerializer.SerializeToElement(new {
+            status = "RECORDED_NATIVE_EXPECTATION",
+            pre_state = before.RootElement,
+            post_state = native,
+            selected_action = new {
+                kind = "play_card",
+                payload = new { card_instance_id = 0, target_id = (string?)null }
+            }
+        });
+        var result = NativeVisibleSliceComparer.Check(fixture);
+        Assert.Equal("VISIBLE_SLICE_CONSISTENT", result.Status);
+        Assert.Equal("NOT_TESTED", result.EmulatorParity);
+    }
+
 }
