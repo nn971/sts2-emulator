@@ -25,7 +25,13 @@ or exit 1
 dotnet build "$project/Sts2ReferenceMod.csproj" -c Release -p:Sts2DataDir="$data"
 or exit 1
 mkdir -p "$dest"
-cp "$project/bin/Release/net9.0/Sts2ReferenceMod.dll" "$dest/"
+for dll in Sts2ReferenceMod.dll Sts2Emulator.Trace.dll Sts2Emulator.Core.dll
+    if not test -f "$project/bin/Release/net9.0/$dll"
+        echo "Missing build output: $dll" >&2
+        exit 1
+    end
+    cp "$project/bin/Release/net9.0/$dll" "$dest/"
+end
 cp "$project/Sts2ReferenceMod.json" "$dest/"
 cp "$project/mod_manifest.json" "$dest/"
 pushd "$project"
@@ -39,5 +45,6 @@ if test $result -ne 0
     exit 1
 end
 echo "Installed development mod at $dest"
-echo "To opt in to passive recording, start the game with STS2_FIDELITY_CAPTURE=1"
+echo "To opt in to passive recording, set STS2_FIDELITY_CAPTURE=1"
+echo "Also set STS2_FIDELITY_EXPECT_SHA256 to the local sts2.dll SHA-256 in build-pin.json"
 echo "Without this setting the mod remains inactive."
