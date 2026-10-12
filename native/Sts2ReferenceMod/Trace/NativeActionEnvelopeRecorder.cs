@@ -43,6 +43,18 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
 
     public bool IsIncomplete => _incomplete;
 
+    public void ObservationFailure(string stage, string exceptionType)
+    {
+        if (_closed) return;
+        _incomplete = true;
+        Write(new NativeActionEnvelopeRecord(
+            "observation_failure", Next(),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                stage, exception_type = exceptionType
+            })));
+    }
+
     public void Start(
         object action, string type, JsonElement? state,
         GameAction? canonicalAction = null)
@@ -56,6 +68,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 "anomaly", Next(), Data: Data("duplicate_action_start", type)));
             return;
         }
+        if (state is null) ObservationFailure("action_start_snapshot", "STATE_UNAVAILABLE");
         long id = ++_nextActionId;
         long? parent = _activeOrder.Count == 0 ? null : _activeOrder[^1];
         _running.Add(action, id);
@@ -78,6 +91,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 State: Snapshot(state)));
             return;
         }
+        if (state is null) ObservationFailure("action_complete_snapshot", "STATE_UNAVAILABLE");
         int index = _activeOrder.LastIndexOf(id);
         if (index >= 0) _activeOrder.RemoveAt(index);
         Write(new NativeActionEnvelopeRecord(
