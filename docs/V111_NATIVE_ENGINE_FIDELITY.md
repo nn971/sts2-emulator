@@ -109,6 +109,40 @@ or complete game parity. Diagnostic event types in the original
 Inspector trace remain observations rather than a validated full
 source-hook execution journal.
 
+## Ordered emulator-side event journal (diagnostic only)
+
+The real-engine checkpoint now wraps the unchanged `PrototypeGameEngine.Step`
+in a scoped, opt-in `NativeEngineEventJournalV111` and includes an
+`emulator_event_journal` array in the output. The source of each entry is
+an actual execution site in the emulator:
+
+- `resource / energy_spent`: the card energy subtraction in `PlayCard`.
+- `card / card_play_started`: the card execution entry after payment.
+- `effect_operation / <kind>`: a queued combat operation selected for execution
+  after predicate and target resolution.
+- `effect_result / enemy_damage`: the resulting unblocked damage after
+  `DamageEnemyInternal`.
+- `combat_event_dispatch / <kind>`: entry into the actual
+  `DispatchCombatEvent` pipeline, before subscribers are processed.
+
+Each entry includes a step-local sequence number and applicable card-instance
+ID, target enemy-instance ID and amount. Async-local nested scope restoration
+avoids leaking observations across independent comparisons. The instrumented
+sites only append observations; they do not change game state, consume RNG or
+alter the existing effect dispatcher.
+
+**Important**: These kinds describe **emulator execution order**. The existing
+native Inspector's `HistoryEventProjector` describes the order in which native
+combat-history entries were observed. Source callback invocation time and
+combat-history publication time can differ. An equal-looking sequence is
+therefore **diagnostic correlation**, not verified native hook-order parity.
+The journal is currently separate from the 47 visible-state equality checks
+and `native_game_parity` stays `NOT_TESTED`.
+
+A proper event-order parity gate will require source-defined native callback
+boundaries, stable nested-choice decisions, coverage declarations, and matching
+semantic mapping between both sides.
+
 ## Next gates for Inspector and emulator
 
 - Expose trustworthy battle/encounter identity, actual act/ascension,
