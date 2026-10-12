@@ -25,6 +25,9 @@ public sealed record NativeCombatRngV111(
 /// MonsterModel.RollMove uses run.monster_ai; these are different from the
 /// encounter's local formation RNG and each MonsterModel's own Rng.
 /// </summary>
+public sealed record NativeInitialHpAuditV111(
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 public static class NativeCombatRngEntryV111
 {
     /// <summary>
@@ -40,6 +43,18 @@ public static class NativeCombatRngEntryV111
     /// AfterAddedToRoom HP hooks and later scaling are separate boundaries.
     /// </summary>
     public static CombatState AttachAndRollInitialHp(
+        CombatState combat,
+        NativeEncounterFormationV111 formation,
+        RngBundle nativeRunStreams) =>
+        AttachAndRollInitialHpWithAudit(combat, formation, nativeRunStreams).Combat;
+
+    /// <summary>
+    /// Audited first RNG seam. This always uses the native provider and
+    /// preserves the historical native combat state hash/cursors. Scripted
+    /// outcomes can be checked against the returned transcript independently;
+    /// persisting controlled combat continuations is the later D3 milestone.
+    /// </summary>
+    public static NativeInitialHpAuditV111 AttachAndRollInitialHpWithAudit(
         CombatState combat,
         NativeEncounterFormationV111 formation,
         RngBundle nativeRunStreams)
@@ -68,6 +83,8 @@ public static class NativeCombatRngEntryV111
 
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var usedHp = new HashSet<int>();
+        var chooser = new NativeRandomIndexProviderV111();
+        var choices = new List<RandomIndexDecisionV111>(enemies.Length);
         for (var index = 0; index < enemies.Length; index++)
         {
             var enemy = enemies[index];
@@ -94,17 +111,24 @@ public static class NativeCombatRngEntryV111
                 ? possible
                 : Enumerable.Range(
                     range.Min, checked(range.Max - range.Min + 1)).ToArray();
-            // The native NextItem also consumes one draw for a singleton.
-            var roll = NativeRngV111.NextInt(
-                fresh.RunStreams, "run.niche", pool.Length);
-            var hp = pool[roll];
+            // Candidate eligibility and creation order are owned by mechanics.
+            // The native provider consumes the same NextInt as before,
+            // including a singleton pool. Outcome identity is an INDEX into
+            // the ordered pool, not an independently re-sampled HP number.
+            var request = new RandomIndexRequestV111(
+                "combat.initial_unique_hp", "run.niche",
+                "creature:" + context.CombatId, index, pool);
+            var choice = chooser.Resolve(request, fresh.RunStreams);
+            choices.Add(choice);
+            var hp = choice.SelectedValue;
             enemies[index] = enemy with { Hp = hp, MaxHp = hp };
             usedHp.Add(hp);
         }
 
         var attached = combat with { Enemies = enemies, NativeRng = fresh };
         Validate(attached);
-        return attached;
+        return new NativeInitialHpAuditV111(
+            attached, choices.ToArray(), chooser.Mode);
     }
 
     /// <summary>
