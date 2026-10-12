@@ -62,7 +62,7 @@ class TriageTests(unittest.TestCase):
             folder = Path(directory)
             records = [valid_trace()[0], valid_trace()[-1]]
             (folder / "passive-empty.jsonl").write_text(
-                "\\n".join(json.dumps(item) for item in records) + "\\n")
+                "\n".join(json.dumps(item) for item in records) + "\n")
             report = triage(folder, folder / "fixtures")
             self.assertEqual(0, report["structurally_valid_count"])
             self.assertEqual(0, report["fixture_count"])
