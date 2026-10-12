@@ -740,6 +740,9 @@ public static class PrototypeStateInvariants
                             PrototypeNativePunchOff.EventId
                             ? eventState.NativePageIndex > 2
                             : eventState.EventId ==
+                                PrototypeNativeHiveEvents.AmalgamatorId
+                                ? eventState.NativePageIndex > 1
+                                : eventState.EventId ==
                                 "proto.native.underdocks.abyssal_baths"
                                 ? false
                                 : eventState.NativePageIndex != 0))
@@ -755,6 +758,7 @@ public static class PrototypeStateInvariants
             && eventState.EventId != PrototypeNativeGloryEvents.BattlewornDummyId
             && eventState.EventId != PrototypeNativeEndlessConveyor.EventId
             && eventState.EventId != PrototypeNativePunchOff.EventId
+            && eventState.EventId != PrototypeNativeHiveEvents.AmalgamatorId
             && eventState.EventId != "proto.native.underdocks.abyssal_baths")
         {
             throw new InvalidOperationException(
@@ -908,6 +912,26 @@ public static class PrototypeStateInvariants
         if (eventState.NativeTinkerType is not null)
             throw new InvalidOperationException(
                 "Tinker-only state leaked into another event.");
+
+        if (eventState.EventId == PrototypeNativeHiveEvents.AmalgamatorId)
+        {
+            if (eventState.NativePageIndex is < 0 or > 1
+                || eventState.NativePageIndex == 1
+                    && (eventState.ChosenChoiceId is not
+                            ("combine_strikes" or "combine_defends")
+                        || eventState.PendingDeckChoice is not null
+                        || eventState.PendingPotionReplacement is not null
+                        || eventState.RemainingDeckChoices.Length != 0
+                        || eventState.RemainingPotionIds.Length != 0
+                        || eventState.PendingReward is not null
+                        || eventState.DeferredHpLoss != 0
+                        || eventState.DeferredGoldLoss != 0
+                        || eventState.DeferredCardId is not null))
+                throw new InvalidOperationException(
+                    "Amalgamator completion page has unresolved or invalid state.");
+            if (eventState.NativePageIndex == 1)
+                return;
+        }
 
         if (eventState.EventId ==
                 PrototypeNativeGloryEvents.BattlewornDummyId

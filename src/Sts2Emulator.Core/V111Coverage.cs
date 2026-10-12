@@ -165,7 +165,8 @@ public static class V111Coverage
         }
         return new V111CoverageItem(item.Kind, item.Id, item.Scope, engineIds,
             true, engineIds.Length > 0, implementation, integration, "unverified",
-            item.Variants ?? [], item.Branches ?? [],
+            item.Variants ?? [],
+            item.BranchInventoryComplete ? [] : item.Branches ?? [],
             item.Source is null ? [] : [$"{V111Build.SourceCommit}:{item.Source}#{item.SourceSha256}"]);
     }
 

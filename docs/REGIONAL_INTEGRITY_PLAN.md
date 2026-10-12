@@ -91,6 +91,12 @@ The experimental Glory event draw now filters Round Tea Party below 12 HP and
 Grave of the Forgotten when no deck card can receive Souls Power. Boundary tests
 and a 96-seed Unknown-room route test exercise these filters. The legacy fixture
 remains able to force the Grave event so its locked choice can be tested.
+Hive's Amalgamator now retains its source completion page after both card
+removals and Ultimate-card creation; its seven pinned page/choice paths have
+direct branch tests and a complete inventory in
+[the Amalgamator ledger](reference-builds/v0.111.0-hive-amalgamator.md). The
+coverage report now honors `branch_inventory_complete`; one of 66 event
+inventories is complete, with the others still requiring source audits.
 Prepared Hive/Glory boss selection now applies each act's source
 `BossDiscoveryOrder` using `SimulationProfile.SeenBossEncounters`, while still
 consuming the preselected boss draw; Glory's A10 second boss excludes the final

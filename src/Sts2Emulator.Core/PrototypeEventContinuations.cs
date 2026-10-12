@@ -182,6 +182,24 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
+            if (eventState.EventId
+                    == PrototypeNativeHiveEvents.AmalgamatorId
+                && eventState.NativePageIndex == 0
+                && eventState.ChosenChoiceId is
+                    "combine_strikes" or "combine_defends")
+            {
+                // Amalgamator calls SetEventFinished only after the two-card
+                // removal and Ultimate card creation have both resolved.
+                // Keep its native completion page as a real resumable state.
+                return state with
+                {
+                    World = world with
+                    {
+                        Event = eventState with { NativePageIndex = 1 }
+                    }
+                };
+            }
+
             if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
                 return ContinueNativeWarHistorianRepy(state);
 

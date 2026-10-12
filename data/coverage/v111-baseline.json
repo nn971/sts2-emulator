@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "dbd3bf0250c9294873657c10d0e0bd87a9ffeb8cf7d72139973ca3dfd58e62be",
+  "inventory_file_sha256": "8fa362d1f064ea3cd3c82dfc227ecc7f0d15affcda1266f13b07a240efdb3106",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "a8965264e4aad6982d8072a63efedfe4f4f4a8e35c34c779c798ae410b6a41d3",
+    "inventory_hash": "b863c712bbc470e4531ffa853aadb5e0846a4ebdabeee11e0cf5905acc9ebea9",
     "items": [
       {
         "catalogued": true,
@@ -15020,15 +15020,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/COMBINE_DEFENDS",
-          "initial/COMBINE_STRIKES",
-          "page/COMBINE_DEFENDS",
-          "page/COMBINE_STRIKES",
-          "page/INITIAL",
-          "page/INITIAL/COMBINE_DEFENDS",
-          "page/INITIAL/COMBINE_STRIKES"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "AMALGAMATOR",
         "registered": true,

@@ -838,6 +838,10 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
             return GetNativeWarHistorianRepyActions(eventState);
 
+        if (eventState.EventId == PrototypeNativeHiveEvents.AmalgamatorId
+            && eventState.NativePageIndex == 1)
+            return [GameAction.Empty("continue_event")];
+
         if (eventState.EventId == PrototypeNativeGloryEvents.RoundTeaPartyId)
             return GetNativeRoundTeaPartyActions(eventState);
         if (eventState.EventId == PrototypeNativeGloryEvents.TrialId)
@@ -932,6 +936,13 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
         var nativeRunRng = state.NativeRunRng?.Fork();
+
+        if (eventState.EventId == PrototypeNativeHiveEvents.AmalgamatorId
+            && eventState.NativePageIndex == 1)
+        {
+            RequireKind(action, "continue_event");
+            return CompleteRoomToMap(state);
+        }
 
         if (eventState.PendingPotionReplacement is { } potionReplacement)
         {
