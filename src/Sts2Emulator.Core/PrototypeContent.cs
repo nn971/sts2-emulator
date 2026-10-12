@@ -2036,6 +2036,16 @@ public static class PrototypeContent
                 UsableOutsideCombat: true,
                 RunEffects: [new(
                     PrototypeRunEffectKind.HealPercentMaxHp, 50)]),
+            // Silent unlock potion: create three upgraded Shivs in hand.
+            new PrototypePotionDefinition(
+                "proto.potion.cunning",
+                "Cunning Potion",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.CreateCardsInHand,
+                    3,
+                    CardId: "proto.silent.shiv",
+                    GeneratedCardUpgradeLevel: 1)]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -7126,11 +7136,13 @@ public static class PrototypeContent
             ]
         };
 
-    // Named event-only potions can be owned and consumed, but are excluded
-    // from ordinary rewards, merchant inventories and native rarity rolls.
+    // This is the restricted Silent ordinary pool: Blood Potion belongs to
+    // Ironclad and is not generated in a Silent run. The full shared potion
+    // catalogue is still incomplete; unsupported source potions stay out.
     public static string[] PotionPool { get; } = Potions.Keys
         .Where(id => id != "proto.native.neow.ambergris"
-            && id != "proto.native.underdocks.glowwater_potion")
+            && id != "proto.native.underdocks.glowwater_potion"
+            && id != "proto.potion.blood")
         .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [

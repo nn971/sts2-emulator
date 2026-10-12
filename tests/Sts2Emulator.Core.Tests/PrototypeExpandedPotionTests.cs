@@ -94,6 +94,26 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void CunningPotionCreatesThreeUpgradedShivsInHand()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.strike")],
+            hand: [1],
+            potionId: "proto.potion.cunning");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        var shivs = combat.Cards.Where(card =>
+            card.CardId == "proto.silent.shiv").ToArray();
+        Assert.Equal(3, shivs.Length);
+        Assert.All(shivs, shiv => Assert.Equal(1, shiv.UpgradeLevel));
+        Assert.All(shivs, shiv => Assert.Contains(shiv.InstanceId, combat.Hand));
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

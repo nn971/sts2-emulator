@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Progress after integrating fetched work: 1,718 C# tests pass, executable coverage
+Progress after integrating fetched work: 1,719 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 42 of 90 encounters as implemented
 and integrated, with zero native-validated; its event category reports zero
@@ -57,8 +57,10 @@ rarity-specific groups before returning to the interrupted reward.
 Ring of the Drake's two-card draw bonus is exercised through combat turns 1–4.
 Alchemical Coffer also has a partial acquisition hook: it adds four potion slots
 and generates four distinct potions into those slots, while preserving existing
-inventory and honoring Sozu. The full source potion pool, native replacement
-continuation, and native RNG parity remain open. Prismatic Gem now implements
+inventory and honoring Sozu. The supported Silent pool now includes Cunning
+Potion and excludes Ironclad-only Blood Potion; 16 source-pool entries remain
+unimplemented. The full source potion pool, native replacement continuation,
+and native RNG parity remain open. Prismatic Gem now implements
 its persistent +1 energy component, but its foreign card-pool effect is still
 missing; Sea Glass remains unimplemented. See [the Orobas
 dependency ledger](reference-builds/v0.111.0-hive-orobas-ancient.md).

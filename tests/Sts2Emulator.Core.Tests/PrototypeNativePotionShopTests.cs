@@ -83,8 +83,8 @@ public sealed class PrototypeNativePotionShopTests
     [Theory]
     [InlineData("proto.potion.block", 50)]
     [InlineData("proto.potion.energy", 50)]
-    [InlineData("proto.potion.blood", 50)]
     [InlineData("proto.potion.regen", 75)]
+    [InlineData("proto.potion.cunning", 75)]
     [InlineData("proto.potion.duplicator", 75)]
     [InlineData("proto.potion.touch_of_insanity", 75)]
     [InlineData("proto.potion.entropic_brew", 100)]
@@ -101,6 +101,11 @@ public sealed class PrototypeNativePotionShopTests
     public void EverySupportedShopPotionHasExactlyOneNativeRarity()
     {
         Assert.Equal(32, PrototypeContent.PotionPool.Length);
+        Assert.Contains("proto.potion.cunning", PrototypeContent.PotionPool);
+        Assert.DoesNotContain("proto.potion.blood", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.cunning", out var cunningRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, cunningRarity);
         Assert.All(PrototypeContent.PotionPool, id =>
         {
             Assert.True(PrototypeNativePotionShop.TryGetRarity(id, out _),

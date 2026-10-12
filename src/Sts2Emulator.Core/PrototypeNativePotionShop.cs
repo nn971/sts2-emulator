@@ -1,9 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Pinned v0.111.0 rarity and merchant price rules for the
-/// 32 potions already implemented by the restricted emulator.
-/// Pool weighting and byte-for-byte native Shops RNG remain deferred.
+/// Pinned v0.111.0 rarity and merchant price rules for the currently
+/// implemented Silent potion pool. Unsupported shared potions are omitted;
+/// native pool weighting and byte-for-byte RNG remain deferred.
 /// </summary>
 public enum PrototypeNativePotionRarity
 {
@@ -36,6 +36,7 @@ public static class PrototypeNativePotionShop
             ["proto.potion.blood"] = PrototypeNativePotionRarity.Common,
 
             ["proto.potion.regen"] = PrototypeNativePotionRarity.Uncommon,
+            ["proto.potion.cunning"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.duplicator"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.blessing_of_the_forge"] =
                 PrototypeNativePotionRarity.Uncommon,
