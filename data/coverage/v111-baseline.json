@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "c628927aae5ae2e59669507560f221c372dfd913a164877d46832e933c81b359",
+  "inventory_file_sha256": "10377bf147ff78969eebccd30b2c665eb8da8b6aa6b9228b3f27bbca74961e97",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "ff31b14b0eaa6ad644fd0b697b442ad88511e06bfc25a6cf0bdb15a06633a3c9",
+    "inventory_hash": "6a620ab5e3dd37bf225be370cb16d230dda9312957d46c515c7827cd67aeca0c",
     "items": [
       {
         "catalogued": true,
@@ -16172,34 +16172,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Trial.cs#ca4a1dcf6495ff8e8222b59748dc7425ff01cc0ab217104552d05a94a68acf7f"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/ACCEPT",
-          "initial/REJECT",
-          "page/INITIAL",
-          "page/INITIAL/ACCEPT",
-          "page/INITIAL/REJECT",
-          "page/MERCHANT",
-          "page/MERCHANT/GUILTY",
-          "page/MERCHANT/INNOCENT",
-          "page/MERCHANT_GUILTY",
-          "page/MERCHANT_INNOCENT",
-          "page/NOBLE",
-          "page/NOBLE/GUILTY",
-          "page/NOBLE/INNOCENT",
-          "page/NOBLE_GUILTY",
-          "page/NOBLE_INNOCENT",
-          "page/NONDESCRIPT",
-          "page/NONDESCRIPT/GUILTY",
-          "page/NONDESCRIPT/INNOCENT",
-          "page/NONDESCRIPT_GUILTY",
-          "page/NONDESCRIPT_INNOCENT",
-          "page/REJECT",
-          "page/REJECT/ACCEPT",
-          "page/REJECT/DOUBLE_DOWN"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "TRIAL",
         "registered": true,
@@ -29556,7 +29532,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 42,
+        "implemented": 43,
         "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,

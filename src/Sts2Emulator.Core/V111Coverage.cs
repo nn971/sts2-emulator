@@ -505,6 +505,24 @@ public static class V111Coverage
                 .IsSupersetOf(["setting_1", "setting_2", "setting_3"]))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TRIAL" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.TrialId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeGloryEvents.TrialId, 3)
+            && PrototypeContent.Event(
+                PrototypeNativeGloryEvents.TrialId).Choices
+                .Select(choice => choice.Id)
+                .ToHashSet(StringComparer.Ordinal)
+                .IsSupersetOf([
+                    "accept", "reject", "double_down",
+                    "confirm_abandon", "cancel_abandon",
+                    "merchant_guilty", "merchant_innocent",
+                    "noble_guilty", "noble_innocent",
+                    "nondescript_guilty", "nondescript_innocent"
+                ]))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "TINKER_TIME" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeGloryEvents.TinkerTimeId,
                 StringComparer.Ordinal))

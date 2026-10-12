@@ -246,6 +246,16 @@ public sealed partial class PrototypeGameEngine
             if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
                 return ContinueNativeWarHistorianRepy(state);
 
+            if (eventState.EventId == PrototypeNativeGloryEvents.TrialId
+                && eventState.ChosenChoiceId is
+                    ("merchant_guilty" or "merchant_innocent"
+                    or "noble_guilty" or "noble_innocent"
+                    or "nondescript_guilty" or "nondescript_innocent"))
+            {
+                return PreserveNativeEventCompletionPage(
+                    state, eventState.ChosenChoiceId);
+            }
+
             if (NativeAncientRewardsV111.IsOpeningEvent(world))
                 return state with
                 {

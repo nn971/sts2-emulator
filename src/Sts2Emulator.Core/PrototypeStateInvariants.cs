@@ -779,7 +779,7 @@ public static class PrototypeStateInvariants
                     PrototypeNativeGloryEvents.BattlewornDummyId
                     ? eventState.NativePageIndex > 4
                 : eventState.EventId == PrototypeNativeGloryEvents.TrialId
-                    ? eventState.NativePageIndex > 5
+                    ? eventState.NativePageIndex > 6
                 : eventState.EventId ==
                     PrototypeNativeGloryEvents.RoundTeaPartyId
                     ? eventState.NativePageIndex > 2

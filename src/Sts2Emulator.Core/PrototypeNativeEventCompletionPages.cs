@@ -37,6 +37,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeGloryEvents.ReflectionsId
             or PrototypeNativeGloryEvents.RoundTeaPartyId
             or PrototypeNativeGloryEvents.TeaMasterId
+            or PrototypeNativeGloryEvents.TrialId
             or PrototypeNativeGloryEvents.HungryForMushroomsId
             or PrototypeNativeGloryEvents.GraveOfTheForgottenId
             or PrototypeNativeSharedEvents.ThisOrThatId
@@ -51,6 +52,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeDenseVegetation.EventId ? 3
             : eventId == PrototypeNativeGloryEvents.BattlewornDummyId ? 4
             : eventId == PrototypeNativeGloryEvents.RoundTeaPartyId ? 2
+            : eventId == PrototypeNativeGloryEvents.TrialId ? 6
             : eventId is "proto.native.underdocks.abyssal_baths"
                 or PrototypeNativeEndlessConveyor.EventId
                 or PrototypeNativePunchOff.EventId
@@ -128,6 +130,10 @@ public static class PrototypeNativeEventCompletionPages
         || eventId == PrototypeNativeGloryEvents.TeaMasterId
             && choiceId is "bone_tea" or "ember_tea"
                 or "tea_of_discourtesy"
+        || eventId == PrototypeNativeGloryEvents.TrialId
+            && choiceId is "merchant_guilty" or "merchant_innocent"
+                or "noble_guilty" or "noble_innocent"
+                or "nondescript_guilty" or "nondescript_innocent"
         || eventId == PrototypeNativeGloryEvents.HungryForMushroomsId
             && choiceId is "big_mushroom" or "fragrant_mushroom"
         || eventId == PrototypeNativeGloryEvents.GraveOfTheForgottenId
