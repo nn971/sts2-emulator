@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "8fa362d1f064ea3cd3c82dfc227ecc7f0d15affcda1266f13b07a240efdb3106",
+  "inventory_file_sha256": "4f27250efa84ff12a4ee90b7f8740c4ec71027f76cf3b0da75758c9efdd827c8",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "b863c712bbc470e4531ffa853aadb5e0846a4ebdabeee11e0cf5905acc9ebea9",
+    "inventory_hash": "34c67d21d064d1c4737c959a0fed42018dd0607540a219163352c679976151e2",
     "items": [
       {
         "catalogued": true,
@@ -15580,15 +15580,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/CLAIM",
-          "initial/SEARCH",
-          "page/CLAIM",
-          "page/INITIAL",
-          "page/INITIAL/CLAIM",
-          "page/INITIAL/SEARCH",
-          "page/SEARCH"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "LOST_WISP",
         "registered": true,

@@ -182,15 +182,14 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
-            if (eventState.EventId
-                    == PrototypeNativeHiveEvents.AmalgamatorId
+            if (PrototypeNativeHiveEvents.HasTerminalChoicePage(
+                    eventState.EventId)
                 && eventState.NativePageIndex == 0
-                && eventState.ChosenChoiceId is
-                    "combine_strikes" or "combine_defends")
+                && PrototypeNativeHiveEvents.HasTerminalChoice(
+                    eventState.EventId, eventState.ChosenChoiceId))
             {
-                // Amalgamator calls SetEventFinished only after the two-card
-                // removal and Ultimate card creation have both resolved.
-                // Keep its native completion page as a real resumable state.
+                // These Hive events call SetEventFinished after their effects
+                // resolve. Keep the native completion page resumable.
                 return state with
                 {
                     World = world with

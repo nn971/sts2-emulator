@@ -838,7 +838,8 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
             return GetNativeWarHistorianRepyActions(eventState);
 
-        if (eventState.EventId == PrototypeNativeHiveEvents.AmalgamatorId
+        if (PrototypeNativeHiveEvents.HasTerminalChoicePage(
+                eventState.EventId)
             && eventState.NativePageIndex == 1)
             return [GameAction.Empty("continue_event")];
 
@@ -937,7 +938,8 @@ public sealed partial class PrototypeGameEngine
         var nextId = world.NextCardInstanceId;
         var nativeRunRng = state.NativeRunRng?.Fork();
 
-        if (eventState.EventId == PrototypeNativeHiveEvents.AmalgamatorId
+        if (PrototypeNativeHiveEvents.HasTerminalChoicePage(
+                eventState.EventId)
             && eventState.NativePageIndex == 1)
         {
             RequireKind(action, "continue_event");

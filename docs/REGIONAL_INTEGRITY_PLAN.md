@@ -95,8 +95,11 @@ Hive's Amalgamator now retains its source completion page after both card
 removals and Ultimate-card creation; its seven pinned page/choice paths have
 direct branch tests and a complete inventory in
 [the Amalgamator ledger](reference-builds/v0.111.0-hive-amalgamator.md). The
-coverage report now honors `branch_inventory_complete`; one of 66 event
-inventories is complete, with the others still requiring source audits.
+coverage report now honors `branch_inventory_complete`; Amalgamator and Lost
+Wisp are the two of 66 event inventories marked complete. Lost Wisp now keeps
+its source result page after Claim/Search, with stored gold and no extra result
+draw. See [the Lost Wisp ledger](reference-builds/v0.111.0-hive-lost-wisp.md).
+The other event inventories still require source audits.
 Prepared Hive/Glory boss selection now applies each act's source
 `BossDiscoveryOrder` using `SimulationProfile.SeenBossEncounters`, while still
 consuming the preselected boss draw; Glory's A10 second boss excludes the final

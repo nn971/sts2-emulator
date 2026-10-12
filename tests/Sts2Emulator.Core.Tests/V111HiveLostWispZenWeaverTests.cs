@@ -32,24 +32,45 @@ public sealed class V111HiveLostWispZenWeaverTests
         var state = EventRun(PrototypeNativeHiveEvents.LostWispId, 300,
             eventGold: 71);
         var sourceHash = CanonicalJson.Sha256(state);
+        var rngBeforeEvent = CanonicalJson.Sha256(state.Rng);
         var claim = Select(engine, state, "claim");
-        Assert.Equal(RunPhase.MapChoice, claim.Phase);
+        Assert.Equal(RunPhase.Event, claim.Phase);
+        Assert.Equal(1, claim.World!.Event!.NativePageIndex);
         Assert.Equal(300, claim.Player.Gold);
         Assert.Equal(state.Player.Deck.Length + 1, claim.Player.Deck.Length);
         Assert.Equal(PrototypeNativeHiveEvents.DecayId,
             claim.Player.Deck.Last().CardId);
         Assert.Contains(claim.Player.Relics, r =>
             r.RelicId == PrototypeNativeHiveEvents.LostWispRelicId);
+        Assert.Equal(rngBeforeEvent, CanonicalJson.Sha256(claim.Rng));
+        Assert.Equal(CanonicalJson.Sha256(claim), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(claim))));
+        Assert.Equal("continue_event",
+            Assert.Single(engine.GetLegalActions(claim)).Kind);
+        Assert.Throws<InvalidOperationException>(() => engine.Step(
+            claim, GameAction.Empty("invalid_continue")));
+        claim = engine.Step(claim, GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, claim.Phase);
+        Assert.Null(claim.World!.Event);
+        Assert.Equal(rngBeforeEvent, CanonicalJson.Sha256(claim.Rng));
 
         var search = Select(engine, state, "search");
-        Assert.Equal(RunPhase.MapChoice, search.Phase);
+        Assert.Equal(RunPhase.Event, search.Phase);
+        Assert.Equal(1, search.World!.Event!.NativePageIndex);
         Assert.Equal(371, search.Player.Gold);
         Assert.Equal(state.Player.Deck.Length, search.Player.Deck.Length);
         Assert.DoesNotContain(search.Player.Relics, r =>
             r.RelicId == PrototypeNativeHiveEvents.LostWispRelicId);
+        search = engine.Step(search, GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, search.Phase);
+        Assert.Null(search.World!.Event);
+        Assert.Equal(rngBeforeEvent, CanonicalJson.Sha256(search.Rng));
         Assert.Equal(sourceHash, CanonicalJson.Sha256(state));
+        var forkedSearch = Select(engine, state.Fork(), "search");
+        forkedSearch = engine.Step(forkedSearch,
+            GameAction.Empty("continue_event")).State;
         Assert.Equal(CanonicalJson.Sha256(search),
-            CanonicalJson.Sha256(Select(engine, state.Fork(), "search")));
+            CanonicalJson.Sha256(forkedSearch));
     }
 
     [Fact]
@@ -214,6 +235,12 @@ public sealed class V111HiveLostWispZenWeaverTests
         var initial = engine.Step(PrototypeGameFactory.Create("hive-event-v2"),
             GameAction.Empty("start_run")).State;
         var world = initial.World!;
+        var map = PrototypeNativeLaterActMap.GenerateNative(
+            "hive-event-v2", 2);
+        var eventNode = map.Nodes.First(node =>
+            node.RoomType == PrototypeRoomType.Unknown
+            && node.Floor > 1
+            && node.Floor < PrototypeNativeLaterActMap.RoomRows(2));
         return initial with
         {
             Phase = RunPhase.Event,
@@ -221,14 +248,11 @@ public sealed class V111HiveLostWispZenWeaverTests
             World = world with
             {
                 Act = 2,
-                Floor = 1,
+                Floor = eventNode.Floor,
                 ActiveRoom = PrototypeRoomType.Event,
                 Event = new EventState(id, NativeEventGold: eventGold),
-                Map = new MapState(
-                [
-                    new("current", 2, 1, PrototypeRoomType.Event, ["next"]),
-                    new("next", 2, 2, PrototypeRoomType.Combat, [])
-                ], "current", ["current"])
+                EventHistory = [id],
+                Map = map with { CurrentNodeId = eventNode.NodeId }
             }
         };
     }
