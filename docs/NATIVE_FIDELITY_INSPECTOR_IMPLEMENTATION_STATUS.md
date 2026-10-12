@@ -79,3 +79,13 @@ See Issue #122 and PR #121 for active tracking.
 - **Pending:** rebuild this revision against the user's installed DLL,
   then retry native load and passive capture. Do not claim crash
   resolved until the new local smoke test succeeds.
+
+## Minimal resource-only PCK (2026-10-12)
+
+The first game-local test produced the corrected single native DLL but no PCK.
+This is an incomplete mod package: the game's loader scans recursively for
+`*.pck` and reads `res://mod_manifest.json`, then loads the same-basename DLL.
+Added `tools/make_inspector_pck.py`, a tested one-file Godot 4.5 PCK v3
+packer, and optional Godot-free staging in
+`scripts/build-native-inspector.fish GAME_ROOT`. This is source-format
+verified, not yet loaded by the user's pinned game.
