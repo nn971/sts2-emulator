@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "cc67a349aa37bf9d09ddc333069ae312fe02f239a6c7710c5ead8d0eb7949cab",
+  "inventory_file_sha256": "0b24b44b3acb96edcc8da8741d64aeaf44037a1bd683878f97f2f29226f37815",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "4db46395091dcb131bd6d028e83065412118a8850aaa956c2a65995f1799418c",
+    "inventory_hash": "5da33b5900d811a5a12b7a746dfae5c2066339969218f4c334d09c6fe30238b8",
     "items": [
       {
         "catalogued": true,
@@ -15059,19 +15059,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Bugslayer.cs#5ea3d90ad9ac2ec95fb1316662f5669cfba1b346e7dce24406393d7875564f7f"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/EXTERMINATION",
-          "initial/SQUASH",
-          "page/DONE",
-          "page/EXTERMINATION",
-          "page/INITIAL",
-          "page/INITIAL/EXTERMINATION",
-          "page/INITIAL/SQUASH",
-          "page/SQUASH"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "BUGSLAYER",
         "registered": true,
@@ -29563,7 +29554,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 35,
+        "implemented": 36,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,
