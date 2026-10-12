@@ -186,6 +186,11 @@ public static class V111Coverage
             && engineIds.Contains(PrototypeNativeBrainLeech.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SELF_HELP_BOOK" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeSelfHelpBook.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {

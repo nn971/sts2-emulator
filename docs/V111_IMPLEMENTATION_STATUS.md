@@ -16,11 +16,15 @@ choice-specific follow-up page after transforming or upgrading a card. Brain
 Leech is integrated in Overgrowth, Underdocks and Hive: Share Knowledge offers
 five Silent cards and requires one selection, while Rip the Leech Off costs
 5 HP and offers three implemented colorless cards.
+Self-Help Book is integrated as a shared event in all three Acts. It applies
+Sharp 2 to an Attack, Nimble 2 to a block-producing Skill, or Swift 2 to a
+Power, with a Move On path when no eligible card exists. Sharp now adds its
+enchantment amount to each powered Attack hit.
 Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C# tests
 passed, including the eight synthetic full-route cases and Ancient
 acquisition/assignment coverage. The latest solution build and coverage-baseline
 check pass; the event paths in this update were not tested. The coverage report
-records 48 integrated event paths and three complete event implementations;
+records 49 integrated event paths and four complete event implementations;
 native validation remains unverified.
 
 # v111 implementation status

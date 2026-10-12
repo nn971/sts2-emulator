@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "8152032a5b514211b092743168c9d6fc2fc0fb079759051d44f005e44decbbde",
+  "inventory_file_sha256": "a92733efd027724f38035e2064e05a9fead81189747d442b2d7d9f310916b184",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "d52011f23bec442bae955c28a5c56c93e0bfad0bf10a940ec5852aa9fb5106ab",
+    "inventory_hash": "bb40528331545ff3071e658e3f71f445c5140688ebb3729180eca01370340d8c",
     "items": [
       {
         "catalogued": true,
@@ -12369,17 +12369,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "Sharp"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/Sharp.cs#11ad3962e03491d6ef3bf2081d8213e6723c6a73219c4272ee5a4eebb9d89f2a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SHARP",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15890,37 +15892,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.self_help_book"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SelfHelpBook.cs#702c88748d43fae31df190b686ae8812bdd48d1fcbabcd16b191876906b3076f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/NO_OPTIONS",
-          "initial/READ_ENTIRE_BOOK",
-          "initial/READ_ENTIRE_BOOK_LOCKED",
-          "initial/READ_PASSAGE",
-          "initial/READ_PASSAGE_LOCKED",
-          "initial/READ_THE_BACK",
-          "initial/READ_THE_BACK_LOCKED",
-          "page/INITIAL",
-          "page/INITIAL/NO_OPTIONS",
-          "page/INITIAL/READ_ENTIRE_BOOK",
-          "page/INITIAL/READ_ENTIRE_BOOK_LOCKED",
-          "page/INITIAL/READ_PASSAGE",
-          "page/INITIAL/READ_PASSAGE_LOCKED",
-          "page/INITIAL/READ_THE_BACK",
-          "page/INITIAL/READ_THE_BACK_LOCKED",
-          "page/NO_OPTIONS",
-          "page/READ_ENTIRE_BOOK",
-          "page/READ_PASSAGE",
-          "page/READ_THE_BACK"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "SELF_HELP_BOOK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29784,8 +29768,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 3,
-        "integrated": 48,
+        "implemented": 4,
+        "integrated": 49,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

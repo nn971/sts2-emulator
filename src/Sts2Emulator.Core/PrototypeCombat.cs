@@ -8929,8 +8929,12 @@ public sealed partial class PrototypeGameEngine
                     * power.Stacks;
             });
 
+        var sharpBonus = sourceCard.Enchantment is
+            { Kind: PrototypeCardEnchantmentKind.Sharp } sharp
+                ? Math.Max(0, sharp.Amount)
+                : 0;
         var modified =
-            damage + additive + firstTaggedPlayBonus;
+            damage + sharpBonus + additive + firstTaggedPlayBonus;
         if (sourceCard.CardId == NativeGloryAncientsV111.MaulCardId)
         {
             modified += combat.CounterState.MaulDamageBonus;

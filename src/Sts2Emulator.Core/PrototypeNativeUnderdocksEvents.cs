@@ -10,6 +10,7 @@ public static class PrototypeNativeUnderdocksEvents
     public static string[] NativeRegionEventIds { get; } =
     [
         PrototypeNativeBrainLeech.EventId,
+        PrototypeNativeSelfHelpBook.EventId,
         "proto.native.underdocks.abyssal_baths",
         "proto.native.underdocks.drowning_beacon",
         "proto.native.underdocks.endless_conveyor",
@@ -25,6 +26,7 @@ public static class PrototypeNativeUnderdocksEvents
     public static string[] SupportedRegionEventIds { get; } =
     [
         PrototypeNativeBrainLeech.EventId,
+        PrototypeNativeSelfHelpBook.EventId,
         "proto.native.underdocks.abyssal_baths",
         "proto.native.underdocks.drowning_beacon",
         "proto.native.underdocks.endless_conveyor",

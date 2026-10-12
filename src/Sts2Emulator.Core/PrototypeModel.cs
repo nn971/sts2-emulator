@@ -1466,7 +1466,9 @@ public sealed record PrototypeEventDeckChoiceSpec(
     string? TransformToCardId = null,
     PrototypeCardEnchantmentKind? EnchantmentKind = null,
     bool BasicCardsOnly = false,
-    string? RequiredCardTag = null);
+    string? RequiredCardTag = null,
+    PrototypeCardType? RequiredCardType = null,
+    int EnchantmentAmount = 1);
 
 public sealed record PrototypeEventChoiceDefinition(
     string Id,
@@ -2334,6 +2336,8 @@ public sealed record PrototypePendingEventDeckChoiceState(
     PrototypeCardEnchantmentKind? EnchantmentKind = null,
     bool BasicCardsOnly = false,
     string? RequiredCardTag = null,
+    PrototypeCardType? RequiredCardType = null,
+    int EnchantmentAmount = 1,
     bool RequiresUpgradable = false,
     bool PreserveUpgradeOnTransformation = false,
     bool PreserveEnchantmentOnTransformation = false,

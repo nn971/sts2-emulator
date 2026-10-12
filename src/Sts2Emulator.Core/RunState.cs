@@ -18,7 +18,8 @@ public enum PrototypeCardEnchantmentKind
     Clone,
     Imbued,
     Instinct,
-    Swift
+    Swift,
+    Sharp
 }
 
 public sealed record PrototypeCardEnchantment(

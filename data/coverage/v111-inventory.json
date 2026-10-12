@@ -11948,7 +11948,7 @@
         "page/READ_PASSAGE",
         "page/READ_THE_BACK"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

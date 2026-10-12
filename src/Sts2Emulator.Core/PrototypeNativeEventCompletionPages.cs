@@ -8,6 +8,7 @@ public static class PrototypeNativeEventCompletionPages
     public static bool HasTerminalChoicePage(string eventId) =>
         eventId is "proto.native.event.aroma_of_chaos"
             or PrototypeNativeBrainLeech.EventId
+            or PrototypeNativeSelfHelpBook.EventId
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
@@ -33,6 +34,11 @@ public static class PrototypeNativeEventCompletionPages
         || eventId == PrototypeNativeBrainLeech.EventId
             && choiceId is PrototypeNativeBrainLeech.ShareKnowledgeChoiceId
                 or PrototypeNativeBrainLeech.RipChoiceId
+        || eventId == PrototypeNativeSelfHelpBook.EventId
+            && choiceId is PrototypeNativeSelfHelpBook.SharpChoiceId
+                or PrototypeNativeSelfHelpBook.NimbleChoiceId
+                or PrototypeNativeSelfHelpBook.SwiftChoiceId
+                or PrototypeNativeSelfHelpBook.NoOptionsChoiceId
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId

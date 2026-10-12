@@ -6761,6 +6761,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeUnderdocksEvents.Definitions)
             .Concat(PrototypeNativeLaterActs.Events)
             .Append(PrototypeNativeBrainLeech.Definition)
+            .Append(PrototypeNativeSelfHelpBook.Definition)
             .Concat(PrototypeNativeHiveEvents.Definitions)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)

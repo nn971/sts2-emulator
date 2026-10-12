@@ -1212,6 +1212,11 @@ public static class PrototypeStateInvariants
                 if (pending.RequiresUpgradable
                     && card.UpgradeLevel >= PrototypeContent.Card(card.CardId).MaxUpgradeLevel)
                     throw new InvalidOperationException("Pending event deck choice includes a non-upgradable card.");
+                if (pending.RequiredCardType is { } requiredCardType
+                    && PrototypeContent.Card(card.CardId).Type != requiredCardType)
+                    throw new InvalidOperationException("Pending event deck choice includes a card of the wrong type.");
+                if (pending.EnchantmentAmount <= 0)
+                    throw new InvalidOperationException("Pending event enchant amount must be positive.");
             }
         }
 

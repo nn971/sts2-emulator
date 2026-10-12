@@ -91,6 +91,7 @@ public static class ExperimentalSilentThreeActRouteV111
     public static readonly string[] HiveEvents =
     [
         PrototypeNativeBrainLeech.EventId,
+        PrototypeNativeSelfHelpBook.EventId,
         PrototypeNativeHiveEvents.AmalgamatorId,
         PrototypeNativeLaterActs.HiveBugslayerId,
         PrototypeNativeHiveEvents.ColossalFlowerId,
@@ -103,6 +104,7 @@ public static class ExperimentalSilentThreeActRouteV111
     ];
     public static readonly string[] GloryEvents =
     [
+        PrototypeNativeSelfHelpBook.EventId,
         PrototypeNativeGloryEvents.HungryForMushroomsId,
         PrototypeNativeGloryEvents.ReflectionsId,
         PrototypeNativeGloryEvents.RoundTeaPartyId,

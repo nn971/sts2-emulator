@@ -1839,6 +1839,11 @@ public sealed partial class PrototypeGameEngine
         PrototypeEventChoiceDefinition choice,
         RunWorldState world)
     {
+        if (world.Event?.EventId == PrototypeNativeSelfHelpBook.EventId
+            && !PrototypeNativeSelfHelpBook.IsChoiceAvailable(
+                player, choice.Id))
+            return false;
+
         if (world.Event?.EventId == NativeDarvEventV111.EventId
             && choice.Effects.Any(effect =>
                 effect.RelicId == NativeDarvEventV111.PandorasBoxId)
@@ -1985,7 +1990,10 @@ public sealed partial class PrototypeGameEngine
                     deckChoice.BasicCardsOnly)
                 && (deckChoice.RequiredCardTag is null
                     || PrototypeContent.Card(card.CardId).Tags?.Contains(
-                        deckChoice.RequiredCardTag, StringComparer.Ordinal) == true));
+                        deckChoice.RequiredCardTag, StringComparer.Ordinal) == true)
+                && (deckChoice.RequiredCardType is null
+                    || PrototypeContent.Card(card.CardId).Type
+                        == deckChoice.RequiredCardType.Value));
     }
 
     private static PrototypePendingEventDeckChoiceState?
@@ -2031,6 +2039,8 @@ public sealed partial class PrototypeGameEngine
                 EnchantmentKind: spec.EnchantmentKind,
                 BasicCardsOnly: spec.BasicCardsOnly,
                 RequiredCardTag: spec.RequiredCardTag,
+                RequiredCardType: spec.RequiredCardType,
+                EnchantmentAmount: spec.EnchantmentAmount,
                 MinimumSelectionsRemaining: spec.Selections);
     }
 
@@ -2094,7 +2104,8 @@ public sealed partial class PrototypeGameEngine
                         ?? throw new InvalidOperationException(
                             "Event enchant selection is missing its type."),
                     pending.SourceRelicId is { } enchantRelic
-                        ? PrototypeContent.Relic(enchantRelic).AcquisitionDeckChoice!.EnchantmentAmount : 1),
+                        ? PrototypeContent.Relic(enchantRelic).AcquisitionDeckChoice!.EnchantmentAmount
+                        : pending.EnchantmentAmount),
             _ => throw new ArgumentOutOfRangeException()
         };
     }

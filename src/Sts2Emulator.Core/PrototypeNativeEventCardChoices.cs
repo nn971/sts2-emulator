@@ -52,6 +52,9 @@ public sealed partial class PrototypeGameEngine
                     != PrototypeCardEnchantmentKind.Instinct
                     || definition.Type == PrototypeCardType.Attack)
                 && (enchantmentKind
+                    != PrototypeCardEnchantmentKind.Sharp
+                    || definition.Type == PrototypeCardType.Attack)
+                && (enchantmentKind
                     != PrototypeCardEnchantmentKind.Imbued
                     || definition.Type == PrototypeCardType.Skill)
                 && (enchantmentKind

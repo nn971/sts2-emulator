@@ -316,6 +316,9 @@ public sealed partial class PrototypeGameEngine
                 && (requested.RequiredCardTag is null
                     || PrototypeContent.Card(card.CardId).Tags?.Contains(
                         requested.RequiredCardTag, StringComparer.Ordinal) == true)
+                && (requested.RequiredCardType is null
+                    || PrototypeContent.Card(card.CardId).Type
+                        == requested.RequiredCardType.Value)
                 && (!requested.RequiresUpgradable
                     || card.UpgradeLevel < PrototypeContent.Card(card.CardId).MaxUpgradeLevel))
             .OrderBy(card => requested.RequiresUpgradable ? card.CardId : string.Empty, StringComparer.Ordinal)
