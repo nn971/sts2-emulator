@@ -50,7 +50,10 @@ end
 cp "$project/bin/Release/net9.0/Sts2ReferenceMod.dll" "$dest/"
 rm -f "$dest/Sts2Emulator.Trace.dll" "$dest/Sts2Emulator.Core.dll"
 cp "$project/Sts2ReferenceMod.json" "$dest/"
-cp "$project/mod_manifest.json" "$dest/"
+# The game scans loose JSON files as modern mod manifests. The old
+# mod_manifest.json has pck_name but deliberately lacks the new 'id' field,
+# and belongs ONLY inside the PCK. Never ship it loose beside the DLL.
+rm -f "$dest/mod_manifest.json"
 if test -n "$godot"
     # Do not export from the C# project itself: the .NET editor export plugin
     # attempts to rebuild every .cs and demands a Godot .sln. Our binary code
