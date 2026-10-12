@@ -41,8 +41,7 @@ public static class PrototypeNativePotionCourier
             new(
                 PrototypeCombatEffectKind.DamageEnemy,
                 12,
-                Target: PrototypeEffectTarget.AllEnemies),
-            new(PrototypeCombatEffectKind.DamagePlayer, 12)
+                Target: PrototypeEffectTarget.AllEnemies)
         ]);
 
     public static string[] ImplementedUncommonPotionPool =>

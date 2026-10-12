@@ -12975,17 +12975,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.encounter.fake_merchant_event"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/FakeMerchantEventEncounter.cs#838a42bf80c7b23d1db4a9d45ab8428e467349222ac28a4bf380989fbafda36c"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_MERCHANT_EVENT_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15286,17 +15288,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_merchant"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/FakeMerchant.cs#c7e1ad443b3b1cd4c16dc65f750b5dd0521c54f65444f5bfe9ccb99a097d79ed"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_MERCHANT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -17056,17 +17060,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_merchant_monster"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/FakeMerchantMonster.cs#d8193ea2754fa36fa8a8d4b27acba9f13a737bd8236dd9e770388f7214d20cf4"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_MERCHANT_MONSTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19085,8 +19091,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/FoulPotion.cs#6382c3e32e5fe1183e3e2ed85435c25a205629a74c2d23d4c877f0423230fc1a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -25527,161 +25533,181 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_anchor"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeAnchor.cs#75273d725ef556851d7d53c00f7ab688471c5bfb195983222b38602746282e1f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_ANCHOR",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_blood_vial"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeBloodVial.cs#a7bbf292cdc0b80f8c9135e900d324d67ea74e34e855d779abd3b729a59eb61c"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_BLOOD_VIAL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_happy_flower"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeHappyFlower.cs#f93bc450daf93f9c678a651f228603febaf43b9e3a01782f632fa322a8d8d1cf"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_HAPPY_FLOWER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_lees_waffle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeLeesWaffle.cs#d5125732afa217b03144c673831c2937bc9005708c32b75966e7fe68748e96a6"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_LEES_WAFFLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_mango"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeMango.cs#af296375be99acd2f65bbb2d08b01ae6f6d84b37eea9bf31af0a434c7dd75e94"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_MANGO",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_merchants_rug"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeMerchantsRug.cs#6e89bde811bdea1c7ff4c751e952b82fa99b92bc0e5d2e7eb1229d8dcb609037"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_MERCHANTS_RUG",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_orichalcum"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeOrichalcum.cs#1010bc68903e6cc43716a628162a44add0ebebcabe50c67ac548198779ccd506"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_ORICHALCUM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_snecko_eye"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeSneckoEye.cs#f0bcbbdf8be0d04110eb621db96949f6ca51b183488dd52c5ae7866b39ea193d"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_SNECKO_EYE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_strike_dummy"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeStrikeDummy.cs#1d0008cece4bb4c00ea33890ec1d9605deda8928db85016e29f1561a6d292b9a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_STRIKE_DUMMY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.fake_venerable_tea_set"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FakeVenerableTeaSet.cs#3c03881fcf41948d82c3f0038814fcfed114b3cf23ff76cb9c73399b958d03a7"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FAKE_VENERABLE_TEA_SET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29548,8 +29574,8 @@
         "catalogued": 90,
         "eligible": 90,
         "excluded": 0,
-        "implemented": 86,
-        "integrated": 86,
+        "implemented": 87,
+        "integrated": 87,
         "kind": "encounters",
         "scope_review_required": 0,
         "validated": 0
@@ -29568,8 +29594,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 36,
-        "integrated": 50,
+        "implemented": 37,
+        "integrated": 51,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
@@ -29578,8 +29604,8 @@
         "catalogued": 115,
         "eligible": 115,
         "excluded": 0,
-        "implemented": 0,
-        "integrated": 0,
+        "implemented": 1,
+        "integrated": 1,
         "kind": "monsters",
         "scope_review_required": 0,
         "validated": 0
@@ -29598,8 +29624,8 @@
         "catalogued": 64,
         "eligible": 64,
         "excluded": 0,
-        "implemented": 0,
-        "integrated": 0,
+        "implemented": 1,
+        "integrated": 1,
         "kind": "potions",
         "scope_review_required": 0,
         "validated": 0
@@ -29618,8 +29644,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 14,
-        "integrated": 14,
+        "implemented": 24,
+        "integrated": 24,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

@@ -3265,6 +3265,7 @@ public static class PrototypeContent
                 ])
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
             .Concat(PrototypeNativeSilentRelics.Relics)
+            .Concat(PrototypeNativeFakeMerchant.Relics)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .Concat(PrototypeNativeHiveEvents.Relics)
             .Concat(PrototypeNativeGloryEvents.Relics)
@@ -4081,6 +4082,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryBosses.Powers)
             .Concat(PrototypeNativeGloryEvents.Powers)
             .Concat(PrototypeNativeHiveEvents.Powers)
+            .Concat(PrototypeNativeFakeMerchant.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
@@ -6413,6 +6415,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryBosses.Enemies)
             .Concat(PrototypeNativeGloryEvents.Enemies)
             .Concat(PrototypeNativeHiveEvents.Enemies)
+            .Concat(PrototypeNativeFakeMerchant.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
@@ -6768,6 +6771,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeSelfHelpBook.Definition)
             .Append(PrototypeNativePotionCourier.Definition)
             .Concat(PrototypeNativeHiveEvents.Definitions)
+            .Append(PrototypeNativeFakeMerchant.Definition)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .Append(NativeAncientRewardsV111.TezcataraRewardDefinition)
@@ -7395,7 +7399,8 @@ public static class PrototypeContent
         ..PrototypeNativeGloryElites.Encounters,
         ..PrototypeNativeGloryBosses.Encounters,
         ..PrototypeNativeGloryEvents.Encounters,
-        ..PrototypeNativeHiveEvents.Encounters
+        ..PrototypeNativeHiveEvents.Encounters,
+        ..PrototypeNativeFakeMerchant.Encounters
     ];
 
     public static string[] StartingDeck { get; } =

@@ -101,7 +101,8 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeHiveEvents.LostWispId,
         PrototypeNativeHiveEvents.SpiritGrafterId,
         PrototypeNativeHiveEvents.LanternKeyEventId,
-        PrototypeNativeHiveEvents.ZenWeaverId
+        PrototypeNativeHiveEvents.ZenWeaverId,
+        PrototypeNativeFakeMerchant.EventId
     ];
     public static readonly string[] GloryEvents =
     [
@@ -113,7 +114,8 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeGloryEvents.GraveOfTheForgottenId,
         PrototypeNativeGloryEvents.TrialId,
         PrototypeNativeGloryEvents.TinkerTimeId,
-        PrototypeNativeGloryEvents.BattlewornDummyId
+        PrototypeNativeGloryEvents.BattlewornDummyId,
+        PrototypeNativeFakeMerchant.EventId
     ];
 
     public static string[] Pool(int act, PrototypeRoomType room, bool weak)

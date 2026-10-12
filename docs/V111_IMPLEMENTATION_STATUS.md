@@ -23,6 +23,14 @@ Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two
 cards to each combat's opening hand.
+Fake Merchant is integrated into the configured later-act Silent route. Its
+six stocked fake relics can be bought for 50 gold each; throwing Foul Potion
+starts the one-merchant event fight, whose victory offers the fixed 300 gold,
+Fake Merchant's Rug, and all unsold stocked relics. All nine fake relic effects
+are executable, including the Tea Set's next-combat energy after a Rest Site.
+Foul Potion now deals its source 12 damage to all enemies without damaging the
+player. Prototype RNG is used for the inventory and fight, so native parity
+remains open; see the [Fake Merchant implementation note](reference-builds/v0.111.0-fake-merchant.md).
 Silver Crucible now consumes its first three group charges on supported custom
 event card rewards as well as combat rewards.
 Silken Tress now persists its one-shot Glam enchantment through the first

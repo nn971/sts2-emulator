@@ -691,6 +691,8 @@ public sealed partial class PrototypeGameEngine
                     || PrototypeNativeGloryEvents.IsEligible(evt, state.Player))
                 && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
+                && (evt.Id != PrototypeNativeFakeMerchant.EventId
+                    || PrototypeNativeFakeMerchant.IsEligible(state.Player))
                 && (laterRoute || evt.Weight > 0)
                 && (!evt.OncePerRun
                     || !world.EventIds.Contains(evt.Id, StringComparer.Ordinal)))
@@ -788,6 +790,15 @@ public sealed partial class PrototypeGameEngine
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
+        if (selected.Id == PrototypeNativeFakeMerchant.EventId)
+        {
+            world = world with
+            {
+                Event = PrototypeNativeFakeMerchant.RollInventory(
+                    world.Event!, state.Rng)
+            };
+        }
+
         if (selected.Id == PrototypeNativeEndlessConveyor.EventId)
         {
             world = world with
@@ -842,6 +853,29 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
             return GetNativeWarHistorianRepyActions(eventState);
+
+        if (eventState.EventId == PrototypeNativeFakeMerchant.EventId)
+        {
+            var offered = eventState.OfferedChoiceIds
+                ?? Array.Empty<string>();
+            var fakeMerchantDefinition = PrototypeContent.Event(eventState.EventId);
+            var actions = fakeMerchantDefinition.Choices
+                .Where(choice => offered.Contains(
+                        choice.Id, StringComparer.Ordinal)
+                    && CanTakeEventChoice(state.Player, choice,
+                        RequireWorld(state)))
+                .Select(choice => GameAction.Create("event_choice",
+                    new EventChoicePayload(choice.Id)))
+                .ToList();
+            actions.AddRange(state.Player.PotionSlots
+                .Select((potion, slot) => (Potion: potion, Slot: slot))
+                .Where(item => item.Potion?.PotionId
+                    == PrototypeNativeFakeMerchant.FoulPotionId)
+                .Select(item => GameAction.Create(
+                    PrototypeNativeFakeMerchant.ThrowPotionAction,
+                    new UsePotionPayload(item.Slot, null))));
+            return actions;
+        }
 
         if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                 eventState.EventId)
@@ -945,6 +979,9 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
         var nativeRunRng = state.NativeRunRng?.Fork();
+
+        if (eventState.EventId == PrototypeNativeFakeMerchant.EventId)
+            return StepNativeFakeMerchant(state, action);
 
         if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                 eventState.EventId)
@@ -4515,6 +4552,14 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState CompleteRoomToMap(RunState state)
     {
+        if (RequireWorld(state).ActiveRoom == PrototypeRoomType.Rest)
+        {
+            state = state with
+            {
+                Player = PrototypeNativeFakeMerchant
+                    .MarkTeaSetsAfterRestSite(state.Player)
+            };
+        }
         state = RecordCompletedRoom(state);
         var world = RequireWorld(state) with
         {

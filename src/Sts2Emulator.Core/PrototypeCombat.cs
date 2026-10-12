@@ -116,6 +116,10 @@ public sealed partial class PrototypeGameEngine
 
         state = ApplyBeforeCombatStartRelics(state);
 
+        var teaSet = PrototypeNativeFakeMerchant.ConsumeTeaSetCharges(
+            state.Player);
+        state = state with { Player = teaSet.Player };
+
         var combatRelics = state.Player.Relics
             .Select((relic, index) =>
             {
@@ -342,7 +346,8 @@ public sealed partial class PrototypeGameEngine
         var combat = new CombatState(
             Turn: 1,
             Energy: EnergyPerTurn(state.Player)
-                + (boomingConchAtElite ? 1 : 0),
+                + (boomingConchAtElite ? 1 : 0)
+                + teaSet.Bonus,
             PlayerBlock: 0,
             Hand: innateCards,
             DrawPile: drawPile,
@@ -1311,6 +1316,12 @@ public sealed partial class PrototypeGameEngine
         state = ApplyWarHammerEliteVictory(
             state, world.ActiveRoom);
         state = NativeAncientRewardsV111.ApplyCombatEnd(state);
+
+        if (world.Event is { EventId: PrototypeNativeFakeMerchant.EventId }
+            && !combat.Enemies.Any(enemy => enemy.Hp > 0))
+        {
+            return CompleteNativeFakeMerchant(state, combat);
+        }
 
         if (world.Event is { } battleworn
             && battleworn.EventId ==

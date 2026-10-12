@@ -105,7 +105,10 @@ public static class V111Coverage
                             == PrototypeNativePunchOff.EncounterId)
                     || (item.Id == "DENSE_VEGETATION_EVENT_ENCOUNTER"
                         && encounter.Id
-                            == PrototypeNativeDenseVegetation.EncounterId))
+                            == PrototypeNativeDenseVegetation.EncounterId)
+                    || (item.Id == "FAKE_MERCHANT_EVENT_ENCOUNTER"
+                        && encounter.Id
+                            == PrototypeNativeFakeMerchant.EncounterId))
                 .Select(encounter => encounter.Id).ToArray(),
             "events" => PrototypeContent.Events.Values
                 .Where(evt => Matches(item, evt.Id, evt.Name)).Select(evt => evt.Id).ToArray(),
@@ -197,6 +200,23 @@ public static class V111Coverage
                     .SequenceEqual(
                         ["proto.enemy.wriggler", "proto.enemy.wriggler",
                          "proto.enemy.wriggler", "proto.enemy.wriggler"],
+                        StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "FAKE_MERCHANT_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativeFakeMerchant.EncounterId,
+                    StringComparer.Ordinal)
+                && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeFakeMerchant.EventId, 2)
+                && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeFakeMerchant.EventId, 3)
+                && PrototypeNativeFakeMerchant.Encounter.Weight == 0
+                && PrototypeNativeFakeMerchant.Encounter.EnemyIds
+                    .SequenceEqual(
+                        [PrototypeNativeFakeMerchant.MonsterId],
                         StringComparer.Ordinal))
             {
                 implementation = "implemented";
@@ -456,6 +476,67 @@ public static class V111Coverage
             && engineIds.Contains(PrototypeNativePunchOff.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "FAKE_MERCHANT"
+            && engineIds.Contains(PrototypeNativeFakeMerchant.EventId,
+                StringComparer.Ordinal)
+            && PrototypeNativeFakeMerchant.StockRelicIds.All(id =>
+                PrototypeNativeFakeMerchant.Definition.Choices.Any(choice =>
+                    choice.Id == PrototypeNativeFakeMerchant.ChoiceId(id)))
+            && PrototypeNativeFakeMerchant.Definition.Choices.Any(choice =>
+                choice.Id == PrototypeNativeFakeMerchant.LeaveChoiceId)
+            && PrototypeContent.Encounter(
+                PrototypeNativeFakeMerchant.EncounterId).Weight == 0)
+            implementation = "implemented";
+
+        if (item.Scope == "single-player" && item.Kind == "potions"
+            && item.Id == "FOUL_POTION"
+            && engineIds.Contains(
+                PrototypeNativeFakeMerchant.FoulPotionId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Potion(
+                PrototypeNativeFakeMerchant.FoulPotionId).Effects.Any(
+                effect => effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                    && effect.Amount == 12
+                    && effect.Target == PrototypeEffectTarget.AllEnemies)
+            && !PrototypeContent.Potion(
+                PrototypeNativeFakeMerchant.FoulPotionId).Effects.Any(
+                effect => effect.Kind == PrototypeCombatEffectKind.DamagePlayer)
+            && PrototypeNativeFakeMerchant.Definition.Choices.Length == 10)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+
+        if (item.Scope == "single-player" && item.Kind == "monsters"
+            && item.Id == "FAKE_MERCHANT_MONSTER"
+            && engineIds.Contains(PrototypeNativeFakeMerchant.MonsterId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Encounter(
+                PrototypeNativeFakeMerchant.EncounterId).EnemyIds
+                .Contains(PrototypeNativeFakeMerchant.MonsterId,
+                    StringComparer.Ordinal))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id.StartsWith("FAKE_", StringComparison.Ordinal)
+            && engineIds.Length > 0
+            && (item.Id == "FAKE_MERCHANTS_RUG"
+                ? PrototypeNativeFakeMerchant.Encounter.Weight == 0
+                    && PrototypeNativeFakeMerchant.StockRelicIds.Length == 9
+                : PrototypeNativeFakeMerchant.StockRelicIds.Contains(
+                    engineIds[0], StringComparer.Ordinal))
+            && (ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeFakeMerchant.EventId, 2)
+                || ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeFakeMerchant.EventId, 3)))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
