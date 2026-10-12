@@ -3,10 +3,11 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// First pinned v0.111.0 Hive/Glory executable content slice.
 ///
-/// These mechanics are available in the typed registry for deterministic
-/// testing, but native Act 2/3 route selection is NOT enabled. In particular,
-/// do not silently replace unimplemented later-act encounters with prototype
-/// enemies. See Hive.GenerateAllEncounters and Glory.GenerateAllEncounters.
+/// These mechanics are available in the typed registry. The opt-in v111
+/// three-act route selects its supported Hive/Glory subsets from pre-generated
+/// regional histories; default v111 routing remains gated. Do not silently
+/// replace an unimplemented later-act encounter with a prototype enemy. See
+/// Hive.GenerateAllEncounters and Glory.GenerateAllEncounters.
 /// </summary>
 public static class PrototypeNativeLaterActs
 {

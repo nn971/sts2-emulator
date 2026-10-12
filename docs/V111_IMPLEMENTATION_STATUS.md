@@ -475,9 +475,10 @@ remain open.
   reusing existing typed Chomper/Tunneler and Punch/Cubex enemies.
   The Chomper is explicitly assigned its source-true screaming
   initial phase; Menagerie has independently targetable Punch
-  and two Cubex instances. Both fights remain Weight=0,
-  synthetic fixtures only, and native Act 2/3 progression
-  is not enabled. [Normal formation audit](reference-builds/v0.111.0-normal-formations.md).
+  and two Cubex instances. Construct Menagerie is in the opt-in Glory queue;
+  Tunneler Normal remains a forced fixture because it is absent from Hive's
+  native encounter roster. Both retain Weight=0 in the generic selector.
+  [Normal formation audit](reference-builds/v0.111.0-normal-formations.md).
 - Added source-backed **Owl Magistrate Normal** with
   A0/A8/A9 attack and HP deltas, six-hit Peck, four-move loop,
   Judicial Flight's Soar (halves incoming powered attack damage),

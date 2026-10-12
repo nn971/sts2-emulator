@@ -1,8 +1,10 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Native v0.111.0 normal encounter formations that reuse existing
-/// source-backed monsters. Deliberately gated from later-act routing.
+/// Source-pinned v0.111.0 normal encounter formations that reuse existing
+/// monsters. Construct Menagerie is selected by the opt-in Glory queue.
+/// Tunneler Normal is not listed in Hive's native encounter roster and stays
+/// available only as a forced fixture.
 /// Reference: Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class PrototypeNativeAdditionalNormals

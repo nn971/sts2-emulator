@@ -26,6 +26,14 @@ public sealed class V111RegionalEncounterBagsTests
         var all = weak.Concat(normal).Concat(elite).Concat(boss).ToArray();
         Assert.Equal(all.Length, all.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(act == 2 ? 20 : 18, all.Length);
+        if (act == 3)
+        {
+            Assert.Contains(
+                PrototypeNativeAdditionalNormals.ConstructMenagerieNormalId,
+                normal);
+        }
+        Assert.DoesNotContain(
+            PrototypeNativeAdditionalNormals.TunnelerNormalId, all);
         foreach (var id in all)
         {
             var definition = PrototypeContent.Encounter(id);
