@@ -28043,8 +28043,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RingOfTheSnake.cs#d04b919c6c705750de44ffee82f435ee491509f12723508a3a9679d26eb62eee"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29618,8 +29618,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 13,
-        "integrated": 13,
+        "implemented": 14,
+        "integrated": 14,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

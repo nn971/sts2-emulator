@@ -21,6 +21,8 @@ Colorless card reward drawn from all implemented single-player Colorless
 reward cards. Account unlock filtering and native reward RNG remain open.
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
+Ring of the Snake is assigned in the Silent starting loadout and adds two
+cards to each combat's opening hand.
 Silver Crucible now consumes its first three group charges on supported custom
 event card rewards as well as combat rewards.
 Silken Tress now persists its one-shot Glam enchantment through the first

@@ -612,6 +612,23 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "RING_OF_THE_SNAKE"
+            && engineIds.Contains(
+                PrototypeNativeOrobasRelics.RingOfTheSnakeId,
+                StringComparer.Ordinal)
+            && V111Characters.Get("silent").StartingRelics.Contains(
+                "RING_OF_THE_SNAKE", StringComparer.Ordinal)
+            && PrototypeContent.StartingRelics.Contains(
+                PrototypeNativeOrobasRelics.RingOfTheSnakeId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Relic(
+                PrototypeNativeOrobasRelics.RingOfTheSnakeId)
+                .FirstTurnDrawBonus == 2)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";
