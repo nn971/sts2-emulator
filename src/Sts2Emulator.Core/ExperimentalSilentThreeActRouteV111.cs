@@ -40,6 +40,15 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeHiveBosses.KnowledgeEncounterId,
         PrototypeNativeHiveBosses.InsatiableEncounterId
     ];
+    // ActModel.BossDiscoveryOrder is independent of GenerateAllEncounters()
+    // pool order. The source replaces the randomly preselected boss with the
+    // first entry in this sequence the profile has not discovered yet.
+    public static readonly string[] HiveBossDiscoveryOrder =
+    [
+        PrototypeNativeHiveBosses.InsatiableEncounterId,
+        PrototypeNativeHiveBosses.KnowledgeEncounterId,
+        PrototypeNativeHiveBosses.KaiserEncounterId
+    ];
     public static readonly string[] GloryWeak =
     [
         PrototypeNativeLaterActs.GlorySculptorWeakId,
@@ -69,6 +78,12 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeGloryBosses.AeonglassEncounterId,
         PrototypeNativeGloryBosses.QueenEncounterId,
         PrototypeNativeGloryBosses.TestSubjectEncounterId
+    ];
+    public static readonly string[] GloryBossDiscoveryOrder =
+    [
+        PrototypeNativeGloryBosses.QueenEncounterId,
+        PrototypeNativeGloryBosses.TestSubjectEncounterId,
+        PrototypeNativeGloryBosses.AeonglassEncounterId
     ];
 
     // Colorful Philosophers is still unimplemented, so it is not
@@ -192,7 +207,8 @@ public static class ExperimentalSilentThreeActRouteV111
     }
 
     public static PrototypeLaterActEncounterBagV111 InitialBag(
-        int act, RngBundle rng, int ascension = 0)
+        int act, RngBundle rng, int ascension = 0,
+        SimulationProfile? profile = null)
     {
         var rooms = OrdinaryRoomCount(act);
         var history = new List<string>(rooms);
@@ -208,6 +224,17 @@ public static class ExperimentalSilentThreeActRouteV111
             new List<string>(15));
         var bosses = Pool(act, PrototypeRoomType.Boss, false);
         var boss = bosses[PrototypeRng.NextInt(rng, "combat", bosses.Length)];
+        var discoveryOrder = act switch
+        {
+            2 => HiveBossDiscoveryOrder,
+            3 => GloryBossDiscoveryOrder,
+            _ => []
+        };
+        var seenBosses = profile?.SeenBossEncounters ?? [];
+        var firstUndiscoveredBoss = discoveryOrder.FirstOrDefault(id =>
+            !seenBosses.Contains(id, StringComparer.Ordinal));
+        if (firstUndiscoveredBoss is not null)
+            boss = firstUndiscoveredBoss;
         string? secondBoss = null;
         if (act == 3 && ascension >= 10)
         {

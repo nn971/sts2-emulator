@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-13): 1,832 C# tests pass, executable coverage
+Current validation (2026-10-13): 1,837 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -91,6 +91,12 @@ The experimental Glory event draw now filters Round Tea Party below 12 HP and
 Grave of the Forgotten when no deck card can receive Souls Power. Boundary tests
 and a 96-seed Unknown-room route test exercise these filters. The legacy fixture
 remains able to force the Grave event so its locked choice can be tested.
+Prepared Hive/Glory boss selection now applies each act's source
+`BossDiscoveryOrder` using `SimulationProfile.SeenBossEncounters`, while still
+consuming the preselected boss draw; Glory's A10 second boss excludes the final
+discovery-selected boss. Tests cover fresh and partially seen profiles, all
+bosses seen, profile fork ownership, and the A9/A10 boundary. Native
+`run.up_front` draw ownership and live discovery-state capture remain open.
 Native certification and the completion standard below remain open.
 Glory's Lantern Key chest now presents its two potions and two distinct relics
 on one optional reward screen, with each offer independently selectable or

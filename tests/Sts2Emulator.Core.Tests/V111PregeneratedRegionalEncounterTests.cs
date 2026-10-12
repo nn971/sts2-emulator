@@ -266,4 +266,84 @@ public sealed class V111PregeneratedRegionalEncounterTests
             2, PrototypeRng.CreateBundle("hive-double-boss-a10"), ascension: 10);
         Assert.Null(hive.SecondBossEncounterId);
     }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void PreselectedBossUsesFirstUndiscoveredSourceBossOrder(int act)
+    {
+        var order = act == 2
+            ? ExperimentalSilentThreeActRouteV111.HiveBossDiscoveryOrder
+            : ExperimentalSilentThreeActRouteV111.GloryBossDiscoveryOrder;
+        var fresh = ExperimentalSilentThreeActRouteV111.InitialBag(
+            act, PrototypeRng.CreateBundle("boss-discovery-fresh-" + act));
+        Assert.Equal(order[0], fresh.BossEncounterId);
+
+        var profile = SimulationProfile.Unlocked() with
+        {
+            SeenBossEncounters = [order[0]]
+        };
+        var nextUndiscovered = ExperimentalSilentThreeActRouteV111.InitialBag(
+            act, PrototypeRng.CreateBundle("boss-discovery-seen-" + act),
+            profile: profile);
+        Assert.Equal(order[1], nextUndiscovered.BossEncounterId);
+    }
+
+    [Fact]
+    public void RunStartAppliesProfileDiscoveryHistoryToPreparedRegionalBosses()
+    {
+        var config = RunConfiguration.Create(profile:
+            SimulationProfile.Unlocked() with
+            {
+                SeenBossEncounters =
+                [PrototypeNativeGloryBosses.QueenEncounterId]
+            }) with
+        {
+            FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
+        };
+        var state = new PrototypeGameEngine().Step(
+            V111RunFactory.Create("run-start-boss-discovery", config),
+            GameAction.Empty("start_run")).State;
+
+        var prepared = state.World!.PreparedLaterActEncounterBags!;
+        Assert.Equal(ExperimentalSilentThreeActRouteV111
+            .HiveBossDiscoveryOrder[0], prepared[0].BossEncounterId);
+        Assert.Equal(ExperimentalSilentThreeActRouteV111
+            .GloryBossDiscoveryOrder[1], prepared[1].BossEncounterId);
+    }
+
+    [Fact]
+    public void GloryA10SecondBossExcludesDiscoveryOverrideAndKeepsBossDrawWhenAllSeen()
+    {
+        var order = ExperimentalSilentThreeActRouteV111.GloryBossDiscoveryOrder;
+        var profile = SimulationProfile.Unlocked() with
+        {
+            SeenBossEncounters = order.ToArray()
+        };
+        const string seed = "boss-discovery-all-seen-a10";
+        var plainRng = PrototypeRng.CreateBundle(seed);
+        var seenRng = PrototypeRng.CreateBundle(seed);
+        var plain = ExperimentalSilentThreeActRouteV111.InitialBag(
+            3, plainRng, ascension: 10);
+        var seen = ExperimentalSilentThreeActRouteV111.InitialBag(
+            3, seenRng, ascension: 10, profile: profile);
+
+        Assert.Equal(order[0], plain.BossEncounterId);
+        Assert.Contains(seen.BossEncounterId,
+            ExperimentalSilentThreeActRouteV111.GloryBosses);
+        Assert.NotEqual(seen.BossEncounterId, seen.SecondBossEncounterId);
+        Assert.Equal(PrototypeRng.NextInt(plainRng, "combat", 100000),
+            PrototypeRng.NextInt(seenRng, "combat", 100000));
+
+        var queenSeen = SimulationProfile.Unlocked() with
+        {
+            SeenBossEncounters = [order[0]]
+        };
+        var discovered = ExperimentalSilentThreeActRouteV111.InitialBag(
+            3, PrototypeRng.CreateBundle("boss-discovery-override-a10"),
+            ascension: 10, profile: queenSeen);
+        Assert.Equal(order[1], discovered.BossEncounterId);
+        Assert.NotEqual(discovered.BossEncounterId,
+            discovered.SecondBossEncounterId);
+    }
 }

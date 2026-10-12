@@ -117,7 +117,11 @@ public sealed class V111FoundationsTests
     [Fact]
     public void ConfigurationProfileAndResourcesAreOwnedByEachFork()
     {
-        var profile = new SimulationProfile(true, ["silent"], ["FIRST"]);
+        var profile = new SimulationProfile(true, ["silent"], ["FIRST"])
+        {
+            SeenBossEncounters =
+                [PrototypeNativeGloryBosses.QueenEncounterId]
+        };
         var configuration = RunConfiguration.Create(profile: profile);
         var state = V111RunFactory.Create("fork-config", configuration);
         var fork = state.Fork();
@@ -126,11 +130,40 @@ public sealed class V111FoundationsTests
         Assert.Equal(ActIdentity.Overgrowth, state.Configuration!.Acts[0]);
         Assert.Equal("FIRST", state.Configuration.Profile.RevealedEpochs[0]);
         Assert.Equal("FIRST", profile.RevealedEpochs[0]);
+        fork.Configuration.Profile.SeenBossEncounters[0] = "changed";
+        Assert.Equal(PrototypeNativeGloryBosses.QueenEncounterId,
+            state.Configuration.Profile.SeenBossEncounters[0]);
+        Assert.Equal(PrototypeNativeGloryBosses.QueenEncounterId,
+            profile.SeenBossEncounters[0]);
         var resources = new CharacterResourceState(Stars: 3, OrbSlots: 3, Orbs: [new("DARK_ORB", 6)]);
         var player = state.Player with { Resources = resources };
         var playerFork = player.Fork();
         playerFork.Resources!.Orbs![0] = new("FROST_ORB");
         Assert.Equal("DARK_ORB", player.Resources!.Orbs![0].Kind);
+    }
+
+    [Fact]
+    public void ProfileRejectsInvalidBossDiscoveryHistory()
+    {
+        var duplicate = RunConfiguration.Create() with
+        {
+            Profile = SimulationProfile.Unlocked() with
+            {
+                SeenBossEncounters =
+                [PrototypeNativeGloryBosses.QueenEncounterId,
+                 PrototypeNativeGloryBosses.QueenEncounterId]
+            }
+        };
+        Assert.Throws<ArgumentException>(duplicate.Validate);
+
+        var emptyId = RunConfiguration.Create() with
+        {
+            Profile = SimulationProfile.Unlocked() with
+            {
+                SeenBossEncounters = [""]
+            }
+        };
+        Assert.Throws<ArgumentException>(emptyId.Validate);
     }
 
     [Fact]
