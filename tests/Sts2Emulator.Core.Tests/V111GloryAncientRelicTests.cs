@@ -465,6 +465,89 @@ public sealed class V111GloryAncientRelicTests
     }
 
     [Fact]
+    public void MusicBoxCopiesOnlyTheFirstAttackEachPlayerTurnAsEthereal()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-music-box");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var empty = PrototypeJson.EmptyObject();
+        var combatNode = state.World!.Map.AvailableNodes()
+            .First(node => node.RoomType == PrototypeRoomType.Combat);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new(1, "proto.silent.strike", 1, empty),
+                    new(2, "proto.silent.strike", 0, empty)
+                ],
+                Relics = [..state.Player.Relics,
+                    new RelicInstance(
+                        NativeGloryAncientsV111.MusicBoxId, empty)]
+            },
+            World = state.World! with
+            {
+                NextCardInstanceId = 3,
+            }
+        };
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload(combatNode.NodeId))).State;
+
+        foreach (var sourceCardId in new long[] { 1, 2 })
+        {
+            var play = engine.GetLegalActions(state).Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                    == sourceCardId);
+            state = engine.Step(state, play).State;
+            PrototypeStateInvariants.Validate(state);
+            var combat = state.World!.Combat!;
+            var copies = combat.Cards.Where(card => card.IsTemporary
+                && card.CardId == "proto.silent.strike").ToArray();
+            Assert.Single(copies);
+            Assert.Equal(1, copies[0].UpgradeLevel);
+            Assert.Contains(copies[0].KeywordOverrides ?? [], item =>
+                item.Keyword == PrototypeCardKeyword.Ethereal
+                && item.Enabled
+                && item.Expiry == PrototypeCardKeywordOverrideExpiry.EndOfTurn);
+            Assert.Equal(sourceCardId == 1 ? 1 : 2,
+                Assert.Single(combat.RelicStates,
+                relic => relic.RelicId == NativeGloryAncientsV111.MusicBoxId)
+                .TriggerCounts[0]);
+        }
+
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.Kind == "end_turn")).State;
+        var nextTurnCombat = state.World!.Combat!;
+        Assert.Equal(2, nextTurnCombat.Turn);
+        Assert.True(nextTurnCombat.IsPlayerTurn);
+        Assert.Equal(0, Assert.Single(nextTurnCombat.RelicStates,
+            relic => relic.RelicId == NativeGloryAncientsV111.MusicBoxId)
+            .TriggerCounts[0]);
+        Assert.Contains(nextTurnCombat.ExhaustPile, cardId =>
+            nextTurnCombat.Cards.Single(card => card.InstanceId == cardId)
+                .IsTemporary
+            && cardId > 2);
+
+        var nextTurnAttackId = nextTurnCombat.Hand.First(cardId =>
+            nextTurnCombat.Cards.Single(card => card.InstanceId == cardId)
+                .PersistentCardInstanceId is 1 or 2);
+        var nextTurnAttack = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == nextTurnAttackId);
+        state = engine.Step(state, nextTurnAttack).State;
+        var laterCopies = state.World!.Combat!.Cards.Where(card =>
+            card.IsTemporary && card.CardId == "proto.silent.strike").ToArray();
+        Assert.Equal(2, laterCopies.Length);
+        Assert.Equal(1, Assert.Single(state.World.Combat.RelicStates,
+            relic => relic.RelicId == NativeGloryAncientsV111.MusicBoxId)
+            .TriggerCounts[0]);
+    }
+
+    [Fact]
     public void LoomingFruitAdds31CurrentAndMaximumHpWhenAcquired()
     {
         var initial = PrototypeNativeUnderdocksRunFactory.Create(

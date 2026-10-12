@@ -6293,6 +6293,7 @@ public sealed partial class PrototypeGameEngine
                     var source = RequireCombatCard(
                         combat,
                         eventSourceCardInstanceId.Value);
+                    var firstGeneratedCardId = combat.NextCardInstanceId;
                     combat = AddGeneratedCardCopies(
                         combat,
                         new PrototypeCombatCardSnapshot(
@@ -6314,6 +6315,16 @@ public sealed partial class PrototypeGameEngine
                             source.Affliction,
                             source.SuppressedUpgradeLevels),
                         operation.Amount);
+                    if (operation.EventSourceCardKeyword is { } keywordOverride)
+                    {
+                        for (var generatedCardId = firstGeneratedCardId;
+                             generatedCardId < combat.NextCardInstanceId;
+                             generatedCardId++)
+                        {
+                            combat = ApplyCardKeywordOverride(
+                                combat, generatedCardId, keywordOverride);
+                        }
+                    }
                     break;
                 }
 

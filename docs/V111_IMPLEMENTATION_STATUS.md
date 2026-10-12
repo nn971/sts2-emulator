@@ -138,7 +138,10 @@ adds one energy and pays to auto-play the first playable hand cards in order
 on turn one, up to the source cap of 13; it reuses the resumable card-play
 pipeline. Sere Talon loses 9 Max HP and adds three Wish cards; Wish exhausts
 after selecting a draw-pile card into hand, and its upgrade grants Retain.
-Vakuu's event and six remaining relic dependencies stay gated. Fur Coat marks
+Preserved Fog removes up to three chosen cards before adding Folly, and Music
+Box copies the first Attack each player turn as Ethereal while preserving the
+played card's instance data. Their acquisition and turn-scoped behavior have
+direct tests. Vakuu's event and four remaining relic dependencies stay gated. Fur Coat marks
 up to eight current-act Monster/Elite rooms and reduces initial and summoned
 enemies there to 1 HP while persisting its map selection and content RNG
 snapshot. Delicate Frond now

@@ -17,6 +17,7 @@ public static class NativeGloryAncientsV111
     public const string WishCardId = "proto.native.ancient.wish";
     public const string PreservedFogId = "proto.native.ancient.preserved_fog";
     public const string FollyCardId = "proto.native.ancient.folly";
+    public const string MusicBoxId = "proto.native.ancient.music_box";
     public const string BloodSoakedRoseId = "proto.native.ancient.blood_soaked_rose";
     public const string EnthralledCardId = "proto.native.ancient.enthralled";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
@@ -46,6 +47,18 @@ public static class NativeGloryAncientsV111
             AcquisitionDeckChoice: new(
                 PrototypePersistentDeckChoiceKind.Remove, 3),
             CardIdAfterAcquisitionDeckChoices: FollyCardId),
+        new(MusicBoxId, "Music Box", Triggers:
+        [
+            new(PrototypeCombatEventKind.CardPlayed,
+                [new(PrototypeCombatEffectKind.CreateEventSourceCardCopyInHand,
+                    1,
+                    EventSourceCardKeyword: new(
+                        PrototypeCardKeyword.Ethereal,
+                        Expiry: PrototypeCardKeywordOverrideExpiry.EndOfTurn))],
+                RequiredSourceCardType: PrototypeCardType.Attack,
+                ResetCounterEachTurn: true,
+                MaxTriggersPerCounterWindow: 1)
+        ]),
         new(BlessedAntlerId, "Blessed Antler",
             EnergyPerTurnBonus: 1,
             Triggers:
