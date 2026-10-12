@@ -1,6 +1,8 @@
 # Native Reference Mod and Fidelity Inspector: implementation plan
 
-**Status:** Planned; no implementation claimed by this document.
+**Status:** In progress. Implementation evidence and remaining gates:
+[NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_STATUS.md](NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_STATUS.md).
+No authentic native-versus-emulator parity result has yet been established.
 **Repository ownership:** `sts2-emulator`
 **First application:** Native-versus-emulator fidelity checking for single-player Silent, beginning with Act 1 Overgrowth.
 **Implementation location:** `native/Sts2ReferenceMod/`
