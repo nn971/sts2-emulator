@@ -101,10 +101,12 @@ fixtures: Very Hot Cocoa, Yummy Cookie, Toasty Mittens, Seal of Gold, Pumpkin
 Candle, Storybook, Biiig Hug, Nutritious Soup, Golden Compass and Toy Box. Shared
 side-turn, acquisition, map, shuffle and choice continuations provide their effects.
 Toy Box uses the current restricted relic bag and persists wax/melted lifecycle
-state. Full Ancient selection remains gated on complete pool, acquisition and
-hook-order audits. A specifically assigned Tezcatara opening now samples all
-three complete pools using an owned native event RNG context. Its three draws
-and ordered offers persist through snapshots. Opening Mittens/Gambling Chip
+state. The configured Tezcatara opening samples all three complete pools,
+including the conditional Soup offer, and all ten relic choices retain their
+finished page after acquisition continuations. The three draws and ordered
+offers persist through snapshots. Native UpFront assignment, unlock-profile
+filtering and RNG cursor parity remain for the fidelity pass. Opening
+Mittens/Gambling Chip
 callbacks use a separate resumable post-draw stage. Toolbox suspends before
 the opening draw. Storybook grants its card through shared relic acquisition,
 and Toy Box's wax offers resume the acquiring event, shop or parent reward;

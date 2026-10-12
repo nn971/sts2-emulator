@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "75b7c1cb1953bea50e5e338032acb3a48d160046597c16da58b4dfa9c8b2920b",
+  "inventory_file_sha256": "c14320693ac48c78827a1e11c56a9a6824221626d8adce53dfa0e83abe641042",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "b0e9e9c529665714d4a0e155ae334ea30af519d6e2c4ceb0dc260f2f8552ceb9",
+    "inventory_hash": "63d9cf3a5f6499008b01a55a3131eaeab578ffd95684149b16cb728ceea8f19c",
     "items": [
       {
         "catalogued": true,
@@ -16000,21 +16000,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Tezcatara.cs#8e21358e973e2720151c88cfec7486eb7dcd9cbdfb84a912e65b14394e100abf"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "relic/BIIIG_HUG",
-          "relic/GOLDEN_COMPASS",
-          "relic/NUTRITIOUS_SOUP",
-          "relic/PUMPKIN_CANDLE",
-          "relic/SEAL_OF_GOLD",
-          "relic/STORYBOOK",
-          "relic/TOASTY_MITTENS",
-          "relic/TOY_BOX",
-          "relic/VERY_HOT_COCOA",
-          "relic/YUMMY_COOKIE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "TEZCATARA",
         "registered": true,
@@ -29509,7 +29498,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 45,
+        "implemented": 46,
         "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,

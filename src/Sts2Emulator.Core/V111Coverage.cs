@@ -555,6 +555,26 @@ public static class V111Coverage
                 .IsSupersetOf(["breathing", "emotional", "arachnid"]))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TEZCATARA" && missingBranches.Length == 0
+            && engineIds.Contains(NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            && IsIntegratedEvent(NativeAncientRewardsV111.TezcataraId)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                NativeAncientRewardsV111.TezcataraId)
+            && NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Length == NativeAncientRewardsV111.Relics.Length
+            && NativeAncientRewardsV111.Relics.All(relic =>
+                PrototypeContent.Relic(relic.Id).Id == relic.Id
+                && NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                    .Any(choice => choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relic.Id)))
+            && NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .All(choice =>
+                    PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                        NativeAncientRewardsV111.TezcataraId, choice.Id)))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "TINKER_TIME" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeGloryEvents.TinkerTimeId,
                 StringComparer.Ordinal))
