@@ -8,10 +8,12 @@
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
       <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</PrivateAssets>
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Sts2Emulator.Core/Sts2Emulator.Core.csproj" />
+    <ProjectReference Include="../../src/Sts2Emulator.Trace/Sts2Emulator.Trace.csproj" />
+    <ProjectReference Include="../../native/Sts2ReferenceMod/Sts2ReferenceMod.csproj" />
   </ItemGroup>
 </Project>

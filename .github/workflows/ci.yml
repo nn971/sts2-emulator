@@ -23,3 +23,6 @@ jobs:
           printf '%s\n' '{"type":"header","trace_schema":"0.1","game_build":"test","bridge_version":"test","run_id":"r","run_seed":"1"}' > /tmp/a.jsonl
           cp /tmp/a.jsonl /tmp/b.jsonl
           python tools/trace_diff.py /tmp/a.jsonl /tmp/b.jsonl
+
+      - name: Native inspector synthetic protocol checks
+        run: python -m unittest discover -s tests -p 'test_native_parity.py' -v
