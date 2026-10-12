@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "ddd12587362d5cea1c4d0d7e8b9a33948615ec35a8f2f444bc695ef2af240ab1",
+  "inventory_file_sha256": "e3b0c4c229a4777ca5a4dbc1f64728cd483f86b6167aeec387219e7abfaa2ea9",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "9fe42d790a8ef445d7212441168e47ac7e3f365e5aa3f6e4bf38c2b966100171",
+    "inventory_hash": "84ff8c434b93817a0da1b86677e7916f1dab8f2fc47af9e7a75164a791d9e5db",
     "items": [
       {
         "catalogued": true,
@@ -15287,28 +15287,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/EndlessConveyor.cs#7f9c7f3854678b7e3782eff0b8edc881d4b4d8b6cbeb7942822dea08a4288019"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/OBSERVE_CHEF",
-          "page/ALL",
-          "page/ALL/CAVIAR",
-          "page/ALL/CLAM_ROLL",
-          "page/ALL/FRIED_EEL",
-          "page/ALL/GOLDEN_FYSH",
-          "page/ALL/JELLY_LIVER",
-          "page/ALL/LOCKED",
-          "page/ALL/SEAPUNK_SALAD",
-          "page/ALL/SPICY_SNAPPY",
-          "page/ALL/SUSPICIOUS_CONDIMENT",
-          "page/GRAB_SOMETHING_OFF_THE_BELT",
-          "page/GRAB_SOMETHING_OFF_THE_BELT/LEAVE",
-          "page/INITIAL",
-          "page/INITIAL/OBSERVE_CHEF",
-          "page/LEAVE",
-          "page/OBSERVE_CHEF"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "ENDLESS_CONVEYOR",
         "registered": true,
@@ -29664,7 +29646,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 12,
+        "implemented": 13,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,

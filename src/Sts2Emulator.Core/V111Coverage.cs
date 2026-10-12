@@ -234,6 +234,12 @@ public static class V111Coverage
             && engineIds.Contains("proto.native.underdocks.abyssal_baths",
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ENDLESS_CONVEYOR"
+            && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeEndlessConveyor.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {

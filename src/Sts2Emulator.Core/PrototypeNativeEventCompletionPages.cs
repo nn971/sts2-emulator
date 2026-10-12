@@ -17,6 +17,7 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.underdocks.waterlogged_scriptorium"
             or PrototypeNativeUnderdocksTrashHeap.EventId
             or "proto.native.underdocks.abyssal_baths"
+            or PrototypeNativeEndlessConveyor.EventId
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
@@ -35,7 +36,8 @@ public static class PrototypeNativeEventCompletionPages
         eventId is PrototypeNativeHiveEvents.ColossalFlowerId
             or PrototypeNativeDenseVegetation.EventId ? 3
             : eventId == PrototypeNativeGloryEvents.RoundTeaPartyId ? 2
-            : eventId == "proto.native.underdocks.abyssal_baths"
+            : eventId is "proto.native.underdocks.abyssal_baths"
+                or PrototypeNativeEndlessConveyor.EventId
                 ? int.MaxValue : 1;
 
     public static bool HasTerminalChoice(
@@ -68,6 +70,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "dive" or "grab"
         || eventId == "proto.native.underdocks.abyssal_baths"
             && choiceId is "abstain" or "exit"
+        || eventId == PrototypeNativeEndlessConveyor.EventId
+            && choiceId is "observe" or "leave"
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId

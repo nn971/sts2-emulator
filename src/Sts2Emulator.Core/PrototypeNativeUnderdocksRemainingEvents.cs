@@ -138,11 +138,26 @@ public sealed partial class PrototypeGameEngine
         {
             var player = UpgradeRandomEligibleConveyorCard(
                 state.Player, state.Rng);
-            return CompleteRoomToMap(state with { Player = player });
+            var result = state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Event = evt with { ChosenChoiceId = choice }
+                }
+            };
+            return PreserveNativeEventCompletionPage(result, choice);
         }
         if (choice == "leave" && evt.NativeDishCount > 1)
         {
-            return CompleteRoomToMap(state);
+            var result = state with
+            {
+                World = world with
+                {
+                    Event = evt with { ChosenChoiceId = choice }
+                }
+            };
+            return PreserveNativeEventCompletionPage(result, choice);
         }
         if (choice != "grab" || state.Player.Gold < 40)
         {

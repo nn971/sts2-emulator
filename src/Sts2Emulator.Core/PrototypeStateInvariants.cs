@@ -750,6 +750,10 @@ public static class PrototypeStateInvariants
                     : eventState.EventId ==
                         PrototypeNativeEndlessConveyor.EventId
                         ? eventState.NativePageIndex > 1
+                            && eventState.NativePageIndex !=
+                                PrototypeNativeEventCompletionPages
+                                    .TerminalChoicePageIndex(
+                                        eventState.EventId)
                         : eventState.EventId ==
                             PrototypeNativePunchOff.EventId
                             ? eventState.NativePageIndex > 2
@@ -797,7 +801,8 @@ public static class PrototypeStateInvariants
                 || eventState.PendingReward is not null
                 || eventState.DeferredHpLoss != 0
                 || eventState.DeferredGoldLoss != 0
-                || eventState.DeferredCardId is not null)
+                || eventState.DeferredCardId is not null
+                || eventState.NativeDishRollPending)
                 throw new InvalidOperationException(
                     "Native event completion page has unresolved or invalid state.");
             return;

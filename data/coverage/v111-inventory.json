@@ -11457,7 +11457,7 @@
         "page/LEAVE",
         "page/OBSERVE_CHEF"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

@@ -24,6 +24,7 @@ BRANCH_COMPLETE_EVENTS = {
     "POTION_COURIER", "MORPHIC_GROVE", "WELLSPRING",
     "WHISPERING_HOLLOW", "DENSE_VEGETATION",
     "WATERLOGGED_SCRIPTORIUM", "TRASH_HEAP", "ABYSSAL_BATHS",
+    "ENDLESS_CONVEYOR",
 }
 KINDS = {
     "acts": "Acts", "afflictions": "Afflictions", "ascensions": None,

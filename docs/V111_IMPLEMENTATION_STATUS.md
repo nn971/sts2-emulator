@@ -27,9 +27,10 @@ check pass. Potion Courier is integrated into Hive and Glory. Morphic Grove
 retains the Group and Loner result pages. Wellspring and Whispering Hollow
 retain their result pages after potion and card continuations. Waterlogged
 Scriptorium now keeps its result page after each optional Steady selection;
-Trash Heap retains its result page after either successful reward. The
-coverage report records 50 integrated event paths, twelve complete event
-implementations, and 25 events with complete branch inventories. Native
+Trash Heap retains its result page after either successful reward, and
+Endless Conveyor retains its Observe Chef/Leave results. The coverage report
+records 50 integrated event paths, thirteen complete event implementations,
+and 26 events with complete branch inventories. Native
 validation remains
 unverified.
 
