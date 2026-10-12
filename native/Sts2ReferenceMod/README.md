@@ -46,6 +46,27 @@ uses editor export. Do not install into the live game directory until the
 staged PCK and matching DLL are both present and any incompatible mods are
 disabled.
 
+## After a previous Godot .NET export: duplicate assembly attributes
+
+Older versions of the build script ran Godot against the inspector's C# source
+directory, leaving generated files under
+`native/Sts2ReferenceMod/.godot/mono/temp/obj`.
+Subsequent `dotnet build` mistakenly included those files and reported
+`CS0579: Duplicate Assembly...Attribute` and
+`Duplicate TargetFrameworkAttribute`. The project now explicitly excludes
+`.godot/**` from SDK compile globs. Delete **only that generated cache once**
+in the isolated worktree before rebuilding:
+
+```fish
+cd ~/projects/sts2-inspector-test
+rm -rf native/Sts2ReferenceMod/.godot
+fish scripts/build-native-inspector.fish \
+  ~/projects/sts2-inspector-stage "$STS2_GODOT"
+```
+
+The corrected export path uses a temporary resource-only project, so it
+should not recreate this cache in the source directory.
+
 ## Clean Godot export (no .NET solution required)
 
 The prior two-argument Godot exporter ran from `native/Sts2ReferenceMod`,
