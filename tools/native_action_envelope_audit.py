@@ -57,6 +57,84 @@ def diff_scalars(before: dict, after: dict) -> dict:
     return values
 
 
+def infer_choice_discard(before: dict, after: dict) -> dict:
+    """Observed card movement supporting a nested discard-choice candidate.
+
+    This is a state-delta inference, not a native semantic choice callback.
+    """
+    try:
+        initial_hand = {c["instance_id"] for c in before["combat"]["hand"]}
+        final_hand = {c["instance_id"] for c in after["combat"]["hand"]}
+        initial_discard = {c["instance_id"] for c in before["combat"]["discard_pile"]}
+        final_discard = {c["instance_id"] for c in after["combat"]["discard_pile"]}
+        candidates = sorted((initial_hand - final_hand) & (
+            final_discard - initial_discard))
+    except (KeyError, TypeError, ValueError):
+        candidates = []
+    return {
+        "candidate_discarded_card_instance_id": (
+            candidates[0] if len(candidates) == 1 else None),
+        "candidate_count": len(candidates),
+        "provenance": "INFERRED_FROM_CARD_ZONE_DIFFERENCE",
+        "semantic_selection_verified": False,
+    }
+
+
+def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
+    """Counts directly observed changes; absence is UNOBSERVED, not a pass."""
+    result: dict[str, dict] = {}
+    for label in (
+        "card_play", "end_turn", "non_player_or_unknown_action",
+        "player_hp_change", "energy_change", "block_change",
+        "creature_hp_change", "power_change", "card_zone_change",
+        "exhaust_pile_change", "creature_set_change",
+        "nested_choice_pause", "potion_history_entry",
+    ):
+        result[label] = {"count": 0, "status": "UNOBSERVED"}
+
+    def add(name: str):
+        result[name]["count"] += 1
+        result[name]["status"] = "OBSERVED_UNVERIFIED_MECHANICS"
+
+    for action in actions:
+        canonical = action.get("canonical_action") or {}
+        kind = canonical.get("kind")
+        if kind == "play_card":
+            add("card_play")
+        elif kind == "end_turn":
+            add("end_turn")
+        else:
+            add("non_player_or_unknown_action")
+        delta = action.get("observed_delta") or {}
+        if "player_hp" in delta:
+            add("player_hp_change")
+        if "energy" in delta:
+            add("energy_change")
+        if "player_block" in delta or any(
+                isinstance(info, dict) and "block" in info
+                for info in delta.get("creatures", {}).values()):
+            add("block_change")
+        if any(isinstance(info, dict) and "hp" in info
+               for info in delta.get("creatures", {}).values()):
+            add("creature_hp_change")
+        if any(isinstance(info, dict) and "powers" in info
+               for info in delta.get("creatures", {}).values()):
+            add("power_change")
+        if delta.get("zones"):
+            add("card_zone_change")
+        if "exhaust_pile" in delta.get("zones", {}):
+            add("exhaust_pile_change")
+        if "added_or_removed" in delta.get("creatures", {}).values():
+            add("creature_set_change")
+    for record in records:
+        if record.get("type") == "nested_choice_pause":
+            add("nested_choice_pause")
+        if (record.get("type") == "history_entry" and
+                record.get("native_type") == "potion_used"):
+            add("potion_history_entry")
+    return result
+
+
 def audit(records: list[dict], error: str | None = None) -> dict:
     report = {
         "schema": "native-action-envelope-audit-v1",
@@ -67,6 +145,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "exact_rng_parity": "NOT_TESTED",
         "record_counts": dict(Counter(r.get("type") for r in records)),
         "actions": [],
+        "nested_choices": [],
+        "observed_mechanic_indicators": {},
         "nested_choice_pauses": 0,
         "unattributed_history_entries": 0,
         "history_entries_with_missing_fields": 0,
@@ -91,6 +171,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
+    choices: list[dict] = []
     history_index = -1
     last_frame_index = -1
     last_frame_hash = None
@@ -156,6 +237,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             report["frame_states"] += 1
         elif typ == "nested_choice_pause":
             report["nested_choice_pauses"] += 1
+            choices.append({
+                "action_id": aid,
+                "pause_ordinal": ordinal,
+                "pre_choice_state": record.get("state"),
+            })
             if aid not in running:
                 strict_failures.append(f"Nested choice with no active action: {aid}")
         elif typ == "history_reset":
@@ -183,6 +269,20 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         report["reason"] = "Terminal open action IDs disagree with callback lifecycle"
         return report
     report["actions"] = [completed[a] for a in sorted(completed)]
+    report["observed_mechanic_indicators"] = observed_indicators(
+        report["actions"], records)
+    for choice in choices:
+        aid = choice["action_id"]
+        ended = next((r for r in records if r.get("type") == "action_completed"
+                     and r.get("action_id") == aid), None)
+        candidate = infer_choice_discard(
+            choice.get("pre_choice_state") or {},
+            (ended or {}).get("state") or {})
+        report["nested_choices"].append({
+            "action_id": aid,
+            "pause_ordinal": choice["pause_ordinal"],
+            **candidate,
+        })
     report["incomplete_observations"] = strict_failures
     if running or final.get("status") != "OBSERVED" or strict_failures:
         report["status"] = "INCOMPLETE_CAPTURE"
