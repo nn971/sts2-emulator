@@ -2053,8 +2053,13 @@ public sealed partial class PrototypeGameEngine
                         : EnergyPerTurn(player, combat.Turn)
                 };
                 var delayedEnergy = combat.PlayerPowers.Sum(power =>
-                    PrototypeContent.Power(power.PowerId)
-                        .EnergyAfterResetPerStack * power.Stacks);
+                {
+                    var definition = PrototypeContent.Power(power.PowerId);
+                    return definition.EnergyAfterResetPerStack * power.Stacks
+                        + (power.Stacks > 0
+                            ? definition.EnergyBonusWhileActive
+                            : 0);
+                });
                 if (delayedEnergy != 0)
                 {
                     combat = combat with
@@ -2062,6 +2067,10 @@ public sealed partial class PrototypeGameEngine
                         Energy = Math.Max(0, combat.Energy + delayedEnergy)
                     };
                 }
+
+                combat = DecrementPlayerPowers(
+                    combat,
+                    definition => definition.DecrementAfterEnergyReset);
 
                 combat = RemovePlayerPowers(
                     combat,
@@ -9814,6 +9823,18 @@ public sealed partial class PrototypeGameEngine
         }
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
         {
+            var ritualStrength = combat.PlayerPowers.Sum(power =>
+                Math.Max(0, power.Stacks)
+                * PrototypeContent.Power(power.PowerId)
+                    .PlayerStrengthAtTurnEndPerStack);
+            if (ritualStrength > 0)
+            {
+                combat = ApplyPlayerPower(
+                    combat,
+                    "proto.power.strength",
+                    ritualStrength);
+            }
+
             var plating = combat.PlayerPowers.Sum(power =>
                 Math.Max(0, power.Stacks)
                 * PrototypeContent.Power(power.PowerId)

@@ -2124,6 +2124,29 @@ public static class PrototypeContent
                     7,
                     PowerId: "proto.power.shackling_potion",
                     Target: PrototypeEffectTarget.AllEnemies)]),
+            // Shared Rare potion: gain one permanent Strength at the end of
+            // each player turn for the rest of combat.
+            new PrototypePotionDefinition(
+                "proto.potion.mazaleths_gift",
+                "Mazaleth's Gift",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyPlayerPower,
+                    1,
+                    PowerId: "proto.power.ritual")]),
+            // Shared Uncommon potion: gain one Energy immediately, then one
+            // extra Energy at each of the next three Energy resets.
+            new PrototypePotionDefinition(
+                "proto.potion.radiant_tincture",
+                "Radiant Tincture",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainEnergy, 1),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        3,
+                        PowerId: "proto.power.radiance")
+                ]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",

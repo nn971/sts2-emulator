@@ -941,7 +941,10 @@ public sealed record PrototypePowerDefinition(
     int EnemyIncomingPoweredAttackNumerator = 1,
     int EnemyIncomingPoweredAttackDenominator = 1,
     // Galvanic: Power cards carry this affliction's damage amount.
-    int GalvanizePowerCardsPerStack = 0);
+    int GalvanizePowerCardsPerStack = 0,
+    int PlayerStrengthAtTurnEndPerStack = 0,
+    int EnergyBonusWhileActive = 0,
+    bool DecrementAfterEnergyReset = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

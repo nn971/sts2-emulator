@@ -322,6 +322,71 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void MazalethsGiftGrantsStrengthAtPlayerTurnEnd()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.mazaleths_gift");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.DoesNotContain(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.strength");
+        Assert.Equal(1, Assert.Single(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.ritual").Stacks);
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(1, Assert.Single(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.strength").Stacks);
+    }
+
+    [Fact]
+    public void RadiantTinctureAddsImmediateEnergyAndThreeLaterEnergyResets()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.radiant_tincture");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        Assert.Equal(4, state.World!.Combat!.Energy);
+        Assert.Equal(3, Assert.Single(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.radiance").Stacks);
+
+        for (var expectedStacks = 2; expectedStacks >= 0; expectedStacks--)
+        {
+            state = engine.Step(
+                state,
+                engine.GetLegalActions(state)
+                    .Single(action => action.Kind == "end_turn")).State;
+            Assert.Equal(4, state.World!.Combat!.Energy);
+            if (expectedStacks == 0)
+            {
+                Assert.DoesNotContain(
+                    state.World.Combat.PlayerPowers,
+                    power => power.PowerId == "proto.power.radiance");
+            }
+            else
+            {
+                Assert.Equal(expectedStacks, Assert.Single(
+                    state.World.Combat.PlayerPowers,
+                    power => power.PowerId == "proto.power.radiance").Stacks);
+            }
+        }
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

@@ -142,7 +142,15 @@ public static class PrototypeNativeUnderdocks
             BlockBonusPerStack: 0,
             Triggers: [],
             EnemyStrengthAtSideTurnEndPerStack: 1,
+            PlayerStrengthAtTurnEndPerStack: 1,
             SkipInitialEnemySideTurnEnd: true),
+        new(
+            "proto.power.radiance",
+            "Radiance",
+            BlockBonusPerStack: 0,
+            Triggers: [],
+            EnergyBonusWhileActive: 1,
+            DecrementAfterEnergyReset: true),
         // Suck: Strength per unblocked powered attack hit, including
         // multiple hits in a single monster attack command.
         new(
