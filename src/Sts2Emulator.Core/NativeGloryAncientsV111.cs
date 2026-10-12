@@ -6,6 +6,7 @@ namespace Sts2Emulator.Core;
 public static class NativeGloryAncientsV111
 {
     public const string BlessedAntlerId = "proto.native.ancient.blessed_antler";
+    public const string BeautifulBraceletId = "proto.native.ancient.beautiful_bracelet";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
     public const string CrossbowId = "proto.native.ancient.crossbow";
     public const string IronClubId = "proto.native.ancient.iron_club";
@@ -38,6 +39,7 @@ public static class NativeGloryAncientsV111
                         3, CardId: "proto.status.dazed")],
                     TurnEquals: 1)
             ]),
+        new(BeautifulBraceletId, "Beautiful Bracelet"),
         new(CrossbowId, "Crossbow", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
@@ -111,6 +113,52 @@ public static class NativeGloryAncientsV111
             ProcureRandomPotionsBeforeCombat: true),
         new(GlitterId, "Glitter")
     ];
+
+    public static bool IsBeautifulBraceletEligible(PlayerState player) =>
+        player.Deck.Count(card => PrototypeGameEngine.CanSelectEventDeckCard(
+            card,
+            PrototypePersistentDeckChoiceKind.Enchant,
+            transformToCardId: null,
+            enchantmentKind: PrototypeCardEnchantmentKind.Swift,
+            basicCardsOnly: false)) >= 4;
+
+    internal static PlayerState ApplyBeautifulBraceletAcquisition(
+        PlayerState player,
+        RngBundle rng,
+        RngBundle? nativeRunRng)
+    {
+        var eligible = player.Deck
+            .Where(card => PrototypeGameEngine.CanSelectEventDeckCard(
+                card,
+                PrototypePersistentDeckChoiceKind.Enchant,
+                transformToCardId: null,
+                enchantmentKind: PrototypeCardEnchantmentKind.Swift,
+                basicCardsOnly: false))
+            .ToArray();
+        if (eligible.Length == 0)
+            return player;
+
+        var shuffled = (CardInstance[])eligible.Clone();
+        if (nativeRunRng is null)
+            PrototypeRng.Shuffle(rng, "event", shuffled);
+        else
+            NativeRngV111.Shuffle(nativeRunRng, "run.niche", shuffled);
+
+        var selectedIds = shuffled.Take(Math.Min(4, shuffled.Length))
+            .Select(card => card.InstanceId)
+            .ToHashSet();
+        return player with
+        {
+            Deck = player.Deck.Select(card => selectedIds.Contains(
+                    card.InstanceId)
+                ? card with
+                {
+                    Enchantment = new PrototypeCardEnchantment(
+                        PrototypeCardEnchantmentKind.Swift, 2)
+                }
+                : card).ToArray()
+        };
+    }
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [

@@ -127,8 +127,9 @@ one energy and inserts three Dazed at random draw-pile positions before the
 first hand draw. Glitter applies Glam to eligible cards in normal and extra
 combat reward groups; its saved option enchantments survive restore and card
 acquisition. Event-owned reward surfaces and native hook order remain gated.
-The other Nonupeipe branches and its event offer sequence remain gated.
-Delicate Frond now
+Beautiful Bracelet's four-card Swift acquisition now uses run.niche and its
+two-card draw enchant triggers on the first play per combat. The other
+Nonupeipe branches and its event offer sequence remain gated. Delicate Frond now
 generates and procures potions before combat until the slots fill, using
 `run.combat_potion_generation`; Sozu blocks procurement after one generated
 potion. Full native potion-pool and cursor parity remain unverified.

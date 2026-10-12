@@ -17,7 +17,8 @@ public enum PrototypeCardEnchantmentKind
     Goopy,
     Clone,
     Imbued,
-    Instinct
+    Instinct,
+    Swift
 }
 
 public sealed record PrototypeCardEnchantment(

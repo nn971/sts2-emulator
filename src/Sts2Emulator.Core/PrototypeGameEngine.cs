@@ -413,6 +413,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 && relic.RelicId == NativePaelRewardsV111.WingId)
                 player = NativePaelRewardsV111.SetRewardsSacrificed(player, relicIndex, 0);
             if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeGloryAncientsV111.BeautifulBraceletId)
+                player = NativeGloryAncientsV111.ApplyBeautifulBraceletAcquisition(
+                    player,
+                    rng ?? throw new InvalidOperationException(
+                        "Beautiful Bracelet acquisition requires RNG context."),
+                    nativeRunRng);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
                 && relic.RelicId == NativePaelRewardsV111.ClawId)
                 player = NativePaelRewardsV111.EnchantClawDefends(player);
             if (eventKind == PrototypeRunEventKind.RelicAcquired

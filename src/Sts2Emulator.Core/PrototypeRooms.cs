@@ -992,6 +992,7 @@ public sealed partial class PrototypeGameEngine
             state = state with
             {
                 Player = player,
+                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
                 World = world with
                 {
                     Event = eventState
@@ -3182,6 +3183,7 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
+        var nativeRunRng = state.NativeRunRng?.Fork();
 
         if (action.Kind == "take_reward_extra_gold" && reward.IndependentSelection
             && reward.PendingDeckChoice is null && (reward.CardResolved || reward.CardBundles is null))
@@ -3277,6 +3279,7 @@ public sealed partial class PrototypeGameEngine
             state = state with
             {
                 Player = player,
+                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
                 World = world with
                 {
                     Reward = reward,
@@ -3393,7 +3396,8 @@ public sealed partial class PrototypeGameEngine
             };
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Rng, allocateCardId: () => nextId++);
+                acquiredRelicId: relicId, rng: state.Rng,
+                allocateCardId: () => nextId++, nativeRunRng: nativeRunRng);
             reward = reward.ResolveExtraRelicGroup(payload.Index) with
             {
                 PendingDeckChoice = CreateRelicDeckChoice(player, relicId)
@@ -3598,7 +3602,8 @@ public sealed partial class PrototypeGameEngine
                 player,
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId,
-                rng: state.Rng, allocateCardId: () => nextId++);
+                rng: state.Rng, allocateCardId: () => nextId++,
+                nativeRunRng: nativeRunRng);
             var acquisitionDeckChoice =
                 CreateRelicDeckChoice(
                     player,
@@ -3646,7 +3651,8 @@ public sealed partial class PrototypeGameEngine
             };
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Rng, allocateCardId: () => nextId++);
+                acquiredRelicId: relicId, rng: state.Rng,
+                allocateCardId: () => nextId++, nativeRunRng: nativeRunRng);
             reward = reward.ResolveExtraRelicGroup(extraRelicGroupIndex) with
             {
                 PendingDeckChoice = CreateRelicDeckChoice(player, relicId)
@@ -3658,6 +3664,7 @@ public sealed partial class PrototypeGameEngine
             state = state with
             {
                 Player = player,
+                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
                 World = world with
                 {
                     Reward = reward,
@@ -3676,6 +3683,7 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Player = player,
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world
         };
     }

@@ -7347,6 +7347,22 @@ public sealed partial class PrototypeGameEngine
             series.TargetEnemyId,
             combat);
 
+        if (series.NextPlayIndex == 0
+            && card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Swift, Amount: > 0 } swift
+            && !card.EnchantmentTriggeredThisCombat)
+        {
+            combat = combat with
+            {
+                Cards = combat.Cards.Select(item =>
+                    item.InstanceId == card.InstanceId
+                        ? item with { EnchantmentTriggeredThisCombat = true }
+                        : item).ToArray()
+            };
+            operations.Enqueue(new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.DrawCards, swift.Amount));
+        }
+
         var nextSeries = series with
         {
             NextPlayIndex = series.NextPlayIndex + 1

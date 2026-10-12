@@ -6,6 +6,98 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class V111GloryAncientRelicTests
 {
     [Fact]
+    public void BeautifulBraceletEnchantsFourEligibleCardsUsingRunNiche()
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var deck = new[]
+        {
+            new CardInstance(1, "proto.silent.strike", 0, empty),
+            new CardInstance(2, "proto.silent.defend", 0, empty),
+            new CardInstance(3, "proto.silent.neutralize", 0, empty),
+            new CardInstance(4, "proto.silent.survivor", 0, empty),
+            new CardInstance(5, "proto.silent.footwork", 0, empty),
+            new CardInstance(6, "proto.status.dazed", 0, empty),
+            new CardInstance(7, "proto.silent.strike", 0, empty,
+                new(PrototypeCardEnchantmentKind.Glam))
+        };
+        var player = new PlayerState(60, 60, 0, deck, [], [null, null]);
+        Assert.True(NativeGloryAncientsV111.IsBeautifulBraceletEligible(player));
+
+        var rng = NativeRngV111.CreateBundle("beautiful-bracelet-acquisition");
+        var expectedRng = rng.Fork();
+        var expected = deck.Take(5).ToArray();
+        NativeRngV111.Shuffle(expectedRng, "run.niche", expected);
+        var expectedIds = expected.Take(4).Select(card => card.InstanceId)
+            .ToHashSet();
+        var acquired = NativeGloryAncientsV111
+            .ApplyBeautifulBraceletAcquisition(player, rng, rng);
+
+        Assert.All(acquired.Deck.Where(card => expectedIds.Contains(card.InstanceId)),
+            card => Assert.Equal(new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.Swift, 2), card.Enchantment));
+        Assert.Equal(4, acquired.Deck.Count(card =>
+            card.Enchantment?.Kind == PrototypeCardEnchantmentKind.Swift));
+        Assert.Equal(deck.Single(card => card.InstanceId == 6),
+            acquired.Deck.Single(card => card.InstanceId == 6));
+        Assert.Equal(deck.Single(card => card.InstanceId == 7),
+            acquired.Deck.Single(card => card.InstanceId == 7));
+        Assert.Equal(NativeRngV111.ToSnapshot(expectedRng.Streams.Single(
+                stream => stream.StreamId == "run.niche")),
+            NativeRngV111.ToSnapshot(rng.Streams.Single(
+                stream => stream.StreamId == "run.niche")));
+        Assert.False(NativeGloryAncientsV111.IsBeautifulBraceletEligible(
+            player with { Deck = deck[..3] }));
+    }
+
+    [Fact]
+    public void RewardAcquisitionPersistsBeautifulBraceletsNativeRunCursor()
+    {
+        var initial = PrototypeNativeUnderdocksRunFactory.Create(
+            "beautiful-bracelet-reward-acquisition");
+        var empty = PrototypeJson.EmptyObject();
+        var state = initial with
+        {
+            Phase = RunPhase.Reward,
+            Player = initial.Player with
+            {
+                Deck =
+                [
+                    new(1, "proto.silent.strike", 0, empty),
+                    new(2, "proto.silent.defend", 0, empty),
+                    new(3, "proto.silent.neutralize", 0, empty),
+                    new(4, "proto.silent.survivor", 0, empty),
+                    new(5, "proto.silent.footwork", 0, empty)
+                ]
+            },
+            NativeRunRng = NativeRngV111.CreateBundle(
+                "beautiful-bracelet-reward-acquisition"),
+            World = initial.World! with
+            {
+                Floor = 1,
+                Map = new MapState([]),
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = null,
+                Reward = new RewardState("Combat", [], null,
+                    NativeGloryAncientsV111.BeautifulBraceletId,
+                    CardResolved: true, PotionResolved: true,
+                    RelicResolved: false, EndsAct: false)
+            }
+        };
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(state).Single(item =>
+            item.Kind == "take_reward_relic");
+
+        state = engine.Step(state, action).State;
+
+        Assert.Equal(4, state.Player.Deck.Count(card =>
+            card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Swift, Amount: 2 }));
+        Assert.Equal(4, NativeRngV111.ToSnapshot(state.NativeRunRng!
+            .Streams.Single(stream => stream.StreamId == "run.niche")).Counter);
+        Assert.Null(state.World!.Reward!.PendingDeckChoice);
+    }
+
+    [Fact]
     public void GlitterEnchantsCombatRewardChoicesAndPersistsOnSelection()
     {
         var engine = new PrototypeGameEngine();
