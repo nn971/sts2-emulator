@@ -384,7 +384,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         string? acquiredRelicId = null,
         RngBundle? rng = null,
         RunWorldState? world = null,
-        Func<long>? allocateCardId = null)
+        Func<long>? allocateCardId = null,
+        RngBundle? nativeRunRng = null)
     {
         // RelicAcquired models RelicModel.AfterObtained on the newly
         // appended instance, not a broadcast to every owned relic with the
@@ -447,7 +448,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 && relic.RelicId == PrototypeNativeOrobasRelics.AlchemicalCofferId)
                 player = PrototypeNativeOrobasRelics.ApplyAlchemicalCofferAcquisition(
                     player, relicIndex, rng ?? throw new InvalidOperationException(
-                        "Alchemical Coffer acquisition requires RNG context."));
+                        "Alchemical Coffer acquisition requires RNG context."),
+                    nativeRunRng);
             foreach (var trigger in
                      definition.RunTriggers
                      ?? Array.Empty<PrototypeRelicRunTriggerSpec>())

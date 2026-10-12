@@ -347,7 +347,75 @@ public sealed class V111OrobasRelicDependencyTests
         Assert.Equal(player.PotionSlots[0], result.PotionSlots[0]);
         Assert.All(result.PotionSlots.Skip(1), potion =>
             Assert.Null(potion));
-        Assert.Equal((ulong?)0, rng.Streams.Single(stream =>
+        Assert.Equal((ulong?)8, rng.Streams.Single(stream =>
+            stream.StreamId == "event").CallCount);
+    }
+
+    [Fact]
+    public void AlchemicalCofferUsesNativeCombatPotionGenerationStream()
+    {
+        var original = PrototypeNativeUnderdocksRunFactory.Create(
+            "orobas-alchemical-coffer-native").Player;
+        var player = original with
+        {
+            PotionSlots = [null],
+            Relics = [new RelicInstance(
+                PrototypeNativeOrobasRelics.AlchemicalCofferId,
+                PrototypeJson.EmptyObject())]
+        };
+        var nativeRng = NativeRngV111.CreateBundle(
+            "orobas-alchemical-coffer-native");
+        var expectedRng = nativeRng.Fork();
+        var expected = PrototypeNativePotionShop.PickWeightedDistinctNative(
+            expectedRng, "run.combat_potion_generation", 4);
+        var legacyRng = PrototypeRng.CreateBundle(
+            "orobas-alchemical-coffer-legacy-owner");
+
+        var result = Dispatch(player, legacyRng,
+            PrototypeNativeOrobasRelics.AlchemicalCofferId, nativeRng);
+
+        Assert.Equal(expected, result.PotionSlots.Skip(1)
+            .Select(potion => potion!.PotionId));
+        Assert.Equal(NativeRngV111.ToSnapshot(expectedRng.Streams.Single(
+                stream => stream.StreamId
+                    == "run.combat_potion_generation")),
+            NativeRngV111.ToSnapshot(nativeRng.Streams.Single(
+                stream => stream.StreamId
+                    == "run.combat_potion_generation")));
+        Assert.Equal((ulong?)0, legacyRng.Streams.Single(stream =>
+            stream.StreamId == "event").CallCount);
+    }
+
+    [Fact]
+    public void SozuStillConsumesTheNativeCofferPotionGenerationDraws()
+    {
+        var original = PrototypeNativeUnderdocksRunFactory.Create(
+            "orobas-alchemical-coffer-native-sozu").Player;
+        var player = original with
+        {
+            PotionSlots = [null],
+            Relics =
+            [
+                new RelicInstance(
+                    PrototypeNativeOrobasRelics.AlchemicalCofferId,
+                    PrototypeJson.EmptyObject()),
+                new RelicInstance("proto.relic.sozu",
+                    PrototypeJson.EmptyObject())
+            ]
+        };
+        var nativeRng = NativeRngV111.CreateBundle(
+            "orobas-alchemical-coffer-native-sozu");
+        var legacyRng = PrototypeRng.CreateBundle(
+            "orobas-alchemical-coffer-native-sozu-legacy");
+
+        var result = Dispatch(player, legacyRng,
+            PrototypeNativeOrobasRelics.AlchemicalCofferId, nativeRng);
+
+        Assert.Equal(5, result.PotionSlots.Length);
+        Assert.All(result.PotionSlots, potion => Assert.Null(potion));
+        Assert.Equal((ulong?)8, nativeRng.Streams.Single(stream =>
+            stream.StreamId == "run.combat_potion_generation").CallCount);
+        Assert.Equal((ulong?)0, legacyRng.Streams.Single(stream =>
             stream.StreamId == "event").CallCount);
     }
 
@@ -676,7 +744,7 @@ public sealed class V111OrobasRelicDependencyTests
     }
 
     private static PlayerState Dispatch(PlayerState player, RngBundle rng,
-        string acquired = SandCastle)
+        string acquired = SandCastle, RngBundle? nativeRunRng = null)
     {
         var method = typeof(PrototypeGameEngine).GetMethod(
             "ApplyRelicRunEvent", BindingFlags.NonPublic |
@@ -684,6 +752,6 @@ public sealed class V111OrobasRelicDependencyTests
         Assert.NotNull(method);
         return (PlayerState)method!.Invoke(null,
             [player, PrototypeRunEventKind.RelicAcquired, null, acquired,
-                rng, null, null])!;
+                rng, null, null, nativeRunRng])!;
     }
 }

@@ -109,7 +109,8 @@ public static class PrototypeNativeOrobasRelics
     }
 
     internal static PlayerState ApplyAlchemicalCofferAcquisition(
-        PlayerState player, int acquiredRelicIndex, RngBundle rng)
+        PlayerState player, int acquiredRelicIndex, RngBundle rng,
+        RngBundle? nativeRunRng = null)
     {
         if ((uint)acquiredRelicIndex >= (uint)player.Relics.Length
             || player.Relics[acquiredRelicIndex].RelicId != AlchemicalCofferId)
@@ -120,11 +121,14 @@ public static class PrototypeNativeOrobasRelics
         var slots = player.PotionSlots
             .Concat(new PotionInstance?[4])
             .ToArray();
+        var potionIds = nativeRunRng is null
+            ? PrototypeNativePotionShop.PickWeightedDistinct(
+                rng, "event", 4)
+            : PrototypeNativePotionShop.PickWeightedDistinctNative(
+                nativeRunRng, "run.combat_potion_generation", 4);
         if (!player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId).PreventPotionAcquisition))
         {
-            var potionIds = PrototypeNativePotionShop.PickWeightedDistinct(
-                rng, "event", 4);
             for (var i = 0; i < potionIds.Length; i++)
             {
                 slots[oldSlotCount + i] = new PotionInstance(

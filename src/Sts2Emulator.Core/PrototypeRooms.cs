@@ -929,6 +929,7 @@ public sealed partial class PrototypeGameEngine
                 "Event phase has no event state.");
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
+        var nativeRunRng = state.NativeRunRng?.Fork();
 
         if (eventState.PendingPotionReplacement is { } potionReplacement)
         {
@@ -1499,7 +1500,8 @@ public sealed partial class PrototypeGameEngine
                         player,
                         PrototypeRunEventKind.RelicAcquired,
                         acquiredRelicId: relicId,
-                        rng: state.Rng, allocateCardId: () => nextId++);
+                        rng: state.Rng, allocateCardId: () => nextId++,
+                        nativeRunRng: nativeRunRng);
 
                     if (relicId == NativeAncientRewardsV111.ToyBoxId)
                     {
@@ -1603,6 +1605,7 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Player = player,
+            NativeRunRng = nativeRunRng,
             World = world with
             {
                 NextCardInstanceId = nextId,

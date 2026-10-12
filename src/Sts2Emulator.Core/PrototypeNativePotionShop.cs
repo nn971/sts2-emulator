@@ -146,6 +146,42 @@ public static class PrototypeNativePotionShop
     }
 
     /// <summary>
+    /// Source-ordered out-of-combat PotionFactory generation. Each item rolls
+    /// rarity with NextFloat, chooses from the remaining same-rarity models,
+    /// and removes the selected model before the next item.
+    /// </summary>
+    public static string[] PickWeightedDistinctNative(
+        RngBundle rng, string streamId, int count)
+    {
+        if (count < 0)
+            throw new ArgumentOutOfRangeException(nameof(count));
+
+        var remaining = PrototypeContent.PotionPool.ToList();
+        var selected = new List<string>(count);
+        for (var index = 0; index < count; index++)
+        {
+            var roll = NativeRngV111.NextFloat(rng, streamId);
+            var rarity = roll <= 0.1f
+                ? PrototypeNativePotionRarity.Rare
+                : roll <= 0.35f
+                    ? PrototypeNativePotionRarity.Uncommon
+                    : PrototypeNativePotionRarity.Common;
+            var candidates = remaining.Where(id => Rarities[id] == rarity)
+                .ToArray();
+            if (candidates.Length == 0)
+                throw new InvalidOperationException(
+                    $"No unselected {rarity} potions remain.");
+            var potionId = NativeRngV111.NextItem(
+                rng, streamId, (IReadOnlyList<string>)candidates)
+                ?? throw new InvalidOperationException(
+                    "Native potion selection returned no model.");
+            selected.Add(potionId);
+            remaining.Remove(potionId);
+        }
+        return selected.ToArray();
+    }
+
+    /// <summary>
     /// Wellspring.Bottle uses Rewards.NextItem over the complete
     /// character/shared potion pool, with no rarity weighting.
     /// </summary>
