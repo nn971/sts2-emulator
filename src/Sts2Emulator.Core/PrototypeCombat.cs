@@ -5259,6 +5259,7 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeCombatEffectKind.ChooseGeneratedCards:
+                case PrototypeCombatEffectKind.ChooseGeneratedColorlessCards:
                 {
                     var generated = AddGeneratedChoiceCards(
                         combat,
@@ -5266,7 +5267,13 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount,
                         operation.GeneratedChoiceCardsFreeThisTurn,
                         operation.GeneratedChoiceCardsUpgraded,
-                        rng);
+                        rng,
+                        operation.Kind
+                            == PrototypeCombatEffectKind
+                                .ChooseGeneratedColorlessCards
+                            ? PrototypeColorlessCards
+                                .ImplementedCombatGenerationPool
+                            : null);
                     combat = generated.Combat;
                     if (generated.CardInstanceIds.Length == 0)
                     {
@@ -6829,9 +6836,10 @@ public sealed partial class PrototypeGameEngine
         int count,
         bool freeThisTurn,
         bool upgraded,
-        RngBundle rng)
+        RngBundle rng,
+        IEnumerable<string>? sourcePool = null)
     {
-        var candidates = PrototypeContent.RewardCardPool
+        var candidates = (sourcePool ?? PrototypeContent.RewardCardPool)
             .Where(cardId =>
             {
                 var definition = PrototypeContent.Card(cardId);

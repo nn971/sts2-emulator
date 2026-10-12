@@ -41,6 +41,7 @@ public static class PrototypeNativePotionShop
             ["proto.potion.fysh_oil"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.binding"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.clarity"] = PrototypeNativePotionRarity.Uncommon,
+            ["proto.potion.colorless"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.heart_of_iron"] =
                 PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.radiant_tincture"] =

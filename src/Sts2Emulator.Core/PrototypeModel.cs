@@ -127,7 +127,8 @@ public enum PrototypeCombatEffectKind
     CreateRandomFreeCharacterCardInHand,
     GainEnergyForGold,
     LosePlayerMaxHp,
-    ReturnHandToDrawAndShuffle
+    ReturnHandToDrawAndShuffle,
+    ChooseGeneratedColorlessCards
 }
 
 public enum PrototypeCardKeyword

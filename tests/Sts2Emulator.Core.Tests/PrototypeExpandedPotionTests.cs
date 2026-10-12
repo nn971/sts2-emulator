@@ -504,6 +504,74 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void ColorlessPotionOffersThreeDistinctFreeColorlessCards()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.colorless");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        var pending = Assert.IsType<PendingCombatChoiceState>(
+            combat.PendingChoice);
+        Assert.Equal(3, pending.CandidateCardInstanceIds.Length);
+        Assert.Equal(3, pending.CandidateCardInstanceIds
+            .Select(id => combat.Cards.Single(
+                card => card.InstanceId == id).CardId)
+            .Distinct(StringComparer.Ordinal).Count());
+        Assert.All(pending.CandidateCardInstanceIds, id =>
+        {
+            var card = combat.Cards.Single(
+                item => item.InstanceId == id);
+            Assert.Contains(
+                card.CardId,
+                PrototypeColorlessCards.ImplementedCombatGenerationPool);
+            Assert.True(card.IsTemporary);
+            Assert.Equal(0, card.TemporaryEnergyCost!.Cost);
+        });
+        Assert.Contains(
+            engine.GetLegalActions(state),
+            action => action.Kind == "select_cards"
+                && action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.Length == 0);
+
+        var chosenId = pending.CandidateCardInstanceIds[0];
+        var choose = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "select_cards"
+            && action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.SequenceEqual([chosenId]));
+        state = engine.Step(state, choose).State;
+
+        Assert.Contains(chosenId, state.World!.Combat!.Hand);
+        Assert.Empty(state.World.Combat.ChoiceCardIds);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void ColorlessPotionCanBeSkipped()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.colorless");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        var skip = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "select_cards"
+            && action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.Length == 0);
+        state = engine.Step(state, skip).State;
+
+        Assert.Empty(state.World!.Combat!.ChoiceCardIds);
+        Assert.Equal(new long[] { 1 }, state.World.Combat.Hand);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

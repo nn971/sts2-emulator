@@ -2180,6 +2180,17 @@ public static class PrototypeContent
                         3,
                         PowerId: "proto.power.clarity")
                 ]),
+            // Shared Common potion: choose one of three distinct implemented
+            // Colorless cards, make it free this turn, or skip the offer.
+            new PrototypePotionDefinition(
+                "proto.potion.colorless",
+                "Colorless Potion",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ChooseGeneratedColorlessCards,
+                    3,
+                    GeneratedChoiceCardsFreeThisTurn: true,
+                    GeneratedChoiceMustPick: false)]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
