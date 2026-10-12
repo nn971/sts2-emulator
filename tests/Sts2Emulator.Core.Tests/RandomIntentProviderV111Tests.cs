@@ -100,6 +100,8 @@ public sealed class RandomIntentProviderV111Tests
         Assert.Throws<InvalidOperationException>(() =>
             replay.Resolve(req with { Ordinal = 1 }, stream));
         Assert.Throws<InvalidOperationException>(() =>
+            replay.Resolve(req with { OperationKind = "choose_index" }, stream));
+        Assert.Throws<InvalidOperationException>(() =>
             replay.Resolve(req with { OrderedCandidates = [999] }, stream));
         Assert.Equal(1, replay.Remaining);
         Assert.Equal(original, CanonicalJson.Sha256(stream));
