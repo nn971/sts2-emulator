@@ -272,6 +272,10 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
 
         anext = next((v["before"] for i, v in all_asteps.items() if i > decision_id), None)
         bnext = next((v["before"] for i, v in all_bsteps.items() if i > decision_id), None)
+        if anext is None and native[-1].get("type") == "terminal" and native[-1].get("state") is not None:
+            anext = native[-1]
+        if bnext is None and emulator[-1].get("type") == "terminal" and emulator[-1].get("state") is not None:
+            bnext = emulator[-1]
         if anext is None or bnext is None:
             return report("UNSUPPORTED", "No comparable post-state boundary",
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)

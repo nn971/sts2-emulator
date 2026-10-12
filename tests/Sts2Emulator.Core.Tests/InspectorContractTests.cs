@@ -85,4 +85,63 @@ public sealed class InspectorContractTests
         ids.NewScenario();
         Assert.Equal(a, ids.Resolve("creature", "native-key"));
     }
+
+    [Fact]
+    public async Task PassiveRecordingWritesOrderedSyntheticTrace()
+    {
+        string path = Path.Combine(Path.GetTempPath(),
+            "sts2-inspector-" + Guid.NewGuid().ToString("N") + ".jsonl");
+        try
+        {
+            var header = new NativeTraceHeader("header", "0.2", "SYNTHETIC", "test",
+                null, "run", "0", DateTimeOffset.UtcNow, "passive", "unit-test");
+            await using (var session = new Sts2ReferenceMod.Trace.NativeRecordingSession(path, header))
+            {
+                var adapter = new FakeAdapter("first", "{\"player\":{\"hp\":50}}");
+                Assert.NotNull(session.OnStableDecision(adapter));
+                Assert.NotNull(session.OnStableDecision(adapter));
+                session.OnHumanAction(EndTurn());
+                session.OnSemanticEffect("damage", Payload(), "test");
+                adapter.Key = "second";
+                adapter.State = "{\"player\":{\"hp\":49}}";
+                Assert.NotNull(session.OnStableDecision(adapter));
+                session.OnHumanAction(EndTurn());
+                using var last = JsonDocument.Parse("{\"player\":{\"hp\":48}}");
+                session.OnTerminal("SUCCESS", "synthetic fixture", last.RootElement);
+            }
+            var types = File.ReadAllLines(path).Select(line =>
+            {
+                using var doc = JsonDocument.Parse(line);
+                return doc.RootElement.GetProperty("type").GetString();
+            }).ToArray();
+            Assert.Equal(new[] { "header", "decision", "action", "event", "transition",
+                "decision", "action", "transition", "terminal" }, types);
+            Assert.False(File.Exists(path + ".incomplete"));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(path + ".incomplete")) File.Delete(path + ".incomplete");
+        }
+    }
+
+    private sealed class FakeAdapter(string key, string state) : INativeCaptureAdapter
+    {
+        public string Key { get; set; } = key;
+        public string State { get; set; } = state;
+        public string Phase => "Combat";
+        public bool IsAtStablePlayerChoice => true;
+        public string SemanticBoundaryKey => Key;
+        public string ObservationHash => Key;
+        public JsonElement CaptureCanonicalState()
+        {
+            using var doc = JsonDocument.Parse(State);
+            return doc.RootElement.Clone();
+        }
+        public IReadOnlyList<GameAction> GetCanonicalLegalActions() => new[] { EndTurn() };
+        public CaptureCoverage GetCoverage() =>
+            new(new[] { "$.player.hp" }, Array.Empty<string>(), Array.Empty<string>(),
+                "RNG_UNAUDITED", new[] { "damage" });
+    }
+
 }

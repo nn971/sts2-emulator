@@ -40,4 +40,4 @@ public sealed record NativeTransitionRecord(
     long FirstEventSeq, long LastEventSeq, string Status);
 
 public sealed record NativeTerminalRecord(
-    string Type, long? DecisionId, string Status, string Reason);
+    string Type, long? DecisionId, string Status, string Reason, JsonElement? State = null);

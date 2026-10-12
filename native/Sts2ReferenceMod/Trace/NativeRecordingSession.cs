@@ -90,20 +90,22 @@ public sealed class NativeRecordingSession : IAsyncDisposable
         return evt;
     }
 
-    public void OnTerminal(string status, string reason)
+    public void OnTerminal(string status, string reason, JsonElement? terminalState = null)
     {
         if (_terminal) return;
         _terminal = true;
         if (_current is not null)
         {
+            bool complete = terminalState.HasValue && _actionRecorded;
             Enqueue(new NativeTransitionRecord("transition", _current.DecisionId,
-                _current.StateHash, null, _current.EventSeq + 1, _journal.LastSequence,
-                "INCOMPLETE_CAPTURE"));
-            _incomplete = true; // terminal canonical state remains uninstrumented
+                _current.StateHash, complete ? CanonicalJson.Sha256(terminalState.Value) : null,
+                _current.EventSeq + 1, _journal.LastSequence,
+                complete ? "COMPLETE" : "INCOMPLETE_CAPTURE"));
+            if (!complete) _incomplete = true;
         }
         _coordinator.MarkTerminal();
         Enqueue(new NativeTerminalRecord("terminal", _current?.DecisionId,
-            _incomplete ? "INCOMPLETE_CAPTURE" : status, reason));
+            _incomplete ? "INCOMPLETE_CAPTURE" : status, reason, terminalState?.Clone()));
     }
 
     private void Enqueue(object record)
