@@ -305,11 +305,12 @@ public sealed partial class PrototypeGameEngine
     {
         RequireKind(action, "event_choice");
         var world = RequireWorld(state);
-        if (world.Event?.EventId !=
-            PrototypeNativeHiveEvents.InfestedAutomatonId)
+        if (world.Act != 2 || world.Event?.EventId !=
+                PrototypeNativeHiveEvents.InfestedAutomatonId
+            || world.Event.NativePageIndex != 0)
         {
             throw new InvalidOperationException(
-                "Infested Automaton requires its active event state.");
+                "Infested Automaton requires its initial Hive event page.");
         }
 
         var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
@@ -338,21 +339,20 @@ public sealed partial class PrototypeGameEngine
 
         if (eligible.Length == 0)
         {
-            throw new NotSupportedException(
-                $"Infested Automaton '{choice}' has no implemented eligible character cards.");
+            return PreserveNativeEventCompletionPage(state, choice);
         }
 
         var selected = eligible[
             PrototypeRng.NextInt(state.Rng, "event", eligible.Length)];
         var player = AppendCard(
             state.Player, world.NextCardInstanceId, selected, state.Rng);
-        return CompleteRoomToMap(state with
+        return PreserveNativeEventCompletionPage(state with
         {
             Player = player,
             World = world with
             {
                 NextCardInstanceId = world.NextCardInstanceId + 1
             }
-        });
+        }, choice);
     }
 }

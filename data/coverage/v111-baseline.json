@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "ced0206d9a0dc204dda215ddb7653f6aa876322565ff8060f6095680736e7da7",
+  "inventory_file_sha256": "572c793702aeeb2a2062c934eadc0e2cf29a8c9738b0d655501810055d6214bf",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "cb743ba27c40836397c2f0dacf3c2da3d7bf73744744148ee4add8f2b5dd9a0d",
+    "inventory_hash": "a6429a79b3e804b678df87036d167500220b0654280a31941d87cf533458655e",
     "items": [
       {
         "catalogued": true,
@@ -15368,18 +15368,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/InfestedAutomaton.cs#4ad1a8b6be3f4fd38bf39c03a53e03a6d102fa7ace82684eb751a3da7767a62f"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/STUDY",
-          "initial/TOUCH_CORE",
-          "page/INITIAL",
-          "page/INITIAL/STUDY",
-          "page/INITIAL/TOUCH_CORE",
-          "page/STUDY",
-          "page/TOUCH_CORE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "INFESTED_AUTOMATON",
         "registered": true,
@@ -29574,7 +29566,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 40,
+        "implemented": 41,
         "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,

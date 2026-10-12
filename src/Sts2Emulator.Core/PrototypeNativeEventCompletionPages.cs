@@ -27,6 +27,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeEndlessConveyor.EventId
             or PrototypeNativePunchOff.EventId
             or PrototypeNativeHiveEvents.AmalgamatorId
+            or PrototypeNativeHiveEvents.InfestedAutomatonId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
             or PrototypeNativeHiveEvents.FieldOfManSizedHolesId
@@ -104,6 +105,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "nab"
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
+        || eventId == PrototypeNativeHiveEvents.InfestedAutomatonId
+            && choiceId is "study" or "touch_core"
         || eventId == PrototypeNativeHiveEvents.LostWispId
             && choiceId is "claim" or "search"
         || eventId == PrototypeNativeHiveEvents.SpiritGrafterId

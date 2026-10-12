@@ -455,6 +455,21 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "INFESTED_AUTOMATON"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.InfestedAutomatonId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeHiveEvents.InfestedAutomatonId, 2)
+            && PrototypeContent.Event(
+                PrototypeNativeHiveEvents.InfestedAutomatonId).Choices
+                .Any(choice => choice.Id == "study")
+            && PrototypeContent.Event(
+                PrototypeNativeHiveEvents.InfestedAutomatonId).Choices
+                .Any(choice => choice.Id == "touch_core"))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "REFLECTIONS" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeGloryEvents.ReflectionsId,
                 StringComparer.Ordinal))

@@ -11551,7 +11551,7 @@
         "page/STUDY",
         "page/TOUCH_CORE"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
