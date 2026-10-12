@@ -785,7 +785,7 @@ public static class PrototypeStateInvariants
                     ? eventState.NativePageIndex > 2
                     : eventState.EventId ==
                         PrototypeNativeHiveEvents.LanternKeyEventId
-                        ? eventState.NativePageIndex > 2
+                        ? eventState.NativePageIndex > 3
                     : eventState.EventId ==
                         PrototypeNativeDenseVegetation.EventId
                         ? eventState.NativePageIndex > 3

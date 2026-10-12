@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "10377bf147ff78969eebccd30b2c665eb8da8b6aa6b9228b3f27bbca74961e97",
+  "inventory_file_sha256": "e729eee90adc7d03a987b0c0d61d3bb923f2b43faa9efc9cb8af6c9ee7612248",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "6a620ab5e3dd37bf225be370cb16d230dda9312957d46c515c7827cd67aeca0c",
+    "inventory_hash": "ca30b3e0818dcb822840cd834e7b17c09e3c10bf84bbfc677f82280a641e5e88",
     "items": [
       {
         "catalogued": true,
@@ -16066,20 +16066,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TheLanternKey.cs#40fe0fcbfbf2f30267ddcf065c524452baa1079df4eb515908625a61ba911cac"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/KEEP_THE_KEY",
-          "initial/RETURN_THE_KEY",
-          "page/DONE",
-          "page/DONE/RETURN_THE_KEY",
-          "page/INITIAL",
-          "page/INITIAL/KEEP_THE_KEY",
-          "page/INITIAL/RETURN_THE_KEY",
-          "page/KEEP_THE_KEY",
-          "page/KEEP_THE_KEY/FIGHT"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "THE_LANTERN_KEY",
         "registered": true,
@@ -29532,7 +29522,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 43,
+        "implemented": 44,
         "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,

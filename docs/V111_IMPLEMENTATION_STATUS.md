@@ -42,6 +42,8 @@ damage and disables itself after the card's first completed play.
 Infested Automaton is integrated in Hive for Silent. Study adds one eligible
 Power and Touch Core adds one eligible zero cost card when the card generator
 returns one; both choices retain their result page even when no card is added.
+The Lantern Key now retains its return result page and exits to the map after
+the optional quest card reward from its fight.
 Battleworn Dummy now retains its Victory or Defeat result page after the
 selected training combat and any setting reward resolve.
 Trial now retains the selected court's outcome page after its curse, relic,

@@ -4536,6 +4536,18 @@ public sealed partial class PrototypeGameEngine
                     "Custom event reward has no matching active event.");
             }
 
+            if (world.Event.EventId ==
+                    PrototypeNativeHiveEvents.LanternKeyEventId
+                && world.Event.NativePageIndex == 2)
+            {
+                // The source event uses shouldResumeAfterCombat=false:
+                // taking or skipping the SpecialCardReward exits to the map.
+                return CompleteRoomToMap(state with
+                {
+                    World = world with { Reward = null }
+                });
+            }
+
             var player = state.Player;
             var nextId = world.NextCardInstanceId;
             if (reward.AddCardAfterReward is { } additionalCardId)

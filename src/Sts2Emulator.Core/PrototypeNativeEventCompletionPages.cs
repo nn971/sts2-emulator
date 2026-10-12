@@ -40,6 +40,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeGloryEvents.TrialId
             or PrototypeNativeGloryEvents.HungryForMushroomsId
             or PrototypeNativeGloryEvents.GraveOfTheForgottenId
+            or PrototypeNativeHiveEvents.LanternKeyEventId
             or PrototypeNativeSharedEvents.ThisOrThatId
             or "proto.native.underdocks.doors_of_light_and_dark"
             or "proto.native.underdocks.drowning_beacon"
@@ -53,6 +54,7 @@ public static class PrototypeNativeEventCompletionPages
             : eventId == PrototypeNativeGloryEvents.BattlewornDummyId ? 4
             : eventId == PrototypeNativeGloryEvents.RoundTeaPartyId ? 2
             : eventId == PrototypeNativeGloryEvents.TrialId ? 6
+            : eventId == PrototypeNativeHiveEvents.LanternKeyEventId ? 3
             : eventId is "proto.native.underdocks.abyssal_baths"
                 or PrototypeNativeEndlessConveyor.EventId
                 or PrototypeNativePunchOff.EventId
@@ -134,6 +136,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "merchant_guilty" or "merchant_innocent"
                 or "noble_guilty" or "noble_innocent"
                 or "nondescript_guilty" or "nondescript_innocent"
+        || eventId == PrototypeNativeHiveEvents.LanternKeyEventId
+            && choiceId is "return_key"
         || eventId == PrototypeNativeGloryEvents.HungryForMushroomsId
             && choiceId is "big_mushroom" or "fragrant_mushroom"
         || eventId == PrototypeNativeGloryEvents.GraveOfTheForgottenId

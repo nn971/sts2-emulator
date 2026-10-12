@@ -18,7 +18,8 @@ public sealed partial class PrototypeGameEngine
         var current = world.Event
             ?? throw new InvalidOperationException(
                 "The Lantern Key has no active event.");
-        if (current.EventId != PrototypeNativeHiveEvents.LanternKeyEventId)
+        if (world.Act != 2
+            || current.EventId != PrototypeNativeHiveEvents.LanternKeyEventId)
         {
             throw new InvalidOperationException(
                 "The Lantern Key event handler received another event.");
@@ -29,13 +30,13 @@ public sealed partial class PrototypeGameEngine
         {
             if (choice == "return_key")
             {
-                return CompleteRoomToMap(state with
+                return PreserveNativeEventCompletionPage(state with
                 {
                     Player = state.Player with
                     {
                         Gold = GoldAfterGain(state.Player, 100)
                     }
-                });
+                }, choice);
             }
 
             if (choice == "keep_key")

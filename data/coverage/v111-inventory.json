@@ -12263,7 +12263,7 @@
         "page/KEEP_THE_KEY",
         "page/KEEP_THE_KEY/FIGHT"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
