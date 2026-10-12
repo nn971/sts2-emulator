@@ -1,4 +1,4 @@
-# Desired RNG implementation — migration matrix (D0/D1)
+# Desired RNG implementation — migration matrix (D0–D4)
 
 **Baseline:** `agent/v111-hive-glory-pregenerated-encounter-queues-v20`
 (pinned native v0.111.0 code). This work is stacked on that emulator
@@ -8,16 +8,17 @@ integration branch, **not** the lightweight inspector foundation branch.
 source-audited xoshiro stream and consumes its cursor. `scripted-v111`
 matches a complete, ordered request/outcome transcript and makes no native
 draw. `controlled-v111` validates an external index at a single request
-site, also without consuming native RNG. Both nonnative providers are
-standalone D1 components; there is **not yet** a serializable controlled
-game-mechanics continuation or a Nature-policy API. No `p/q` probability
+site, also without consuming native RNG. Both nonnative providers started as
+D1 components; isolated **serializable D3 HP → intent continuations** and
+an opt-in D4 JSONL/Python adapter now exist. There is **not yet** a
+whole-run controlled game continuation or a trained Nature-policy API. No `p/q` probability
 or original conditional law is claimed. The legacy prototype and default
 v111 consumer protocols have **not** been switched.
 
 | Mechanics call site | Owner and stream | Native source audited | Existing native mode | Provider seam migrated | Controlled in live mechanics | Native cursor parity gate | Reference law calibrated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Initial unique enemy HP | each creation-order creature; `run.niche` | Yes: filtered inclusive pool, fallback, singleton consumes | Yes | **Yes, typed finite index** | No, D3 continuation pending | Seeded hash/counter equivalence added | No |
-| Committed enemy intent | current enemy; `run.monster_ai` | Supported moves audited per enemy | Yes (subset) | **Yes, bounded integer index with creature owner** | No, D3 continuation pending | Seeded exact hash/counter equality added | No |
+| Initial unique enemy HP | each creation-order creature; `run.niche` | Yes: filtered inclusive pool, fallback, singleton consumes | Yes | **Yes, typed finite index** | Isolated D3 controlled entry only; not in regular run | Seeded hash/counter equivalence added | No |
+| Committed enemy intent | current enemy; `run.monster_ai` | Supported moves audited per enemy | Yes (subset) | **Yes, bounded integer index with creature owner** | Isolated D3 controlled entry only; not in regular run | Seeded exact hash/counter equality added | No |
 | Encounter formation | encounter-local context RNG | Supported formations source audited | Yes (subset) | No | No | Existing tests | No |
 | Hatch / death spawn HP | creature creation; `run.niche` | Selected source hooks audited | Yes (subset) | No | No | Existing tests | No |
 | Monster-local randomness | monster CombatId owner stream | Partial | Yes (selected) | No | No | Existing tests | No |
@@ -75,16 +76,26 @@ selection in the live engine.
 shuffle/targets/rewards and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
 
-**D3:** persist the *pending* choice and continuation stage inside the
-state (including already executed mechanics, encounter/owner identity and
-transcript). Fork and restore at that pending boundary. Only then allow
-externally chosen HP/intents in actual combat, with explicitly counterfactual
-mode identity. A controlled choice must never be returned as a fake
-native-seeded `NativeCombatRngV111` sidecar.
+**D3 partial:** the initial HP and committed enemy intent sites now have
+persisted, source-reachable pending Nature choices, with fork, restore,
+precise eligibility validation and controlled (non-native) provenance.
+Completing HP resumes into intents **without rerolling HP**; prior HP
+transcripts are part of the intent snapshot. For incomplete intent
+decisions, only the side-effect-free AI selector is re-entered with
+verified tickets. No prior game actions or hooks are rerun.
+This is still restricted to isolated combat-entry fixtures; it does
+**not** attach controlled continuation to general `RunState` / player
+actions and must not fabricate a `NativeCombatRngV111` sidecar.
 
-**D4:** expose opt-in controlled resolution in the JSONL consumer protocol.
-Existing `step` and native RNG paths retain semantics. Full native-oracle
-fidelity remains separate from seed/cursor equality inside the emulator.
+**D4 partial:** opt-in `nature_begin`, `nature_resolve`,
+`nature_advance`, `nature_fork`, `nature_save`, `nature_load`, and
+`nature_release_many` are available in the JSONL server and through
+the thin Python binding, using **distinct non-playable handles**.
+Existing `step` and native RNG paths retain semantics. Next D3/D4
+work must wire controlled choices into general game action continuation
+and trained agent-facing observations. Full native-oracle fidelity
+remains separate from seeded emulator RNG equality. See
+[the isolated Nature bridge](DESIRED_RNG_D3_INTENT_BRIDGE.md).
 
 ## Known limitations
 
