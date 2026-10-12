@@ -1960,6 +1960,7 @@ public static class PrototypeContent
             .Concat(NativePaelRewardsV111.Cards)
             .Concat(NativeGloryAncientsV111.Cards)
             .Concat(PrototypeNativeOrobasRelics.Cards)
+            .Concat(NativeDarvEventV111.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -3267,6 +3268,7 @@ public static class PrototypeContent
             .Concat(NativePaelRewardsV111.Relics)
             .Concat(PrototypeNativeOrobasRelics.Relics)
             .Concat(NativeGloryAncientsV111.Relics)
+            .Concat(NativeDarvEventV111.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =

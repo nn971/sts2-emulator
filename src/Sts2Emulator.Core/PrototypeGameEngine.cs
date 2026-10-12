@@ -409,6 +409,17 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             var definition =
                 PrototypeContent.Relic(relic.RelicId);
             if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeDarvEventV111.CallingBellId)
+            {
+                player = AppendCard(
+                    player,
+                    (allocateCardId ?? throw new InvalidOperationException(
+                        "Calling Bell acquisition requires card IDs."))(),
+                    NativeDarvEventV111.CurseOfTheBellCardId,
+                    rng ?? throw new InvalidOperationException(
+                        "Calling Bell acquisition requires RNG context."));
+            }
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
                 && relic.RelicId == NativePaelRewardsV111.WingId)
                 player = NativePaelRewardsV111.SetRewardsSacrificed(player, relicIndex, 0);
             if (eventKind == PrototypeRunEventKind.RelicAcquired

@@ -2856,19 +2856,21 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.shared.curse_of_the_bell"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/CurseOfTheBell.cs#006bfdb4a9ae337bb2e7575098ed43d206ba4be5a8308c44ea3fdf09e2d46a25"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "cards",
         "missing_branches": [],
         "missing_variants": [
           "base"
         ],
         "native_id": "CURSE_OF_THE_BELL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15242,7 +15244,6 @@
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [
-          "relic/CALLING_BELL",
           "relic/DUSTY_TOME",
           "relic/PANDORAS_BOX"
         ],
@@ -25123,17 +25124,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.calling_bell"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/CallingBell.cs#f986e370f212c579f9490494a816fa5a245b11e2609148693ba88de9f81b64b6"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CALLING_BELL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29744,8 +29747,8 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 202,
-        "integrated": 137,
+        "implemented": 203,
+        "integrated": 138,
         "kind": "cards",
         "scope_review_required": 0,
         "validated": 0
@@ -29844,8 +29847,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 2,
-        "integrated": 2,
+        "implemented": 3,
+        "integrated": 3,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

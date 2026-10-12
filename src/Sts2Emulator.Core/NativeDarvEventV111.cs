@@ -2,18 +2,40 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Silent's executable shared Ancient offer. Cross-character cards are not
-/// used by this event; the nine choices use implemented Silent mechanics.
+/// used by this event; its supported choices use implemented Silent mechanics.
 /// </summary>
 public static class NativeDarvEventV111
 {
     public const string EventId = "proto.native.shared.darv";
     public const string EpochId = "DARV_EPOCH";
+    public const string CallingBellId = "proto.relic.calling_bell";
+    public const string CurseOfTheBellCardId = "proto.native.shared.curse_of_the_bell";
     private const string RngEventId = "DARV";
+
+    public static PrototypeCardDefinition[] Cards =>
+    [
+        new PrototypeCardDefinition(
+            CurseOfTheBellCardId,
+            "Curse of the Bell",
+            -1,
+            PrototypeCardTarget.None,
+            [],
+            Unplayable: true,
+            Eternal: true,
+            RewardEligible: false,
+            Rarity: PrototypeCardRarity.Curse,
+            Type: PrototypeCardType.Curse,
+            MaxUpgradeLevel: 0)
+    ];
+
+    public static PrototypeRelicDefinition[] Relics =>
+    [new PrototypeRelicDefinition(CallingBellId, "Calling Bell")];
 
     public static readonly string[] SupportedRelicIds =
     [
         "proto.relic.astrolabe",
         "proto.relic.black_star",
+        CallingBellId,
         "proto.relic.empty_cage",
         "proto.relic.runic_pyramid",
         "proto.relic.snecko_eye",
@@ -46,6 +68,7 @@ public static class NativeDarvEventV111
     {
         "proto.relic.astrolabe" => "Astrolabe",
         "proto.relic.black_star" => "Black Star",
+        CallingBellId => "Calling Bell",
         "proto.relic.empty_cage" => "Empty Cage",
         "proto.relic.runic_pyramid" => "Runic Pyramid",
         "proto.relic.snecko_eye" => "Snecko Eye",

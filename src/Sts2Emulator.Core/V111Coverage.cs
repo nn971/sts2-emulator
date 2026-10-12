@@ -125,6 +125,11 @@ public static class V111Coverage
                     || PrototypeColorlessCards.ImplementedShopPool.Contains(id)))
                     integration = "integrated";
             }
+            if (engineIds.Contains(NativeDarvEventV111.CurseOfTheBellCardId,
+                    StringComparer.Ordinal)
+                && NativeDarvEventV111.SupportedRelicIds.Contains(
+                    NativeDarvEventV111.CallingBellId, StringComparer.Ordinal))
+                integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "encounters")
         {
@@ -170,7 +175,13 @@ public static class V111Coverage
                     && relic.EnergyPerTurnBonus > 0
                     && PrototypeContent.BossRelicPool.Contains(id,
                         StringComparer.Ordinal);
-                return blackStarIntegrated || ectoplasmIntegrated;
+                var callingBellIntegrated = id == NativeDarvEventV111.CallingBellId
+                    && PrototypeContent.Card(
+                        NativeDarvEventV111.CurseOfTheBellCardId).Eternal
+                    && NativeDarvEventV111.SupportedRelicIds.Contains(id,
+                        StringComparer.Ordinal);
+                return blackStarIntegrated || ectoplasmIntegrated
+                    || callingBellIntegrated;
             }))
         {
             implementation = "implemented";

@@ -1556,6 +1556,14 @@ public sealed partial class PrototypeGameEngine
                         deferredReward = CreateDeferredEventReward(state,
                             PrototypeRunEffectKind.OfferWaxRelics, player, eventState.EventId, ref world);
                     }
+                    if (relicId == NativeDarvEventV111.CallingBellId)
+                    {
+                        if (deferredReward is not null)
+                            throw new InvalidOperationException(
+                                "Calling Bell acquisition already has a custom reward.");
+                        deferredReward = CreateCallingBellRelicReward(
+                            player, eventState.EventId, state.Rng, ref world);
+                    }
 
                     var relicChoice =
                         CreateRelicEventDeckChoice(

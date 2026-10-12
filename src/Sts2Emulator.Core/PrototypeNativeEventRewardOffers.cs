@@ -186,4 +186,40 @@ public sealed partial class PrototypeGameEngine
                     $"Unsupported deferred event reward kind '{kind}'.");
         }
     }
+
+    private static RewardState CreateCallingBellRelicReward(
+        PlayerState player,
+        string eventId,
+        RngBundle rng,
+        ref RunWorldState world)
+    {
+        var relics = new List<string>(3);
+        foreach (var rarity in new[]
+                 {
+                     PrototypeRelicRarity.Common,
+                     PrototypeRelicRarity.Uncommon,
+                     PrototypeRelicRarity.Rare
+                 })
+        {
+            var draw = PrototypeNativeRelicGrabBag.Draw(
+                world, player, rng, merchant: false,
+                forcedRarity: rarity);
+            world = draw.World;
+            if (draw.Id is { } relicId)
+                relics.Add(relicId);
+        }
+
+        return new RewardState(
+            SourceRoom: "Event:" + eventId,
+            CardOptions: [],
+            PotionOption: null,
+            RelicOption: null,
+            CardResolved: true,
+            PotionResolved: true,
+            RelicResolved: true,
+            EndsAct: false,
+            ExtraRelicRewardIds: relics.ToArray(),
+            IndependentSelection: true,
+            ExtraRelicGroupsResolved: new bool[relics.Count]);
+    }
 }
