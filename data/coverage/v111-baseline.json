@@ -27069,17 +27069,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.ninja_scroll"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/NinjaScroll.cs#a210090a28ea97bbfb1941fb97e678226a62488e6b20225dc796e0ca78c95434"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "NINJA_SCROLL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29606,8 +29608,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 7,
-        "integrated": 7,
+        "implemented": 8,
+        "integrated": 8,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

@@ -7,10 +7,20 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class PrototypeNativeSilentRelics
 {
+    public const string NinjaScrollId = "proto.relic.ninja_scroll";
     public const string TwistedFunnelId = "proto.relic.twisted_funnel";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Native BeforeHandDraw creates three Shivs on the first player turn.
+        new(NinjaScrollId, "Ninja Scroll",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.BeforeHandDraw,
+                    [new(PrototypeCombatEffectKind.CreateCardsInHand, 3,
+                        CardId: "proto.silent.shiv")],
+                    TurnEquals: 1)
+            ]),
         // Native BeforeSideTurnStart applies 4 Poison to every hittable enemy
         // during the owner's first turn. CombatStarted is the shared engine
         // boundary immediately before that opening turn in this profile.

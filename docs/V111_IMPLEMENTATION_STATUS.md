@@ -1032,3 +1032,6 @@ pool. It applies 4 Poison to every living enemy at combat start, matching the
 source's first-player-turn application at the mechanics level. The combat
 event ordering and native trigger timing remain for the later fidelity pass.
 Source: [TwistedFunnel.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/TwistedFunnel.cs).
+Added the Silent shop relic **Ninja Scroll** to the shop rarity pool; before
+the opening hand draw on turn one, it creates three Shivs in hand. Source:
+[NinjaScroll.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/NinjaScroll.cs).

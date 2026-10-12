@@ -78,7 +78,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.lees_waffle"] = PrototypeRelicRarity.Shop,
             ["proto.relic.membership_card"] = PrototypeRelicRarity.Shop,
             ["proto.relic.burning_sticks"] = PrototypeRelicRarity.Shop,
-            ["proto.relic.toolbox"] = PrototypeRelicRarity.Shop
+            ["proto.relic.toolbox"] = PrototypeRelicRarity.Shop,
+            [PrototypeNativeSilentRelics.NinjaScrollId] = PrototypeRelicRarity.Shop
         };
 
     private static readonly HashSet<string> NotSoldInShops =
