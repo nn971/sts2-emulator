@@ -16,6 +16,8 @@ This roadmap ends at a mature emulator and consumer interface. AI/search/trainin
 
 ## Milestone 1A — native reference capture
 
+**Implementation plan:** [Native Reference Mod and Fidelity Inspector](NATIVE_FIDELITY_INSPECTOR_PLAN.md) — passive native capture, strict combat snapshot import, deterministic first-divergence parity, then interactive stepping. Exact RNG/Nature integration and agent playback are later gates.
+
 - [ ] pin one STS2 build as the first reference target
 - [ ] identify mod-loader/instrumentation route
 - [ ] enumerate top-level run phases and decision boundaries
