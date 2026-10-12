@@ -7,7 +7,9 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record RandomIndexRequestV111(
     string SiteId, string StreamId, string OwnerId,
-    int Ordinal, int[] OrderedCandidates, string SourceVersion = "v0.111.0")
+    int Ordinal, int[] OrderedCandidates,
+    string SourceVersion = "v0.111.0",
+    string OperationKind = "choose_index")
 {
     public void Validate()
     {
@@ -15,6 +17,7 @@ public sealed record RandomIndexRequestV111(
             || string.IsNullOrWhiteSpace(StreamId)
             || string.IsNullOrWhiteSpace(OwnerId)
             || SourceVersion != "v0.111.0"
+            || OperationKind is not ("choose_index" or "bounded_integer")
             || Ordinal < 0 || OrderedCandidates is not { Length: > 0 })
             throw new ArgumentException("Invalid source-pinned random-choice request.");
     }
@@ -118,6 +121,7 @@ public sealed class ScriptedRandomIndexProviderV111 : IRandomIndexProviderV111
             expected.Request.OwnerId != request.OwnerId ||
             expected.Request.Ordinal != request.Ordinal ||
             expected.Request.SourceVersion != request.SourceVersion ||
+            expected.Request.OperationKind != request.OperationKind ||
             !expected.Request.OrderedCandidates.SequenceEqual(request.OrderedCandidates))
             throw new InvalidOperationException(
                 "Scripted Nature site/owner/ordinal/eligibility mismatch at choice " + _cursor);
