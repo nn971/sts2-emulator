@@ -57,6 +57,18 @@ class TriageTests(unittest.TestCase):
             self.assertEqual("NOT_TESTED", fixture["emulator_parity"])
             self.assertFalse(fixture["ready_for_emulator_step"])
 
+    def test_header_terminal_without_decision_is_not_structurally_valid(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            records = [valid_trace()[0], valid_trace()[-1]]
+            (folder / "passive-empty.jsonl").write_text(
+                "\\n".join(json.dumps(item) for item in records) + "\\n")
+            report = triage(folder, folder / "fixtures")
+            self.assertEqual(0, report["structurally_valid_count"])
+            self.assertEqual(0, report["fixture_count"])
+            self.assertEqual("INCOMPLETE_CAPTURE", report["traces"][0]["capture_integrity"])
+            self.assertIn("No native decision boundary", report["traces"][0]["reason"])
+
     def test_incomplete_trace_reports_reason_without_fabricating_fixture(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
