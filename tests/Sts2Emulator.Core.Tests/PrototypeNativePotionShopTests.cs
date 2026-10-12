@@ -89,6 +89,7 @@ public sealed class PrototypeNativePotionShopTests
     [InlineData("proto.potion.fysh_oil", 75)]
     [InlineData("proto.potion.binding", 75)]
     [InlineData("proto.potion.heart_of_iron", 75)]
+    [InlineData("proto.potion.clarity", 75)]
     [InlineData("proto.potion.radiant_tincture", 75)]
     [InlineData("proto.potion.duplicator", 75)]
     [InlineData("proto.potion.touch_of_insanity", 75)]
@@ -112,7 +113,7 @@ public sealed class PrototypeNativePotionShopTests
     [Fact]
     public void EverySupportedShopPotionHasExactlyOneNativeRarity()
     {
-        Assert.Equal(43, PrototypeContent.PotionPool.Length);
+        Assert.Equal(44, PrototypeContent.PotionPool.Length);
         Assert.Contains("proto.potion.cunning", PrototypeContent.PotionPool);
         Assert.DoesNotContain("proto.potion.blood", PrototypeContent.PotionPool);
         Assert.DoesNotContain(
@@ -179,6 +180,10 @@ public sealed class PrototypeNativePotionShopTests
             "proto.potion.gigantification", out var gigantificationRarity));
         Assert.Equal(PrototypeNativePotionRarity.Rare,
             gigantificationRarity);
+        Assert.Contains("proto.potion.clarity", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.clarity", out var clarityRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, clarityRarity);
         Assert.All(PrototypeContent.PotionPool, id =>
         {
             Assert.True(PrototypeNativePotionShop.TryGetRarity(id, out _),

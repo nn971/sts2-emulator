@@ -2167,6 +2167,19 @@ public static class PrototypeContent
                     PrototypeCombatEffectKind.ApplyPlayerPower,
                     1,
                     PowerId: "proto.power.gigantification")]),
+            // Shared Uncommon potion: draw one now, then draw one extra card
+            // on each of the next three player hands.
+            new PrototypePotionDefinition(
+                "proto.potion.clarity",
+                "Clarity",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.DrawCards, 1),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        3,
+                        PowerId: "proto.power.clarity")
+                ]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -3339,6 +3352,13 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 PlayerAttackDamageMultiplierWhileActiveNumerator: 3,
                 RemoveAfterFirstPoweredAttack: true),
+            new PrototypePowerDefinition(
+                "proto.power.clarity",
+                "Clarity",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                HandDrawBonusWhileActive: 1,
+                DecrementAfterHandDraw: true),
             new PrototypePowerDefinition(
                 "proto.power.duplication",
                 "Duplication",

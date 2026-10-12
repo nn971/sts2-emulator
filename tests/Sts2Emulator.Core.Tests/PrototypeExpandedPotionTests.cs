@@ -456,6 +456,54 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void ClarityDrawsNowAndAddsOneCardToEachOfTheNextThreeHands()
+    {
+        var cards = Enumerable.Range(1, 10)
+            .Select(id => Card(
+                id,
+                id % 2 == 0
+                    ? "proto.silent.defend"
+                    : "proto.silent.strike"))
+            .ToArray();
+        var state = CombatStateWith(
+            cards,
+            hand: [1],
+            potionId: "proto.potion.clarity",
+            drawPile: Enumerable.Range(2, 9)
+                .Select(id => (long)id).ToArray());
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(2, state.World!.Combat!.Hand.Length);
+        Assert.Equal(3, Assert.Single(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.clarity").Stacks);
+
+        for (var expectedStacks = 2; expectedStacks >= 0; expectedStacks--)
+        {
+            state = engine.Step(
+                state,
+                engine.GetLegalActions(state)
+                    .Single(action => action.Kind == "end_turn")).State;
+
+            Assert.Equal(6, state.World!.Combat!.Hand.Length);
+            if (expectedStacks == 0)
+            {
+                Assert.DoesNotContain(
+                    state.World.Combat.PlayerPowers,
+                    power => power.PowerId == "proto.power.clarity");
+            }
+            else
+            {
+                Assert.Equal(expectedStacks, Assert.Single(
+                    state.World.Combat.PlayerPowers,
+                    power => power.PowerId == "proto.power.clarity").Stacks);
+            }
+        }
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

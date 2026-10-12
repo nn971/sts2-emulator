@@ -950,7 +950,9 @@ public sealed record PrototypePowerDefinition(
     int EnemyOutgoingPoweredAttackDenominator = 1,
     int PlayerAttackDamageMultiplierWhileActiveNumerator = 1,
     int PlayerAttackDamageMultiplierWhileActiveDenominator = 1,
-    bool RemoveAfterFirstPoweredAttack = false);
+    bool RemoveAfterFirstPoweredAttack = false,
+    int HandDrawBonusWhileActive = 0,
+    bool DecrementAfterHandDraw = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

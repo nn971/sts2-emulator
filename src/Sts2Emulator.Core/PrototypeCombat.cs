@@ -2102,6 +2102,11 @@ public sealed partial class PrototypeGameEngine
                         PrototypeContent.Power(power.PowerId)
                             .HandDrawBonusPerStack
                         * power.Stacks)
+                    + combat.PlayerPowers.Sum(power =>
+                        power.Stacks > 0
+                            ? PrototypeContent.Power(power.PowerId)
+                                .HandDrawBonusWhileActive
+                            : 0)
                     + PrototypeNativeOrobasRelics.HandDrawBonusForTurn(
                         player, combat.Turn);
                 var drawn = DrawCards(
@@ -2133,6 +2138,9 @@ public sealed partial class PrototypeGameEngine
                 combat = RemovePlayerPowers(
                     combat,
                     definition => definition.RemoveAfterHandDraw);
+                combat = DecrementPlayerPowers(
+                    combat,
+                    definition => definition.DecrementAfterHandDraw);
                 break;
             }
 
