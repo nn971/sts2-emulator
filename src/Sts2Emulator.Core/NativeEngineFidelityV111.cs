@@ -157,8 +157,14 @@ public static class NativeEngineFidelityV111
                     // If the card's visible cost differs from the native
                     // base cost, we cannot reconstruct hidden modifiers.
                     if (definition.Cost.Kind != PrototypeCardCostKind.Fixed ||
-                        cost != definition.Cost.Amount)
-                        blockers.Add("UNVERIFIED_CARD_COST:" + model + ":" + id);
+                        cost != definition.Cost.AmountAt(upgrade))
+                    {
+                        if (definition.Unplayable)
+                            guards.Add("UNVERIFIED_UNPLAYABLE_CARD_DISPLAY_COST:" +
+                                model + ":" + id);
+                        else
+                            blockers.Add("UNVERIFIED_CARD_COST:" + model + ":" + id);
+                    }
                     combatCards.Add(new CombatCardInstance(id, null, mapped, upgrade,
                         false, PrototypeJson.EmptyObject()));
                     originalCardModels[id] = (model, upgrade, cost);
