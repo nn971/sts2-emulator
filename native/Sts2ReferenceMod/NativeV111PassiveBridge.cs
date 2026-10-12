@@ -50,6 +50,7 @@ internal static class NativeV111PassiveBridge
     private static string? _currentFile;
     private static CombatState? _failedCombat;
     private static string? _lastGateReason;
+    private static bool _hookDisabled;
 
     // Only report changes in gate state: these diagnostics must not spam
     // every Godot frame or affect player input/RNG.
@@ -91,7 +92,7 @@ internal static class NativeV111PassiveBridge
 
     private static void OnFrame()
     {
-        if (_handlingFrame) return;
+        if (_hookDisabled || _handlingFrame) return;
         _handlingFrame = true;
         try
         {
@@ -165,6 +166,17 @@ internal static class NativeV111PassiveBridge
             // creating a recording. Keep the error once rather than per frame.
             _failedCombat ??= _combat;
             if (_recording is not null) EndCombat("INCOMPLETE_CAPTURE: " + error.GetType().Name);
+            if (_failedCombat is null)
+            {
+                // A failure before any combat is established (e.g. overlay
+                // construction or the main-loop callback) cannot be isolated
+                // to an encounter. Unregister this observer instead of
+                // throwing/logging on every subsequent rendered frame.
+                _hookDisabled = true;
+                if (_tree is not null) _tree.ProcessFrame -= OnFrame;
+                Godot.GD.PushError("[Sts2ReferenceMod] CAPTURE_STATUS=HOOK_DISABLED; " +
+                    "fatal frame callback error before combat setup.");
+            }
         }
         finally { _handlingFrame = false; }
     }
