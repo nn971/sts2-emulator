@@ -123,7 +123,10 @@ Nonupeipe's Jewelry Box branch now follows its persistent acquisition through
 the Innate, Exhaust Apotheosis card; playing Apotheosis upgrades all other
 upgradable combat cards. Brilliant Scarf's fifth manual card play now costs
 zero energy, using the turn-scoped manual-play counter; the other Nonupeipe
-branches and its event offer sequence remain gated.
+branches and its event offer sequence remain gated. Delicate Frond now
+generates and procures potions before combat until the slots fill, using
+`run.combat_potion_generation`; Sozu blocks procurement after one generated
+potion. Full native potion-pool and cursor parity remain unverified.
 
 ## Delivered
 

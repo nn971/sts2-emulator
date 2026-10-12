@@ -810,7 +810,8 @@ public sealed record PrototypeRelicDefinition(
     int PowerCardEnergyCostIncrease = 0,
     string? PersistentTriggerCountProperty = null,
     int AdditionalCardPlayCountOncePerCombat = 0,
-    int? FreeCardAtManualCardPlayCount = null);
+    int? FreeCardAtManualCardPlayCount = null,
+    bool ProcureRandomPotionsBeforeCombat = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

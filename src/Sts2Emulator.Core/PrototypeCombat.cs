@@ -114,6 +114,8 @@ public sealed partial class PrototypeGameEngine
 
         }
 
+        state = ApplyBeforeCombatStartRelics(state);
+
         var combatRelics = state.Player.Relics
             .Select((relic, index) =>
             {
@@ -8060,6 +8062,49 @@ public sealed partial class PrototypeGameEngine
             0,
             baseCost + afflictionSurcharge + relicSurcharge
                 - curiousDiscount);
+    }
+
+    private static RunState ApplyBeforeCombatStartRelics(RunState state)
+    {
+        var relicTriggers = state.Player.ActiveRelics
+            .Where(relic => PrototypeContent.Relic(relic.RelicId)
+                .ProcureRandomPotionsBeforeCombat)
+            .ToArray();
+        if (relicTriggers.Length == 0)
+            return state;
+
+        var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
+        var nativeRunRng = state.NativeRunRng?.Fork();
+        foreach (var _ in relicTriggers)
+        {
+            var openSlot = Array.IndexOf(slots, null);
+            while (openSlot >= 0)
+            {
+                var potionId = nativeRunRng is null
+                    ? PrototypeNativePotionShop.PickWeighted(
+                        state.Rng, "event")
+                    : PrototypeNativePotionShop.PickWeightedDistinctNative(
+                        nativeRunRng,
+                        "run.combat_potion_generation", 1)[0];
+
+                if (state.Player.ActiveRelics.Any(relic =>
+                    PrototypeContent.Relic(relic.RelicId)
+                        .PreventPotionAcquisition))
+                {
+                    break;
+                }
+
+                slots[openSlot] = new PotionInstance(
+                    potionId, PrototypeJson.EmptyObject());
+                openSlot = Array.IndexOf(slots, null);
+            }
+        }
+
+        return state with
+        {
+            Player = state.Player with { PotionSlots = slots },
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng
+        };
     }
 
     private static CombatState SetCardTemporaryEnergyCost(
