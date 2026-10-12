@@ -13,6 +13,39 @@ Sts2ReferenceMod.dll** rather than loaded as separate assemblies. The game
 mod loader's managed dependency resolution is not guaranteed to find
 additional DLLs in the mod directory.
 
+## Minimal manifest-only PCK (no Godot editor)
+
+For a first passive native smoke test, the inspector has no Godot scenes or
+assets to export. A manifest-only Godot 4.5 PCK v3 can be produced with
+`tools/make_inspector_pck.py`. It follows the upstream Godot 4.5.1 pack
+reader/writer layout, with one unencrypted root file
+`res://mod_manifest.json`. **Game-local PCK load validation is still required.**
+
+To build into a staging directory while keeping Codex's checkout and the
+game unmodified:
+
+```fish
+cd ~/projects/sts2-inspector-test
+set staging ~/projects/sts2-inspector-stage
+fish scripts/build-native-inspector.fish "$staging"
+ls -lh "$staging/mods/Sts2ReferenceMod/Sts2ReferenceMod.pck"
+```
+
+This uses the existing staged game-data symlink and embeds Core/Trace into
+one `Sts2ReferenceMod.dll`. Alternatively, if the DLL is already built,
+create **only** the missing PCK:
+
+```fish
+python tools/make_inspector_pck.py \
+    --manifest native/Sts2ReferenceMod/mod_manifest.json \
+    --out ~/projects/sts2-inspector-stage/mods/Sts2ReferenceMod/Sts2ReferenceMod.pck
+```
+
+Passing a Godot/MegaDot binary as a second build-script argument still
+uses editor export. Do not install into the live game directory until the
+staged PCK and matching DLL are both present and any incompatible mods are
+disabled.
+
 ## Build and pin a native installation (fish / WSL)
 
 Run these commands from the emulator repository root. Provide a real MegaDot
