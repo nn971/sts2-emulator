@@ -55,6 +55,69 @@ public sealed class PrototypeNativePotionShopTests
     }
 
     [Fact]
+    public void NativePotionGenerationKeepsCharacterThenSharedPoolOrder()
+    {
+        string[] expectedOrder =
+        [
+            "proto.potion.poison",
+            "proto.potion.ghost_in_a_jar",
+            "proto.potion.cunning",
+            "proto.potion.attack",
+            "proto.potion.beetle_juice",
+            "proto.potion.blessing_of_the_forge",
+            "proto.potion.block",
+            "proto.potion.bottled_potential",
+            "proto.potion.clarity",
+            "proto.potion.colorless",
+            "proto.potion.cure_all",
+            "proto.potion.dexterity",
+            "proto.potion.distilled_chaos",
+            "proto.potion.droplet_of_precognition",
+            "proto.potion.duplicator",
+            "proto.potion.energy",
+            "proto.potion.entropic_brew",
+            "proto.potion.explosive_ampoule",
+            "proto.potion.fairy_in_a_bottle",
+            "proto.potion.fire",
+            "proto.potion.flex",
+            "proto.potion.fortifier",
+            "proto.potion.fruit_juice",
+            "proto.potion.fysh_oil",
+            "proto.potion.gamblers_brew",
+            "proto.potion.gigantification",
+            "proto.potion.heart_of_iron",
+            "proto.potion.liquid_bronze",
+            "proto.potion.liquid_memories",
+            "proto.potion.lucky_tonic",
+            "proto.potion.mazaleths_gift",
+            "proto.potion.orobic_acid",
+            "proto.potion.binding",
+            "proto.potion.powdered_demise",
+            "proto.potion.power",
+            "proto.potion.radiant_tincture",
+            "proto.potion.regen",
+            "proto.potion.shackling",
+            "proto.potion.ship_in_a_bottle",
+            "proto.potion.skill",
+            "proto.potion.snecko_oil",
+            "proto.potion.speed",
+            "proto.potion.stable_serum",
+            "proto.potion.strength",
+            "proto.potion.swift",
+            "proto.potion.touch_of_insanity",
+            "proto.potion.vulnerable",
+            "proto.potion.weak"
+        ];
+
+        Assert.Equal(expectedOrder,
+            PrototypeNativePotionShop.NativePotionPoolOrder);
+        Assert.Equal(
+            PrototypeContent.PotionPool.Order(StringComparer.Ordinal),
+            PrototypeNativePotionShop.NativePotionPoolOrder
+                .Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
     public void WeightedRollDoesNotSubstituteMissingRareTier()
     {
         var rng = PrototypeRng.CreateBundle("native-rare-exhaustion");
