@@ -200,6 +200,26 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "nature_advance":
+                    {
+                        // Compose completed controlled HP outcomes into source
+                        // intent selection without sampling native RNG again.
+                        var handle = RequiredString(request, "nature_handle");
+                        if (!natureHp.TryGetValue(handle, out var hp))
+                            throw new InvalidOperationException(
+                                "nature_advance requires an initial_hp handle.");
+                        var next = ControlledIntentsV111.BeginAfterControlledHp(hp);
+                        string childHandle = StoreNatureIntent(next);
+                        Write(new { requestId, ok = true,
+                            schemaId = NatureBoundarySchemaId,
+                            kind = "intents", parent = handle,
+                            child = childHandle, natureHandle = childHandle,
+                            fingerprint = next.Fingerprint,
+                            pending = next.Pending, complete = next.Complete,
+                            mode = next.Mode });
+                        break;
+                    }
+
                     case "nature_resolve":
                     {
                         var handle = RequiredString(request, "nature_handle");
