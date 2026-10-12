@@ -1040,3 +1040,7 @@ played Shiv grants 1 temporary Dexterity for the current player turn, using
 the card tag in the shared relic trigger pipeline. Source:
 [HelicalDart.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/HelicalDart.cs)
 and [HelicalDartPower.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Powers/HelicalDartPower.cs).
+Added **Snecko Skull** to the common relic pool. Each positive Poison
+application the player gives to an enemy gains one additional stack, through
+the shared enemy-status application path. Source:
+[SneckoSkull.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/SneckoSkull.cs).

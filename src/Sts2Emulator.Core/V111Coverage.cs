@@ -453,6 +453,20 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "SNECKO_SKULL"
+            && engineIds.Contains(PrototypeNativeSilentRelics.SneckoSkullId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.SneckoSkullId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.SneckoSkullId, out var skullRarity)
+            && skullRarity == PrototypeRelicRarity.Common)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";

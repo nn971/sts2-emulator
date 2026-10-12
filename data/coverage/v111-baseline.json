@@ -28427,17 +28427,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.snecko_skull"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/SneckoSkull.cs#6aedb8cd861eb8870e9aa934b8d37ab9697382fcfc01faa972b7908fe8610b3e"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SNECKO_SKULL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29610,8 +29612,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 9,
-        "integrated": 9,
+        "implemented": 10,
+        "integrated": 10,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

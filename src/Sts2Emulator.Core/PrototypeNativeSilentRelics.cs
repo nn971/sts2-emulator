@@ -9,6 +9,7 @@ public static class PrototypeNativeSilentRelics
 {
     public const string HelicalDartId = "proto.relic.helical_dart";
     public const string NinjaScrollId = "proto.relic.ninja_scroll";
+    public const string SneckoSkullId = "proto.relic.snecko_skull";
     public const string TwistedFunnelId = "proto.relic.twisted_funnel";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
@@ -22,6 +23,11 @@ public static class PrototypeNativeSilentRelics
                         PowerId: "proto.power.temporary_dexterity")],
                     RequiredSourceCardTag: "Shiv")
             ]),
+        // Native additive power modification adds one Poison whenever the
+        // owner applies Poison to an enemy.
+        new(SneckoSkullId, "Snecko Skull",
+            AppliedEnemyStatusAmountBonusId: "proto.status.poison",
+            AppliedEnemyStatusAmountBonus: 1),
         // Native BeforeHandDraw creates three Shivs on the first player turn.
         new(NinjaScrollId, "Ninja Scroll",
             Triggers:

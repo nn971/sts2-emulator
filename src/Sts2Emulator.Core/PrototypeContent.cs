@@ -7506,6 +7506,7 @@ public static class PrototypeContent
         "proto.relic.anchor",
         "proto.relic.vajra",
         "proto.relic.blood_vial",
+        "proto.relic.snecko_skull",
         "proto.relic.meat_on_the_bone",
         "proto.relic.reptile_trinket",
         "proto.relic.old_coin",

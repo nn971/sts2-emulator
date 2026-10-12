@@ -5279,11 +5279,23 @@ public sealed partial class PrototypeGameEngine
                         throw new InvalidOperationException("Status operation requires target and status ID.");
                     }
 
+                    var statusAmount = operation.Amount;
+                    if (statusAmount > 0)
+                    {
+                        statusAmount = checked(statusAmount
+                            + combat.RelicStates
+                                .Where(relic => !relic.IsMelted)
+                                .Select(relic => PrototypeContent.Relic(
+                                    relic.RelicId))
+                                .Where(relic => relic.AppliedEnemyStatusAmountBonusId
+                                    == operation.StatusId)
+                                .Sum(relic => relic.AppliedEnemyStatusAmountBonus));
+                    }
                     combat = ApplyEnemyStatus(
                         combat,
                         targetEnemyId.Value,
                         operation.StatusId,
-                        operation.Amount);
+                        statusAmount);
                     break;
 
                 case PrototypeCombatEffectKind.ExhaustHand:
