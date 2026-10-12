@@ -1862,7 +1862,9 @@ public sealed record CombatState(
     int KnowledgeDemonChoiceResolvedTurn = 0,
     PrototypeAutoPlayTargetRoll[]? AutoPlayTargetRolls = null,
     bool PaelsEyeExtraTurnPending = false,
-    PrototypeCombatPetState[]? Pets = null)
+    PrototypeCombatPetState[]? Pets = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? CurrentMapNodeId = null)
 {
     public CombatState Fork() => this with
     {
@@ -2362,7 +2364,9 @@ public sealed record EventState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     RngStreamState? NativeEventRng = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    bool? NativeTanxTriEligible = null)
+    bool? NativeTanxTriEligible = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    bool? NativeNonupeipeBraceletEligible = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();

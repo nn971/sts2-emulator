@@ -117,8 +117,10 @@ relic effects now have executable dependencies. Tanx's conditional offer pool,
 native event shuffle, persisted RNG cursor and relic-choice branches are
 executable through a named Glory Ancient opening fixture. Normal Ancient
 assignment remains gated; the fixture does not make Tanx a random event.
-Nonupeipe and Vakuu remain unavailable until their full offer pools, relic
-effects, Ancient assignment and branch continuations are implemented.
+Nonupeipe's conditional offer shuffle and all ten relic branches now execute
+through a named Glory Ancient opening fixture; normal run-start assignment
+remains gated. Vakuu's event, source-owned offer pools, and relic effects remain
+unavailable.
 Nonupeipe's Jewelry Box branch now follows its persistent acquisition through
 the Innate, Exhaust Apotheosis card; playing Apotheosis upgrades all other
 upgradable combat cards. Brilliant Scarf's fifth manual card play now costs
@@ -128,8 +130,10 @@ first hand draw. Glitter applies Glam to eligible cards in normal and extra
 combat reward groups; its saved option enchantments survive restore and card
 acquisition. Event-owned reward surfaces and native hook order remain gated.
 Beautiful Bracelet's four-card Swift acquisition now uses run.niche and its
-two-card draw enchant triggers on the first play per combat. The other
-Nonupeipe branches and its event offer sequence remain gated. Delicate Frond now
+two-card draw enchant triggers on the first play per combat. Fur Coat marks up
+to eight current-act Monster/Elite rooms and reduces initial and summoned
+enemies there to 1 HP while persisting its map selection and content RNG
+snapshot. Delicate Frond now
 generates and procures potions before combat until the slots fill, using
 `run.combat_potion_generation`; Sozu blocks procurement after one generated
 potion. Full native potion-pool and cursor parity remain unverified.

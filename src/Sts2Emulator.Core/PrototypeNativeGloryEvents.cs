@@ -124,6 +124,7 @@ public static class PrototypeNativeGloryEvents
     public static PrototypeEventDefinition[] Events { get; } =
     [
         NativeTanxEventV111.Definition,
+        NativeNonupeipeEventV111.Definition,
         new(HungryForMushroomsId, "Hungry for Mushrooms",
         [
             new("big_mushroom", "Obtain Big Mushroom", []),

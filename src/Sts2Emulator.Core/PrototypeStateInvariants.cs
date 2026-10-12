@@ -639,6 +639,7 @@ public static class PrototypeStateInvariants
             || (active.Weight <= 0
                 && !NativeAncientRewardsV111.IsOpeningEvent(world)
                 && !NativeTanxEventV111.IsOpeningEvent(world)
+                && !NativeNonupeipeEventV111.IsOpeningEvent(world)
                 && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
                 && !(world.Act is 2 or 3
                     && (world.Map.GenerationProfileId ==

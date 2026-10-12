@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -7,6 +9,7 @@ public static class NativeGloryAncientsV111
 {
     public const string BlessedAntlerId = "proto.native.ancient.blessed_antler";
     public const string BeautifulBraceletId = "proto.native.ancient.beautiful_bracelet";
+    public const string FurCoatId = "proto.native.ancient.fur_coat";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
     public const string CrossbowId = "proto.native.ancient.crossbow";
     public const string IronClubId = "proto.native.ancient.iron_club";
@@ -40,6 +43,7 @@ public static class NativeGloryAncientsV111
                     TurnEquals: 1)
             ]),
         new(BeautifulBraceletId, "Beautiful Bracelet"),
+        new(FurCoatId, "Fur Coat"),
         new(CrossbowId, "Crossbow", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
@@ -157,6 +161,90 @@ public static class NativeGloryAncientsV111
                         PrototypeCardEnchantmentKind.Swift, 2)
                 }
                 : card).ToArray()
+        };
+    }
+
+    internal static PlayerState MarkFurCoatCombats(
+        PlayerState player,
+        MapState map,
+        int act,
+        string runSeed,
+        RngBundle prototypeRng,
+        bool nativeRng)
+    {
+        var candidates = map.Nodes
+            .Where(node => node.Act == act
+                && node.RoomType is PrototypeRoomType.Combat
+                    or PrototypeRoomType.Elite)
+            .ToArray();
+        NativeRngSnapshot? snapshot = null;
+        if (nativeRng)
+        {
+            var stream = NativeRngV111Contexts.ForPlayerContent(
+                runSeed, "FurCoat");
+            var bundle = new RngBundle([stream]);
+            NativeRngV111.Shuffle(bundle, stream.StreamId, candidates);
+            snapshot = NativeRngV111.ToSnapshot(bundle.Streams[0]);
+        }
+        else
+        {
+            PrototypeRng.Shuffle(prototypeRng, "event", candidates);
+        }
+
+        var selected = candidates.Take(Math.Min(8, candidates.Length))
+            .Select(node => node.NodeId).ToArray();
+        var relics = (RelicInstance[])player.Relics.Clone();
+        var index = Array.FindLastIndex(relics,
+            relic => relic.RelicId == FurCoatId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Fur Coat state requires an acquired Fur Coat relic.");
+        relics[index] = relics[index] with
+        {
+            PersistentState = JsonSerializer.SerializeToElement(new
+            {
+                Act = act,
+                MarkedNodeIds = selected,
+                Rng = snapshot
+            })
+        };
+        return player with { Relics = relics };
+    }
+
+    internal static bool IsFurCoatCombat(PlayerState player, int act,
+        string? nodeId)
+    {
+        if (nodeId is null)
+            return false;
+        foreach (var relic in player.ActiveRelics.Where(relic =>
+                     relic.RelicId == FurCoatId))
+        {
+            if (relic.PersistentState.ValueKind != JsonValueKind.Object
+                || !relic.PersistentState.TryGetProperty("Act", out var actValue)
+                || !actValue.TryGetInt32(out var relicAct)
+                || !relic.PersistentState.TryGetProperty("MarkedNodeIds", out var ids)
+                || ids.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException(
+                    "Fur Coat requires persisted act and map-node state.");
+            if (relicAct == act && ids.EnumerateArray().Any(value =>
+                    value.ValueKind == JsonValueKind.String
+                    && StringComparer.Ordinal.Equals(value.GetString(), nodeId)))
+                return true;
+        }
+        return false;
+    }
+
+    internal static CombatState ApplyFurCoatCombatStart(
+        CombatState combat, PlayerState player)
+    {
+        if (!IsFurCoatCombat(player, combat.Act,
+                combat.CurrentMapNodeId))
+            return combat;
+        return combat with
+        {
+            Enemies = combat.Enemies.Select(enemy => enemy.Hp > 0
+                ? enemy with { Hp = 1 }
+                : enemy).ToArray()
         };
     }
 

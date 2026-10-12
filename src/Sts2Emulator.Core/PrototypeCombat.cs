@@ -1,12906 +1,2107 @@
-namespace Sts2Emulator.Core;
-
-public sealed partial class PrototypeGameEngine
-{
-    private static RunState StartCombat(
-        RunState state,
-        PrototypeRoomType roomType,
-        PrototypeEncounterDefinition? forcedEncounter = null)
-    {
-        var world = RequireWorld(state);
-        PrototypeEncounterDefinition encounter;
-
-        if (forcedEncounter is { } scriptedEncounter)
-        {
-            encounter = scriptedEncounter;
-        }
-        else if (world.Act == 1
-            && world.ActOneRegion == PrototypeActOneRegion.Underdocks)
-        {
-            var selected = PickUnderdocksEncounter(
-                state, world, roomType);
-            encounter = selected.Encounter;
-            world = selected.World;
-        }
-        else
-        {
-        var overgrowthBoss =
-            TryPickOvergrowthBossEncounter(
-                world,
-                roomType);
-        if (overgrowthBoss is not null)
-        {
-            encounter = overgrowthBoss;
-        }
-        else
-        {
-            var overgrowthElite =
-                TryPickOvergrowthEliteEncounter(
-                    state,
-                    world,
-                    roomType);
-            if (overgrowthElite is not null)
-            {
-                encounter = overgrowthElite.Value.Encounter;
-                world = overgrowthElite.Value.World;
-            }
-            else
-            {
-                var overgrowthWeak =
-                TryPickOvergrowthWeakEncounter(
-                    state,
-                    world,
-                    roomType);
-            if (overgrowthWeak is not null)
-            {
-                encounter =
-                    overgrowthWeak.Value.Encounter;
-                world = overgrowthWeak.Value.World;
-            }
-            else
-            {
-                var overgrowthNormal =
-                    TryPickOvergrowthNormalEncounter(
-                        state,
-                        world,
-                        roomType);
-            if (overgrowthNormal is not null)
-            {
-                encounter =
-                    overgrowthNormal.Value.Encounter;
-                world = overgrowthNormal.Value.World;
-            }
-            else
-            {
-                var encounters = PrototypeContent.Encounters
-                .Where(candidate =>
-                    candidate.RoomType == roomType
-                    && world.Act >= candidate.MinAct
-                    && world.Act <= candidate.MaxAct
-                    && world.Floor >= candidate.MinFloor
-                    && world.Floor <= candidate.MaxFloor
-                    && candidate.Weight > 0)
-                .ToArray();
-
-            if (encounters.Length == 0)
-            {
-                throw new InvalidOperationException(
-                    $"No prototype encounter is eligible for {roomType} " +
-                    $"at act {world.Act}, floor {world.Floor}.");
-            }
-
-            var previousEncounter = world.EncounterIds.LastOrDefault();
-            if (previousEncounter is not null && encounters.Length > 1)
-            {
-                var withoutImmediateRepeat = encounters
-                    .Where(candidate =>
-                        !StringComparer.Ordinal.Equals(
-                            candidate.Id,
-                            previousEncounter))
-                    .ToArray();
-                if (withoutImmediateRepeat.Length > 0)
-                {
-                    encounters = withoutImmediateRepeat;
-                }
-            }
-
-                    encounter = PickWeightedEncounter(
-                        encounters,
-                        state.Rng);
-                }
-            }
-        }
-        }
-
-        }
-
-        state = ApplyBeforeCombatStartRelics(state);
-
-        var combatRelics = state.Player.Relics
-            .Select((relic, index) =>
-            {
-                var definition = PrototypeContent.Relic(relic.RelicId);
-                return new CombatRelicState(
-                    PersistentIndex: index,
-                    RelicId: relic.RelicId,
-                    ApplicationOrder: index + 1L,
-                    TriggerCounts: CreateRelicTriggerCounts(relic, definition),
-                    IsMelted: relic.IsMelted);
-            })
-            .ToArray();
-
-        var combatPotions = state.Player.PotionSlots
-            .Select((potion, slot) => potion is null
-                ? null
-                : new CombatPotionState(
-                    Slot: slot,
-                    PotionId: potion.PotionId,
-                    State: potion.PersistentState.Clone()))
-            .Where(potion => potion is not null)
-            .Select(potion => potion!)
-            .ToArray();
-
-        var nextPowerApplicationOrder = combatRelics.Length + 1L;
-        // Opt-in v111 live entry: source-audited weak, normal,
-        // elite and boss initial formations, each with independent
-        // encounter RNG. Unsupported entries must never fall back
-        // to the prototype combat RNG.
-        var nativeFormation =
-            state.Configuration?.UsesExperimentalNativeWeakCombatEntry == true
-                ? NativeActOneEliteBossCombatEntryV111.IsSupported(encounter.Id)
-                    ? NativeActOneEliteBossCombatEntryV111.Prepare(
-                        state, world, encounter)
-                    : NativeActOneNormalCombatEntryV111.IsSupported(encounter.Id)
-                        ? NativeActOneNormalCombatEntryV111.Prepare(
-                            state, world, encounter)
-                        : NativeActOneWeakCombatEntryV111.Prepare(
-                            state, world, encounter)
-                : null;
-        var enemySpecs = nativeFormation?.Enemies
-            ?? encounter.ResolveEnemySpecs(state.Rng);
-        var instanceIdByFormationPosition =
-            enemySpecs
-                .Select((enemySpec, index) =>
-                    new
-                    {
-                        enemySpec.FormationPosition,
-                        InstanceId = index + 1
-                    })
-                .ToDictionary(
-                    item => item.FormationPosition,
-                    item => item.InstanceId);
-        // Some native encounters coordinate their monsters' initial
-        // move-state positions with one encounter-local roll. Keep that
-        // property declarative and deterministic within the emulator.
-        var openingAiStates = encounter.CyclicOpeningAiStateIds;
-        if (openingAiStates is { Length: 0 })
-        {
-            throw new InvalidOperationException(
-                $"Encounter '{encounter.Id}' has an empty cyclic opening AI list.");
-        }
-        var fixedTrailingOpenings =
-            encounter.FixedTrailingOpeningAiStateIds
-            ?? Array.Empty<string>();
-        if (openingAiStates is null && fixedTrailingOpenings.Length > 0)
-        {
-            throw new InvalidOperationException(
-                $"Encounter '{encounter.Id}' defines fixed trailing openings without a cyclic prefix.");
-        }
-        if (openingAiStates is not null
-            && (fixedTrailingOpenings.Length == 0
-                ? enemySpecs.Length > openingAiStates.Length
-                : enemySpecs.Length
-                    != openingAiStates.Length + fixedTrailingOpenings.Length))
-        {
-            throw new InvalidOperationException(
-                $"Encounter '{encounter.Id}' cyclic/fixed opening count does not match its formation.");
-        }
-        // Some encounters (CorpseSlugsWeak) initialize every monster's
-        // starter state as part of GenerateMonsters(), not combat AI.
-        // Consume the encounter's own opening roll exactly once above.
-        // All other cyclic native formations remain strictly gated.
-        if (nativeFormation is not null && openingAiStates is not null
-            && nativeFormation.EncounterOpeningOffset is null)
-            throw new NotSupportedException(
-                "Experimental native encounter lacks its audited opening rotation.");
-        var openingOffset = openingAiStates is null
-            ? 0
-            : nativeFormation?.EncounterOpeningOffset
-                ?? PrototypeRng.NextInt(
-                    state.Rng, "combat", openingAiStates.Length);
-        var enemies = enemySpecs
-            .Select((enemySpec, index) =>
-            {
-                var definition = PrototypeContent.Enemy(
-                    enemySpec.EnemyId);
-                var hpRange = definition.HpRangeAt(
-                    world.Act,
-                    state.Ascension);
-                // Native HP is rolled later from the persistent run.niche
-                // stream. Do not consume the prototype combat RNG here.
-                var hp = nativeFormation is not null
-                    ? hpRange.Max
-                    : hpRange.Min == hpRange.Max
-                        ? hpRange.Min
-                        : hpRange.Min
-                            + PrototypeRng.NextInt(
-                                state.Rng,
-                                "combat",
-                                hpRange.Max - hpRange.Min + 1);
-                var powers = (definition.StartingPowers ?? Array.Empty<PrototypeStartingPowerSpec>())
-                    .Select(power =>
-                    {
-                        _ = PrototypeContent.Power(power.PowerId);
-                        // PhrogParasite.AfterAddedToRoom applies FOUR
-                        // Infested stacks, even though the old prototype
-                        // recorded one. Correct only the source-pinned
-                        // native elite; retain default training semantics.
-                        var stacks = nativeFormation?.NativeEncounterEntry
-                                == "PhrogParasiteElite"
-                            && enemySpec.EnemyId == "proto.enemy.phrog_parasite"
-                            && power.PowerId == "proto.power.infested"
-                                ? 4
-                                : power.StacksAt(state.Ascension);
-                        return new PrototypePowerInstanceState(
-                            power.PowerId,
-                            stacks,
-                            nextPowerApplicationOrder++);
-                    })
-                    .Where(power => power.Stacks > 0)
-                    .ToArray();
-
-                return new EnemyCombatState(
-                    InstanceId: index + 1,
-                    EnemyId: enemySpec.EnemyId,
-                    Hp: hp,
-                    MaxHp: hp,
-                    Block: powers.Sum(power =>
-                        power.Stacks * PrototypeContent.Power(power.PowerId)
-                            .EnemyStartingBlockPerStack),
-                    MoveIndex: 0,
-                    Statuses: new Dictionary<string, int>(StringComparer.Ordinal),
-                    Powers: powers,
-                    FormationPosition:
-                        enemySpec.FormationPosition,
-                    SlotName: enemySpec.SlotName,
-                    AiStateId: openingAiStates is null
-                        ? null
-                        : index < openingAiStates.Length
-                            ? openingAiStates[(openingOffset + index)
-                                % openingAiStates.Length]
-                            : fixedTrailingOpenings[
-                                index - openingAiStates.Length],
-                    NonSummonMovesUntilEligible:
-                        definition.NonSummonMovesBeforeEligible,
-                    LeaderEnemyInstanceId:
-                        enemySpec.LeaderFormationPosition is
-                            { } leaderFormationPosition
-                            ? instanceIdByFormationPosition[
-                                leaderFormationPosition]
-                            : null);
-            })
-            .ToArray();
-
-        if (nativeFormation is not null
-            && encounter.UniqueEvenEnemyHpWithinEncounter)
-            throw new NotSupportedException(
-                "Native unique-even-HP encounter hooks are not migrated.");
-        if (encounter.UniqueEvenEnemyHpWithinEncounter)
-        {
-            var occupiedHp = new HashSet<int>();
-            for (var i = 0; i < enemies.Length; i++)
-            {
-                var range = PrototypeContent.Enemy(
-                    enemies[i].EnemyId).HpRangeAt(world.Act, state.Ascension);
-                var minimumEven = range.Min + (range.Min % 2);
-                var maximumEven = range.Max - (range.Max % 2);
-                if (minimumEven > maximumEven)
-                    throw new InvalidOperationException(
-                        "Segment HP interval has no even value.");
-                var candidate = enemies[i].Hp + (enemies[i].Hp % 2);
-                if (candidate > maximumEven)
-                    candidate = minimumEven;
-                // Native Decimillipede's AfterAddedToRoom advances
-                // duplicate HP by two and wraps around its even range.
-                while (!occupiedHp.Add(candidate))
-                {
-                    candidate += 2;
-                    if (candidate > maximumEven)
-                        candidate = minimumEven;
-                }
-                enemies[i] = enemies[i] with { Hp = candidate };
-            }
-        }
-
-        var nextCombatCardId = 1L;
-        var combatCards = state.Player.Deck
-            .Select(card => new CombatCardInstance(
-                InstanceId: nextCombatCardId++,
-                PersistentCardInstanceId: card.InstanceId,
-                CardId: card.CardId,
-                UpgradeLevel: card.UpgradeLevel,
-                IsTemporary: false,
-                State: card.PersistentState.Clone(),
-                Enchantment: card.Enchantment))
-            .ToArray();
-
-        var innateCards = combatCards
-            .Where(IsInnate)
-            .Select(card => card.InstanceId)
-            .ToArray();
-        var drawPile = combatCards
-            .Where(card => !IsInnate(card))
-            .Select(card => card.InstanceId)
-            .ToArray();
-        PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
-
-        var boomingConchAtElite = roomType == PrototypeRoomType.Elite
-            && state.Player.ActiveRelics.Any(relic =>
-                relic.RelicId ==
-                    PrototypeNativeOvergrowthEvents.NeowRelicId(
-                        "BoomingConch"));
-        var combat = new CombatState(
-            Turn: 1,
-            Energy: EnergyPerTurn(state.Player)
-                + (boomingConchAtElite ? 1 : 0),
-            PlayerBlock: 0,
-            Hand: innateCards,
-            DrawPile: drawPile,
-            DiscardPile: Array.Empty<long>(),
-            ExhaustPile: Array.Empty<long>(),
-            Enemies: enemies,
-            NextCardInstanceId: nextCombatCardId,
-            Cards: combatCards,
-            PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
-            NextPowerApplicationOrder: nextPowerApplicationOrder,
-            Relics: combatRelics,
-            Potions: combatPotions,
-            Act: world.Act,
-            Ascension: state.Ascension,
-            Pets: NativePaelRewardsV111.CreateCombatPets(state.Player));
-
-        // Bind the native owner before combat entry hooks and the first
-        // intent commitment. HP and all initial enemy maxima now use
-        // the advancing run.niche stream rather than the prototype RNG.
-        if (nativeFormation is not null)
-            combat = NativeCombatRngEntryV111.AttachAndRollInitialHp(
-                combat, nativeFormation, state.NativeRunRng!);
-
-        if (enemies.Any(enemy => enemy.EnemyId ==
-            PrototypeNativeHiveBosses.RocketId))
-            combat = ApplyPlayerPower(combat,
-                PrototypeNativeHiveBosses.SurroundedId, 1);
-
-        // Vital Spark afflicts every existing Skill before the opening
-        // draw, without overriding a different native affliction.
-        combat = RefreshNativeHiveVitalSpark(combat);
-        combat = RefreshNativeGloryGalvanic(combat);
-
-        // Intents must be committed before an opening player choice is visible.
-        combat = GrantEnemyAllyBlockOnPlayerTurnStart(combat);
-        combat = CommitEnemyIntents(combat, state.Rng);
-        // Return the latest native run/player cursors to their persistent
-        // owner; later Step() calls continue from these precise positions.
-        if (combat.NativeRng is not null)
-            state = state with
-            {
-                NativeRunRng = combat.NativeRng.RunStreams.Fork()
-            };
-
-        world = world with
-        {
-            Combat = combat,
-            EncounterHistory = world.EncounterIds.Append(encounter.Id).ToArray()
-        };
-
-        state = ApplyOpeningRoyalPoison(state with
-        {
-            World = world,
-            Phase = RunPhase.Combat
-        });
-        return ResumeOpeningCombat(state, PrototypeOpeningCombatStage.PlayerSideStart);
-    }
-
-    private static PrototypeEncounterDefinition?
-        TryPickOvergrowthBossEncounter(
-            RunWorldState world,
-            PrototypeRoomType roomType)
-    {
-        if (roomType != PrototypeRoomType.Boss
-            || world.Act != 1
-            || world.ActOneRegion
-                != PrototypeActOneRegion.Overgrowth)
-        {
-            return null;
-        }
-
-        var pool = world.ActOneEncounterPool;
-        if (pool is null
-            || pool.Region
-                != PrototypeActOneRegion.Overgrowth
-            || pool.BossEncounterId is null)
-        {
-            return null;
-        }
-
-        if (!PrototypeContent.OvergrowthBossEncounterPool.Contains(
-                pool.BossEncounterId,
-                StringComparer.Ordinal))
-        {
-            throw new InvalidOperationException(
-                $"Unknown Overgrowth boss encounter '{pool.BossEncounterId}'.");
-        }
-
-        return PrototypeContent.Encounter(
-            pool.BossEncounterId);
-    }
-
-    private static (
-        PrototypeEncounterDefinition Encounter,
-        RunWorldState World)?
-        TryPickOvergrowthEliteEncounter(
-            RunState state,
-            RunWorldState world,
-            PrototypeRoomType roomType)
-    {
-        if (roomType != PrototypeRoomType.Elite
-            || world.Act != 1
-            || world.ActOneRegion
-                != PrototypeActOneRegion.Overgrowth)
-        {
-            return null;
-        }
-
-        var pool = world.ActOneEncounterPool;
-        if (pool is null
-            || pool.Region
-                != PrototypeActOneRegion.Overgrowth)
-        {
-            return null;
-        }
-
-        var remaining =
-            pool.RemainingEliteEncounterIds
-            ?? (string[])PrototypeContent
-                .OvergrowthEliteEncounterPool
-                .Clone();
-        if (remaining.Length == 0)
-        {
-            remaining = (string[])PrototypeContent
-                .OvergrowthEliteEncounterPool
-                .Clone();
-        }
-
-        var previous = world.EncounterIds
-            .Reverse()
-            .FirstOrDefault(id =>
-                PrototypeContent.OvergrowthEliteEncounterPool.Contains(
-                    id,
-                    StringComparer.Ordinal));
-        var eligible = previous is null
-            ? remaining
-            : remaining
-                .Where(id =>
-                    !StringComparer.Ordinal.Equals(
-                        id,
-                        previous))
-                .ToArray();
-        if (eligible.Length == 0)
-        {
-            eligible = remaining;
-        }
-
-        var selectedId = eligible[
-            PrototypeRng.NextInt(
-                state.Rng,
-                "combat",
-                eligible.Length)];
-        var encounter = PrototypeContent.Encounter(
-            selectedId);
-        var nextRemaining = remaining
-            .Where(id =>
-                !StringComparer.Ordinal.Equals(
-                    id,
-                    selectedId))
-            .ToArray();
-
-        return (
-            encounter,
-            world with
-            {
-                ActOneEncounterPool = pool with
-                {
-                    RemainingEliteEncounterIds =
-                        nextRemaining
-                }
-            });
-    }
-
-    private static (
-        PrototypeEncounterDefinition Encounter,
-        RunWorldState World)?
-        TryPickOvergrowthWeakEncounter(
-            RunState state,
-            RunWorldState world,
-            PrototypeRoomType roomType)
-    {
-        if (roomType != PrototypeRoomType.Combat
-            || world.Act != 1
-            || world.ActOneRegion
-                != PrototypeActOneRegion.Overgrowth)
-        {
-            return null;
-        }
-
-        var pool = world.ActOneEncounterPool;
-        if (pool is null
-            || pool.Region
-                != PrototypeActOneRegion.Overgrowth
-            || pool.OrdinaryCombatsStarted >= 3)
-        {
-            return null;
-        }
-
-        if (pool.RemainingWeakEncounterIds.Length == 0)
-        {
-            throw new InvalidOperationException(
-                "Overgrowth weak encounter pool exhausted before three ordinary combats.");
-        }
-
-        var selectedIndex = PrototypeRng.NextInt(
-            state.Rng,
-            "combat",
-            pool.RemainingWeakEncounterIds.Length);
-        var selectedId =
-            pool.RemainingWeakEncounterIds[selectedIndex];
-        var encounter = PrototypeContent.Encounter(
-            selectedId);
-
-        var remaining = pool.RemainingWeakEncounterIds
-            .Where((_, index) => index != selectedIndex)
-            .ToArray();
-        var nextPool = pool with
-        {
-            OrdinaryCombatsStarted =
-                pool.OrdinaryCombatsStarted + 1,
-            RemainingWeakEncounterIds = remaining
-        };
-
-        return (
-            encounter,
-            world with
-            {
-                ActOneEncounterPool = nextPool
-            });
-    }
-
-    private static (
-        PrototypeEncounterDefinition Encounter,
-        RunWorldState World)?
-        TryPickOvergrowthNormalEncounter(
-            RunState state,
-            RunWorldState world,
-            PrototypeRoomType roomType)
-    {
-        if (roomType != PrototypeRoomType.Combat
-            || world.Act != 1
-            || world.ActOneRegion
-                != PrototypeActOneRegion.Overgrowth)
-        {
-            return null;
-        }
-
-        var pool = world.ActOneEncounterPool;
-        if (pool is null
-            || pool.Region
-                != PrototypeActOneRegion.Overgrowth
-            || pool.OrdinaryCombatsStarted < 3)
-        {
-            return null;
-        }
-
-        var remaining =
-            pool.RemainingNormalEncounterIds
-            ?? (string[])PrototypeContent
-                .OvergrowthNormalEncounterPool
-                .Clone();
-        if (remaining.Length == 0)
-        {
-            throw new InvalidOperationException(
-                "Overgrowth normal encounter bag is exhausted.");
-        }
-
-        var previous = world.EncounterIds.LastOrDefault();
-        var eligible = previous is null
-            ? remaining
-            : remaining
-                .Where(candidate =>
-                    CanFollowOvergrowthEncounter(
-                        previous,
-                        candidate))
-                .ToArray();
-        if (eligible.Length == 0)
-        {
-            eligible = remaining;
-        }
-
-        var selectedId = eligible[
-            PrototypeRng.NextInt(
-                state.Rng,
-                "combat",
-                eligible.Length)];
-        var encounter = PrototypeContent.Encounter(
-            selectedId);
-        var nextRemaining = remaining
-            .Where(id =>
-                !StringComparer.Ordinal.Equals(
-                    id,
-                    selectedId))
-            .ToArray();
-
-        return (
-            encounter,
-            world with
-            {
-                ActOneEncounterPool = pool with
-                {
-                    OrdinaryCombatsStarted =
-                        pool.OrdinaryCombatsStarted + 1,
-                    RemainingNormalEncounterIds =
-                        nextRemaining
-                }
-            });
-    }
-
-    private static bool CanFollowOvergrowthEncounter(
-        string previous,
-        string candidate)
-    {
-        static bool IsEither(
-            string value,
-            string first,
-            string second) =>
-            StringComparer.Ordinal.Equals(
-                value,
-                first)
-            || StringComparer.Ordinal.Equals(
-                value,
-                second);
-
-        if (IsEither(
-                previous,
-                "proto.encounter.fuzzy_wurm_crawler_weak",
-                "proto.encounter.overgrowth_crawlers")
-            && IsEither(
-                candidate,
-                "proto.encounter.fuzzy_wurm_crawler_weak",
-                "proto.encounter.overgrowth_crawlers"))
-        {
-            return false;
-        }
-
-        if (IsEither(
-                previous,
-                "proto.encounter.shrinker_beetle_weak",
-                "proto.encounter.overgrowth_crawlers")
-            && IsEither(
-                candidate,
-                "proto.encounter.shrinker_beetle_weak",
-                "proto.encounter.overgrowth_crawlers"))
-        {
-            return false;
-        }
-
-        var slimeFamily = new[]
-        {
-            "proto.encounter.slimes_weak",
-            "proto.encounter.flyconid_normal",
-            "proto.encounter.slimes_normal"
-        };
-        if (slimeFamily.Contains(
-                previous,
-                StringComparer.Ordinal)
-            && slimeFamily.Contains(
-                candidate,
-                StringComparer.Ordinal))
-        {
-            return false;
-        }
-
-        if (IsEither(
-                previous,
-                "proto.encounter.flyconid_normal",
-                "proto.encounter.snapping_jaxfruit_normal")
-            && IsEither(
-                candidate,
-                "proto.encounter.flyconid_normal",
-                "proto.encounter.snapping_jaxfruit_normal"))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static PrototypeEncounterDefinition PickWeightedEncounter(
-        PrototypeEncounterDefinition[] encounters,
-        RngBundle rng)
-    {
-        var totalWeight = encounters.Sum(encounter => encounter.Weight);
-        if (totalWeight <= 0)
-        {
-            throw new InvalidOperationException("Eligible encounter pool has no positive weight.");
-        }
-
-        var roll = PrototypeRng.NextInt(rng, "combat", totalWeight);
-        foreach (var encounter in encounters)
-        {
-            if (roll < encounter.Weight)
-            {
-                return encounter;
-            }
-
-            roll -= encounter.Weight;
-        }
-
-        throw new InvalidOperationException("Weighted encounter selection fell through.");
-    }
-
-    // Native RampartPower.AfterSideTurnStart fires once at the start
-    // of every player side. Each living owner contributes its own
-    // stacks to each living matching ally; defeated owners stop
-    // granting Block. Block is reset by the existing enemy-side hook.
-    internal static CombatState GrantEnemyAllyBlockOnPlayerTurnStart(
-        CombatState combat)
-    {
-        var grants = combat.Enemies
-            .Where(owner => owner.Hp > 0)
-            .SelectMany(owner => owner.PowerStates)
-            .Where(power => power.Stacks > 0)
-            .Select(power => (
-                Power: power,
-                Definition: PrototypeContent.Power(power.PowerId)))
-            .Where(item =>
-                item.Definition.AllyBlockAtPlayerTurnStartPerStack > 0
-                && item.Definition.AllyBlockTargetEnemyId is not null)
-            .ToArray();
-        if (grants.Length == 0)
-        {
-            return combat;
-        }
-
-        return combat with
-        {
-            Enemies = combat.Enemies.Select(enemy =>
-            {
-                if (enemy.Hp <= 0)
-                {
-                    return enemy;
-                }
-
-                var block = grants
-                    .Where(item => StringComparer.Ordinal.Equals(
-                        item.Definition.AllyBlockTargetEnemyId,
-                        enemy.EnemyId))
-                    .Sum(item => checked(
-                        item.Power.Stacks
-                        * item.Definition
-                            .AllyBlockAtPlayerTurnStartPerStack));
-                return block <= 0
-                    ? enemy
-                    : enemy with { Block = checked(enemy.Block + block) };
-            }).ToArray()
-        };
-    }
-
-    private static IReadOnlyList<GameAction> GetCombatActions(RunState state)
-    {
-        var combat = RequireWorld(state).Combat
-            ?? throw new InvalidOperationException("Combat phase has no combat state.");
-
-        if (combat.PendingKnowledgeDemonChoice is { } enemyChoice)
-            return GetKnowledgeDemonChoiceActions(enemyChoice);
-        if (combat.PendingChoice is not null)
-            return GetPendingChoiceActions(combat.PendingChoice);
-
-        var actions = new List<GameAction>();
-
-        foreach (var instanceId in combat.Hand)
-        {
-            var card = RequireCombatCard(combat, instanceId);
-            var definition = RuntimeCardDefinition(card);
-            if (card.Affliction?.Kind == PrototypeCardAfflictionKind.Bound
-                && combat.BoundCardPlayedThisTurn)
-                continue;
-            if (!CanPlayAnotherCardThisTurn(state.Player, combat, card))
-            {
-                continue;
-            }
-            var isFreeByPower = IsCardFreeByPower(combat, definition);
-            if (!definition.MechanicsImplemented
-                || definition.Unplayable
-                || (!isFreeByPower
-                    && !IsCardAffordable(
-                        combat,
-                        card,
-                        definition))
-                || !EvaluateCombatPredicate(
-                    definition.PlayCondition,
-                    combat,
-                    targetEnemyId: null))
-            {
-                continue;
-            }
-
-            var effectiveTarget = EffectiveCardTarget(
-                combat,
-                definition);
-            if (effectiveTarget == PrototypeCardTarget.Enemy)
-            {
-                foreach (var enemy in combat.Enemies.Where(enemy => enemy.Hp > 0))
-                {
-                    actions.Add(GameAction.Create(
-                        "play_card",
-                        new PlayCardPayload(instanceId, enemy.InstanceId)));
-                }
-            }
-            else
-            {
-                actions.Add(GameAction.Create(
-                    "play_card",
-                    new PlayCardPayload(instanceId, null)));
-            }
-        }
-
-        for (var slot = 0; slot < state.Player.PotionSlots.Length; slot++)
-        {
-            var potion = state.Player.PotionSlots[slot];
-            if (potion is null)
-            {
-                continue;
-            }
-
-            var definition = PrototypeContent.Potion(potion.PotionId);
-            if (definition.AutomaticUsage)
-            {
-                continue;
-            }
-
-            if (definition.Target == PrototypeCardTarget.Enemy)
-            {
-                foreach (var enemy in combat.Enemies.Where(enemy => enemy.Hp > 0))
-                {
-                    actions.Add(GameAction.Create(
-                        "use_potion",
-                        new UsePotionPayload(slot, enemy.InstanceId)));
-                }
-            }
-            else
-            {
-                actions.Add(GameAction.Create(
-                    "use_potion",
-                    new UsePotionPayload(slot, null)));
-            }
-        }
-
-        actions.Add(GameAction.Empty("end_turn"));
-        return actions;
-    }
-
-    private static RunState StepCombat(RunState state, GameAction action)
-    {
-        var combat = RequireWorld(state).Combat
-            ?? throw new InvalidOperationException("Combat phase has no combat state.");
-
-        var next = combat.PendingKnowledgeDemonChoice is not null
-            ? ResolveKnowledgeDemonChoice(state, action)
-            : combat.PendingChoice is not null
-                ? ResolvePendingChoice(state, action)
-                : action.Kind switch
-            {
-                "play_card" =>
-                    PlayCard(
-                        state,
-                        action.ReadPayload<PlayCardPayload>()),
-                "use_potion" =>
-                    UsePotion(
-                        state,
-                        action.ReadPayload<UsePotionPayload>()),
-                "end_turn" => EndPlayerTurn(state),
-                _ => throw new InvalidOperationException(
-                    $"Unknown combat action '{action.Kind}'.")
-            };
-
-        if (next.Phase != RunPhase.Combat
-            || next.Player.Hp > 0)
-        {
-            return next;
-        }
-
-        next = TryUseAutomaticDeathPrevention(next);
-        return next.Player.Hp > 0
-            ? next
-            : EndRun(next, "defeat");
-    }
-
-    private static RunState PlayCard(RunState state, PlayCardPayload payload)
-    {
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException("Combat phase has no combat state.");
-
-        if (!combat.Hand.Contains(payload.CardInstanceId))
-        {
-            throw new InvalidOperationException($"Card {payload.CardInstanceId} is not in hand.");
-        }
-
-        var card = RequireCombatCard(combat, payload.CardInstanceId);
-        if (!CanPlayAnotherCardThisTurn(state.Player, combat, card))
-        {
-            throw new InvalidOperationException(
-                "A player effect prevents playing this card this turn.");
-        }
-        var definition = RuntimeCardDefinition(card);
-        if (!definition.MechanicsImplemented)
-        {
-            throw new NotSupportedException(
-                $"Card '{definition.Name}' is catalogued but its combat mechanics are not implemented.");
-        }
-
-        if (definition.Unplayable)
-        {
-            throw new InvalidOperationException(
-                $"Card {payload.CardInstanceId} is unplayable.");
-        }
-
-        var isFreeByPower = IsCardFreeByPower(combat, definition);
-        if (!isFreeByPower
-            && !IsCardAffordable(
-                combat,
-                card,
-                definition))
-        {
-            throw new InvalidOperationException($"Card {payload.CardInstanceId} is unaffordable.");
-        }
-
-        if (!EvaluateCombatPredicate(
-                definition.PlayCondition,
-                combat,
-                payload.TargetEnemyId))
-        {
-            throw new InvalidOperationException(
-                $"Card {payload.CardInstanceId} does not satisfy its play condition.");
-        }
-
-        ValidateTarget(
-            EffectiveCardTarget(combat, definition),
-            payload.TargetEnemyId,
-            combat);
-        combat = ResolveKaiserCrabFacing(combat, payload.TargetEnemyId);
-        var energySpent = isFreeByPower
-            ? 0
-            : ResolveCardEnergySpent(
-                combat,
-                card,
-                definition);
-
-        combat = combat with
-        {
-            Energy = combat.Energy - energySpent,
-            Hand = combat.Hand.Where(id => id != payload.CardInstanceId).ToArray()
-        };
-
-        if (card.Enchantment is
-                { Kind: PrototypeCardEnchantmentKind.Sown } sown
-            && !card.EnchantmentTriggeredThisCombat)
-        {
-            combat = combat with
-            {
-                Energy = combat.Energy + Math.Max(0, sown.Amount),
-                Cards = combat.Cards.Select(item =>
-                    item.InstanceId == card.InstanceId
-                        ? item with { EnchantmentTriggeredThisCombat = true }
-                        : item).ToArray()
-            };
-        }
-
-        if (isFreeByPower)
-        {
-            combat = ConsumeMatchingFreeCardPower(combat, definition.Type);
-        }
-
-        var playCountResult =
-            ResolveCardPlayCountAndConsumeModifiers(
-                combat,
-                card,
-                definition.Type);
-        combat = playCountResult.Combat;
-
-        var sourceDestination = CardExhaustsOnUse(
-                definition, card)
-            ? PrototypeCardZone.ExhaustPile
-            : PrototypeCardZone.DiscardPile;
-
-        var effectEnergySpent =
-            definition.Cost.Kind == PrototypeCardCostKind.X
-                ? energySpent
-                    + state.Player.ActiveRelics.Sum(relic =>
-                        PrototypeContent.Relic(relic.RelicId)
-                            .XValueBonus)
-                : energySpent;
-
-        var series = new PrototypeCardPlaySeriesState(
-            SourceCardInstanceId: payload.CardInstanceId,
-            SourceCardDestination: sourceDestination,
-            TargetEnemyId: payload.TargetEnemyId,
-            EnergySpent: effectEnergySpent,
-            PlayCount: playCountResult.PlayCount,
-            NextPlayIndex: 0,
-            RemoveSourceCardOnCompletion:
-                definition.Type == PrototypeCardType.Power);
-
-        var resolved = ResolveCardPlaySeries(
-            state.Player,
-            combat,
-            state.Rng,
-            series);
-        combat = resolved.Combat;
-
-        state = state with
-        {
-            Player = resolved.Player,
-            World = world with { Combat = combat }
-        };
-
-        // An attack may kill the final enemy while its own effects still
-        // require a card-selection choice (e.g. upgraded Dagger Throw).
-        // Resolve that choice and its card-play continuation before firing
-        // CombatWon: entering rewards here dispatches an unrelated event
-        // against an existing pending choice and corrupts the continuation.
-        if (combat.PendingChoice is not null)
-        {
-            return state;
-        }
-
-        return AllEnemiesDefeated(combat)
-            ? EnterCombatReward(state)
-            : state;
-    }
-
-    private static RunState UsePotion(RunState state, UsePotionPayload payload)
-    {
-        if (payload.Slot < 0 || payload.Slot >= state.Player.PotionSlots.Length)
-        {
-            throw new InvalidOperationException($"Potion slot {payload.Slot} is invalid.");
-        }
-
-        var potion = state.Player.PotionSlots[payload.Slot]
-            ?? throw new InvalidOperationException($"Potion slot {payload.Slot} is empty.");
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException("Combat phase has no combat state.");
-        var combatPotion = combat.PotionStates.SingleOrDefault(item => item.Slot == payload.Slot)
-            ?? throw new InvalidOperationException(
-                $"Combat potion state for slot {payload.Slot} is missing.");
-
-        if (!StringComparer.Ordinal.Equals(potion.PotionId, combatPotion.PotionId))
-        {
-            throw new InvalidOperationException(
-                $"Persistent/combat potion IDs disagree in slot {payload.Slot}.");
-        }
-
-        var definition = PrototypeContent.Potion(combatPotion.PotionId);
-        if (definition.AutomaticUsage)
-        {
-            throw new InvalidOperationException(
-                $"Potion '{definition.Name}' is automatic and cannot be used manually.");
-        }
-
-        ValidateTarget(definition.Target, payload.TargetEnemyId, combat);
-        combat = ResolveKaiserCrabFacing(combat, payload.TargetEnemyId);
-
-        var operations = new Queue<PrototypeQueuedOperation>();
-        foreach (var effect in definition.Effects)
-        {
-            EnqueueEffectOperations(
-                operations,
-                effect,
-                0,
-                0,
-                payload.TargetEnemyId,
-                combat,
-                sourceKind: PrototypeEffectSourceKind.Potion);
-        }
-
-        var playerAfterPotion =
-            ConsumePotionSlot(
-                state.Player,
-                payload.Slot);
-        playerAfterPotion =
-            ApplyPotionRunEffects(
-                playerAfterPotion,
-                definition,
-                state.Rng);
-
-        var combatAfterPotion = combat with
-        {
-            Potions = playerAfterPotion.PotionSlots
-                .Select((item, slot) =>
-                    item is null
-                        ? null
-                        : new CombatPotionState(
-                            slot,
-                            item.PotionId,
-                            item.PersistentState
-                                .Clone()))
-                .Where(item => item is not null)
-                .Select(item => item!)
-                .ToArray()
-        };
-
-        var resolved = ResolveOperations(
-            playerAfterPotion,
-            combatAfterPotion,
-            operations,
-            state.Rng,
-            completionEvents:
-            [
-                new PrototypeCombatEvent(
-                    PrototypeCombatEventKind.PotionUsed)
-            ]);
-        playerAfterPotion = resolved.Player;
-        combatAfterPotion = resolved.Combat;
-
-        state = state with
-        {
-            Player = playerAfterPotion,
-            World = world with { Combat = combatAfterPotion }
-        };
-
-        if (combatAfterPotion.PendingChoice is not null)
-        {
-            return state;
-        }
-
-        return AllEnemiesDefeated(combatAfterPotion)
-            ? EnterCombatReward(state)
-            : state;
-    }
-
-    private static RunState TryUseAutomaticDeathPrevention(
-        RunState state)
-    {
-        if (state.Player.Hp > 0
-            || state.Phase != RunPhase.Combat)
-        {
-            return state;
-        }
-
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException(
-                "Combat death prevention has no combat state.");
-        var prevented = TryUseAutomaticDeathPrevention(
-            state.Player,
-            combat,
-            state.Rng);
-
-        return state with
-        {
-            Player = prevented.Player,
-            World = world with
-            {
-                Combat = prevented.Combat
-            }
-        };
-    }
-
-    private static (PlayerState Player, CombatState Combat)
-        TryUseAutomaticDeathPrevention(
-            PlayerState player,
-            CombatState combat,
-            RngBundle rng,
-            int eventDepth = 0)
-    {
-        if (player.Hp > 0)
-        {
-            return (player, combat);
-        }
-
-        for (var slot = 0;
-             slot < player.PotionSlots.Length;
-             slot++)
-        {
-            var potion = player.PotionSlots[slot];
-            if (potion is null)
-            {
-                continue;
-            }
-
-            var definition =
-                PrototypeContent.Potion(
-                    potion.PotionId);
-            if (!definition.AutomaticUsage
-                || definition.DeathPreventionHealPercent <= 0)
-            {
-                continue;
-            }
-
-            var slots =
-                (PotionInstance?[])player.PotionSlots.Clone();
-            slots[slot] = null;
-            var healedHp = Math.Max(
-                1,
-                (player.MaxHp
-                    * definition.DeathPreventionHealPercent)
-                / 100);
-            player = player with
-            {
-                Hp = Math.Min(
-                    player.MaxHp,
-                    healedHp),
-                PotionSlots = slots
-            };
-            combat = combat with
-            {
-                Potions = combat.PotionStates
-                    .Where(item =>
-                        item.Slot != slot)
-                    .ToArray()
-            };
-
-            var dispatched = DispatchCombatEvent(
-                player,
-                combat,
-                new PrototypeCombatEvent(
-                    PrototypeCombatEventKind.PotionUsed),
-                rng,
-                eventDepth + 1);
-            return (
-                dispatched.Player,
-                dispatched.Combat);
-        }
-
-        return (player, combat);
-    }
-
-    private static RunState EnterCombatReward(
-        RunState state)
-    {
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException(
-                "Combat victory has no combat state.");
-
-        var won = DispatchCombatEvent(
-            state.Player,
-            combat,
-            new PrototypeCombatEvent(
-                PrototypeCombatEventKind.CombatWon),
-            state.Rng);
-        state = state with
-        {
-            Player = won.Player,
-            World = world with
-            {
-                Combat = won.Combat
-            }
-        };
-
-        state = state with
-        {
-            Player = ApplyMadScienceImprovement(
-                ApplyNativePersistentCombatEnd(
-                    state.Player,
-                    world.ActiveRoom,
-                    state.Rng),
-                combat, state.Rng)
-        };
-        state = ApplyWarHammerEliteVictory(
-            state, world.ActiveRoom);
-        state = NativeAncientRewardsV111.ApplyCombatEnd(state);
-
-        if (world.Event is { } battleworn
-            && battleworn.EventId ==
-                PrototypeNativeGloryEvents.BattlewornDummyId
-            && battleworn.NativePageIndex > 0)
-        {
-            return CompleteNativeBattlewornDummy(state, combat);
-        }
-
-        if (world.Event is { } punchOff
-            && punchOff.EventId == PrototypeNativePunchOff.EventId
-            && punchOff.NativePageIndex == 2)
-        {
-            return EnterPunchOffReward(state);
-        }
-
-        if (world.Event is { } lanternEvent
-            && lanternEvent.EventId == PrototypeNativeHiveEvents.LanternKeyEventId
-            && lanternEvent.NativePageIndex == 2)
-        {
-            // Native SpecialCardReward is optional: win the fight,
-            // then take or skip the Lantern Key before leaving event.
-            return state with
-            {
-                World = RequireWorld(state) with
-                {
-                    Combat = null,
-                    Reward = new RewardState(
-                        "Event:" + lanternEvent.EventId,
-                        [PrototypeNativeHiveEvents.LanternKeyCardId],
-                        null, null, false, true, true, false)
-                },
-                Phase = RunPhase.Reward
-            };
-        }
-
-        if (world.Event is { } pendingEvent
-            && pendingEvent.EventId == PrototypeNativeDenseVegetation.EventId
-            && pendingEvent.NativePageIndex == 2)
-        {
-            // Native Dense Vegetation enters a four-Wriggler combat
-            // without offering any postcombat reward.
-            return CompleteRoomToMap(state with
-            {
-                World = RequireWorld(state) with { Combat = null }
-            });
-        }
-
-        return EnterReward(state);
-    }
-
-    private static RunState EndPlayerTurn(RunState state)
-    {
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException("Combat phase has no combat state.");
-
-        combat = combat with
-        {
-            IsPlayerTurn = false,
-            AutomaticPipelineContinuation = null
-        };
-        state = state with
-        {
-            World = world with { Combat = combat }
-        };
-
-        return ResumeAutomaticPipeline(state, 0);
-    }
-
-    private static RunState ResumeAutomaticPipeline(
-        RunState state,
-        int startIndex,
-        PrototypeCombatEventKind? pendingPostDispatchEventKind = null)
-    {
-        if (pendingPostDispatchEventKind is not null)
-        {
-            var previousTurn = RequireWorld(state).Combat?.Turn;
-            state = ResolvePostDispatchAutomaticPolicy(
-                state,
-                pendingPostDispatchEventKind.Value);
-
-            if (pendingPostDispatchEventKind == PrototypeCombatEventKind.PlayerTurnEnded
-                && RequireWorld(state).Combat?.Turn != previousTurn)
-                return state;
-
-            if (RequireWorld(state).Combat?.PendingChoice is not null)
-            {
-                return SetAutomaticPipelineContinuation(
-                    state,
-                    startIndex,
-                    pendingPostDispatchEventKind: null);
-            }
-        }
-
-        for (var index = startIndex;
-             index < PrototypeContent.Rules.EndTurnPipeline.Length;
-             index++)
-        {
-            var automaticStep =
-                PrototypeContent.Rules.EndTurnPipeline[index];
-            state = ResolveAutomaticStep(state, automaticStep);
-
-            var currentCombat = RequireWorld(state).Combat
-                ?? throw new InvalidOperationException(
-                    "Combat unexpectedly disappeared.");
-
-            if (currentCombat.PendingChoice is not null
-                || currentCombat.PendingKnowledgeDemonChoice is not null)
-            {
-                return SetAutomaticPipelineContinuation(
-                    state,
-                    currentCombat.PendingKnowledgeDemonChoice is not null
-                        ? index : index + 1,
-                    automaticStep.Kind
-                            == PrototypeAutomaticStepKind.DispatchCombatEvent
-                        ? automaticStep.EventKind
-                        : null);
-            }
-
-            if (automaticStep.Kind
-                    == PrototypeAutomaticStepKind.DispatchCombatEvent
-                && automaticStep.EventKind is not null)
-            {
-                var previousTurn = currentCombat.Turn;
-                state = ResolvePostDispatchAutomaticPolicy(
-                    state,
-                    automaticStep.EventKind.Value);
-
-                if (automaticStep.EventKind == PrototypeCombatEventKind.PlayerTurnEnded
-                    && RequireWorld(state).Combat?.Turn != previousTurn)
-                    return state;
-
-                currentCombat = RequireWorld(state).Combat
-                    ?? throw new InvalidOperationException(
-                        "Combat unexpectedly disappeared.");
-                if (currentCombat.PendingChoice is not null)
-                {
-                    return SetAutomaticPipelineContinuation(
-                        state,
-                        index + 1,
-                        pendingPostDispatchEventKind: null);
-                }
-            }
-
-            if (state.Player.Hp <= 0)
-            {
-                state = TryUseAutomaticDeathPrevention(
-                    state);
-                if (state.Player.Hp <= 0)
-                {
-                    return EndRun(state, "defeat");
-                }
-            }
-
-            currentCombat = RequireWorld(state).Combat
-                ?? throw new InvalidOperationException(
-                    "Combat unexpectedly disappeared.");
-            if (AllEnemiesDefeated(currentCombat))
-            {
-                return EnterCombatReward(state);
-            }
-        }
-
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException(
-                "Combat unexpectedly disappeared.");
-        return state with
-        {
-            World = world with
-            {
-                Combat = combat with
-                {
-                    AutomaticPipelineContinuation = null
-                }
-            }
-        };
-    }
-
-    private static RunState SetAutomaticPipelineContinuation(
-        RunState state,
-        int nextStepIndex,
-        PrototypeCombatEventKind? pendingPostDispatchEventKind)
-    {
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException(
-                "Combat unexpectedly disappeared.");
-        return state with
-        {
-            World = world with
-            {
-                Combat = combat with
-                {
-                    AutomaticPipelineContinuation =
-                        new PrototypeAutomaticPipelineContinuationState(
-                            nextStepIndex,
-                            pendingPostDispatchEventKind)
-                }
-            }
-        };
-    }
-
-    private static RunState ResolveImbuedAutoPlay(RunState state)
-    {
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException(
-                "Imbued autoplay requires an active combat.");
-        var operations = new List<PrototypeQueuedOperation>();
-        foreach (var card in combat.Cards
-                     .Where(card => card.Enchantment is
-                         { Kind: PrototypeCardEnchantmentKind.Imbued }
-                         && !card.EnchantmentTriggeredThisCombat)
-                     .OrderBy(card => card.PersistentCardInstanceId))
-        {
-            var zone = combat.Hand.Contains(card.InstanceId)
-                ? PrototypeCardZone.Hand
-                : combat.DrawPile.Contains(card.InstanceId)
-                    ? PrototypeCardZone.DrawPile
-                    : combat.DiscardPile.Contains(card.InstanceId)
-                        ? PrototypeCardZone.DiscardPile
-                        : (PrototypeCardZone?)null;
-            if (zone is null)
-                continue;
-
-            combat = SetZone(combat, zone.Value,
-                GetZone(combat, zone.Value)
-                    .Where(id => id != card.InstanceId).ToArray());
-            combat = combat with
-            {
-                PlayPile = combat.PlayCardIds.Append(card.InstanceId).ToArray(),
-                Cards = combat.Cards.Select(item =>
-                    item.InstanceId == card.InstanceId
-                        ? item with { EnchantmentTriggeredThisCombat = true }
-                        : item).ToArray()
-            };
-            operations.Add(new PrototypeQueuedOperation(
-                PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
-                SourceKind: PrototypeEffectSourceKind.Card,
-                CardInstanceId: card.InstanceId));
-        }
-
-        if (operations.Count == 0)
-            return state;
-
-        var result = ResolveOperations(state.Player, combat,
-            new Queue<PrototypeQueuedOperation>(operations), state.Rng,
-            moveSourceCardOnCompletion: false);
-        return state with
-        {
-            Player = result.Player,
-            World = world with { Combat = result.Combat }
-        };
-    }
-
-    private static RunState ResolvePostDispatchAutomaticPolicy(
-        RunState state,
-        PrototypeCombatEventKind eventKind)
-    {
-        if (eventKind == PrototypeCombatEventKind.OpeningPlayerTurnStarted)
-        {
-            var openingWorld = RequireWorld(state);
-            var opening = DispatchCombatEvent(state.Player, openingWorld.Combat!,
-                new PrototypeCombatEvent(eventKind), state.Rng, allowSuspension: true);
-            return state with { Player = opening.Player, World = openingWorld with { Combat = opening.Combat } };
-        }
-        // The pinned native HistoryCourse.AfterAutoPrePlayPhaseEntered
-        // runs after the start-of-turn hooks. Reuse the existing
-        // automatic-pipeline resume protocol for any choice suspensions.
-        if (eventKind == PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
-            return ResolveHistoryCourseAutoPlay(state);
-
-        if (eventKind == PrototypeCombatEventKind.PlayerTurnEnded)
-        {
-            var eyeWorld = RequireWorld(state);
-            var eyeCombat = eyeWorld.Combat
-                ?? throw new InvalidOperationException("Combat unexpectedly disappeared.");
-            if (!eyeCombat.PaelsEyeExtraTurnPending)
-                return state;
-
-            var eyeIndex = Array.FindIndex(eyeCombat.RelicStates, relic =>
-                relic.RelicId == NativePaelRewardsV111.EyeId && !relic.IsMelted);
-            if (eyeIndex < 0)
-                throw new InvalidOperationException("Pael's Eye turn continuation has no active relic.");
-            var relics = (CombatRelicState[])eyeCombat.RelicStates.Clone();
-            relics[eyeIndex] = relics[eyeIndex] with { PaelsEyeUsedThisCombat = true };
-            eyeCombat = eyeCombat with
-            {
-                Relics = relics,
-                PaelsEyeExtraTurnPending = false,
-                AutomaticPipelineContinuation = null
-            };
-            var resetBlockIndex = Array.FindIndex(PrototypeContent.Rules.EndTurnPipeline,
-                step => step.Kind == PrototypeAutomaticStepKind.ResetPlayerBlock);
-            if (resetBlockIndex < 0)
-                throw new InvalidOperationException("Turn pipeline has no player block reset stage.");
-            // An extra player turn skips the enemy turn, so do not run the
-            // normal AdvanceTurn intent commitment (or consume its RNG).
-            eyeCombat = eyeCombat with
-            {
-                Turn = eyeCombat.Turn + 1,
-                PlayerPowers = eyeCombat.PlayerPowers.Select(power =>
-                    PrototypeContent.Power(power.PowerId).SnapshotGenerationStacksAtTurnStart
-                        ? power with { StoredValue = power.Stacks } : power).ToArray(),
-                Counters = AdvanceTurnCounters(eyeCombat.CounterState)
-            };
-            return ResumeAutomaticPipeline(state with
-            { World = eyeWorld with { Combat = eyeCombat } }, resetBlockIndex);
-        }
-
-        if (eventKind != PrototypeCombatEventKind.PlayerTurnStarted)
-        {
-            return state;
-        }
-
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException(
-                "Combat unexpectedly disappeared.");
-        var discardCount = combat.PlayerPowers.Sum(power =>
-            PrototypeContent.Power(power.PowerId)
-                .DiscardAfterPlayerTurnStartPerStack
-            * power.Stacks);
-
-        if (discardCount <= 0 || combat.Hand.Length == 0)
-        {
-            return state;
-        }
-
-        var effectiveCount = Math.Min(
-            discardCount,
-            combat.Hand.Length);
-        combat = combat with
-        {
-            PendingChoice = new PendingCombatChoiceState(
-                ChoiceId: "select_cards",
-                SourceCardInstanceId: null,
-                SourceCardDestination:
-                    PrototypeCardZone.DiscardPile,
-                Selection: new PrototypeCardSelectionSpec(
-                    PrototypeCardZone.Hand,
-                    effectiveCount,
-                    effectiveCount,
-                    PrototypeCardSelectionResolutionKind
-                        .MoveToDiscard),
-                CandidateCardInstanceIds:
-                    (long[])combat.Hand.Clone(),
-                Continuation:
-                    Array.Empty<PrototypeQueuedOperation>(),
-                CompletionEvents:
-                    Array.Empty<PrototypeCombatEvent>())
-        };
-
-        return state with
-        {
-            World = world with { Combat = combat }
-        };
-    }
-
-    private static RunState ResolveAutomaticStep(
-        RunState state,
-        PrototypeAutomaticStep automaticStep)
-    {
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException("Combat phase has no combat state.");
-        var player = state.Player;
-
-        switch (automaticStep.Kind)
-        {
-            case PrototypeAutomaticStepKind.ResolvePlayerEndTurnHandEffects:
-            {
-                var eye = combat.RelicStates.FirstOrDefault(relic =>
-                    relic.RelicId == NativePaelRewardsV111.EyeId
-                    && !relic.IsMelted && !relic.PaelsEyeUsedThisCombat);
-                var whisperingEarring = player.ActiveRelics.Any(relic =>
-                    relic.RelicId == "proto.relic.whispering_earring");
-                if (eye is not null && (combat.Turn != 1 || !whisperingEarring)
-                    && combat.CounterState.ManualCardsPlayedThisTurn == 0)
-                {
-                    // Whispering Earring makes the first turn count as a played
-                    // turn in the source implementation. Its autoplay opener is
-                    // not modeled here, so keep the explicit suppression rule.
-                    combat = combat with { PaelsEyeExtraTurnPending = true };
-                    var exhausted = ResolveOperations(player, combat,
-                        new Queue<PrototypeQueuedOperation>([
-                            new(PrototypeCombatEffectKind.ExhaustHand, 1)
-                        ]), state.Rng);
-                    player = exhausted.Player;
-                    combat = exhausted.Combat;
-                }
-                // PaelsTears.BeforeSideTurnEnd precedes hand end effects.
-                // Capture once at this existing stage so suspended pipeline
-                // cursors keep their historical indices.
-                if (combat.RelicStates.Any(relic => relic.RelicId == NativePaelRewardsV111.TearsId && !relic.IsMelted))
-                    combat = combat with { Relics = combat.RelicStates.Select(relic =>
-                        relic.RelicId == NativePaelRewardsV111.TearsId && !relic.IsMelted
-                            ? relic with { HadLeftoverEnergy = combat.Energy > 0 }
-                            : relic).ToArray() };
-                foreach (var instanceId in combat.Hand)
-                {
-                    var card = RequireCombatCard(
-                        combat,
-                        instanceId);
-                    var definition =
-                        PrototypeContent.Card(card.CardId);
-                    // Trial Shame/Doubt apply one debuff while in hand.
-                    // Newly created Weak/Frail survives the imminent
-                    // PlayerTurnEnded power-decrement stage, following
-                    // native SkipNextDurationTick semantics.
-                    var cursePower = card.CardId switch
-                    {
-                        PrototypeNativeGloryEvents.ShameId => "proto.power.frail",
-                        PrototypeNativeGloryEvents.DoubtId => "proto.power.weak",
-                        _ => null
-                    };
-                    if (cursePower is not null)
-                    {
-                        var alreadyPresent = combat.PlayerPowers.Any(power =>
-                            power.PowerId == cursePower);
-                        combat = ApplyPlayerPower(combat, cursePower, 1);
-                        if (!alreadyPresent)
-                        {
-                            combat = combat with
-                            {
-                                PlayerPowers = combat.PlayerPowers
-                                    .Select(power => power.PowerId == cursePower
-                                        ? power with { SkipNextPlayerTurnEnd = true }
-                                        : power).ToArray()
-                            };
-                        }
-                    }
-
-                    // Regret snapshots the count of cards in hand
-                    // before side-turn end, dealing unblockable
-                    // unpowered damage equal to that count.
-                    var handDamage =
-                        card.CardId == PrototypeNativeGloryEvents.RegretId
-                            ? combat.Hand.Length
-                            : definition.EndTurnDamageIfInHand;
-                    var damage =
-                        ApplyPlayerIncomingDamageCap(
-                            combat,
-                            Math.Max(
-                                0,
-                                handDamage
-                                    + (card.CardId == PrototypeNativeGloryBosses.WitherId
-                                        ? 3 * card.WitherFakeUpgradeLevel : 0)));
-                    if (damage <= 0)
-                    {
-                        continue;
-                    }
-
-                    var absorbed = definition.EndTurnDamageUnblockable
-                        || card.CardId == PrototypeNativeGloryEvents.RegretId
-                        ? 0
-                        : Math.Min(combat.PlayerBlock, damage);
-                    combat = combat with
-                    {
-                        PlayerBlock =
-                            combat.PlayerBlock - absorbed
-                    };
-                    player = player with
-                    {
-                        Hp = Math.Max(
-                            0,
-                            player.Hp
-                            - Math.Max(
-                                0,
-                                damage - absorbed))
-                    };
-
-                    if (player.Hp <= 0)
-                    {
-                        break;
-                    }
-                }
-
-                break;
-            }
-
-            case PrototypeAutomaticStepKind.DispatchCombatEvent:
-                if (automaticStep.EventKind is null)
-                {
-                    throw new InvalidOperationException("Combat-event pipeline step is missing an event kind.");
-                }
-
-                if (automaticStep.EventKind
-                    == PrototypeCombatEventKind.PlayerTurnStarted)
-                {
-                    combat = combat with { IsPlayerTurn = true };
-                }
-
-                var dispatched = DispatchCombatEvent(
-                    player,
-                    combat,
-                    new PrototypeCombatEvent(automaticStep.EventKind.Value),
-                    state.Rng,
-                    allowSuspension: true);
-                player = dispatched.Player;
-                combat = dispatched.Combat;
-
-                // DisintegrationPower.AfterSideTurnEndLate applies an
-                // unpowered, blockable hit at the end of the player's
-                // side-turn. It is not an Attack and uses no enemy
-                // strength/damage modifiers.
-                if (automaticStep.EventKind ==
-                    PrototypeCombatEventKind.PlayerTurnEnded)
-                {
-                    var disintegration = combat.PlayerPowers
-                        .Where(power => power.PowerId ==
-                            PrototypeNativeHiveKnowledgeDemonChoice
-                                .DisintegrationPowerId)
-                        .Sum(power => Math.Max(0, power.Stacks));
-                    if (disintegration > 0)
-                    {
-                        var absorbed = Math.Min(
-                            combat.PlayerBlock, disintegration);
-                        combat = combat with
-                        {
-                            PlayerBlock = combat.PlayerBlock - absorbed
-                        };
-                        var loss = ApplyPlayerHpLoss(
-                            player,
-                            combat,
-                            disintegration - absorbed);
-                        player = loss.Player;
-                        combat = loss.Combat;
-                    }
-                }
-                break;
-
-            case PrototypeAutomaticStepKind.DiscardPlayerHand:
-            {
-                combat = ClearTemporaryCardCosts(
-                    combat,
-                    PrototypeTemporaryCardCostExpiry.EndOfTurn);
-
-                var ethereal = combat.Hand
-                    .Where(instanceId =>
-                        CardHasKeyword(
-                            combat,
-                            instanceId,
-                            PrototypeCardKeyword.Ethereal))
-                    .ToArray();
-                var etherealSet = ethereal.ToHashSet();
-                var preserveHand =
-                    combat.PlayerPowers.Any(power =>
-                        power.Stacks > 0
-                        && PrototypeContent.Power(power.PowerId)
-                            .PreventsHandDiscard)
-                    || player.ActiveRelics.Any(relic =>
-                        PrototypeContent.Relic(relic.RelicId)
-                            .PreventsHandDiscard);
-                var retained = combat.Hand
-                    .Where(instanceId =>
-                        !etherealSet.Contains(instanceId)
-                        && (preserveHand
-                            || CardHasKeyword(
-                                combat,
-                                instanceId,
-                                PrototypeCardKeyword.Retain)))
-                    .ToArray();
-                var retainedSet = retained.ToHashSet();
-                var discarded = combat.Hand
-                    .Where(instanceId =>
-                        !etherealSet.Contains(instanceId)
-                        && !retainedSet.Contains(instanceId))
-                    .ToArray();
-
-                combat = combat with
-                {
-                    ExhaustPile = combat.ExhaustPile.Concat(ethereal).ToArray(),
-                    DiscardPile = combat.DiscardPile.Concat(discarded).ToArray(),
-                    Hand = retained
-                };
-
-                foreach (var cardInstanceId in ethereal)
-                {
-                    var exhaustedCard = RequireCombatCard(combat, cardInstanceId);
-                    var exhausted = DispatchCombatEvent(
-                        player,
-                        combat,
-                        new PrototypeCombatEvent(
-                            PrototypeCombatEventKind.CardExhausted,
-                            SourceCardInstanceId: cardInstanceId,
-                            CardId: exhaustedCard.CardId),
-                        state.Rng);
-                    player = exhausted.Player;
-                    combat = exhausted.Combat;
-                }
-
-                combat = ClearTemporaryCardKeywordOverrides(
-                    combat,
-                    PrototypeCardKeywordOverrideExpiry.EndOfTurn);
-                combat = DecrementPlayerPowers(
-                    combat,
-                    definition =>
-                        definition.DecrementAfterHandCleanup);
-
-                break;
-            }
-
-            case PrototypeAutomaticStepKind.DispatchEnemyStatusStage:
-                if (automaticStep.Stage is null)
-                {
-                    throw new InvalidOperationException("Enemy-status pipeline step is missing a stage.");
-                }
-
-                // Sandpit kills the affected player as it reaches
-                // zero at the enemy side-start. Native player/pet
-                // animation is outside the emulator scope.
-                if (automaticStep.Stage.Value ==
-                        PrototypeTurnStage.EnemyTurnStart
-                    && combat.Turn > 1
-                    && combat.Enemies.Any(enemy =>
-                        enemy.Hp > 0 && enemy.PowerStates.Any(power =>
-                            power.PowerId ==
-                                PrototypeNativeHiveBosses.SandpitId
-                            && power.Stacks == 1)))
-                    player = player with { Hp = 0 };
-
-                combat = ResolveEnemyStatusStage(
-                    combat,
-                    automaticStep.Stage.Value,
-                    state.Rng);
-                if (automaticStep.Stage.Value
-                    == PrototypeTurnStage.EnemyTurnEnd)
-                {
-                    combat = DecrementPlayerPowers(
-                        combat,
-                        definition =>
-                            definition
-                                .DecrementAtEnemyTurnEnd);
-                    // Native TaintedPower expires after the enemy side-turn
-                    // (all stacks simultaneously, not one per turn).
-                    combat = combat with
-                    {
-                        PlayerPowers = combat.PlayerPowers
-                            .Where(power => power.PowerId !=
-                                PrototypeNativeHiveElites.TaintedPowerId)
-                            .ToArray()
-                    };
-                }
-
-                combat = ResolveEnemyDeathSummons(
-                    combat,
-                    state.Rng,
-                    enemyActionSkips:
-                        automaticStep.Stage.Value
-                            == PrototypeTurnStage.EnemyTurnStart
-                            ? 2
-                            : 1);
-                break;
-
-            case PrototypeAutomaticStepKind.ResetEnemyBlock:
-                combat = combat with
-                {
-                    Enemies = combat.Enemies
-                        .Select(enemy => enemy with
-                        {
-                            Block = enemy.PowerStates.Any(power =>
-                                power.Stacks > 0
-                                && PrototypeContent.Power(power.PowerId)
-                                    .PreventsEnemyBlockClear)
-                                    ? enemy.Block : 0
-                        })
-                        .ToArray()
-                };
-                break;
-
-            case PrototypeAutomaticStepKind.ResolveEnemyActions:
-            {
-                combat = BeginKnowledgeDemonChoice(combat);
-                if (combat.PendingKnowledgeDemonChoice is not null)
-                    break;
-                var result = ResolveEnemyActions(
-                    player,
-                    combat,
-                    world.Act,
-                    state.Ascension,
-                    state.Rng);
-                player = result.Player;
-                combat = result.Combat;
-                break;
-            }
-
-            case PrototypeAutomaticStepKind.AdvanceTurn:
-                // EnemyTurnEnd statuses, summons, and formation changes have
-                // completed. Select/commit the next enemy moves BEFORE the
-                // next player turn begins, never during Observe().
-                combat = CommitEnemyIntents(combat, state.Rng) with
-                {
-                    Turn = combat.Turn + 1,
-                    PlayerPowers = combat.PlayerPowers.Select(power =>
-                        PrototypeContent.Power(power.PowerId).SnapshotGenerationStacksAtTurnStart
-                            ? power with { StoredValue = power.Stacks } : power).ToArray(),
-                    Counters = AdvanceTurnCounters(combat.CounterState)
-                };
-                break;
-
-            case PrototypeAutomaticStepKind.ResetPlayerBlock:
-            {
-                var preventsBlockClear = combat.PlayerPowers.Any(power =>
-                    power.Stacks > 0
-                    && PrototypeContent.Power(power.PowerId)
-                        .PreventsPlayerBlockClear);
-                if (!preventsBlockClear)
-                {
-                    combat = combat with { PlayerBlock = 0 };
-                }
-
-                var toricShields = combat.ToricShields
-                    ?? Array.Empty<PrototypeToricShield>();
-                var toricBlock = toricShields.Sum(item =>
-                    item.BlockAmount);
-                combat = combat with
-                {
-                    ToricShields = toricShields
-                        .Where(item => item.ClearsRemaining > 1)
-                        .Select(item => item with
-                        {
-                            ClearsRemaining = item.ClearsRemaining - 1
-                        })
-                        .ToArray(),
-                    PlayerBlock = combat.PlayerBlock + toricBlock
-                };
-
-                var delayedBlock = combat.PlayerPowers.Sum(power =>
-                    PrototypeContent.Power(power.PowerId)
-                        .BlockAfterClearPerStack * power.Stacks);
-                if (delayedBlock > 0)
-                {
-                    combat = combat with
-                    {
-                        PlayerBlock = combat.PlayerBlock + delayedBlock
-                    };
-                }
-
-                combat = RemovePlayerPowers(
-                    combat,
-                    definition => definition.RemoveAfterBlockClear);
-                break;
-            }
-
-            case PrototypeAutomaticStepKind.RefreshPlayerEnergy:
-            {
-                var preserveUnusedEnergy =
-                    player.ActiveRelics.Any(relic =>
-                        PrototypeContent.Relic(relic.RelicId)
-                            .PreserveUnusedEnergy);
-                combat = combat with
-                {
-                    Energy = preserveUnusedEnergy
-                        ? combat.Energy + EnergyPerTurn(player, combat.Turn)
-                        : EnergyPerTurn(player, combat.Turn)
-                };
-                var delayedEnergy = combat.PlayerPowers.Sum(power =>
-                {
-                    var definition = PrototypeContent.Power(power.PowerId);
-                    return definition.EnergyAfterResetPerStack * power.Stacks
-                        + (power.Stacks > 0
-                            ? definition.EnergyBonusWhileActive
-                            : 0);
-                });
-                if (delayedEnergy != 0)
-                {
-                    combat = combat with
-                    {
-                        Energy = Math.Max(0, combat.Energy + delayedEnergy)
-                    };
-                }
-
-                combat = DecrementPlayerPowers(
-                    combat,
-                    definition => definition.DecrementAfterEnergyReset);
-
-                combat = RemovePlayerPowers(
-                    combat,
-                    definition => definition.RemoveAfterEnergyReset);
-                var sideStarted = DispatchCombatEvent(player, combat,
-                    new PrototypeCombatEvent(PrototypeCombatEventKind.PlayerSideTurnStarted),
-                    state.Rng, allowSuspension: true);
-                player = sideStarted.Player;
-                combat = TickPaelsLegionAtPlayerTurnStart(sideStarted.Combat);
-                break;
-            }
-
-            case PrototypeAutomaticStepKind.DrawPlayerHand:
-            {
-                var beforeHandDraw = DispatchCombatEvent(
-                    player,
-                    combat,
-                    new PrototypeCombatEvent(
-                        PrototypeCombatEventKind.BeforeHandDraw),
-                    state.Rng);
-                player = beforeHandDraw.Player;
-                combat = ReturnLastTurnReboundCardsToHand(beforeHandDraw.Combat);
-
-                var pollinousTurn = ApplyPollinousCoreHandDraw(player);
-                player = pollinousTurn.Player;
-                var handDrawBonus =
-                    pollinousTurn.Bonus
-                    + combat.PlayerPowers.Sum(power =>
-                        PrototypeContent.Power(power.PowerId)
-                            .HandDrawBonusPerStack
-                        * power.Stacks)
-                    + combat.PlayerPowers.Sum(power =>
-                        power.Stacks > 0
-                            ? PrototypeContent.Power(power.PowerId)
-                                .HandDrawBonusWhileActive
-                            : 0)
-                    + PrototypeNativeOrobasRelics.HandDrawBonusForTurn(
-                        player, combat.Turn);
-                var drawn = DrawCards(
-                    player,
-                    combat,
-                    Math.Max(0, PrototypeContent.Rules.HandSize
-                        + handDrawBonus),
-                    state.Rng,
-                    fromHandDraw: true);
-                player = drawn.Player;
-                combat = drawn.Combat;
-                if (drawn.ShuffleSelectionPending)
-                {
-                    var pendingDraw = new Queue<PrototypeQueuedOperation>(
-                        new[]
-                        {
-                            StratagemChoiceOperation(combat),
-                            new PrototypeQueuedOperation(
-                                PrototypeCombatEffectKind.DrawCards,
-                                drawn.RemainingCount, FromHandDraw: true)
-                        });
-                    var resumed = ResolveOperations(
-                        player, combat, pendingDraw, state.Rng,
-                        moveSourceCardOnCompletion: false);
-                    player = resumed.Player;
-                    combat = resumed.Combat;
-                }
-
-                combat = RemovePlayerPowers(
-                    combat,
-                    definition => definition.RemoveAfterHandDraw);
-                combat = DecrementPlayerPowers(
-                    combat,
-                    definition => definition.DecrementAfterHandDraw);
-                break;
-            }
-
-            default:
-                throw new ArgumentOutOfRangeException();
-        }
-
-        return state with
-        {
-            Player = player,
-            World = world with { Combat = combat }
-        };
-    }
-
-    private static PrototypeCombatCounters AdvanceTurnCounters(
-        PrototypeCombatCounters counters) => counters with
-    {
-        CardsPlayedThisTurn = 0,
-        ManualCardsPlayedThisTurn = 0,
-        AttacksPlayedLastTurn = counters.AttacksPlayedThisTurn,
-        AttacksPlayedThisTurn = 0,
-        SkillsPlayedThisTurn = 0,
-        CardsDiscardedThisTurn = 0,
-        PlayedCardIdsLastTurn = counters.PlayedCardIdsThisTurn,
-        PlayedCardIdsThisTurn = Array.Empty<long>(),
-        PlayedCardTagsThisTurn = Array.Empty<string>(),
-        LastOriginalAttackLastTurn = counters.LastOriginalAttackThisTurn?.Fork(),
-        LastOriginalAttackThisTurn = null
-    };
-
-    private static PrototypeQueuedOperation StratagemChoiceOperation(
-        CombatState combat)
-    {
-        var amount = combat.PlayerPowers
-            .Where(power => power.PowerId == "proto.power.stratagem")
-            .Sum(power => Math.Max(0, power.Stacks));
-        return new PrototypeQueuedOperation(
-            PrototypeCombatEffectKind.ChooseCards, 0,
-            Selection: new PrototypeCardSelectionSpec(
-                PrototypeCardZone.DrawPile,
-                amount, amount,
-                PrototypeCardSelectionResolutionKind.MoveToHand));
-    }
-
-    private static CombatState ReturnLastTurnReboundCardsToHand(
-        CombatState combat)
-    {
-        var lastTurn = combat.CounterState.PlayedCardIdsLastTurn
-            ?? Array.Empty<long>();
-        foreach (var id in lastTurn.Distinct())
-        {
-            if (combat.Hand.Contains(id))
-            {
-                continue;
-            }
-
-            var card = combat.Cards.FirstOrDefault(c => c.InstanceId == id);
-            if (card is null || card.CardId is not
-                ("proto.colorless.bolas" or "proto.colorless.thrumming_hatchet"))
-            {
-                continue;
-            }
-
-            if (combat.Hand.Length >= 10)
-            {
-                break;
-            }
-
-            var fromDraw = combat.DrawPile.Contains(id);
-            var fromDiscard = combat.DiscardPile.Contains(id);
-            var fromExhaust = combat.ExhaustPile.Contains(id);
-            if (!fromDraw && !fromDiscard && !fromExhaust)
-            {
-                continue;
-            }
-
-            combat = combat with
-            {
-                DrawPile = combat.DrawPile.Where(x => x != id).ToArray(),
-                DiscardPile = combat.DiscardPile.Where(x => x != id).ToArray(),
-                ExhaustPile = combat.ExhaustPile.Where(x => x != id).ToArray(),
-                Hand = combat.Hand.Append(id).ToArray()
-            };
-        }
-        return combat;
-    }
-
-    private static CombatState ResolveEnemyStatusStage(
-        CombatState combat,
-        PrototypeTurnStage stage,
-        RngBundle rng)
-    {
-        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
-
-        for (var enemyIndex = 0; enemyIndex < enemies.Length; enemyIndex++)
-        {
-            var enemy = enemies[enemyIndex];
-            var wasAlive = enemy.Hp > 0;
-            if (enemy.Hp <= 0)
-            {
-                continue;
-            }
-
-            var statuses = new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal);
-            foreach (var pair in enemy.Statuses.ToArray())
-            {
-                var definition = PrototypeContent.Status(pair.Key);
-                var stacks = pair.Value;
-
-                if (definition.TriggerStage == stage)
-                {
-                    if (definition.TriggerKind
-                        == PrototypeStatusTriggerKind
-                            .DamageSelfByStacks)
-                    {
-                        var triggerCount =
-                            ResolveEnemyStatusTriggerCount(
-                                combat,
-                                pair.Key,
-                                stacks);
-                        for (var trigger = 0;
-                             trigger < triggerCount;
-                             trigger++)
-                        {
-                            if (enemy.Hp <= 0
-                                || stacks <= 0)
-                            {
-                                break;
-                            }
-
-                            var hpLoss =
-                                ModifyEnemyHpLoss(
-                                    enemy,
-                                    stacks);
-                            enemy = hpLoss.Enemy with
-                            {
-                                Hp = Math.Max(
-                                    0,
-                                    hpLoss.Enemy.Hp
-                                    - hpLoss.HpLoss)
-                            };
-
-                            if (enemy.Hp > 0)
-                            {
-                                stacks -=
-                                    definition
-                                        .DecayOnTrigger;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        stacks -=
-                            definition.DecayOnTrigger;
-                    }
-                }
-
-                if (definition.DecayStage == stage)
-                {
-                    stacks -= definition.DecayAtStage;
-                }
-
-                if (stacks > 0)
-                {
-                    statuses[pair.Key] = stacks;
-                }
-                else
-                {
-                    statuses.Remove(pair.Key);
-                }
-            }
-
-            // Expiring an enemy-side countdown can wake its owner and
-            // remove companion protection *before* other powers contribute
-            // end-of-turn Block (native Asleep/Plating ordering).
-            string? aiAfterExpiry = null;
-            var powersToRemoveOnExpiry = new HashSet<string>(
-                StringComparer.Ordinal);
-            if (stage == PrototypeTurnStage.EnemyTurnEnd)
-            {
-                foreach (var power in enemy.PowerStates)
-                {
-                    var definition = PrototypeContent.Power(power.PowerId);
-                    if (definition.EnemyStacksDecayAtSideTurnEnd > 0
-                        && power.Stacks <=
-                            definition.EnemyStacksDecayAtSideTurnEnd)
-                    {
-                        aiAfterExpiry ??=
-                            definition.OwnerAiStateOnPowerExpiry;
-                        foreach (var id in definition
-                            .RemoveOwnerPowersOnPowerExpiry
-                            ?? Array.Empty<string>())
-                        {
-                            powersToRemoveOnExpiry.Add(id);
-                        }
-                    }
-                }
-            }
-
-            enemy = InterceptEnemyLethalDeath(enemy);
-            var strengthAtSideTurnEnd = 0;
-            // Expiring temporary debuffs restore their original Strength
-            // *after* the enemy has acted, even though the source power
-            // itself is removed at this stage.
-            var temporaryStrengthRestoration =
-                stage == PrototypeTurnStage.EnemyTurnEnd
-                    ? enemy.PowerStates
-                        .Where(power =>
-                            PrototypeContent.Power(power.PowerId)
-                                .RemoveAtEnemyTurnEnd)
-                        .Sum(power => power.Stacks
-                            * PrototypeContent.Power(power.PowerId)
-                                .EnemyStrengthRestoreAtSideTurnEndPerStack)
-                    : 0;
-            var blockAtSideTurnEnd = 0;
-            var powers = stage == PrototypeTurnStage.EnemyTurnEnd
-                ? enemy.PowerStates
-                    .Where(power =>
-                        !PrototypeContent.Power(power.PowerId)
-                            .RemoveAtEnemyTurnEnd
-                        && !powersToRemoveOnExpiry.Contains(power.PowerId))
-                    .Select(power =>
-                    {
-                        var definition = PrototypeContent.Power(power.PowerId);
-                        if (power.SkipNextEnemySideTurnEnd)
-                        {
-                            // Newly applied enemy Ritual must not activate
-                            // on the same enemy turn it was applied.
-                            return power with
-                            {
-                                SkipNextEnemySideTurnEnd = false
-                            };
-                        }
-
-                        strengthAtSideTurnEnd +=
-                            power.Stacks
-                            * definition.EnemyStrengthAtSideTurnEndPerStack;
-                        blockAtSideTurnEnd +=
-                            power.Stacks
-                            * definition.EnemyBlockAtSideTurnEndPerStack;
-                        return power with
-                        {
-                            Stacks = power.Stacks -
-                                definition.EnemyStacksDecayAtSideTurnEnd
-                        };
-                    })
-                    .Where(power => power.Stacks > 0
-                        || PrototypeContent.Power(power.PowerId)
-                            .AllowNegative)
-                    .ToArray()
-                : stage == PrototypeTurnStage.EnemyTurnStart
-                  && combat.Turn > 1
-                    ? enemy.PowerStates
-                        .Select(power => power with
-                        {
-                            Stacks = power.Stacks -
-                                PrototypeContent.Power(power.PowerId)
-                                    .EnemyStacksDecayAtSideTurnStartAfterFirst
-                        })
-                        .Where(power => power.Stacks > 0
-                            || PrototypeContent.Power(power.PowerId)
-                                .AllowNegative)
-                        .ToArray()
-                    : enemy.PowerStates;
-
-            // Native BattlewornDummyTimeLimitPower: the dummy
-            // escapes when its third enemy-side turn ends, and never
-            // grants the selected reward on such a timeout.
-            var timedOut = stage == PrototypeTurnStage.EnemyTurnEnd
-                && enemy.Hp > 0
-                && enemy.PowerStates.Any(power =>
-                    power.PowerId ==
-                        PrototypeNativeGloryEvents.BattlewornTimeLimitId
-                    && power.Stacks <= 1);
-            enemies[enemyIndex] = enemy with
-            {
-                Hp = timedOut ? 0 : enemy.Hp,
-                Escaped = timedOut || enemy.Escaped,
-                Statuses = statuses,
-                Powers = powers,
-                AiStateId = aiAfterExpiry ?? enemy.AiStateId,
-                Block = enemy.Block + blockAtSideTurnEnd,
-                SharedSummonUsedThisTurn =
-                    stage == PrototypeTurnStage.EnemyTurnStart
-                        ? false : enemy.SharedSummonUsedThisTurn,
-                HpLossBudgetUsed =
-                    stage == PrototypeTurnStage.EnemyTurnStart
-                        ? 0 : enemy.HpLossBudgetUsed,
-                GainedReactiveBlockThisTurn =
-                    stage == PrototypeTurnStage.EnemyTurnEnd
-                        ? false : enemy.GainedReactiveBlockThisTurn
-            };
-
-            var totalStrengthRestoration =
-                strengthAtSideTurnEnd + temporaryStrengthRestoration;
-            if (enemy.Hp > 0 && totalStrengthRestoration != 0)
-            {
-                var strengthened = ApplyEnemyPowerToState(
-                    combat, enemies[enemyIndex],
-                    "proto.power.strength", totalStrengthRestoration,
-                    ignoreDebuffPrevention: true);
-                combat = strengthened.Combat;
-                enemies[enemyIndex] = strengthened.Enemy;
-            }
-            if (wasAlive && enemies[enemyIndex].Hp <= 0
-                && !enemies[enemyIndex].Escaped)
-            {
-                // Scheduled poison damage is processed directly in this
-                // stage rather than through LoseEnemyHp. It must still
-                // dispatch ally-death powers before other enemies act.
-                combat = ResolveAllyDeathPowers(
-                    combat with { Enemies = enemies }, enemy.InstanceId);
-                enemies = combat.Enemies
-                    .Select(item => item.Fork())
-                    .ToArray();
-            }
-
-            if (stage == PrototypeTurnStage.EnemyTurnEnd
-                && enemies[enemyIndex].Hp > 0)
-            {
-                var demiseHpLoss = enemies[enemyIndex].PowerStates.Sum(
-                    power => Math.Max(0, power.Stacks)
-                        * PrototypeContent.Power(power.PowerId)
-                            .EnemyHpLossAtSideTurnEndPerStack);
-                if (demiseHpLoss > 0)
-                {
-                    var lost = LoseEnemyHp(
-                        combat with { Enemies = enemies },
-                        enemies[enemyIndex].InstanceId,
-                        demiseHpLoss);
-                    combat = lost.Combat;
-                    enemies = combat.Enemies
-                        .Select(item => item.Fork())
-                        .ToArray();
-                    if (lost.Defeated)
-                    {
-                        combat = CleanupSourceBoundPowersForDefeatedEnemies(
-                            combat);
-                        combat = ResolveEnemyDeathSummons(combat, rng);
-                        enemies = combat.Enemies
-                            .Select(item => item.Fork())
-                            .ToArray();
-                    }
-                }
-            }
-        }
-
-        combat = combat with { Enemies = enemies };
-        return CleanupSourceBoundPowersForDefeatedEnemies(
-            combat);
-    }
-
-    // Commit each enemy's action at combat entry and at the end of each
-    // enemy turn. Importantly, this consumes the combat RNG once, at a
-    // transition boundary; repeated public observations never reroll moves.
-    internal static CombatState CommitEnemyIntents(
-        CombatState combat,
-        RngBundle rng)
-    {
-        // Clone persistent native streams before selecting intents. Legacy
-        // states continue consuming their original prototype combat stream.
-        var ownedNative = combat.NativeRng?.Fork();
-        Func<int, int> nextIndex = ownedNative is null
-            ? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)
-            : maxExclusive => NativeRngV111.NextInt(
-                ownedNative.RunStreams, "run.monster_ai", maxExclusive);
-        var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
-        for (var index = 0; index < formation.Length; index++)
-        {
-            var enemy = formation[index];
-            var definition = PrototypeContent.Enemy(enemy.EnemyId);
-            if (enemy.Hp <= 0
-                || enemy.SkipNextEnemyAction
-                || enemy.EnemyActionSkipsRemaining > 0
-                || definition.Moves.Length == 0)
-            {
-                formation[index] = enemy with
-                {
-                    PlannedMoveIndex = null,
-                    PlannedNextAiStateId = null
-                };
-                continue;
-            }
-
-            if (enemy.StunFollowUpMoveIndex is { } stunFollowUp)
-            {
-                if (stunFollowUp < 0
-                    || stunFollowUp >= definition.Moves.Length)
-                {
-                    throw new InvalidOperationException(
-                        $"Enemy {enemy.EnemyId} has an invalid stunned follow-up move.");
-                }
-
-                formation[index] = enemy with
-                {
-                    PlannedMoveIndex = stunFollowUp,
-                    PlannedNextAiStateId =
-                        enemy.StunFollowUpAiStateId ?? enemy.AiStateId,
-                    StunFollowUpMoveIndex = null,
-                    StunFollowUpAiStateId = null
-                };
-                continue;
-            }
-
-            // InkletsNormal sets MiddleInklet explicitly despite null
-            // native slot names. TheKinBoss sets StartsWithDance=true
-            // only on its FIRST KinFollower (slot1). Evaluate their
-            // prototype slot-based conditional AI through transient
-            // aliases, without mutating native source slot identity.
-            var nativeEntry = ownedNative?.Formation.NativeEncounterEntry;
-            var evaluating = nativeEntry == "InkletsNormal"
-                && enemy.EnemyId == "proto.enemy.inklet"
-                && enemy.SlotName is null
-                    ? enemy with
-                    {
-                        SlotName = enemy.FormationPosition switch
-                        {
-                            0 => "left",
-                            1 => "middle",
-                            2 => "right",
-                            _ => null
-                        }
-                    }
-                    : nativeEntry == "TheKinBoss"
-                        && enemy.EnemyId == "proto.enemy.kin_follower"
-                        ? enemy with
-                        {
-                            SlotName = enemy.SlotName switch
-                            {
-                                "slot1" => "dance",
-                                "slot2" => "quick",
-                                _ => throw new InvalidOperationException(
-                                    "Unknown native KinFollower starting slot.")
-                            }
-                        }
-                        : enemy;
-            var selected = SelectEnemyMove(
-                definition, evaluating, formation, nextIndex);
-            var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
-            if (selectedIndex < 0)
-            {
-                throw new InvalidOperationException(
-                    $"Enemy '{enemy.EnemyId}' selected an unknown move.");
-            }
-
-            formation[index] = enemy with
-            {
-                PlannedMoveIndex = selectedIndex,
-                PlannedNextAiStateId = selected.NextAiStateId
-            };
-        }
-
-        return combat with
-        {
-            Enemies = formation,
-            NativeRng = ownedNative
-        };
-    }
-
-    private static (
-        PrototypeEnemyMoveDefinition Move,
-        string? NextAiStateId)
-        SelectEnemyMove(
-            PrototypeEnemyDefinition definition,
-            EnemyCombatState enemy,
-            IReadOnlyList<EnemyCombatState> formation,
-            RngBundle rng) =>
-        SelectEnemyMove(definition, enemy, formation,
-            maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive));
-
-    private static (
-        PrototypeEnemyMoveDefinition Move,
-        string? NextAiStateId)
-        SelectEnemyMove(
-            PrototypeEnemyDefinition definition,
-            EnemyCombatState enemy,
-            IReadOnlyList<EnemyCombatState> formation,
-            Func<int, int> nextIndex)
-    {
-        if (definition.Moves.Length == 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy '{definition.Id}' has no moves.");
-        }
-
-        switch (definition.MovePolicy)
-        {
-            case PrototypeEnemyMovePolicy.SequentialLoop:
-            {
-                if (definition.MoveLoopStartIndex < 0
-                    || definition.MoveLoopStartIndex
-                        >= definition.Moves.Length)
-                {
-                    throw new InvalidOperationException(
-                        $"Enemy '{definition.Id}' has invalid move-loop start index {definition.MoveLoopStartIndex}.");
-                }
-
-                var moveIndex = enemy.MoveIndex;
-                if (moveIndex >= definition.Moves.Length)
-                {
-                    var loopLength =
-                        definition.Moves.Length
-                        - definition.MoveLoopStartIndex;
-                    moveIndex =
-                        definition.MoveLoopStartIndex
-                        + ((moveIndex
-                            - definition.MoveLoopStartIndex)
-                           % loopLength);
-                }
-
-                return (
-                    definition.Moves[moveIndex],
-                    enemy.AiStateId);
-            }
-
-            case PrototypeEnemyMovePolicy.UniformRandomAfterOpener:
-            {
-                var openingMoves =
-                    definition.OpeningMoveIndices
-                    ?? [definition.OpeningMoveIndex];
-
-                if (openingMoves.Length == 0)
-                {
-                    throw new InvalidOperationException(
-                        $"Enemy '{definition.Id}' has an empty opening move sequence.");
-                }
-
-                foreach (var openingMoveIndex in openingMoves)
-                {
-                    if (openingMoveIndex < 0
-                        || openingMoveIndex
-                            >= definition.Moves.Length)
-                    {
-                        throw new InvalidOperationException(
-                            $"Enemy '{definition.Id}' has invalid opening move index {openingMoveIndex}.");
-                    }
-                }
-
-                if (enemy.MoveIndex < openingMoves.Length)
-                {
-                    return (
-                        definition.Moves[
-                            openingMoves[enemy.MoveIndex]],
-                        enemy.AiStateId);
-                }
-
-                if (definition.RandomMovePoolStartIndex < 0
-                    || definition.RandomMovePoolStartIndex
-                        >= definition.Moves.Length)
-                {
-                    throw new InvalidOperationException(
-                        $"Enemy '{definition.Id}' has invalid random-pool start index {definition.RandomMovePoolStartIndex}.");
-                }
-
-                var candidates = definition.Moves
-                    .Skip(definition.RandomMovePoolStartIndex)
-                    .Where(move =>
-                        move.MaxConsecutiveUses <= 0
-                        || !StringComparer.Ordinal.Equals(
-                            enemy.LastMoveId,
-                            move.Id)
-                        || enemy.ConsecutiveMoveUses
-                            < move.MaxConsecutiveUses)
-                    .ToArray();
-                if (candidates.Length == 0)
-                {
-                    throw new InvalidOperationException(
-                        $"Enemy '{definition.Id}' has no legal random moves.");
-                }
-
-                return (
-                    candidates[nextIndex(candidates.Length)],
-                    enemy.AiStateId);
-            }
-
-            case PrototypeEnemyMovePolicy.StateMachine:
-                return SelectEnemyStateMachineMove(
-                    definition,
-                    enemy,
-                    formation,
-                    nextIndex);
-
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(definition.MovePolicy));
-        }
-    }
-
-    private static (
-        PrototypeEnemyMoveDefinition Move,
-        string? NextAiStateId)
-        SelectEnemyStateMachineMove(
-            PrototypeEnemyDefinition definition,
-            EnemyCombatState enemy,
-            IReadOnlyList<EnemyCombatState> formation,
-            Func<int, int> nextIndex)
-    {
-        var ai = definition.Ai
-            ?? throw new InvalidOperationException(
-                $"Enemy '{definition.Id}' uses StateMachine policy without an AI definition.");
-        if (ai.States.Length == 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy '{definition.Id}' has an empty AI state machine.");
-        }
-
-        var states = ai.States.ToDictionary(
-            state => state.Id,
-            StringComparer.Ordinal);
-        var stateId = enemy.AiStateId
-            ?? ai.InitialStateId;
-
-        for (var depth = 0; depth < 32; depth++)
-        {
-            if (!states.TryGetValue(
-                    stateId,
-                    out var state))
-            {
-                throw new InvalidOperationException(
-                    $"Enemy '{definition.Id}' AI references missing state '{stateId}'.");
-            }
-
-            switch (state.Kind)
-            {
-                case PrototypeEnemyAiStateKind.Move:
-                {
-                    if (state.MoveIndex is null
-                        || state.MoveIndex.Value < 0
-                        || state.MoveIndex.Value
-                            >= definition.Moves.Length)
-                    {
-                        throw new InvalidOperationException(
-                            $"Enemy '{definition.Id}' AI move state '{state.Id}' has invalid move index.");
-                    }
-
-                    return (
-                        definition.Moves[
-                            state.MoveIndex.Value],
-                        state.NextStateId);
-                }
-
-                case PrototypeEnemyAiStateKind.Random:
-                {
-                    var branches =
-                        state.Branches
-                        ?? Array.Empty<
-                            PrototypeEnemyAiBranch>();
-                    var legal = branches
-                        .Where(branch =>
-                            branch.Weight > 0
-                            && IsEnemyAiBranchLegal(
-                                definition,
-                                enemy,
-                                states,
-                                branch,
-                                formation))
-                        .ToArray();
-                    if (legal.Length == 0)
-                    {
-                        throw new InvalidOperationException(
-                            $"Enemy '{definition.Id}' AI random state '{state.Id}' has no legal branches.");
-                    }
-
-                    var totalWeight =
-                        legal.Sum(branch =>
-                            branch.Weight);
-                    var roll = nextIndex(totalWeight);
-                    var selected = legal[^1];
-                    foreach (var branch in legal)
-                    {
-                        if (roll < branch.Weight)
-                        {
-                            selected = branch;
-                            break;
-                        }
-
-                        roll -= branch.Weight;
-                    }
-
-                    stateId =
-                        selected.TargetStateId;
-                    break;
-                }
-
-                case PrototypeEnemyAiStateKind.Conditional:
-                {
-                    var branches =
-                        state.ConditionalBranches
-                        ?? Array.Empty<
-                            PrototypeEnemyAiConditionalBranch>();
-                    var selected = branches.FirstOrDefault(
-                        branch => EnemyAiConditionMatches(
-                            enemy,
-                            formation,
-                            branch));
-                    if (selected is null)
-                    {
-                        throw new InvalidOperationException(
-                            $"Enemy '{definition.Id}' AI conditional state '{state.Id}' has no matching branch.");
-                    }
-
-                    if (!states.TryGetValue(
-                            selected.TargetStateId,
-                            out var target))
-                    {
-                        throw new InvalidOperationException(
-                            $"Enemy '{definition.Id}' AI conditional branch targets missing state '{selected.TargetStateId}'.");
-                    }
-
-                    // The native Exoskeleton fourth slot branches to
-                    // RAND rather than directly to a MoveState.
-                    // Continue resolving the graph until a concrete
-                    // move is committed, using the same RNG and without
-                    // sampling anything during Observe().
-                    stateId = target.Id;
-                    break;
-                }
-
-                default:
-                    throw new ArgumentOutOfRangeException(
-                        nameof(state.Kind));
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Enemy '{definition.Id}' AI exceeded the state-resolution depth limit.");
-    }
-
-    internal static bool EnemyAiConditionMatches(
-        EnemyCombatState enemy,
-        IReadOnlyList<EnemyCombatState> formation,
-        PrototypeEnemyAiConditionalBranch branch)
-    {
-        var living = formation
-            .Where(item => item.Hp > 0)
-            .OrderBy(item => item.FormationPosition)
-            .ThenBy(item => item.InstanceId)
-            .ToArray();
-        var isAlone = living.Length == 1
-            && living[0].InstanceId == enemy.InstanceId;
-        var isFront = living.Length > 0
-            && living[0].InstanceId == enemy.InstanceId;
-
-        // Knowledge Demon tracks the number of curse rounds in its
-        // owner-local move-use log, independent of observed intents.
-        var moveThreshold = branch.Value?.Split(':');
-        var used = moveThreshold is { Length: 2 }
-            ? enemy.MoveUseCounts?.GetValueOrDefault(moveThreshold[0]) ?? 0
-            : 0;
-        var hasThreshold = moveThreshold is { Length: 2 }
-            && int.TryParse(moveThreshold[1], out _);
-
-        return branch.Condition switch
-        {
-            PrototypeEnemyAiConditionKind.MoveUsedFewerThan =>
-                hasThreshold
-                && used < int.Parse(moveThreshold![1]),
-            PrototypeEnemyAiConditionKind.MoveUsedAtLeast =>
-                hasThreshold
-                && used >= int.Parse(moveThreshold![1]),
-            PrototypeEnemyAiConditionKind.HpAtLeastHalf =>
-                enemy.MaxHp > 0 && enemy.Hp >= enemy.MaxHp / 2,
-            PrototypeEnemyAiConditionKind.HpBelowHalf =>
-                enemy.MaxHp > 0 && enemy.Hp < enemy.MaxHp / 2,
-            PrototypeEnemyAiConditionKind.HasLivingEnemyId =>
-                branch.Value is not null && formation.Any(item =>
-                    item.Hp > 0 && item.EnemyId == branch.Value),
-            PrototypeEnemyAiConditionKind.LacksLivingEnemyId =>
-                branch.Value is not null && !formation.Any(item =>
-                    item.Hp > 0 && item.EnemyId == branch.Value),
-            PrototypeEnemyAiConditionKind.IsAlone =>
-                isAlone,
-            PrototypeEnemyAiConditionKind.IsFront =>
-                isFront,
-            PrototypeEnemyAiConditionKind.IsNotFront =>
-                !isFront,
-            PrototypeEnemyAiConditionKind.SlotNameEquals =>
-                branch.Value is not null
-                && StringComparer.Ordinal.Equals(
-                    enemy.SlotName,
-                    branch.Value),
-            PrototypeEnemyAiConditionKind.IsOffBalance =>
-                enemy.IsOffBalance,
-            PrototypeEnemyAiConditionKind.IsNotOffBalance =>
-                !enemy.IsOffBalance,
-            PrototypeEnemyAiConditionKind.HasEnemyPower =>
-                branch.Value is not null
-                && enemy.PowerStates.Any(power =>
-                    power.PowerId == branch.Value && power.Stacks > 0),
-            PrototypeEnemyAiConditionKind.LacksEnemyPower =>
-                branch.Value is not null
-                && !enemy.PowerStates.Any(power =>
-                    power.PowerId == branch.Value && power.Stacks > 0),
-            // GetTeammatesOf includes the acting monster.
-            PrototypeEnemyAiConditionKind.LivingEnemiesAtMost =>
-                int.TryParse(branch.Value, out var maxAlive)
-                && living.Length <= maxAlive,
-            PrototypeEnemyAiConditionKind.LivingEnemiesGreaterThan =>
-                int.TryParse(branch.Value, out var minAlive)
-                && living.Length > minAlive,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(branch.Condition))
-        };
-    }
-
-    private static bool IsEnemyAiBranchLegal(
-        PrototypeEnemyDefinition definition,
-        EnemyCombatState enemy,
-        IReadOnlyDictionary<
-            string,
-            PrototypeEnemyAiStateDefinition> states,
-        PrototypeEnemyAiBranch branch,
-        IReadOnlyList<EnemyCombatState> formation)
-    {
-        if (!states.TryGetValue(
-                branch.TargetStateId,
-                out var target)
-            || target.Kind
-                != PrototypeEnemyAiStateKind.Move
-            || target.MoveIndex is null
-            || target.MoveIndex.Value < 0
-            || target.MoveIndex.Value
-                >= definition.Moves.Length)
-        {
-            throw new InvalidOperationException(
-                $"Enemy '{definition.Id}' AI branch targets invalid move state '{branch.TargetStateId}'.");
-        }
-
-        var move = definition.Moves[
-            target.MoveIndex.Value];
-
-        if (branch.RequiresAvailableSummon)
-        {
-            var summon = move.Effects.FirstOrDefault(effect =>
-                effect.Kind == PrototypeEnemyEffectKind.SummonEnemy);
-            var slots = summon?.SummonSlotNames;
-            if (definition.MaxCoordinatedSummons <= 0
-                || enemy.NonSummonMovesUntilEligible > 0
-                || enemy.SharedSummonsUsed >= definition.MaxCoordinatedSummons
-                || enemy.SharedSummonUsedThisTurn
-                || slots is not { Length: > 0 }
-                || !slots.Any(slot => !formation.Any(candidate =>
-                    candidate.Hp > 0
-                    && StringComparer.Ordinal.Equals(candidate.SlotName, slot))))
-            {
-                return false;
-            }
-        }
-
-        return branch.RepeatRule switch
-        {
-            PrototypeEnemyAiRepeatRule
-                .CanRepeatForever => true,
-            PrototypeEnemyAiRepeatRule
-                .CannotRepeat =>
-                !StringComparer.Ordinal.Equals(
-                    enemy.LastMoveId,
-                    move.Id),
-            PrototypeEnemyAiRepeatRule
-                .CanRepeatXTimes =>
-                branch.MaxTimes > 0
-                && (!StringComparer.Ordinal.Equals(
-                        enemy.LastMoveId,
-                        move.Id)
-                    || enemy.ConsecutiveMoveUses
-                        < branch.MaxTimes),
-            PrototypeEnemyAiRepeatRule
-                .UseOnlyOnce =>
-                (enemy.MoveUseCounts?.GetValueOrDefault(
-                    move.Id) ?? 0) == 0,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(branch.RepeatRule))
-        };
-    }
-
-    private static (PlayerState Player, CombatState Combat) ResolveEnemyActions(
-        PlayerState player,
-        CombatState combat,
-        int act,
-        int ascension,
-        RngBundle rng)
-    {
-        var enemies = combat.Enemies
-            .Select(enemy => enemy.Fork())
-            .ToList();
-        var block = combat.PlayerBlock;
-        var hp = player.Hp;
-        var gold = player.Gold;
-
-        for (var index = 0; index < enemies.Count; index++)
-        {
-            var enemy = enemies[index];
-            var definition = PrototypeContent.Enemy(enemy.EnemyId);
-
-            if (enemy.Hp <= 0)
-            {
-                // ReattachPower: a deceased segment remains in combat,
-                // untargetable. It first spends its DEAD move, then
-                // reattaches for 25 HP on a later enemy action if at
-                // least one other segment remains alive. Its next
-                // normal intent is chosen after reattachment.
-                if (enemy.PowerStates.Any(power =>
-                        power.PowerId == PrototypeNativeHiveElites.ReattachId)
-                    && enemies.Any(other =>
-                        other.InstanceId != enemy.InstanceId
-                        && other.Hp > 0
-                        && other.PowerStates.Any(power =>
-                            power.PowerId ==
-                                PrototypeNativeHiveElites.ReattachId)))
-                {
-                    enemy = enemy.ReattachDeadMoveResolved
-                        ? enemy with
-                        {
-                            Hp = Math.Min(definition.HpRangeAt(act,
-                                ascension).Max,
-                                enemy.PowerStates
-                                    .Where(power => power.PowerId ==
-                                        PrototypeNativeHiveElites.ReattachId)
-                                    .Sum(power => power.Stacks)),
-                            Block = 0,
-                            LastMoveId = "reattach",
-                            ReattachDeadMoveResolved = false,
-                            AiStateId = "reattach_random",
-                            Statuses = new Dictionary<string, int>(
-                                StringComparer.Ordinal)
-                        }
-                        : enemy with
-                        {
-                            LastMoveId = "dead",
-                            ReattachDeadMoveResolved = true
-                        };
-                    enemies[index] = enemy;
-                    continue;
-                }
-
-                var leaderAlive = enemy.LeaderEnemyInstanceId is not
-                        { } leaderId
-                    || enemies.Any(candidate =>
-                        candidate.InstanceId == leaderId
-                        && candidate.Hp > 0);
-                if (definition.RevivesOnEnemyTurn && leaderAlive)
-                {
-                    var hpRange = definition.HpRangeAt(
-                        act,
-                        ascension);
-                    enemy = enemy with
-                    {
-                        Hp = hpRange.Max,
-                        Block = 0,
-                        LastMoveId = "revive",
-                        Statuses =
-                            new Dictionary<string, int>(
-                                StringComparer.Ordinal)
-                    };
-                    enemies[index] = enemy;
-                }
-
-                continue;
-            }
-
-            if (enemy.EnemyActionSkipsRemaining > 0)
-            {
-                enemies[index] = enemy with
-                {
-                    EnemyActionSkipsRemaining =
-                        enemy.EnemyActionSkipsRemaining - 1,
-                    SkipNextEnemyAction = false
-                };
-                continue;
-            }
-
-            if (enemy.SkipNextEnemyAction)
-            {
-                enemies[index] = enemy with
-                {
-                    SkipNextEnemyAction = false
-                };
-                continue;
-            }
-
-            if (definition.Moves.Length == 0)
-            {
-                continue;
-            }
-
-            // Normal gameplay has a precommitted move. A fallback is kept
-            // solely for legacy/manual combat states created without the
-            // initial intent-commit step; seeded runs never use it.
-            var selection = enemy.PlannedMoveIndex is { } selectedIndex
-                ? (Move: definition.Moves[selectedIndex],
-                   NextAiStateId: enemy.PlannedNextAiStateId)
-                : SelectEnemyMove(definition, enemy, enemies, rng);
-            var move = selection.Move;
-            // BowlbugRock.DizzyMove unstuns the model and clears its
-            // persistent off-balance condition before its next Headbutt.
-            if (enemy.EnemyId == "proto.native.hive.bowlbug_rock"
-                && move.Id == "dizzy")
-            {
-                enemy = enemy with { IsOffBalance = false };
-            }
-            // Vigor applies to every hit of one attack command, then
-            // consumes the stacks that existed when the command began.
-            // Vigor gained by this move is never consumed by that move.
-            var consumeOnAttackOrders = move.Effects.Any(effect =>
-                    effect.Kind == PrototypeEnemyEffectKind.DamagePlayer
-                    && effect.IsAttack)
-                ? enemy.PowerStates
-                    .Where(power => power.Stacks > 0
-                        && PrototypeContent.Power(power.PowerId)
-                            .ConsumeAfterEnemyAttack)
-                    .Select(power => power.ApplicationOrder)
-                    .ToHashSet()
-                : new HashSet<long>();
-
-            foreach (var effect in move.Effects)
-            {
-                if (effect.OwnerPowerStackConditionId is { } requiredPower)
-                {
-                    var stackCount = enemy.PowerStates
-                        .Where(power => power.PowerId == requiredPower)
-                        .Sum(power => power.Stacks);
-                    if (effect.OwnerPowerStacksLessThan is { } upper
-                        && stackCount >= upper)
-                        continue;
-                    if (effect.OwnerPowerStacksAtLeast is { } lower
-                        && stackCount < lower)
-                        continue;
-                }
-                var amount = effect.UseStoredEnemyDamage
-                    ? enemy.StoredEnemyDamage
-                    : checked(effect.AmountAt(act, ascension)
-                        + effect.ExtraAmountPerPriorMoveUse
-                        * (enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0));
-                var repetitions = effect.RepetitionsAt(ascension);
-                if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
-                    && move.Id == "multi_claw"
-                    && effect.Kind == PrototypeEnemyEffectKind.DamagePlayer)
-                    repetitions += enemy.ExtraMultiClawCount;
-                var unblockedAttackHits = 0;
-                for (var repetition = 0; repetition < repetitions; repetition++)
-                {
-                    switch (effect.Kind)
-                    {
-                        case PrototypeEnemyEffectKind.DamagePlayer:
-                        {
-                            var retaliation = PlayerAttackRetaliation(combat);
-                            if (retaliation > 0 && enemy.Hp > 0)
-                            {
-                                var retaliationBlocked = Math.Min(
-                                    enemy.Block,
-                                    retaliation);
-                                var hpLoss = ModifyEnemyHpLoss(
-                                    enemy,
-                                    Math.Max(
-                                        0,
-                                        retaliation - retaliationBlocked));
-                                enemy = hpLoss.Enemy with
-                                {
-                                    Block = enemy.Block - retaliationBlocked,
-                                    Hp = Math.Max(
-                                        0,
-                                        hpLoss.Enemy.Hp - hpLoss.HpLoss)
-                                };
-                            }
-
-                            var damage = EnemyHitDamage(
-                                enemy,
-                                combat,
-                                effect,
-                                act,
-                                ascension,
-                                enemy.MoveUseCounts?.GetValueOrDefault(move.Id) ?? 0);
-                            // Surrounded modifies attacks from the arm
-                            // opposite the side the player is facing.
-                            var facing = combat.PlayerPowers.FirstOrDefault(power =>
-                                power.PowerId ==
-                                    PrototypeNativeHiveBosses.SurroundedId);
-                            if (facing is not null
-                                && (facing.StoredValue == 0
-                                    && enemy.PowerStates.Any(power =>
-                                        power.PowerId ==
-                                            PrototypeNativeHiveBosses.BackLeftId)
-                                    || facing.StoredValue == 1
-                                    && enemy.PowerStates.Any(power =>
-                                        power.PowerId ==
-                                            PrototypeNativeHiveBosses.BackRightId)))
-                                damage = (int)Math.Floor(damage * 1.5m);
-
-                            var absorbed = Math.Min(
-                                block,
-                                Math.Max(0, damage));
-                            block -= absorbed;
-                            var unblocked = Math.Max(0, damage - absorbed);
-                            // ImbalancedPower.AfterDamageGiven: a fully
-                            // blocked attack leaves Bowlbug Rock off-balance.
-                            // Headbutt then commits Dizzy on the NEXT
-                            // enemy turn rather than rerolling in Observe.
-                            if (effect.IsAttack && damage > 0
-                                && unblocked == 0
-                                && enemy.PowerStates.Any(power =>
-                                    power.Stacks > 0
-                                    && power.PowerId ==
-                                        "proto.native.hive.imbalanced"))
-                            {
-                                enemy = enemy with { IsOffBalance = true };
-                            }
-                            if (effect.IsAttack && unblocked > 0 && hp > 0)
-                            {
-                                unblockedAttackHits++;
-                            }
-                            var aliveBeforeHit = hp > 0;
-                            hp = Math.Max(0, hp - unblocked);
-                            if (effect.IsAttack && unblocked > 0
-                                && aliveBeforeHit)
-                            {
-                                // PaperCutsPower.AfterDamageGiven is per
-                                // powered attack hit, after ordinary Block
-                                // absorption. LoseMaxHp damages the player
-                                // down to the new cap before clamping the
-                                // cap itself to at least one.
-                                var maxHpLoss = enemy.PowerStates.Sum(power =>
-                                    Math.Max(0, power.Stacks)
-                                    * PrototypeContent.Power(power.PowerId)
-                                        .PlayerMaxHpLossOnUnblockedAttackHitPerStack);
-                                if (maxHpLoss > 0)
-                                {
-                                    var rawMaxHp = player.MaxHp - maxHpLoss;
-                                    hp = Math.Max(0, Math.Min(hp, rawMaxHp));
-                                    player = player with
-                                    {
-                                        MaxHp = Math.Max(1, rawMaxHp)
-                                    };
-                                }
-                            }
-                            if (effect.IsAttack && unblocked > 0
-                                && combat.PlayerPowers.Any(power =>
-                                    power.Stacks > 0
-                                    && PrototypeContent.Power(power.PowerId)
-                                        .LethalAfterUnblockedPoweredAttack))
-                            {
-                                // The Gambit deliberately kills its owner
-                                // upon the first unblocked powered hit.
-                                hp = 0;
-                            }
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.KillSelf:
-                            enemy = enemy with { Hp = 0, Block = 0 };
-                            break;
-
-                        case PrototypeEnemyEffectKind.StealPlayerCard:
-                        {
-                            // Thieving Hopper only steals persistent cards
-                            // presently in the DRAW or DISCARD piles. A card
-                            // in hand/exhaust/temporary play cannot be stolen.
-                            var eligible = combat.DrawPile
-                                .Concat(combat.DiscardPile)
-                                .Select(id => combat.Cards.FirstOrDefault(
-                                    card => card.InstanceId == id))
-                                .Where(card => card is not null
-                                    && card.PersistentCardInstanceId is not null
-                                    && player.Deck.Any(persistent =>
-                                        persistent.InstanceId
-                                            == card.PersistentCardInstanceId))
-                                .Select(card => card!)
-                                .ToArray();
-                            if (eligible.Length == 0)
-                            {
-                                break;
-                            }
-
-                            // Source priority: Uncommon; then Common,
-                            // Rare or Event; then Basic or Quest; then
-                            // Ancient/Imbued. An Imbued Skill stays in the
-                            // final class regardless of printed rarity.
-                            static int TheftPriority(CombatCardInstance card)
-                            {
-                                if (card.Enchantment?.Kind
-                                    == PrototypeCardEnchantmentKind.Imbued)
-                                    return 3;
-                                var rarity = PrototypeContent.Card(
-                                    card.CardId).Rarity;
-                                return rarity switch
-                                {
-                                    PrototypeCardRarity.Uncommon => 0,
-                                    PrototypeCardRarity.Common
-                                        or PrototypeCardRarity.Rare
-                                        or PrototypeCardRarity.Event => 1,
-                                    PrototypeCardRarity.Basic
-                                        or PrototypeCardRarity.Quest => 2,
-                                    PrototypeCardRarity.Ancient => 3,
-                                    _ => 4
-                                };
-                            }
-
-                            var best = eligible.Min(TheftPriority);
-                            var candidates = eligible.Where(card =>
-                                TheftPriority(card) == best).ToArray();
-                            // Native uses RunRng.CombatCardGeneration,
-                            // which has no matching prototype substream.
-                            // This stream is explicitly an approximation.
-                            var chosen = candidates[
-                                PrototypeRng.NextInt(rng, "combat",
-                                    candidates.Length)];
-                            var persistentId =
-                                chosen.PersistentCardInstanceId!.Value;
-                            var persistentCard = player.Deck.Single(card =>
-                                card.InstanceId == persistentId);
-                            player = player with
-                            {
-                                Deck = player.Deck.Where(card =>
-                                    card.InstanceId != persistentId)
-                                    .ToArray()
-                            };
-                            combat = combat with
-                            {
-                                DrawPile = combat.DrawPile.Where(id =>
-                                    id != chosen.InstanceId).ToArray(),
-                                DiscardPile = combat.DiscardPile.Where(id =>
-                                    id != chosen.InstanceId).ToArray(),
-                                Cards = combat.Cards.Where(card =>
-                                    card.InstanceId != chosen.InstanceId)
-                                    .ToArray(),
-                                NextPowerApplicationOrder =
-                                    combat.NextPowerApplicationOrder + 1
-                            };
-                            enemy = enemy with
-                            {
-                                StolenCards = enemy.StolenCards
-                                    is { } existing
-                                        ? existing.Append(persistentCard)
-                                            .ToArray()
-                                        : [persistentCard],
-                                Powers = enemy.PowerStates.Append(
-                                    new PrototypePowerInstanceState(
-                                        "proto.native.hive.swipe", 1,
-                                        combat.NextPowerApplicationOrder - 1))
-                                    .ToArray()
-                            };
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.StealPlayerGold:
-                        {
-                            var stolen = Math.Min(Math.Max(0, amount), gold);
-                            gold -= stolen;
-                            enemy = enemy with
-                            {
-                                StolenGold = checked(enemy.StolenGold + stolen)
-                            };
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.EscapeEnemy:
-                            enemy = enemy with
-                            {
-                                Hp = 0,
-                                Block = 0,
-                                Escaped = true
-                            };
-                            break;
-
-                        case PrototypeEnemyEffectKind.GainBlock:
-                            enemy = enemy with { Block = enemy.Block + Math.Max(0, amount) };
-                            break;
-
-                        case PrototypeEnemyEffectKind.GrantBlockToEnemyType:
-                            if (effect.EnemyId is null)
-                                throw new InvalidOperationException(
-                                    "Ally Block grant must specify an enemy type.");
-                            for (var allyIndex = 0;
-                                 allyIndex < enemies.Count;
-                                 allyIndex++)
-                            {
-                                var ally = enemies[allyIndex];
-                                if (ally.Hp > 0 && ally.EnemyId == effect.EnemyId)
-                                    enemies[allyIndex] = ally with
-                                    {
-                                        Block = checked(ally.Block
-                                            + Math.Max(0, amount))
-                                    };
-                            }
-                            break;
-
-                        case PrototypeEnemyEffectKind.HealSelf:
-                            enemy = enemy with
-                            {
-                                Hp = Math.Min(
-                                    definition.HpRangeAt(act, ascension).Max,
-                                    enemy.Hp + Math.Max(0, amount))
-                            };
-                            break;
-
-                        case PrototypeEnemyEffectKind.StoreEnemyPowerAsDamage:
-                            if (effect.PowerId is null)
-                            {
-                                throw new InvalidOperationException(
-                                    "Stored-damage effect requires a power ID.");
-                            }
-                            enemy = enemy with
-                            {
-                                StoredEnemyDamage = enemy.PowerStates
-                                    .Where(power => power.PowerId == effect.PowerId)
-                                    .Sum(power => power.Stacks),
-                                Powers = enemy.PowerStates
-                                    .Where(power => power.PowerId != effect.PowerId)
-                                    .ToArray()
-                            };
-                            break;
-
-                        case PrototypeEnemyEffectKind.ApplyPlayerPower:
-                            if (effect.PowerId is null)
-                            {
-                                throw new InvalidOperationException(
-                                    "Enemy apply-power effect is missing a power ID.");
-                            }
-
-                            combat = ApplyPlayerPower(
-                                combat,
-                                effect.PowerId,
-                                amount,
-                                sourceEnemyInstanceId: enemy.InstanceId);
-                            break;
-
-                        case PrototypeEnemyEffectKind.ApplyEnemyPower:
-                            if (effect.PowerId is null)
-                            {
-                                throw new InvalidOperationException(
-                                    "Enemy self-power effect is missing a power ID.");
-                            }
-
-                            var selfPower = ApplyEnemyPowerToState(
-                                combat,
-                                enemy,
-                                effect.PowerId,
-                                amount);
-                            combat = selfPower.Combat;
-                            enemy = selfPower.Enemy;
-                            break;
-
-                        case PrototypeEnemyEffectKind.RemoveEnemyPower:
-                            if (effect.PowerId is null)
-                                throw new InvalidOperationException(
-                                    "Enemy remove-power effect requires a power ID.");
-                            enemy = enemy with
-                            {
-                                Powers = enemy.PowerStates.Where(power =>
-                                    power.PowerId != effect.PowerId).ToArray()
-                            };
-                            break;
-
-                        case PrototypeEnemyEffectKind.StealPlayerPower:
-                        {
-                            if (effect.PowerId is not
-                                ("proto.power.strength" or "proto.power.dexterity"))
-                                throw new InvalidOperationException(
-                                    "Stat theft must specify Strength or Dexterity.");
-                            var prior = combat.PlayerPowers
-                                .Where(power => power.PowerId == effect.PowerId)
-                                .Sum(power => power.Stacks);
-                            combat = ApplyPlayerPower(
-                                combat, effect.PowerId, -amount,
-                                sourceEnemyInstanceId: enemy.InstanceId);
-                            var after = combat.PlayerPowers
-                                .Where(power => power.PowerId == effect.PowerId)
-                                .Sum(power => power.Stacks);
-                            var stolen = Math.Max(0, prior - after);
-                            var granted = ApplyEnemyPowerToState(
-                                combat, enemy, effect.PowerId, amount);
-                            combat = granted.Combat;
-                            enemy = granted.Enemy;
-                            var ownerPowerId =
-                                effect.PowerId == "proto.power.strength"
-                                    ? PrototypeNativeGloryNewNormals.PossessStrengthId
-                                    : PrototypeNativeGloryNewNormals.PossessSpeedId;
-                            enemy = enemy with
-                            {
-                                Powers = enemy.PowerStates.Select(power =>
-                                    power.PowerId == ownerPowerId
-                                        ? power with
-                                        {
-                                            StoredValue = checked(
-                                                power.StoredValue + stolen)
-                                        }
-                                        : power).ToArray()
-                            };
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.ApplyAllEnemyPower:
-                        {
-                            if (effect.PowerId is null)
-                                throw new InvalidOperationException(
-                                    "Team power requires a power ID.");
-                            for (var allyIndex = 0; allyIndex < enemies.Count; allyIndex++)
-                            {
-                                var ally = enemies[allyIndex].InstanceId ==
-                                    enemy.InstanceId ? enemy : enemies[allyIndex];
-                                if (ally.Hp <= 0)
-                                    continue;
-                                var applied = ApplyEnemyPowerToState(
-                                    combat, ally, effect.PowerId, amount);
-                                combat = applied.Combat;
-                                enemies[allyIndex] = applied.Enemy;
-                                if (ally.InstanceId == enemy.InstanceId)
-                                    enemy = applied.Enemy;
-                            }
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.TransformEnemy:
-                        {
-                            if (effect.EnemyId is null)
-                                throw new InvalidOperationException(
-                                    "Enemy transformation requires a model ID.");
-                            if (combat.NativeRng is not null)
-                            {
-                                if (combat.NativeRng.Formation.NativeEncounterEntry
-                                        == "OvicopterNormal"
-                                    && enemy.EnemyId ==
-                                        PrototypeNativeHiveSummoningNormals.ToughEggId
-                                    && effect.EnemyId ==
-                                        PrototypeNativeHiveSummoningNormals.HatchlingId)
-                                {
-                                    // Native ToughEgg.Hatch preserves the
-                                    // MonsterModel and CombatId. The proxy
-                                    // HatchlingId selects its Nibble move,
-                                    // without creating a second RNG context.
-                                    combat = NativeCombatRngEntryV111.HatchToughEgg(
-                                        combat, enemy, out var nativeHatchling);
-                                    enemy = nativeHatchling;
-                                    break;
-                                }
-                                throw new NotSupportedException(
-                                    "Native creature transformation has not been audited; " +
-                                    "do not reuse or reseed a native monster RNG context.");
-                            }
-                            var transformed = PrototypeContent.Enemy(effect.EnemyId);
-                            var range = transformed.HpRangeAt(act, ascension);
-                            var maxHp = range.Min == range.Max
-                                ? range.Max
-                                : range.Min + PrototypeRng.NextInt(
-                                    rng, "combat", range.Max - range.Min + 1);
-                            // ToughEgg.Hatch preserves its instance and
-                            // Minion marker, but changes the combat body.
-                            enemy = enemy with
-                            {
-                                EnemyId = effect.EnemyId,
-                                Hp = maxHp,
-                                MaxHp = maxHp,
-                                Block = 0,
-                                Statuses = new Dictionary<string, int>(
-                                    StringComparer.Ordinal),
-                                Powers = enemy.PowerStates.Where(power =>
-                                    power.PowerId == "proto.power.minion")
-                                    .ToArray(),
-                                AiStateId = transformed.Ai?.InitialStateId
-                            };
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.GrantStrengthToOtherLivingEnemies:
-                        {
-                            for (var allyIndex = 0; allyIndex < enemies.Count; allyIndex++)
-                            {
-                                var ally = enemies[allyIndex];
-                                if (ally.Hp <= 0 || ally.InstanceId == enemy.InstanceId)
-                                    continue;
-                                var applied = ApplyEnemyPowerToState(
-                                    combat, ally, effect.PowerId
-                                        ?? "proto.power.strength", amount);
-                                combat = applied.Combat;
-                                enemies[allyIndex] = applied.Enemy;
-                            }
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.ReviveTestSubject:
-                        {
-                            if (enemy.EnemyId != PrototypeNativeGloryBosses.TestSubjectId
-                                || !enemy.BossPendingRevival || enemy.BossPhase >= 2)
-                                throw new InvalidOperationException(
-                                    "Test Subject respawn requires a pending earlier phase.");
-                            var newPhase = enemy.BossPhase + 1;
-                            var newHp = newPhase == 1
-                                ? (ascension >= 8 ? 212 : 200)
-                                : (ascension >= 8 ? 313 : 300);
-                            enemy = enemy with
-                            {
-                                Hp = newHp,
-                                MaxHp = newHp,
-                                Block = 0,
-                                BossPhase = newPhase,
-                                BossPendingRevival = false,
-                                ExtraMultiClawCount = 0,
-                                AiStateId = newPhase == 1 ? "claw" : "lacerate",
-                                Powers = enemy.PowerStates.Where(power =>
-                                    newPhase < 2
-                                    || power.PowerId is not (
-                                        PrototypeNativeGloryBosses.AdaptableId
-                                        or PrototypeNativeGloryBosses.PainfulStabsId))
-                                    .ToArray()
-                            };
-                            var newPower = newPhase == 1
-                                ? PrototypeNativeGloryBosses.PainfulStabsId
-                                : PrototypeNativeGloryBosses.NemesisId;
-                            var applied = ApplyEnemyPowerToState(
-                                combat, enemy, newPower, 1);
-                            combat = applied.Combat;
-                            enemy = applied.Enemy;
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.IntensifyWither:
-                        {
-                            if (enemy.EnemyId != PrototypeNativeGloryBosses.AeonglassId)
-                                throw new InvalidOperationException(
-                                    "Only Aeonglass can intensify Wither.");
-                            enemy = enemy with
-                            {
-                                WitherUpgradeCount = enemy.WitherUpgradeCount + 1
-                            };
-                            // Publish the updated owner before the next
-                            // AddCardsToDiscard command constructs its Withers.
-                            // Newly generated cards must inherit this move's
-                            // new fake-upgrade level.
-                            enemies[index] = enemy;
-                            combat = combat with
-                            {
-                                Enemies = enemies.ToArray(),
-                                Cards = combat.Cards.Select(card =>
-                                    card.CardId == PrototypeNativeGloryBosses.WitherId
-                                        ? card with
-                                        {
-                                            WitherFakeUpgradeLevel =
-                                                card.WitherFakeUpgradeLevel + 1
-                                        }
-                                        : card).ToArray()
-                            };
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.AddCardsToHand:
-                            if (effect.CardId is null)
-                            {
-                                throw new InvalidOperationException(
-                                    "Enemy hand-card effect is missing a card ID.");
-                            }
-
-                            combat = AddGeneratedEnemyCardsToHand(
-                                combat, effect.CardId, amount);
-                            break;
-
-                        case PrototypeEnemyEffectKind.AddCardsToDiscard:
-                            if (effect.CardId is null)
-                            {
-                                throw new InvalidOperationException(
-                                    "Enemy add-card effect is missing a card ID.");
-                            }
-
-                            combat = AddGeneratedCardsToDiscard(
-                                combat,
-                                effect.CardId,
-                                amount);
-                            break;
-
-                        case PrototypeEnemyEffectKind.RequireNativeChoice:
-                            if (enemy.EnemyId != PrototypeNativeHiveBosses.KnowledgeId
-                                || move.Id != "curse_of_knowledge"
-                                || combat.KnowledgeDemonChoiceResolvedTurn != combat.Turn)
-                                throw new InvalidOperationException(
-                                    "Knowledge Demon curse move was executed without its blocking player choice.");
-                            // The power was applied by the player's earlier
-                            // selected IChoosable option. Advance the
-                            // original committed enemy move exactly once.
-                            break;
-
-                        case PrototypeEnemyEffectKind.AddCardsToRandomDiscard:
-                        {
-                            if (effect.CardId is null)
-                                throw new InvalidOperationException(
-                                    "Enemy discard insertion lacks a card ID.");
-                            for (var generated = 0; generated < amount; generated++)
-                            {
-                                var instance = new CombatCardInstance(
-                                    combat.NextCardInstanceId, null,
-                                    effect.CardId, 0, true,
-                                    PrototypeJson.EmptyObject());
-                                var insertion = PrototypeRng.NextInt(
-                                    rng, "combat", combat.DiscardPile.Length + 1);
-                                var pile = combat.DiscardPile.ToList();
-                                pile.Insert(insertion, instance.InstanceId);
-                                combat = combat with
-                                {
-                                    Cards = combat.Cards.Append(instance).ToArray(),
-                                    DiscardPile = pile.ToArray(),
-                                    NextCardInstanceId =
-                                        combat.NextCardInstanceId + 1
-                                };
-                            }
-                            break;
-                        }
-
-                        case PrototypeEnemyEffectKind.AddCardsToRandomDraw:
-                            if (effect.CardId is null)
-                            {
-                                throw new InvalidOperationException(
-                                    "Enemy draw-card effect is missing card ID.");
-                            }
-
-                            for (var generated = 0; generated < amount; generated++)
-                            {
-                                var instance = new CombatCardInstance(
-                                    combat.NextCardInstanceId,
-                                    null, effect.CardId, 0, true,
-                                    PrototypeJson.EmptyObject());
-                                var insertion = PrototypeRng.NextInt(
-                                    rng, "combat", combat.DrawPile.Length + 1);
-                                var draw = combat.DrawPile.ToList();
-                                draw.Insert(insertion, instance.InstanceId);
-                                combat = combat with
-                                {
-                                    Cards = combat.Cards.Append(instance).ToArray(),
-                                    DrawPile = draw.ToArray(),
-                                    NextCardInstanceId = combat.NextCardInstanceId + 1
-                                };
-                            }
-                            break;
-
-                        case PrototypeEnemyEffectKind.SummonEnemy:
-                        {
-                            var summonId = effect.EnemyId;
-                            if (combat.NativeRng is not null
-                                && effect.SummonEnemyPool is { Length: > 0 })
-                                throw new NotSupportedException(
-                                    "Native summon pools need audited source RNG selection.");
-                            if (effect.SummonEnemyPool is { Length: > 0 } pool)
-                            {
-                                // Native Fabricator._lastSpawned persists
-                                // through deaths. Retired minions stay in the
-                                // typed combat history with their leader ID.
-                                var lastSpawned = enemies
-                                    .Where(candidate =>
-                                        candidate.LeaderEnemyInstanceId ==
-                                            enemy.InstanceId)
-                                    .OrderByDescending(candidate =>
-                                        candidate.InstanceId)
-                                    .FirstOrDefault()?.EnemyId;
-                                var choices = pool.Where(id =>
-                                    id != lastSpawned).ToArray();
-                                if (choices.Length == 0)
-                                    choices = pool;
-                                summonId = choices[PrototypeRng.NextInt(
-                                    rng, "combat", choices.Length)];
-                            }
-                            if (summonId is null)
-                                throw new InvalidOperationException(
-                                    "Enemy summon requires an enemy ID or pool.");
-
-                            var summonedDefinition =
-                                PrototypeContent.Enemy(summonId);
-                            var hpRange =
-                                summonedDefinition.HpRangeAt(
-                                    act,
-                                    ascension);
-                            // The native creation path rolls from
-                            // run.niche after selecting a legal summon
-                            // slot. Do not consume prototype combat RNG.
-                            var summonedHp =
-                                combat.NativeRng is not null
-                                    ? hpRange.Max
-                                    : hpRange.Min == hpRange.Max
-                                        ? hpRange.Min
-                                        : hpRange.Min
-                                            + PrototypeRng.NextInt(
-                                                rng,
-                                                "combat",
-                                                hpRange.Max
-                                                    - hpRange.Min
-                                                    + 1);
-                            var nextEnemyId =
-                                enemies.Count == 0
-                                    ? 1
-                                    : enemies.Max(item =>
-                                        item.InstanceId) + 1;
-                            var nextPowerOrder =
-                                combat.NextPowerApplicationOrder;
-                            var powers =
-                                (summonedDefinition.StartingPowers
-                                    ?? Array.Empty<
-                                        PrototypeStartingPowerSpec>())
-                                .Select(power =>
-                                {
-                                    _ = PrototypeContent.Power(
-                                        power.PowerId);
-                                    return new
-                                        PrototypePowerInstanceState(
-                                            power.PowerId,
-                                            power.StacksAt(ascension),
-                                            nextPowerOrder++);
-                                })
-                                .Where(power =>
-                                    power.Stacks > 0)
-                                .ToArray();
-                            var summonSlots = effect.SummonSlotNames;
-                            string? selectedSlot = null;
-                            if (summonSlots is { Length: > 0 })
-                            {
-                                // LivingFog.Bloat calls
-                                // Encounter.GetNextSlot(): FIRST unoccupied
-                                // source slot (bomb1 -> bomb5). The
-                                // prototype's default last-slot preference
-                                // remains intact for all other encounters.
-                                var sourceFirst = combat.NativeRng?.Formation
-                                        .NativeEncounterEntry == "LivingFogNormal"
-                                    && enemy.EnemyId == "proto.enemy.living_fog"
-                                    && summonId == "proto.enemy.gas_bomb";
-                                selectedSlot = (sourceFirst
-                                        || effect.SelectFirstAvailableSummonSlot
-                                        ? summonSlots
-                                        : summonSlots.Reverse())
-                                    .FirstOrDefault(slot =>
-                                        !enemies.Any(item =>
-                                            (item.Hp > 0
-                                                || effect.ReserveSummonSlotAfterDeath)
-                                            && StringComparer.Ordinal.Equals(
-                                                item.SlotName, slot)));
-                                if (selectedSlot is null)
-                                {
-                                    break;
-                                }
-                            }
-
-                            var nextFormationPosition =
-                                selectedSlot is null
-                                    ? (enemies.Count == 0
-                                        ? 0
-                                        : enemies.Max(item =>
-                                            item.FormationPosition) + 1)
-                                    : effect.SummonSlotFormationPositions is
-                                            { } sourcePositions
-                                        ? sourcePositions[
-                                            Array.IndexOf(summonSlots!, selectedSlot)]
-                                        : Array.IndexOf(summonSlots!, selectedSlot);
-
-                            var spawnedEnemy =
-                                new EnemyCombatState(
-                                    InstanceId: nextEnemyId,
-                                    EnemyId: summonId,
-                                    Hp: summonedHp,
-                                    MaxHp: summonedHp,
-                                    Block: 0,
-                                    MoveIndex: 0,
-                                    Statuses:
-                                        new Dictionary<string, int>(
-                                            StringComparer.Ordinal),
-                                    Powers: powers,
-                                    FormationPosition:
-                                        nextFormationPosition,
-                                    SlotName: selectedSlot,
-                                    LeaderEnemyInstanceId:
-                                        summonedDefinition.IsMinion
-                                            ? enemy.InstanceId
-                                            : null,
-                                    SkipNextEnemyAction: true,
-                                    NonSummonMovesUntilEligible:
-                                        summonedDefinition.NonSummonMovesBeforeEligible,
-                                    SharedSummonsUsed:
-                                        definition.MaxCoordinatedSummons > 0
-                                            ? enemy.SharedSummonsUsed + 1
-                                            : 0);
-                            if (combat.NativeRng is not null)
-                            {
-                                combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
-                                    combat, enemies, spawnedEnemy);
-                                enemies = combat.Enemies.ToList();
-                            }
-                            else
-                            {
-                                enemies.Add(spawnedEnemy);
-                            }
-                            if (definition.MaxCoordinatedSummons > 0)
-                            {
-                                // Coordinated summons share a global
-                                // squad budget and reserve this turn.
-                                var used = enemy.SharedSummonsUsed + 1;
-                                enemy = enemy with
-                                {
-                                    SharedSummonsUsed = used,
-                                    SharedSummonUsedThisTurn = true
-                                };
-                                for (var otherIndex = 0;
-                                     otherIndex < enemies.Count;
-                                     otherIndex++)
-                                {
-                                    if (StringComparer.Ordinal.Equals(
-                                            enemies[otherIndex].EnemyId,
-                                            enemy.EnemyId))
-                                    {
-                                        enemies[otherIndex] = enemies[otherIndex] with
-                                        {
-                                            SharedSummonsUsed = used,
-                                            SharedSummonUsedThisTurn = true
-                                        };
-                                    }
-                                }
-                            }
-                            combat = combat with
-                            {
-                                NextPowerApplicationOrder =
-                                    nextPowerOrder,
-                                Enemies = enemies
-                                    .Select(item => item.Fork())
-                                    .ToArray()
-                            };
-                            break;
-                        }
-
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-
-                    if (hp <= 0 || enemy.Hp <= 0)
-                    {
-                        break;
-                    }
-                }
-
-                if (unblockedAttackHits > 0 && enemy.Hp > 0
-                    && enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
-                    && enemy.BossPhase == 1
-                    && enemy.PowerStates.Any(power =>
-                        power.PowerId == PrototypeNativeGloryBosses.PainfulStabsId))
-                {
-                    var wounds = unblockedAttackHits * enemy.PowerStates
-                        .Where(power => power.PowerId
-                            == PrototypeNativeGloryBosses.PainfulStabsId)
-                        .Sum(power => power.Stacks);
-                    combat = AddGeneratedCardsToDiscard(
-                        combat, "proto.status.wound", wounds);
-                }
-
-                if (unblockedAttackHits > 0 && enemy.Hp > 0)
-                {
-                    // The native Suck hook fires after a powered attack
-                    // command and counts hits which dealt unblocked HP
-                    // damage, not blocked hits or non-attack HP loss.
-                    var strengthGain = enemy.PowerStates.Sum(power =>
-                        power.Stacks
-                        * PrototypeContent.Power(power.PowerId)
-                            .StrengthPerUnblockedAttackHitPerStack)
-                        * unblockedAttackHits;
-                    if (strengthGain > 0)
-                    {
-                        var strengthened = ApplyEnemyPowerToState(
-                            combat, enemy, "proto.power.strength",
-                            strengthGain);
-                        combat = strengthened.Combat;
-                        enemy = strengthened.Enemy;
-                    }
-                }
-
-                if (hp <= 0 || enemy.Hp <= 0)
-                {
-                    break;
-                }
-            }
-
-            if (consumeOnAttackOrders.Count > 0)
-            {
-                enemy = enemy with
-                {
-                    Powers = enemy.PowerStates
-                        .Where(power => !consumeOnAttackOrders.Contains(
-                            power.ApplicationOrder))
-                        .ToArray()
-                };
-            }
-
-            var turnEndStrength =
-                enemy.PowerStates.Sum(power =>
-                    PrototypeContent.Power(power.PowerId)
-                        .EnemyStrengthGainAtTurnEndPerStack
-                    * power.Stacks);
-            if (turnEndStrength != 0)
-            {
-                var strengthened = ApplyEnemyPowerToState(
-                    combat,
-                    enemy,
-                    "proto.power.strength",
-                    turnEndStrength);
-                combat = strengthened.Combat;
-                enemy = strengthened.Enemy;
-            }
-
-            if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
-                && enemy.BossPhase >= 2
-                && enemy.PowerStates.Any(power => power.PowerId
-                    == PrototypeNativeGloryBosses.NemesisId))
-            {
-                var makeIntangible = !enemy.NemesisIntangibleNext;
-                enemy = enemy with
-                {
-                    Powers = enemy.PowerStates.Where(power =>
-                        power.PowerId != PrototypeNativeGloryBosses.NemesisIntangibleId)
-                        .ToArray(),
-                    NemesisIntangibleNext = makeIntangible
-                };
-                if (makeIntangible)
-                {
-                    var applied = ApplyEnemyPowerToState(
-                        combat, enemy,
-                        PrototypeNativeGloryBosses.NemesisIntangibleId, 1);
-                    combat = applied.Combat;
-                    enemy = applied.Enemy;
-                }
-            }
-
-            var consecutiveUses =
-                StringComparer.Ordinal.Equals(
-                    enemy.LastMoveId,
-                    move.Id)
-                    ? enemy.ConsecutiveMoveUses + 1
-                    : 1;
-            var moveUseCounts =
-                enemy.MoveUseCounts is null
-                    ? new Dictionary<string, int>(
-                        StringComparer.Ordinal)
-                    : new Dictionary<string, int>(
-                        enemy.MoveUseCounts,
-                        StringComparer.Ordinal);
-            moveUseCounts[move.Id] =
-                moveUseCounts.GetValueOrDefault(
-                    move.Id) + 1;
-
-            if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
-                && move.Id == "multi_claw")
-                enemy = enemy with
-                {
-                    ExtraMultiClawCount = enemy.ExtraMultiClawCount + 1
-                };
-            enemy = InterceptEnemyLethalDeath(enemy);
-            enemies[index] = enemy with
-            {
-                MoveIndex = enemy.MoveIndex + 1,
-                NonSummonMovesUntilEligible = move.Effects.Any(effect =>
-                    effect.Kind == PrototypeEnemyEffectKind.SummonEnemy)
-                    ? enemy.NonSummonMovesUntilEligible
-                    : Math.Max(0, enemy.NonSummonMovesUntilEligible - 1),
-                LastMoveId = move.Id,
-                ConsecutiveMoveUses = consecutiveUses,
-                AiStateId = enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
-                    && move.Id == "respawn" && enemy.BossPhase >= 2
-                        ? "lacerate" : selection.NextAiStateId,
-                MoveUseCounts = moveUseCounts,
-                PlannedMoveIndex = null,
-                PlannedNextAiStateId = null
-            };
-            if (hp <= 0)
-            {
-                break;
-            }
-        }
-
-        combat = combat with
-        {
-            PlayerBlock = block,
-            Enemies = enemies.ToArray()
-        };
-        combat = CleanupSourceBoundPowersForDefeatedEnemies(
-            combat);
-        combat = ResolveEnemyDeathSummons(
-            combat,
-            rng);
-
-        return (
-            player with { Hp = hp, Gold = gold },
-            combat);
-    }
-
-    internal static CombatState ResolveEnemyDeathSummons(
-        CombatState combat,
-        RngBundle rng,
-        int enemyActionSkips = 1)
-    {
-        var enemies = combat.Enemies
-            .Select(enemy => enemy.Fork())
-            .ToList();
-        var nextPowerOrder =
-            combat.NextPowerApplicationOrder;
-        var changed = false;
-
-        for (var index = 0;
-             index < enemies.Count;
-             index++)
-        {
-            var source = enemies[index];
-            if (source.Hp > 0
-                || source.DeathEffectsResolved)
-            {
-                continue;
-            }
-
-            var sourceDefinition =
-                PrototypeContent.Enemy(source.EnemyId);
-            var summons =
-                sourceDefinition.DeathSummons
-                ?? Array.Empty<
-                    PrototypeEnemyDeathSummonSpec>();
-            if (summons.Length == 0)
-            {
-                continue;
-            }
-
-            enemies[index] = source with
-            {
-                DeathEffectsResolved = true
-            };
-            changed = true;
-
-            // SurprisePower.AfterDeath first CreateCreature(FatGremlin)
-            // (assigning native CombatId and niche HP), then Add<SneakyGremlin>
-            // (new CombatId, new niche roll), then Add(precreated Fat).
-            // The legacy emulator lists Sneaky first: reorder only the
-            // opt-in native creation calls, not legacy behavior.
-            var nativeMerc = combat.NativeRng?.Formation.NativeEncounterEntry
-                    == "GremlinMercNormal"
-                && source.EnemyId == "proto.enemy.gremlin_merc";
-            var orderedSummons = nativeMerc
-                ? summons.Reverse().ToArray()
-                : summons;
-            var nativePhrog =
-                combat.NativeRng?.Formation.NativeEncounterEntry
-                    == "PhrogParasiteElite"
-                && source.EnemyId == "proto.enemy.phrog_parasite";
-            if (nativePhrog
-                && (enemyActionSkips != 1
-                    || summons.Length != 4
-                    || summons.Select((summon, i) =>
-                        summon.EnemyId == "proto.enemy.wriggler"
-                        && summon.SlotName == $"wriggler{i + 1}")
-                        .Any(matches => !matches)))
-                throw new NotSupportedException(
-                    "Native InfestedPower currently supports the audited " +
-                    "player-turn death phase only; four fixed Wriggler " +
-                    "slots with SPAWNED_MOVE are required.");
-            if (nativeMerc
-                && (summons.Length != 2
-                    || summons[0].EnemyId != "proto.enemy.sneaky_gremlin"
-                    || summons[1].EnemyId != "proto.enemy.fat_gremlin"))
-                throw new NotSupportedException(
-                    "Pinned native SurprisePower death summons have changed.");
-
-            int? precreatedFatId = null;
-            foreach (var summon in orderedSummons)
-            {
-                var definition =
-                    PrototypeContent.Enemy(
-                        summon.EnemyId);
-                var hpRange = definition.HpRangeAt(
-                    combat.Act,
-                    combat.Ascension);
-                var hp =
-                    combat.NativeRng is not null
-                        ? hpRange.Max
-                        : hpRange.Min == hpRange.Max
-                            ? hpRange.Min
-                            : hpRange.Min
-                                + PrototypeRng.NextInt(
-                                    rng,
-                                    "combat",
-                                    hpRange.Max
-                                        - hpRange.Min
-                                        + 1);
-                var powers =
-                    (definition.StartingPowers
-                        ?? Array.Empty<
-                            PrototypeStartingPowerSpec>())
-                    .Select(power =>
-                    {
-                        _ = PrototypeContent.Power(
-                            power.PowerId);
-                        return new
-                            PrototypePowerInstanceState(
-                                power.PowerId,
-                                power.StacksAt(combat.Ascension),
-                                nextPowerOrder++);
-                    })
-                    .Where(power =>
-                        power.Stacks > 0)
-                    .ToArray();
-                var nextEnemyId =
-                    enemies.Count == 0
-                        ? 1
-                        : enemies.Max(enemy =>
-                            enemy.InstanceId) + 1;
-
-                var spawnedEnemy =
-                    new EnemyCombatState(
-                        InstanceId: nextEnemyId,
-                        EnemyId: summon.EnemyId,
-                        Hp: hp,
-                        MaxHp: hp,
-                        Block: 0,
-                        MoveIndex: 0,
-                        Statuses:
-                            new Dictionary<string, int>(
-                                StringComparer.Ordinal),
-                        Powers: summon.TransferStolenGold
-                            && source.StolenGold > 0
-                            ? powers.Append(new PrototypePowerInstanceState(
-                                "proto.power.heist",
-                                source.StolenGold,
-                                nextPowerOrder++)).ToArray()
-                            : powers,
-                        FormationPosition:
-                            summon.FormationPosition,
-                        SlotName: summon.SlotName,
-                        StolenGold: summon.TransferStolenGold
-                            ? source.StolenGold : 0,
-                        // Source InfestedPower sets StartStunned before
-                        // CreatureCmd.Add. The Wriggler therefore has
-                        // a genuine visible SPAWNED_MOVE StunIntent,
-                        // not the prototype's silent skipped action.
-                        AiStateId: nativePhrog ? "spawned_move" : null,
-                        PlannedMoveIndex: nativePhrog ? 2 : null,
-                        PlannedNextAiStateId: nativePhrog ? "init" : null,
-                        EnemyActionSkipsRemaining: nativePhrog ? 0 :
-                            summon.SkipEnemyActions == 1
-                                ? Math.Max(0, enemyActionSkips)
-                                : Math.Max(0, summon.SkipEnemyActions));
-                if (combat.NativeRng is not null)
-                {
-                    combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
-                        combat, enemies, spawnedEnemy,
-                        nativeMerc
-                            && summon.EnemyId == "proto.enemy.sneaky_gremlin"
-                            ? precreatedFatId
-                            : null,
-                        dyingStillAttachedId: source.InstanceId);
-                    enemies = combat.Enemies.ToList();
-                    if (nativeMerc
-                        && summon.EnemyId == "proto.enemy.fat_gremlin")
-                        precreatedFatId = spawnedEnemy.InstanceId;
-                }
-                else
-                {
-                    enemies.Add(spawnedEnemy);
-                }
-            }
-
-            if (nativeMerc)
-            {
-                combat = NativeCombatRngEntryV111.SortGremlinMercDeathPair(
-                    combat with { Enemies = enemies.ToArray() });
-                enemies = combat.Enemies.ToList();
-            }
-        }
-
-        return changed
-            ? combat with
-            {
-                Enemies = enemies
-                    .Select(enemy => enemy.Fork())
-                    .ToArray(),
-                NextPowerApplicationOrder =
-                    nextPowerOrder
-            }
-            : combat;
-    }
-
-    private static void EnqueueEffectOperations(
-        Queue<PrototypeQueuedOperation> operations,
-        PrototypeCombatEffectSpec effect,
-        int upgradeLevel,
-        int energySpent,
-        int? actionTargetEnemyId,
-        CombatState combat,
-        int powerStacks = 0,
-        PrototypeEffectSourceKind sourceKind = PrototypeEffectSourceKind.System,
-        bool isPoweredAttack = false,
-        PrototypeCombatCardSnapshot? powerCardPayload = null,
-        int? sourcePowerEnemyId = null,
-        int sourcePowerStoredValue = 0,
-        long? sourcePowerApplicationOrder = null)
-    {
-        // Snapshot hand-sensitive card conditions when their operations are
-        // queued. Restlessness first draws cards and then gains energy, but
-        // both effects depend on the hand at the moment the card is played.
-        if (effect.Condition?.Kind
-                == PrototypeCombatPredicateKind.HandEmptyAtEnqueue
-            && combat.Hand.Length != 0)
-        {
-            return;
-        }
-
-        var queuedCondition = effect.Condition?.Kind
-                == PrototypeCombatPredicateKind.HandEmptyAtEnqueue
-            ? null
-            : effect.Condition;
-        var count = effect.CountKind is null
-            or PrototypeCombatCountKind.TargetDebuffs
-            ? 0
-            : ResolveCombatCount(effect.CountKind.Value, combat);
-
-        var repetitions = effect.RepetitionsAt(upgradeLevel, energySpent)
-            + (effect.RepetitionsPerPowerStack * powerStacks)
-            + (effect.RepetitionsPerCount * count);
-        if (repetitions <= 0)
-        {
-            return;
-        }
-
-        var targets = effect.Target switch
-        {
-            PrototypeEffectTarget.ActionTargetEnemy => new int?[] { actionTargetEnemyId },
-            PrototypeEffectTarget.AllEnemies => combat.Enemies
-                .Where(enemy => enemy.Hp > 0)
-                .Select(enemy => (int?)enemy.InstanceId)
-                .ToArray(),
-            PrototypeEffectTarget.RandomEnemy => new int?[] { null },
-            PrototypeEffectTarget.SourcePowerOwnerEnemy =>
-                sourcePowerEnemyId is null
-                    ? throw new InvalidOperationException(
-                        "Source-power-owner targeting requires an enemy power source.")
-                    : new int?[] { sourcePowerEnemyId.Value },
-            _ => throw new ArgumentOutOfRangeException()
-        };
-
-        if (targets.Length == 0)
-        {
-            if (effect.Target == PrototypeEffectTarget.AllEnemies)
-            {
-                return;
-            }
-
-            targets = new int?[] { null };
-        }
-
-        for (var repetition = 0; repetition < repetitions; repetition++)
-        {
-            foreach (var targetEnemyId in targets)
-            {
-                operations.Enqueue(new PrototypeQueuedOperation(
-                    effect.Kind,
-                    (effect.UseSourcePowerStoredValue
-                        ? sourcePowerStoredValue
-                        : effect.AmountAt(upgradeLevel, energySpent))
-                        + (effect.AmountPerPowerStack * powerStacks)
-                        + ((effect.AmountPerCount
-                            + (effect.AmountPerCountUpgradeDelta * upgradeLevel))
-                            * (effect.CountKind == PrototypeCombatCountKind.TargetDebuffs
-                                ? ResolveCombatCount(
-                                    PrototypeCombatCountKind.TargetDebuffs,
-                                    combat, targetEnemyId)
-                                : count)),
-                    targetEnemyId,
-                    effect.StatusId,
-                    effect.Selection is null
-                        ? null
-                        : effect.Selection with
-                        {
-                            MinSelections =
-                                effect.Selection.MinSelections
-                                + (effect.Selection.SelectionsPerPowerStack
-                                    * powerStacks),
-                            MaxSelections =
-                                effect.Selection.MaxSelections
-                                + (effect.Selection.SelectionsPerPowerStack
-                                    * powerStacks)
-                                + (effect.Selection.MaxSelectionsUpgradeDelta
-                                    * upgradeLevel),
-                            CopiesPerSelection = effect.Selection.CopiesPerSelection
-                                + effect.Selection.CopiesPerSelectionUpgradeDelta * upgradeLevel
-                        },
-                    effect.CardId,
-                    effect.PowerId,
-                    effect.GeneratedCardUpgradeLevel
-                        + (effect.GeneratedCardUpgradePerSourceUpgrade * upgradeLevel),
-                    TargetMode: effect.Target,
-                    SourceKind: sourceKind,
-                    IsPoweredAttack: isPoweredAttack
-                        && effect.Kind is
-                            PrototypeCombatEffectKind.DamageEnemy
-                            or PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill,
-                    Condition: queuedCondition,
-                    SelectedCardPower: effect.SelectedCardPower is null
-                        ? null
-                        : new PrototypeSelectedCardPowerAction(
-                            effect.SelectedCardPower.PowerId,
-                            effect.SelectedCardPower.AmountAt(upgradeLevel),
-                            effect.SelectedCardPower
-                                .ClearAfflictionFromPayload,
-                            effect.SelectedCardPower
-                                .RestoreSuppressedUpgradesInPayload),
-                    SelectedCardKeyword: effect.SelectedCardKeyword,
-                    DrawnCardKeyword: effect.DrawnCardKeyword,
-                    EventSourceCardKeyword: effect.EventSourceCardKeyword,
-                    PowerCardPayload: powerCardPayload?.Fork(),
-                    GeneratedCardEnchantment:
-                        effect.GeneratedCardEnchantment is null
-                            ? null
-                            : effect.GeneratedCardEnchantment with { },
-                    AutoPlaySourceZone:
-                        effect.AutoPlaySourceZone,
-                    RequiredCardTag:
-                        effect.RequiredCardTag,
-                    UpgradeAutoPlayedCardsBeforePlay:
-                        effect.UpgradeAutoPlayedCardsOnSourceUpgrade
-                        && upgradeLevel > 0,
-                    ExtraCardRewardsOnFatal:
-                        effect.ExtraCardRewardsOnFatal,
-                    GoldOnFatal:
-                        effect.GoldOnFatal
-                        + (effect.GoldOnFatalUpgradeDelta * upgradeLevel),
-                    GainBlockEqualToAttackDamage:
-                        effect.GainBlockEqualToAttackDamage,
-                    SplashUnpoweredAttackToOtherEnemies:
-                        effect.SplashUnpoweredAttackToOtherEnemies,
-                    AutoPlayRequiredCardType:
-                        effect.AutoPlayRequiredCardType,
-                    AutoPlayFallbackToUnplayable:
-                        effect.AutoPlayFallbackToUnplayable,
-                    SourcePowerApplicationOrder:
-                        sourcePowerApplicationOrder,
-                    PlayerGoldCost: effect.PlayerGoldCost,
-                    GeneratedCharacterCardsFreeThisTurn:
-                        effect.GeneratedCharacterCardsFreeThisTurn,
-                    PowerStoredValue:
-                        effect.PowerStoredValue
-                        + (effect.PowerStoredValueUpgradeDelta * upgradeLevel),
-                    PlayerPowerOnFatalId:
-                        effect.PlayerPowerOnFatalId,
-                    PlayerPowerOnFatalAmount:
-                        effect.PlayerPowerOnFatalAmount,
-                    GeneratedChoiceCardType:
-                        effect.GeneratedChoiceCardType,
-                    GeneratedChoiceCardsFreeThisTurn:
-                        effect.GeneratedChoiceCardsFreeThisTurn,
-                    GeneratedChoiceCardsUpgraded:
-                        effect.GeneratedChoiceCardsUpgraded
-                        || (effect.GeneratedChoiceCardsUpgradeWithSource
-                            && upgradeLevel > 0),
-                    GeneratedChoiceMustPick:
-                        effect.GeneratedChoiceMustPick,
-                    SelectedCardTemporaryCost:
-                        effect.SelectedCardTemporaryCost is null
-                            ? null
-                            : effect.SelectedCardTemporaryCost with { }));
-            }
-        }
-    }
-
-    private static (PlayerState Player, CombatState Combat) ResolveOperations(
-        PlayerState player,
-        CombatState combat,
-        Queue<PrototypeQueuedOperation> operations,
-        RngBundle rng,
-        long? sourceCardInstanceId = null,
-        PrototypeCardZone sourceCardDestination = PrototypeCardZone.DiscardPile,
-        PrototypeCombatEvent[]? completionEvents = null,
-        int eventDepth = 0,
-        PrototypeCardPlaySeriesState? cardPlaySeries = null,
-        bool moveSourceCardOnCompletion = true,
-        bool removeSourceCardOnCompletion = false,
-        bool sourceCardAlreadyMoved = false,
-        long? eventSourceCardInstanceId = null,
-        PrototypeEventDispatchContinuationState? eventDispatchContinuation = null)
-    {
-        while (operations.Count > 0)
-        {
-            var operation = operations.Dequeue();
-            var targetEnemyId = operation.TargetEnemyId;
-
-            if (operation.TargetMode == PrototypeEffectTarget.RandomEnemy)
-            {
-                var liveEnemies = combat.Enemies
-                    .Where(enemy => enemy.Hp > 0)
-                    .Select(enemy => enemy.InstanceId)
-                    .ToArray();
-
-                if (liveEnemies.Length == 0)
-                {
-                    continue;
-                }
-
-                targetEnemyId = liveEnemies[
-                    PrototypeRng.NextInt(
-                        rng,
-                        "combat_targets",
-                        liveEnemies.Length)];
-            }
-
-            if (!EvaluateCombatPredicate(
-                    operation.Condition,
-                    combat,
-                    targetEnemyId))
-            {
-                continue;
-            }
-
-            switch (operation.Kind)
-            {
-                case PrototypeCombatEffectKind.DamageEnemy:
-                    if (targetEnemyId is null)
-                    {
-                        throw new InvalidOperationException("Damage operation requires an enemy target.");
-                    }
-
-                    var fatalEligible =
-                        (operation.ExtraCardRewardsOnFatal > 0
-                            || operation.GoldOnFatal > 0
-                            || (operation.PlayerPowerOnFatalId is not null
-                                && operation.PlayerPowerOnFatalAmount != 0))
-                        && ShouldEnemyDeathTriggerFatal(
-                            combat,
-                            targetEnemyId.Value);
-
-                    if (operation.IsPoweredAttack && player.Hp <= 0)
-                    {
-                        break;
-                    }
-
-                    if (operation.IsPoweredAttack)
-                    {
-                        var enemyBeforeHit = combat.Enemies.SingleOrDefault(
-                            enemy => enemy.InstanceId == targetEnemyId.Value)
-                            ?? throw new InvalidOperationException(
-                                $"Enemy {targetEnemyId.Value} is missing.");
-
-                        if (enemyBeforeHit.Hp > 0)
-                        {
-                            var retaliation = EnemyAttackRetaliation(
-                                combat,
-                                targetEnemyId.Value);
-                            if (retaliation > 0)
-                            {
-                                var absorbed = Math.Min(
-                                    combat.PlayerBlock,
-                                    retaliation);
-                                combat = combat with
-                                {
-                                    PlayerBlock = combat.PlayerBlock - absorbed
-                                };
-                                var loss = ApplyPlayerHpLoss(
-                                    player,
-                                    combat,
-                                    retaliation - absorbed);
-                                player = loss.Player;
-                                combat = loss.Combat;
-                                if (player.Hp <= 0)
-                                {
-                                    var prevented =
-                                        TryUseAutomaticDeathPrevention(
-                                            player,
-                                            combat,
-                                            rng,
-                                            eventDepth);
-                                    player = prevented.Player;
-                                    combat = prevented.Combat;
-                                }
-                            }
-                        }
-                    }
-
-                    var damageAmount = operation.Amount;
-                    if (operation.IsPoweredAttack)
-                    {
-                        damageAmount = ModifyPlayerAttackDamage(
-                            combat,
-                            sourceCardInstanceId,
-                            targetEnemyId.Value,
-                            damageAmount);
-                        damageAmount = ModifyIncomingAttackDamage(
-                            combat,
-                            targetEnemyId.Value,
-                            damageAmount);
-                    }
-
-                    var splashTarget = combat.Enemies.FirstOrDefault(e =>
-                        e.InstanceId == targetEnemyId.Value);
-                    var overkill = splashTarget is null ? 0
-                        : Math.Max(0, Math.Max(0, damageAmount - splashTarget.Block)
-                            - splashTarget.Hp);
-                    var damageResult = DamageEnemyInternal(
-                        combat,
-                        targetEnemyId.Value,
-                        damageAmount,
-                        operation.IsPoweredAttack
-                            ? MinimumPoweredAttackHpLoss(player) : 0,
-                        operation.IsPoweredAttack);
-                    combat = damageResult.Combat;
-                    // PersonalHivePower.AfterDamageReceived fires on each
-                    // powered hit, including a fully blocked hit. Every
-                    // stack adds a generated Dazed into a random draw slot.
-                    // It is a target-side reaction, not a card-play event.
-                    if (operation.IsPoweredAttack && splashTarget is { Hp: > 0 })
-                    {
-                        var hiveStacks = splashTarget.PowerStates
-                            .Where(power => power.PowerId ==
-                                PrototypeNativeHiveElites.PersonalHiveId)
-                            .Sum(power => power.Stacks);
-                        for (var n = 0; n < hiveStacks; n++)
-                        {
-                            var instance = new CombatCardInstance(
-                                combat.NextCardInstanceId, null,
-                                "proto.status.dazed", 0, true,
-                                PrototypeJson.EmptyObject());
-                            var slot = PrototypeRng.NextInt(
-                                rng, "combat", combat.DrawPile.Length + 1);
-                            var draw = combat.DrawPile.ToList();
-                            draw.Insert(slot, instance.InstanceId);
-                            combat = combat with
-                            {
-                                Cards = combat.Cards.Append(instance).ToArray(),
-                                DrawPile = draw.ToArray(),
-                                NextCardInstanceId =
-                                    combat.NextCardInstanceId + 1
-                            };
-                        }
-                    }
-                    // CurlUpPower records the attack's physical card source
-                    // even on a fully blocked hit, then fires AFTER that
-                    // complete card play, including all of its hit repeats.
-                    if (operation.IsPoweredAttack
-                        && sourceCardInstanceId is { } attackCardId
-                        && splashTarget is { Hp: > 0 })
-                    {
-                        combat = combat with
-                        {
-                            Enemies = combat.Enemies.Select(enemy =>
-                                enemy.InstanceId == targetEnemyId.Value
-                                && enemy.Hp > 0
-                                    ? enemy with
-                                    {
-                                        Powers = enemy.PowerStates.Select(power =>
-                                            power.PendingAttackingCardInstanceId is null
-                                            && PrototypeContent.Power(power.PowerId)
-                                                .EnemyBlockAfterAttackingCardPlayedPerStack > 0
-                                                ? power with
-                                                {
-                                                    PendingAttackingCardInstanceId =
-                                                        attackCardId
-                                                }
-                                                : power).ToArray()
-                                    } : enemy).ToArray()
-                        };
-                    }
-                    if (splashTarget is { Block: > 0 } && damageAmount >= splashTarget.Block)
-                        combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
-                    if (operation.SplashUnpoweredAttackToOtherEnemies
-                        && splashTarget is { Hp: > 0 })
-                    {
-                        // Omnislice: powered primary hit, then separate
-                        // unpowered Move-damage to the other enemies.
-                        var echoAmount = Math.Max(0, damageAmount + overkill);
-                        operations = new Queue<PrototypeQueuedOperation>(
-                            combat.Enemies
-                                .Where(enemy => enemy.Hp > 0
-                                    && enemy.InstanceId != targetEnemyId.Value)
-                                .Select(enemy => new PrototypeQueuedOperation(
-                                    PrototypeCombatEffectKind.DamageEnemy,
-                                    echoAmount, TargetEnemyId: enemy.InstanceId))
-                                .Concat(operations));
-                    }
-
-                    if (operation.GainBlockEqualToAttackDamage)
-                    {
-                        // Fisticuffs uses the attack result (including
-                        // blocked and overkill damage) as the Block source.
-                        // Target was alive before resolution of this hit.
-                        // Card enchantments modify this card-sourced Block
-                        // before player-wide Block gain rules, just as they
-                        // do for explicit Block effects.
-                        var blockAmount = Math.Max(0, damageAmount);
-                        if (sourceCardInstanceId is { } blockCardId)
-                        {
-                            var blockEnchantment = RequireCombatCard(
-                                combat, blockCardId).Enchantment;
-                            if (blockEnchantment is
-                                { Kind: PrototypeCardEnchantmentKind.Nimble
-                                    or PrototypeCardEnchantmentKind.Goopy })
-                            {
-                                blockAmount = Math.Max(0, checked(
-                                    blockAmount + blockEnchantment.Amount
-                                    - (blockEnchantment.Kind
-                                        == PrototypeCardEnchantmentKind.Goopy
-                                        ? 1 : 0)));
-                            }
-                        }
-                        var blockResult = ModifyPlayerBlockGainWithLegion(
-                            combat, blockAmount,
-                            fromCard: true, sourceCardInstanceId);
-                        combat = blockResult.Combat with
-                        {
-                            PlayerBlock = blockResult.Combat.PlayerBlock + Math.Max(0, blockResult.Amount)
-                        };
-                    }
-                    if (operation.IsPoweredAttack
-                        && sourceCardInstanceId is not null
-                        && damageResult.DamageDealt > 0)
-                    {
-                        var reactiveEnemies = combat.Enemies
-                            .Select(item => item.Fork()).ToArray();
-                        var reactiveIndex = Array.FindIndex(
-                            reactiveEnemies,
-                            item => item.InstanceId == targetEnemyId.Value);
-                        if (reactiveIndex >= 0)
-                        {
-                            var target = reactiveEnemies[reactiveIndex];
-                            if (target.Hp > 0
-                                && !target.GainedReactiveBlockThisTurn)
-                            {
-                                var reactiveBlock = target.PowerStates.Sum(power =>
-                                    power.Stacks * PrototypeContent.Power(power.PowerId)
-                                        .EnemyBlockAfterFirstUnblockedCardAttackPerStack);
-                                if (reactiveBlock > 0)
-                                {
-                                    reactiveEnemies[reactiveIndex] = target with
-                                    {
-                                        Block = target.Block + reactiveBlock,
-                                        GainedReactiveBlockThisTurn = true
-                                    };
-                                    combat = combat with { Enemies = reactiveEnemies };
-                                }
-                            }
-                        }
-                    }
-                    if (damageResult.Defeated)
-                    {
-                        combat =
-                            CleanupSourceBoundPowersForDefeatedEnemies(
-                                combat);
-                    }
-
-                    if (damageResult.DamageDealt > 0)
-                    {
-                        var damaged = DispatchCombatEvent(
-                            player,
-                            combat,
-                            new PrototypeCombatEvent(
-                                PrototypeCombatEventKind.EnemyDamaged,
-                                TargetEnemyId: targetEnemyId.Value,
-                                Amount: damageResult.DamageDealt),
-                            rng,
-                            eventDepth + 1);
-                        player = damaged.Player;
-                        combat = damaged.Combat;
-                    }
-
-                    if (damageResult.Defeated)
-                    {
-                        var defeated = DispatchCombatEvent(
-                            player,
-                            combat,
-                            new PrototypeCombatEvent(
-                                PrototypeCombatEventKind.EnemyDefeated,
-                                TargetEnemyId: targetEnemyId.Value,
-                                Amount: damageResult.DamageDealt),
-                            rng,
-                            eventDepth + 1);
-                        player = defeated.Player;
-                        combat = defeated.Combat;
-                        combat = ResolveEnemyDeathSummons(
-                            combat,
-                            rng);
-
-                        if (fatalEligible)
-                        {
-                            if (operation.GoldOnFatal > 0)
-                            {
-                                player = player with
-                                {
-                                    Gold = checked(player.Gold + operation.GoldOnFatal)
-                                };
-                            }
-
-                            if (operation.ExtraCardRewardsOnFatal > 0)
-                            {
-                                combat = combat with
-                                {
-                                    ExtraCardRewardsEarned =
-                                        combat.ExtraCardRewardsEarned
-                                        + operation.ExtraCardRewardsOnFatal
-                                };
-                            }
-
-                            if (operation.PlayerPowerOnFatalId is
-                                    { } fatalPowerId
-                                && operation.PlayerPowerOnFatalAmount != 0)
-                            {
-                                combat = ApplyPlayerPower(
-                                    combat,
-                                    fatalPowerId,
-                                    operation.PlayerPowerOnFatalAmount);
-                            }
-                        }
-                    }
-
-                    break;
-
-                case PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill:
-                {
-                    var pendingRounds = 1;
-                    while (pendingRounds > 0 && player.Hp > 0)
-                    {
-                        pendingRounds--;
-                        var roundTargets = combat.Enemies
-                            .Where(enemy => enemy.Hp > 0)
-                            .Select(enemy => enemy.InstanceId)
-                            .ToArray();
-
-                        foreach (var enemyId in roundTargets)
-                        {
-                            var enemyBeforeHit = combat.Enemies
-                                .Single(enemy => enemy.InstanceId == enemyId);
-                            if (enemyBeforeHit.Hp <= 0)
-                            {
-                                continue;
-                            }
-
-                            if (operation.IsPoweredAttack)
-                            {
-                                var retaliation = EnemyAttackRetaliation(
-                                    combat,
-                                    enemyId);
-                                if (retaliation > 0)
-                                {
-                                    var absorbed = Math.Min(
-                                        combat.PlayerBlock,
-                                        retaliation);
-                                    combat = combat with
-                                    {
-                                        PlayerBlock =
-                                            combat.PlayerBlock - absorbed
-                                    };
-                                    player = player with
-                                    {
-                                        Hp = Math.Max(
-                                            0,
-                                            player.Hp
-                                            - Math.Max(
-                                                0,
-                                                retaliation - absorbed))
-                                    };
-                                    if (player.Hp <= 0)
-                                    {
-                                        var prevented =
-                                            TryUseAutomaticDeathPrevention(
-                                                player,
-                                                combat,
-                                                rng,
-                                                eventDepth);
-                                        player = prevented.Player;
-                                        combat = prevented.Combat;
-                                        if (player.Hp <= 0)
-                                        {
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-
-                            var echoDamageAmount = operation.Amount;
-                            if (operation.IsPoweredAttack)
-                            {
-                                echoDamageAmount = ModifyPlayerAttackDamage(
-                                    combat,
-                                    sourceCardInstanceId,
-                                    enemyId,
-                                    echoDamageAmount);
-                                echoDamageAmount = ModifyIncomingAttackDamage(
-                                    combat,
-                                    enemyId,
-                                    echoDamageAmount);
-                            }
-
-                            var echoTargetBlock = combat.Enemies.Single(enemy => enemy.InstanceId == enemyId).Block;
-                            var echoDamageResult = DamageEnemyInternal(
-                                combat,
-                                enemyId,
-                                echoDamageAmount,
-                                operation.IsPoweredAttack
-                                    ? MinimumPoweredAttackHpLoss(player) : 0,
-                                operation.IsPoweredAttack);
-                            combat = echoDamageResult.Combat;
-                            if (echoTargetBlock > 0 && echoDamageAmount >= echoTargetBlock)
-                                combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, enemyId);
-                            if (echoDamageResult.Defeated)
-                            {
-                                pendingRounds++;
-                                combat =
-                                    CleanupSourceBoundPowersForDefeatedEnemies(
-                                        combat);
-                            }
-
-                            if (echoDamageResult.DamageDealt > 0)
-                            {
-                                var damaged = DispatchCombatEvent(
-                                    player,
-                                    combat,
-                                    new PrototypeCombatEvent(
-                                        PrototypeCombatEventKind.EnemyDamaged,
-                                        TargetEnemyId: enemyId,
-                                        Amount: echoDamageResult.DamageDealt),
-                                    rng,
-                                    eventDepth + 1);
-                                player = damaged.Player;
-                                combat = damaged.Combat;
-                            }
-
-                            if (echoDamageResult.Defeated)
-                            {
-                                var defeated = DispatchCombatEvent(
-                                    player,
-                                    combat,
-                                    new PrototypeCombatEvent(
-                                        PrototypeCombatEventKind.EnemyDefeated,
-                                        TargetEnemyId: enemyId,
-                                        Amount: echoDamageResult.DamageDealt),
-                                    rng,
-                                    eventDepth + 1);
-                                player = defeated.Player;
-                                combat = defeated.Combat;
-                                combat = ResolveEnemyDeathSummons(
-                                    combat,
-                                    rng);
-                            }
-                        }
-                    }
-
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.LoseEnemyHp:
-                {
-                    if (targetEnemyId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Enemy HP-loss operation requires a target.");
-                    }
-
-                    var hpLoss = LoseEnemyHp(
-                        combat,
-                        targetEnemyId.Value,
-                        operation.Amount);
-                    combat = hpLoss.Combat;
-                    if (hpLoss.Defeated)
-                    {
-                        combat =
-                            CleanupSourceBoundPowersForDefeatedEnemies(
-                                combat);
-                        combat = ResolveEnemyDeathSummons(
-                            combat,
-                            rng);
-                    }
-
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.StunEnemy:
-                {
-                    if (targetEnemyId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Enemy stun operation requires a target.");
-                    }
-
-                    var enemies = combat.Enemies
-                        .Select(enemy => enemy.Fork()).ToArray();
-                    var index = Array.FindIndex(enemies,
-                        enemy => enemy.InstanceId == targetEnemyId.Value);
-                    if (index < 0)
-                    {
-                        throw new InvalidOperationException(
-                            $"Enemy {targetEnemyId.Value} is missing.");
-                    }
-
-                    if (enemies[index].Hp > 0)
-                    {
-                        var stunned = enemies[index];
-                        var moveCount = PrototypeContent.Enemy(
-                            stunned.EnemyId).Moves.Length;
-                        enemies[index] = enemies[index] with
-                        {
-                            EnemyActionSkipsRemaining = Math.Max(
-                                Math.Max(1, operation.Amount),
-                                enemies[index].EnemyActionSkipsRemaining),
-                            StunFollowUpMoveIndex =
-                                stunned.StunFollowUpMoveIndex
-                                    ?? stunned.PlannedMoveIndex
-                                    ?? (moveCount > 0
-                                        ? stunned.MoveIndex : null),
-                            StunFollowUpAiStateId =
-                                stunned.StunFollowUpAiStateId
-                                    ?? stunned.PlannedNextAiStateId
-                                    ?? stunned.AiStateId,
-                            PlannedMoveIndex = null,
-                            PlannedNextAiStateId = null
-                        };
-                        combat = combat with { Enemies = enemies };
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.GainPlayerBlock:
-                {
-                    var blockResult =
-                        ModifyPlayerBlockGainWithLegion(
-                            combat,
-                            operation.Amount,
-                            operation.SourceKind
-                                == PrototypeEffectSourceKind.Card,
-                            sourceCardInstanceId);
-                    combat = blockResult.Combat with
-                    {
-                        PlayerBlock = blockResult.Combat.PlayerBlock
-                            + Math.Max(0, blockResult.Amount)
-                    };
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.MultiplyPlayerBlock:
-                    combat = combat with
-                    {
-                        PlayerBlock =
-                            combat.PlayerBlock
-                            * Math.Max(0, operation.Amount)
-                    };
-                    break;
-
-                case PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal:
-                {
-                    if (operation.StatusId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Status-total block operation is missing a status ID.");
-                    }
-
-                    var statusTotal = combat.Enemies
-                        .Where(enemy => enemy.Hp > 0)
-                        .Sum(enemy =>
-                            Math.Max(
-                                0,
-                                enemy.Statuses.GetValueOrDefault(
-                                    operation.StatusId)));
-                    var baseAmount =
-                        operation.Amount + statusTotal;
-                    var blockResult =
-                        ModifyPlayerBlockGainWithLegion(
-                            combat,
-                            baseAmount,
-                            operation.SourceKind == PrototypeEffectSourceKind.Card,
-                            sourceCardInstanceId);
-                    combat = blockResult.Combat with
-                    {
-                        PlayerBlock = blockResult.Combat.PlayerBlock
-                            + Math.Max(0, blockResult.Amount)
-                    };
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.GainToricToughnessBlock:
-                {
-                    var blockResult = ModifyPlayerBlockGainWithLegion(
-                        combat,
-                        operation.Amount,
-                        operation.SourceKind
-                            == PrototypeEffectSourceKind.Card,
-                        sourceCardInstanceId);
-                    var amount = Math.Max(0, blockResult.Amount);
-                    combat = blockResult.Combat;
-                    if (amount > 0)
-                    {
-                        combat = combat with
-                        {
-                            PlayerBlock = combat.PlayerBlock + amount,
-                            ToricShields = (combat.ToricShields
-                                ?? Array.Empty<PrototypeToricShield>())
-                                .Append(new PrototypeToricShield(amount, 2))
-                                .ToArray()
-                        };
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain:
-                {
-                    if (operation.PowerId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Block-and-delay operation is missing a power ID.");
-                    }
-
-                    var blockResult =
-                        ModifyPlayerBlockGainWithLegion(
-                            combat,
-                            operation.Amount,
-                            operation.SourceKind
-                                == PrototypeEffectSourceKind.Card,
-                            sourceCardInstanceId);
-                    var actualGain = Math.Max(0, blockResult.Amount);
-                    combat = blockResult.Combat;
-                    combat = combat with
-                    {
-                        PlayerBlock = combat.PlayerBlock + actualGain
-                    };
-                    if (actualGain > 0)
-                    {
-                        combat = ApplyPlayerPower(
-                            combat,
-                            operation.PowerId,
-                            actualGain);
-                    }
-
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.DrawCards:
-                {
-                    var drawn = DrawCards(
-                        player,
-                        combat,
-                        operation.Amount,
-                        rng,
-                        fromHandDraw: operation.FromHandDraw,
-                        eventDepth: eventDepth + 1);
-                    player = drawn.Player;
-                    combat = drawn.Combat;
-                    if (drawn.ShuffleSelectionPending)
-                    {
-                        // Suspend this draw at the exact post-shuffle point.
-                        // A chosen card moves to hand before any of the
-                        // remaining cards are drawn.
-                        operations = new Queue<PrototypeQueuedOperation>(
-                            new[]
-                            {
-                                StratagemChoiceOperation(combat),
-                                operation with { Amount = drawn.RemainingCount }
-                            }.Concat(operations));
-                    }
-
-                    if (operation.DrawnCardKeyword is not null)
-                    {
-                        foreach (var cardInstanceId in drawn.DrawnCardInstanceIds)
-                        {
-                            combat = ApplyCardKeywordOverride(
-                                combat,
-                                cardInstanceId,
-                                operation.DrawnCardKeyword);
-                        }
-                    }
-
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle:
-                {
-                    var shuffled = combat.DrawPile
-                        .Concat(combat.Hand)
-                        .ToArray();
-                    combat = combat with
-                    {
-                        Hand = Array.Empty<long>()
-                    };
-                    PrototypeRng.Shuffle(rng, "combat", shuffled);
-                    combat = combat with
-                    {
-                        DrawPile = ApplyPerfectFitShuffleOrder(
-                            combat, shuffled)
-                    };
-                    combat = ApplyRelicAfterShuffleCards(combat, rng);
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.ApplyEnemyStatus:
-                    if (targetEnemyId is null || operation.StatusId is null)
-                    {
-                        throw new InvalidOperationException("Status operation requires target and status ID.");
-                    }
-
-                    combat = ApplyEnemyStatus(
-                        combat,
-                        targetEnemyId.Value,
-                        operation.StatusId,
-                        operation.Amount);
-                    break;
-
-                case PrototypeCombatEffectKind.ExhaustHand:
-                {
-                    // Glowwater exhausts the entire current hand before its
-                    // draw begins. Reuse the ordered event-continuation
-                    // dispatcher so CardExhausted hooks run in hand order,
-                    // including hooks which suspend for a player choice.
-                    var exhausted = (long[])combat.Hand.Clone();
-                    combat = combat with
-                    {
-                        Hand = Array.Empty<long>(),
-                        ExhaustPile = combat.ExhaustPile
-                            .Concat(exhausted).ToArray()
-                    };
-                    if (exhausted.Length == 0)
-                    {
-                        break;
-                    }
-
-                    var exhaustEvents = exhausted.Select(id =>
-                        new PrototypeCombatEvent(
-                            PrototypeCombatEventKind.CardExhausted,
-                            SourceCardInstanceId: id,
-                            CardId: RequireCombatCard(combat, id).CardId))
-                        .ToArray();
-                    return ResumeChoiceResolutionContinuation(
-                        player, combat, rng,
-                        new PrototypeChoiceResolutionContinuationState(
-                            SourceCardInstanceId: sourceCardInstanceId,
-                            SourceCardDestination: sourceCardDestination,
-                            Operations: operations.ToArray(),
-                            PendingDiscardEvents: exhaustEvents,
-                            PendingSlyCardInstanceIds: Array.Empty<long>(),
-                            CompletionEvents: completionEvents
-                                ?? Array.Empty<PrototypeCombatEvent>(),
-                            CardPlaySeries: cardPlaySeries,
-                            MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
-                            RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
-                            SourceCardAlreadyMoved: sourceCardAlreadyMoved,
-                            EventDispatchContinuation:
-                                eventDispatchContinuation?.Fork()),
-                        resumeCardPlaySeries: false);
-                }
-
-                case PrototypeCombatEffectKind.DiscardHand:
-                {
-                    var discarded = (long[])combat.Hand.Clone();
-                    if (discarded.Length == 0)
-                    {
-                        break;
-                    }
-
-                    var slyCards = discarded
-                        .Where(cardInstanceId =>
-                            CardHasKeyword(
-                                combat,
-                                cardInstanceId,
-                                PrototypeCardKeyword.Sly))
-                        .ToArray();
-
-                    combat = combat with
-                    {
-                        Hand = Array.Empty<long>(),
-                        DiscardPile = combat.DiscardPile
-                            .Concat(discarded)
-                            .ToArray()
-                    };
-
-                    var discardEvents = discarded
-                        .Select(cardInstanceId =>
-                        {
-                            var discardedCard =
-                                RequireCombatCard(
-                                    combat,
-                                    cardInstanceId);
-                            return new PrototypeCombatEvent(
-                                PrototypeCombatEventKind.CardDiscarded,
-                                SourceCardInstanceId:
-                                    cardInstanceId,
-                                CardId:
-                                    discardedCard.CardId);
-                        })
-                        .ToArray();
-
-                    return ResumeChoiceResolutionContinuation(
-                        player,
-                        combat,
-                        rng,
-                        new PrototypeChoiceResolutionContinuationState(
-                            SourceCardInstanceId:
-                                sourceCardInstanceId,
-                            SourceCardDestination:
-                                sourceCardDestination,
-                            Operations:
-                                operations.ToArray(),
-                            PendingDiscardEvents:
-                                discardEvents,
-                            PendingSlyCardInstanceIds:
-                                slyCards,
-                            CompletionEvents:
-                                completionEvents
-                                ?? Array.Empty<PrototypeCombatEvent>(),
-                            CardPlaySeries:
-                                cardPlaySeries,
-                            MoveSourceCardOnCompletion:
-                                moveSourceCardOnCompletion,
-                            RemoveSourceCardOnCompletion:
-                                removeSourceCardOnCompletion,
-                            SourceCardAlreadyMoved:
-                                sourceCardAlreadyMoved,
-                            EventDispatchContinuation:
-                                eventDispatchContinuation?.Fork()),
-                        resumeCardPlaySeries: false);
-                }
-
-                case PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand:
-                    combat = AddDistinctGeneratedColorlessCardsToHand(
-                        combat, operation.Amount, rng,
-                        sourceCardInstanceId is null
-                            ? null
-                            : RequireCombatCard(
-                                combat, sourceCardInstanceId.Value).CardId);
-                    break;
-
-                case PrototypeCombatEffectKind.ChooseGeneratedCards:
-                case PrototypeCombatEffectKind.ChooseGeneratedColorlessCards:
-                {
-                    var generated = AddGeneratedChoiceCards(
-                        combat,
-                        operation.GeneratedChoiceCardType,
-                        operation.Amount,
-                        operation.GeneratedChoiceCardsFreeThisTurn,
-                        operation.GeneratedChoiceCardsUpgraded,
-                        rng,
-                        operation.Kind
-                            == PrototypeCombatEffectKind
-                                .ChooseGeneratedColorlessCards
-                            ? PrototypeColorlessCards
-                                .ImplementedCombatGenerationPool
-                            : null);
-                    combat = generated.Combat;
-                    if (generated.CardInstanceIds.Length == 0)
-                    {
-                        break;
-                    }
-
-                    combat = combat with
-                    {
-                        PendingChoice = new PendingCombatChoiceState(
-                            ChoiceId: "select_cards",
-                            SourceCardInstanceId: sourceCardInstanceId,
-                            SourceCardDestination: sourceCardDestination,
-                            Selection: new PrototypeCardSelectionSpec(
-                                PrototypeCardZone.ChoicePool,
-                                operation.GeneratedChoiceMustPick ? 1 : 0,
-                                1,
-                                PrototypeCardSelectionResolutionKind
-                                    .MoveToHand,
-                                RemoveUnselectedFromSource: true),
-                            CandidateCardInstanceIds:
-                                (long[])generated.CardInstanceIds.Clone(),
-                            Continuation: operations.ToArray(),
-                            CompletionEvents: completionEvents is null
-                                ? Array.Empty<PrototypeCombatEvent>()
-                                : (PrototypeCombatEvent[])completionEvents.Clone(),
-                            CardPlaySeries: cardPlaySeries,
-                            MoveSourceCardOnCompletion:
-                                moveSourceCardOnCompletion,
-                            RemoveSourceCardOnCompletion:
-                                removeSourceCardOnCompletion,
-                            SourceCardAlreadyMoved:
-                                sourceCardAlreadyMoved,
-                            EventDispatchContinuation:
-                                eventDispatchContinuation?.Fork())
-                    };
-                    return (player, combat);
-                }
-
-                case PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay:
-                {
-                    var eligible = combat.DrawPile
-                        .Where(id =>
-                        {
-                            var card = RequireCombatCard(combat, id);
-                            var definition = PrototypeContent.Card(card.CardId);
-                            return !definition.Unplayable
-                                && definition.Type is not
-                                    (PrototypeCardType.Curse or PrototypeCardType.Status)
-                                && card.ReplayCount == 0
-                                && card.Enchantment is not
-                                    { Kind: PrototypeCardEnchantmentKind.Spiral
-                                        or PrototypeCardEnchantmentKind.Glam };
-                        })
-                        .ToArray();
-                    var preferred = eligible.Where(id =>
-                        PrototypeContent.Card(
-                            RequireCombatCard(combat, id).CardId).Type
-                            is PrototypeCardType.Attack
-                                or PrototypeCardType.Skill
-                                or PrototypeCardType.Power).ToArray();
-                    var pool = preferred.Length > 0 ? preferred : eligible;
-                    if (pool.Length > 0)
-                    {
-                        var selected = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
-                        combat = combat with
-                        {
-                            Cards = combat.Cards.Select(card =>
-                                card.InstanceId == selected
-                                    ? card with
-                                    {
-                                        ReplayCount = card.ReplayCount
-                                            + Math.Max(0, operation.Amount)
-                                    }
-                                    : card).ToArray()
-                        };
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand:
-                {
-                    // Chaos makes any eligible character card free for
-                    // the current turn, independently of its normal cost.
-                    var pool = PrototypeContent.RewardCardPool
-                        .Where(id =>
-                        {
-                            var candidate = PrototypeContent.Card(id);
-                            return candidate.MechanicsImplemented
-                                && candidate.CanBeGeneratedInCombat
-                                && !candidate.MultiplayerOnly
-                                && candidate.Type is PrototypeCardType.Attack
-                                    or PrototypeCardType.Skill
-                                    or PrototypeCardType.Power;
-                        })
-                        .ToArray();
-                    if (operation.Amount > 0 && pool.Length == 0)
-                        throw new NotSupportedException(
-                            "Chaos has no supported single-player card pool.");
-                    for (var index = 0; index < operation.Amount; index++)
-                    {
-                        var id = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
-                        combat = AddGeneratedCardCopies(combat,
-                            new PrototypeCombatCardSnapshot(
-                                id, 0, PrototypeJson.EmptyObject(),
-                                TemporaryEnergyCost: new(
-                                    0, PrototypeTemporaryCardCostExpiry.EndOfTurn
-                                        | PrototypeTemporaryCardCostExpiry.WhenPlayed)),
-                            1);
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.AddRandomZeroCostCardsToHand:
-                {
-                    var pool = PrototypeContent.RewardCardPool
-                        .Where(id =>
-                        {
-                            var definition = PrototypeContent.Card(id);
-                            return definition.MechanicsImplemented
-                                && definition.CanBeGeneratedInCombat
-                                && !definition.MultiplayerOnly
-                                && definition.Cost.Kind == PrototypeCardCostKind.Fixed
-                                && definition.Cost.Amount == 0;
-                        }).ToArray();
-                    if (pool.Length == 0 && operation.Amount > 0)
-                    {
-                        throw new NotSupportedException(
-                            "No implemented zero-cost Silent card generation candidates.");
-                    }
-                    for (var n = 0; n < operation.Amount; n++)
-                    {
-                        var picked = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
-                        combat = AddGeneratedCardCopies(combat,
-                            new PrototypeCombatCardSnapshot(
-                                picked, operation.GeneratedCardUpgradeLevel,
-                                PrototypeJson.EmptyObject()), 1);
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand:
-                {
-                    // Anointed uses pile insertion rather than a normal draw:
-                    // it must preserve card instances and avoid draw triggers.
-                    const int maxHandSize = 10;
-                    var capacity = Math.Max(0, maxHandSize - combat.Hand.Length);
-                    var take = Math.Min(Math.Max(0, operation.Amount), capacity);
-                    if (take == 0)
-                    {
-                        break;
-                    }
-
-                    var rareCards = combat.DrawPile
-                        .Where(id => PrototypeContent.Card(
-                            RequireCombatCard(combat, id).CardId).Rarity
-                            == PrototypeCardRarity.Rare)
-                        .ToArray();
-                    if (rareCards.Length == 0)
-                    {
-                        break;
-                    }
-
-                    PrototypeRng.Shuffle(rng, "combat", rareCards);
-                    var selected = rareCards.Take(take).ToArray();
-                    var selectedIds = selected.ToHashSet();
-                    combat = combat with
-                    {
-                        DrawPile = combat.DrawPile
-                            .Where(id => !selectedIds.Contains(id))
-                            .ToArray(),
-                        Hand = combat.Hand.Concat(selected).ToArray()
-                    };
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.ChooseCards:
-                {
-                    var selection = operation.Selection
-                        ?? throw new InvalidOperationException("Choose-cards operation has no selection specification.");
-                    var candidates = GetZone(combat, selection.SourceZone);
-                    if (selection.Resolution == PrototypeCardSelectionResolutionKind.TransformRandom)
-                        candidates = candidates.Where(id => !PrototypeCardRules.IsEternal(
-                            RequireCombatCard(combat, id))).ToArray();
-                    if (selection.RequireAttackOrPower)
-                        candidates = candidates.Where(id => PrototypeContent.Card(
-                            RequireCombatCard(combat, id).CardId).Type
-                            is PrototypeCardType.Attack or PrototypeCardType.Power).ToArray();
-                    if (selection.RequiredCardType is not null)
-                    {
-                        candidates = candidates
-                            .Where(instanceId =>
-                                PrototypeContent.Card(
-                                    RequireCombatCard(combat, instanceId).CardId).Type
-                                == selection.RequiredCardType.Value)
-                            .ToArray();
-                    }
-
-                    if (selection.RandomCandidateCount > 0
-                        && candidates.Length > selection.RandomCandidateCount)
-                    {
-                        // Native pile selectors may offer only a random
-                        // shortlist. Filter by type before choosing it.
-                        var shuffledCandidates = (long[])candidates.Clone();
-                        PrototypeRng.Shuffle(rng, "combat", shuffledCandidates);
-                        candidates = shuffledCandidates
-                            .Take(selection.RandomCandidateCount).ToArray();
-                    }
-
-                    if (selection.RequireEnergyCostingCard)
-                    {
-                        candidates = candidates
-                            .Where(instanceId =>
-                            {
-                                var card =
-                                    RequireCombatCard(
-                                        combat,
-                                        instanceId);
-                                var definition =
-                                    PrototypeContent.Card(
-                                        card.CardId);
-                                return !definition.Unplayable
-                                    && (definition.Cost.Kind
-                                            == PrototypeCardCostKind.X
-                                        || (definition.Cost.Kind
-                                                == PrototypeCardCostKind.Fixed
-                                            && definition.Cost.Amount >= 0));
-                            })
-                            .ToArray();
-                    }
-
-                    const int maxHandSize = 10;
-                    var capacity = selection.Resolution
-                            == PrototypeCardSelectionResolutionKind.MoveToHand
-                        ? Math.Max(0, maxHandSize - combat.Hand.Length)
-                        : int.MaxValue;
-                    var maxSelectable = Math.Min(
-                        Math.Min(selection.MaxSelections, candidates.Length),
-                        capacity);
-                    if (candidates.Length == 0 || maxSelectable <= 0)
-                    {
-                        break;
-                    }
-
-                    var effective = selection with
-                    {
-                        MinSelections = Math.Min(selection.MinSelections, maxSelectable),
-                        MaxSelections = maxSelectable
-                    };
-
-                    combat = combat with
-                    {
-                        PendingChoice = new PendingCombatChoiceState(
-                            ChoiceId: "select_cards",
-                            SourceCardInstanceId: sourceCardInstanceId,
-                            SourceCardDestination: sourceCardDestination,
-                            Selection: effective,
-                            CandidateCardInstanceIds: (long[])candidates.Clone(),
-                            Continuation: operations.ToArray(),
-                            CompletionEvents: completionEvents is null
-                                ? Array.Empty<PrototypeCombatEvent>()
-                                : (PrototypeCombatEvent[])completionEvents.Clone(),
-                            CardPlaySeries: cardPlaySeries,
-                            MoveSourceCardOnCompletion:
-                                moveSourceCardOnCompletion,
-                            RemoveSourceCardOnCompletion:
-                                removeSourceCardOnCompletion,
-                            SourceCardAlreadyMoved:
-                                sourceCardAlreadyMoved,
-                            SelectedCardPower:
-                                operation.SelectedCardPower,
-                            SelectedCardKeyword:
-                                operation.SelectedCardKeyword,
-                            SelectedCardTemporaryCost:
-                                operation.SelectedCardTemporaryCost is null
-                                    ? null
-                                    : operation.SelectedCardTemporaryCost with { },
-                            EventDispatchContinuation:
-                                eventDispatchContinuation?.Fork())
-                    };
-                    return (player, combat);
-                }
-
-                case PrototypeCombatEffectKind.RemoveEnemyBlock:
-                    if (targetEnemyId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Remove-enemy-block operation requires a target.");
-                    }
-
-                    var blockBeforeRemoval = combat.Enemies.Single(enemy => enemy.InstanceId == targetEnemyId.Value).Block;
-                    combat = SetEnemyBlock(
-                        combat,
-                        targetEnemyId.Value,
-                        0);
-                    if (blockBeforeRemoval > 0)
-                        combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
-                    break;
-
-                case PrototypeCombatEffectKind.RemoveEnemyPower:
-                    if (targetEnemyId is null
-                        || operation.PowerId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Remove-enemy-power operation requires a target and power ID.");
-                    }
-
-                    combat = RemoveEnemyPower(
-                        combat,
-                        targetEnemyId.Value,
-                        operation.PowerId);
-                    break;
-
-                case PrototypeCombatEffectKind.TriggerEnemyStatus:
-                    if (targetEnemyId is null
-                        || operation.StatusId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Trigger-enemy-status operation requires a target and status ID.");
-                    }
-
-                    combat = TriggerEnemyStatus(
-                        combat,
-                        targetEnemyId.Value,
-                        operation.StatusId,
-                        rng);
-                    break;
-
-                case PrototypeCombatEffectKind.ApplyPlayerPower:
-                    if (operation.PowerId is null)
-                    {
-                        throw new InvalidOperationException("Apply-power operation is missing a power ID.");
-                    }
-
-                    combat = ApplyPlayerPower(
-                        combat, operation.PowerId, operation.Amount,
-                        storedValue: operation.PowerStoredValue);
-                    break;
-
-                case PrototypeCombatEffectKind.ApplyEnemyPower:
-                    if (operation.PowerId is null || targetEnemyId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Apply-enemy-power operation requires a power ID and enemy target.");
-                    }
-
-                    combat = ApplyEnemyPower(
-                        combat,
-                        targetEnemyId.Value,
-                        operation.PowerId,
-                        operation.Amount);
-                    break;
-
-                case PrototypeCombatEffectKind.HealPlayer:
-                    player = player with
-                    {
-                        Hp = Math.Min(
-                            player.MaxHp,
-                            player.Hp + Math.Max(
-                                0,
-                                operation.Amount))
-                    };
-                    break;
-
-                case PrototypeCombatEffectKind.UpgradeHandCards:
-                    combat = combat with
-                    {
-                        Cards = combat.Cards
-                            .Select(card =>
-                            {
-                                if (!combat.Hand.Contains(
-                                        card.InstanceId)
-                                    || card.UpgradeLevel > 0)
-                                {
-                                    return card;
-                                }
-
-                                var definition =
-                                    PrototypeContent.Card(
-                                        card.CardId);
-                                if (definition.Type is
-                                    PrototypeCardType.Status
-                                    or PrototypeCardType.Curse)
-                                {
-                                    return card;
-                                }
-
-                                return card with
-                                {
-                                    UpgradeLevel =
-                                        card.UpgradeLevel + 1
-                                };
-                            })
-                            .ToArray()
-                    };
-                    break;
-
-                case PrototypeCombatEffectKind.UpgradeAllCards:
-                    combat = combat with
-                    {
-                        Cards = combat.Cards
-                            .Select(card =>
-                            {
-                                if (card.InstanceId
-                                    == sourceCardInstanceId
-                                    || card.UpgradeLevel
-                                        >= PrototypeContent.Card(card.CardId)
-                                            .MaxUpgradeLevel)
-                                {
-                                    return card;
-                                }
-
-                                var definition =
-                                    PrototypeContent.Card(card.CardId);
-                                if (definition.Type is
-                                    PrototypeCardType.Status
-                                    or PrototypeCardType.Curse)
-                                {
-                                    return card;
-                                }
-
-                                return card with
-                                {
-                                    UpgradeLevel = card.UpgradeLevel + 1
-                                };
-                            })
-                            .ToArray()
-                    };
-                    break;
-
-                case PrototypeCombatEffectKind.DamagePlayer:
-                {
-                    var incoming =
-                        ApplyPlayerIncomingDamageCap(
-                            combat,
-                            Math.Max(
-                                0,
-                                operation.Amount));
-                    var absorbed = Math.Min(
-                        combat.PlayerBlock,
-                        incoming);
-                    combat = combat with
-                    {
-                        PlayerBlock =
-                            combat.PlayerBlock
-                            - absorbed
-                    };
-                    var loss = ApplyPlayerHpLoss(
-                        player,
-                        combat,
-                        incoming - absorbed);
-                    player = loss.Player;
-                    combat = loss.Combat;
-                    if (player.Hp <= 0)
-                    {
-                        var prevented =
-                            TryUseAutomaticDeathPrevention(
-                                player,
-                                combat,
-                                rng,
-                                eventDepth);
-                        player = prevented.Player;
-                        combat = prevented.Combat;
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.GainEnergy:
-                    combat = combat with
-                    {
-                        Energy = combat.Energy + Math.Max(0, operation.Amount)
-                    };
-                    break;
-
-                case PrototypeCombatEffectKind.BuffMaulDamage:
-                    combat = combat with
-                    {
-                        Counters = combat.CounterState with
-                        {
-                            MaulDamageBonus = checked(
-                                combat.CounterState.MaulDamageBonus
-                                + Math.Max(0, operation.Amount))
-                        }
-                    };
-                    break;
-
-                case PrototypeCombatEffectKind.GainEnergyForGold:
-                    if (operation.PlayerGoldCost < 0)
-                        throw new InvalidOperationException("Energy purchase requires a nonnegative gold cost.");
-                    // Evaluate funds at execution, after earlier ordered
-                    // subscribers, rather than when the subscriber list forms.
-                    if (player.Gold >= operation.PlayerGoldCost)
-                    {
-                        combat = combat with { Energy = combat.Energy + Math.Max(0, operation.Amount) };
-                        player = player with { Gold = player.Gold - operation.PlayerGoldCost };
-                    }
-                    break;
-
-                case PrototypeCombatEffectKind.LosePlayerMaxHp:
-                {
-                    var rawMaxHp = player.MaxHp - Math.Max(0, operation.Amount);
-                    player = player with
-                    {
-                        MaxHp = Math.Max(1, rawMaxHp),
-                        Hp = Math.Max(0, Math.Min(player.Hp, rawMaxHp))
-                    };
-                    if (player.Hp <= 0)
-                    {
-                        var prevented = TryUseAutomaticDeathPrevention(player, combat, rng, eventDepth);
-                        player = prevented.Player;
-                        combat = prevented.Combat;
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.ModifySourceCardEnergyCost:
-                    if (sourceCardInstanceId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Source-card cost mutation requires a source card.");
-                    }
-
-                    combat = ModifyCombatCardEnergyCost(
-                        combat,
-                        sourceCardInstanceId.Value,
-                        operation.Amount);
-                    break;
-
-                case PrototypeCombatEffectKind.SetHandCardsEnergyCostUntilTurnEndOrPlayed:
-                    combat = SetHandCardsTemporaryEnergyCost(
-                        combat,
-                        operation.Amount);
-                    break;
-
-                case PrototypeCombatEffectKind.ReduceHandCardCostsToOne:
-                    // Base Enlightenment: expires when played or at turn end.
-                    // Enlightenment+: the changed card retains cost 1
-                    // through the combat, including future turns.
-                    combat = SetHandCardsTemporaryEnergyCost(
-                        combat, 1, reduceOnly: true,
-                        expiry: operation.Amount > 0
-                            ? PrototypeTemporaryCardCostExpiry.None
-                            : PrototypeTemporaryCardCostExpiry.EndOfTurn
-                                | PrototypeTemporaryCardCostExpiry.WhenPlayed);
-                    break;
-
-                case PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed:
-                {
-                    var candidates = combat.Hand
-                        .Select(instanceId =>
-                            RequireCombatCard(
-                                combat,
-                                instanceId))
-                        .Where(card =>
-                        {
-                            var definition =
-                                PrototypeContent.Card(
-                                    card.CardId);
-                            return !definition.Unplayable
-                                && definition.Cost.Kind
-                                    == PrototypeCardCostKind.Fixed
-                                && ResolveFixedCardEnergyCost(
-                                    combat,
-                                    card,
-                                    definition) > 0;
-                        })
-                        .ToArray();
-
-                    if (candidates.Length > 0)
-                    {
-                        var selected = candidates[
-                            PrototypeRng.NextInt(
-                                rng,
-                                "combat",
-                                candidates.Length)];
-                        combat = SetCardTemporaryEnergyCost(
-                            combat,
-                            selected.InstanceId,
-                            new PrototypeTemporaryCardCost(
-                                Math.Max(0, operation.Amount),
-                                PrototypeTemporaryCardCostExpiry.EndOfTurn
-                                | PrototypeTemporaryCardCostExpiry.WhenPlayed));
-                    }
-
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed:
-                {
-                    var upperBound = Math.Max(
-                        1,
-                        operation.Amount);
-                    foreach (var cardInstanceId in combat.Hand)
-                    {
-                        var card = RequireCombatCard(
-                            combat,
-                            cardInstanceId);
-                        var definition =
-                            PrototypeContent.Card(
-                                card.CardId);
-                        if (definition.Unplayable
-                            || definition.Cost.Kind
-                                != PrototypeCardCostKind.Fixed
-                            || definition.Cost.Amount < 0)
-                        {
-                            continue;
-                        }
-
-                        combat = SetCardTemporaryEnergyCost(
-                            combat,
-                            cardInstanceId,
-                            new PrototypeTemporaryCardCost(
-                                PrototypeRng.NextInt(
-                                    rng,
-                                    "combat",
-                                    upperBound),
-                                PrototypeTemporaryCardCostExpiry.EndOfTurn
-                                | PrototypeTemporaryCardCostExpiry.WhenPlayed));
-                    }
-
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.ModifyEventSourceCardKeyword:
-                    if (eventSourceCardInstanceId is null
-                        || operation.EventSourceCardKeyword is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Event-source card keyword mutation requires a source card and keyword specification.");
-                    }
-
-                    combat = ApplyCardKeywordOverride(
-                        combat,
-                        eventSourceCardInstanceId.Value,
-                        operation.EventSourceCardKeyword);
-                    break;
-
-                case PrototypeCombatEffectKind.MultiplyEnemyStatus:
-                    if (targetEnemyId is null || operation.StatusId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Multiply-status operation requires target and status ID.");
-                    }
-
-                    combat = MultiplyEnemyStatus(
-                        combat,
-                        targetEnemyId.Value,
-                        operation.StatusId,
-                        operation.Amount);
-                    break;
-
-                case PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile:
-                {
-                    var pool = PrototypeContent.NativeSilentCardPool
-                        .Where(id =>
-                        {
-                            var card = PrototypeContent.Card(id);
-                            return card.Type == PrototypeCardType.Attack
-                                && card.Rarity is PrototypeCardRarity.Common
-                                    or PrototypeCardRarity.Uncommon
-                                    or PrototypeCardRarity.Rare
-                                && card.MechanicsImplemented
-                                && !card.MultiplayerOnly
-                                && card.CanBeGeneratedInCombat;
-                        })
-                        .ToArray();
-                    if (pool.Length == 0 && operation.Amount > 0)
-                    {
-                        throw new NotSupportedException(
-                            "Metamorphosis has no implemented character Attacks.");
-                    }
-
-                    // CardFactory.GetForCombat samples WITH replacement.
-                    // The native CombatCardGeneration stream and unlocked
-                    // roster are not yet modeled; use the prototype combat
-                    // stream and implemented Silent subset explicitly.
-                    for (int i = 0; i < operation.Amount; i++)
-                    {
-                        var selected = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
-                        var id = combat.NextCardInstanceId;
-                        var draw = combat.DrawPile.ToList();
-                        draw.Insert(PrototypeRng.NextInt(
-                            rng, "combat", draw.Count + 1), id);
-                        combat = combat with
-                        {
-                            NextCardInstanceId = id + 1,
-                            Cards = combat.Cards.Append(
-                                new CombatCardInstance(
-                                    id, null, selected, 0, true,
-                                    PrototypeJson.EmptyObject(),
-                                    TemporaryEnergyCost:
-                                        new PrototypeTemporaryCardCost(0,
-                                            PrototypeTemporaryCardCostExpiry.None)))
-                                .ToArray(),
-                            DrawPile = draw.ToArray()
-                        };
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions:
-                {
-                    if (operation.CardId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Random draw-pile generation requires a card ID.");
-                    }
-
-                    _ = PrototypeContent.Card(operation.CardId);
-                    for (var i = 0; i < Math.Max(0, operation.Amount); i++)
-                    {
-                        var id = combat.NextCardInstanceId;
-                        var draw = combat.DrawPile.ToList();
-                        var insertionIndex = PrototypeRng.NextInt(
-                            rng, "combat", draw.Count + 1);
-                        draw.Insert(insertionIndex, id);
-                        combat = combat with
-                        {
-                            NextCardInstanceId = id + 1,
-                            Cards = combat.Cards.Append(
-                                new CombatCardInstance(
-                                    id, null, operation.CardId, 0, true,
-                                    PrototypeJson.EmptyObject()))
-                                .ToArray(),
-                            DrawPile = draw.ToArray()
-                        };
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand:
-                case PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand:
-                case PrototypeCombatEffectKind.CreateRandomCharacterPowerCardsInHand:
-                {
-                    var cardType = operation.Kind switch
-                    {
-                        PrototypeCombatEffectKind
-                            .CreateRandomCharacterAttackCardsInHand =>
-                            PrototypeCardType.Attack,
-                        PrototypeCombatEffectKind
-                            .CreateRandomCharacterSkillCardsInHand =>
-                            PrototypeCardType.Skill,
-                        PrototypeCombatEffectKind
-                            .CreateRandomCharacterPowerCardsInHand =>
-                            PrototypeCardType.Power,
-                        _ => throw new ArgumentOutOfRangeException()
-                    };
-                    var skills = cardType == PrototypeCardType.Skill;
-                    var sourcePool = cardType == PrototypeCardType.Attack
-                        ? PrototypeContent.RewardCardPool
-                        : PrototypeContent.NativeSilentCardPool;
-                    var pool = sourcePool.Where(id =>
-                    {
-                        var definition = PrototypeContent.Card(id);
-                        return definition.Type == cardType
-                            && definition.MechanicsImplemented
-                            && definition.CanBeGeneratedInCombat
-                            && definition.Rarity is PrototypeCardRarity.Common
-                                or PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare
-                            && !definition.MultiplayerOnly;
-                    }).ToArray();
-                    if (pool.Length == 0 && operation.Amount > 0)
-                    {
-                        throw new NotSupportedException(
-                            "No implemented solo character card generation pool.");
-                    }
-                    for (var i = 0; i < operation.Amount; i++)
-                    {
-                        var id = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
-                        combat = AddGeneratedCardCopies(combat,
-                            new PrototypeCombatCardSnapshot(
-                                id, 0, PrototypeJson.EmptyObject(),
-                                TemporaryEnergyCost:
-                                    skills
-                                    || operation.GeneratedCharacterCardsFreeThisTurn
-                                    ? new(0, PrototypeTemporaryCardCostExpiry.EndOfTurn)
-                                    : null), 1);
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand:
-                {
-                    var count = operation.SourcePowerApplicationOrder is { } order
-                        ? combat.PlayerPowers.Single(power => power.ApplicationOrder == order).StoredValue
-                        : operation.Amount;
-                    if (count <= 0) break;
-                    var pool = PrototypeContent.NativeSilentCardPool.Where(id =>
-                    {
-                        var definition = PrototypeContent.Card(id);
-                        return definition.Rarity == PrototypeCardRarity.Common
-                            && definition.MechanicsImplemented && definition.CanBeGeneratedInCombat
-                            && !definition.MultiplayerOnly;
-                    }).ToArray();
-                    // Native TakeRandom shuffles the whole filtered pool before
-                    // taking a distinct prefix, even for a single generated card.
-                    PrototypeRng.Shuffle(rng, "combat", pool);
-                    foreach (var id in pool.Take(count))
-                        combat = AddGeneratedCardCopies(combat,
-                            new PrototypeCombatCardSnapshot(id, 0, PrototypeJson.EmptyObject()), 1);
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.AcquireRandomCombatPotion:
-                {
-                    var pool = PrototypeContent.PotionPool;
-                    for (var i = 0; i < operation.Amount; i++)
-                    {
-                        var generated = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
-                        var slots = (PotionInstance?[])player.PotionSlots.Clone();
-                        var firstEmpty = Array.FindIndex(slots, item => item is null);
-                        if (firstEmpty < 0)
-                        {
-                            continue;
-                        }
-
-                        var potion = new PotionInstance(
-                            generated, PrototypeJson.EmptyObject());
-                        slots[firstEmpty] = potion;
-                        player = player with { PotionSlots = slots };
-                        combat = combat with
-                        {
-                            Potions = combat.PotionStates
-                                .Append(new CombatPotionState(
-                                    firstEmpty, generated,
-                                    potion.PersistentState.Clone()))
-                                .ToArray()
-                        };
-                    }
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.IncreaseSourcePowerStacks:
-                {
-                    if (operation.SourcePowerApplicationOrder is not { } order)
-                    {
-                        throw new InvalidOperationException(
-                            "Power growth requires source application order.");
-                    }
-
-                    combat = combat with
-                    {
-                        PlayerPowers = combat.PlayerPowers.Select(power =>
-                            power.ApplicationOrder == order
-                                ? power with
-                                {
-                                    Stacks = power.Stacks
-                                        + operation.Amount
-                                }
-                                : power).ToArray()
-                    };
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.CreateCardsInHand:
-                {
-                    if (operation.CardId is null)
-                    {
-                        throw new InvalidOperationException("Create-card operation is missing a card ID.");
-                    }
-
-                    combat = AddGeneratedCardCopies(
-                        combat,
-                        new PrototypeCombatCardSnapshot(
-                            operation.CardId,
-                            operation.GeneratedCardUpgradeLevel,
-                            PrototypeJson.EmptyObject(),
-                            Enchantment:
-                                operation.GeneratedCardEnchantment),
-                        operation.Amount);
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.CreateCardsInHandFromPowerCardPayload:
-                {
-                    var snapshot = operation.PowerCardPayload
-                        ?? throw new InvalidOperationException(
-                            "Power-payload card generation requires a stored card snapshot.");
-                    combat = AddGeneratedCardCopies(
-                        combat,
-                        snapshot,
-                        operation.Amount);
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.CreateEventSourceCardCopyInHand:
-                {
-                    if (eventSourceCardInstanceId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Event-source card copy requires a source card.");
-                    }
-
-                    var source = RequireCombatCard(
-                        combat,
-                        eventSourceCardInstanceId.Value);
-                    combat = AddGeneratedCardCopies(
-                        combat,
-                        new PrototypeCombatCardSnapshot(
-                            source.CardId,
-                            source.UpgradeLevel,
-                            source.State.Clone(),
-                            source.CombatEnergyCostDelta,
-                            source.TemporaryEnergyCost is null
-                                ? null
-                                : source.TemporaryEnergyCost with { },
-                            source.KeywordOverrides is null
-                                ? null
-                                : source.KeywordOverrides
-                                    .Select(item => item with { })
-                                    .ToArray(),
-                            source.ReplayCount,
-                            source.Enchantment,
-                            source.EnchantmentTriggeredThisCombat,
-                            source.Affliction,
-                            source.SuppressedUpgradeLevels),
-                        operation.Amount);
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.AutoPlayTaggedCardsFromZone:
-                {
-                    if (operation.AutoPlaySourceZone is null
-                        || operation.RequiredCardTag is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Tagged autoplay requires a source zone and card tag.");
-                    }
-
-                    var sourceZone =
-                        operation.AutoPlaySourceZone.Value;
-                    var autoPlayIds = GetZone(
-                            combat,
-                            sourceZone)
-                        .Where(instanceId =>
-                        {
-                            var candidate =
-                                RequireCombatCard(
-                                    combat,
-                                    instanceId);
-                            var candidateDefinition =
-                                PrototypeContent.Card(
-                                    candidate.CardId);
-                            return (candidateDefinition.Tags
-                                    ?? Array.Empty<string>())
-                                .Contains(
-                                    operation.RequiredCardTag,
-                                    StringComparer.Ordinal);
-                        })
-                        .ToArray();
-
-                    if (autoPlayIds.Length == 0)
-                    {
-                        break;
-                    }
-
-                    var autoPlaySet =
-                        autoPlayIds.ToHashSet();
-                    combat = SetZone(
-                        combat,
-                        sourceZone,
-                        GetZone(combat, sourceZone)
-                            .Where(id =>
-                                !autoPlaySet.Contains(id))
-                            .ToArray());
-                    combat = SetZone(
-                        combat,
-                        PrototypeCardZone.PlayPile,
-                        combat.PlayCardIds
-                            .Concat(autoPlayIds)
-                            .ToArray());
-
-                    operations = new Queue<
-                        PrototypeQueuedOperation>(
-                        autoPlayIds.Select(id =>
-                            new PrototypeQueuedOperation(
-                                PrototypeCombatEffectKind
-                                    .AutoPlayCombatCard,
-                                0,
-                                TargetEnemyId:
-                                    targetEnemyId,
-                                SourceKind:
-                                    operation.SourceKind,
-                                UpgradeAutoPlayedCardsBeforePlay:
-                                    operation
-                                        .UpgradeAutoPlayedCardsBeforePlay,
-                                CardInstanceId: id))
-                        .Concat(operations));
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone:
-                {
-                    if (operation.Amount <= 0
-                        || AllEnemiesDefeated(combat))
-                    {
-                        break;
-                    }
-
-                    var zone = operation.AutoPlaySourceZone
-                        ?? throw new InvalidOperationException(
-                            "Random autoplay requires a source pile.");
-                    var ids = GetZone(combat, zone);
-                    var eligible = ids.Where(id =>
-                    {
-                        var definition = PrototypeContent.Card(
-                            RequireCombatCard(combat, id).CardId);
-                        return !definition.Unplayable
-                            && definition.MechanicsImplemented
-                            && (operation.AutoPlayRequiredCardType is null
-                                || definition.Type
-                                    == operation.AutoPlayRequiredCardType);
-                    }).ToArray();
-                    if (eligible.Length == 0
-                        && operation.AutoPlayFallbackToUnplayable)
-                    {
-                        eligible = ids;
-                    }
-
-                    if (eligible.Length == 0)
-                    {
-                        break;
-                    }
-
-                    var selected = eligible[PrototypeRng.NextInt(
-                        rng, "combat", eligible.Length)];
-                    combat = SetZone(combat, zone,
-                        ids.Where(id => id != selected).ToArray());
-                    combat = SetZone(combat, PrototypeCardZone.PlayPile,
-                        combat.PlayCardIds.Append(selected).ToArray());
-
-                    // Re-evaluate the source pile after each autoplay,
-                    // because the played card can draw or mutate cards.
-                    operations = new Queue<PrototypeQueuedOperation>(
-                        new[]
-                        {
-                            new PrototypeQueuedOperation(
-                                PrototypeCombatEffectKind.AutoPlayCombatCard,
-                                0, SourceKind: operation.SourceKind,
-                                CardInstanceId: selected),
-                            operation with { Amount = operation.Amount - 1 }
-                        }.Concat(operations));
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.AutoPlayTopDrawCards:
-                {
-                    var count = Math.Max(
-                        0,
-                        operation.Amount);
-                    var draw =
-                        combat.DrawPile.ToList();
-                    var discard =
-                        combat.DiscardPile.ToList();
-                    var staged = new List<long>();
-
-                    for (var index = 0;
-                         index < count;
-                         index++)
-                    {
-                        if (draw.Count == 0
-                            && discard.Count > 0)
-                        {
-                            var shuffled =
-                                discard.ToArray();
-                            PrototypeRng.Shuffle(
-                                rng,
-                                "combat",
-                                shuffled);
-                            draw.AddRange(ApplyPerfectFitShuffleOrder(
-                                combat, shuffled));
-                            discard.Clear();
-                            combat = ApplyRelicAfterShuffleCards(combat with
-                            {
-                                DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
-                            }, rng);
-                            draw = combat.DrawPile.ToList();
-                        }
-
-                        if (draw.Count == 0)
-                        {
-                            break;
-                        }
-
-                        var cardId =
-                            draw[^1];
-                        draw.RemoveAt(
-                            draw.Count - 1);
-                        staged.Add(cardId);
-                    }
-
-                    if (staged.Count == 0)
-                    {
-                        break;
-                    }
-
-                    combat = combat with
-                    {
-                        DrawPile = draw.ToArray(),
-                        DiscardPile =
-                            discard.ToArray(),
-                        PlayPile =
-                            combat.PlayCardIds
-                                .Concat(staged)
-                                .ToArray()
-                    };
-
-                    operations = new Queue<
-                        PrototypeQueuedOperation>(
-                        staged.Select(id =>
-                            new PrototypeQueuedOperation(
-                                PrototypeCombatEffectKind
-                                    .AutoPlayCombatCard,
-                                0,
-                                SourceKind:
-                                    operation.SourceKind,
-                                CardInstanceId: id))
-                        .Concat(operations));
-                    break;
-                }
-
-                case PrototypeCombatEffectKind.AutoPlayCombatCard:
-                {
-                    if (operation.CardInstanceId is not
-                        { } autoPlayId)
-                    {
-                        throw new InvalidOperationException(
-                            "Autoplay-card operation is missing a card instance.");
-                    }
-
-                    if (!combat.PlayCardIds.Contains(
-                            autoPlayId))
-                    {
-                        throw new InvalidOperationException(
-                            $"Autoplay card {autoPlayId} is not staged in the play pile.");
-                    }
-
-                    var autoPlayCard =
-                        RequireCombatCard(
-                            combat,
-                            autoPlayId);
-                    if (operation
-                            .UpgradeAutoPlayedCardsBeforePlay
-                        && autoPlayCard.UpgradeLevel <= 0)
-                    {
-                        combat = combat with
-                        {
-                            Cards = combat.Cards
-                                .Select(item =>
-                                    item.InstanceId
-                                        == autoPlayId
-                                        ? item with
-                                        {
-                                            UpgradeLevel = 1
-                                        }
-                                        : item)
-                                .ToArray()
-                        };
-                        autoPlayCard =
-                            RequireCombatCard(
-                                combat,
-                                autoPlayId);
-                    }
-
-                    var autoPlayDefinition =
-                        RuntimeCardDefinition(autoPlayCard);
-                    // Unplayable cards have no on-play behavior. The autoplay
-                    // stage still moves them to their destination, even when
-                    // their *play* mechanics are deliberately unsupported (for
-                    // example, persistent quest cards like Dowsing). Validate
-                    // playable card mechanics only after this early exit.
-                    var autoPlayDestination =
-                        CardExhaustsOnUse(
-                            autoPlayDefinition,
-                            autoPlayCard)
-                            ? PrototypeCardZone.ExhaustPile
-                            : PrototypeCardZone.DiscardPile;
-
-                    // Native Normality.ShouldPlay also guards
-                    // auto-play (cards staged in the play pile) while
-                    // Normality stays in hand.
-                    if (autoPlayDefinition.Unplayable
-                        || NormalityPreventsCardPlay(combat))
-                    {
-                        combat = SetZone(
-                            combat,
-                            PrototypeCardZone.PlayPile,
-                            combat.PlayCardIds
-                                .Where(id =>
-                                    id != autoPlayId)
-                                .ToArray());
-                        combat = SetZone(
-                            combat,
-                            autoPlayDestination,
-                            GetZone(
-                                    combat,
-                                    autoPlayDestination)
-                                .Append(autoPlayId)
-                                .ToArray());
-                        break;
-                    }
-
-                    if (!autoPlayDefinition.MechanicsImplemented)
-                    {
-                        throw new NotSupportedException(
-                            $"Autoplay cannot resolve unsupported card '{autoPlayDefinition.Name}'.");
-                    }
-
-                    int? autoPlayTarget =
-                        operation.TargetEnemyId;
-                    if (EffectiveCardTarget(
-                            combat,
-                            autoPlayDefinition)
-                        == PrototypeCardTarget.Enemy)
-                    {
-                        var liveTargets =
-                            combat.Enemies
-                                .Where(enemy =>
-                                    enemy.Hp > 0)
-                                .Select(enemy =>
-                                    enemy.InstanceId)
-                                .ToArray();
-                        if (liveTargets.Length == 0)
-                        {
-                            combat = SetZone(
-                                combat,
-                                PrototypeCardZone.PlayPile,
-                                combat.PlayCardIds
-                                    .Where(id =>
-                                        id != autoPlayId)
-                                    .ToArray());
-                            combat = SetZone(
-                                combat,
-                                autoPlayDestination,
-                                GetZone(
-                                        combat,
-                                        autoPlayDestination)
-                                    .Append(autoPlayId)
-                                    .ToArray());
-                            break;
-                        }
-
-                        if (autoPlayTarget is null
-                            || !liveTargets.Contains(
-                                autoPlayTarget.Value))
-                        {
-                            autoPlayTarget =
-                                liveTargets[
-                                    PrototypeRng.NextInt(
-                                        rng,
-                                        "combat_targets",
-                                        liveTargets.Length)];
-                        }
-                    }
-                    else
-                    {
-                        autoPlayTarget = null;
-                    }
-
-                    combat = SetZone(
-                        combat,
-                        PrototypeCardZone.PlayPile,
-                        combat.PlayCardIds
-                            .Where(id =>
-                                id != autoPlayId)
-                            .ToArray());
-
-                    var autoPlayCount =
-                        ResolveCardPlayCountAndConsumeModifiers(
-                            combat,
-                            autoPlayCard,
-                            autoPlayDefinition.Type);
-                    combat = autoPlayCount.Combat;
-                    var autoPlayXValue =
-                        autoPlayDefinition.Cost.Kind
-                            == PrototypeCardCostKind.X
-                            ? combat.Energy
-                                + player.ActiveRelics.Sum(relic =>
-                                    PrototypeContent.Relic(
-                                            relic.RelicId)
-                                        .XValueBonus)
-                            : 0;
-
-                    var autoPlaySeries =
-                        new PrototypeCardPlaySeriesState(
-                            SourceCardInstanceId:
-                                autoPlayId,
-                            SourceCardDestination:
-                                autoPlayDestination,
-                            TargetEnemyId:
-                                autoPlayTarget,
-                            EnergySpent:
-                                autoPlayXValue,
-                            PlayCount:
-                                autoPlayCount.PlayCount,
-                            NextPlayIndex: 0,
-                            RemoveSourceCardOnCompletion:
-                                autoPlayDefinition.Type
-                                    == PrototypeCardType.Power,
-                            IsAutoPlay: true);
-
-                    var autoPlayed =
-                        ResolveCardPlaySeries(
-                            player,
-                            combat,
-                            rng,
-                            autoPlaySeries);
-                    player = autoPlayed.Player;
-                    combat = autoPlayed.Combat;
-
-                    if (combat.PendingChoice
-                        is not null)
-                    {
-                        var outerContinuation =
-                            new PrototypeChoiceResolutionContinuationState(
-                                SourceCardInstanceId:
-                                    sourceCardInstanceId,
-                                SourceCardDestination:
-                                    sourceCardDestination,
-                                Operations:
-                                    operations.ToArray(),
-                                PendingDiscardEvents:
-                                    Array.Empty<
-                                        PrototypeCombatEvent>(),
-                                PendingSlyCardInstanceIds:
-                                    Array.Empty<long>(),
-                                CompletionEvents:
-                                    completionEvents is null
-                                        ? Array.Empty<
-                                            PrototypeCombatEvent>()
-                                        : (PrototypeCombatEvent[])
-                                            completionEvents.Clone(),
-                                CardPlaySeries:
-                                    cardPlaySeries,
-                                MoveSourceCardOnCompletion:
-                                    moveSourceCardOnCompletion,
-                                RemoveSourceCardOnCompletion:
-                                    removeSourceCardOnCompletion,
-                                SourceCardAlreadyMoved:
-                                    sourceCardAlreadyMoved,
-                                EventDispatchContinuation:
-                                    eventDispatchContinuation?.Fork());
-                        combat =
-                            AttachOuterChoiceContinuation(
-                                combat,
-                                outerContinuation);
-                        return (player, combat);
-                    }
-
-                    break;
-                }
-
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        var sourceExhaustEvent =
-            sourceCardInstanceId is not null
-            && moveSourceCardOnCompletion
-            && !sourceCardAlreadyMoved
-            && !removeSourceCardOnCompletion
-            && sourceCardDestination
-                == PrototypeCardZone.ExhaustPile
-                ? new PrototypeCombatEvent(
-                    PrototypeCombatEventKind.CardExhausted,
-                    SourceCardInstanceId:
-                        sourceCardInstanceId.Value,
-                    CardId: RequireCombatCard(
-                        combat,
-                        sourceCardInstanceId.Value)
-                        .CardId)
-                : null;
-
-        if (sourceCardInstanceId is not null
-            && moveSourceCardOnCompletion)
-        {
-            if (!sourceCardAlreadyMoved
-                && !removeSourceCardOnCompletion)
-            {
-                var finalZone = sourceCardDestination;
-                if (finalZone == PrototypeCardZone.DiscardPile)
-                {
-                    var source = RequireCombatCard(
-                        combat, sourceCardInstanceId.Value);
-                    var sourceType = PrototypeContent.Card(source.CardId).Type;
-                    if (sourceType is PrototypeCardType.Attack
-                        or PrototypeCardType.Skill)
-                    {
-                        var alreadyPlayed = combat.CounterState
-                            .AttacksPlayedThisTurn
-                            + combat.CounterState.SkillsPlayedThisTurn;
-                        if (combat.PlayerPowers.Any(power =>
-                            power.Stacks > alreadyPlayed
-                            && PrototypeContent.Power(power.PowerId)
-                                .PlayedAttacksAndSkillsReturnToDraw))
-                        {
-                            finalZone = PrototypeCardZone.DrawPile;
-                        }
-                    }
-                }
-
-                var destination = GetZone(combat, finalZone);
-                combat = SetZone(
-                    combat, finalZone,
-                    destination.Append(sourceCardInstanceId.Value).ToArray());
-            }
-
-            combat = combat with { PendingChoice = null };
-        }
-
-        var completionEventArray =
-            sourceExhaustEvent is null
-                ? completionEvents
-                    ?? Array.Empty<PrototypeCombatEvent>()
-                : new[] { sourceExhaustEvent }
-                    .Concat(
-                        completionEvents
-                        ?? Array.Empty<PrototypeCombatEvent>())
-                    .ToArray();
-        for (var completionEventIndex = 0;
-             completionEventIndex < completionEventArray.Length;
-             completionEventIndex++)
-        {
-            var dispatched = DispatchCombatEvent(
-                player,
-                combat,
-                completionEventArray[completionEventIndex],
-                rng,
-                eventDepth + 1,
-                allowSuspension: true);
-            player = dispatched.Player;
-            combat = dispatched.Combat;
-
-            if (combat.PendingChoice is not null)
-            {
-                var outerContinuation =
-                    new PrototypeChoiceResolutionContinuationState(
-                        SourceCardInstanceId: sourceCardInstanceId,
-                        SourceCardDestination: sourceCardDestination,
-                        Operations:
-                            Array.Empty<PrototypeQueuedOperation>(),
-                        PendingDiscardEvents:
-                            Array.Empty<PrototypeCombatEvent>(),
-                        PendingSlyCardInstanceIds:
-                            Array.Empty<long>(),
-                        CompletionEvents:
-                            completionEventArray
-                                .Skip(completionEventIndex + 1)
-                                .ToArray(),
-                        CardPlaySeries: cardPlaySeries,
-                        MoveSourceCardOnCompletion:
-                            moveSourceCardOnCompletion,
-                        RemoveSourceCardOnCompletion:
-                            removeSourceCardOnCompletion,
-                        SourceCardAlreadyMoved:
-                            sourceCardAlreadyMoved
-                            || (sourceCardInstanceId is not null
-                                && moveSourceCardOnCompletion
-                                && !removeSourceCardOnCompletion));
-                combat = AttachOuterChoiceContinuation(
-                    combat,
-                    outerContinuation);
-                return (player, combat);
-            }
-        }
-
-        if (sourceCardInstanceId is not null
-            && moveSourceCardOnCompletion)
-        {
-            combat = ClearTemporaryCardCost(
-                combat,
-                sourceCardInstanceId.Value,
-                PrototypeTemporaryCardCostExpiry.WhenPlayed);
-            combat = ClearTemporaryCardKeywordOverrides(
-                combat,
-                sourceCardInstanceId.Value,
-                PrototypeCardKeywordOverrideExpiry.WhenPlayed);
-
-            if (removeSourceCardOnCompletion)
-            {
-                combat = combat with
-                {
-                    Cards = combat.Cards
-                        .Where(card =>
-                            card.InstanceId != sourceCardInstanceId.Value)
-                        .ToArray()
-                };
-            }
-        }
-
-        return (player, combat);
-    }
-
-    /// <summary>
-    /// CardPileCmd.AddToCombatAndPreview(..., PileType.Hand) for enemy
-    /// status injection. Generated cards are temporary, have no persistent
-    /// deck version, and use stable combat instance identifiers.
-    /// A full hand cannot accept another card; excess cards are put
-    /// into discard by this emulator pending native overflow verification.
-    /// </summary>
-    private static CombatState AddGeneratedEnemyCardsToHand(
-        CombatState combat,
-        string cardId,
-        int count)
-    {
-        _ = PrototypeContent.Card(cardId);
-        const int maxHandSize = 10;
-        for (var index = 0; index < Math.Max(0, count); index++)
-        {
-            var instance = new CombatCardInstance(
-                InstanceId: combat.NextCardInstanceId,
-                PersistentCardInstanceId: null,
-                CardId: cardId,
-                UpgradeLevel: 0,
-                IsTemporary: true,
-                State: PrototypeJson.EmptyObject(),
-                WitherFakeUpgradeLevel: cardId == PrototypeNativeGloryBosses.WitherId
-                    ? combat.Enemies.Where(enemy =>
-                        enemy.EnemyId == PrototypeNativeGloryBosses.AeonglassId)
-                        .Sum(enemy => enemy.WitherUpgradeCount)
-                    : 0);
-            instance = ApplyActiveSourceBoundAfflictionToCard(
-                combat, instance);
-            var fits = combat.Hand.Length < maxHandSize;
-            combat = combat with
-            {
-                NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                Hand = fits ? combat.Hand.Append(instance.InstanceId).ToArray()
-                    : combat.Hand,
-                DiscardPile = fits ? combat.DiscardPile
-                    : combat.DiscardPile.Append(instance.InstanceId).ToArray()
-            };
-        }
-
-        return combat;
-    }
-
-    private static CombatState ApplyRelicAfterShuffleCards(CombatState combat, RngBundle rng)
-    {
-        foreach (var relic in combat.RelicStates.Where(relic => !relic.IsMelted).OrderBy(relic => relic.ApplicationOrder))
-        {
-            var cardId = PrototypeContent.Relic(relic.RelicId).AfterShuffleGeneratedCardId;
-            if (cardId is null)
-                continue;
-            var instanceId = combat.NextCardInstanceId;
-            combat = AddGeneratedCardsToDiscard(combat, cardId, 1);
-            var draw = combat.DrawPile.ToList();
-            draw.Insert(PrototypeRng.NextInt(rng, "combat", draw.Count + 1), instanceId);
-            combat = combat with
-            {
-                DrawPile = draw.ToArray(),
-                DiscardPile = combat.DiscardPile.Where(id => id != instanceId).ToArray()
-            };
-        }
-        return combat;
-    }
-
-    private static CombatState AddGeneratedCardsToDiscard(
-        CombatState combat,
-        string cardId,
-        int count)
-    {
-        _ = PrototypeContent.Card(cardId);
-        for (var index = 0; index < Math.Max(0, count); index++)
-        {
-            var instance = new CombatCardInstance(
-                InstanceId: combat.NextCardInstanceId,
-                PersistentCardInstanceId: null,
-                CardId: cardId,
-                UpgradeLevel: 0,
-                IsTemporary: true,
-                State: PrototypeJson.EmptyObject(),
-                WitherFakeUpgradeLevel: cardId == PrototypeNativeGloryBosses.WitherId
-                    ? combat.Enemies.Where(enemy =>
-                        enemy.EnemyId == PrototypeNativeGloryBosses.AeonglassId)
-                        .Sum(enemy => enemy.WitherUpgradeCount)
-                    : 0);
-            instance = ApplyActiveSourceBoundAfflictionToCard(
-                combat,
-                instance);
-
-            combat = combat with
-            {
-                NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                DiscardPile = combat.DiscardPile
-                    .Append(instance.InstanceId)
-                    .ToArray()
-            };
-        }
-
-        return combat;
-    }
-
-    private sealed record PrototypeGeneratedChoiceResult(
-        CombatState Combat,
-        long[] CardInstanceIds);
-
-    private static CombatState AddDistinctGeneratedColorlessCardsToHand(
-        CombatState combat, int count, RngBundle rng, string? sourceCardId)
-    {
-        const int maxHandSize = 10;
-        var capacity = Math.Max(0, maxHandSize - combat.Hand.Length);
-        var candidates = PrototypeColorlessCards.ImplementedCombatGenerationPool
-            .Where(id => !StringComparer.Ordinal.Equals(id, sourceCardId))
-            .ToArray();
-        if (capacity == 0 || count <= 0 || candidates.Length == 0)
-        {
-            return combat;
-        }
-
-        // Native GetDistinctForCombat uses CombatCardGeneration and a
-        // fully-unlocked card pool. Synthetic RNG currently shares the
-        // combat stream, and we intentionally omit locked/unimplemented
-        // models until the native unlock bridge exists.
-        PrototypeRng.Shuffle(rng, "combat", candidates);
-        foreach (var cardId in candidates.Take(
-                     Math.Min(Math.Min(count, capacity), candidates.Length)))
-        {
-            var instance = new CombatCardInstance(
-                InstanceId: combat.NextCardInstanceId,
-                PersistentCardInstanceId: null,
-                CardId: cardId,
-                UpgradeLevel: 0,
-                IsTemporary: true,
-                State: PrototypeJson.EmptyObject());
-            instance = ApplyActiveSourceBoundAfflictionToCard(
-                combat, instance);
-            combat = combat with
-            {
-                NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                Hand = combat.Hand.Append(instance.InstanceId).ToArray()
-            };
-        }
-
-        return combat;
-    }
-
-    private static PrototypeGeneratedChoiceResult AddGeneratedChoiceCards(
-        CombatState combat,
-        PrototypeCardType? cardType,
-        int count,
-        bool freeThisTurn,
-        bool upgraded,
-        RngBundle rng,
-        IEnumerable<string>? sourcePool = null)
-    {
-        var candidates = (sourcePool ?? PrototypeContent.RewardCardPool)
-            .Where(cardId =>
-            {
-                var definition = PrototypeContent.Card(cardId);
-                return (cardType is null
-                        || definition.Type == cardType.Value)
-                    && definition.CanBeGeneratedInCombat
-                    && definition.MechanicsImplemented
-                    && !definition.MultiplayerOnly;
-            })
-            .ToArray();
-        if (candidates.Length == 0 || count <= 0)
-        {
-            return new PrototypeGeneratedChoiceResult(
-                combat,
-                Array.Empty<long>());
-        }
-
-        PrototypeRng.Shuffle(rng, "combat", candidates);
-        var selectedIds = candidates
-            .Take(Math.Min(count, candidates.Length))
-            .ToArray();
-        var generatedIds = new List<long>(
-            selectedIds.Length);
-        foreach (var cardId in selectedIds)
-        {
-            var instance = new CombatCardInstance(
-                InstanceId: combat.NextCardInstanceId,
-                PersistentCardInstanceId: null,
-                CardId: cardId,
-                UpgradeLevel: upgraded ? 1 : 0,
-                IsTemporary: true,
-                State: PrototypeJson.EmptyObject(),
-                TemporaryEnergyCost:
-                    freeThisTurn
-                        ? new PrototypeTemporaryCardCost(
-                            0,
-                            PrototypeTemporaryCardCostExpiry.EndOfTurn
-                            | PrototypeTemporaryCardCostExpiry.WhenPlayed)
-                        : null);
-            instance = ApplyActiveSourceBoundAfflictionToCard(
-                combat,
-                instance);
-
-            generatedIds.Add(instance.InstanceId);
-            combat = combat with
-            {
-                NextCardInstanceId =
-                    combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                ChoicePool = combat.ChoiceCardIds
-                    .Append(instance.InstanceId)
-                    .ToArray()
-            };
-        }
-
-        return new PrototypeGeneratedChoiceResult(
-            combat,
-            generatedIds.ToArray());
-    }
-
-    private static CombatState AddGeneratedCardCopies(
-        CombatState combat,
-        PrototypeCombatCardSnapshot snapshot,
-        int count)
-    {
-        const int maxHandSize = 10;
-
-        _ = PrototypeContent.Card(snapshot.CardId);
-        for (var index = 0; index < Math.Max(0, count); index++)
-        {
-            var instance = new CombatCardInstance(
-                InstanceId: combat.NextCardInstanceId,
-                PersistentCardInstanceId: null,
-                CardId: snapshot.CardId,
-                UpgradeLevel: snapshot.UpgradeLevel,
-                IsTemporary: true,
-                State: snapshot.State.Clone(),
-                CombatEnergyCostDelta: snapshot.CombatEnergyCostDelta,
-                TemporaryEnergyCost: snapshot.TemporaryEnergyCost is null
-                    ? null
-                    : snapshot.TemporaryEnergyCost with { },
-                KeywordOverrides: snapshot.KeywordOverrides is null
-                    ? null
-                    : snapshot.KeywordOverrides
-                        .Select(item => item with { })
-                        .ToArray(),
-                ReplayCount: snapshot.ReplayCount,
-                Enchantment: snapshot.Enchantment,
-                EnchantmentTriggeredThisCombat:
-                    snapshot.EnchantmentTriggeredThisCombat,
-                Affliction: snapshot.Affliction,
-                SuppressedUpgradeLevels:
-                    snapshot.SuppressedUpgradeLevels);
-            instance = ApplyActiveSourceBoundAfflictionToCard(
-                combat,
-                instance);
-
-            var addToHand = combat.Hand.Length < maxHandSize;
-            combat = combat with
-            {
-                NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                Hand = addToHand
-                    ? combat.Hand.Append(instance.InstanceId).ToArray()
-                    : combat.Hand,
-                DiscardPile = addToHand
-                    ? combat.DiscardPile
-                    : combat.DiscardPile.Append(instance.InstanceId).ToArray()
-            };
-        }
-
-        return combat;
-    }
-
-    private sealed record PrototypeCardPlayCountResult(
-        CombatState Combat,
-        int PlayCount);
-
-    private static PrototypeCardPlayCountResult
-        ResolveCardPlayCountAndConsumeModifiers(
-            CombatState combat,
-            CombatCardInstance card,
-            PrototypeCardType cardType)
-    {
-        var modifiers = combat.PlayerPowers
-            .Where(power =>
-            {
-                var definition = PrototypeContent.Power(power.PowerId);
-                return power.Stacks > 0
-                    && (definition.ReplayAnyCardType
-                        || definition.ReplayCardType == cardType)
-                    && definition.AdditionalPlayCount > 0;
-            })
-            .OrderBy(power => power.ApplicationOrder)
-            .ToArray();
-
-        var enchantmentReplay = card.Enchantment switch
-        {
-            {
-                Kind: PrototypeCardEnchantmentKind.Spiral
-            } enchantment =>
-                Math.Max(0, enchantment.Amount),
-            {
-                Kind: PrototypeCardEnchantmentKind.Glam
-            } enchantment
-                when !card.EnchantmentTriggeredThisCombat =>
-                Math.Max(0, enchantment.Amount),
-            _ => 0
-        };
-
-        var relicIndices = Enumerable.Range(0, combat.RelicStates.Length)
-            .Where(index =>
-            {
-                var relic = combat.RelicStates[index];
-                return !relic.IsMelted
-                    && !relic.UsedFirstCardPlayModifierThisCombat
-                    && PrototypeContent.Relic(relic.RelicId)
-                        .AdditionalCardPlayCountOncePerCombat > 0;
-            }).ToArray();
-        var relicReplay = relicIndices.Sum(index =>
-            PrototypeContent.Relic(combat.RelicStates[index].RelicId)
-                .AdditionalCardPlayCountOncePerCombat);
-        if (relicIndices.Length > 0)
-        {
-            var relics = combat.RelicStates
-                .Select(relic => relic.Fork()).ToArray();
-            foreach (var relicIndex in relicIndices)
-            {
-                relics[relicIndex] = relics[relicIndex] with
-                {
-                    UsedFirstCardPlayModifierThisCombat = true
-                };
-            }
-            combat = combat with { Relics = relics };
-        }
-
-        var playCount = 1
-            + Math.Max(0, card.ReplayCount)
-            + enchantmentReplay
-            + relicReplay
-            + modifiers.Sum(power =>
-                PrototypeContent.Power(power.PowerId).AdditionalPlayCount);
-
-        if (card.Enchantment is
-                {
-                    Kind: PrototypeCardEnchantmentKind.Glam
-                }
-            && enchantmentReplay > 0)
-        {
-            combat = combat with
-            {
-                Cards = combat.Cards
-                    .Select(item =>
-                        item.InstanceId == card.InstanceId
-                            ? item with
-                            {
-                                EnchantmentTriggeredThisCombat = true
-                            }
-                            : item)
-                    .ToArray()
-            };
-        }
-
-        if (modifiers.Length == 0)
-        {
-            return new PrototypeCardPlayCountResult(combat, playCount);
-        }
-
-        var consumedOrders = modifiers
-            .Where(power =>
-                PrototypeContent.Power(power.PowerId)
-                    .ConsumeOnMatchingPlayCountModification)
-            .Select(power => power.ApplicationOrder)
-            .ToHashSet();
-
-        if (consumedOrders.Count > 0)
-        {
-            var powers = combat.PlayerPowers
-                .Select(power =>
-                {
-                    if (!consumedOrders.Contains(power.ApplicationOrder))
-                    {
-                        return power;
-                    }
-
-                    return power with { Stacks = power.Stacks - 1 };
-                })
-                .Where(power => power.Stacks > 0)
-                .ToArray();
-            combat = combat with { PlayerPowers = powers };
-        }
-
-        return new PrototypeCardPlayCountResult(combat, playCount);
-    }
-
-    private static (PlayerState Player, CombatState Combat)
-        ResolveCardPlaySeries(
-            PlayerState player,
-            CombatState combat,
-            RngBundle rng,
-            PrototypeCardPlaySeriesState series)
-    {
-        if (!series.HasRemainingExecutions)
-        {
-            return (player, combat);
-        }
-
-        var card = RequireCombatCard(
-            combat,
-            series.SourceCardInstanceId);
-        var definition = RuntimeCardDefinition(card);
-        if (series.NextPlayIndex == 0 && !series.RemoveSourceCardOnCompletion
-            && series.SourceCardDestination == PrototypeCardZone.DiscardPile
-            && combat.PlayerPowers.Any(power => power.Stacks > 0
-                && PrototypeContent.Power(power.PowerId).ReturnNextDiscardedCardToDraw))
-        {
-            // Native result-location hooks run before OnPlay and apply once to
-            // the physical card, including autoplay and repeated executions.
-            combat = DecrementPlayerPowers(combat, power => power.ReturnNextDiscardedCardToDraw);
-            series = series with { SourceCardDestination = PrototypeCardZone.DrawPile };
-        }
-        var powerApplicationOrderCeiling =
-            combat.NextPowerApplicationOrder - 1;
-
-        var operations = new Queue<PrototypeQueuedOperation>();
-        foreach (var effect in definition.Effects)
-        {
-            var effectiveEffect =
-                ShouldCardTargetAllEnemies(combat, definition)
-                && effect.Kind == PrototypeCombatEffectKind.DamageEnemy
-                    ? effect with
-                    {
-                        Target = PrototypeEffectTarget.AllEnemies
-                    }
-                    : effect;
-            // Native Nimble adds Amount and Goopy adds Amount - 1
-            // to base block before player-wide multipliers.
-            if (card.Enchantment is
-                    { Kind: PrototypeCardEnchantmentKind.Nimble or PrototypeCardEnchantmentKind.Goopy } blockEnchantment
-                && effectiveEffect.Kind is
-                    PrototypeCombatEffectKind.GainPlayerBlock
-                    or PrototypeCombatEffectKind.GainToricToughnessBlock
-                    or PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal
-                    or PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain)
-            {
-                effectiveEffect = effectiveEffect with
-                {
-                    Amount = checked(effectiveEffect.Amount + blockEnchantment.Amount
-                        - (blockEnchantment.Kind == PrototypeCardEnchantmentKind.Goopy ? 1 : 0))
-                };
-            }
-            if (card.Enchantment?.Kind == PrototypeCardEnchantmentKind.TezcatarasEmber
-                && definition.Type == PrototypeCardType.Attack
-                && effectiveEffect.Kind == PrototypeCombatEffectKind.DamageEnemy)
-            {
-                effectiveEffect = effectiveEffect with { Amount = checked(effectiveEffect.Amount + 3) };
-            }
-            EnqueueEffectOperations(
-                operations,
-                effectiveEffect,
-                card.UpgradeLevel,
-                series.EnergySpent,
-                series.TargetEnemyId,
-                combat,
-                sourceKind: PrototypeEffectSourceKind.Card,
-                isPoweredAttack:
-                    definition.Type == PrototypeCardType.Attack);
-        }
-
-        EnqueueCardEnchantmentOperations(
-            operations,
-            card,
-            definition,
-            series.TargetEnemyId,
-            combat);
-
-        if (series.NextPlayIndex == 0
-            && card.Enchantment is
-                { Kind: PrototypeCardEnchantmentKind.Swift, Amount: > 0 } swift
-            && !card.EnchantmentTriggeredThisCombat)
-        {
-            combat = combat with
-            {
-                Cards = combat.Cards.Select(item =>
-                    item.InstanceId == card.InstanceId
-                        ? item with { EnchantmentTriggeredThisCombat = true }
-                        : item).ToArray()
-            };
-            operations.Enqueue(new PrototypeQueuedOperation(
-                PrototypeCombatEffectKind.DrawCards, swift.Amount));
-        }
-
-        var nextSeries = series with
-        {
-            NextPlayIndex = series.NextPlayIndex + 1
-        };
-        var isLastExecution = !nextSeries.HasRemainingExecutions;
-
-        var resolved = ResolveOperations(
-            player,
-            combat,
-            operations,
-            rng,
-            series.SourceCardInstanceId,
-            series.SourceCardDestination,
-            [
-                new PrototypeCombatEvent(
-                    PrototypeCombatEventKind.CardPlayed,
-                    SourceCardInstanceId:
-                        series.SourceCardInstanceId,
-                    CardId: card.CardId,
-                    PowerApplicationOrderCeiling:
-                        powerApplicationOrderCeiling,
-                    IsAutoPlay: series.IsAutoPlay,
-                    IsPoweredAttack: PrototypeContent.Card(card.CardId)
-                        .Type == PrototypeCardType.Attack)
-            ],
-            cardPlaySeries: nextSeries,
-            moveSourceCardOnCompletion: isLastExecution,
-            removeSourceCardOnCompletion:
-                series.RemoveSourceCardOnCompletion);
-
-        if (isLastExecution && resolved.Combat.PendingChoice is null
-            && resolved.Player.Hp > 0)
-            resolved = (resolved.Player, CompletePaelsLegionCardPlay(
-                resolved.Combat, series.SourceCardInstanceId));
-
-        if (resolved.Combat.PendingChoice is not null
-            || isLastExecution
-            || resolved.Player.Hp <= 0)
-        {
-            return resolved;
-        }
-
-        if (AllEnemiesDefeated(resolved.Combat))
-        {
-            return FinalizeInterruptedCardPlaySeries(
-                resolved.Player,
-                resolved.Combat,
-                rng,
-                nextSeries);
-        }
-
-        return ResolveCardPlaySeries(
-            resolved.Player,
-            resolved.Combat,
-            rng,
-            nextSeries);
-    }
-
-    private static (PlayerState Player, CombatState Combat)
-        FinalizeInterruptedCardPlaySeries(
-            PlayerState player,
-            CombatState combat,
-            RngBundle rng,
-            PrototypeCardPlaySeriesState series) =>
-        ResolveOperations(
-            player,
-            combat,
-            new Queue<PrototypeQueuedOperation>(),
-            rng,
-            series.SourceCardInstanceId,
-            series.SourceCardDestination,
-            completionEvents: Array.Empty<PrototypeCombatEvent>(),
-            cardPlaySeries: series,
-            moveSourceCardOnCompletion: true,
-            removeSourceCardOnCompletion:
-                series.RemoveSourceCardOnCompletion);
-
-    private static CombatState DecrementPlayerPowers(
-        CombatState combat,
-        Func<PrototypePowerDefinition, bool> predicate)
-    {
-        var powers = new List<PrototypePowerInstanceState>();
-        var removed = new List<PrototypePowerInstanceState>();
-
-        foreach (var power in combat.PlayerPowers)
-        {
-            var definition =
-                PrototypeContent.Power(power.PowerId);
-            if (!predicate(definition))
-            {
-                powers.Add(power);
-                continue;
-            }
-
-            // Native Shame/Doubt skip the same turn's first duration
-            // decrement when they create a previously absent debuff.
-            if (power.SkipNextPlayerTurnEnd
-                && definition.DecrementAtPlayerTurnEnd)
-            {
-                powers.Add(power with { SkipNextPlayerTurnEnd = false });
-                continue;
-            }
-
-            var next = power with
-            {
-                Stacks = power.Stacks - 1
-            };
-            if (next.Stacks == 0
-                || (next.Stacks < 0
-                    && !definition.AllowNegative))
-            {
-                removed.Add(next);
-            }
-            else
-            {
-                powers.Add(next);
-            }
-        }
-
-        var clearKinds = removed
-            .Select(power =>
-                PrototypeContent.Power(power.PowerId))
-            .Where(definition =>
-                definition.ClearAppliedCardAfflictionWhenRemoved
-                && definition.AppliedCardAffliction is not null)
-            .Select(definition =>
-                definition.AppliedCardAffliction!.Value)
-            .Where(kind =>
-                !powers.Any(power =>
-                    PrototypeContent.Power(power.PowerId)
-                        .AppliedCardAffliction == kind))
-            .ToHashSet();
-
-        return combat with
-        {
-            PlayerPowers = powers.ToArray(),
-            Cards = clearKinds.Count == 0
-                ? combat.Cards
-                : combat.Cards
-                    .Select(card =>
-                        card.Affliction is
-                            {
-                                SourceEnemyInstanceId: null
-                            } affliction
-                        && clearKinds.Contains(affliction.Kind)
-                            ? card with { Affliction = null }
-                            : card)
-                    .ToArray()
-        };
-    }
-
-    private static CombatState RemovePlayerPowers(
-        CombatState combat,
-        Func<PrototypePowerDefinition, bool> predicate)
-    {
-        var removed = combat.PlayerPowers
-            .Where(power =>
-                predicate(
-                    PrototypeContent.Power(power.PowerId)))
-            .ToArray();
-        if (removed.Length == 0)
-        {
-            return combat;
-        }
-
-        var removedOrders = removed
-            .Select(power => power.ApplicationOrder)
-            .ToHashSet();
-        var remaining = combat.PlayerPowers
-            .Where(power =>
-                !removedOrders.Contains(
-                    power.ApplicationOrder))
-            .ToArray();
-
-        var clearKinds = removed
-            .Select(power =>
-                PrototypeContent.Power(power.PowerId))
-            .Where(definition =>
-                definition.ClearAppliedCardAfflictionWhenRemoved
-                && definition.AppliedCardAffliction is not null)
-            .Select(definition =>
-                definition.AppliedCardAffliction!.Value)
-            .Where(kind =>
-                !remaining.Any(power =>
-                    PrototypeContent.Power(power.PowerId)
-                        .AppliedCardAffliction == kind))
-            .ToHashSet();
-
-        return combat with
-        {
-            PlayerPowers = remaining,
-            Cards = clearKinds.Count == 0
-                ? combat.Cards
-                : combat.Cards
-                    .Select(card =>
-                        card.Affliction is
-                            {
-                                SourceEnemyInstanceId: null
-                            } affliction
-                        && clearKinds.Contains(affliction.Kind)
-                            ? card with { Affliction = null }
-                            : card)
-                    .ToArray()
-        };
-    }
-
-    private static int PlayerBlockBonus(CombatState combat) =>
-        combat.PlayerPowers.Sum(power =>
-            PrototypeContent.Power(power.PowerId).BlockBonusPerStack * power.Stacks);
-
-    private static int ModifyPlayerBlockGain(
-        CombatState combat,
-        int amount,
-        bool fromCard,
-        long? sourceCardInstanceId = null)
-    {
-        var modified = fromCard
-            ? ModifyPlayerCardBlock(
-                combat,
-                amount,
-                sourceCardInstanceId)
-            : amount;
-
-        foreach (var power in combat.PlayerPowers
-                     .Where(power => power.Stacks > 0))
-        {
-            var definition =
-                PrototypeContent.Power(
-                    power.PowerId);
-            if (definition
-                    .PlayerBlockGainDenominatorPerStack
-                <= 0)
-            {
-                throw new InvalidOperationException(
-                    $"Power '{definition.Id}' has invalid all-block denominator.");
-            }
-
-            for (var stack = 0;
-                 stack < power.Stacks;
-                 stack++)
-            {
-                modified =
-                    (modified
-                     * definition
-                         .PlayerBlockGainNumeratorPerStack)
-                    / definition
-                        .PlayerBlockGainDenominatorPerStack;
-            }
-        }
-
-        return modified;
-    }
-
-    private static int ModifyPlayerCardBlock(
-        CombatState combat,
-        int amount,
-        long? sourceCardInstanceId = null)
-    {
-        if (sourceCardInstanceId is { } id)
-        {
-            var tags = PrototypeContent.Card(
-                RequireCombatCard(combat, id).CardId).Tags
-                ?? Array.Empty<string>();
-            amount += combat.PlayerPowers.Where(power => power.Stacks > 0)
-                .Sum(power =>
-                {
-                    var requiredTag = PrototypeContent.Power(
-                        power.PowerId).BlockBonusRequiredCardTag;
-                    return requiredTag is not null
-                        && tags.Contains(requiredTag, StringComparer.Ordinal)
-                        ? power.Stacks : 0;
-                });
-        }
-
-        if (combat.PlayerPowers.Any(power =>
-            power.Stacks > 0
-            && PrototypeContent.Power(power.PowerId).PreventsCardBlock))
-        {
-            return 0;
-        }
-
-        var modified = amount + PlayerBlockBonus(combat);
-        foreach (var power in combat.PlayerPowers.Where(power => power.Stacks > 0))
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            if (definition.PlayerCardBlockDenominator <= 0)
-            {
-                throw new InvalidOperationException(
-                    $"Power '{definition.Id}' has invalid player-card-block denominator.");
-            }
-
-            modified = (modified * definition.PlayerCardBlockNumerator)
-                / definition.PlayerCardBlockDenominator;
-        }
-
-        return modified;
-    }
-
-    private static int ModifyPlayerOutgoingAttackDamage(
-        CombatState combat,
-        int damage)
-    {
-        var modified = damage;
-        foreach (var power in combat.PlayerPowers.Where(power => power.Stacks > 0))
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            if (definition.PlayerAttackDamageDenominator <= 0)
-            {
-                throw new InvalidOperationException(
-                    $"Power '{definition.Id}' has invalid player-attack denominator.");
-            }
-
-            modified = (modified * definition.PlayerAttackDamageNumerator)
-                / definition.PlayerAttackDamageDenominator;
-            if (definition.PlayerAttackDamageMultiplierWhileActiveDenominator
-                <= 0)
-            {
-                throw new InvalidOperationException(
-                    $"Power '{definition.Id}' has invalid player attack multiplier denominator.");
-            }
-
-            modified = (modified
-                * definition.PlayerAttackDamageMultiplierWhileActiveNumerator)
-                / definition.PlayerAttackDamageMultiplierWhileActiveDenominator;
-        }
-
-        return modified;
-    }
-
-    // This is the single damage calculation used by both actual enemy hits
-    // and public intent previews. It deliberately does not account for player
-    // Block, and never consumes combat RNG.
-    internal static int EnemyHitDamage(
-        EnemyCombatState enemy,
-        CombatState combat,
-        PrototypeEnemyEffectSpec effect,
-        int act,
-        int ascension,
-        int priorMoveUses = 0)
-    {
-        var baseDamage = effect.UseStoredEnemyDamage
-            ? enemy.StoredEnemyDamage
-            : checked(effect.AmountAt(act, ascension)
-                + effect.ExtraAmountPerPriorMoveUse * priorMoveUses);
-        var damage = baseDamage
-            + (effect.ExtraAmountFromOwnerPowerId is { } statId
-                ? enemy.PowerStates
-                    .Where(power => power.PowerId == statId)
-                    .Sum(power => power.Stacks)
-                : 0)
-            + enemy.PowerStates.Sum(power =>
-                PrototypeContent.Power(power.PowerId)
-                    .EnemyAttackDamageBonusPerStack * power.Stacks);
-        foreach (var status in enemy.Statuses)
-        {
-            var definition = PrototypeContent.Status(status.Key);
-            damage = (damage * definition.OutgoingDamageNumerator)
-                / definition.OutgoingDamageDenominator;
-        }
-        foreach (var power in enemy.PowerStates.Where(power =>
-            effect.IsAttack && power.Stacks > 0))
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            if (definition.EnemyOutgoingPoweredAttackDenominator <= 0)
-            {
-                throw new InvalidOperationException(
-                    $"Power '{definition.Id}' has invalid enemy outgoing-attack denominator.");
-            }
-
-            damage = (damage
-                * definition.EnemyOutgoingPoweredAttackNumerator)
-                / definition.EnemyOutgoingPoweredAttackDenominator;
-        }
-
-        return effect.IsAttack
-            ? ModifyIncomingPlayerAttackDamage(combat, damage)
-            : ApplyPlayerIncomingDamageCap(combat, damage);
-    }
-
-    private static int ApplyPlayerIncomingDamageCap(
-        CombatState combat,
-        int amount)
-    {
-        var caps = combat.PlayerPowers
-            .Where(power => power.Stacks > 0)
-            .Select(power =>
-                PrototypeContent.Power(power.PowerId)
-                    .PlayerIncomingDamageCap)
-            .Where(cap => cap > 0)
-            .ToArray();
-
-        return caps.Length == 0
-            ? amount
-            : Math.Min(amount, caps.Min());
-    }
-
-    private static int ModifyIncomingPlayerAttackDamage(
-        CombatState combat,
-        int damage)
-    {
-        var modified = damage;
-        foreach (var power in combat.PlayerPowers.Where(power => power.Stacks > 0))
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            if (definition.PlayerIncomingAttackDamageDenominator <= 0)
-            {
-                throw new InvalidOperationException(
-                    $"Power '{definition.Id}' has invalid incoming-player-attack denominator.");
-            }
-
-            modified =
-                (modified
-                 * definition.PlayerIncomingAttackDamageNumerator)
-                / definition.PlayerIncomingAttackDamageDenominator;
-        }
-
-        // TaintedPower adds flat powered-attack damage after the
-        // multiplicative incoming-damage modifiers.
-        modified += combat.PlayerPowers
-            .Where(power => power.PowerId ==
-                PrototypeNativeHiveElites.TaintedPowerId)
-            .Sum(power => Math.Max(0, power.Stacks));
-
-        return ApplyPlayerIncomingDamageCap(
-            combat,
-            modified);
-    }
-
-    private static void EnqueueCardEnchantmentOperations(
-        Queue<PrototypeQueuedOperation> operations,
-        CombatCardInstance card,
-        PrototypeCardDefinition definition,
-        int? actionTargetEnemyId,
-        CombatState combat)
-    {
-        if (card.Enchantment is not
-            {
-                Kind: PrototypeCardEnchantmentKind.Inky
-            } inky
-            || inky.Amount <= 0)
-        {
-            return;
-        }
-
-        var target = ShouldCardTargetAllEnemies(combat, definition)
-            ? PrototypeEffectTarget.AllEnemies
-            : PrototypeEffectTarget.ActionTargetEnemy;
-        EnqueueEffectOperations(
-            operations,
-            new PrototypeCombatEffectSpec(
-                PrototypeCombatEffectKind.ApplyEnemyStatus,
-                inky.Amount,
-                StatusId: "proto.status.weak",
-                Target: target),
-            upgradeLevel: 0,
-            energySpent: 0,
-            actionTargetEnemyId,
-            combat,
-            sourceKind: PrototypeEffectSourceKind.Card);
-    }
-
-    private static bool ShouldEnemyDeathTriggerFatal(
-        CombatState combat,
-        int enemyId)
-    {
-        var enemy = combat.Enemies.SingleOrDefault(
-            item => item.InstanceId == enemyId)
-            ?? throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-
-        // ReattachPower only makes a segment's death fatal when
-        // every other linked segment is already dead.
-        if (enemy.PowerStates.Any(power =>
-                power.PowerId == PrototypeNativeHiveElites.ReattachId)
-            && combat.Enemies.Any(other =>
-                other.InstanceId != enemy.InstanceId
-                && other.Hp > 0
-                && other.PowerStates.Any(power =>
-                    power.PowerId == PrototypeNativeHiveElites.ReattachId)))
-            return false;
-
-        return enemy.PowerStates.All(power =>
-            PrototypeContent.Power(power.PowerId)
-                .OwnerDeathTriggersFatal);
-    }
-
-    private static PrototypeCardTarget EffectiveCardTarget(
-        CombatState combat,
-        PrototypeCardDefinition definition) =>
-        ShouldCardTargetAllEnemies(combat, definition)
-            ? PrototypeCardTarget.None
-            : definition.Target;
-
-    private static bool ShouldCardTargetAllEnemies(
-        CombatState combat,
-        PrototypeCardDefinition definition)
-    {
-        var tags = definition.Tags ?? Array.Empty<string>();
-        return combat.PlayerPowers.Any(power =>
-        {
-            if (power.Stacks <= 0)
-            {
-                return false;
-            }
-
-            var powerDefinition =
-                PrototypeContent.Power(power.PowerId);
-            return powerDefinition.AllEnemyTargetCardTag is
-                    { } requiredTag
-                && tags.Contains(
-                    requiredTag,
-                    StringComparer.Ordinal);
-        });
-    }
-
-    private static bool IsCardFreeByPower(
-        CombatState combat,
-        PrototypeCardDefinition card) =>
-        combat.PlayerPowers.Any(power =>
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            return power.Stacks > 0
-                && definition.FreeCardType == card.Type;
-        });
-
-    private static CombatState ConsumeMatchingFreeCardPower(
-        CombatState combat,
-        PrototypeCardType cardType)
-    {
-        var candidate = combat.PlayerPowers
-            .Where(power =>
-            {
-                var definition = PrototypeContent.Power(power.PowerId);
-                return power.Stacks > 0
-                    && definition.FreeCardType == cardType
-                    && definition.ConsumeOnMatchingCardPlay;
-            })
-            .OrderBy(power => power.ApplicationOrder)
-            .FirstOrDefault();
-
-        if (candidate is null)
-        {
-            return combat;
-        }
-
-        var powers = combat.PlayerPowers.ToList();
-        var index = powers.FindIndex(power =>
-            power.ApplicationOrder == candidate.ApplicationOrder);
-        if (index < 0)
-        {
-            throw new InvalidOperationException(
-                "Free-card power disappeared before consumption.");
-        }
-
-        if (powers[index].Stacks <= 1)
-        {
-            powers.RemoveAt(index);
-        }
-        else
-        {
-            powers[index] = powers[index] with
-            {
-                Stacks = powers[index].Stacks - 1
-            };
-        }
-
-        return combat with { PlayerPowers = powers.ToArray() };
-    }
-
-    // As in native Normality.ShouldPlay, the owner is prohibited
-    // after three card-play starts only while the curse is in hand.
-    private static bool NormalityPreventsCardPlay(CombatState combat) =>
-        combat.CounterState.CardsPlayedThisTurn >= 3
-        && combat.Hand.Any(id =>
-            RequireCombatCard(combat, id).CardId
-                == PrototypeNativeHiveEvents.NormalityId);
-
-    // Native PerfectFit.ModifyShuffleOrder inserts at the top of a
-    // non-initial shuffle. Our engine draws from the LAST index, hence
-    // the selected card(s) move to the end of the shuffled array.
-    private static long[] ApplyPerfectFitShuffleOrder(
-        CombatState combat, long[] shuffled)
-    {
-        var enchanted = shuffled.Where(id =>
-            RequireCombatCard(combat, id).Enchantment?.Kind
-                == PrototypeCardEnchantmentKind.PerfectFit).ToArray();
-        if (enchanted.Length == 0)
-        {
-            return shuffled;
-        }
-
-        var selected = enchanted.ToHashSet();
-        return shuffled.Where(id => !selected.Contains(id))
-            .Concat(enchanted).ToArray();
-    }
-
-    private static bool CanPlayAnotherCardThisTurn(
-        PlayerState player,
-        CombatState combat,
-        CombatCardInstance card)
-    {
-        // Native Normality.ShouldPlay only intervenes while the
-        // unplayable Curse is physically in the player's hand. The
-        // limit uses play-start counts, not energy or card draws.
-        if (NormalityPreventsCardPlay(combat))
-        {
-            return false;
-        }
-
-        // Smoggy disallows playing a Skill while the card carries Smog.
-        // Its affliction is cleared at the end of the player's turn.
-        if (card.Affliction is { } affliction
-            && combat.PlayerPowers.Any(power =>
-                power.Stacks > 0
-                && PrototypeContent.Power(power.PowerId)
-                    .BlockPlayOfMatchingAffliction
-                && PrototypeContent.Power(power.PowerId)
-                    .SkillPlayAffliction == affliction.Kind))
-        {
-            return false;
-        }
-
-        // Native RingingPower.ShouldPlay checks the Ringing affliction
-        // on the candidate card. A card already afflicted by something
-        // else never receives Ringing and remains playable even after
-        // the first card played that turn. Other cap powers still apply.
-        var powerCaps = combat.PlayerPowers
-            .Where(power => power.Stacks > 0
-                && (power.PowerId != "proto.power.ringing"
-                    || card.Affliction?.Kind
-                        == PrototypeCardAfflictionKind.Ringing))
-            .Select(power =>
-                PrototypeContent.Power(power.PowerId)
-                    .MaxCardsPlayablePerTurn);
-        var relicCaps = player.ActiveRelics
-            .Select(relic =>
-                PrototypeContent.Relic(relic.RelicId)
-                    .MaxCardsPlayablePerTurn);
-        var caps = powerCaps
-            .Concat(relicCaps)
-            .Where(cap => cap > 0)
-            .ToArray();
-
-        return caps.Length == 0
-            || combat.CounterState.CardsPlayedThisTurn
-                < caps.Min();
-    }
-
-    private static bool IsCardAffordable(
-        CombatState combat,
-        CombatCardInstance card,
-        PrototypeCardDefinition definition) =>
-        definition.Cost.Kind switch
-        {
-            PrototypeCardCostKind.Fixed =>
-                ResolveFixedCardEnergyCost(
-                    combat,
-                    card,
-                    definition) <= combat.Energy,
-            PrototypeCardCostKind.X => true,
-            _ => throw new ArgumentOutOfRangeException()
-        };
-
-    private static int ResolveCardEnergySpent(
-        CombatState combat,
-        CombatCardInstance card,
-        PrototypeCardDefinition definition) =>
-        definition.Cost.Kind switch
-        {
-            PrototypeCardCostKind.Fixed =>
-                ResolveFixedCardEnergyCost(
-                    combat,
-                    card,
-                    definition),
-            PrototypeCardCostKind.X => combat.Energy,
-            _ => throw new ArgumentOutOfRangeException()
-        };
-
-    private static bool CardExhaustsOnUse(
-        PrototypeCardDefinition definition,
-        CombatCardInstance card) =>
-        card.Enchantment?.Kind == PrototypeCardEnchantmentKind.Goopy
-        || definition.ExhaustOnUse
-        && !(card.UpgradeLevel > 0 && definition.LoseExhaustOnUpgrade)
-        // SoulsPower.OnEnchant removes the LOCAL Exhaust keyword.
-        // This must hold for both normal plays and auto-played cards.
-        && card.Enchantment?.Kind !=
-            PrototypeCardEnchantmentKind.SoulsPower;
-
-    private static int ResolveFixedCardEnergyCost(
-        CombatState combat,
-        CombatCardInstance card,
-        PrototypeCardDefinition definition)
-    {
-        if ((combat.Relics ?? Array.Empty<CombatRelicState>())
-            .Where(relic => !relic.IsMelted)
-            .Any(relic => PrototypeContent.Relic(relic.RelicId)
-                .FreeCardAtManualCardPlayCount
-                    == combat.CounterState.ManualCardsPlayedThisTurn))
-        {
-            return 0;
-        }
-
-        var baseCost = card.TemporaryEnergyCost is not null
-            ? card.TemporaryEnergyCost.Cost
-            : (card.Enchantment?.Kind == PrototypeCardEnchantmentKind.TezcatarasEmber
-                ? 0
-                : definition.Cost.AmountAt(
-                    card.UpgradeLevel,
-                    ResolveCardCostReductionCount(definition.Cost, combat)))
-              + card.CombatEnergyCostDelta;
-
-        var afflictionSurcharge = card.Affliction is not
-                { } affliction
-            ? 0
-            : combat.PlayerPowers.Sum(power =>
-            {
-                var powerDefinition =
-                    PrototypeContent.Power(power.PowerId);
-                return power.Stacks > 0
-                    && powerDefinition.AppliedCardAffliction
-                        == affliction.Kind
-                        ? powerDefinition
-                            .AfflictedCardEnergyCostPerStack
-                          * power.Stacks
-                        : 0;
-            });
-
-        var curiousDiscount = definition.Type == PrototypeCardType.Power
-            ? combat.PlayerPowers
-                .Where(power =>
-                    power.PowerId == PrototypeNativeGloryEvents.CuriousId)
-                .Sum(power => Math.Max(0, power.Stacks))
-            : 0;
-        var relicSurcharge = definition.Type == PrototypeCardType.Power
-            ? (combat.Relics ?? Array.Empty<CombatRelicState>())
-                .Where(relic => !relic.IsMelted)
-                .Sum(relic => PrototypeContent.Relic(relic.RelicId)
-                    .PowerCardEnergyCostIncrease)
-            : 0;
-
-        return Math.Max(
-            0,
-            baseCost + afflictionSurcharge + relicSurcharge
-                - curiousDiscount);
-    }
-
-    private static RunState ApplyBeforeCombatStartRelics(RunState state)
-    {
-        var relicTriggers = state.Player.ActiveRelics
-            .Where(relic => PrototypeContent.Relic(relic.RelicId)
-                .ProcureRandomPotionsBeforeCombat)
-            .ToArray();
-        if (relicTriggers.Length == 0)
-            return state;
-
-        var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
-        var nativeRunRng = state.NativeRunRng?.Fork();
-        foreach (var _ in relicTriggers)
-        {
-            var openSlot = Array.IndexOf(slots, null);
-            while (openSlot >= 0)
-            {
-                var potionId = nativeRunRng is null
-                    ? PrototypeNativePotionShop.PickWeighted(
-                        state.Rng, "event")
-                    : PrototypeNativePotionShop.PickWeightedDistinctNative(
-                        nativeRunRng,
-                        "run.combat_potion_generation", 1)[0];
-
-                if (state.Player.ActiveRelics.Any(relic =>
-                    PrototypeContent.Relic(relic.RelicId)
-                        .PreventPotionAcquisition))
-                {
-                    break;
-                }
-
-                slots[openSlot] = new PotionInstance(
-                    potionId, PrototypeJson.EmptyObject());
-                openSlot = Array.IndexOf(slots, null);
-            }
-        }
-
-        return state with
-        {
-            Player = state.Player with { PotionSlots = slots },
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng
-        };
-    }
-
-    private static CombatState SetCardTemporaryEnergyCost(
-        CombatState combat,
-        long cardInstanceId,
-        PrototypeTemporaryCardCost temporaryCost) =>
-        combat with
-        {
-            Cards = combat.Cards
-                .Select(card =>
-                    card.InstanceId == cardInstanceId
-                        ? card with
-                        {
-                            TemporaryEnergyCost =
-                                temporaryCost with { }
-                        }
-                        : card)
-                .ToArray()
-        };
-
-    private static CombatState SetHandCardsTemporaryEnergyCost(
-        CombatState combat,
-        int cost,
-        bool reduceOnly = false,
-        PrototypeTemporaryCardCostExpiry expiry =
-            PrototypeTemporaryCardCostExpiry.EndOfTurn
-            | PrototypeTemporaryCardCostExpiry.WhenPlayed)
-    {
-        var hand = combat.Hand.ToHashSet();
-        var cards = combat.Cards
-            .Select(card =>
-            {
-                if (!hand.Contains(card.InstanceId))
-                {
-                    return card;
-                }
-
-                var definition = RuntimeCardDefinition(card);
-                if (definition.Cost.Kind == PrototypeCardCostKind.X
-                    || definition.Cost.Amount < 0)
-                {
-                    return card;
-                }
-
-                if (reduceOnly && ResolveFixedCardEnergyCost(
-                        combat, card, definition) <= cost)
-                {
-                    return card;
-                }
-
-                return card with
-                {
-                    TemporaryEnergyCost = new PrototypeTemporaryCardCost(
-                        Math.Max(0, cost), expiry)
-                };
-            })
-            .ToArray();
-
-        return combat with { Cards = cards };
-    }
-
-    private static CombatState ClearTemporaryCardCost(
-        CombatState combat,
-        long cardInstanceId,
-        PrototypeTemporaryCardCostExpiry expiry)
-    {
-        var cards = combat.Cards
-            .Select(card =>
-                card.InstanceId == cardInstanceId
-                    && card.TemporaryEnergyCost is not null
-                    && card.TemporaryEnergyCost.Expiry.HasFlag(expiry)
-                        ? card with { TemporaryEnergyCost = null }
-                        : card)
-            .ToArray();
-
-        return combat with { Cards = cards };
-    }
-
-    private static CombatState ClearTemporaryCardCosts(
-        CombatState combat,
-        PrototypeTemporaryCardCostExpiry expiry) =>
-        combat with
-        {
-            Cards = combat.Cards
-                .Select(card =>
-                    card.TemporaryEnergyCost is not null
-                    && card.TemporaryEnergyCost.Expiry.HasFlag(expiry)
-                        ? card with { TemporaryEnergyCost = null }
-                        : card)
-                .ToArray()
-        };
-
-    private static CombatState ClearTemporaryCardKeywordOverrides(
-        CombatState combat,
-        long cardInstanceId,
-        PrototypeCardKeywordOverrideExpiry expiry)
-    {
-        var cards = combat.Cards
-            .Select(card =>
-            {
-                if (card.InstanceId != cardInstanceId
-                    || card.KeywordOverrides is null)
-                {
-                    return card;
-                }
-
-                var remaining = card.KeywordOverrides
-                    .Where(item => !item.Expiry.HasFlag(expiry))
-                    .ToArray();
-                return card with
-                {
-                    KeywordOverrides = remaining.Length == 0
-                        ? null
-                        : remaining
-                };
-            })
-            .ToArray();
-
-        return combat with { Cards = cards };
-    }
-
-    private static CombatState ClearTemporaryCardKeywordOverrides(
-        CombatState combat,
-        PrototypeCardKeywordOverrideExpiry expiry)
-    {
-        var cards = combat.Cards
-            .Select(card =>
-            {
-                if (card.KeywordOverrides is null)
-                {
-                    return card;
-                }
-
-                var remaining = card.KeywordOverrides
-                    .Where(item => !item.Expiry.HasFlag(expiry))
-                    .ToArray();
-                return card with
-                {
-                    KeywordOverrides = remaining.Length == 0
-                        ? null
-                        : remaining
-                };
-            })
-            .ToArray();
-
-        return combat with { Cards = cards };
-    }
-
-    private static bool CardHasKeyword(
-        CombatState combat,
-        long cardInstanceId,
-        PrototypeCardKeyword keyword)
-    {
-        var card = RequireCombatCard(combat, cardInstanceId);
-        var baseValue = keyword switch
-        {
-            PrototypeCardKeyword.Retain =>
-                PrototypeContent.Card(card.CardId).Retain
-                || (card.UpgradeLevel > 0
-                    && PrototypeContent.Card(card.CardId)
-                        .RetainOnUpgrade)
-                || card.Enchantment?.Kind
-                    == PrototypeCardEnchantmentKind.Steady,
-            PrototypeCardKeyword.Sly =>
-                PrototypeContent.Card(card.CardId).Sly,
-            PrototypeCardKeyword.Ethereal =>
-                PrototypeContent.Card(card.CardId).Ethereal,
-            _ => throw new ArgumentOutOfRangeException(nameof(keyword))
-        };
-
-        var definition = PrototypeContent.Card(card.CardId);
-        var tags = definition.Tags ?? Array.Empty<string>();
-        var grantedByAffliction =
-            keyword == PrototypeCardKeyword.Ethereal
-            && card.Affliction?.Kind
-                == PrototypeCardAfflictionKind.Hexed;
-        var grantedByPower = combat.PlayerPowers.Any(power =>
-        {
-            if (power.Stacks <= 0)
-            {
-                return false;
-            }
-
-            var powerDefinition = PrototypeContent.Power(
-                power.PowerId);
-            return powerDefinition.GrantedCardKeyword == keyword
-                && powerDefinition
-                    .GrantedCardKeywordRequiredCardTag is
-                    { } requiredTag
-                && tags.Contains(
-                    requiredTag,
-                    StringComparer.Ordinal);
-        });
-
-        var matching = card.KeywordOverrides?
-            .Where(item => item.Keyword == keyword)
-            .ToArray();
-        return matching is { Length: > 0 }
-            ? matching[^1].Enabled
-            : baseValue || grantedByAffliction || grantedByPower;
-    }
-
-    private static CombatState ApplyCardKeywordOverride(
-        CombatState combat,
-        long cardInstanceId,
-        PrototypeCardKeywordOverrideSpec action)
-    {
-        var cards = combat.Cards
-            .Select(card =>
-            {
-                if (card.InstanceId != cardInstanceId)
-                {
-                    return card;
-                }
-
-                var overrides = card.KeywordOverrides
-                    ?? Array.Empty<PrototypeCardKeywordOverride>();
-                return card with
-                {
-                    KeywordOverrides = overrides.Append(
-                        new PrototypeCardKeywordOverride(
-                            action.Keyword,
-                            action.Enabled,
-                            action.Expiry)).ToArray()
-                };
-            })
-            .ToArray();
-
-        if (!cards.Any(card => card.InstanceId == cardInstanceId))
-        {
-            throw new InvalidOperationException(
-                $"Combat card instance {cardInstanceId} is missing.");
-        }
-
-        return combat with { Cards = cards };
-    }
-
-    private static CombatState ModifyCombatCardEnergyCost(
-        CombatState combat,
-        long cardInstanceId,
-        int delta)
-    {
-        var cards = combat.Cards
-            .Select(card =>
-                card.InstanceId == cardInstanceId
-                    ? card with
-                    {
-                        CombatEnergyCostDelta =
-                            card.CombatEnergyCostDelta + delta
-                    }
-                    : card)
-            .ToArray();
-
-        if (!cards.Any(card => card.InstanceId == cardInstanceId))
-        {
-            throw new InvalidOperationException(
-                $"Combat card instance {cardInstanceId} is missing.");
-        }
-
-        return combat with { Cards = cards };
-    }
-
-    private static int ResolveCardCostReductionCount(
-        PrototypeCardCostSpec cost,
-        CombatState combat) =>
-        cost.ReductionCountKind is null
-            ? 0
-            : ResolveCombatCount(cost.ReductionCountKind.Value, combat);
-
-    private static int ResolveCombatCount(
-        PrototypeCombatCountKind kind,
-        CombatState combat,
-        int? targetEnemyId = null) =>
-        kind switch
-        {
-            PrototypeCombatCountKind.SkillsInHand =>
-                combat.Hand.Count(instanceId =>
-                    PrototypeContent.Card(
-                        RequireCombatCard(combat, instanceId).CardId).Type
-                    == PrototypeCardType.Skill),
-            PrototypeCombatCountKind.SkillsPlayedThisTurn =>
-                combat.CounterState.SkillsPlayedThisTurn,
-            PrototypeCombatCountKind.AttacksPlayedThisTurn =>
-                combat.CounterState.AttacksPlayedThisTurn,
-            PrototypeCombatCountKind.CardsDiscardedThisTurn =>
-                combat.CounterState.CardsDiscardedThisTurn,
-            PrototypeCombatCountKind.CardsDrawnThisCombat =>
-                combat.CounterState.CardsDrawnThisCombat,
-            PrototypeCombatCountKind.CardsPlayedThisCombat =>
-                combat.CounterState.CardsPlayedThisCombat,
-            PrototypeCombatCountKind.OtherCardsInHand =>
-                combat.Hand.Length,
-            PrototypeCombatCountKind.DrawPileCards =>
-                combat.DrawPile.Length,
-            PrototypeCombatCountKind.DiscardPileCards =>
-                combat.DiscardPile.Length,
-            PrototypeCombatCountKind.PlayerBlock =>
-                combat.PlayerBlock,
-            PrototypeCombatCountKind.TargetDebuffs =>
-                combat.Enemies.Where(e => e.InstanceId == targetEnemyId
-                    && e.Hp > 0).Sum(enemy =>
-                    enemy.Statuses.Count(status => status.Value > 0)
-                    + enemy.PowerStates.Count(power =>
-                        power.Stacks > 0
-                        && PrototypeContent.Power(power.PowerId).IsDebuff
-                        && !PrototypeContent.Power(power.PowerId)
-                            .RemoveAtEnemyTurnEnd)),
-
-            _ => throw new ArgumentOutOfRangeException(nameof(kind))
-        };
-
-    private static CombatState RecordCombatCounterEvent(
-        CombatState combat,
-        PrototypeCombatEvent combatEvent)
-    {
-        var counters = combat.CounterState;
-
-        switch (combatEvent.Kind)
-        {
-            case PrototypeCombatEventKind.CardPlayed:
-                if (combatEvent.CardId is null)
-                {
-                    return combat;
-                }
-
-                counters = counters with
-                {
-                    CardsPlayedThisTurn =
-                        counters.CardsPlayedThisTurn + 1,
-                    CardsPlayedThisCombat =
-                        counters.CardsPlayedThisCombat + 1,
-                    ManualCardsPlayedThisTurn = combatEvent.IsAutoPlay
-                        ? counters.ManualCardsPlayedThisTurn
-                        : counters.ManualCardsPlayedThisTurn + 1,
-                    PlayedCardIdsThisTurn =
-                        combatEvent.SourceCardInstanceId is { } playedId
-                            ? (counters.PlayedCardIdsThisTurn
-                                ?? Array.Empty<long>())
-                                .Append(playedId).ToArray()
-                            : counters.PlayedCardIdsThisTurn
-                };
-
-                var matchingCard = combatEvent.SourceCardInstanceId is { } sourceId
-                    ? combat.Cards.FirstOrDefault(c => c.InstanceId == sourceId)
-                    : null;
-                var cardDefinition = matchingCard is null
-                    ? PrototypeContent.Card(combatEvent.CardId)
-                    : RuntimeCardDefinition(matchingCard);
-                var type = cardDefinition.Type;
-                // CardPlaysFinished is the native source for History
-                // Course. Capture a completed non-dupe attack rather than
-                // selecting an attack currently in hand/discard.
-                if (type == PrototypeCardType.Attack
-                    && combatEvent.SourceCardInstanceId is { } attackId
-                    && combat.RelicStates.Any(relic => !relic.IsMelted && relic.RelicId ==
-                        PrototypeNativeHiveEvents.HistoryCourseId))
-                {
-                    var attack = RequireCombatCard(combat, attackId);
-                    if (!attack.IsHistoryCourseDupe)
-                        counters = counters with
-                        {
-                            LastOriginalAttackThisTurn =
-                                HistoryCourseSnapshot(attack)
-                        };
-                }
-                counters = type switch
-                {
-                    PrototypeCardType.Attack => counters with
-                    {
-                        AttacksPlayedThisTurn =
-                            counters.AttacksPlayedThisTurn + 1
-                    },
-                    PrototypeCardType.Skill => counters with
-                    {
-                        SkillsPlayedThisTurn =
-                            counters.SkillsPlayedThisTurn + 1
-                    },
-                    _ => counters
-                };
-
-                var tags = cardDefinition.Tags
-                    ?? Array.Empty<string>();
-                if (tags.Length > 0)
-                {
-                    counters = counters with
-                    {
-                        PlayedCardTagsThisTurn =
-                            counters.PlayedTags
-                                .Concat(tags)
-                                .ToArray()
-                    };
-                }
-
-                break;
-
-            case PrototypeCombatEventKind.CardDrawn:
-                counters = counters with
-                {
-                    CardsDrawnThisCombat =
-                        counters.CardsDrawnThisCombat + 1
-                };
-                break;
-
-            case PrototypeCombatEventKind.CardDiscarded:
-                counters = counters with
-                {
-                    CardsDiscardedThisTurn =
-                        counters.CardsDiscardedThisTurn + 1
-                };
-                break;
-        }
-
-        var powers = combat.PlayerPowers;
-        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
-            && combatEvent.CardId is { } cardId
-            && PrototypeContent.Card(cardId).Type == PrototypeCardType.Attack)
-        {
-            // Vigor lasts through every hit of the next attack, and is
-            // consumed when that card's attack has completed.
-            powers = powers.Where(power =>
-                power.PowerId != "proto.power.vigor").ToArray();
-        }
-
-        return combat with { Counters = counters, PlayerPowers = powers };
-    }
-
-    private static bool EvaluateCombatPredicate(
-        PrototypeCombatPredicateSpec? predicate,
-        CombatState combat,
-        int? targetEnemyId)
-    {
-        if (predicate is null)
-        {
-            return true;
-        }
-
-        return predicate.Kind switch
-        {
-            PrototypeCombatPredicateKind.DrawPileEmpty =>
-                combat.DrawPile.Length == 0,
-            PrototypeCombatPredicateKind.HandHasNoAttacks =>
-                combat.Hand.All(instanceId =>
-                    PrototypeContent.Card(
-                        RequireCombatCard(combat, instanceId).CardId).Type
-                    != PrototypeCardType.Attack),
-            PrototypeCombatPredicateKind.HandHasOnlyAttacks =>
-                combat.Hand.All(instanceId =>
-                    PrototypeContent.Card(
-                        RequireCombatCard(combat, instanceId).CardId).Type
-                    == PrototypeCardType.Attack),
-
-            PrototypeCombatPredicateKind.TargetHasStatus =>
-                TargetHasStatus(
-                    combat,
-                    targetEnemyId,
-                    predicate.StatusId),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
-
-    private static bool TargetHasStatus(
-        CombatState combat,
-        int? targetEnemyId,
-        string? statusId)
-    {
-        if (targetEnemyId is null || statusId is null)
-        {
-            return false;
-        }
-
-        var enemy = combat.Enemies.FirstOrDefault(item =>
-            item.InstanceId == targetEnemyId.Value);
-        return enemy is not null
-            && enemy.Statuses.GetValueOrDefault(statusId) > 0;
-    }
-
-    private static int ModifyPlayerAttackDamage(
-        CombatState combat,
-        long? sourceCardInstanceId,
-        int targetEnemyId,
-        int damage)
-    {
-        if (sourceCardInstanceId is null)
-        {
-            return damage;
-        }
-
-        var sourceCard = RequireCombatCard(
-            combat,
-            sourceCardInstanceId.Value);
-        var sourceDefinition = PrototypeContent.Card(
-            sourceCard.CardId);
-        var tags = sourceDefinition.Tags
-            ?? Array.Empty<string>();
-
-        var additive = combat.PlayerPowers.Sum(power =>
-        {
-            var definition = PrototypeContent.Power(
-                power.PowerId);
-            var generic =
-                definition.PlayerAttackDamageBonusPerStack
-                * power.Stacks;
-            var tagged = 0;
-            if (definition.AttackDamageBonusPerStack != 0
-                && definition.AttackDamageBonusRequiredCardTag is
-                    { } requiredTag
-                && tags.Contains(
-                    requiredTag,
-                    StringComparer.Ordinal))
-            {
-                tagged =
-                    definition.AttackDamageBonusPerStack
-                    * power.Stacks;
-            }
-
-            return generic + tagged;
-        });
-
-        var firstTaggedPlayBonus = combat.PlayerPowers.Sum(
-            power =>
-            {
-                var definition = PrototypeContent.Power(
-                    power.PowerId);
-                if (power.Stacks <= 0
-                    || definition
-                        .FirstAttackDamageBonusPerStack == 0
-                    || definition
-                        .FirstAttackDamageBonusRequiredCardTag is
-                        not { } requiredTag
-                    || !tags.Contains(
-                        requiredTag,
-                        StringComparer.Ordinal)
-                    || combat.CounterState.PlaysWithTag(
-                        requiredTag) > 0)
-                {
-                    return 0;
-                }
-
-                return definition.FirstAttackDamageBonusPerStack
-                    * power.Stacks;
-            });
-
-        var modified =
-            damage + additive + firstTaggedPlayBonus;
-        if (sourceCard.CardId == NativeGloryAncientsV111.MaulCardId)
-        {
-            modified += combat.CounterState.MaulDamageBonus;
-        }
-        var conditionalBonus = combat.PlayerPowers.Sum(power =>
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            if (definition.AttackDamageBonusRequiredTargetStatus is null
-                || definition.AttackDamageBonusTargetNumeratorPerStack == 0
-                || definition.AttackDamageBonusTargetDenominator <= 0
-                || !TargetHasStatus(
-                    combat,
-                    targetEnemyId,
-                    definition.AttackDamageBonusRequiredTargetStatus))
-            {
-                return 0;
-            }
-
-            return (modified
-                    * definition.AttackDamageBonusTargetNumeratorPerStack
-                    * power.Stacks)
-                / definition.AttackDamageBonusTargetDenominator;
-        });
-
-        modified += conditionalBonus;
-        if (sourceDefinition.Type != PrototypeCardType.Attack)
-        {
-            return modified;
-        }
-
-        // Source: Instinct multiplies powered Attack damage by two.
-        // This method is only used by powered-attack operations.
-        if (sourceCard.Enchantment?.Kind
-            == PrototypeCardEnchantmentKind.Instinct)
-        {
-            modified = checked(modified * 2);
-        }
-
-        return ModifyPlayerOutgoingAttackDamage(
-            combat,
-            modified);
-    }
-
-    private static int ModifyIncomingAttackDamage(
-        CombatState combat,
-        int enemyId,
-        int damage)
-    {
-        var enemy = combat.Enemies.SingleOrDefault(item => item.InstanceId == enemyId)
-            ?? throw new InvalidOperationException($"Enemy {enemyId} is missing.");
-
-        var modified = damage;
-        foreach (var status in enemy.Statuses)
-        {
-            var definition = PrototypeContent.Status(status.Key);
-            modified = (modified * definition.IncomingAttackDamageNumerator)
-                / definition.IncomingAttackDamageDenominator;
-        }
-
-        // Native SlowPower increments SlowAmount in AfterCardPlayed.
-        // Damage during a card's resolution therefore observes only
-        // previously completed plays, not the current card.
-        var cardsPlayed = combat.CounterState.CardsPlayedThisTurn;
-        var percentBonus = enemy.PowerStates.Sum(power =>
-            PrototypeContent.Power(power.PowerId)
-                .EnemyIncomingAttackDamagePercentPerCardPlayed
-            * power.Stacks
-            * cardsPlayed);
-        if (percentBonus != 0)
-        {
-            modified =
-                (modified * (100 + percentBonus))
-                / 100;
-        }
-
-        return modified;
-    }
-
-    private static int PlayerAttackRetaliation(CombatState combat) =>
-        combat.PlayerPowers.Sum(power =>
-            PrototypeContent.Power(power.PowerId).AttackRetaliationPerStack * power.Stacks);
-
-    private static int EnemyAttackRetaliation(
-        CombatState combat,
-        int enemyId)
-    {
-        var enemy = combat.Enemies.SingleOrDefault(item =>
-            item.InstanceId == enemyId)
-            ?? throw new InvalidOperationException($"Enemy {enemyId} is missing.");
-
-        return enemy.PowerStates.Sum(power =>
-            PrototypeContent.Power(power.PowerId).AttackRetaliationPerStack
-            * power.Stacks);
-    }
-
-    private sealed record PrototypeDebuffBlockResult(
-        CombatState Combat,
-        bool Blocked);
-
-    private static PrototypeDebuffBlockResult
-        TryBlockIncomingPlayerDebuff(CombatState combat)
-    {
-        var candidate = combat.PlayerPowers
-            .Where(power =>
-                power.Stacks > 0
-                && PrototypeContent.Power(power.PowerId)
-                    .BlocksNextDebuff)
-            .OrderBy(power => power.ApplicationOrder)
-            .FirstOrDefault();
-        if (candidate is null)
-        {
-            return new PrototypeDebuffBlockResult(
-                combat,
-                false);
-        }
-
-        var powers = combat.PlayerPowers.ToList();
-        var index = powers.FindIndex(power =>
-            power.ApplicationOrder
-                == candidate.ApplicationOrder);
-        if (index < 0)
-        {
-            throw new InvalidOperationException(
-                "Debuff-blocking power disappeared before consumption.");
-        }
-
-        if (powers[index].Stacks <= 1)
-        {
-            powers.RemoveAt(index);
-        }
-        else
-        {
-            powers[index] = powers[index] with
-            {
-                Stacks = powers[index].Stacks - 1
-            };
-        }
-
-        return new PrototypeDebuffBlockResult(
-            combat with { PlayerPowers = powers.ToArray() },
-            true);
-    }
-
-    private static (PlayerState Player, CombatState Combat)
-        ApplyPlayerHpLoss(
-            PlayerState player,
-            CombatState combat,
-            int amount)
-    {
-        amount = Math.Max(0, amount);
-        if (amount == 0)
-        {
-            return (player, combat);
-        }
-
-        var buffer = combat.PlayerPowers
-            .Where(power => power.Stacks > 0
-                && PrototypeContent.Power(power.PowerId)
-                    .PreventsNextHpLoss)
-            .OrderBy(power => power.ApplicationOrder)
-            .FirstOrDefault();
-        if (buffer is not null)
-        {
-            var powers = combat.PlayerPowers
-                .Select(power => power.Fork())
-                .ToList();
-            var index = powers.FindIndex(power =>
-                power.ApplicationOrder == buffer.ApplicationOrder);
-            if (index < 0)
-            {
-                throw new InvalidOperationException(
-                    "Buffer disappeared before consuming HP loss.");
-            }
-
-            if (powers[index].Stacks == 1)
-            {
-                powers.RemoveAt(index);
-            }
-            else
-            {
-                powers[index] = powers[index] with
-                {
-                    Stacks = powers[index].Stacks - 1
-                };
-            }
-
-            return (player, combat with
-            {
-                PlayerPowers = powers.ToArray()
-            });
-        }
-
-        return (player with
-        {
-            Hp = Math.Max(0, player.Hp - amount)
-        }, combat);
-    }
-
-    private static CombatState ApplyPlayerPower(
-        CombatState combat,
-        string powerId,
-        int stacks,
-        int? sourceEnemyInstanceId = null,
-        int storedValue = 0)
-    {
-        var definition = PrototypeContent.Power(powerId);
-        if (definition.SourceBoundToEnemy
-            && sourceEnemyInstanceId is null)
-        {
-            throw new InvalidOperationException(
-                $"Source-bound power '{powerId}' requires an enemy source.");
-        }
-
-        sourceEnemyInstanceId =
-            definition.SourceBoundToEnemy
-                ? sourceEnemyInstanceId
-                : null;
-
-        var isDebuffApplication =
-            (definition.IsDebuff && stacks > 0)
-            || (definition.NegativeApplicationIsDebuff
-                && stacks < 0);
-        if (isDebuffApplication)
-        {
-            var blocked = TryBlockIncomingPlayerDebuff(combat);
-            combat = blocked.Combat;
-            if (blocked.Blocked)
-            {
-                return combat;
-            }
-        }
-
-        if (definition.IsInstanced)
-        {
-            if (definition.RequiresCardPayload)
-            {
-                throw new InvalidOperationException(
-                    $"Instanced power '{powerId}' requires a card payload.");
-            }
-
-            return AddPlayerPowerInstance(
-                combat,
-                powerId,
-                stacks,
-                null,
-                sourceEnemyInstanceId,
-                storedValue);
-        }
-
-        var powers = combat.PlayerPowers.ToList();
-        var index = powers.FindIndex(power =>
-            StringComparer.Ordinal.Equals(power.PowerId, powerId)
-            && (!definition.SourceBoundToEnemy
-                || power.SourceEnemyInstanceId
-                    == sourceEnemyInstanceId));
-
-        if (index >= 0)
-        {
-            var nextStacks = definition.DoesNotStack
-                ? Math.Max(powers[index].Stacks, stacks)
-                : powers[index].Stacks + stacks;
-            PrototypePowerInstanceState? updatedPower = null;
-            if (nextStacks == 0
-                || (!definition.AllowNegative && nextStacks < 0))
-            {
-                powers.RemoveAt(index);
-            }
-            else
-            {
-                powers[index] = powers[index] with
-                {
-                    Stacks = nextStacks
-                };
-                updatedPower = powers[index];
-            }
-
-            combat = combat with
-            {
-                PlayerPowers = powers.ToArray()
-            };
-            return updatedPower is null
-                ? combat
-                : ApplySourceBoundCardEffects(
-                    combat,
-                    updatedPower);
-        }
-
-        if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
-        {
-            return combat;
-        }
-
-        var instance = new PrototypePowerInstanceState(
-            powerId,
-            stacks,
-            combat.NextPowerApplicationOrder,
-            SourceEnemyInstanceId: sourceEnemyInstanceId);
-        powers.Add(instance);
-
-        combat = combat with
-        {
-            PlayerPowers = powers.ToArray(),
-            NextPowerApplicationOrder =
-                combat.NextPowerApplicationOrder + 1
-        };
-        return ApplySourceBoundCardEffects(
-            combat,
-            instance);
-    }
-
-    private static CombatState ApplyPlayerPowerWithSelectedCard(
-        CombatState combat,
-        PrototypeSelectedCardPowerAction action,
-        CombatCardInstance selectedCard)
-    {
-        var definition = PrototypeContent.Power(action.PowerId);
-        if (!definition.IsInstanced || !definition.RequiresCardPayload)
-        {
-            throw new InvalidOperationException(
-                $"Selected-card power '{action.PowerId}' must be an instanced card-payload power.");
-        }
-
-        var snapshot = new PrototypeCombatCardSnapshot(
-            selectedCard.CardId,
-            action.RestoreSuppressedUpgradesInPayload
-                ? selectedCard.UpgradeLevel
-                    + selectedCard.SuppressedUpgradeLevels
-                : selectedCard.UpgradeLevel,
-            selectedCard.State.Clone(),
-            selectedCard.CombatEnergyCostDelta,
-            selectedCard.TemporaryEnergyCost is null
-                ? null
-                : selectedCard.TemporaryEnergyCost with { },
-            selectedCard.KeywordOverrides is null
-                ? null
-                : selectedCard.KeywordOverrides
-                    .Select(item => item with { })
-                    .ToArray(),
-            selectedCard.ReplayCount,
-            selectedCard.Enchantment,
-            selectedCard.EnchantmentTriggeredThisCombat,
-            action.ClearAfflictionFromPayload
-                ? null
-                : selectedCard.Affliction,
-            action.RestoreSuppressedUpgradesInPayload
-                ? 0
-                : selectedCard.SuppressedUpgradeLevels);
-
-        return AddPlayerPowerInstance(
-            combat,
-            action.PowerId,
-            action.Amount,
-            snapshot);
-    }
-
-    private static CombatState AddPlayerPowerInstance(
-        CombatState combat,
-        string powerId,
-        int stacks,
-        PrototypeCombatCardSnapshot? cardPayload,
-        int? sourceEnemyInstanceId = null,
-        int storedValue = 0)
-    {
-        var definition = PrototypeContent.Power(powerId);
-        if (stacks == 0 || (!definition.AllowNegative && stacks < 0))
-        {
-            return combat;
-        }
-
-        if (definition.RequiresCardPayload != (cardPayload is not null))
-        {
-            throw new InvalidOperationException(
-                $"Power '{powerId}' card-payload requirement is not satisfied.");
-        }
-
-        if (definition.SourceBoundToEnemy
-            && sourceEnemyInstanceId is null)
-        {
-            throw new InvalidOperationException(
-                $"Source-bound power '{powerId}' requires an enemy source.");
-        }
-
-        combat = combat with
-        {
-            PlayerPowers = combat.PlayerPowers.Append(
-                new PrototypePowerInstanceState(
-                    powerId,
-                    stacks,
-                    combat.NextPowerApplicationOrder,
-                    cardPayload?.Fork(),
-                    sourceEnemyInstanceId,
-                    StoredValue: storedValue,
-                    TriggerCounts: new int[definition.Triggers.Length])).ToArray(),
-            NextPowerApplicationOrder =
-                combat.NextPowerApplicationOrder + 1
-        };
-
-        var added = combat.PlayerPowers[^1];
-        return ApplySourceBoundCardEffects(
-            combat,
-            added);
-    }
-
-    private static CombatState ApplySourceBoundCardEffects(
-        CombatState combat,
-        PrototypePowerInstanceState power)
-    {
-        combat = ApplySourceBoundCardAffliction(
-            combat,
-            power);
-        combat = ApplyPowerCardAffliction(
-            combat,
-            power);
-        return ApplySourceBoundCardDowngrade(
-            combat,
-            power);
-    }
-
-    private static CombatState ApplySourceBoundCardDowngrade(
-        CombatState combat,
-        PrototypePowerInstanceState power)
-    {
-        var definition = PrototypeContent.Power(power.PowerId);
-        if (!definition.DowngradeExistingCardsOnApply)
-        {
-            return combat;
-        }
-
-        if (power.SourceEnemyInstanceId is not { } sourceEnemyId)
-        {
-            throw new InvalidOperationException(
-                $"Downgrade source power '{power.PowerId}' is missing its enemy source.");
-        }
-
-        var source = combat.Enemies.FirstOrDefault(enemy =>
-            enemy.InstanceId == sourceEnemyId);
-        if (source is null || source.Hp <= 0)
-        {
-            return combat;
-        }
-
-        return combat with
-        {
-            Cards = combat.Cards
-                .Select(card =>
-                {
-                    if (card.UpgradeLevel <= 0)
-                    {
-                        return card;
-                    }
-
-                    return card with
-                    {
-                        SuppressedUpgradeLevels =
-                            card.SuppressedUpgradeLevels
-                            + card.UpgradeLevel,
-                        UpgradeLevel = 0
-                    };
-                })
-                .ToArray()
-        };
-    }
-
-    private static CombatState ApplyPowerCardAffliction(
-        CombatState combat,
-        PrototypePowerInstanceState power)
-    {
-        var definition = PrototypeContent.Power(power.PowerId);
-        if (definition.AppliedCardAffliction is not
-                { } afflictionKind)
-        {
-            return combat;
-        }
-
-        return combat with
-        {
-            Cards = combat.Cards
-                .Select(card =>
-                {
-                    if (definition
-                            .AppliedCardAfflictionRequiredCardType
-                            is { } requiredType
-                        && PrototypeContent.Card(card.CardId).Type
-                            != requiredType)
-                    {
-                        return card;
-                    }
-
-                    if (card.Affliction is not null
-                        && definition.SkipCardsWithExistingAffliction)
-                    {
-                        return card;
-                    }
-
-                    return card with
-                    {
-                        Affliction =
-                            new PrototypeCardAffliction(
-                                afflictionKind)
-                    };
-                })
-                .ToArray()
-        };
-    }
-
-    private static CombatState ApplySourceBoundCardAffliction(
-        CombatState combat,
-        PrototypePowerInstanceState power)
-    {
-        var definition = PrototypeContent.Power(power.PowerId);
-        if (definition.SourceBoundCardAffliction is not
-                { } afflictionKind)
-        {
-            return combat;
-        }
-
-        if (power.SourceEnemyInstanceId is not { } sourceEnemyId)
-        {
-            throw new InvalidOperationException(
-                $"Affliction source power '{power.PowerId}' is missing its enemy source.");
-        }
-
-        var source = combat.Enemies.FirstOrDefault(enemy =>
-            enemy.InstanceId == sourceEnemyId);
-        if (source is null || source.Hp <= 0)
-        {
-            return combat;
-        }
-
-        return combat with
-        {
-            Cards = combat.Cards
-                .Select(card =>
-                {
-                    if (card.Affliction is not null
-                        && definition.SkipCardsWithExistingAffliction)
-                    {
-                        return card;
-                    }
-
-                    return card with
-                    {
-                        Affliction = new PrototypeCardAffliction(
-                            afflictionKind,
-                            SourceEnemyInstanceId: sourceEnemyId)
-                    };
-                })
-                .ToArray()
-        };
-    }
-
-    private static CombatCardInstance
-        ApplyActiveSourceBoundAfflictionToCard(
-            CombatState combat,
-            CombatCardInstance card)
-    {
-        if (card.Affliction is null
-            && PrototypeContent.Card(card.CardId).Type
-                == PrototypeCardType.Power)
-        {
-            var source = combat.Enemies
-                .Where(enemy => enemy.Hp > 0)
-                .SelectMany(enemy => enemy.PowerStates
-                    .Where(power => power.Stacks > 0
-                        && PrototypeContent.Power(power.PowerId)
-                            .GalvanizePowerCardsPerStack > 0)
-                    .Select(power => (Enemy: enemy, Power: power)))
-                .FirstOrDefault();
-            if (source.Enemy is not null)
-            {
-                return card with
-                {
-                    Affliction = new PrototypeCardAffliction(
-                        PrototypeCardAfflictionKind.Galvanized,
-                        source.Power.Stacks * PrototypeContent.Power(
-                            source.Power.PowerId).GalvanizePowerCardsPerStack,
-                        source.Enemy.InstanceId)
-                };
-            }
-        }
-
-        foreach (var power in combat.PlayerPowers
-                     .OrderBy(item => item.ApplicationOrder))
-        {
-            var definition = PrototypeContent.Power(
-                power.PowerId);
-            if (definition.SourceBoundCardAffliction is
-                    { } sourceAfflictionKind
-                && power.SourceEnemyInstanceId is
-                    { } sourceEnemyId)
-            {
-                var source = combat.Enemies.FirstOrDefault(enemy =>
-                    enemy.InstanceId == sourceEnemyId);
-                if (source is not null && source.Hp > 0)
-                {
-                    if (card.Affliction is not null
-                        && definition.SkipCardsWithExistingAffliction)
-                    {
-                        continue;
-                    }
-
-                    return card with
-                    {
-                        Affliction = new PrototypeCardAffliction(
-                            sourceAfflictionKind,
-                            SourceEnemyInstanceId: sourceEnemyId)
-                    };
-                }
-            }
-
-            if (definition.SkillPlayAffliction is
-                    { } skillAffliction
-                && combat.CounterState.SkillsPlayedThisTurn > 0
-                && PrototypeContent.Card(card.CardId).Type
-                    == PrototypeCardType.Skill
-                && card.Affliction is null)
-            {
-                return card with
-                {
-                    Affliction = new PrototypeCardAffliction(
-                        skillAffliction)
-                };
-            }
-
-            if (definition.AppliedCardAffliction is
-                    { } appliedAfflictionKind)
-            {
-                if (definition
-                        .AppliedCardAfflictionRequiredCardType
-                        is { } requiredType
-                    && PrototypeContent.Card(card.CardId).Type
-                        != requiredType)
-                {
-                    continue;
-                }
-
-                if (card.Affliction is not null
-                    && definition.SkipCardsWithExistingAffliction)
-                {
-                    continue;
-                }
-
-                return card with
-                {
-                    Affliction = new PrototypeCardAffliction(
-                        appliedAfflictionKind)
-                };
-            }
-        }
-
-        return card;
-    }
-
-    private static CombatState
-        CleanupSourceBoundPowersForDefeatedEnemies(
-            CombatState combat)
-    {
-        var leaderHp = combat.Enemies
-            .ToDictionary(
-                enemy => enemy.InstanceId,
-                enemy => enemy.Hp);
-        var cleanedEnemies = combat.Enemies
-            .Select(enemy =>
-                enemy.LeaderEnemyInstanceId is
-                        { } leaderId
-                    && leaderHp.GetValueOrDefault(
-                        leaderId) <= 0
-                    ? enemy with { Hp = 0, Block = 0 }
-                    : enemy)
-            .ToArray();
-        combat = combat with
-        {
-            Enemies = cleanedEnemies
-        };
-
-        var defeatedEnemyIds = combat.Enemies
-            .Where(enemy => enemy.Hp <= 0)
-            .Select(enemy => enemy.InstanceId)
-            .ToHashSet();
-        if (defeatedEnemyIds.Count == 0)
-        {
-            return combat;
-        }
-
-        var removed = combat.PlayerPowers
-            .Where(power =>
-                power.SourceEnemyInstanceId is { } sourceEnemyId
-                && defeatedEnemyIds.Contains(sourceEnemyId)
-                && PrototypeContent.Power(power.PowerId)
-                    .SourceBoundToEnemy)
-            .ToArray();
-        if (removed.Length == 0)
-        {
-            return combat;
-        }
-
-        var clearAfflictions = removed
-            .Select(power =>
-            {
-                var definition = PrototypeContent.Power(
-                    power.PowerId);
-                return (
-                    SourceEnemyId:
-                        power.SourceEnemyInstanceId!.Value,
-                    Kind:
-                        definition.SourceBoundCardAffliction,
-                    Clear:
-                        definition.ClearSourceAfflictionWhenRemoved);
-            })
-            .Where(item =>
-                item.Clear && item.Kind is not null)
-            .Select(item => (
-                item.SourceEnemyId,
-                Kind: item.Kind!.Value))
-            .ToHashSet();
-
-        var removedOrders = removed
-            .Select(power => power.ApplicationOrder)
-            .ToHashSet();
-        var remainingPowers = combat.PlayerPowers
-            .Where(power =>
-                !removedOrders.Contains(
-                    power.ApplicationOrder))
-            .ToArray();
-
-        var restoreDowngradePowerIds = removed
-            .Select(power => power.PowerId)
-            .Distinct(StringComparer.Ordinal)
-            .Where(powerId =>
-            {
-                var definition = PrototypeContent.Power(powerId);
-                return definition
-                        .RestoreDowngradedCardsWhenLastSourceRemoved
-                    && !remainingPowers.Any(power =>
-                        StringComparer.Ordinal.Equals(
-                            power.PowerId,
-                            powerId));
-            })
-            .ToHashSet(StringComparer.Ordinal);
-
-        var shouldRestoreSuppressedUpgrades =
-            restoreDowngradePowerIds.Count > 0;
-
-        return combat with
-        {
-            PlayerPowers = remainingPowers,
-            Cards = combat.Cards
-                .Select(card =>
-                {
-                    var next = card;
-                    if (card.Affliction is
-                            {
-                                SourceEnemyInstanceId:
-                                    { } sourceEnemyId
-                            } affliction
-                        && clearAfflictions.Contains((
-                            sourceEnemyId,
-                            affliction.Kind)))
-                    {
-                        next = next with
-                        {
-                            Affliction = null
-                        };
-                    }
-
-                    if (shouldRestoreSuppressedUpgrades
-                        && next.SuppressedUpgradeLevels > 0)
-                    {
-                        next = next with
-                        {
-                            UpgradeLevel =
-                                next.UpgradeLevel
-                                + next.SuppressedUpgradeLevels,
-                            SuppressedUpgradeLevels = 0
-                        };
-                    }
-
-                    return next;
-                })
-                .ToArray()
-        };
-    }
-
-    private static (
-        CombatState Combat,
-        EnemyCombatState Enemy)
-        ApplyEnemyPowerToState(
-            CombatState combat,
-            EnemyCombatState enemy,
-            string powerId,
-            int stacks,
-            bool ignoreDebuffPrevention = false)
-    {
-        var definition = PrototypeContent.Power(powerId);
-        if (definition.IsInstanced
-            && definition.RequiresCardPayload)
-        {
-            throw new InvalidOperationException(
-                $"Enemy power '{powerId}' requires a card payload.");
-        }
-
-        if (enemy.Hp <= 0)
-        {
-            return (combat, enemy);
-        }
-
-        var isDebuffApplication =
-            (definition.IsDebuff && stacks > 0)
-            || (definition.NegativeApplicationIsDebuff
-                && stacks < 0);
-        if (isDebuffApplication && !ignoreDebuffPrevention)
-        {
-            var blocked =
-                TryBlockIncomingEnemyDebuff(enemy);
-            enemy = blocked.Enemy;
-            if (blocked.Blocked)
-            {
-                return (combat, enemy);
-            }
-        }
-
-        var powers = enemy.PowerStates.ToList();
-        var powerIndex = definition.IsInstanced
-            ? -1
-            : powers.FindIndex(power =>
-                StringComparer.Ordinal.Equals(
-                    power.PowerId,
-                    powerId));
-
-        if (powerIndex >= 0)
-        {
-            var nextStacks =
-                powers[powerIndex].Stacks + stacks;
-            if (nextStacks == 0
-                || (!definition.AllowNegative
-                    && nextStacks < 0))
-            {
-                powers.RemoveAt(powerIndex);
-            }
-            else
-            {
-                powers[powerIndex] =
-                    powers[powerIndex] with
-                    {
-                        Stacks = nextStacks,
-                        SkipNextEnemySideTurnEnd =
-                            definition.SkipInitialEnemySideTurnEnd
-                                && stacks > 0
-                            || powers[powerIndex].SkipNextEnemySideTurnEnd
-                    };
-            }
-
-            var changedEnemy = enemy with { Powers = powers.ToArray() };
-            var strengthDelta =
-                stacks * definition.EnemyStrengthOnApplyPerStack;
-            return strengthDelta == 0
-                ? (combat, changedEnemy)
-                : ApplyEnemyPowerToState(
-                    combat, changedEnemy, "proto.power.strength",
-                    strengthDelta, ignoreDebuffPrevention: true);
-        }
-
-        if (stacks == 0
-            || (!definition.AllowNegative && stacks < 0))
-        {
-            return (combat, enemy);
-        }
-
-        powers.Add(new PrototypePowerInstanceState(
-            powerId,
-            stacks,
-            combat.NextPowerApplicationOrder,
-            SkipNextEnemySideTurnEnd:
-                definition.SkipInitialEnemySideTurnEnd));
-
-        var nextCombat = combat with
-        {
-            NextPowerApplicationOrder =
-                combat.NextPowerApplicationOrder + 1
-        };
-        var nextEnemy = enemy with { Powers = powers.ToArray() };
-        var appliedStrengthDelta =
-            stacks * definition.EnemyStrengthOnApplyPerStack;
-        return appliedStrengthDelta == 0
-            ? (nextCombat, nextEnemy)
-            : ApplyEnemyPowerToState(
-                nextCombat, nextEnemy, "proto.power.strength",
-                appliedStrengthDelta, ignoreDebuffPrevention: true);
-    }
-
-    private static CombatState ApplyEnemyPower(
-        CombatState combat,
-        int enemyId,
-        string powerId,
-        int stacks)
-    {
-        var enemies = combat.Enemies
-            .Select(enemy => enemy.Fork())
-            .ToArray();
-        var enemyIndex = Array.FindIndex(
-            enemies,
-            enemy => enemy.InstanceId == enemyId);
-        if (enemyIndex < 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-        }
-
-        var result = ApplyEnemyPowerToState(
-            combat,
-            enemies[enemyIndex],
-            powerId,
-            stacks);
-        enemies[enemyIndex] = result.Enemy;
-        return result.Combat with { Enemies = enemies };
-    }
-
-    private static bool RelicTriggerMatchesPlayer(
-        PrototypeRelicTriggerSpec trigger,
-        PlayerState player,
-        CombatState combat)
-    {
-        if (trigger.TurnEquals is { } turn
-            && combat.Turn != turn)
-        {
-            return false;
-        }
-
-        if (trigger.MinTurn is { } minTurn
-            && combat.Turn < minTurn)
-        {
-            return false;
-        }
-
-        if (trigger.MaxAttacksPlayedLastTurn is { } maxAttacks
-            && combat.CounterState.AttacksPlayedLastTurn > maxAttacks)
-        {
-            return false;
-        }
-
-        if (trigger.RequiresZeroPlayerBlock
-            && combat.PlayerBlock != 0)
-        {
-            return false;
-        }
-
-        if (player.MaxHp <= 0)
-        {
-            return trigger.MaxPlayerHpPercent is null
-                && trigger.MinPlayerHpPercent is null;
-        }
-
-        var hpTimesHundred = player.Hp * 100;
-        if (trigger.MaxPlayerHpPercent is { } maxPercent
-            && hpTimesHundred > player.MaxHp * maxPercent)
-        {
-            return false;
-        }
-
-        if (trigger.MinPlayerHpPercent is { } minPercent
-            && hpTimesHundred < player.MaxHp * minPercent)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static CombatState ResetPerTurnRelicCounters(
-        CombatState combat)
-    {
-        var relics = combat.RelicStates
-            .Select(relic => relic.Fork())
-            .ToArray();
-
-        for (var relicIndex = 0;
-             relicIndex < relics.Length;
-             relicIndex++)
-        {
-            var definition =
-                PrototypeContent.Relic(
-                    relics[relicIndex].RelicId);
-            var triggers =
-                definition.Triggers
-                ?? Array.Empty<PrototypeRelicTriggerSpec>();
-            var counts =
-                (int[])relics[relicIndex]
-                    .TriggerCounts.Clone();
-
-            for (var triggerIndex = 0;
-                 triggerIndex < triggers.Length;
-                 triggerIndex++)
-            {
-                if (triggers[triggerIndex]
-                    .ResetCounterEachTurn)
-                {
-                    counts[triggerIndex] = 0;
-                }
-            }
-
-            relics[relicIndex] =
-                relics[relicIndex] with
-                {
-                    TriggerCounts = counts
-                };
-        }
-
-        return combat with { Relics = relics };
-    }
-
-    private static (CombatState Combat, int Count) IncrementRelicTriggerCounter(
-        CombatState combat,
-        int relicStateIndex,
-        int triggerIndex)
-    {
-        var relics = combat.RelicStates.Select(relic => relic.Fork()).ToArray();
-        if (relicStateIndex < 0 || relicStateIndex >= relics.Length)
-        {
-            throw new InvalidOperationException("Relic trigger references a missing combat relic.");
-        }
-
-        var relic = relics[relicStateIndex];
-        if (triggerIndex < 0 || triggerIndex >= relic.TriggerCounts.Length)
-        {
-            throw new InvalidOperationException("Relic trigger counter index is invalid.");
-        }
-
-        var counts = (int[])relic.TriggerCounts.Clone();
-        counts[triggerIndex]++;
-        relics[relicStateIndex] = relic with { TriggerCounts = counts };
-
-        return (combat with { Relics = relics }, counts[triggerIndex]);
-    }
-
-    private static int[] CreateRelicTriggerCounts(
-        RelicInstance relic,
-        PrototypeRelicDefinition definition)
-    {
-        var counts = new int[(definition.Triggers
-            ?? Array.Empty<PrototypeRelicTriggerSpec>()).Length];
-        if (definition.PersistentTriggerCountProperty is not { } property
-            || counts.Length == 0
-            || relic.PersistentState.ValueKind !=
-                System.Text.Json.JsonValueKind.Object
-            || !relic.PersistentState.TryGetProperty(property, out var count)
-            || count.ValueKind != System.Text.Json.JsonValueKind.Number)
-        {
-            return counts;
-        }
-
-        counts[0] = Math.Max(0, count.GetInt32());
-        return counts;
-    }
-
-    private static PlayerState PersistRelicTriggerCount(
-        PlayerState player,
-        CombatRelicState relicState,
-        int triggerIndex,
-        int count)
-    {
-        var property = PrototypeContent.Relic(relicState.RelicId)
-            .PersistentTriggerCountProperty;
-        if (property is null || triggerIndex != 0
-            || relicState.PersistentIndex < 0
-            || relicState.PersistentIndex >= player.Relics.Length)
-        {
-            return player;
-        }
-
-        var relics = (RelicInstance[])player.Relics.Clone();
-        var relic = relics[relicState.PersistentIndex];
-        var persistent = relic.PersistentState.ValueKind ==
-                System.Text.Json.JsonValueKind.Object
-            ? System.Text.Json.Nodes.JsonNode.Parse(
-                relic.PersistentState.GetRawText()) as
-                    System.Text.Json.Nodes.JsonObject
-                ?? new System.Text.Json.Nodes.JsonObject()
-            : new System.Text.Json.Nodes.JsonObject();
-        persistent[property] = count;
-        relics[relicState.PersistentIndex] = relic with
-        {
-            PersistentState = System.Text.Json.JsonSerializer
-                .SerializeToElement(persistent)
-        };
-        return player with { Relics = relics };
-    }
-
-    // This is keyed by power application order, so multiple Panaches or
-    // separate countdowns remain independent and fork deterministically.
-    private static (CombatState Combat, bool ShouldTrigger)
-        CheckPowerSubscriberTrigger(
-            CombatState combat,
-            PrototypeEventSubscriberState subscriber)
-    {
-        if (subscriber.SourcePowerApplicationOrder is not { } order)
-        {
-            return (combat, false);
-        }
-
-        var index = Array.FindIndex(combat.PlayerPowers,
-            power => power.ApplicationOrder == order);
-        if (index < 0)
-        {
-            return (combat, false);
-        }
-
-        var current = combat.PlayerPowers[index];
-        if (subscriber.CountdownBeforeTrigger)
-        {
-            if (current.Stacks > 1)
-            {
-                var powers = (PrototypePowerInstanceState[])combat.PlayerPowers.Clone();
-                powers[index] = current with { Stacks = current.Stacks - 1 };
-                return (combat with { PlayerPowers = powers }, false);
-            }
-
-            return (combat, true);
-        }
-
-        if (subscriber.EveryNth <= 1)
-        {
-            return (combat, true);
-        }
-
-        if (subscriber.PowerTriggerIndex is not { } triggerIndex)
-        {
-            throw new InvalidOperationException("Power trigger counter has no index.");
-        }
-
-        var counts = current.TriggerCounts is null
-            ? new int[PrototypeContent.Power(current.PowerId).Triggers.Length]
-            : (int[])current.TriggerCounts.Clone();
-        var nextCount = checked(counts[triggerIndex] + 1);
-        // Counter-style native powers restart at zero after their Nth
-        // trigger; saving the residue also bounds the persisted state.
-        counts[triggerIndex] = nextCount % subscriber.EveryNth;
-        var updated = (PrototypePowerInstanceState[])combat.PlayerPowers.Clone();
-        updated[index] = current with { TriggerCounts = counts };
-        return (combat with { PlayerPowers = updated },
-            counts[triggerIndex] == 0);
-    }
-
-    private static CombatState ResetPlayerPowerTriggerCounters(CombatState combat) =>
-        combat with
-        {
-            PlayerPowers = combat.PlayerPowers.Select(power =>
-                PrototypeContent.Power(power.PowerId)
-                    .ResetTriggerCountersAtPlayerTurnEnd
-                    && power.TriggerCounts is not null
-                        ? power with
-                        {
-                            TriggerCounts = new int[power.TriggerCounts.Length]
-                        }
-                        : power).ToArray()
-        };
-
-
-    // Both hooks run at the native AfterCardPlayed boundary: after the
-    // effects of the card have resolved, before the next card action.
-    // Tender restores only Strength/Dexterity actually lost (Artifact can
-    // block either application), with counters stored on the power instance.
-    // Curl Up waits for the *same card instance* that first attacked it.
-    private static CombatState RefreshNativeGloryGalvanic(
-        CombatState combat)
-    {
-        var galvanicSource = combat.Enemies
-            .Where(enemy => enemy.Hp > 0)
-            .SelectMany(enemy => enemy.PowerStates
-                .Where(power => power.Stacks > 0
-                    && PrototypeContent.Power(power.PowerId)
-                        .GalvanizePowerCardsPerStack > 0)
-                .Select(power => (
-                    Enemy: enemy,
-                    Amount: power.Stacks * PrototypeContent.Power(
-                        power.PowerId).GalvanizePowerCardsPerStack)))
-            .FirstOrDefault();
-        if (galvanicSource.Enemy is null)
-            return combat;
-
-        return combat with
-        {
-            Cards = combat.Cards.Select(card =>
-                card.Affliction is null
-                && PrototypeContent.Card(card.CardId).Type
-                    == PrototypeCardType.Power
-                    ? card with
-                    {
-                        Affliction = new PrototypeCardAffliction(
-                            PrototypeCardAfflictionKind.Galvanized,
-                            galvanicSource.Amount,
-                            galvanicSource.Enemy.InstanceId)
-                    }
-                    : card).ToArray()
-        };
-    }
-
-    private static CombatState RefreshNativeHiveVitalSpark(
-        CombatState combat)
-    {
-        var sources = combat.Enemies
-            .Where(enemy => enemy.Hp > 0)
-            .Select(enemy => (enemy.InstanceId,
-                Amount: enemy.PowerStates
-                    .Where(power => power.PowerId ==
-                        PrototypeNativeHiveElites.VitalSparkId)
-                    .Sum(power => Math.Max(0, power.Stacks))))
-            .Where(source => source.Amount > 0)
-            .OrderBy(source => source.InstanceId)
-            .ToArray();
-
-        // One native Infested Prism per encounter. Retain deterministic
-        // behavior for forced multi-Prism scenarios.
-        var owner = sources.FirstOrDefault();
-        return combat with
-        {
-            Cards = combat.Cards.Select(card =>
-            {
-                if (card.Affliction is
-                    { Kind: PrototypeCardAfflictionKind.Tainted })
-                {
-                    return owner.Amount > 0
-                        ? card with
-                        {
-                            Affliction = new PrototypeCardAffliction(
-                                PrototypeCardAfflictionKind.Tainted,
-                                owner.Amount, owner.InstanceId)
-                        }
-                        : card with { Affliction = null };
-                }
-                if (owner.Amount <= 0 || card.Affliction is not null
-                    || PrototypeContent.Card(card.CardId).Type
-                        != PrototypeCardType.Skill)
-                    return card;
-                return card with
-                {
-                    Affliction = new PrototypeCardAffliction(
-                        PrototypeCardAfflictionKind.Tainted,
-                        owner.Amount, owner.InstanceId)
-                };
-            }).ToArray()
-        };
-    }
-
-    private static CombatState ResolveNativeCardCompletionPowers(
-        CombatState combat, PrototypeCombatEvent combatEvent)
-    {
-        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
-        {
-            foreach (var tender in combat.PlayerPowers.Where(power =>
-                PrototypeContent.Power(power.PowerId)
-                    .PlayerStrengthDexterityLossPerCardPlayedPerStack > 0)
-                .ToArray())
-            {
-                var reduced = tender.TriggerCounts ?? Array.Empty<int>();
-                if (reduced.Length >= 2)
-                {
-                    if (reduced[0] > 0)
-                        combat = ApplyPlayerPower(combat,
-                            "proto.power.strength", reduced[0]);
-                    if (reduced[1] > 0)
-                        combat = ApplyPlayerPower(combat,
-                            "proto.power.dexterity", reduced[1]);
-                }
-                combat = combat with
-                {
-                    PlayerPowers = combat.PlayerPowers.Select(power =>
-                        power.ApplicationOrder == tender.ApplicationOrder
-                            ? power with { TriggerCounts = null,
-                                StoredValue = 0 }
-                            : power).ToArray()
-                };
-            }
-            return combat;
-        }
-
-        if (combatEvent.Kind != PrototypeCombatEventKind.CardPlayed
-            || combatEvent.CardId is null)
-            return combat;
-
-        // Frantic Escape postpones the Sandpit countdown by one and
-        // increases this card instance's cost for the rest of combat.
-        if (combatEvent.CardId ==
-                PrototypeNativeHiveBosses.FranticEscapeId
-            && combatEvent.SourceCardInstanceId is { } escapeId)
-        {
-            var owner = combat.Enemies.FirstOrDefault(enemy =>
-                enemy.Hp > 0 && enemy.PowerStates.Any(power =>
-                    power.PowerId == PrototypeNativeHiveBosses.SandpitId));
-            if (owner is not null)
-                combat = ApplyEnemyPower(combat, owner.InstanceId,
-                    PrototypeNativeHiveBosses.SandpitId, 1);
-            combat = combat with
-            {
-                Cards = combat.Cards.Select(card =>
-                    card.InstanceId == escapeId
-                        ? card with
-                        {
-                            CombatEnergyCostDelta =
-                                card.CombatEnergyCostDelta + 1
-                        }
-                        : card).ToArray()
-            };
-        }
-
-        // Each completed afflicted Skill inflicts Tainted equal to
-        // the number of Vital Spark stacks stamped on the card.
-        if (combatEvent.SourceCardInstanceId is { } playedId)
-        {
-            var played = combat.Cards.FirstOrDefault(card =>
-                card.InstanceId == playedId);
-            if (played?.Affliction is
-                { Kind: PrototypeCardAfflictionKind.Tainted } affliction)
-            {
-                combat = ApplyPlayerPower(combat,
-                    PrototypeNativeHiveElites.TaintedPowerId,
-                    affliction.Amount);
-            }
-        }
-
-        foreach (var tender in combat.PlayerPowers.Where(power =>
-            power.Stacks > 0
-            && PrototypeContent.Power(power.PowerId)
-                .PlayerStrengthDexterityLossPerCardPlayedPerStack > 0)
-            .ToArray())
-        {
-            var amount = powerLoss(tender);
-            var beforeStrength = combat.PlayerPowers
-                .Where(power => power.PowerId == "proto.power.strength")
-                .Sum(power => power.Stacks);
-            combat = ApplyPlayerPower(combat, "proto.power.strength", -amount);
-            var afterStrength = combat.PlayerPowers
-                .Where(power => power.PowerId == "proto.power.strength")
-                .Sum(power => power.Stacks);
-            var beforeDexterity = combat.PlayerPowers
-                .Where(power => power.PowerId == "proto.power.dexterity")
-                .Sum(power => power.Stacks);
-            combat = ApplyPlayerPower(combat, "proto.power.dexterity", -amount);
-            var afterDexterity = combat.PlayerPowers
-                .Where(power => power.PowerId == "proto.power.dexterity")
-                .Sum(power => power.Stacks);
-            var previous = tender.TriggerCounts ?? new int[2];
-            combat = combat with
-            {
-                PlayerPowers = combat.PlayerPowers.Select(power =>
-                    power.ApplicationOrder == tender.ApplicationOrder
-                        ? power with
-                        {
-                            TriggerCounts = new[]
-                            {
-                                previous[0] + beforeStrength - afterStrength,
-                                previous[1] + beforeDexterity - afterDexterity
-                            },
-                            StoredValue = power.StoredValue + 1
-                        } : power).ToArray()
-            };
-        }
-
-        if (combatEvent.SourceCardInstanceId is { } cardId)
-        {
-            combat = combat with
-            {
-                Enemies = combat.Enemies.Select(enemy =>
-                {
-                    if (enemy.Hp <= 0)
-                        return enemy;
-                    var completing = enemy.PowerStates.Where(power =>
-                        power.PendingAttackingCardInstanceId == cardId
-                        && PrototypeContent.Power(power.PowerId)
-                            .EnemyBlockAfterAttackingCardPlayedPerStack > 0)
-                        .ToArray();
-                    if (completing.Length == 0)
-                        return enemy;
-                    var block = completing.Sum(power => power.Stacks
-                        * PrototypeContent.Power(power.PowerId)
-                            .EnemyBlockAfterAttackingCardPlayedPerStack);
-                    var orders = completing.Select(power =>
-                        power.ApplicationOrder).ToHashSet();
-                    return enemy with
-                    {
-                        Block = enemy.Block + block,
-                        Powers = enemy.PowerStates.Where(power =>
-                            !orders.Contains(power.ApplicationOrder)).ToArray()
-                    };
-                }).ToArray()
-            };
-        }
-        return combat;
-
-        static int powerLoss(PrototypePowerInstanceState power) =>
-            power.Stacks * PrototypeContent.Power(power.PowerId)
-                .PlayerStrengthDexterityLossPerCardPlayedPerStack;
-    }
-
-    private static CombatState ResolveNativeGloryBossCardHooks(
-        CombatState combat, PrototypeCombatEvent combatEvent)
-    {
-        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
-        {
-            return combat with
-            {
-                BoundCardPlayedThisTurn = false,
-                Cards = combat.Cards.Select(card =>
-                    card.Affliction?.Kind == PrototypeCardAfflictionKind.Bound
-                        ? card with { Affliction = null }
-                        : card).ToArray(),
-                PlayerPowers = combat.PlayerPowers.Select(power =>
-                    power.PowerId == PrototypeNativeGloryBosses.ChainsId
-                        ? power with { StoredValue = 0 } : power).ToArray()
-            };
-        }
-
-        if (combatEvent.Kind == PrototypeCombatEventKind.CardDrawn
-            && combatEvent.SourceCardInstanceId is { } drawnId)
-        {
-            var card = combat.Cards.FirstOrDefault(candidate =>
-                candidate.InstanceId == drawnId);
-            if (card is not null && card.Affliction is null)
-            {
-                for (var powerIndex = 0; powerIndex < combat.PlayerPowers.Length;
-                     powerIndex++)
-                {
-                    var power = combat.PlayerPowers[powerIndex];
-                    if (power.PowerId != PrototypeNativeGloryBosses.ChainsId
-                        || power.StoredValue >= power.Stacks
-                        || power.SourceEnemyInstanceId is not { } sourceId
-                        || !combat.Enemies.Any(enemy =>
-                            enemy.InstanceId == sourceId && enemy.Hp > 0))
-                        continue;
-                    combat = combat with
-                    {
-                        Cards = combat.Cards.Select(candidate =>
-                            candidate.InstanceId == drawnId
-                                ? candidate with
-                                {
-                                    Affliction = new PrototypeCardAffliction(
-                                        PrototypeCardAfflictionKind.Bound,
-                                        SourceEnemyInstanceId: sourceId)
-                                }
-                                : candidate).ToArray(),
-                        PlayerPowers = combat.PlayerPowers.Select((candidate, i) =>
-                            i == powerIndex
-                                ? candidate with { StoredValue = power.StoredValue + 1 }
-                                : candidate).ToArray()
-                    };
-                    break;
-                }
-            }
-        }
-
-        if (combatEvent.Kind != PrototypeCombatEventKind.CardPlayed)
-            return combat;
-
-        if (combatEvent.SourceCardInstanceId is { } playedId
-            && combat.Cards.FirstOrDefault(card =>
-                card.InstanceId == playedId)?.Affliction?.Kind
-                == PrototypeCardAfflictionKind.Bound)
-            combat = combat with { BoundCardPlayedThisTurn = true };
-
-        // Test Subject Enrage grows on each completed Skill play.
-        if (combatEvent.CardId is { } id
-            && PrototypeContent.Card(id).Type == PrototypeCardType.Skill)
-        {
-            var enemies = combat.Enemies.ToArray();
-            for (var index = 0; index < enemies.Length; index++)
-            {
-                var enemy = enemies[index];
-                if (enemy.Hp <= 0
-                    || enemy.EnemyId != PrototypeNativeGloryBosses.TestSubjectId)
-                    continue;
-                var amount = enemy.PowerStates
-                    .Where(power => power.PowerId
-                        == PrototypeNativeGloryBosses.EnrageId)
-                    .Sum(power => power.Stacks);
-                if (amount <= 0)
-                    continue;
-                var applied = ApplyEnemyPowerToState(
-                    combat, enemy, "proto.power.strength", amount);
-                combat = applied.Combat;
-                enemies[index] = applied.Enemy;
-            }
-            combat = combat with { Enemies = enemies };
-        }
-
-        // Aeonglass's Withering Presence has one six-card countdown
-        // per owner, regardless of other enemies or card type.
-        var updatedEnemies = combat.Enemies.ToArray();
-        for (var index = 0; index < updatedEnemies.Length; index++)
-        {
-            var enemy = updatedEnemies[index];
-            if (enemy.Hp <= 0
-                || enemy.EnemyId != PrototypeNativeGloryBosses.AeonglassId)
-                continue;
-            var powers = enemy.PowerStates.ToArray();
-            var powerIndex = Array.FindIndex(powers, power =>
-                power.PowerId == PrototypeNativeGloryBosses.WitheringPresenceId);
-            if (powerIndex < 0)
-                continue;
-            var next = powers[powerIndex].Stacks - 1;
-            powers[powerIndex] = powers[powerIndex] with
-            {
-                Stacks = next > 0 ? next : 6
-            };
-            updatedEnemies[index] = enemy with { Powers = powers };
-            combat = combat with { Enemies = updatedEnemies };
-            if (next <= 0)
-                combat = AddGeneratedEnemyCardsToHand(
-                    combat, PrototypeNativeGloryBosses.WitherId, 1);
-        }
-        return combat;
-    }
-
-    private static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
-        PlayerState player,
-        CombatState combat,
-        PrototypeCombatEvent combatEvent,
-        RngBundle rng,
-        int eventDepth = 0,
-        bool allowSuspension = false)
-    {
-        if (eventDepth > 64)
-        {
-            throw new InvalidOperationException(
-                "Prototype combat event chain exceeded the safety depth limit.");
-        }
-
-        if (combatEvent.Kind
-            == PrototypeCombatEventKind.PlayerTurnStarted)
-        {
-            combat = ResetPerTurnRelicCounters(combat);
-            combat = GrantEnemyAllyBlockOnPlayerTurnStart(combat);
-        }
-
-        combat = RecordCombatCounterEvent(combat, combatEvent);
-        combat = ResolveNativeGloryBossCardHooks(combat, combatEvent);
-        combat = RefreshNativeHiveVitalSpark(combat);
-        combat = RefreshNativeGloryGalvanic(combat);
-        combat = ResolveNativeCardCompletionPowers(combat, combatEvent);
-        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
-            && combatEvent.SourceCardInstanceId is { } goopyId
-            && combat.Cards.FirstOrDefault(card => card.InstanceId == goopyId) is
-                { Enchantment: { Kind: PrototypeCardEnchantmentKind.Goopy } goopy } goopyCard)
-        {
-            combat = combat with { Cards = combat.Cards.Select(card => card.InstanceId == goopyId
-                ? card with { Enchantment = goopy with { Amount = checked(goopy.Amount + 1) } }
-                : card).ToArray() };
-            if (goopyCard.PersistentCardInstanceId is { } deckId)
-                player = player with { Deck = player.Deck.Select(card =>
-                    card.InstanceId == deckId && card.Enchantment is { Kind: PrototypeCardEnchantmentKind.Goopy } persistent
-                        ? card with { Enchantment = persistent with { Amount = checked(persistent.Amount + 1) } }
-                        : card).ToArray() };
-        }
-        // GalvanicPower.AfterCardPlayed is installed on the living
-        // Globe Head, not on the card: the card remains afflicted if
-        // the owner dies, but no further damage trigger fires.
-        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
-            && combatEvent.SourceCardInstanceId is { } galvanicCardId)
-        {
-            var card = combat.Cards.FirstOrDefault(item =>
-                item.InstanceId == galvanicCardId);
-            if (card?.Affliction?.Kind
-                    == PrototypeCardAfflictionKind.Galvanized)
-            {
-                var damage = combat.Enemies
-                    .Where(enemy => enemy.Hp > 0)
-                    .SelectMany(enemy => enemy.PowerStates)
-                    .Sum(power => Math.Max(0, power.Stacks)
-                        * PrototypeContent.Power(power.PowerId)
-                            .GalvanizePowerCardsPerStack);
-                var absorbed = Math.Min(combat.PlayerBlock,
-                    Math.Max(0, damage));
-                combat = combat with
-                {
-                    PlayerBlock = combat.PlayerBlock - absorbed
-                };
-                var loss = ApplyPlayerHpLoss(
-                    player,
-                    combat,
-                    damage - absorbed);
-                player = loss.Player;
-                combat = loss.Combat;
-            }
-        }
-        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
-            && combatEvent.IsPoweredAttack
-            && combatEvent.CardId is { } poweredCardId
-            && PrototypeContent.Card(poweredCardId).Type
-                == PrototypeCardType.Attack)
-        {
-            combat = RemovePlayerPowers(
-                combat,
-                definition => definition.RemoveAfterFirstPoweredAttack);
-        }
-        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
-        {
-            var ritualStrength = combat.PlayerPowers.Sum(power =>
-                Math.Max(0, power.Stacks)
-                * PrototypeContent.Power(power.PowerId)
-                    .PlayerStrengthAtTurnEndPerStack);
-            if (ritualStrength > 0)
-            {
-                combat = ApplyPlayerPower(
-                    combat,
-                    "proto.power.strength",
-                    ritualStrength);
-            }
-
-            var plating = combat.PlayerPowers.Sum(power =>
-                Math.Max(0, power.Stacks)
-                * PrototypeContent.Power(power.PowerId)
-                    .PlayerBlockAtTurnEndPerStack);
-            if (plating > 0)
-            {
-                combat = combat with
-                {
-                    PlayerBlock = combat.PlayerBlock
-                        + Math.Max(0, ModifyPlayerBlockGain(
-                            combat, plating, fromCard: false))
-                };
-            }
-        }
-
-        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
-            && combatEvent.CardId is { } playedCardId
-            && PrototypeContent.Card(playedCardId).Type
-                == PrototypeCardType.Skill)
-        {
-            foreach (var power in combat.PlayerPowers)
-            {
-                var definition = PrototypeContent.Power(power.PowerId);
-                if (power.Stacks > 0
-                    && definition.SkillPlayAffliction is { } kind)
-                {
-                    combat = combat with
-                    {
-                        Cards = combat.Cards.Select(card =>
-                            PrototypeContent.Card(card.CardId).Type
-                                == PrototypeCardType.Skill
-                            && card.Affliction is null
-                                ? card with
-                                {
-                                    Affliction = new PrototypeCardAffliction(kind)
-                                }
-                                : card).ToArray()
-                    };
-                }
-            }
-        }
-
-        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
-        {
-            var clearKinds = combat.PlayerPowers
-                .Where(power => power.Stacks > 0
-                    && PrototypeContent.Power(power.PowerId)
-                        .ClearMatchingAfflictionAtPlayerTurnEnd)
-                .Select(power => PrototypeContent.Power(power.PowerId)
-                    .SkillPlayAffliction)
-                .OfType<PrototypeCardAfflictionKind>()
-                .ToHashSet();
-            if (clearKinds.Count > 0)
-            {
-                combat = combat with
-                {
-                    Cards = combat.Cards.Select(card =>
-                        card.Affliction is { SourceEnemyInstanceId: null }
-                            affliction
-                        && clearKinds.Contains(affliction.Kind)
-                            ? card with { Affliction = null }
-                            : card).ToArray()
-                };
-            }
-        }
-
-        var subscribers = new List<PrototypeEventSubscriberState>();
-
-        foreach (var power in combat.PlayerPowers)
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            subscribers.AddRange(
-                definition.Triggers
-                    .Select((trigger, index) => new { Trigger = trigger, Index = index })
-                    .Where(item =>
-                        item.Trigger.EventKind == combatEvent.Kind
-                        && (!item.Trigger.ExcludeHandDraw
-                            || !combatEvent.FromHandDraw)
-                        && (!item.Trigger.RequiresPlayerTurn
-                            || combat.IsPlayerTurn)
-                        && (item.Trigger.RequiredSourceCardType is null
-                            || (combatEvent.CardId is not null
-                                && PrototypeContent.Card(
-                                    combatEvent.CardId).Type
-                                    == item.Trigger.RequiredSourceCardType.Value))
-                        && !item.Trigger.RequiresOwnerTarget
-                        && (combatEvent.PowerApplicationOrderCeiling is null
-                            || power.ApplicationOrder
-                                <= combatEvent.PowerApplicationOrderCeiling.Value))
-                    .Select(item => new PrototypeEventSubscriberState(
-                        power.ApplicationOrder,
-                        item.Trigger.Effects,
-                        power.Stacks,
-                        PrototypeEffectSourceKind.Power,
-                        SourcePowerApplicationOrder: power.ApplicationOrder,
-                        PowerCardPayload: power.CardPayload?.Fork(),
-                        RemoveSourcePowerAfterTrigger:
-                            item.Trigger.RemoveSourcePowerAfterTrigger,
-                        EveryNth: item.Trigger.EveryNth,
-                        PowerTriggerIndex: item.Index,
-                        CountdownBeforeTrigger: item.Trigger.CountdownBeforeTrigger,
-                        SourcePowerStoredValue: power.StoredValue)));
-        }
-
-        foreach (var enemy in combat.Enemies)
-        {
-            foreach (var power in enemy.PowerStates)
-            {
-                var definition = PrototypeContent.Power(power.PowerId);
-                subscribers.AddRange(
-                    definition.Triggers
-                        .Where(trigger =>
-                            trigger.EventKind == combatEvent.Kind
-                            && (!trigger.ExcludeHandDraw
-                                || !combatEvent.FromHandDraw)
-                            && (!trigger.RequiresPlayerTurn
-                                || combat.IsPlayerTurn)
-                            && (trigger.RequiredSourceCardType is null
-                                || (combatEvent.CardId is not null
-                                    && PrototypeContent.Card(
-                                        combatEvent.CardId).Type
-                                        == trigger.RequiredSourceCardType.Value))
-                            && (combatEvent.PowerApplicationOrderCeiling is null
-                                || power.ApplicationOrder
-                                    <= combatEvent.PowerApplicationOrderCeiling.Value)
-                            && (!trigger.RequiresOwnerTarget
-                                || combatEvent.TargetEnemyId == enemy.InstanceId)
-                            && (enemy.Hp > 0
-                                || (trigger.RequiresOwnerTarget
-                                    && combatEvent.TargetEnemyId == enemy.InstanceId)))
-                        .Select(trigger => new PrototypeEventSubscriberState(
-                            power.ApplicationOrder,
-                            trigger.Effects,
-                            power.Stacks,
-                            PrototypeEffectSourceKind.Power,
-                            SourcePowerApplicationOrder: power.ApplicationOrder,
-                            SourcePowerEnemyId: enemy.InstanceId,
-                            PowerCardPayload: power.CardPayload?.Fork(),
-                            RemoveSourcePowerAfterTrigger:
-                                trigger.RemoveSourcePowerAfterTrigger)));
-            }
-        }
-
-        for (var relicIndex = 0; relicIndex < combat.RelicStates.Length; relicIndex++)
-        {
-            var relic = combat.RelicStates[relicIndex];
-            if (relic.IsMelted)
-                continue;
-            var definition = PrototypeContent.Relic(relic.RelicId);
-            var triggers = definition.Triggers ?? Array.Empty<PrototypeRelicTriggerSpec>();
-            if (relic.RelicId == NativePaelRewardsV111.TearsId && !relic.HadLeftoverEnergy)
-                continue;
-            for (var triggerIndex = 0; triggerIndex < triggers.Length; triggerIndex++)
-            {
-                var trigger = triggers[triggerIndex];
-                if (trigger.EventKind != combatEvent.Kind
-                    || (trigger.RequiredSourceCardType is not null
-                        && (combatEvent.CardId is null
-                            || PrototypeContent.Card(
-                                combatEvent.CardId).Type
-                                != trigger.RequiredSourceCardType.Value))
-                    || (trigger.RequiresEmptyHand
-                        && combat.Hand.Length != 0)
-                    || !RelicTriggerMatchesPlayer(
-                        trigger,
-                        player,
-                        combat))
-                {
-                    continue;
-                }
-
-                subscribers.Add(new PrototypeEventSubscriberState(
-                    relic.ApplicationOrder,
-                    trigger.Effects,
-                    PowerStacks: 0,
-                    SourceKind: PrototypeEffectSourceKind.Relic,
-                    RelicStateIndex: relicIndex,
-                    RelicTriggerIndex: triggerIndex,
-                    EveryNth: trigger.EveryNth,
-                    MaxTriggersPerCounterWindow:
-                        trigger.MaxTriggersPerCounterWindow));
-            }
-        }
-
-        var orderedSubscribers = subscribers
-            .OrderBy(item => item.ApplicationOrder)
-            .ToArray();
-
-        for (var subscriberIndex = 0;
-             subscriberIndex < orderedSubscribers.Length;
-             subscriberIndex++)
-        {
-            var subscriber = orderedSubscribers[subscriberIndex];
-            if (subscriber.PowerTriggerIndex is not null)
-            {
-                var checkedPower = CheckPowerSubscriberTrigger(combat, subscriber);
-                combat = checkedPower.Combat;
-                if (!checkedPower.ShouldTrigger)
-                {
-                    continue;
-                }
-            }
-
-            if (subscriber.RelicStateIndex is not null)
-            {
-                if (subscriber.RelicTriggerIndex is null || subscriber.EveryNth <= 0)
-                {
-                    throw new InvalidOperationException("Relic trigger counter metadata is invalid.");
-                }
-
-                var incremented = IncrementRelicTriggerCounter(
-                    combat,
-                    subscriber.RelicStateIndex.Value,
-                    subscriber.RelicTriggerIndex.Value);
-                combat = incremented.Combat;
-                player = PersistRelicTriggerCount(
-                    player,
-                    combat.RelicStates[subscriber.RelicStateIndex.Value],
-                    subscriber.RelicTriggerIndex.Value,
-                    incremented.Count);
-                if (subscriber.MaxTriggersPerCounterWindow is
-                        { } maxTriggers
-                    && incremented.Count > maxTriggers)
-                {
-                    continue;
-                }
-
-                if (incremented.Count % subscriber.EveryNth != 0)
-                {
-                    continue;
-                }
-            }
-
-            var operations = new Queue<PrototypeQueuedOperation>();
-            foreach (var effect in subscriber.Effects)
-            {
-                EnqueueEffectOperations(
-                    operations,
-                    effect,
-                    upgradeLevel: 0,
-                    energySpent: 0,
-                    actionTargetEnemyId: combatEvent.TargetEnemyId,
-                    combat: combat,
-                    powerStacks: subscriber.PowerStacks,
-                    sourceKind: subscriber.SourceKind,
-                    powerCardPayload: subscriber.PowerCardPayload,
-                    sourcePowerEnemyId:
-                        subscriber.SourcePowerEnemyId,
-                    sourcePowerStoredValue:
-                        subscriber.SourcePowerStoredValue,
-                    sourcePowerApplicationOrder:
-                        subscriber.SourcePowerApplicationOrder);
-            }
-
-            var continuation =
-                new PrototypeEventDispatchContinuationState(
-                    combatEvent,
-                    subscriber.Fork(),
-                    orderedSubscribers
-                        .Skip(subscriberIndex + 1)
-                        .Select(item => item.Fork())
-                        .ToArray(),
-                    eventDepth);
-            var resolved = ResolveOperations(
-                player,
-                combat,
-                operations,
-                rng,
-                eventDepth: eventDepth,
-                eventSourceCardInstanceId:
-                    combatEvent.SourceCardInstanceId,
-                eventDispatchContinuation:
-                    continuation);
-            player = resolved.Player;
-            combat = resolved.Combat;
-
-            if (combat.PendingChoice is not null)
-            {
-                if (!allowSuspension)
-                {
-                    throw new NotSupportedException(
-                        "Combat-event suspension outside a top-level automatic event step requires an outer continuation frame.");
-                }
-
-                return (player, combat);
-            }
-
-            combat = FinalizeEventSubscriber(
-                combat,
-                subscriber);
-        }
-
-        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
-        {
-            combat = combat with
-            {
-                PlayerPowers = combat.PlayerPowers
-                    .Where(power =>
-                        !PrototypeContent.Power(power.PowerId)
-                            .RemoveAtPlayerTurnEnd)
-                    .ToArray()
-            };
-            combat = DecrementPlayerPowers(
-                combat,
-                definition => definition.DecrementAtPlayerTurnEnd);
-            combat = ResetPlayerPowerTriggerCounters(combat);
-        }
-
-        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnStarted)
-        {
-            combat = DecrementPlayerPowers(
-                combat,
-                definition => definition.DecrementAfterPlayerTurnStart);
-        }
-
-        return (player, combat);
-    }
-
-    private static (PlayerState Player, CombatState Combat)
-        ResumeEventDispatchContinuation(
-            PlayerState player,
-            CombatState combat,
-            PrototypeEventDispatchContinuationState continuation,
-            RngBundle rng)
-    {
-        combat = FinalizeEventSubscriber(
-            combat,
-            continuation.CurrentSubscriber);
-
-        var remaining = continuation.RemainingSubscribers;
-        for (var index = 0; index < remaining.Length; index++)
-        {
-            var subscriber = remaining[index];
-            if (subscriber.PowerTriggerIndex is not null)
-            {
-                var checkedPower = CheckPowerSubscriberTrigger(combat, subscriber);
-                combat = checkedPower.Combat;
-                if (!checkedPower.ShouldTrigger)
-                {
-                    continue;
-                }
-            }
-
-            if (subscriber.RelicStateIndex is not null)
-            {
-                if (subscriber.RelicTriggerIndex is null
-                    || subscriber.EveryNth <= 0)
-                {
-                    throw new InvalidOperationException(
-                        "Relic trigger counter metadata is invalid.");
-                }
-
-                var incremented = IncrementRelicTriggerCounter(
-                    combat,
-                    subscriber.RelicStateIndex.Value,
-                    subscriber.RelicTriggerIndex.Value);
-                combat = incremented.Combat;
-                player = PersistRelicTriggerCount(
-                    player,
-                    combat.RelicStates[subscriber.RelicStateIndex.Value],
-                    subscriber.RelicTriggerIndex.Value,
-                    incremented.Count);
-                if (subscriber.MaxTriggersPerCounterWindow is
-                        { } maxTriggers
-                    && incremented.Count > maxTriggers)
-                {
-                    continue;
-                }
-
-                if (incremented.Count % subscriber.EveryNth != 0)
-                {
-                    continue;
-                }
-            }
-
-            var operations = new Queue<PrototypeQueuedOperation>();
-            foreach (var effect in subscriber.Effects)
-            {
-                EnqueueEffectOperations(
-                    operations,
-                    effect,
-                    upgradeLevel: 0,
-                    energySpent: 0,
-                    actionTargetEnemyId:
-                        continuation.CombatEvent.TargetEnemyId,
-                    combat: combat,
-                    powerStacks: subscriber.PowerStacks,
-                    sourceKind: subscriber.SourceKind,
-                    powerCardPayload: subscriber.PowerCardPayload,
-                    sourcePowerEnemyId:
-                        subscriber.SourcePowerEnemyId,
-                    sourcePowerStoredValue:
-                        subscriber.SourcePowerStoredValue,
-                    sourcePowerApplicationOrder:
-                        subscriber.SourcePowerApplicationOrder);
-            }
-
-            var nextContinuation =
-                new PrototypeEventDispatchContinuationState(
-                    continuation.CombatEvent,
-                    subscriber.Fork(),
-                    remaining
-                        .Skip(index + 1)
-                        .Select(item => item.Fork())
-                        .ToArray(),
-                    continuation.EventDepth);
-            var resolved = ResolveOperations(
-                player,
-                combat,
-                operations,
-                rng,
-                eventDepth: continuation.EventDepth,
-                eventSourceCardInstanceId:
-                    continuation.CombatEvent.SourceCardInstanceId,
-                eventDispatchContinuation:
-                    nextContinuation);
-            player = resolved.Player;
-            combat = resolved.Combat;
-
-            if (combat.PendingChoice is not null)
-            {
-                return (player, combat);
-            }
-
-            combat = FinalizeEventSubscriber(
-                combat,
-                subscriber);
-        }
-
-        if (continuation.CombatEvent.Kind
-            == PrototypeCombatEventKind.PlayerTurnEnded)
-        {
-            combat = combat with
-            {
-                PlayerPowers = combat.PlayerPowers
-                    .Where(power =>
-                        !PrototypeContent.Power(power.PowerId)
-                            .RemoveAtPlayerTurnEnd)
-                    .ToArray()
-            };
-            combat = DecrementPlayerPowers(
-                combat,
-                definition => definition.DecrementAtPlayerTurnEnd);
-            combat = ResetPlayerPowerTriggerCounters(combat);
-        }
-
-        if (continuation.CombatEvent.Kind
-            == PrototypeCombatEventKind.PlayerTurnStarted)
-        {
-            combat = DecrementPlayerPowers(
-                combat,
-                definition => definition.DecrementAfterPlayerTurnStart);
-        }
-
-        return (player, combat);
-    }
-
-    private static CombatState FinalizeEventSubscriber(
-        CombatState combat,
-        PrototypeEventSubscriberState subscriber)
-    {
-        if (!subscriber.RemoveSourcePowerAfterTrigger)
-        {
-            return combat;
-        }
-
-        if (subscriber.SourcePowerApplicationOrder is null)
-        {
-            throw new InvalidOperationException(
-                "Self-removing power trigger is missing source-power identity.");
-        }
-
-        return RemovePowerInstance(
-            combat,
-            subscriber.SourcePowerApplicationOrder.Value,
-            subscriber.SourcePowerEnemyId);
-    }
-
-    private static CombatState RemovePowerInstance(
-        CombatState combat,
-        long applicationOrder,
-        int? enemyId)
-    {
-        if (enemyId is null)
-        {
-            return combat with
-            {
-                PlayerPowers = combat.PlayerPowers
-                    .Where(power => power.ApplicationOrder != applicationOrder)
-                    .ToArray()
-            };
-        }
-
-        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
-        var index = Array.FindIndex(
-            enemies,
-            enemy => enemy.InstanceId == enemyId.Value);
-        if (index < 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy {enemyId.Value} is missing while removing a power.");
-        }
-
-        enemies[index] = enemies[index] with
-        {
-            Powers = enemies[index].PowerStates
-                .Where(power => power.ApplicationOrder != applicationOrder)
-                .ToArray()
-        };
-        return combat with { Enemies = enemies };
-    }
-
-    private static IReadOnlyList<GameAction> GetPendingChoiceActions(
-        PendingCombatChoiceState pending)
-    {
-        if (!StringComparer.Ordinal.Equals(pending.ChoiceId, "select_cards"))
-        {
-            throw new InvalidOperationException($"Unknown pending combat choice '{pending.ChoiceId}'.");
-        }
-
-        var actions = new List<GameAction>();
-        if (pending.Selection.SequentialOptional)
-        {
-            var selectedCount =
-                pending.SequentialSelectedCardInstanceIds?.Length
-                ?? 0;
-            foreach (var candidate in
-                     pending.CandidateCardInstanceIds)
-            {
-                if (selectedCount
-                    >= pending.Selection.MaxSelections)
-                {
-                    break;
-                }
-
-                actions.Add(GameAction.Create(
-                    "select_cards",
-                    new SelectCardsPayload([candidate])));
-            }
-
-            if (selectedCount
-                >= pending.Selection.MinSelections)
-            {
-                actions.Add(GameAction.Create(
-                    "select_cards",
-                    new SelectCardsPayload([])));
-            }
-
-            return actions;
-        }
-
-        for (var count = pending.Selection.MinSelections;
-             count <= pending.Selection.MaxSelections;
-             count++)
-        {
-            foreach (var selection in ChooseCombinations(
-                         pending.CandidateCardInstanceIds,
-                         count))
-            {
-                actions.Add(GameAction.Create(
-                    "select_cards",
-                    new SelectCardsPayload(selection)));
-            }
-        }
-
-        return actions;
-    }
-
-    private static RunState ResolvePendingChoice(RunState state, GameAction action)
-    {
-        RequireKind(action, "select_cards");
-        var payload = action.ReadPayload<SelectCardsPayload>();
-        var world = RequireWorld(state);
-        var combat = world.Combat
-            ?? throw new InvalidOperationException("Combat phase has no combat state.");
-        var pending = combat.PendingChoice
-            ?? throw new InvalidOperationException("Combat has no pending choice.");
-
-        if (!StringComparer.Ordinal.Equals(pending.ChoiceId, "select_cards"))
-        {
-            throw new InvalidOperationException($"Unknown pending combat choice '{pending.ChoiceId}'.");
-        }
-
-        var selected = payload.CardInstanceIds;
-        if (selected.Length != selected.Distinct().Count())
-        {
-            throw new InvalidOperationException(
-                "Card selection contains duplicate instance IDs.");
-        }
-
-        if (pending.Selection.SequentialOptional)
-        {
-            if (selected.Length > 1)
-            {
-                throw new InvalidOperationException(
-                    "Sequential card selection accepts one card or the finish action.");
-            }
-
-            var accumulated =
-                pending.SequentialSelectedCardInstanceIds
-                ?? Array.Empty<long>();
-            if (selected.Length == 1)
-            {
-                var selectedId = selected[0];
-                if (!pending.CandidateCardInstanceIds
-                        .Contains(selectedId))
-                {
-                    throw new InvalidOperationException(
-                        "Sequential selection contains a card outside the pending candidate set.");
-                }
-
-                var nextAccumulated =
-                    accumulated.Append(selectedId).ToArray();
-                var remainingCandidates =
-                    pending.CandidateCardInstanceIds
-                        .Where(id => id != selectedId)
-                        .ToArray();
-
-                if (nextAccumulated.Length
-                        < pending.Selection.MaxSelections
-                    && remainingCandidates.Length > 0)
-                {
-                    combat = combat with
-                    {
-                        PendingChoice = pending with
-                        {
-                            CandidateCardInstanceIds =
-                                remainingCandidates,
-                            SequentialSelectedCardInstanceIds =
-                                nextAccumulated
-                        }
-                    };
-                    return state with
-                    {
-                        World = world with
-                        {
-                            Combat = combat
-                        }
-                    };
-                }
-
-                selected = nextAccumulated;
-            }
-            else
-            {
-                if (accumulated.Length
-                    < pending.Selection.MinSelections)
-                {
-                    throw new InvalidOperationException(
-                        "Sequential selection cannot finish before its minimum selection count.");
-                }
-
-                selected = accumulated;
-            }
-        }
-
-        if (selected.Length < pending.Selection.MinSelections
-            || selected.Length > pending.Selection.MaxSelections)
-        {
-            throw new InvalidOperationException(
-                $"Selection count {selected.Length} is outside " +
-                $"{pending.Selection.MinSelections}..{pending.Selection.MaxSelections}.");
-        }
-
-        if (!pending.Selection.SequentialOptional)
-        {
-            var candidates =
-                pending.CandidateCardInstanceIds.ToHashSet();
-            if (selected.Any(cardId =>
-                    !candidates.Contains(cardId)))
-            {
-                throw new InvalidOperationException(
-                    "Selection contains a card outside the pending candidate set.");
-            }
-        }
-
-        var slyCards = pending.Selection.SourceZone == PrototypeCardZone.Hand
-            && pending.Selection.Resolution == PrototypeCardSelectionResolutionKind.MoveToDiscard
-                ? selected
-                    .Select(cardId => RequireCombatCard(combat, cardId))
-                    .Where(card =>
-                        CardHasKeyword(
-                            combat,
-                            card.InstanceId,
-                            PrototypeCardKeyword.Sly))
-                    .Select(card => card.InstanceId)
-                    .ToArray()
-                : Array.Empty<long>();
-
-        combat = ApplyCardSelection(
-            combat, pending.Selection, selected, state.Rng);
-        combat = combat with { PendingChoice = null };
-
-        if (pending.SelectedCardTemporaryCost is not null)
-        {
-            foreach (var cardInstanceId in selected)
-            {
-                combat = SetCardTemporaryEnergyCost(
-                    combat,
-                    cardInstanceId,
-                    pending.SelectedCardTemporaryCost);
-            }
-        }
-
-        if (pending.SelectedCardPower is not null)
-        {
-            if (selected.Length != 1)
-            {
-                throw new InvalidOperationException(
-                    "Selected-card power actions require exactly one selected card.");
-            }
-
-            combat = ApplyPlayerPowerWithSelectedCard(
-                combat,
-                pending.SelectedCardPower,
-                RequireCombatCard(combat, selected[0]));
-        }
-
-        if (pending.SelectedCardKeyword is not null)
-        {
-            foreach (var cardInstanceId in selected)
-            {
-                combat = ApplyCardKeywordOverride(
-                    combat,
-                    cardInstanceId,
-                    pending.SelectedCardKeyword);
-            }
-        }
-
-        // Resolve selection-induced exhaust and discard using the normal
-        // ordered event-dispatch continuation (including nested choices).
-        var discardEvents =
-            pending.Selection.SourceZone == PrototypeCardZone.Hand
-            && (pending.Selection.Resolution
-                    == PrototypeCardSelectionResolutionKind.MoveToDiscard
-                || pending.Selection.Resolution
-                    == PrototypeCardSelectionResolutionKind.MoveToExhaust)
-                ? selected.Select(cardId =>
-                {
-                    var movedCard = RequireCombatCard(combat, cardId);
-                    return new PrototypeCombatEvent(
-                        pending.Selection.Resolution
-                            == PrototypeCardSelectionResolutionKind.MoveToExhaust
-                                ? PrototypeCombatEventKind.CardExhausted
-                                : PrototypeCombatEventKind.CardDiscarded,
-                        SourceCardInstanceId: cardId,
-                        CardId: movedCard.CardId);
-                }).ToArray()
-                : Array.Empty<PrototypeCombatEvent>();
-
-        var continuationOperations =
-            (PrototypeQueuedOperation[])
-            pending.Continuation.Clone();
-        if (pending.Selection
-                .DrawEqualToSelectionsOnCompletion
-            && selected.Length > 0)
-        {
-            continuationOperations =
-                new[]
-                {
-                    new PrototypeQueuedOperation(
-                        PrototypeCombatEffectKind.DrawCards,
-                        selected.Length)
-                }
-                .Concat(continuationOperations)
-                .ToArray();
-        }
-
-        var resolutionContinuation =
-            new PrototypeChoiceResolutionContinuationState(
-                SourceCardInstanceId:
-                    pending.SourceCardInstanceId,
-                SourceCardDestination:
-                    pending.SourceCardDestination,
-                Operations:
-                    continuationOperations,
-                PendingDiscardEvents: discardEvents,
-                PendingSlyCardInstanceIds:
-                    (long[])slyCards.Clone(),
-                CompletionEvents:
-                    (PrototypeCombatEvent[])
-                    pending.CompletionEvents.Clone(),
-                CardPlaySeries:
-                    pending.CardPlaySeries,
-                MoveSourceCardOnCompletion:
-                    pending.MoveSourceCardOnCompletion,
-                RemoveSourceCardOnCompletion:
-                    pending.RemoveSourceCardOnCompletion,
-                SourceCardAlreadyMoved:
-                    pending.SourceCardAlreadyMoved,
-                EventDispatchContinuation:
-                    pending.EventDispatchContinuation?.Fork(),
-                Parent:
-                    pending.OuterChoiceContinuation?.Fork());
-
-        var resolved = ResumeChoiceResolutionContinuation(
-            state.Player,
-            combat,
-            state.Rng,
-            resolutionContinuation);
-
-        state = state with
-        {
-            Player = resolved.Player,
-            World = world with { Combat = resolved.Combat }
-        };
-
-        if (resolved.Combat.PendingChoice is null
-            && resolved.Combat.AutomaticPipelineContinuation is
-                { } automaticContinuation)
-        {
-            var resumedWorld = RequireWorld(state);
-            var resumedCombat = resumedWorld.Combat
-                ?? throw new InvalidOperationException(
-                    "Combat unexpectedly disappeared.");
-            state = state with
-            {
-                World = resumedWorld with
-                {
-                    Combat = resumedCombat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }
-                }
-            };
-            state = automaticContinuation.OpeningStage is { } openingStage
-                ? ResumeOpeningCombat(state, openingStage)
-                : ResumeAutomaticPipeline(state,
-                    automaticContinuation.NextStepIndex,
-                    automaticContinuation.PendingPostDispatchEventKind);
-        }
-
-        if (state.Phase != RunPhase.Combat)
-        {
-            return state;
-        }
-
-        var currentCombat = RequireWorld(state).Combat
-            ?? throw new InvalidOperationException(
-                "Combat unexpectedly disappeared.");
-        return AllEnemiesDefeated(currentCombat)
-            ? EnterCombatReward(state)
-            : state;
-    }
-
-    private static (PlayerState Player, CombatState Combat)
-        ResumeChoiceResolutionContinuation(
-            PlayerState player,
-            CombatState combat,
-            RngBundle rng,
-            PrototypeChoiceResolutionContinuationState continuation,
-            bool resumeCardPlaySeries = true)
-    {
-        for (var eventIndex = 0;
-             eventIndex < continuation.PendingDiscardEvents.Length;
-             eventIndex++)
-        {
-            var dispatched = DispatchCombatEvent(
-                player,
-                combat,
-                continuation.PendingDiscardEvents[eventIndex],
-                rng);
-            player = dispatched.Player;
-            combat = dispatched.Combat;
-
-            if (combat.PendingChoice is not null)
-            {
-                var remaining = continuation with
-                {
-                    PendingDiscardEvents =
-                        continuation.PendingDiscardEvents
-                            .Skip(eventIndex + 1)
-                            .ToArray()
-                };
-                combat = AttachOuterChoiceContinuation(
-                    combat,
-                    remaining);
-                return (player, combat);
-            }
-        }
-
-        for (var slyIndex = 0;
-             slyIndex < continuation.PendingSlyCardInstanceIds.Length;
-             slyIndex++)
-        {
-            if (AllEnemiesDefeated(combat))
-            {
-                break;
-            }
-
-            var slyCardId =
-                continuation.PendingSlyCardInstanceIds[slyIndex];
-            if (!combat.DiscardPile.Contains(slyCardId))
-            {
-                continue;
-            }
-
-            var autoPlayed = AutoPlaySlyCard(
-                player,
-                combat,
-                slyCardId,
-                rng);
-            player = autoPlayed.Player;
-            combat = autoPlayed.Combat;
-
-            if (combat.PendingChoice is not null)
-            {
-                var remaining = continuation with
-                {
-                    PendingDiscardEvents =
-                        Array.Empty<PrototypeCombatEvent>(),
-                    PendingSlyCardInstanceIds =
-                        continuation.PendingSlyCardInstanceIds
-                            .Skip(slyIndex + 1)
-                            .ToArray()
-                };
-                combat = AttachOuterChoiceContinuation(
-                    combat,
-                    remaining);
-                return (player, combat);
-            }
-        }
-
-        var resolved = ResolveOperations(
-            player,
-            combat,
-            new Queue<PrototypeQueuedOperation>(
-                continuation.Operations),
-            rng,
-            continuation.SourceCardInstanceId,
-            continuation.SourceCardDestination,
-            continuation.CompletionEvents,
-            cardPlaySeries: continuation.CardPlaySeries,
-            moveSourceCardOnCompletion:
-                continuation.MoveSourceCardOnCompletion,
-            removeSourceCardOnCompletion:
-                continuation.RemoveSourceCardOnCompletion,
-            sourceCardAlreadyMoved:
-                continuation.SourceCardAlreadyMoved,
-            eventDispatchContinuation:
-                continuation.EventDispatchContinuation);
-
-        if (resolved.Combat.PendingChoice is not null)
-        {
-            return (
-                resolved.Player,
-                AttachParentChoiceContinuation(
-                    resolved.Combat,
-                    continuation.Parent));
-        }
-
-        if (continuation.EventDispatchContinuation is not null)
-        {
-            resolved = ResumeEventDispatchContinuation(
-                resolved.Player,
-                resolved.Combat,
-                continuation.EventDispatchContinuation,
-                rng);
-            if (resolved.Combat.PendingChoice is not null)
-            {
-                return (
-                    resolved.Player,
-                    AttachParentChoiceContinuation(
-                        resolved.Combat,
-                        continuation.Parent));
-            }
-        }
-
-        if (resumeCardPlaySeries
-            && continuation.CardPlaySeries is
-                { HasRemainingExecutions: true } series)
-        {
-            resolved = AllEnemiesDefeated(resolved.Combat)
-                ? FinalizeInterruptedCardPlaySeries(
-                    resolved.Player,
-                    resolved.Combat,
-                    rng,
-                    series)
-                : ResolveCardPlaySeries(
-                    resolved.Player,
-                    resolved.Combat,
-                    rng,
-                    series);
-
-            if (resolved.Combat.PendingChoice is not null)
-            {
-                return (
-                    resolved.Player,
-                    AttachParentChoiceContinuation(
-                        resolved.Combat,
-                        continuation.Parent));
-            }
-        }
-
-        if (continuation.CardPlaySeries is
-                { HasRemainingExecutions: false } completedSeries
-            && resolved.Combat.PendingChoice is null
-            && resolved.Player.Hp > 0)
-            resolved = (resolved.Player, CompletePaelsLegionCardPlay(
-                resolved.Combat, completedSeries.SourceCardInstanceId));
-
-        return continuation.Parent is null
-            ? resolved
-            : ResumeChoiceResolutionContinuation(
-                resolved.Player,
-                resolved.Combat,
-                rng,
-                continuation.Parent);
-    }
-
-    private static CombatState AttachOuterChoiceContinuation(
-        CombatState combat,
-        PrototypeChoiceResolutionContinuationState continuation)
-    {
-        var pending = combat.PendingChoice
-            ?? throw new InvalidOperationException(
-                "Nested choice continuation requires a pending choice.");
-        var combined = pending.OuterChoiceContinuation is null
-            ? continuation.Fork()
-            : AppendChoiceContinuationParent(
-                pending.OuterChoiceContinuation,
-                continuation);
-        return combat with
-        {
-            PendingChoice = pending with
-            {
-                OuterChoiceContinuation = combined
-            }
-        };
-    }
-
-    private static CombatState AttachParentChoiceContinuation(
-        CombatState combat,
-        PrototypeChoiceResolutionContinuationState? parent) =>
-        parent is null
-            ? combat
-            : AttachOuterChoiceContinuation(combat, parent);
-
-    private static PrototypeChoiceResolutionContinuationState
-        AppendChoiceContinuationParent(
-            PrototypeChoiceResolutionContinuationState current,
-            PrototypeChoiceResolutionContinuationState parent) =>
-        current.Parent is null
-            ? current with { Parent = parent.Fork() }
-            : current with
-            {
-                Parent = AppendChoiceContinuationParent(
-                    current.Parent,
-                    parent)
-            };
-
-    private static (PlayerState Player, CombatState Combat) AutoPlaySlyCard(
-        PlayerState player,
-        CombatState combat,
-        long cardInstanceId,
-        RngBundle rng)
-    {
-        if (!combat.DiscardPile.Contains(cardInstanceId))
-        {
-            throw new InvalidOperationException(
-                $"Sly card {cardInstanceId} must be in the discard pile before auto-play.");
-        }
-
-        var card = RequireCombatCard(combat, cardInstanceId);
-        var definition = PrototypeContent.Card(card.CardId);
-        if (!CardHasKeyword(
-                combat,
-                cardInstanceId,
-                PrototypeCardKeyword.Sly))
-        {
-            throw new InvalidOperationException(
-                $"Card {cardInstanceId} is not Sly.");
-        }
-
-        // Source CardCmd.AutoPlay(choiceContext, card, target: null,
-        // AutoPlayType.SlyDiscard) chooses an enemy with
-        // RunState.Rng.CombatTargets.NextItem(combatState.HittableEnemies)
-        // for TargetType.AnyEnemy. Preserve the ordered eligible set and
-        // selected result in combat history. Prototype combat-stream
-        // ownership remains provisional until v111 CombatTargets parity.
-        int? autoPlayTarget = null;
-        if (definition.Target == PrototypeCardTarget.Enemy)
-        {
-            var eligible = combat.Enemies
-                .Where(enemy => enemy.Hp > 0 && !enemy.Escaped)
-                .ToArray();
-            if (eligible.Length == 0)
-            {
-                // Source moves an un-targetable auto-play into its result
-                // pile without activating effects. This is normally
-                // intercepted earlier by the end-of-combat guard.
-                return (player, combat);
-            }
-            var selectedIndex = PrototypeRng.NextInt(
-                rng, "combat", eligible.Length);
-            autoPlayTarget = eligible[selectedIndex].InstanceId;
-            combat = combat with
-            {
-                AutoPlayTargetRolls =
-                    (combat.AutoPlayTargetRolls
-                     ?? Array.Empty<PrototypeAutoPlayTargetRoll>())
-                    .Append(new PrototypeAutoPlayTargetRoll(
-                        cardInstanceId, combat.Turn, eligible.Length,
-                        selectedIndex, autoPlayTarget.Value))
-                    .ToArray()
-            };
-        }
-
-        combat = combat with
-        {
-            DiscardPile = combat.DiscardPile
-                .Where(id => id != cardInstanceId)
-                .ToArray()
-        };
-
-        if (IsCardFreeByPower(combat, definition))
-        {
-            combat = ConsumeMatchingFreeCardPower(combat, definition.Type);
-        }
-
-        var playCountResult =
-            ResolveCardPlayCountAndConsumeModifiers(
-                combat,
-                card,
-                definition.Type);
-        combat = playCountResult.Combat;
-
-        var sourceDestination = CardExhaustsOnUse(
-                definition, card)
-            ? PrototypeCardZone.ExhaustPile
-            : PrototypeCardZone.DiscardPile;
-
-        return ResolveCardPlaySeries(
-            player,
-            combat,
-            rng,
-            new PrototypeCardPlaySeriesState(
-                SourceCardInstanceId: cardInstanceId,
-                SourceCardDestination: sourceDestination,
-                TargetEnemyId: autoPlayTarget,
-                EnergySpent: 0,
-                PlayCount: playCountResult.PlayCount,
-                NextPlayIndex: 0,
-                RemoveSourceCardOnCompletion:
-                    definition.Type == PrototypeCardType.Power,
-                IsAutoPlay: true));
-    }
-
-    private static CombatState ApplyCardSelection(
-        CombatState combat,
-        PrototypeCardSelectionSpec selection,
-        long[] selected,
-        RngBundle rng)
-    {
-        var source = GetZone(combat, selection.SourceZone);
-        var selectedSet = selected.ToHashSet();
-
-        if (selected.Any(cardId => !source.Contains(cardId)))
-        {
-            throw new InvalidOperationException(
-                "Selected card is no longer in the requested source zone.");
-        }
-
-        if (selection.Resolution == PrototypeCardSelectionResolutionKind.CopyToHand)
-        {
-            foreach (var id in selected)
-            {
-                var card = RequireCombatCard(combat, id);
-                combat = AddGeneratedCardCopies(combat, new PrototypeCombatCardSnapshot(
-                    card.CardId, card.UpgradeLevel, card.State.Clone(), card.CombatEnergyCostDelta,
-                    card.TemporaryEnergyCost, card.KeywordOverrides, card.ReplayCount,
-                    card.Enchantment, card.EnchantmentTriggeredThisCombat, card.Affliction,
-                    card.SuppressedUpgradeLevels), selection.CopiesPerSelection);
-            }
-            return combat;
-        }
-
-        if (selection.Resolution
-                == PrototypeCardSelectionResolutionKind.TransformRandom)
-        {
-            foreach (var instanceId in selected)
-            {
-                var original = RequireCombatCard(combat, instanceId);
-                var definition = PrototypeContent.Card(original.CardId);
-                if (PrototypeCardRules.IsEternal(original))
-                {
-                    throw new InvalidOperationException(
-                        "Eternal combat cards cannot be transformed.");
-                }
-
-                // Native combat transforms into a different eligible
-                // card from the ORIGINAL card's own generation pool.
-                var pool = original.CardId.StartsWith(
-                        "proto.colorless.", StringComparison.Ordinal)
-                    ? PrototypeColorlessCards.ImplementedCombatGenerationPool
-                    : PrototypeContent.RewardCardPool;
-                var eligible = pool.Where(id =>
-                {
-                    var candidate = PrototypeContent.Card(id);
-                    return id != original.CardId
-                        && candidate.CanBeGeneratedInCombat
-                        && candidate.MechanicsImplemented
-                        && candidate.Rarity is
-                            PrototypeCardRarity.Common
-                            or PrototypeCardRarity.Uncommon
-                            or PrototypeCardRarity.Rare;
-                }).ToArray();
-                if (eligible.Length == 0)
-                {
-                    throw new NotSupportedException(
-                        "No eligible native-pool solo transform targets.");
-                }
-
-                var replacement = eligible[PrototypeRng.NextInt(
-                    rng, "combat", eligible.Length)];
-                var replacementId = combat.NextCardInstanceId;
-                var oldPersistentId = original.PersistentCardInstanceId;
-                var transformed = combat.TransformedPersistentCardIds
-                    ?? Array.Empty<long>();
-
-                // Transform creates a new physical card; it does not
-                // mutate the original card's persistent deck identity.
-                // Track that absence explicitly for run invariants.
-                combat = combat with
-                {
-                    Cards = combat.Cards
-                        .Where(card => card.InstanceId != instanceId)
-                        .Append(new CombatCardInstance(
-                            replacementId,
-                            PersistentCardInstanceId: null,
-                            CardId: replacement,
-                            UpgradeLevel: 0,
-                            IsTemporary: true,
-                            State: PrototypeJson.EmptyObject()))
-                        .ToArray(),
-                    Hand = combat.Hand.Select(id =>
-                        id == instanceId ? replacementId : id).ToArray(),
-                    DrawPile = combat.DrawPile.Select(id =>
-                        id == instanceId ? replacementId : id).ToArray(),
-                    DiscardPile = combat.DiscardPile.Select(id =>
-                        id == instanceId ? replacementId : id).ToArray(),
-                    ExhaustPile = combat.ExhaustPile.Select(id =>
-                        id == instanceId ? replacementId : id).ToArray(),
-                    NextCardInstanceId = replacementId + 1,
-                    TransformedPersistentCardIds =
-                        oldPersistentId is { } persistentId
-                            ? transformed.Append(persistentId).ToArray()
-                            : transformed
-                };
-            }
-            return combat;
-        }
-
-        if (selection.Resolution
-                == PrototypeCardSelectionResolutionKind.Preserve
-            && !selection.RemoveUnselectedFromSource)
-        {
-            return combat;
-        }
-
-        var destinationZone = selection.Resolution switch
-        {
-            PrototypeCardSelectionResolutionKind.Preserve =>
-                (PrototypeCardZone?)null,
-            PrototypeCardSelectionResolutionKind.MoveToHand =>
-                PrototypeCardZone.Hand,
-            PrototypeCardSelectionResolutionKind.MoveToDiscard =>
-                PrototypeCardZone.DiscardPile,
-            PrototypeCardSelectionResolutionKind.MoveToExhaust =>
-                PrototypeCardZone.ExhaustPile,
-            // DrawCards pops the last draw-pile entry: append means top.
-            PrototypeCardSelectionResolutionKind.MoveToDrawTop =>
-                PrototypeCardZone.DrawPile,
-            _ => throw new ArgumentOutOfRangeException()
-        };
-
-        if (destinationZone == selection.SourceZone)
-        {
-            throw new InvalidOperationException(
-                "Card-selection source and destination zones coincide.");
-        }
-
-        var unselected = source
-            .Where(cardId => !selectedSet.Contains(cardId))
-            .ToArray();
-        combat = SetZone(
-            combat,
-            selection.SourceZone,
-            selection.RemoveUnselectedFromSource
-                ? Array.Empty<long>()
-                : unselected);
-
-        if (selection.RemoveUnselectedFromSource)
-        {
-            var unselectedSet = unselected.ToHashSet();
-            if (combat.Cards.Any(card =>
-                    unselectedSet.Contains(card.InstanceId)
-                    && !card.IsTemporary))
-            {
-                throw new InvalidOperationException(
-                    "Only temporary choice cards may be removed when a selection resolves.");
-            }
-
-            combat = combat with
-            {
-                Cards = combat.Cards
-                    .Where(card =>
-                        !unselectedSet.Contains(card.InstanceId))
-                    .ToArray()
-            };
-        }
-
-        if (destinationZone is { } destination)
-        {
-            var destinationCards = GetZone(combat, destination);
-            combat = SetZone(
-                combat,
-                destination,
-                destinationCards.Concat(selected).ToArray());
-        }
-
-        return combat;
-    }
-
-    private static long[] GetZone(CombatState combat, PrototypeCardZone zone) =>
-        zone switch
-        {
-            PrototypeCardZone.Hand => combat.Hand,
-            PrototypeCardZone.DrawPile => combat.DrawPile,
-            PrototypeCardZone.DiscardPile => combat.DiscardPile,
-            PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
-            PrototypeCardZone.PlayPile => combat.PlayCardIds,
-            PrototypeCardZone.ChoicePool => combat.ChoiceCardIds,
-            _ => throw new ArgumentOutOfRangeException(nameof(zone))
-        };
-
-    private static CombatState SetZone(
-        CombatState combat,
-        PrototypeCardZone zone,
-        long[] cards) =>
-        zone switch
-        {
-            PrototypeCardZone.Hand => combat with { Hand = cards },
-            PrototypeCardZone.DrawPile => combat with { DrawPile = cards },
-            PrototypeCardZone.DiscardPile => combat with { DiscardPile = cards },
-            PrototypeCardZone.ExhaustPile => combat with { ExhaustPile = cards },
-            PrototypeCardZone.PlayPile => combat with { PlayPile = cards },
-            PrototypeCardZone.ChoicePool => combat with { ChoicePool = cards },
-            _ => throw new ArgumentOutOfRangeException(nameof(zone))
-        };
-
-    private static IEnumerable<long[]> ChooseCombinations(long[] source, int count)
-    {
-        if (count < 0 || count > source.Length)
-        {
-            yield break;
-        }
-
-        if (count == 0)
-        {
-            yield return Array.Empty<long>();
-            yield break;
-        }
-
-        var buffer = new long[count];
-        foreach (var result in ChooseCombinationsCore(source, 0, 0, buffer))
-        {
-            yield return result;
-        }
-    }
-
-    private static IEnumerable<long[]> ChooseCombinationsCore(
-        long[] source,
-        int start,
-        int depth,
-        long[] buffer)
-    {
-        if (depth == buffer.Length)
-        {
-            yield return (long[])buffer.Clone();
-            yield break;
-        }
-
-        var remaining = buffer.Length - depth;
-        for (var index = start; index <= source.Length - remaining; index++)
-        {
-            buffer[depth] = source[index];
-            foreach (var result in ChooseCombinationsCore(
-                         source,
-                         index + 1,
-                         depth + 1,
-                         buffer))
-            {
-                yield return result;
-            }
-        }
-    }
-
-    private static bool IsInnate(CombatCardInstance card)
-    {
-        var definition = PrototypeContent.Card(card.CardId);
-        return definition.Innate
-            || (card.UpgradeLevel > 0 && definition.InnateOnUpgrade);
-    }
-
-    private static CombatCardInstance RequireCombatCard(
-        CombatState combat,
-        long instanceId) =>
-        combat.Cards.FirstOrDefault(card => card.InstanceId == instanceId)
-        ?? throw new InvalidOperationException($"Combat card instance {instanceId} is missing.");
-
-    private sealed record PrototypeDamageResult(
-        CombatState Combat,
-        int DamageDealt,
-        bool Defeated);
-
-    private static CombatState SetEnemyBlock(
-        CombatState combat,
-        int enemyId,
-        int block)
-    {
-        var enemies = combat.Enemies
-            .Select(enemy => enemy.Fork())
-            .ToArray();
-        var index = Array.FindIndex(
-            enemies,
-            enemy => enemy.InstanceId == enemyId);
-        if (index < 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-        }
-
-        enemies[index] = enemies[index] with
-        {
-            Block = Math.Max(0, block)
-        };
-        return combat with { Enemies = enemies };
-    }
-
-    private static CombatState RemoveEnemyPower(
-        CombatState combat,
-        int enemyId,
-        string powerId)
-    {
-        var enemies = combat.Enemies
-            .Select(enemy => enemy.Fork())
-            .ToArray();
-        var index = Array.FindIndex(
-            enemies,
-            enemy => enemy.InstanceId == enemyId);
-        if (index < 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-        }
-
-        enemies[index] = enemies[index] with
-        {
-            Powers = enemies[index].PowerStates
-                .Where(power =>
-                    !StringComparer.Ordinal.Equals(
-                        power.PowerId,
-                        powerId))
-                .ToArray()
-        };
-        return combat with { Enemies = enemies };
-    }
-
-    private static int ResolveEnemyStatusTriggerCount(
-        CombatState combat,
-        string statusId,
-        int stacks)
-    {
-        var extraTriggers =
-            combat.PlayerPowers.Sum(power =>
-            {
-                var definition =
-                    PrototypeContent.Power(
-                        power.PowerId);
-                return power.Stacks > 0
-                    && StringComparer.Ordinal.Equals(
-                        definition
-                            .ExtraEnemyStatusTriggerStatusId,
-                        statusId)
-                        ? definition
-                            .ExtraEnemyStatusTriggersPerStack
-                          * power.Stacks
-                        : 0;
-            });
-
-        return Math.Min(
-            Math.Max(0, stacks),
-            1 + Math.Max(0, extraTriggers));
-    }
-
-    private static CombatState TriggerEnemyStatus(
-        CombatState combat,
-        int enemyId,
-        string statusId,
-        RngBundle rng)
-    {
-        var enemy = combat.Enemies.SingleOrDefault(
-            item => item.InstanceId == enemyId)
-            ?? throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-        var stacks =
-            enemy.Statuses.GetValueOrDefault(statusId);
-        var triggerCount =
-            ResolveEnemyStatusTriggerCount(
-                combat,
-                statusId,
-                stacks);
-
-        for (var trigger = 0;
-             trigger < triggerCount;
-             trigger++)
-        {
-            enemy = combat.Enemies.Single(
-                item =>
-                    item.InstanceId == enemyId);
-            if (enemy.Hp <= 0
-                || enemy.Statuses.GetValueOrDefault(
-                    statusId) <= 0)
-            {
-                break;
-            }
-
-            combat = TriggerEnemyStatusOnce(
-                combat,
-                enemyId,
-                statusId,
-                rng);
-        }
-
-        return combat;
-    }
-
-    private static CombatState TriggerEnemyStatusOnce(
-        CombatState combat,
-        int enemyId,
-        string statusId,
-        RngBundle rng)
-    {
-        var definition = PrototypeContent.Status(statusId);
-        var enemy = combat.Enemies.SingleOrDefault(item =>
-            item.InstanceId == enemyId)
-            ?? throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-
-        var stacks = enemy.Statuses.GetValueOrDefault(
-            statusId);
-        if (enemy.Hp <= 0 || stacks <= 0)
-        {
-            return combat;
-        }
-
-        if (definition.TriggerKind
-            != PrototypeStatusTriggerKind.DamageSelfByStacks)
-        {
-            throw new InvalidOperationException(
-                $"Status '{statusId}' has no immediate trigger semantics.");
-        }
-
-        var hpLoss = LoseEnemyHp(
-            combat,
-            enemyId,
-            stacks);
-        combat = hpLoss.Combat;
-
-        if (!hpLoss.Defeated
-            && definition.DecayOnTrigger != 0)
-        {
-            var enemies = combat.Enemies
-                .Select(item => item.Fork())
-                .ToArray();
-            var index = Array.FindIndex(
-                enemies,
-                item => item.InstanceId == enemyId);
-            var statuses = new Dictionary<string, int>(
-                enemies[index].Statuses,
-                StringComparer.Ordinal);
-            var remaining =
-                stacks - definition.DecayOnTrigger;
-            if (remaining > 0)
-            {
-                statuses[statusId] = remaining;
-            }
-            else
-            {
-                statuses.Remove(statusId);
-            }
-
-            enemies[index] = enemies[index] with
-            {
-                Statuses = statuses
-            };
-            combat = combat with { Enemies = enemies };
-        }
-
-        if (hpLoss.Defeated)
-        {
-            combat =
-                CleanupSourceBoundPowersForDefeatedEnemies(
-                    combat);
-            combat = ResolveEnemyDeathSummons(
-                combat,
-                rng);
-        }
-
-        return combat;
-    }
-
-    // Narrow internal combat-state test seams: don't expose the
-    // implementation-private PrototypeDamageResult result type.
-    internal static CombatState ApplyRawHpLossForSourceRegression(
-        CombatState combat, int enemyId, int amount) =>
-        LoseEnemyHp(combat, enemyId, amount).Combat;
-
-    internal static CombatState ApplyHitForSourceRegression(
-        CombatState combat, int enemyId, int amount) =>
-        DamageEnemy(combat, enemyId, amount).Combat;
-
-    private static PrototypeDamageResult LoseEnemyHp(
-        CombatState combat,
-        int enemyId,
-        int hpLoss)
-    {
-        var enemies = combat.Enemies
-            .Select(enemy => enemy.Fork())
-            .ToArray();
-        var index = Array.FindIndex(
-            enemies,
-            enemy => enemy.InstanceId == enemyId);
-        if (index < 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-        }
-
-        var enemy = enemies[index];
-        if (enemy.Hp <= 0 || enemy.BossPendingRevival)
-        {
-            return new PrototypeDamageResult(
-                combat,
-                0,
-                false);
-        }
-
-        // Native PlowPower/ShriekPower trigger only from
-        // PowerModel.AfterDamageReceived when result.UnblockedDamage > 0.
-        // Poison, direct LoseHp effects and health costs are not damage
-        // callbacks. Preserve the default prototype's historical
-        // generalized HP-threshold behavior unless native combat owns
-        // one of these source-audited bosses.
-        var nativeDamageOnlyThreshold =
-            (combat.NativeRng?.Formation.NativeEncounterEntry,
-                enemy.EnemyId) is
-            ("CeremonialBeastBoss", "proto.enemy.ceremonial_beast")
-            or ("TerrorEelElite", "proto.enemy.terror_eel");
-        var modified = ModifyEnemyHpLoss(
-            enemy,
-            hpLoss,
-            allowDamageTriggeredThreshold: !nativeDamageOnlyThreshold);
-        enemy = modified.Enemy;
-        var nextHp = Math.Max(
-            0,
-            enemy.Hp - modified.HpLoss);
-        var damageDealt = enemy.Hp - nextHp;
-
-        enemies[index] = InterceptEnemyLethalDeath(
-            enemy with { Hp = nextHp });
-
-        var defeated = enemy.Hp > 0 && enemies[index].Hp == 0;
-        var nextCombat = combat with { Enemies = enemies };
-        if (defeated)
-        {
-            nextCombat = ResolveAllyDeathPowers(nextCombat, enemyId);
-        }
-        return new PrototypeDamageResult(
-            nextCombat, damageDealt, Defeated: defeated);
-    }
-
-    private static CombatState ApplyPlayerEnemyBlockBrokenRelics(
-        PlayerState player, CombatState combat, int enemyId)
-    {
-        foreach (var relic in player.ActiveRelics)
-        {
-            var amount = PrototypeContent.Relic(relic.RelicId).EnemyVulnerableOnBlockBroken;
-            if (amount > 0) combat = ApplyEnemyPower(combat, enemyId, "proto.power.vulnerable", amount);
-        }
-        return combat;
-    }
-
-    private static PrototypeDamageResult DamageEnemy(
-        CombatState combat,
-        int enemyId,
-        int damage,
-        int minPoweredAttackHpLoss = 0) =>
-        DamageEnemyInternal(combat, enemyId, damage,
-            minPoweredAttackHpLoss, false);
-
-    private static PrototypeDamageResult DamageEnemyInternal(
-        CombatState combat,
-        int enemyId,
-        int damage,
-        int minPoweredAttackHpLoss,
-        bool isPoweredAttack)
-    {
-        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
-        var index = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
-        if (index < 0)
-        {
-            throw new InvalidOperationException($"Enemy {enemyId} is missing.");
-        }
-
-        var enemy = enemies[index];
-        if (enemy.Hp <= 0 || enemy.BossPendingRevival)
-        {
-            return new PrototypeDamageResult(combat, 0, false);
-        }
-
-        // Flutter modifies only powered attack damage. Ordinary HP loss,
-        // poison and non-powered hit effects bypass the 50% modifier.
-        var flutter = enemy.PowerStates.FirstOrDefault(power =>
-            power.Stacks > 0
-            && power.PowerId == "proto.native.hive.flutter");
-        if (isPoweredAttack && flutter is not null)
-        {
-            damage = (int)Math.Floor(damage * 0.5m);
-        }
-
-        if (isPoweredAttack)
-        {
-            foreach (var power in enemy.PowerStates.Where(power =>
-                power.Stacks > 0))
-            {
-                var definition = PrototypeContent.Power(power.PowerId);
-                if (definition.EnemyIncomingPoweredAttackDenominator <= 0)
-                    throw new InvalidOperationException(
-                        "Enemy powered-attack modifier has nonpositive denominator.");
-                damage = (int)Math.Floor(
-                    (decimal)damage
-                    * definition.EnemyIncomingPoweredAttackNumerator
-                    / definition.EnemyIncomingPoweredAttackDenominator);
-            }
-        }
-
-        var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
-        // BurrowedPower.AfterBlockBroken fires when a HIT actually
-        // consumes the last point of the shield. Ordinary enemy Block
-        // resetting, HP-loss effects and hits on zero Block do not stun.
-        var brokeBurrowedBlock = enemy.Block > 0
-            && absorbed == enemy.Block
-            && enemy.PowerStates.Any(power =>
-                power.Stacks > 0
-                && power.PowerId == "proto.native.hive.burrowed");
-        var unblocked = Math.Max(0, damage - absorbed);
-        // The Boot modifies attack HP loss AFTER Block absorption.
-        // A fully blocked hit or non-attack HP loss does not trigger.
-        // Native enemy HP-loss caps are applied afterwards.
-        var hpDamage = ModifyEnemyHpLoss(
-            enemy,
-            unblocked > 0
-                ? Math.Max(unblocked, minPoweredAttackHpLoss)
-                : 0);
-        enemy = hpDamage.Enemy;
-        var nextHp = Math.Max(0, enemy.Hp - hpDamage.HpLoss);
-        var damageDealt = enemy.Hp - nextHp;
-
-        if (isPoweredAttack && hpDamage.HpLoss > 0
-            && flutter is not null && nextHp > 0)
-        {
-            // Flutter.AfterDamageReceived decrements once per unblocked
-            // powered hit. On the fifth, CreatureCmd.Stun overrides the
-            // previously committed move for exactly one enemy turn;
-            // resume the interrupted move next turn.
-            var remaining = flutter.Stacks - 1;
-            enemy = enemy with
-            {
-                Powers = enemy.PowerStates
-                    .Where(power => power.ApplicationOrder
-                        != flutter.ApplicationOrder)
-                    .Concat(remaining > 0
-                        ? new[] { flutter with { Stacks = remaining } }
-                        : Array.Empty<PrototypePowerInstanceState>())
-                    .OrderBy(power => power.ApplicationOrder)
-                    .ToArray(),
-                PlannedMoveIndex = remaining <= 0
-                    ? 5 : enemy.PlannedMoveIndex,
-                PlannedNextAiStateId = remaining <= 0
-                    ? enemy.AiStateId : enemy.PlannedNextAiStateId
-            };
-        }
-
-        // SlumberPower.AfterDamageReceived removes one stack for each
-        // damage callback with unblocked damage. It is distinct from raw
-        // HP loss (poison, LoseHp, costs) and from the Underdocks Asleep
-        // power, which wakes on the first qualifying attack hit.
-        PrototypePowerDefinition? wake = null;
-        if (unblocked > 0 && nextHp > 0)
-        {
-            foreach (var powerState in enemy.PowerStates)
-            {
-                var definition = PrototypeContent.Power(
-                    powerState.PowerId);
-                if (definition.EnemyStacksDecayOnUnblockedDamage <= 0
-                    || powerState.Stacks <= 0)
-                {
-                    continue;
-                }
-
-                var remaining = powerState.Stacks
-                    - definition.EnemyStacksDecayOnUnblockedDamage;
-                enemy = enemy with
-                {
-                    Powers = enemy.PowerStates
-                        .Where(power => power.ApplicationOrder
-                            != powerState.ApplicationOrder)
-                        .Concat(remaining > 0
-                            ? [powerState with { Stacks = remaining }]
-                            : Array.Empty<PrototypePowerInstanceState>())
-                        .OrderBy(power => power.ApplicationOrder)
-                        .ToArray()
-                };
-                if (remaining <= 0)
-                {
-                    wake ??= definition;
-                }
-            }
-        }
-
-        // Some buffs (e.g. native Asleep) wake on unblocked attack HP
-        // damage, not on blocked attacks or poison HP loss. Stun the
-        // pending enemy action and select its waking AI state.
-        wake ??= hpDamage.HpLoss > 0 && nextHp > 0
-            ? enemy.PowerStates
-                .Select(power => PrototypeContent.Power(power.PowerId))
-                .FirstOrDefault(power =>
-                    power.WakeOwnerOnUnblockedAttackDamage)
-            : null;
-        if (wake is not null)
-        {
-            var remove = (wake.RemoveOwnerPowersOnWake
-                    ?? Array.Empty<string>())
-                .ToHashSet(StringComparer.Ordinal);
-            enemy = enemy with
-            {
-                Powers = enemy.PowerStates
-                    .Where(power => !remove.Contains(power.PowerId))
-                    .ToArray(),
-                AiStateId = wake.OwnerAiStateOnWake ?? enemy.AiStateId,
-                EnemyActionSkipsRemaining = wake.StunOwnerOnWake
-                    ? Math.Max(1, enemy.EnemyActionSkipsRemaining)
-                    : enemy.EnemyActionSkipsRemaining
-            };
-        }
-
-        enemies[index] = InterceptEnemyLethalDeath(
-            enemy with
-            {
-                Block = enemy.Block - absorbed,
-                Hp = nextHp
-            });
-
-        if (brokeBurrowedBlock && enemies[index].Hp > 0)
-        {
-            // Tunneler.GetStunned -> CreatureCmd.Stun(StillDizzy,
-            // "BITE_MOVE") overrides the previously announced BELOW.
-            // Persist the forced action now, not during observation.
-            var interrupted = enemies[index];
-            enemies[index] = interrupted with
-            {
-                Powers = interrupted.PowerStates.Where(power =>
-                    power.PowerId != "proto.native.hive.burrowed")
-                    .ToArray(),
-                Block = 0,
-                AiStateId = "dizzy",
-                PlannedMoveIndex = 3,
-                PlannedNextAiStateId = "bite"
-            };
-        }
-
-        var defeated = enemy.Hp > 0 && enemies[index].Hp == 0;
-        var nextCombat = combat with { Enemies = enemies };
-        if (defeated)
-        {
-            nextCombat = ResolveAllyDeathPowers(nextCombat, enemyId);
-        }
-        return new PrototypeDamageResult(
-            nextCombat, damageDealt, Defeated: defeated);
-    }
-
-    /// <summary>
-    /// A last-stand power can turn lethal enemy HP loss into a separate
-    /// scripted combat phase. The intercept is one-shot so the eventual
-    /// scripted self-death is not intercepted again.
-    /// </summary>
-    private static EnemyCombatState InterceptEnemyLethalDeath(
-        EnemyCombatState enemy)
-    {
-        if (enemy.BossPendingRevival || enemy.Hp > 0
-            || enemy.LastStandTriggered)
-        {
-            return enemy;
-        }
-
-        // Adaptable: the first two lethal hits interrupt the announced
-        // action with a forced resurrection on the same enemy instance.
-        // The final (third-form) lethal hit ends combat normally.
-        if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
-            && enemy.BossPhase < 2
-            && enemy.PowerStates.Any(power =>
-                power.PowerId == PrototypeNativeGloryBosses.AdaptableId))
-        {
-            return enemy with
-            {
-                Hp = 1,
-                Block = 0,
-                BossPendingRevival = true,
-                AiStateId = "respawn",
-                PlannedMoveIndex = 3,
-                PlannedNextAiStateId = enemy.BossPhase == 0
-                    ? "claw" : "lacerate"
-            };
-        }
-
-        foreach (var power in enemy.PowerStates)
-        {
-            var definition = PrototypeContent.Power(power.PowerId);
-            if (power.Stacks <= 0
-                || definition.LastStandHp <= 0
-                || definition.LastStandAiStateId is not { } nextState)
-            {
-                continue;
-            }
-
-            // A lethal-intercept script overrides the previously
-            // announced action immediately. If its destination is a
-            // deterministic move state, commit that move and its
-            // continuation without consuming a new RNG draw.
-            var moveState = PrototypeContent.Enemy(enemy.EnemyId)
-                .Ai?.States.FirstOrDefault(state =>
-                    StringComparer.Ordinal.Equals(state.Id, nextState)
-                    && state.Kind == PrototypeEnemyAiStateKind.Move);
-            return enemy with
-            {
-                Hp = definition.LastStandHp,
-                Block = 0,
-                LastStandTriggered = true,
-                AiStateId = nextState,
-                PlannedMoveIndex = moveState?.MoveIndex,
-                PlannedNextAiStateId = moveState?.NextStateId
-            };
-        }
-
-        return enemy;
-    }
-
-    /// <summary>
-    /// Dispatch source-backed powers that react to a different ally's
-    /// death. This runs for both powered attacks and raw HP loss (e.g.,
-    /// poison), before removal of defeated creatures. Only a living
-    /// owner may react, and the owner never reacts to its own death.
-    /// </summary>
-    private static CombatState ResolveAllyDeathPowers(
-        CombatState combat, int defeatedEnemyId)
-    {
-        // PossessStrength/PossessSpeed store the actual successful
-        // player stat loss, not the attempted debuff: Artifact can
-        // prevent theft. Death returns precisely those stolen stacks,
-        // once, before living allies process their death reactions.
-        var defeated = combat.Enemies.FirstOrDefault(enemy =>
-            enemy.InstanceId == defeatedEnemyId);
-        if (defeated is not null
-            && defeated.EnemyId == PrototypeNativeGloryBosses.AmalgamId)
-        {
-            combat = combat with
-            {
-                Enemies = combat.Enemies.Select(enemy =>
-                    enemy.EnemyId == PrototypeNativeGloryBosses.QueenId
-                    && enemy.Hp > 0
-                    && enemy.PlannedMoveIndex == 2
-                        ? enemy with
-                        {
-                            AiStateId = "enrage",
-                            PlannedMoveIndex = 5,
-                            PlannedNextAiStateId = "heads"
-                        }
-                        : enemy).ToArray()
-            };
-        }
-        if (defeated is not null)
-        {
-            foreach (var stolenPower in defeated.PowerStates.Where(power =>
-                power.StoredValue > 0
-                && power.PowerId is
-                    (PrototypeNativeGloryNewNormals.PossessStrengthId
-                     or PrototypeNativeGloryNewNormals.PossessSpeedId)))
-            {
-                var restoredStat = stolenPower.PowerId ==
-                    PrototypeNativeGloryNewNormals.PossessStrengthId
-                    ? "proto.power.strength"
-                    : "proto.power.dexterity";
-                combat = ApplyPlayerPower(
-                    combat, restoredStat, stolenPower.StoredValue);
-            }
-            combat = combat with
-            {
-                Enemies = combat.Enemies.Select(enemy =>
-                    enemy.InstanceId == defeatedEnemyId
-                        ? enemy with
-                        {
-                            Powers = enemy.PowerStates.Select(power =>
-                                power.StoredValue > 0
-                                && power.PowerId is
-                                    (PrototypeNativeGloryNewNormals.PossessStrengthId
-                                     or PrototypeNativeGloryNewNormals.PossessSpeedId)
-                                    ? power with { StoredValue = 0 }
-                                    : power).ToArray()
-                        }
-                        : enemy).ToArray()
-            };
-        }
-
-        foreach (var owner in combat.Enemies
-            .Where(item => item.Hp > 0
-                && item.InstanceId != defeatedEnemyId)
-            .OrderBy(item => item.InstanceId))
-        {
-            var reactions = owner.PowerStates
-                .OrderBy(power => power.ApplicationOrder)
-                .Where(power => power.Stacks > 0)
-                .Select(power => (
-                    Definition: PrototypeContent.Power(power.PowerId),
-                    power.Stacks))
-                .Where(pair =>
-                    pair.Definition.AllyDeathStrengthPerStack > 0
-                    || pair.Definition.AllyDeathBlockPerStack > 0
-                    || pair.Definition.StunOnAllyDeath)
-                .ToArray();
-            foreach (var reaction in reactions)
-            {
-                if (reaction.Definition.AllyDeathStrengthPerStack > 0)
-                {
-                    combat = ApplyEnemyPower(
-                        combat, owner.InstanceId, "proto.power.strength",
-                        checked(reaction.Stacks
-                            * reaction.Definition.AllyDeathStrengthPerStack));
-                }
-                if (reaction.Definition.AllyDeathBlockPerStack > 0
-                    || reaction.Definition.ConsumeOnAllyDeath)
-                {
-                    var enemies = combat.Enemies
-                        .Select(item => item.Fork()).ToArray();
-                    var idx = Array.FindIndex(enemies, item =>
-                        item.InstanceId == owner.InstanceId);
-                    if (idx >= 0 && enemies[idx].Hp > 0)
-                    {
-                        enemies[idx] = enemies[idx] with
-                        {
-                            Block = enemies[idx].Block + checked(
-                                reaction.Stacks *
-                                reaction.Definition.AllyDeathBlockPerStack),
-                            Powers = reaction.Definition.ConsumeOnAllyDeath
-                                ? enemies[idx].PowerStates.Where(power =>
-                                    power.PowerId != reaction.Definition.Id)
-                                    .ToArray()
-                                : enemies[idx].PowerStates
-                        };
-                        combat = combat with { Enemies = enemies };
-                    }
-                }
-                if (reaction.Definition.StunOnAllyDeath)
-                {
-                    var enemies = combat.Enemies
-                        .Select(item => item.Fork())
-                        .ToArray();
-                    var index = Array.FindIndex(enemies,
-                        item => item.InstanceId == owner.InstanceId);
-                    if (index < 0 || enemies[index].Hp <= 0)
-                    {
-                        continue;
-                    }
-                    // Native CreatureCmd.Stun replaces the pending move
-                    // for one turn; repeated applications before that turn
-                    // must not stack multiple skipped turns.
-                    enemies[index] = enemies[index] with
-                    {
-                        EnemyActionSkipsRemaining =
-                            Math.Max(1,
-                                enemies[index].EnemyActionSkipsRemaining)
-                    };
-                    combat = combat with { Enemies = enemies };
-                }
-            }
-        }
-        return combat;
-    }
-
-    private sealed record PrototypeEnemyHpLossResult(
-        EnemyCombatState Enemy,
-        int HpLoss);
-
-    private static PrototypeEnemyHpLossResult ModifyEnemyHpLoss(
-        EnemyCombatState enemy,
-        int requestedHpLoss,
-        bool allowDamageTriggeredThreshold = true)
-    {
-        var hpLoss = Math.Max(0, requestedHpLoss);
-        if (hpLoss == 0 || enemy.Hp <= 0 || enemy.BossPendingRevival)
-        {
-            return new PrototypeEnemyHpLossResult(
-                enemy,
-                enemy.BossPendingRevival ? 0 : hpLoss);
-        }
-
-        var powers = enemy.PowerStates.ToList();
-        var capCandidate = powers
-            .Where(power =>
-                power.Stacks > 0
-                && PrototypeContent.Power(power.PowerId)
-                    .EnemyHpLossCapPerTrigger > 0)
-            .OrderBy(power => power.ApplicationOrder)
-            .FirstOrDefault();
-
-        if (capCandidate is not null)
-        {
-            var definition = PrototypeContent.Power(
-                capCandidate.PowerId);
-            hpLoss = Math.Min(
-                hpLoss,
-                definition.EnemyHpLossCapPerTrigger);
-
-            if (definition.ConsumeOnEnemyHpLoss)
-            {
-                var index = powers.FindIndex(power =>
-                    power.ApplicationOrder
-                        == capCandidate.ApplicationOrder);
-                if (index < 0)
-                {
-                    throw new InvalidOperationException(
-                        "Enemy HP-loss modifier disappeared before consumption.");
-                }
-
-                if (powers[index].Stacks <= 1)
-                {
-                    powers.RemoveAt(index);
-                }
-                else
-                {
-                    powers[index] = powers[index] with
-                    {
-                        Stacks = powers[index].Stacks - 1
-                    };
-                }
-            }
-        }
-
-        var hpLossBudget = powers
-            .Where(power => power.Stacks > 0
-                && PrototypeContent.Power(power.PowerId)
-                    .EnemyHpLossLimitedPerSideTurnByStacks)
-            .Select(power => power.Stacks)
-            .DefaultIfEmpty(int.MaxValue)
-            .Min();
-        if (hpLossBudget != int.MaxValue)
-        {
-            hpLoss = Math.Min(hpLoss,
-                Math.Max(0, hpLossBudget - enemy.HpLossBudgetUsed));
-            enemy = enemy with
-            {
-                HpLossBudgetUsed = enemy.HpLossBudgetUsed + hpLoss
-            };
-        }
-
-        var nextHp = Math.Max(0, enemy.Hp - hpLoss);
-        var thresholdCandidate = powers
-            .Where(power =>
-            {
-                if (power.Stacks <= 0)
-                {
-                    return false;
-                }
-
-                var definition = PrototypeContent.Power(
-                    power.PowerId);
-                return allowDamageTriggeredThreshold
-                    && definition.TriggerOwnerAtHpAtOrBelowStacks
-                    && nextHp <= power.Stacks;
-            })
-            .OrderBy(power => power.ApplicationOrder)
-            .FirstOrDefault();
-
-        if (thresholdCandidate is not null)
-        {
-            var thresholdDefinition =
-                PrototypeContent.Power(
-                    thresholdCandidate.PowerId);
-            powers.RemoveAll(power =>
-                power.ApplicationOrder
-                    == thresholdCandidate.ApplicationOrder);
-
-            if (thresholdDefinition
-                    .ClearOwnerStrengthOnHpThresholdTrigger)
-            {
-                powers.RemoveAll(power =>
-                    StringComparer.Ordinal.Equals(
-                        power.PowerId,
-                        "proto.power.strength"));
-            }
-
-            var forcedStateId =
-                thresholdDefinition.OwnerAiStateOnHpThresholdTrigger;
-            var forcedAiState = forcedStateId is null
-                ? null
-                : PrototypeContent.Enemy(enemy.EnemyId)
-                    .Ai?.States.FirstOrDefault(state =>
-                        StringComparer.Ordinal.Equals(
-                            state.Id, forcedStateId));
-            // A player-triggered threshold may OVERRIDE an announced move,
-            // e.g. the Ceremonial Beast is visibly stunned. This is a
-            // deterministic interrupt, never a new hidden random roll.
-            enemy = enemy with
-            {
-                AiStateId = forcedStateId ?? enemy.AiStateId,
-                PlannedMoveIndex = forcedAiState is
-                    { Kind: PrototypeEnemyAiStateKind.Move }
-                    ? forcedAiState.MoveIndex : enemy.PlannedMoveIndex,
-                PlannedNextAiStateId = forcedAiState is
-                    { Kind: PrototypeEnemyAiStateKind.Move }
-                    ? forcedAiState.NextStateId : enemy.PlannedNextAiStateId
-            };
-        }
-
-        enemy = enemy with
-        {
-            Powers = powers.ToArray()
-        };
-
-        return new PrototypeEnemyHpLossResult(
-            enemy,
-            hpLoss);
-    }
-
-    private static CombatState MultiplyEnemyStatus(
-        CombatState combat,
-        int enemyId,
-        string statusId,
-        int multiplier)
-    {
-        _ = PrototypeContent.Status(statusId);
-        if (multiplier < 0)
-        {
-            throw new InvalidOperationException("Status multiplier cannot be negative.");
-        }
-
-        var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
-        var index = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
-        if (index < 0)
-        {
-            throw new InvalidOperationException($"Enemy {enemyId} is missing.");
-        }
-
-        var enemy = enemies[index];
-        if (enemy.Hp <= 0)
-        {
-            return combat;
-        }
-
-        var statuses = new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal);
-        var current = statuses.GetValueOrDefault(statusId);
-        var next = current * multiplier;
-        if (next > 0)
-        {
-            statuses[statusId] = next;
-        }
-        else
-        {
-            statuses.Remove(statusId);
-        }
-
-        enemies[index] = enemy with { Statuses = statuses };
-        return combat with { Enemies = enemies };
-    }
-
-    private static CombatState ApplyEnemyStatus(
-        CombatState combat,
-        int enemyId,
-        string statusId,
-        int amount)
-    {
-        var statusDefinition =
-            PrototypeContent.Status(statusId);
-        var enemies = combat.Enemies
-            .Select(enemy => enemy.Fork())
-            .ToArray();
-        var index = Array.FindIndex(
-            enemies,
-            enemy => enemy.InstanceId == enemyId);
-        if (index < 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-        }
-
-        var enemy = enemies[index];
-        if (enemy.Hp <= 0)
-        {
-            return combat;
-        }
-
-        if (amount > 0 && statusDefinition.IsDebuff)
-        {
-            var blocked =
-                TryBlockIncomingEnemyDebuff(enemy);
-            enemy = blocked.Enemy;
-            if (blocked.Blocked)
-            {
-                enemies[index] = enemy;
-                return combat with { Enemies = enemies };
-            }
-        }
-
-        var statuses = new Dictionary<string, int>(
-            enemy.Statuses,
-            StringComparer.Ordinal);
-        statuses[statusId] =
-            statuses.GetValueOrDefault(statusId)
-            + amount;
-        enemies[index] = enemy with
-        {
-            Statuses = statuses
-        };
-        return combat with { Enemies = enemies };
-    }
-
-    private sealed record PrototypeEnemyDebuffBlockResult(
-        EnemyCombatState Enemy,
-        bool Blocked);
-
-    private static PrototypeEnemyDebuffBlockResult
-        TryBlockIncomingEnemyDebuff(
-            EnemyCombatState enemy)
-    {
-        var candidate = enemy.PowerStates
-            .Where(power =>
-                power.Stacks > 0
-                && PrototypeContent.Power(
-                    power.PowerId)
-                    .BlocksNextDebuff)
-            .OrderBy(power => power.ApplicationOrder)
-            .FirstOrDefault();
-        if (candidate is null)
-        {
-            return new PrototypeEnemyDebuffBlockResult(
-                enemy,
-                false);
-        }
-
-        var powers = enemy.PowerStates
-            .Select(power => power.Fork())
-            .ToList();
-        var index = powers.FindIndex(power =>
-            power.ApplicationOrder
-                == candidate.ApplicationOrder);
-        if (index < 0)
-        {
-            throw new InvalidOperationException(
-                "Enemy debuff-blocking power disappeared before consumption.");
-        }
-
-        if (powers[index].Stacks <= 1)
-        {
-            powers.RemoveAt(index);
-        }
-        else
-        {
-            powers[index] = powers[index] with
-            {
-                Stacks = powers[index].Stacks - 1
-            };
-        }
-
-        return new PrototypeEnemyDebuffBlockResult(
-            enemy with { Powers = powers.ToArray() },
-            true);
-    }
-
-    private sealed record PrototypeDrawCardsResult(
-        PlayerState Player,
-        CombatState Combat,
-        long[] DrawnCardInstanceIds,
-        int RemainingCount = 0,
-        bool ShuffleSelectionPending = false);
-
-    private static PrototypeDrawCardsResult DrawCards(
-        PlayerState player,
-        CombatState combat,
-        int count,
-        RngBundle rng,
-        bool fromHandDraw,
-        int eventDepth = 0)
-    {
-        const int maxHandSize = 10;
-        var drawnCardInstanceIds = new List<long>();
-
-        for (var drawNumber = 0; drawNumber < count; drawNumber++)
-        {
-            if (!fromHandDraw
-                && combat.PlayerPowers.Any(power =>
-                    PrototypeContent.Power(power.PowerId)
-                        .PreventsAdditionalDraw))
-            {
-                break;
-            }
-
-            if (combat.Hand.Length >= maxHandSize)
-            {
-                break;
-            }
-
-            var draw = combat.DrawPile.ToList();
-            var discard = combat.DiscardPile.ToList();
-
-            if (draw.Count == 0)
-            {
-                if (discard.Count == 0)
-                {
-                    break;
-                }
-
-                var recycled = discard.ToArray();
-                discard.Clear();
-                PrototypeRng.Shuffle(rng, "combat", recycled);
-                draw.AddRange(ApplyPerfectFitShuffleOrder(
-                    combat, recycled));
-                combat = ApplyRelicAfterShuffleCards(combat with
-                {
-                    DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
-                }, rng);
-                draw = combat.DrawPile.ToList();
-                var stratagem = combat.PlayerPowers.Sum(power =>
-                    power.PowerId == "proto.power.stratagem"
-                        ? Math.Max(0, power.Stacks) : 0);
-                if (stratagem > 0 && combat.Hand.Length < maxHandSize)
-                {
-                    // Persist the recycled draw pile before prompting.
-                    // The suspended draw resumes after this choice.
-                    combat = combat with
-                    {
-                        DrawPile = draw.ToArray(),
-                        DiscardPile = discard.ToArray()
-                    };
-                    return new PrototypeDrawCardsResult(
-                        player, combat, drawnCardInstanceIds.ToArray(),
-                        RemainingCount: count - drawNumber,
-                        ShuffleSelectionPending: true);
-                }
-            }
-
-            var index = draw.Count - 1;
-            var cardInstanceId = draw[index];
-            draw.RemoveAt(index);
-
-            combat = combat with
-            {
-                Hand = combat.Hand.Append(cardInstanceId).ToArray(),
-                DrawPile = draw.ToArray(),
-                DiscardPile = discard.ToArray()
-            };
-            drawnCardInstanceIds.Add(cardInstanceId);
-
-            var card = RequireCombatCard(combat, cardInstanceId);
-            var randomizedCostUpperBound =
-                player.ActiveRelics
-                    .Select(relic =>
-                        PrototypeContent.Relic(relic.RelicId)
-                            .RandomizeDrawnCardCostMaxExclusive)
-                    .DefaultIfEmpty(0)
-                    .Max();
-            var cardDefinition =
-                PrototypeContent.Card(card.CardId);
-            if (randomizedCostUpperBound > 0
-                && cardDefinition.Cost.Kind
-                    == PrototypeCardCostKind.Fixed
-                && cardDefinition.Cost.Amount >= 0)
-            {
-                combat = SetCardTemporaryEnergyCost(
-                    combat,
-                    cardInstanceId,
-                    new PrototypeTemporaryCardCost(
-                        PrototypeRng.NextInt(
-                            rng,
-                            "combat",
-                            randomizedCostUpperBound),
-                        PrototypeTemporaryCardCostExpiry.None));
-                card = RequireCombatCard(
-                    combat,
-                    cardInstanceId);
-            }
-
-            if (card.Enchantment is
-                    { Kind: PrototypeCardEnchantmentKind.Slither })
-            {
-                // Slither rerolls this combat's cost every time its
-                // card is drawn, including after pile recycling.
-                combat = SetCardTemporaryEnergyCost(
-                    combat,
-                    cardInstanceId,
-                    new PrototypeTemporaryCardCost(
-                        PrototypeRng.NextInt(rng, "combat", 4),
-                        PrototypeTemporaryCardCostExpiry.None));
-                card = RequireCombatCard(combat, cardInstanceId);
-            }
-
-            var dispatched = DispatchCombatEvent(
-                player,
-                combat,
-                new PrototypeCombatEvent(
-                    PrototypeCombatEventKind.CardDrawn,
-                    SourceCardInstanceId: cardInstanceId,
-                    CardId: card.CardId,
-                    FromHandDraw: fromHandDraw),
-                rng,
-                eventDepth);
-            player = dispatched.Player;
-            combat = dispatched.Combat;
-        }
-
-        return new PrototypeDrawCardsResult(
-            player,
-            combat,
-            drawnCardInstanceIds.ToArray());
-    }
-
-    private static void ValidateTarget(
-        PrototypeCardTarget targetKind,
-        int? targetEnemyId,
-        CombatState combat)
-    {
-        if (targetKind == PrototypeCardTarget.None)
-        {
-            if (targetEnemyId is not null)
-            {
-                throw new InvalidOperationException("This action does not accept an enemy target.");
-            }
-
-            return;
-        }
-
-        if (targetEnemyId is null)
-        {
-            throw new InvalidOperationException("This action requires an enemy target.");
-        }
-
-        if (!combat.Enemies.Any(
-            enemy => enemy.InstanceId == targetEnemyId.Value && enemy.Hp > 0))
-        {
-            throw new InvalidOperationException($"Enemy {targetEnemyId.Value} is not a live target.");
-        }
-    }
-
-    // MinionPower identifies secondary enemies. A combat with primary
-    // enemies is won when they fall even if a summoned egg or illusion
-    // still survives; standalone minion fixtures require all-dead.
-    private static CombatState ResolveKaiserCrabFacing(
-        CombatState combat, int? targetEnemyId)
-    {
-        if (targetEnemyId is null)
-            return combat;
-        var target = combat.Enemies.FirstOrDefault(enemy =>
-            enemy.InstanceId == targetEnemyId.Value && enemy.Hp > 0);
-        if (target is null)
-            return combat;
-
-        // Facing defaults Right. Targeting the left arm turns Left,
-        // targeting the right arm turns Right, including non-attacks.
-        var direction = target.PowerStates.Any(power =>
-            power.PowerId == PrototypeNativeHiveBosses.BackLeftId) ? 1
-            : target.PowerStates.Any(power =>
-                power.PowerId == PrototypeNativeHiveBosses.BackRightId) ? 0
-            : -1;
-        if (direction < 0)
-            return combat;
-        return combat with
-        {
-            PlayerPowers = combat.PlayerPowers.Select(power =>
-                power.PowerId == PrototypeNativeHiveBosses.SurroundedId
-                    ? power with { StoredValue = direction } : power)
-                .ToArray()
-        };
-    }
-
-    private static bool AllEnemiesDefeated(CombatState combat)
-    {
-        var primary = combat.Enemies.Where(enemy =>
-            !PrototypeContent.Enemy(enemy.EnemyId).IsMinion).ToArray();
-        return primary.Length > 0
-            ? primary.All(enemy => enemy.Hp <= 0)
-            : combat.Enemies.All(enemy => enemy.Hp <= 0);
-    }
-}
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×½ùï´èµ©hºÚn¶X§zÍ[˜[Y\ÜXÙHÝÌ‘[][]Ü‹ÛÜ™NÂ‚œX›XÈÙX[Y\X[Û\ÜÈ›ÝÝ\QØ[YQ[™Ú[™BžÂˆš]˜]HÝ]XÈ[”Ý]HÝ\ÛÛX˜]
+ˆ[”Ý]HÝ]Kˆ›ÝÝ\T›ÛÛU\H›ÛÛU\Kˆ›ÝÝ\Q[˜ÛÝ[\‘Yš[š][ÛÈ›Ü˜ÙY[˜ÛÝ[\ˆH[
+BˆÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ›ÝÝ\Q[˜ÛÝ[\‘Yš[š][Ûˆ[˜ÛÝ[\ŽÂ‚ˆYˆ
+›Ü˜ÙY[˜ÛÝ[\ˆ\ÈÈHØÜš\Y[˜ÛÝ[\ŠBˆÂˆ[˜ÛÝ[\ˆHØÜš\Y[˜ÛÝ[\ŽÂˆBˆ[ÙHYˆ
+ÛÜ›XÝOHBˆ	‰ˆÛÜ›XÝÛ™T™YÚ[ÛˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹•[™\™ØÚÜÊBˆÂˆ˜\ˆÙ[XÝYHXÚÕ[™\™ØÚÜÑ[˜ÛÝ[\ŠˆÝ]KÛÜ››ÛÛU\JNÂˆ[˜ÛÝ[\ˆHÙ[XÝY‘[˜ÛÝ[\ŽÂˆÛÜ›HÙ[XÝY•ÛÜ›ÂˆBˆ[ÙBˆÂˆ˜\ˆÝ™\™Ü›ÝÝ›ÜÜÈBˆžTXÚÓÝ™\™Ü›ÝÝ›ÜÜÑ[˜ÛÝ[\ŠˆÛÜ›ˆ›ÛÛU\JNÂˆYˆ
+Ý™\™Ü›ÝÝ›ÜÜÈ\È›Ý[
+BˆÂˆ[˜ÛÝ[\ˆHÝ™\™Ü›ÝÝ›ÜÜÎÂˆBˆ[ÙBˆÂˆ˜\ˆÝ™\™Ü›ÝÝ[]HBˆžTXÚÓÝ™\™Ü›ÝÝ[]Q[˜ÛÝ[\ŠˆÝ]KˆÛÜ›ˆ›ÛÛU\JNÂˆYˆ
+Ý™\™Ü›ÝÝ[]H\È›Ý[
+BˆÂˆ[˜ÛÝ[\ˆHÝ™\™Ü›ÝÝ[]K•˜[YK‘[˜ÛÝ[\ŽÂˆÛÜ›HÝ™\™Ü›ÝÝ[]K•˜[YK•ÛÜ›ÂˆBˆ[ÙBˆÂˆ˜\ˆÝ™\™Ü›ÝÝÙXZÈBˆžTXÚÓÝ™\™Ü›ÝÝÙXZÑ[˜ÛÝ[\ŠˆÝ]KˆÛÜ›ˆ›ÛÛU\JNÂˆYˆ
+Ý™\™Ü›ÝÝÙXZÈ\È›Ý[
+BˆÂˆ[˜ÛÝ[\ˆBˆÝ™\™Ü›ÝÝÙXZË•˜[YK‘[˜ÛÝ[\ŽÂˆÛÜ›HÝ™\™Ü›ÝÝÙXZË•˜[YK•ÛÜ›ÂˆBˆ[ÙBˆÂˆ˜\ˆÝ™\™Ü›ÝÝ›Ü›X[BˆžTXÚÓÝ™\™Ü›ÝÝ›Ü›X[[˜ÛÝ[\ŠˆÝ]KˆÛÜ›ˆ›ÛÛU\JNÂˆYˆ
+Ý™\™Ü›ÝÝ›Ü›X[\È›Ý[
+BˆÂˆ[˜ÛÝ[\ˆBˆÝ™\™Ü›ÝÝ›Ü›X[•˜[YK‘[˜ÛÝ[\ŽÂˆÛÜ›HÝ™\™Ü›ÝÝ›Ü›X[•˜[YK•ÛÜ›ÂˆBˆ[ÙBˆÂˆ˜\ˆ[˜ÛÝ[\œÈH›ÝÝ\PÛÛ[‘[˜ÛÝ[\œÂˆ•Ú\™JØ[™Y]HO‚ˆØ[™Y]K”›ÛÛU\HOH›ÛÛU\Bˆ	‰ˆÛÜ›XÝHØ[™Y]K“Z[XÝˆ	‰ˆÛÜ›XÝHØ[™Y]K“X^XÝˆ	‰ˆÛÜ›‘›ÛÜˆHØ[™Y]K“Z[‘›ÛÜ‚ˆ	‰ˆÛÜ›‘›ÛÜˆHØ[™Y]K“X^›ÛÜ‚ˆ	‰ˆØ[™Y]K•ÙZYÚˆ
+Bˆ•Ð\œ˜^J
+NÂ‚ˆYˆ
+[˜ÛÝ[\œË“[™ÝOH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	“›È›ÝÝ\H[˜ÛÝ[\ˆ\È[YÚX›H›ÜˆÜ›ÛÛU\_Hˆ
+Âˆ	˜]XÝÝÛÜ›XÝK›ÛÜˆÝÛÜ›‘›ÛÜŸKˆŠNÂˆB‚ˆ˜\ˆ™]š[Ý\Ñ[˜ÛÝ[\ˆHÛÜ›‘[˜ÛÝ[\’YË“\ÝÜ‘Y˜][
+
+NÂˆYˆ
+™]š[Ý\Ñ[˜ÛÝ[\ˆ\È›Ý[	‰ˆ[˜ÛÝ[\œË“[™ÝˆJBˆÂˆ˜\ˆÚ]Ý][[YYX]T™\X]H[˜ÛÝ[\œÂˆ•Ú\™JØ[™Y]HO‚ˆTÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊˆØ[™Y]K’Yˆ™]š[Ý\Ñ[˜ÛÝ[\ŠJBˆ•Ð\œ˜^J
+NÂˆYˆ
+Ú]Ý][[YYX]T™\X]“[™Ýˆ
+BˆÂˆ[˜ÛÝ[\œÈHÚ]Ý][[YYX]T™\X]ÂˆBˆB‚ˆ[˜ÛÝ[\ˆHXÚÕÙZYÚY[˜ÛÝ[\Šˆ[˜ÛÝ[\œËˆÝ]K”›™ÊNÂˆBˆBˆBˆB‚ˆB‚ˆÝ]HH\P™Y›Ü™PÛÛX˜]Ý\™[XÜÊÝ]JNÂ‚ˆ˜\ˆÛÛX˜]™[XÜÈHÝ]K”^Y\‹”™[XÜÂˆ”Ù[XÝ
+
+™[XË[™^
+HO‚ˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”™[XÊ™[XË”™[XÒY
+NÂˆ™]\›ˆ™]ÈÛÛX˜]™[XÔÝ]Jˆ\œÚ\Ý[[™^ˆ[™^ˆ™[XÒYˆ™[XË”™[XÒYˆ\XØ][Û“Ü™\Žˆ[™^
+ÈSˆšYÙÙ\ÛÝ[ÎˆÜ™X]T™[XÕšYÙÙ\ÛÝ[Ê™[XËYš[š][ÛŠKˆ\ÓY[Yˆ™[XË’\ÓY[Y
+NÂˆJBˆ•Ð\œ˜^J
+NÂ‚ˆ˜\ˆÛÛX˜]Ý[ÛœÈHÝ]K”^Y\‹”Ý[Û”ÛÝÂˆ”Ù[XÝ
+
+Ý[Û‹ÛÝ
+HOˆÝ[Ûˆ\È[ˆÈ[ˆˆ™]ÈÛÛX˜]Ý[Û”Ý]JˆÛÝˆÛÝˆÝ[Û’YˆÝ[Û‹”Ý[Û’YˆÝ]NˆÝ[Û‹”\œÚ\Ý[Ý]KÛÛ™J
+JJBˆ•Ú\™JÝ[ÛˆOˆÝ[Ûˆ\È›Ý[
+Bˆ”Ù[XÝ
+Ý[ÛˆOˆÝ[ÛˆJBˆ•Ð\œ˜^J
+NÂ‚ˆ˜\ˆ™^ÝÙ\\XØ][Û“Ü™\ˆHÛÛX˜]™[XÜË“[™Ý
+ÈSÂˆËÈÜZ[ˆŒLLH]™H[žNˆÛÝ\˜ÙKX]Y]YÙXZË›Ü›X[ˆËÈ[]H[™›ÜÜÈ[š]X[›Ü›X][ÛœËXXÚÚ][™\[™[ˆËÈ[˜ÛÝ[\ˆ“‘Ëˆ[œÝ\ÜY[šY\È]\Ý™]™\ˆ˜[˜XÚÂˆËÈÈH›ÝÝ\HÛÛX˜]“‘Ë‚ˆ˜\ˆ˜]]™Q›Ü›X][ÛˆBˆÝ]KÛÛ™šYÝ\˜][ÛË•\Ù\Ñ^\š[Y[[˜]]™UÙXZÐÛÛX˜][žHOHYBˆÈ˜]]™PXÝÛ™Q[]P›ÜÜÐÛÛX˜][žUŒLLK’\ÔÝ\ÜY
+[˜ÛÝ[\‹’Y
+BˆÈ˜]]™PXÝÛ™Q[]P›ÜÜÐÛÛX˜][žUŒLLK”™\\™JˆÝ]KÛÜ›[˜ÛÝ[\ŠBˆˆ˜]]™PXÝÛ™S›Ü›X[ÛÛX˜][žUŒLLK’\ÔÝ\ÜY
+[˜ÛÝ[\‹’Y
+BˆÈ˜]]™PXÝÛ™S›Ü›X[ÛÛX˜][žUŒLLK”™\\™JˆÝ]KÛÜ›[˜ÛÝ[\ŠBˆˆ˜]]™PXÝÛ™UÙXZÐÛÛX˜][žUŒLLK”™\\™JˆÝ]KÛÜ›[˜ÛÝ[\ŠBˆˆ[Âˆ˜\ˆ[™[^TÜXÜÈH˜]]™Q›Ü›X][ÛË‘[™[ZY\ÂˆÏÈ[˜ÛÝ[\‹”™\ÛÛ™Q[™[^TÜXÜÊÝ]K”›™ÊNÂˆ˜\ˆ[œÝ[˜ÙRYžQ›Ü›X][Û”ÜÚ][ÛˆBˆ[™[^TÜXÜÂˆ”Ù[XÝ
+
+[™[^TÜXË[™^
+HO‚ˆ™]ÂˆÂˆ[™[^TÜXË‘›Ü›X][Û”ÜÚ][Û‹ˆ[œÝ[˜ÙRYH[™^
+ÈBˆJBˆ•ÑXÝ[Û˜\žJˆ][HOˆ][K‘›Ü›X][Û”ÜÚ][Û‹ˆ][HOˆ][K’[œÝ[˜ÙRY
+NÂˆËÈÛÛYH˜]]™H[˜ÛÝ[\œÈÛÛÜ™[˜]HZ\ˆ[ÛœÝ\œÉÈ[š]X[ˆËÈ[Ý™K\Ý]HÜÚ][ÛœÈÚ]Û™H[˜ÛÝ[\‹[ØØ[›ÛˆÙY\]ˆËÈ›Ü\HXÛ\˜]]™H[™]\›Z[š\ÝXÈÚ][ˆH[][]Ü‹‚ˆ˜\ˆÜ[š[™ÐZTÝ]\ÈH[˜ÛÝ[\‹ÞXÛXÓÜ[š[™ÐZTÝ]RYÎÂˆYˆ
+Ü[š[™ÐZTÝ]\È\ÈÈ[™ÝˆJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[˜ÛÝ[\ˆ	ÞÙ[˜ÛÝ[\‹’YIÈ\È[ˆ[\HÞXÛXÈÜ[š[™ÈRH\ÝˆŠNÂˆBˆ˜\ˆš^Y˜Z[[™ÓÜ[š[™ÜÈBˆ[˜ÛÝ[\‹‘š^Y˜Z[[™ÓÜ[š[™ÐZTÝ]RYÂˆÏÈ\œ˜^K‘[\OÝš[™ÏŠ
+NÂˆYˆ
+Ü[š[™ÐZTÝ]\È\È[	‰ˆš^Y˜Z[[™ÓÜ[š[™ÜË“[™Ýˆ
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[˜ÛÝ[\ˆ	ÞÙ[˜ÛÝ[\‹’YIÈYš[™\Èš^Y˜Z[[™ÈÜ[š[™ÜÈÚ]Ý]HÞXÛXÈ™Yš^ˆŠNÂˆBˆYˆ
+Ü[š[™ÐZTÝ]\È\È›Ý[ˆ	‰ˆ
+š^Y˜Z[[™ÓÜ[š[™ÜË“[™ÝOHˆÈ[™[^TÜXÜË“[™ÝˆÜ[š[™ÐZTÝ]\Ë“[™Ýˆˆ[™[^TÜXÜË“[™ÝˆOHÜ[š[™ÐZTÝ]\Ë“[™Ý
+Èš^Y˜Z[[™ÓÜ[š[™ÜË“[™Ý
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[˜ÛÝ[\ˆ	ÞÙ[˜ÛÝ[\‹’YIÈÞXÛXËÙš^YÜ[š[™ÈÛÝ[Ù\È›ÝX]Ú]È›Ü›X][Û‹ˆŠNÂˆBˆËÈÛÛYH[˜ÛÝ[\œÈ
+ÛÜœÙTÛYÜÕÙXZÊH[š]X[^™H]™\žH[ÛœÝ\‰ÜÂˆËÈÝ\\ˆÝ]H\È\ÙˆÙ[™\˜]S[ÛœÝ\œÊ
+K›ÝÛÛX˜]RK‚ˆËÈÛÛœÝ[YHH[˜ÛÝ[\‰ÜÈÝÛˆÜ[š[™È›Û^XÝHÛ˜ÙHX›Ý™K‚ˆËÈ[Ý\ˆÞXÛXÈ˜]]™H›Ü›X][ÛœÈ™[XZ[ˆÝšXÝHØ]Y‚ˆYˆ
+˜]]™Q›Ü›X][Ûˆ\È›Ý[	‰ˆÜ[š[™ÐZTÝ]\È\È›Ý[ˆ	‰ˆ˜]]™Q›Ü›X][Û‹‘[˜ÛÝ[\“Ü[š[™ÓÙ™œÙ]\È[
+Bˆ›ÝÈ™]È›ÝÝ\ÜY^Ù\[ÛŠˆ‘^\š[Y[[˜]]™H[˜ÛÝ[\ˆXÚÜÈ]È]Y]YÜ[š[™È›Ý][Û‹ˆŠNÂˆ˜\ˆÜ[š[™ÓÙ™œÙ]HÜ[š[™ÐZTÝ]\È\È[ˆÈˆˆ˜]]™Q›Ü›X][ÛË‘[˜ÛÝ[\“Ü[š[™ÓÙ™œÙ]ˆÏÈ›ÝÝ\T›™Ë“™^[
+ˆÝ]K”›™Ë˜ÛÛX˜]‹Ü[š[™ÐZTÝ]\Ë“[™Ý
+NÂˆ˜\ˆ[™[ZY\ÈH[™[^TÜXÜÂˆ”Ù[XÝ
+
+[™[^TÜXË[™^
+HO‚ˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[‘[™[^Jˆ[™[^TÜXË‘[™[^RY
+NÂˆ˜\ˆ˜[™ÙHHYš[š][Û‹’˜[™ÙP]
+ˆÛÜ›XÝˆÝ]K\ØÙ[œÚ[ÛŠNÂˆËÈ˜]]™H\È›ÛY]\ˆœ›ÛHH\œÚ\Ý[[‹›šXÚBˆËÈÝ™X[KˆÈ›ÝÛÛœÝ[YHH›ÝÝ\HÛÛX˜]“‘È\™K‚ˆ˜\ˆH˜]]™Q›Ü›X][Ûˆ\È›Ý[ˆÈ˜[™ÙK“X^ˆˆ˜[™ÙK“Z[ˆOH˜[™ÙK“X^ˆÈ˜[™ÙK“Z[‚ˆˆ˜[™ÙK“Z[‚ˆ
+È›ÝÝ\T›™Ë“™^[
+ˆÝ]K”›™Ëˆ˜ÛÛX˜]‹ˆ˜[™ÙK“X^H˜[™ÙK“Z[ˆ
+ÈJNÂˆ˜\ˆÝÙ\œÈH
+Yš[š][Û‹”Ý\[™ÔÝÙ\œÈÏÈ\œ˜^K‘[\O›ÝÝ\TÝ\[™ÔÝÙ\”ÜXÏŠ
+JBˆ”Ù[XÝ
+ÝÙ\ˆO‚ˆÂˆÈH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆËÈ›ÙÔ\˜\Ú]KY\YYÔ›ÛÛH\Y\È“ÕT‚ˆËÈ[™™\ÝYÝXÚÜË]™[ˆÝYÚHÛ›ÝÝ\BˆËÈ™XÛÜ™YÛ™KˆÛÜœ™XÝÛ›HHÛÝ\˜ÙK\[›™YˆËÈ˜]]™H[]NÈ™]Z[ˆY˜][˜Z[š[™ÈÙ[X[XÜË‚ˆ˜\ˆÝXÚÜÈH˜]]™Q›Ü›X][ÛË“˜]]™Q[˜ÛÝ[\‘[žBˆOH”›ÙÔ\˜\Ú]Q[]H‚ˆ	‰ˆ[™[^TÜXË‘[™[^RYOHœ›ÝË™[™[^Kœ›Ù×Ü\˜\Ú]H‚ˆ	‰ˆÝÙ\‹”ÝÙ\’YOHœ›ÝËœÝÙ\‹š[™™\ÝY‚ˆÈˆˆÝÙ\‹”ÝXÚÜÐ]
+Ý]K\ØÙ[œÚ[ÛŠNÂˆ™]\›ˆ™]È›ÝÝ\TÝÙ\’[œÝ[˜ÙTÝ]JˆÝÙ\‹”ÝÙ\’YˆÝXÚÜËˆ™^ÝÙ\\XØ][Û“Ü™\ŠÊÊNÂˆJBˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÈˆ
+Bˆ•Ð\œ˜^J
+NÂ‚ˆ™]\›ˆ™]È[™[^PÛÛX˜]Ý]Jˆ[œÝ[˜ÙRYˆ[™^
+ÈKˆ[™[^RYˆ[™[^TÜXË‘[™[^RYˆˆˆX^ˆˆ›ØÚÎˆÝÙ\œË”Ý[JÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘[™[^TÝ\[™Ð›ØÚÔ\”ÝXÚÊKˆ[Ý™R[™^ˆˆÝ]\Ù\Îˆ™]ÈXÝ[Û˜\žOÝš[™Ë[ŠÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+KˆÝÙ\œÎˆÝÙ\œËˆ›Ü›X][Û”ÜÚ][ÛŽ‚ˆ[™[^TÜXË‘›Ü›X][Û”ÜÚ][Û‹ˆÛÝ˜[YNˆ[™[^TÜXË”ÛÝ˜[YKˆZTÝ]RYˆÜ[š[™ÐZTÝ]\È\È[ˆÈ[ˆˆ[™^Ü[š[™ÐZTÝ]\Ë“[™ÝˆÈÜ[š[™ÐZTÝ]\ÖÊÜ[š[™ÓÙ™œÙ]
+È[™^
+Bˆ	HÜ[š[™ÐZTÝ]\Ë“[™ÝBˆˆš^Y˜Z[[™ÓÜ[š[™ÜÖÂˆ[™^HÜ[š[™ÐZTÝ]\Ë“[™ÝKˆ›Û”Ý[[[Û“[Ý™\Õ[[[YÚX›N‚ˆYš[š][Û‹“›Û”Ý[[[Û“[Ý™\Ð™Y›Ü™Q[YÚX›KˆXY\‘[™[^R[œÝ[˜ÙRY‚ˆ[™[^TÜXË“XY\‘›Ü›X][Û”ÜÚ][Ûˆ\ÂˆÈHXY\‘›Ü›X][Û”ÜÚ][Û‚ˆÈ[œÝ[˜ÙRYžQ›Ü›X][Û”ÜÚ][Û–ÂˆXY\‘›Ü›X][Û”ÜÚ][Û—Bˆˆ[
+NÂˆJBˆ•Ð\œ˜^J
+NÂ‚ˆYˆ
+˜]]™Q›Ü›X][Ûˆ\È›Ý[ˆ	‰ˆ[˜ÛÝ[\‹•[š\]YQ]™[‘[™[^RÚ][‘[˜ÛÝ[\ŠBˆ›ÝÈ™]È›ÝÝ\ÜY^Ù\[ÛŠˆ“˜]]™H[š\]YKY]™[‹R[˜ÛÝ[\ˆÛÚÜÈ\™H›ÝZYÜ˜]YˆŠNÂˆYˆ
+[˜ÛÝ[\‹•[š\]YQ]™[‘[™[^RÚ][‘[˜ÛÝ[\ŠBˆÂˆ˜\ˆØØÝ\YYH™]È\ÚÙ][Š
+NÂˆ›Üˆ
+˜\ˆHHÈH[™[ZY\Ë“[™ÝÈJÊÊBˆÂˆ˜\ˆ˜[™ÙHH›ÝÝ\PÛÛ[‘[™[^Jˆ[™[ZY\ÖÚWK‘[™[^RY
+K’˜[™ÙP]
+ÛÜ›XÝÝ]K\ØÙ[œÚ[ÛŠNÂˆ˜\ˆZ[š[][Q]™[ˆH˜[™ÙK“Z[ˆ
+È
+˜[™ÙK“Z[ˆ	HŠNÂˆ˜\ˆX^[][Q]™[ˆH˜[™ÙK“X^H
+˜[™ÙK“X^	HŠNÂˆYˆ
+Z[š[][Q]™[ˆˆX^[][Q]™[ŠBˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”ÙYÛY[[\˜[\È›È]™[ˆ˜[YKˆŠNÂˆ˜\ˆØ[™Y]HH[™[ZY\ÖÚWK’
+È
+[™[ZY\ÖÚWK’	HŠNÂˆYˆ
+Ø[™Y]HˆX^[][Q]™[ŠBˆØ[™Y]HHZ[š[][Q]™[ŽÂˆËÈ˜]]™HXÚ[Z[\YIÜÈY\YYÔ›ÛÛHY˜[˜Ù\ÂˆËÈ\XØ]HžHÛÈ[™Ü˜\È\›Ý[™]È]™[ˆ˜[™ÙK‚ˆÚ[H
+[ØØÝ\YYY
+Ø[™Y]JJBˆÂˆØ[™Y]H
+ÏHŽÂˆYˆ
+Ø[™Y]HˆX^[][Q]™[ŠBˆØ[™Y]HHZ[š[][Q]™[ŽÂˆBˆ[™[ZY\ÖÚWHH[™[ZY\ÖÚWHÚ]ÈHØ[™Y]HNÂˆBˆB‚ˆ˜\ˆ™^ÛÛX˜]Ø\™YHSÂˆ˜\ˆÛÛX˜]Ø\™ÈHÝ]K”^Y\‹‘XÚÂˆ”Ù[XÝ
+Ø\™Oˆ™]ÈÛÛX˜]Ø\™[œÝ[˜ÙJˆ[œÝ[˜ÙRYˆ™^ÛÛX˜]Ø\™Y
+ÊËˆ\œÚ\Ý[Ø\™[œÝ[˜ÙRYˆØ\™’[œÝ[˜ÙRYˆØ\™YˆØ\™Ø\™Yˆ\Ü˜YS]™[ˆØ\™•\Ü˜YS]™[ˆ\Õ[\Ü˜\žNˆ˜[ÙKˆÝ]NˆØ\™”\œÚ\Ý[Ý]KÛÛ™J
+Kˆ[˜Ú[Y[ˆØ\™‘[˜Ú[Y[
+JBˆ•Ð\œ˜^J
+NÂ‚ˆ˜\ˆ[›˜]PØ\™ÈHÛÛX˜]Ø\™Âˆ•Ú\™J\Ò[›˜]JBˆ”Ù[XÝ
+Ø\™OˆØ\™’[œÝ[˜ÙRY
+Bˆ•Ð\œ˜^J
+NÂˆ˜\ˆ˜]Ô[HHÛÛX˜]Ø\™Âˆ•Ú\™JØ\™OˆR\Ò[›˜]JØ\™
+JBˆ”Ù[XÝ
+Ø\™OˆØ\™’[œÝ[˜ÙRY
+Bˆ•Ð\œ˜^J
+NÂˆ›ÝÝ\T›™Ë”ÚY™›JÝ]K”›™Ë˜ÛÛX˜]‹˜]Ô[JNÂ‚ˆ˜\ˆ›ÛÛZ[™ÐÛÛ˜Ú][]HH›ÛÛU\HOH›ÝÝ\T›ÛÛU\K‘[]Bˆ	‰ˆÝ]K”^Y\‹XÝ]™T™[XÜË[žJ™[XÈO‚ˆ™[XË”™[XÒYOBˆ›ÝÝ\S˜]]™SÝ™\™Ü›ÝÝ]™[Ë“™[ÝÔ™[XÒY
+ˆ›ÛÛZ[™ÐÛÛ˜ÚŠJNÂˆ˜\ˆÛÛX˜]H™]ÈÛÛX˜]Ý]Jˆ\›ŽˆKˆ[™\™ÞNˆ[™\™ÞT\•\›ŠÝ]K”^Y\ŠBˆ
+È
+›ÛÛZ[™ÐÛÛ˜Ú][]HÈHˆ
+Kˆ^Y\›ØÚÎˆˆ[™ˆ[›˜]PØ\™Ëˆ˜]Ô[Nˆ˜]Ô[Kˆ\ØØ\™[Nˆ\œ˜^K‘[\OÛ™ÏŠ
+Kˆ^]\Ý[Nˆ\œ˜^K‘[\OÛ™ÏŠ
+Kˆ[™[ZY\Îˆ[™[ZY\Ëˆ™^Ø\™[œÝ[˜ÙRYˆ™^ÛÛX˜]Ø\™YˆØ\™ÎˆÛÛX˜]Ø\™Ëˆ^Y\”ÝÙ\œÎˆ\œ˜^K‘[\O›ÝÝ\TÝÙ\’[œÝ[˜ÙTÝ]OŠ
+Kˆ™^ÝÙ\\XØ][Û“Ü™\Žˆ™^ÝÙ\\XØ][Û“Ü™\‹ˆ™[XÜÎˆÛÛX˜]™[XÜËˆÝ[ÛœÎˆÛÛX˜]Ý[ÛœËˆXÝˆÛÜ›XÝˆ\ØÙ[œÚ[ÛŽˆÝ]K\ØÙ[œÚ[Û‹ˆ]Îˆ˜]]™TY[™]Ø\™ÕŒLLKÜ™X]PÛÛX˜]]ÊÝ]K”^Y\ŠKˆÝ\œ™[X\›ÙRYˆÛÜ›“X\Ý\œ™[›ÙRY
+NÂ‚ˆËÈš[™H˜]]™HÝÛ™\ˆ™Y›Ü™HÛÛX˜][žHÛÚÜÈ[™Hš\œÝˆËÈ[[ÛÛ[Z]Y[ˆ[™[[š]X[[™[^HX^[XH›ÝÈ\ÙBˆËÈHY˜[˜Ú[™È[‹›šXÚHÝ™X[H˜]\ˆ[ˆH›ÝÝ\H“‘Ë‚ˆYˆ
+˜]]™Q›Ü›X][Ûˆ\È›Ý[
+BˆÛÛX˜]H˜]]™PÛÛX˜]›™Ñ[žUŒLLK]XÚ[™›Û[š]X[
+ˆÛÛX˜]˜]]™Q›Ü›X][Û‹Ý]K“˜]]™T[”›™ÈJNÂ‚ˆÛÛX˜]H˜]]™QÛÜžP[˜ÚY[ÕŒLLK\Q\ÛØ]ÛÛX˜]Ý\
+ˆÛÛX˜]Ý]K”^Y\ŠNÂ‚ˆYˆ
+[™[ZY\Ë[žJ[™[^HOˆ[™[^K‘[™[^RYOBˆ›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë”›ØÚÙ]Y
+JBˆÛÛX˜]H\T^Y\”ÝÙ\ŠÛÛX˜]ˆ›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë”Ý\œ›Ý[™YYJNÂ‚ˆËÈš][Ü\šÈY™›XÝÈ]™\žH^\Ý[™ÈÚÚ[™Y›Ü™HHÜ[š[™ÂˆËÈ˜]ËÚ]Ý]Ý™\œšY[™ÈHY™™\™[˜]]™HY™›XÝ[Û‹‚ˆÛÛX˜]H™Yœ™\Ú˜]]™R]™Uš][Ü\šÊÛÛX˜]
+NÂˆÛÛX˜]H™Yœ™\Ú˜]]™QÛÜžQØ[˜[šXÊÛÛX˜]
+NÂ‚ˆËÈ[[È]\Ý™HÛÛ[Z]Y™Y›Ü™H[ˆÜ[š[™È^Y\ˆÚÚXÙH\Èš\ÚX›K‚ˆÛÛX˜]HÜ˜[[™[^P[P›ØÚÓÛ”^Y\•\›”Ý\
+ÛÛX˜]
+NÂˆÛÛX˜]HÛÛ[Z][™[^R[[ÊÛÛX˜]Ý]K”›™ÊNÂˆËÈ™]\›ˆH]\Ý˜]]™H[‹Ü^Y\ˆÝ\œÛÜœÈÈZ\ˆ\œÚ\Ý[ˆËÈÝÛ™\ŽÈ]\ˆÝ\
+
+HØ[ÈÛÛ[YHœ›ÛH\ÙH™XÚ\ÙHÜÚ][ÛœË‚ˆYˆ
+ÛÛX˜]“˜]]™T›™È\È›Ý[
+BˆÝ]HHÝ]HÚ]ˆÂˆ˜]]™T[”›™ÈHÛÛX˜]“˜]]™T›™Ë”[”Ý™X[\Ë‘›ÜšÊ
+BˆNÂ‚ˆÛÜ›HÛÜ›Ú]ˆÂˆÛÛX˜]HÛÛX˜]ˆ[˜ÛÝ[\’\ÝÜžHHÛÜ›‘[˜ÛÝ[\’YË\[™
+[˜ÛÝ[\‹’Y
+K•Ð\œ˜^J
+BˆNÂ‚ˆÝ]HH\SÜ[š[™Ô›ÞX[Ú\ÛÛŠÝ]HÚ]ˆÂˆÛÜ›HÛÜ›ˆ\ÙHH[”\ÙKÛÛX˜]ˆJNÂˆ™]\›ˆ™\Ý[YSÜ[š[™ÐÛÛX˜]
+Ý]K›ÝÝ\SÜ[š[™ÐÛÛX˜]ÝYÙK”^Y\”ÚYTÝ\
+NÂˆB‚ˆš]˜]HÝ]XÈ›ÝÝ\Q[˜ÛÝ[\‘Yš[š][ÛÂˆžTXÚÓÝ™\™Ü›ÝÝ›ÜÜÑ[˜ÛÝ[\Šˆ[•ÛÜ›Ý]HÛÜ›ˆ›ÝÝ\T›ÛÛU\H›ÛÛU\JBˆÂˆYˆ
+›ÛÛU\HOH›ÝÝ\T›ÛÛU\K›ÜÜÂˆÛÜ›XÝOHBˆÛÜ›XÝÛ™T™YÚ[Û‚ˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹“Ý™\™Ü›ÝÝ
+BˆÂˆ™]\›ˆ[ÂˆB‚ˆ˜\ˆÛÛHÛÜ›XÝÛ™Q[˜ÛÝ[\”ÛÛÂˆYˆ
+ÛÛ\È[ˆÛÛ”™YÚ[Û‚ˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹“Ý™\™Ü›ÝÝˆÛÛ›ÜÜÑ[˜ÛÝ[\’Y\È[
+BˆÂˆ™]\›ˆ[ÂˆB‚ˆYˆ
+T›ÝÝ\PÛÛ[“Ý™\™Ü›ÝÝ›ÜÜÑ[˜ÛÝ[\”ÛÛÛÛZ[œÊˆÛÛ›ÜÜÑ[˜ÛÝ[\’YˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	•[šÛ›ÝÛˆÝ™\™Ü›ÝÝ›ÜÜÈ[˜ÛÝ[\ˆ	ÞÜÛÛ›ÜÜÑ[˜ÛÝ[\’YIËˆŠNÂˆB‚ˆ™]\›ˆ›ÝÝ\PÛÛ[‘[˜ÛÝ[\ŠˆÛÛ›ÜÜÑ[˜ÛÝ[\’Y
+NÂˆB‚ˆš]˜]HÝ]XÈ
+ˆ›ÝÝ\Q[˜ÛÝ[\‘Yš[š][Ûˆ[˜ÛÝ[\‹ˆ[•ÛÜ›Ý]HÛÜ›
+OÂˆžTXÚÓÝ™\™Ü›ÝÝ[]Q[˜ÛÝ[\Šˆ[”Ý]HÝ]Kˆ[•ÛÜ›Ý]HÛÜ›ˆ›ÝÝ\T›ÛÛU\H›ÛÛU\JBˆÂˆYˆ
+›ÛÛU\HOH›ÝÝ\T›ÛÛU\K‘[]BˆÛÜ›XÝOHBˆÛÜ›XÝÛ™T™YÚ[Û‚ˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹“Ý™\™Ü›ÝÝ
+BˆÂˆ™]\›ˆ[ÂˆB‚ˆ˜\ˆÛÛHÛÜ›XÝÛ™Q[˜ÛÝ[\”ÛÛÂˆYˆ
+ÛÛ\È[ˆÛÛ”™YÚ[Û‚ˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹“Ý™\™Ü›ÝÝ
+BˆÂˆ™]\›ˆ[ÂˆB‚ˆ˜\ˆ™[XZ[š[™ÈBˆÛÛ”™[XZ[š[™Ñ[]Q[˜ÛÝ[\’YÂˆÏÈ
+Ýš[™Ö×JT›ÝÝ\PÛÛ[ˆ“Ý™\™Ü›ÝÝ[]Q[˜ÛÝ[\”ÛÛˆÛÛ™J
+NÂˆYˆ
+™[XZ[š[™Ë“[™ÝOH
+BˆÂˆ™[XZ[š[™ÈH
+Ýš[™Ö×JT›ÝÝ\PÛÛ[ˆ“Ý™\™Ü›ÝÝ[]Q[˜ÛÝ[\”ÛÛˆÛÛ™J
+NÂˆB‚ˆ˜\ˆ™]š[Ý\ÈHÛÜ›‘[˜ÛÝ[\’YÂˆ”™]™\œÙJ
+Bˆ‘š\œÝÜ‘Y˜][
+YO‚ˆ›ÝÝ\PÛÛ[“Ý™\™Ü›ÝÝ[]Q[˜ÛÝ[\”ÛÛÛÛZ[œÊˆYˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+JNÂˆ˜\ˆ[YÚX›HH™]š[Ý\È\È[ˆÈ™[XZ[š[™Âˆˆ™[XZ[š[™Âˆ•Ú\™JYO‚ˆTÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊˆYˆ™]š[Ý\ÊJBˆ•Ð\œ˜^J
+NÂˆYˆ
+[YÚX›K“[™ÝOH
+BˆÂˆ[YÚX›HH™[XZ[š[™ÎÂˆB‚ˆ˜\ˆÙ[XÝYYH[YÚX›VÂˆ›ÝÝ\T›™Ë“™^[
+ˆÝ]K”›™Ëˆ˜ÛÛX˜]‹ˆ[YÚX›K“[™Ý
+WNÂˆ˜\ˆ[˜ÛÝ[\ˆH›ÝÝ\PÛÛ[‘[˜ÛÝ[\ŠˆÙ[XÝYY
+NÂˆ˜\ˆ™^™[XZ[š[™ÈH™[XZ[š[™Âˆ•Ú\™JYO‚ˆTÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊˆYˆÙ[XÝYY
+JBˆ•Ð\œ˜^J
+NÂ‚ˆ™]\›ˆ
+ˆ[˜ÛÝ[\‹ˆÛÜ›Ú]ˆÂˆXÝÛ™Q[˜ÛÝ[\”ÛÛHÛÛÚ]ˆÂˆ™[XZ[š[™Ñ[]Q[˜ÛÝ[\’YÈBˆ™^™[XZ[š[™ÂˆBˆJNÂˆB‚ˆš]˜]HÝ]XÈ
+ˆ›ÝÝ\Q[˜ÛÝ[\‘Yš[š][Ûˆ[˜ÛÝ[\‹ˆ[•ÛÜ›Ý]HÛÜ›
+OÂˆžTXÚÓÝ™\™Ü›ÝÝÙXZÑ[˜ÛÝ[\Šˆ[”Ý]HÝ]Kˆ[•ÛÜ›Ý]HÛÜ›ˆ›ÝÝ\T›ÛÛU\H›ÛÛU\JBˆÂˆYˆ
+›ÛÛU\HOH›ÝÝ\T›ÛÛU\KÛÛX˜]ˆÛÜ›XÝOHBˆÛÜ›XÝÛ™T™YÚ[Û‚ˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹“Ý™\™Ü›ÝÝ
+BˆÂˆ™]\›ˆ[ÂˆB‚ˆ˜\ˆÛÛHÛÜ›XÝÛ™Q[˜ÛÝ[\”ÛÛÂˆYˆ
+ÛÛ\È[ˆÛÛ”™YÚ[Û‚ˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹“Ý™\™Ü›ÝÝˆÛÛ“Ü™[˜\žPÛÛX˜]ÔÝ\YHÊBˆÂˆ™]\›ˆ[ÂˆB‚ˆYˆ
+ÛÛ”™[XZ[š[™ÕÙXZÑ[˜ÛÝ[\’YË“[™ÝOH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ“Ý™\™Ü›ÝÝÙXZÈ[˜ÛÝ[\ˆÛÛ^]\ÝY™Y›Ü™H™YHÜ™[˜\žHÛÛX˜]ËˆŠNÂˆB‚ˆ˜\ˆÙ[XÝY[™^H›ÝÝ\T›™Ë“™^[
+ˆÝ]K”›™Ëˆ˜ÛÛX˜]‹ˆÛÛ”™[XZ[š[™ÕÙXZÑ[˜ÛÝ[\’YË“[™Ý
+NÂˆ˜\ˆÙ[XÝYYBˆÛÛ”™[XZ[š[™ÕÙXZÑ[˜ÛÝ[\’YÖÜÙ[XÝY[™^NÂˆ˜\ˆ[˜ÛÝ[\ˆH›ÝÝ\PÛÛ[‘[˜ÛÝ[\ŠˆÙ[XÝYY
+NÂ‚ˆ˜\ˆ™[XZ[š[™ÈHÛÛ”™[XZ[š[™ÕÙXZÑ[˜ÛÝ[\’YÂˆ•Ú\™J
+Ë[™^
+HOˆ[™^OHÙ[XÝY[™^
+Bˆ•Ð\œ˜^J
+NÂˆ˜\ˆ™^ÛÛHÛÛÚ]ˆÂˆÜ™[˜\žPÛÛX˜]ÔÝ\YBˆÛÛ“Ü™[˜\žPÛÛX˜]ÔÝ\Y
+ÈKˆ™[XZ[š[™ÕÙXZÑ[˜ÛÝ[\’YÈH™[XZ[š[™ÂˆNÂ‚ˆ™]\›ˆ
+ˆ[˜ÛÝ[\‹ˆÛÜ›Ú]ˆÂˆXÝÛ™Q[˜ÛÝ[\”ÛÛH™^ÛÛˆJNÂˆB‚ˆš]˜]HÝ]XÈ
+ˆ›ÝÝ\Q[˜ÛÝ[\‘Yš[š][Ûˆ[˜ÛÝ[\‹ˆ[•ÛÜ›Ý]HÛÜ›
+OÂˆžTXÚÓÝ™\™Ü›ÝÝ›Ü›X[[˜ÛÝ[\Šˆ[”Ý]HÝ]Kˆ[•ÛÜ›Ý]HÛÜ›ˆ›ÝÝ\T›ÛÛU\H›ÛÛU\JBˆÂˆYˆ
+›ÛÛU\HOH›ÝÝ\T›ÛÛU\KÛÛX˜]ˆÛÜ›XÝOHBˆÛÜ›XÝÛ™T™YÚ[Û‚ˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹“Ý™\™Ü›ÝÝ
+BˆÂˆ™]\›ˆ[ÂˆB‚ˆ˜\ˆÛÛHÛÜ›XÝÛ™Q[˜ÛÝ[\”ÛÛÂˆYˆ
+ÛÛ\È[ˆÛÛ”™YÚ[Û‚ˆOH›ÝÝ\PXÝÛ™T™YÚ[Û‹“Ý™\™Ü›ÝÝˆÛÛ“Ü™[˜\žPÛÛX˜]ÔÝ\YÊBˆÂˆ™]\›ˆ[ÂˆB‚ˆ˜\ˆ™[XZ[š[™ÈBˆÛÛ”™[XZ[š[™Ó›Ü›X[[˜ÛÝ[\’YÂˆÏÈ
+Ýš[™Ö×JT›ÝÝ\PÛÛ[ˆ“Ý™\™Ü›ÝÝ›Ü›X[[˜ÛÝ[\”ÛÛˆÛÛ™J
+NÂˆYˆ
+™[XZ[š[™Ë“[™ÝOH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ“Ý™\™Ü›ÝÝ›Ü›X[[˜ÛÝ[\ˆ˜YÈ\È^]\ÝYˆŠNÂˆB‚ˆ˜\ˆ™]š[Ý\ÈHÛÜ›‘[˜ÛÝ[\’YË“\ÝÜ‘Y˜][
+
+NÂˆ˜\ˆ[YÚX›HH™]š[Ý\È\È[ˆÈ™[XZ[š[™Âˆˆ™[XZ[š[™Âˆ•Ú\™JØ[™Y]HO‚ˆØ[‘›ÛÝÓÝ™\™Ü›ÝÝ[˜ÛÝ[\Šˆ™]š[Ý\ËˆØ[™Y]JJBˆ•Ð\œ˜^J
+NÂˆYˆ
+[YÚX›K“[™ÝOH
+BˆÂˆ[YÚX›HH™[XZ[š[™ÎÂˆB‚ˆ˜\ˆÙ[XÝYYH[YÚX›VÂˆ›ÝÝ\T›™Ë“™^[
+ˆÝ]K”›™Ëˆ˜ÛÛX˜]‹ˆ[YÚX›K“[™Ý
+WNÂˆ˜\ˆ[˜ÛÝ[\ˆH›ÝÝ\PÛÛ[‘[˜ÛÝ[\ŠˆÙ[XÝYY
+NÂˆ˜\ˆ™^™[XZ[š[™ÈH™[XZ[š[™Âˆ•Ú\™JYO‚ˆTÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊˆYˆÙ[XÝYY
+JBˆ•Ð\œ˜^J
+NÂ‚ˆ™]\›ˆ
+ˆ[˜ÛÝ[\‹ˆÛÜ›Ú]ˆÂˆXÝÛ™Q[˜ÛÝ[\”ÛÛHÛÛÚ]ˆÂˆÜ™[˜\žPÛÛX˜]ÔÝ\YBˆÛÛ“Ü™[˜\žPÛÛX˜]ÔÝ\Y
+ÈKˆ™[XZ[š[™Ó›Ü›X[[˜ÛÝ[\’YÈBˆ™^™[XZ[š[™ÂˆBˆJNÂˆB‚ˆš]˜]HÝ]XÈ›ÛÛØ[‘›ÛÝÓÝ™\™Ü›ÝÝ[˜ÛÝ[\ŠˆÝš[™È™]š[Ý\ËˆÝš[™ÈØ[™Y]JBˆÂˆÝ]XÈ›ÛÛ\ÑZ]\ŠˆÝš[™È˜[YKˆÝš[™Èš\œÝˆÝš[™ÈÙXÛÛ™
+HO‚ˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Êˆ˜[YKˆš\œÝ
+BˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Êˆ˜[YKˆÙXÛÛ™
+NÂ‚ˆYˆ
+\ÑZ]\Šˆ™]š[Ý\Ëˆœ›ÝË™[˜ÛÝ[\‹™^žžWÝÝ\›WØÜ˜]Û\—ÝÙXZÈ‹ˆœ›ÝË™[˜ÛÝ[\‹›Ý™\™Ü›ÝÝØÜ˜]Û\œÈŠBˆ	‰ˆ\ÑZ]\ŠˆØ[™Y]Kˆœ›ÝË™[˜ÛÝ[\‹™^žžWÝÝ\›WØÜ˜]Û\—ÝÙXZÈ‹ˆœ›ÝË™[˜ÛÝ[\‹›Ý™\™Ü›ÝÝØÜ˜]Û\œÈŠJBˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆYˆ
+\ÑZ]\Šˆ™]š[Ý\Ëˆœ›ÝË™[˜ÛÝ[\‹œÚš[šÙ\—Ø™Y]WÝÙXZÈ‹ˆœ›ÝË™[˜ÛÝ[\‹›Ý™\™Ü›ÝÝØÜ˜]Û\œÈŠBˆ	‰ˆ\ÑZ]\ŠˆØ[™Y]Kˆœ›ÝË™[˜ÛÝ[\‹œÚš[šÙ\—Ø™Y]WÝÙXZÈ‹ˆœ›ÝË™[˜ÛÝ[\‹›Ý™\™Ü›ÝÝØÜ˜]Û\œÈŠJBˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆ˜\ˆÛ[YQ˜[Z[HH™]Ö×BˆÂˆœ›ÝË™[˜ÛÝ[\‹œÛ[Y\×ÝÙXZÈ‹ˆœ›ÝË™[˜ÛÝ[\‹™›XÛÛšYÛ›Ü›X[‹ˆœ›ÝË™[˜ÛÝ[\‹œÛ[Y\×Û›Ü›X[‚ˆNÂˆYˆ
+Û[YQ˜[Z[KÛÛZ[œÊˆ™]š[Ý\ËˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+Bˆ	‰ˆÛ[YQ˜[Z[KÛÛZ[œÊˆØ[™Y]KˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+JBˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆYˆ
+\ÑZ]\Šˆ™]š[Ý\Ëˆœ›ÝË™[˜ÛÝ[\‹™›XÛÛšYÛ›Ü›X[‹ˆœ›ÝË™[˜ÛÝ[\‹œÛ˜\[™×Ú˜^œZ]Û›Ü›X[ŠBˆ	‰ˆ\ÑZ]\ŠˆØ[™Y]Kˆœ›ÝË™[˜ÛÝ[\‹™›XÛÛšYÛ›Ü›X[‹ˆœ›ÝË™[˜ÛÝ[\‹œÛ˜\[™×Ú˜^œZ]Û›Ü›X[ŠJBˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆ™]\›ˆYNÂˆB‚ˆš]˜]HÝ]XÈ›ÝÝ\Q[˜ÛÝ[\‘Yš[š][ÛˆXÚÕÙZYÚY[˜ÛÝ[\Šˆ›ÝÝ\Q[˜ÛÝ[\‘Yš[š][Û–×H[˜ÛÝ[\œËˆ›™Ð[™H›™ÊBˆÂˆ˜\ˆÝ[ÙZYÚH[˜ÛÝ[\œË”Ý[J[˜ÛÝ[\ˆOˆ[˜ÛÝ[\‹•ÙZYÚ
+NÂˆYˆ
+Ý[ÙZYÚH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ‘[YÚX›H[˜ÛÝ[\ˆÛÛ\È›ÈÜÚ]]™HÙZYÚˆŠNÂˆB‚ˆ˜\ˆ›ÛH›ÝÝ\T›™Ë“™^[
+›™Ë˜ÛÛX˜]‹Ý[ÙZYÚ
+NÂˆ›Ü™XXÚ
+˜\ˆ[˜ÛÝ[\ˆ[ˆ[˜ÛÝ[\œÊBˆÂˆYˆ
+›Û[˜ÛÝ[\‹•ÙZYÚ
+BˆÂˆ™]\›ˆ[˜ÛÝ[\ŽÂˆB‚ˆ›ÛOH[˜ÛÝ[\‹•ÙZYÚÂˆB‚ˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ•ÙZYÚY[˜ÛÝ[\ˆÙ[XÝ[Ûˆ™[›ÝYÚˆŠNÂˆB‚ˆËÈ˜]]™H˜[\\ÝÙ\‹Y\”ÚYU\›”Ý\š\™\ÈÛ˜ÙH]HÝ\ˆËÈÙˆ]™\žH^Y\ˆÚYKˆXXÚ]š[™ÈÝÛ™\ˆÛÛšX]\È]ÈÝÛ‚ˆËÈÝXÚÜÈÈXXÚ]š[™ÈX]Ú[™È[NÈY™X]YÝÛ™\œÈÝÜˆËÈÜ˜[[™È›ØÚËˆ›ØÚÈ\È™\Ù]žHH^\Ý[™È[™[^K\ÚYHÛÚË‚ˆ[\›˜[Ý]XÈÛÛX˜]Ý]HÜ˜[[™[^P[P›ØÚÓÛ”^Y\•\›”Ý\
+ˆÛÛX˜]Ý]HÛÛX˜]
+BˆÂˆ˜\ˆÜ˜[ÈHÛÛX˜]‘[™[ZY\Âˆ•Ú\™JÝÛ™\ˆOˆÝÛ™\‹’ˆ
+Bˆ”Ù[XÝX[žJÝÛ™\ˆOˆÝÛ™\‹”ÝÙ\”Ý]\ÊBˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÈˆ
+Bˆ”Ù[XÝ
+ÝÙ\ˆOˆ
+ˆÝÙ\ŽˆÝÙ\‹ˆYš[š][ÛŽˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+JJBˆ•Ú\™J][HO‚ˆ][K‘Yš[š][Û‹[P›ØÚÐ]^Y\•\›”Ý\\”ÝXÚÈˆˆ	‰ˆ][K‘Yš[š][Û‹[P›ØÚÕ\™Ù][™[^RY\È›Ý[
+Bˆ•Ð\œ˜^J
+NÂˆYˆ
+Ü˜[Ë“[™ÝOH
+BˆÂˆ™]\›ˆÛÛX˜]ÂˆB‚ˆ™]\›ˆÛÛX˜]Ú]ˆÂˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HO‚ˆÂˆYˆ
+[™[^K’H
+BˆÂˆ™]\›ˆ[™[^NÂˆB‚ˆ˜\ˆ›ØÚÈHÜ˜[Âˆ•Ú\™J][HOˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Êˆ][K‘Yš[š][Û‹[P›ØÚÕ\™Ù][™[^RYˆ[™[^K‘[™[^RY
+JBˆ”Ý[J][HOˆÚXÚÙY
+ˆ][K”ÝÙ\‹”ÝXÚÜÂˆ
+ˆ][K‘Yš[š][Û‚ˆ[P›ØÚÐ]^Y\•\›”Ý\\”ÝXÚÊJNÂˆ™]\›ˆ›ØÚÈHˆÈ[™[^Bˆˆ[™[^HÚ]È›ØÚÈHÚXÚÙY
+[™[^K›ØÚÈ
+È›ØÚÊHNÂˆJK•Ð\œ˜^J
+BˆNÂˆB‚ˆš]˜]HÝ]XÈT™XYÛ›S\ÝØ[YPXÝ[ÛˆÙ]ÛÛX˜]XÝ[ÛœÊ[”Ý]HÝ]JBˆÂˆ˜\ˆÛÛX˜]H™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]\ÙH\È›ÈÛÛX˜]Ý]KˆŠNÂ‚ˆYˆ
+ÛÛX˜]”[™[™ÒÛ›ÝÛYÙQ[[ÛÚÚXÙH\ÈÈH[™[^PÚÚXÙJBˆ™]\›ˆÙ]Û›ÝÛYÙQ[[ÛÚÚXÙPXÝ[ÛœÊ[™[^PÚÚXÙJNÂˆYˆ
+ÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+Bˆ™]\›ˆÙ][™[™ÐÚÚXÙPXÝ[ÛœÊÛÛX˜]”[™[™ÐÚÚXÙJNÂ‚ˆ˜\ˆXÝ[ÛœÈH™]È\ÝØ[YPXÝ[ÛŠ
+NÂ‚ˆ›Ü™XXÚ
+˜\ˆ[œÝ[˜ÙRY[ˆÛÛX˜]’[™
+BˆÂˆ˜\ˆØ\™H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜][œÝ[˜ÙRY
+NÂˆ˜\ˆYš[š][ÛˆH[[YPØ\™Yš[š][ÛŠØ\™
+NÂˆYˆ
+Ø\™Y™›XÝ[ÛË’Ú[™OH›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™›Ý[™ˆ	‰ˆÛÛX˜]›Ý[™Ø\™^YY\Õ\›ŠBˆÛÛ[YNÂˆYˆ
+PØ[”^P[›Ý\Ø\™\Õ\›ŠÝ]K”^Y\‹ÛÛX˜]Ø\™
+JBˆÂˆÛÛ[YNÂˆBˆ˜\ˆ\Ñœ™YPžTÝÙ\ˆH\ÐØ\™œ™YPžTÝÙ\ŠÛÛX˜]Yš[š][ÛŠNÂˆYˆ
+YYš[š][Û‹“YXÚ[šXÜÒ[\[Y[YˆYš[š][Û‹•[œ^XX›Bˆ
+Z\Ñœ™YPžTÝÙ\‚ˆ	‰ˆR\ÐØ\™Y™›Ü™X›JˆÛÛX˜]ˆØ\™ˆYš[š][ÛŠJBˆQ]˜[X]PÛÛX˜]™YXØ]JˆYš[š][Û‹”^PÛÛ™][Û‹ˆÛÛX˜]ˆ\™Ù][™[^RYˆ[
+JBˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆY™™XÝ]™U\™Ù]HY™™XÝ]™PØ\™\™Ù]
+ˆÛÛX˜]ˆYš[š][ÛŠNÂˆYˆ
+Y™™XÝ]™U\™Ù]OH›ÝÝ\PØ\™\™Ù]‘[™[^JBˆÂˆ›Ü™XXÚ
+˜\ˆ[™[^H[ˆÛÛX˜]‘[™[ZY\Ë•Ú\™J[™[^HOˆ[™[^K’ˆ
+JBˆÂˆXÝ[ÛœËY
+Ø[YPXÝ[Û‹Ü™X]Jˆœ^WØØ\™‹ˆ™]È^PØ\™^[ØY
+[œÝ[˜ÙRY[™[^K’[œÝ[˜ÙRY
+JJNÂˆBˆBˆ[ÙBˆÂˆXÝ[ÛœËY
+Ø[YPXÝ[Û‹Ü™X]Jˆœ^WØØ\™‹ˆ™]È^PØ\™^[ØY
+[œÝ[˜ÙRY[
+JJNÂˆBˆB‚ˆ›Üˆ
+˜\ˆÛÝHÈÛÝÝ]K”^Y\‹”Ý[Û”ÛÝË“[™ÝÈÛÝ
+ÊÊBˆÂˆ˜\ˆÝ[ÛˆHÝ]K”^Y\‹”Ý[Û”ÛÝÖÜÛÝNÂˆYˆ
+Ý[Ûˆ\È[
+BˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”Ý[ÛŠÝ[Û‹”Ý[Û’Y
+NÂˆYˆ
+Yš[š][Û‹]]ÛX]XÕ\ØYÙJBˆÂˆÛÛ[YNÂˆB‚ˆYˆ
+Yš[š][Û‹•\™Ù]OH›ÝÝ\PØ\™\™Ù]‘[™[^JBˆÂˆ›Ü™XXÚ
+˜\ˆ[™[^H[ˆÛÛX˜]‘[™[ZY\Ë•Ú\™J[™[^HOˆ[™[^K’ˆ
+JBˆÂˆXÝ[ÛœËY
+Ø[YPXÝ[Û‹Ü™X]Jˆ\ÙWÜÝ[Ûˆ‹ˆ™]È\ÙTÝ[Û”^[ØY
+ÛÝ[™[^K’[œÝ[˜ÙRY
+JJNÂˆBˆBˆ[ÙBˆÂˆXÝ[ÛœËY
+Ø[YPXÝ[Û‹Ü™X]Jˆ\ÙWÜÝ[Ûˆ‹ˆ™]È\ÙTÝ[Û”^[ØY
+ÛÝ[
+JJNÂˆBˆB‚ˆXÝ[ÛœËY
+Ø[YPXÝ[Û‹‘[\J™[™Ý\›ˆŠJNÂˆ™]\›ˆXÝ[ÛœÎÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]HÝ\ÛÛX˜]
+[”Ý]HÝ]KØ[YPXÝ[ÛˆXÝ[ÛŠBˆÂˆ˜\ˆÛÛX˜]H™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]\ÙH\È›ÈÛÛX˜]Ý]KˆŠNÂ‚ˆ˜\ˆ™^HÛÛX˜]”[™[™ÒÛ›ÝÛYÙQ[[ÛÚÚXÙH\È›Ý[ˆÈ™\ÛÛ™RÛ›ÝÛYÙQ[[ÛÚÚXÙJÝ]KXÝ[ÛŠBˆˆÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[ˆÈ™\ÛÛ™T[™[™ÐÚÚXÙJÝ]KXÝ[ÛŠBˆˆXÝ[Û‹’Ú[™ÝÚ]ÚˆÂˆœ^WØØ\™ˆO‚ˆ^PØ\™
+ˆÝ]KˆXÝ[Û‹”™XY^[ØY^PØ\™^[ØYŠ
+JKˆ\ÙWÜÝ[ÛˆˆO‚ˆ\ÙTÝ[ÛŠˆÝ]KˆXÝ[Û‹”™XY^[ØY\ÙTÝ[Û”^[ØYŠ
+JKˆ™[™Ý\›ˆˆOˆ[™^Y\•\›ŠÝ]JKˆÈOˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	•[šÛ›ÝÛˆÛÛX˜]XÝ[Ûˆ	ÞØXÝ[Û‹’Ú[™IËˆŠBˆNÂ‚ˆYˆ
+™^”\ÙHOH[”\ÙKÛÛX˜]ˆ™^”^Y\‹’ˆ
+BˆÂˆ™]\›ˆ™^ÂˆB‚ˆ™^HžU\ÙP]]ÛX]XÑX]™]™[[ÛŠ™^
+NÂˆ™]\›ˆ™^”^Y\‹’ˆˆÈ™^ˆˆ[™[Š™^™Y™X]ŠNÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H^PØ\™
+[”Ý]HÝ]K^PØ\™^[ØY^[ØY
+BˆÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]\ÙH\È›ÈÛÛX˜]Ý]KˆŠNÂ‚ˆYˆ
+XÛÛX˜]’[™ÛÛZ[œÊ^[ØYØ\™[œÝ[˜ÙRY
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	Ø\™Ü^[ØYØ\™[œÝ[˜ÙRYH\È›Ý[ˆ[™ˆŠNÂˆB‚ˆ˜\ˆØ\™H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]^[ØYØ\™[œÝ[˜ÙRY
+NÂˆYˆ
+PØ[”^P[›Ý\Ø\™\Õ\›ŠÝ]K”^Y\‹ÛÛX˜]Ø\™
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆH^Y\ˆY™™XÝ™]™[È^Z[™È\ÈØ\™\È\›‹ˆŠNÂˆBˆ˜\ˆYš[š][ÛˆH[[YPØ\™Yš[š][ÛŠØ\™
+NÂˆYˆ
+YYš[š][Û‹“YXÚ[šXÜÒ[\[Y[Y
+BˆÂˆ›ÝÈ™]È›ÝÝ\ÜY^Ù\[ÛŠˆ	Ø\™	ÞÙYš[š][Û‹“˜[Y_IÈ\ÈØ][ÙÝYY]]ÈÛÛX˜]YXÚ[šXÜÈ\™H›Ý[\[Y[YˆŠNÂˆB‚ˆYˆ
+Yš[š][Û‹•[œ^XX›JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	Ø\™Ü^[ØYØ\™[œÝ[˜ÙRYH\È[œ^XX›KˆŠNÂˆB‚ˆ˜\ˆ\Ñœ™YPžTÝÙ\ˆH\ÐØ\™œ™YPžTÝÙ\ŠÛÛX˜]Yš[š][ÛŠNÂˆYˆ
+Z\Ñœ™YPžTÝÙ\‚ˆ	‰ˆR\ÐØ\™Y™›Ü™X›JˆÛÛX˜]ˆØ\™ˆYš[š][ÛŠJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	Ø\™Ü^[ØYØ\™[œÝ[˜ÙRYH\È[˜Y™›Ü™X›KˆŠNÂˆB‚ˆYˆ
+Q]˜[X]PÛÛX˜]™YXØ]JˆYš[š][Û‹”^PÛÛ™][Û‹ˆÛÛX˜]ˆ^[ØY•\™Ù][™[^RY
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	Ø\™Ü^[ØYØ\™[œÝ[˜ÙRYHÙ\È›ÝØ]\ÙžH]È^HÛÛ™][Û‹ˆŠNÂˆB‚ˆ˜[Y]U\™Ù]
+ˆY™™XÝ]™PØ\™\™Ù]
+ÛÛX˜]Yš[š][ÛŠKˆ^[ØY•\™Ù][™[^RYˆÛÛX˜]
+NÂˆÛÛX˜]H™\ÛÛ™RØZ\Ù\Ü˜X‘˜XÚ[™ÊÛÛX˜]^[ØY•\™Ù][™[^RY
+NÂˆ˜\ˆ[™\™ÞTÜ[H\Ñœ™YPžTÝÙ\‚ˆÈˆˆ™\ÛÛ™PØ\™[™\™ÞTÜ[
+ˆÛÛX˜]ˆØ\™ˆYš[š][ÛŠNÂ‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™\™ÞHHÛÛX˜]‘[™\™ÞHH[™\™ÞTÜ[ˆ[™HÛÛX˜]’[™•Ú\™JYOˆYOH^[ØYØ\™[œÝ[˜ÙRY
+K•Ð\œ˜^J
+BˆNÂ‚ˆYˆ
+Ø\™‘[˜Ú[Y[\ÂˆÈÚ[™ˆ›ÝÝ\PØ\™[˜Ú[Y[Ú[™”ÛÝÛˆHÛÝÛ‚ˆ	‰ˆXØ\™‘[˜Ú[Y[šYÙÙ\™Y\ÐÛÛX˜]
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™\™ÞHHÛÛX˜]‘[™\™ÞH
+ÈX]“X^
+ÛÝÛ‹[[Ý[
+KˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+][HO‚ˆ][K’[œÝ[˜ÙRYOHØ\™’[œÝ[˜ÙRYˆÈ][HÚ]È[˜Ú[Y[šYÙÙ\™Y\ÐÛÛX˜]HYHBˆˆ][JK•Ð\œ˜^J
+BˆNÂˆB‚ˆYˆ
+\Ñœ™YPžTÝÙ\ŠBˆÂˆÛÛX˜]HÛÛœÝ[YSX]Ú[™Ñœ™YPØ\™ÝÙ\ŠÛÛX˜]Yš[š][Û‹•\JNÂˆB‚ˆ˜\ˆ^PÛÝ[™\Ý[Bˆ™\ÛÛ™PØ\™^PÛÝ[[™ÛÛœÝ[YS[ÙYšY\œÊˆÛÛX˜]ˆØ\™ˆYš[š][Û‹•\JNÂˆÛÛX˜]H^PÛÝ[™\Ý[ÛÛX˜]Â‚ˆ˜\ˆÛÝ\˜ÙQ\Ý[˜][ÛˆHØ\™^]\ÝÓÛ•\ÙJˆYš[š][Û‹Ø\™
+BˆÈ›ÝÝ\PØ\™›Û™K‘^]\Ý[Bˆˆ›ÝÝ\PØ\™›Û™K‘\ØØ\™[NÂ‚ˆ˜\ˆY™™XÝ[™\™ÞTÜ[BˆYš[š][Û‹ÛÜÝ’Ú[™OH›ÝÝ\PØ\™ÛÜÝÚ[™–ˆÈ[™\™ÞTÜ[ˆ
+ÈÝ]K”^Y\‹XÝ]™T™[XÜË”Ý[J™[XÈO‚ˆ›ÝÝ\PÛÛ[”™[XÊ™[XË”™[XÒY
+Bˆ–˜[YP›Û\ÊBˆˆ[™\™ÞTÜ[Â‚ˆ˜\ˆÙ\šY\ÈH™]È›ÝÝ\PØ\™^TÙ\šY\ÔÝ]JˆÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆ^[ØYØ\™[œÝ[˜ÙRYˆÛÝ\˜ÙPØ\™\Ý[˜][ÛŽˆÛÝ\˜ÙQ\Ý[˜][Û‹ˆ\™Ù][™[^RYˆ^[ØY•\™Ù][™[^RYˆ[™\™ÞTÜ[ˆY™™XÝ[™\™ÞTÜ[ˆ^PÛÝ[ˆ^PÛÝ[™\Ý[”^PÛÝ[ˆ™^^R[™^ˆˆ™[[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][ÛŽ‚ˆYš[š][Û‹•\HOH›ÝÝ\PØ\™\K”ÝÙ\ŠNÂ‚ˆ˜\ˆ™\ÛÛ™YH™\ÛÛ™PØ\™^TÙ\šY\ÊˆÝ]K”^Y\‹ˆÛÛX˜]ˆÝ]K”›™ËˆÙ\šY\ÊNÂˆÛÛX˜]H™\ÛÛ™YÛÛX˜]Â‚ˆÝ]HHÝ]HÚ]ˆÂˆ^Y\ˆH™\ÛÛ™Y”^Y\‹ˆÛÜ›HÛÜ›Ú]ÈÛÛX˜]HÛÛX˜]BˆNÂ‚ˆËÈ[ˆ]XÚÈX^HÚ[Hš[˜[[™[^HÚ[H]ÈÝÛˆY™™XÝÈÝ[ˆËÈ™\]Z\™HHØ\™\Ù[XÝ[ÛˆÚÚXÙH
+K™Ëˆ\Ü˜YYYÙÙ\ˆ›ÝÊK‚ˆËÈ™\ÛÛ™H]ÚÚXÙH[™]ÈØ\™\^HÛÛ[X][Ûˆ™Y›Ü™Hš\š[™ÂˆËÈÛÛX˜]ÛÛŽˆ[\š[™È™]Ø\™È\™H\Ü]Ú\È[ˆ[œ™[]Y]™[ˆËÈYØZ[œÝ[ˆ^\Ý[™È[™[™ÈÚÚXÙH[™ÛÜœ\ÈHÛÛ[X][Û‹‚ˆYˆ
+ÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆÝ]NÂˆB‚ˆ™]\›ˆ[[™[ZY\ÑY™X]Y
+ÛÛX˜]
+BˆÈ[\ÛÛX˜]™]Ø\™
+Ý]JBˆˆÝ]NÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H\ÙTÝ[ÛŠ[”Ý]HÝ]K\ÙTÝ[Û”^[ØY^[ØY
+BˆÂˆYˆ
+^[ØY”ÛÝ^[ØY”ÛÝHÝ]K”^Y\‹”Ý[Û”ÛÝË“[™Ý
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	”Ý[ÛˆÛÝÜ^[ØY”ÛÝH\È[˜[YˆŠNÂˆB‚ˆ˜\ˆÝ[ÛˆHÝ]K”^Y\‹”Ý[Û”ÛÝÖÜ^[ØY”ÛÝBˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	”Ý[ÛˆÛÝÜ^[ØY”ÛÝH\È[\KˆŠNÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]\ÙH\È›ÈÛÛX˜]Ý]KˆŠNÂˆ˜\ˆÛÛX˜]Ý[ÛˆHÛÛX˜]”Ý[Û”Ý]\Ë”Ú[™ÛSÜ‘Y˜][
+][HOˆ][K”ÛÝOH^[ØY”ÛÝ
+BˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	ÛÛX˜]Ý[ÛˆÝ]H›ÜˆÛÝÜ^[ØY”ÛÝH\ÈZ\ÜÚ[™ËˆŠNÂ‚ˆYˆ
+TÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊÝ[Û‹”Ý[Û’YÛÛX˜]Ý[Û‹”Ý[Û’Y
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	”\œÚ\Ý[ØÛÛX˜]Ý[ÛˆQÈ\ØYÜ™YH[ˆÛÝÜ^[ØY”ÛÝKˆŠNÂˆB‚ˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”Ý[ÛŠÛÛX˜]Ý[Û‹”Ý[Û’Y
+NÂˆYˆ
+Yš[š][Û‹]]ÛX]XÕ\ØYÙJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	”Ý[Ûˆ	ÞÙYš[š][Û‹“˜[Y_IÈ\È]]ÛX]XÈ[™Ø[››Ý™H\ÙYX[X[KˆŠNÂˆB‚ˆ˜[Y]U\™Ù]
+Yš[š][Û‹•\™Ù]^[ØY•\™Ù][™[^RYÛÛX˜]
+NÂˆÛÛX˜]H™\ÛÛ™RØZ\Ù\Ü˜X‘˜XÚ[™ÊÛÛX˜]^[ØY•\™Ù][™[^RY
+NÂ‚ˆ˜\ˆÜ\˜][ÛœÈH™]È]Y]YO›ÝÝ\T]Y]YYÜ\˜][ÛŠ
+NÂˆ›Ü™XXÚ
+˜\ˆY™™XÝ[ˆYš[š][Û‹‘Y™™XÝÊBˆÂˆ[œ]Y]YQY™™XÝÜ\˜][ÛœÊˆÜ\˜][ÛœËˆY™™XÝˆˆˆ^[ØY•\™Ù][™[^RYˆÛÛX˜]ˆÛÝ\˜ÙRÚ[™ˆ›ÝÝ\QY™™XÝÛÝ\˜ÙRÚ[™”Ý[ÛŠNÂˆB‚ˆ˜\ˆ^Y\Y\”Ý[ÛˆBˆÛÛœÝ[YTÝ[Û”ÛÝ
+ˆÝ]K”^Y\‹ˆ^[ØY”ÛÝ
+NÂˆ^Y\Y\”Ý[ÛˆBˆ\TÝ[Û”[‘Y™™XÝÊˆ^Y\Y\”Ý[Û‹ˆYš[š][Û‹ˆÝ]K”›™ÊNÂ‚ˆ˜\ˆÛÛX˜]Y\”Ý[ÛˆHÛÛX˜]Ú]ˆÂˆÝ[ÛœÈH^Y\Y\”Ý[Û‹”Ý[Û”ÛÝÂˆ”Ù[XÝ
+
+][KÛÝ
+HO‚ˆ][H\È[ˆÈ[ˆˆ™]ÈÛÛX˜]Ý[Û”Ý]JˆÛÝˆ][K”Ý[Û’Yˆ][K”\œÚ\Ý[Ý]BˆÛÛ™J
+JJBˆ•Ú\™J][HOˆ][H\È›Ý[
+Bˆ”Ù[XÝ
+][HOˆ][HJBˆ•Ð\œ˜^J
+BˆNÂ‚ˆ˜\ˆ™\ÛÛ™YH™\ÛÛ™SÜ\˜][ÛœÊˆ^Y\Y\”Ý[Û‹ˆÛÛX˜]Y\”Ý[Û‹ˆÜ\˜][ÛœËˆÝ]K”›™ËˆÛÛ\][Û‘]™[Î‚ˆÂˆ™]È›ÝÝ\PÛÛX˜]]™[
+ˆ›ÝÝ\PÛÛX˜]]™[Ú[™”Ý[Û•\ÙY
+BˆJNÂˆ^Y\Y\”Ý[ÛˆH™\ÛÛ™Y”^Y\ŽÂˆÛÛX˜]Y\”Ý[ÛˆH™\ÛÛ™YÛÛX˜]Â‚ˆÝ]HHÝ]HÚ]ˆÂˆ^Y\ˆH^Y\Y\”Ý[Û‹ˆÛÜ›HÛÜ›Ú]ÈÛÛX˜]HÛÛX˜]Y\”Ý[ÛˆBˆNÂ‚ˆYˆ
+ÛÛX˜]Y\”Ý[Û‹”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆÝ]NÂˆB‚ˆ™]\›ˆ[[™[ZY\ÑY™X]Y
+ÛÛX˜]Y\”Ý[ÛŠBˆÈ[\ÛÛX˜]™]Ø\™
+Ý]JBˆˆÝ]NÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]HžU\ÙP]]ÛX]XÑX]™]™[[ÛŠˆ[”Ý]HÝ]JBˆÂˆYˆ
+Ý]K”^Y\‹’ˆˆÝ]K”\ÙHOH[”\ÙKÛÛX˜]
+BˆÂˆ™]\›ˆÝ]NÂˆB‚ˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜]X]™]™[[Ûˆ\È›ÈÛÛX˜]Ý]KˆŠNÂˆ˜\ˆ™]™[YHžU\ÙP]]ÛX]XÑX]™]™[[ÛŠˆÝ]K”^Y\‹ˆÛÛX˜]ˆÝ]K”›™ÊNÂ‚ˆ™]\›ˆÝ]HÚ]ˆÂˆ^Y\ˆH™]™[Y”^Y\‹ˆÛÜ›HÛÜ›Ú]ˆÂˆÛÛX˜]H™]™[YÛÛX˜]ˆBˆNÂˆB‚ˆš]˜]HÝ]XÈ
+^Y\”Ý]H^Y\‹ÛÛX˜]Ý]HÛÛX˜]
+BˆžU\ÙP]]ÛX]XÑX]™]™[[ÛŠˆ^Y\”Ý]H^Y\‹ˆÛÛX˜]Ý]HÛÛX˜]ˆ›™Ð[™H›™Ëˆ[]™[\H
+BˆÂˆYˆ
+^Y\‹’ˆ
+BˆÂˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆB‚ˆ›Üˆ
+˜\ˆÛÝHÂˆÛÝ^Y\‹”Ý[Û”ÛÝË“[™ÝÂˆÛÝ
+ÊÊBˆÂˆ˜\ˆÝ[ÛˆH^Y\‹”Ý[Û”ÛÝÖÜÛÝNÂˆYˆ
+Ý[Ûˆ\È[
+BˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆYš[š][ÛˆBˆ›ÝÝ\PÛÛ[”Ý[ÛŠˆÝ[Û‹”Ý[Û’Y
+NÂˆYˆ
+YYš[š][Û‹]]ÛX]XÕ\ØYÙBˆYš[š][Û‹‘X]™]™[[Û’X[\˜Ù[H
+BˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆÛÝÈBˆ
+Ý[Û’[œÝ[˜ÙOÖ×J\^Y\‹”Ý[Û”ÛÝËÛÛ™J
+NÂˆÛÝÖÜÛÝHH[Âˆ˜\ˆX[YHX]“X^
+ˆKˆ
+^Y\‹“X^ˆ
+ˆYš[š][Û‹‘X]™]™[[Û’X[\˜Ù[
+BˆÈL
+NÂˆ^Y\ˆH^Y\ˆÚ]ˆÂˆHX]“Z[Šˆ^Y\‹“X^ˆX[Y
+KˆÝ[Û”ÛÝÈHÛÝÂˆNÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆÝ[ÛœÈHÛÛX˜]”Ý[Û”Ý]\Âˆ•Ú\™J][HO‚ˆ][K”ÛÝOHÛÝ
+Bˆ•Ð\œ˜^J
+BˆNÂ‚ˆ˜\ˆ\Ü]ÚYH\Ü]ÚÛÛX˜]]™[
+ˆ^Y\‹ˆÛÛX˜]ˆ™]È›ÝÝ\PÛÛX˜]]™[
+ˆ›ÝÝ\PÛÛX˜]]™[Ú[™”Ý[Û•\ÙY
+Kˆ›™Ëˆ]™[\
+ÈJNÂˆ™]\›ˆ
+ˆ\Ü]ÚY”^Y\‹ˆ\Ü]ÚYÛÛX˜]
+NÂˆB‚ˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H[\ÛÛX˜]™]Ø\™
+ˆ[”Ý]HÝ]JBˆÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜]šXÝÜžH\È›ÈÛÛX˜]Ý]KˆŠNÂ‚ˆ˜\ˆÛÛˆH\Ü]ÚÛÛX˜]]™[
+ˆÝ]K”^Y\‹ˆÛÛX˜]ˆ™]È›ÝÝ\PÛÛX˜]]™[
+ˆ›ÝÝ\PÛÛX˜]]™[Ú[™ÛÛX˜]ÛÛŠKˆÝ]K”›™ÊNÂˆÝ]HHÝ]HÚ]ˆÂˆ^Y\ˆHÛÛ‹”^Y\‹ˆÛÜ›HÛÜ›Ú]ˆÂˆÛÛX˜]HÛÛ‹ÛÛX˜]ˆBˆNÂ‚ˆÝ]HHÝ]HÚ]ˆÂˆ^Y\ˆH\SXYØÚY[˜ÙR[\›Ý™[Y[
+ˆ\S˜]]™T\œÚ\Ý[ÛÛX˜][™
+ˆÝ]K”^Y\‹ˆÛÜ›XÝ]™T›ÛÛKˆÝ]K”›™ÊKˆÛÛX˜]Ý]K”›™ÊBˆNÂˆÝ]HH\UØ\’[[Y\‘[]UšXÝÜžJˆÝ]KÛÜ›XÝ]™T›ÛÛJNÂˆÝ]HH˜]]™P[˜ÚY[™]Ø\™ÕŒLLK\PÛÛX˜][™
+Ý]JNÂ‚ˆYˆ
+ÛÜ›‘]™[\ÈÈH˜]]ÛÜ›‚ˆ	‰ˆ˜]]ÛÜ›‹‘]™[YOBˆ›ÝÝ\S˜]]™QÛÜžQ]™[Ë˜]]ÛÜ›‘[[^RYˆ	‰ˆ˜]]ÛÜ›‹“˜]]™TYÙR[™^ˆ
+BˆÂˆ™]\›ˆÛÛ\]S˜]]™P˜]]ÛÜ›‘[[^JÝ]KÛÛX˜]
+NÂˆB‚ˆYˆ
+ÛÜ›‘]™[\ÈÈH[˜ÚÙ™‚ˆ	‰ˆ[˜ÚÙ™‹‘]™[YOH›ÝÝ\S˜]]™T[˜ÚÙ™‹‘]™[Yˆ	‰ˆ[˜ÚÙ™‹“˜]]™TYÙR[™^OHŠBˆÂˆ™]\›ˆ[\”[˜ÚÙ™”™]Ø\™
+Ý]JNÂˆB‚ˆYˆ
+ÛÜ›‘]™[\ÈÈH[\›‘]™[ˆ	‰ˆ[\›‘]™[‘]™[YOH›ÝÝ\S˜]]™R]™Q]™[Ë“[\›’Ù^Q]™[Yˆ	‰ˆ[\›‘]™[“˜]]™TYÙR[™^OHŠBˆÂˆËÈ˜]]™HÜXÚX[Ø\™™]Ø\™\ÈÜ[Û˜[ˆÚ[ˆHšYÚˆËÈ[ˆZÙHÜˆÚÚ\H[\›ˆÙ^H™Y›Ü™HX]š[™È]™[‚ˆ™]\›ˆÝ]HÚ]ˆÂˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JHÚ]ˆÂˆÛÛX˜]H[ˆ™]Ø\™H™]È™]Ø\™Ý]Jˆ‘]™[ˆˆ
+È[\›‘]™[‘]™[YˆÔ›ÝÝ\S˜]]™R]™Q]™[Ë“[\›’Ù^PØ\™YKˆ[[˜[ÙKYKYK˜[ÙJBˆKˆ\ÙHH[”\ÙK”™]Ø\™ˆNÂˆB‚ˆYˆ
+ÛÜ›‘]™[\ÈÈH[™[™Ñ]™[ˆ	‰ˆ[™[™Ñ]™[‘]™[YOH›ÝÝ\S˜]]™Q[œÙU™YÙ]][Û‹‘]™[Yˆ	‰ˆ[™[™Ñ]™[“˜]]™TYÙR[™^OHŠBˆÂˆËÈ˜]]™H[œÙH™YÙ]][Ûˆ[\œÈH›Ý\‹UÜšYÙÛ\ˆÛÛX˜]ˆËÈÚ]Ý]Ù™™\š[™È[žHÜÝÛÛX˜]™]Ø\™‚ˆ™]\›ˆÛÛ\]T›ÛÛUÓX\
+Ý]HÚ]ˆÂˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JHÚ]ÈÛÛX˜]H[BˆJNÂˆB‚ˆ™]\›ˆ[\”™]Ø\™
+Ý]JNÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H[™^Y\•\›Š[”Ý]HÝ]JBˆÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]\ÙH\È›ÈÛÛX˜]Ý]KˆŠNÂ‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ\Ô^Y\•\›ˆH˜[ÙKˆ]]ÛX]XÔ\[[™PÛÛ[X][ÛˆH[ˆNÂˆÝ]HHÝ]HÚ]ˆÂˆÛÜ›HÛÜ›Ú]ÈÛÛX˜]HÛÛX˜]BˆNÂ‚ˆ™]\›ˆ™\Ý[YP]]ÛX]XÔ\[[™JÝ]K
+NÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H™\Ý[YP]]ÛX]XÔ\[[™Jˆ[”Ý]HÝ]Kˆ[Ý\[™^ˆ›ÝÝ\PÛÛX˜]]™[Ú[™È[™[™ÔÜÝ\Ü]Ú]™[Ú[™H[
+BˆÂˆYˆ
+[™[™ÔÜÝ\Ü]Ú]™[Ú[™\È›Ý[
+BˆÂˆ˜\ˆ™]š[Ý\Õ\›ˆH™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]Ë•\›ŽÂˆÝ]HH™\ÛÛ™TÜÝ\Ü]Ú]]ÛX]XÔÛXÞJˆÝ]Kˆ[™[™ÔÜÝ\Ü]Ú]™[Ú[™•˜[YJNÂ‚ˆYˆ
+[™[™ÔÜÝ\Ü]Ú]™[Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Yˆ	‰ˆ™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]Ë•\›ˆOH™]š[Ý\Õ\›ŠBˆ™]\›ˆÝ]NÂ‚ˆYˆ
+™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]Ë”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆÙ]]]ÛX]XÔ\[[™PÛÛ[X][ÛŠˆÝ]KˆÝ\[™^ˆ[™[™ÔÜÝ\Ü]Ú]™[Ú[™ˆ[
+NÂˆBˆB‚ˆ›Üˆ
+˜\ˆ[™^HÝ\[™^Âˆ[™^›ÝÝ\PÛÛ[”[\Ë‘[™\›”\[[™K“[™ÝÂˆ[™^
+ÊÊBˆÂˆ˜\ˆ]]ÛX]XÔÝ\Bˆ›ÝÝ\PÛÛ[”[\Ë‘[™\›”\[[™VÚ[™^NÂˆÝ]HH™\ÛÛ™P]]ÛX]XÔÝ\
+Ý]K]]ÛX]XÔÝ\
+NÂ‚ˆ˜\ˆÝ\œ™[ÛÛX˜]H™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂ‚ˆYˆ
+Ý\œ™[ÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[ˆÝ\œ™[ÛÛX˜]”[™[™ÒÛ›ÝÛYÙQ[[ÛÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆÙ]]]ÛX]XÔ\[[™PÛÛ[X][ÛŠˆÝ]KˆÝ\œ™[ÛÛX˜]”[™[™ÒÛ›ÝÛYÙQ[[ÛÚÚXÙH\È›Ý[ˆÈ[™^ˆ[™^
+ÈKˆ]]ÛX]XÔÝ\’Ú[™ˆOH›ÝÝ\P]]ÛX]XÔÝ\Ú[™‘\Ü]ÚÛÛX˜]]™[ˆÈ]]ÛX]XÔÝ\‘]™[Ú[™ˆˆ[
+NÂˆB‚ˆYˆ
+]]ÛX]XÔÝ\’Ú[™ˆOH›ÝÝ\P]]ÛX]XÔÝ\Ú[™‘\Ü]ÚÛÛX˜]]™[ˆ	‰ˆ]]ÛX]XÔÝ\‘]™[Ú[™\È›Ý[
+BˆÂˆ˜\ˆ™]š[Ý\Õ\›ˆHÝ\œ™[ÛÛX˜]•\›ŽÂˆÝ]HH™\ÛÛ™TÜÝ\Ü]Ú]]ÛX]XÔÛXÞJˆÝ]Kˆ]]ÛX]XÔÝ\‘]™[Ú[™•˜[YJNÂ‚ˆYˆ
+]]ÛX]XÔÝ\‘]™[Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Yˆ	‰ˆ™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]Ë•\›ˆOH™]š[Ý\Õ\›ŠBˆ™]\›ˆÝ]NÂ‚ˆÝ\œ™[ÛÛX˜]H™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂˆYˆ
+Ý\œ™[ÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆÙ]]]ÛX]XÔ\[[™PÛÛ[X][ÛŠˆÝ]Kˆ[™^
+ÈKˆ[™[™ÔÜÝ\Ü]Ú]™[Ú[™ˆ[
+NÂˆBˆB‚ˆYˆ
+Ý]K”^Y\‹’H
+BˆÂˆÝ]HHžU\ÙP]]ÛX]XÑX]™]™[[ÛŠˆÝ]JNÂˆYˆ
+Ý]K”^Y\‹’H
+BˆÂˆ™]\›ˆ[™[ŠÝ]K™Y™X]ŠNÂˆBˆB‚ˆÝ\œ™[ÛÛX˜]H™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂˆYˆ
+[[™[ZY\ÑY™X]Y
+Ý\œ™[ÛÛX˜]
+JBˆÂˆ™]\›ˆ[\ÛÛX˜]™]Ø\™
+Ý]JNÂˆBˆB‚ˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂˆ™]\›ˆÝ]HÚ]ˆÂˆÛÜ›HÛÜ›Ú]ˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ]]ÛX]XÔ\[[™PÛÛ[X][ÛˆH[ˆBˆBˆNÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]HÙ]]]ÛX]XÔ\[[™PÛÛ[X][ÛŠˆ[”Ý]HÝ]Kˆ[™^Ý\[™^ˆ›ÝÝ\PÛÛX˜]]™[Ú[™È[™[™ÔÜÝ\Ü]Ú]™[Ú[™
+BˆÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂˆ™]\›ˆÝ]HÚ]ˆÂˆÛÜ›HÛÜ›Ú]ˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ]]ÛX]XÔ\[[™PÛÛ[X][ÛˆBˆ™]È›ÝÝ\P]]ÛX]XÔ\[[™PÛÛ[X][Û”Ý]Jˆ™^Ý\[™^ˆ[™[™ÔÜÝ\Ü]Ú]™[Ú[™
+BˆBˆBˆNÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H™\ÛÛ™R[XYY]]Ô^J[”Ý]HÝ]JBˆÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ’[XYY]]Ü^H™\]Z\™\È[ˆXÝ]™HÛÛX˜]ˆŠNÂˆ˜\ˆÜ\˜][ÛœÈH™]È\Ý›ÝÝ\T]Y]YYÜ\˜][ÛŠ
+NÂˆ›Ü™XXÚ
+˜\ˆØ\™[ˆÛÛX˜]Ø\™Âˆ•Ú\™JØ\™OˆØ\™‘[˜Ú[Y[\ÂˆÈÚ[™ˆ›ÝÝ\PØ\™[˜Ú[Y[Ú[™’[XYYBˆ	‰ˆXØ\™‘[˜Ú[Y[šYÙÙ\™Y\ÐÛÛX˜]
+Bˆ“Ü™\žJØ\™OˆØ\™”\œÚ\Ý[Ø\™[œÝ[˜ÙRY
+JBˆÂˆ˜\ˆ›Û™HHÛÛX˜]’[™ÛÛZ[œÊØ\™’[œÝ[˜ÙRY
+BˆÈ›ÝÝ\PØ\™›Û™K’[™ˆˆÛÛX˜]‘˜]Ô[KÛÛZ[œÊØ\™’[œÝ[˜ÙRY
+BˆÈ›ÝÝ\PØ\™›Û™K‘˜]Ô[BˆˆÛÛX˜]‘\ØØ\™[KÛÛZ[œÊØ\™’[œÝ[˜ÙRY
+BˆÈ›ÝÝ\PØ\™›Û™K‘\ØØ\™[Bˆˆ
+›ÝÝ\PØ\™›Û™OÊ[[ÂˆYˆ
+›Û™H\È[
+BˆÛÛ[YNÂ‚ˆÛÛX˜]HÙ]›Û™JÛÛX˜]›Û™K•˜[YKˆÙ]›Û™JÛÛX˜]›Û™K•˜[YJBˆ•Ú\™JYOˆYOHØ\™’[œÝ[˜ÙRY
+K•Ð\œ˜^J
+JNÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^T[HHÛÛX˜]”^PØ\™YË\[™
+Ø\™’[œÝ[˜ÙRY
+K•Ð\œ˜^J
+KˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+][HO‚ˆ][K’[œÝ[˜ÙRYOHØ\™’[œÝ[˜ÙRYˆÈ][HÚ]È[˜Ú[Y[šYÙÙ\™Y\ÐÛÛX˜]HYHBˆˆ][JK•Ð\œ˜^J
+BˆNÂˆÜ\˜][ÛœËY
+™]È›ÝÝ\T]Y]YYÜ\˜][ÛŠˆ›ÝÝ\PÛÛX˜]Y™™XÝÚ[™]]Ô^PÛÛX˜]Ø\™ˆÛÝ\˜ÙRÚ[™ˆ›ÝÝ\QY™™XÝÛÝ\˜ÙRÚ[™Ø\™ˆØ\™[œÝ[˜ÙRYˆØ\™’[œÝ[˜ÙRY
+JNÂˆB‚ˆYˆ
+Ü\˜][ÛœËÛÝ[OH
+Bˆ™]\›ˆÝ]NÂ‚ˆ˜\ˆ™\Ý[H™\ÛÛ™SÜ\˜][ÛœÊÝ]K”^Y\‹ÛÛX˜]ˆ™]È]Y]YO›ÝÝ\T]Y]YYÜ\˜][ÛŠÜ\˜][ÛœÊKÝ]K”›™Ëˆ[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][ÛŽˆ˜[ÙJNÂˆ™]\›ˆÝ]HÚ]ˆÂˆ^Y\ˆH™\Ý[”^Y\‹ˆÛÜ›HÛÜ›Ú]ÈÛÛX˜]H™\Ý[ÛÛX˜]BˆNÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H™\ÛÛ™TÜÝ\Ü]Ú]]ÛX]XÔÛXÞJˆ[”Ý]HÝ]Kˆ›ÝÝ\PÛÛX˜]]™[Ú[™]™[Ú[™
+BˆÂˆYˆ
+]™[Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™“Ü[š[™Ô^Y\•\›”Ý\Y
+BˆÂˆ˜\ˆÜ[š[™ÕÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÜ[š[™ÈH\Ü]ÚÛÛX˜]]™[
+Ý]K”^Y\‹Ü[š[™ÕÛÜ›ÛÛX˜]Kˆ™]È›ÝÝ\PÛÛX˜]]™[
+]™[Ú[™
+KÝ]K”›™Ë[ÝÔÝ\Ü[œÚ[ÛŽˆYJNÂˆ™]\›ˆÝ]HÚ]È^Y\ˆHÜ[š[™Ë”^Y\‹ÛÜ›HÜ[š[™ÕÛÜ›Ú]ÈÛÛX˜]HÜ[š[™ËÛÛX˜]HNÂˆBˆËÈH[›™Y˜]]™H\ÝÜžPÛÝ\œÙKY\]]Ô™T^T\ÙQ[\™YˆËÈ[œÈY\ˆHÝ\[Ù‹]\›ˆÛÚÜËˆ™]\ÙHH^\Ý[™ÂˆËÈ]]ÛX]XË\\[[™H™\Ý[YH›ÝØÛÛ›Üˆ[žHÚÚXÙHÝ\Ü[œÚ[ÛœË‚ˆYˆ
+]™[Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™]]Ô™T^T\ÙQ[\™Y
+Bˆ™]\›ˆ™\ÛÛ™R\ÝÜžPÛÝ\œÙP]]Ô^JÝ]JNÂ‚ˆYˆ
+]™[Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Y
+BˆÂˆ˜\ˆ^YUÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆ^YPÛÛX˜]H^YUÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂˆYˆ
+Y^YPÛÛX˜]”Y[Ñ^YQ^˜U\›”[™[™ÊBˆ™]\›ˆÝ]NÂ‚ˆ˜\ˆ^YR[™^H\œ˜^K‘š[™[™^
+^YPÛÛX˜]”™[XÔÝ]\Ë™[XÈO‚ˆ™[XË”™[XÒYOH˜]]™TY[™]Ø\™ÕŒLLK‘^YRY	‰ˆ\™[XË’\ÓY[Y
+NÂˆYˆ
+^YR[™^
+Bˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ”Y[	ÜÈ^YH\›ˆÛÛ[X][Ûˆ\È›ÈXÝ]™H™[XËˆŠNÂˆ˜\ˆ™[XÜÈH
+ÛÛX˜]™[XÔÝ]V×JY^YPÛÛX˜]”™[XÔÝ]\ËÛÛ™J
+NÂˆ™[XÜÖÙ^YR[™^HH™[XÜÖÙ^YR[™^HÚ]ÈY[Ñ^YU\ÙY\ÐÛÛX˜]HYHNÂˆ^YPÛÛX˜]H^YPÛÛX˜]Ú]ˆÂˆ™[XÜÈH™[XÜËˆY[Ñ^YQ^˜U\›”[™[™ÈH˜[ÙKˆ]]ÛX]XÔ\[[™PÛÛ[X][ÛˆH[ˆNÂˆ˜\ˆ™\Ù]›ØÚÒ[™^H\œ˜^K‘š[™[™^
+›ÝÝ\PÛÛ[”[\Ë‘[™\›”\[[™KˆÝ\OˆÝ\’Ú[™OH›ÝÝ\P]]ÛX]XÔÝ\Ú[™”™\Ù]^Y\›ØÚÊNÂˆYˆ
+™\Ù]›ØÚÒ[™^
+Bˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ•\›ˆ\[[™H\È›È^Y\ˆ›ØÚÈ™\Ù]ÝYÙKˆŠNÂˆËÈ[ˆ^˜H^Y\ˆ\›ˆÚÚ\ÈH[™[^H\›‹ÛÈÈ›Ý[ˆBˆËÈ›Ü›X[Y˜[˜ÙU\›ˆ[[ÛÛ[Z]Y[
+ÜˆÛÛœÝ[YH]È“‘ÊK‚ˆ^YPÛÛX˜]H^YPÛÛX˜]Ú]ˆÂˆ\›ˆH^YPÛÛX˜]•\›ˆ
+ÈKˆ^Y\”ÝÙ\œÈH^YPÛÛX˜]”^Y\”ÝÙ\œË”Ù[XÝ
+ÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+K”Û˜\ÚÝÙ[™\˜][Û”ÝXÚÜÐ]\›”Ý\ˆÈÝÙ\ˆÚ]ÈÝÜ™Y˜[YHHÝÙ\‹”ÝXÚÜÈHˆÝÙ\ŠK•Ð\œ˜^J
+KˆÛÝ[\œÈHY˜[˜ÙU\›ÛÝ[\œÊ^YPÛÛX˜]ÛÝ[\”Ý]JBˆNÂˆ™]\›ˆ™\Ý[YP]]ÛX]XÔ\[[™JÝ]HÚ]ˆÈÛÜ›H^YUÛÜ›Ú]ÈÛÛX˜]H^YPÛÛX˜]HK™\Ù]›ØÚÒ[™^
+NÂˆB‚ˆYˆ
+]™[Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›”Ý\Y
+BˆÂˆ™]\›ˆÝ]NÂˆB‚ˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂˆ˜\ˆ\ØØ\™ÛÝ[HÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘\ØØ\™Y\”^Y\•\›”Ý\\”ÝXÚÂˆ
+ˆÝÙ\‹”ÝXÚÜÊNÂ‚ˆYˆ
+\ØØ\™ÛÝ[HÛÛX˜]’[™“[™ÝOH
+BˆÂˆ™]\›ˆÝ]NÂˆB‚ˆ˜\ˆY™™XÝ]™PÛÝ[HX]“Z[Šˆ\ØØ\™ÛÝ[ˆÛÛX˜]’[™“[™Ý
+NÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™[™ÐÚÚXÙHH™]È[™[™ÐÛÛX˜]ÚÚXÙTÝ]JˆÚÚXÙRYˆœÙ[XÝØØ\™È‹ˆÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆ[ˆÛÝ\˜ÙPØ\™\Ý[˜][ÛŽ‚ˆ›ÝÝ\PØ\™›Û™K‘\ØØ\™[KˆÙ[XÝ[ÛŽˆ™]È›ÝÝ\PØ\™Ù[XÝ[Û”ÜXÊˆ›ÝÝ\PØ\™›Û™K’[™ˆY™™XÝ]™PÛÝ[ˆY™™XÝ]™PÛÝ[ˆ›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™ˆ“[Ý™UÑ\ØØ\™
+KˆØ[™Y]PØ\™[œÝ[˜ÙRYÎ‚ˆ
+Û™Ö×JXÛÛX˜]’[™ÛÛ™J
+KˆÛÛ[X][ÛŽ‚ˆ\œ˜^K‘[\O›ÝÝ\T]Y]YYÜ\˜][ÛŠ
+KˆÛÛ\][Û‘]™[Î‚ˆ\œ˜^K‘[\O›ÝÝ\PÛÛX˜]]™[Š
+JBˆNÂ‚ˆ™]\›ˆÝ]HÚ]ˆÂˆÛÜ›HÛÜ›Ú]ÈÛÛX˜]HÛÛX˜]BˆNÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H™\ÛÛ™P]]ÛX]XÔÝ\
+ˆ[”Ý]HÝ]Kˆ›ÝÝ\P]]ÛX]XÔÝ\]]ÛX]XÔÝ\
+BˆÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]\ÙH\È›ÈÛÛX˜]Ý]KˆŠNÂˆ˜\ˆ^Y\ˆHÝ]K”^Y\ŽÂ‚ˆÝÚ]Ú
+]]ÛX]XÔÝ\’Ú[™
+BˆÂˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™”™\ÛÛ™T^Y\‘[™\›’[™Y™™XÝÎ‚ˆÂˆ˜\ˆ^YHHÛÛX˜]”™[XÔÝ]\Ë‘š\œÝÜ‘Y˜][
+™[XÈO‚ˆ™[XË”™[XÒYOH˜]]™TY[™]Ø\™ÕŒLLK‘^YRYˆ	‰ˆ\™[XË’\ÓY[Y	‰ˆ\™[XË”Y[Ñ^YU\ÙY\ÐÛÛX˜]
+NÂˆ˜\ˆÚ\Ü\š[™ÑX\œš[™ÈH^Y\‹XÝ]™T™[XÜË[žJ™[XÈO‚ˆ™[XË”™[XÒYOHœ›ÝËœ™[XËÚ\Ü\š[™×ÙX\œš[™ÈŠNÂˆYˆ
+^YH\È›Ý[	‰ˆ
+ÛÛX˜]•\›ˆOHH]Ú\Ü\š[™ÑX\œš[™ÊBˆ	‰ˆÛÛX˜]ÛÝ[\”Ý]K“X[X[Ø\™Ô^YY\Õ\›ˆOH
+BˆÂˆËÈÚ\Ü\š[™ÈX\œš[™ÈXZÙ\ÈHš\œÝ\›ˆÛÝ[\ÈH^YYˆËÈ\›ˆ[ˆHÛÝ\˜ÙH[\[Y[][Û‹ˆ]È]]Ü^HÜ[™\ˆ\ÂˆËÈ›Ý[Ù[Y\™KÛÈÙY\H^XÚ]Ý\™\ÜÚ[Ûˆ[K‚ˆÛÛX˜]HÛÛX˜]Ú]ÈY[Ñ^YQ^˜U\›”[™[™ÈHYHNÂˆ˜\ˆ^]\ÝYH™\ÛÛ™SÜ\˜][ÛœÊ^Y\‹ÛÛX˜]ˆ™]È]Y]YO›ÝÝ\T]Y]YYÜ\˜][ÛŠÂˆ™]Ê›ÝÝ\PÛÛX˜]Y™™XÝÚ[™‘^]\Ý[™JBˆJKÝ]K”›™ÊNÂˆ^Y\ˆH^]\ÝY”^Y\ŽÂˆÛÛX˜]H^]\ÝYÛÛX˜]ÂˆBˆËÈY[ÕX\œË™Y›Ü™TÚYU\›‘[™™XÙY\È[™[™Y™™XÝË‚ˆËÈØ\\™HÛ˜ÙH]\È^\Ý[™ÈÝYÙHÛÈÝ\Ü[™Y\[[™BˆËÈÝ\œÛÜœÈÙY\Z\ˆ\ÝÜšXØ[[™XÙ\Ë‚ˆYˆ
+ÛÛX˜]”™[XÔÝ]\Ë[žJ™[XÈOˆ™[XË”™[XÒYOH˜]]™TY[™]Ø\™ÕŒLLK•X\œÒY	‰ˆ\™[XË’\ÓY[Y
+JBˆÛÛX˜]HÛÛX˜]Ú]È™[XÜÈHÛÛX˜]”™[XÔÝ]\Ë”Ù[XÝ
+™[XÈO‚ˆ™[XË”™[XÒYOH˜]]™TY[™]Ø\™ÕŒLLK•X\œÒY	‰ˆ\™[XË’\ÓY[YˆÈ™[XÈÚ]ÈYYÝ™\‘[™\™ÞHHÛÛX˜]‘[™\™ÞHˆBˆˆ™[XÊK•Ð\œ˜^J
+HNÂˆ›Ü™XXÚ
+˜\ˆ[œÝ[˜ÙRY[ˆÛÛX˜]’[™
+BˆÂˆ˜\ˆØ\™H™\]Z\™PÛÛX˜]Ø\™
+ˆÛÛX˜]ˆ[œÝ[˜ÙRY
+NÂˆ˜\ˆYš[š][ÛˆBˆ›ÝÝ\PÛÛ[Ø\™
+Ø\™Ø\™Y
+NÂˆËÈšX[Ú[YKÑÝX\HÛ™HXY™ˆÚ[H[ˆ[™‚ˆËÈ™]ÛHÜ™X]YÙXZËÑœ˜Z[Ý\š]™\ÈH[[Z[™[ˆËÈ^Y\•\›‘[™YÝÙ\‹YXÜ™[Y[ÝYÙK›ÛÝÚ[™ÂˆËÈ˜]]™HÚÚ\™^\˜][Û•XÚÈÙ[X[XÜË‚ˆ˜\ˆÝ\œÙTÝÙ\ˆHØ\™Ø\™YÝÚ]ÚˆÂˆ›ÝÝ\S˜]]™QÛÜžQ]™[Ë”Ú[YRYOˆœ›ÝËœÝÙ\‹™œ˜Z[‹ˆ›ÝÝ\S˜]]™QÛÜžQ]™[Ë‘ÝXYOˆœ›ÝËœÝÙ\‹ÙXZÈ‹ˆÈOˆ[ˆNÂˆYˆ
+Ý\œÙTÝÙ\ˆ\È›Ý[
+BˆÂˆ˜\ˆ[™XYT™\Ù[HÛÛX˜]”^Y\”ÝÙ\œË[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOHÝ\œÙTÝÙ\ŠNÂˆÛÛX˜]H\T^Y\”ÝÙ\ŠÛÛX˜]Ý\œÙTÝÙ\‹JNÂˆYˆ
+X[™XYT™\Ù[
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œÂˆ”Ù[XÝ
+ÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOHÝ\œÙTÝÙ\‚ˆÈÝÙ\ˆÚ]ÈÚÚ\™^^Y\•\›‘[™HYHBˆˆÝÙ\ŠK•Ð\œ˜^J
+BˆNÂˆBˆB‚ˆËÈ™YÜ™]Û˜\ÚÝÈHÛÝ[ÙˆØ\™È[ˆ[™ˆËÈ™Y›Ü™HÚYK]\›ˆ[™X[[™È[˜›ØÚØX›BˆËÈ[œÝÙ\™Y[XYÙH\]X[È]ÛÝ[‚ˆ˜\ˆ[™[XYÙHBˆØ\™Ø\™YOH›ÝÝ\S˜]]™QÛÜžQ]™[Ë”™YÜ™]YˆÈÛÛX˜]’[™“[™ÝˆˆYš[š][Û‹‘[™\›‘[XYÙRY’[’[™Âˆ˜\ˆ[XYÙHBˆ\T^Y\’[˜ÛÛZ[™Ñ[XYÙPØ\
+ˆÛÛX˜]ˆX]“X^
+ˆˆ[™[XYÙBˆ
+È
+Ø\™Ø\™YOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\Ë•Ú]\’YˆÈÈ
+ˆØ\™•Ú]\‘˜ZÙU\Ü˜YS]™[ˆ
+JJNÂˆYˆ
+[XYÙHH
+BˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆXœÛÜ˜™YHYš[š][Û‹‘[™\›‘[XYÙU[˜›ØÚØX›BˆØ\™Ø\™YOH›ÝÝ\S˜]]™QÛÜžQ]™[Ë”™YÜ™]YˆÈˆˆX]“Z[ŠÛÛX˜]”^Y\›ØÚË[XYÙJNÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\›ØÚÈBˆÛÛX˜]”^Y\›ØÚÈHXœÛÜ˜™YˆNÂˆ^Y\ˆH^Y\ˆÚ]ˆÂˆHX]“X^
+ˆˆ^Y\‹’ˆHX]“X^
+ˆˆ[XYÙHHXœÛÜ˜™Y
+JBˆNÂ‚ˆYˆ
+^Y\‹’H
+BˆÂˆœ™XZÎÂˆBˆB‚ˆœ™XZÎÂˆB‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™‘\Ü]ÚÛÛX˜]]™[‚ˆYˆ
+]]ÛX]XÔÝ\‘]™[Ú[™\È[
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]Y]™[\[[™HÝ\\ÈZ\ÜÚ[™È[ˆ]™[Ú[™ˆŠNÂˆB‚ˆYˆ
+]]ÛX]XÔÝ\‘]™[Ú[™ˆOH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›”Ý\Y
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]È\Ô^Y\•\›ˆHYHNÂˆB‚ˆ˜\ˆ\Ü]ÚYH\Ü]ÚÛÛX˜]]™[
+ˆ^Y\‹ˆÛÛX˜]ˆ™]È›ÝÝ\PÛÛX˜]]™[
+]]ÛX]XÔÝ\‘]™[Ú[™•˜[YJKˆÝ]K”›™Ëˆ[ÝÔÝ\Ü[œÚ[ÛŽˆYJNÂˆ^Y\ˆH\Ü]ÚY”^Y\ŽÂˆÛÛX˜]H\Ü]ÚYÛÛX˜]Â‚ˆËÈ\Ú[YÜ˜][Û”ÝÙ\‹Y\”ÚYU\›‘[™]H\Y\È[‚ˆËÈ[œÝÙ\™Y›ØÚØX›H]]H[™ÙˆH^Y\‰ÜÂˆËÈÚYK]\›‹ˆ]\È›Ý[ˆ]XÚÈ[™\Ù\È›È[™[^BˆËÈÝ™[™ÝÙ[XYÙH[ÙYšY\œË‚ˆYˆ
+]]ÛX]XÔÝ\‘]™[Ú[™OBˆ›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Y
+BˆÂˆ˜\ˆ\Ú[YÜ˜][ÛˆHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOBˆ›ÝÝ\S˜]]™R]™RÛ›ÝÛYÙQ[[ÛÚÚXÙBˆ‘\Ú[YÜ˜][Û”ÝÙ\’Y
+Bˆ”Ý[JÝÙ\ˆOˆX]“X^
+ÝÙ\‹”ÝXÚÜÊJNÂˆYˆ
+\Ú[YÜ˜][Ûˆˆ
+BˆÂˆ˜\ˆXœÛÜ˜™YHX]“Z[ŠˆÛÛX˜]”^Y\›ØÚË\Ú[YÜ˜][ÛŠNÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\›ØÚÈHÛÛX˜]”^Y\›ØÚÈHXœÛÜ˜™YˆNÂˆ˜\ˆÜÜÈH\T^Y\’ÜÜÊˆ^Y\‹ˆÛÛX˜]ˆ\Ú[YÜ˜][ÛˆHXœÛÜ˜™Y
+NÂˆ^Y\ˆHÜÜË”^Y\ŽÂˆÛÛX˜]HÜÜËÛÛX˜]ÂˆBˆBˆœ™XZÎÂ‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™‘\ØØ\™^Y\’[™‚ˆÂˆÛÛX˜]HÛX\•[\Ü˜\žPØ\™ÛÜÝÊˆÛÛX˜]ˆ›ÝÝ\U[\Ü˜\žPØ\™ÛÜÝ^\žK‘[™Ù•\›ŠNÂ‚ˆ˜\ˆ]\™X[HÛÛX˜]’[™ˆ•Ú\™J[œÝ[˜ÙRYO‚ˆØ\™\ÒÙ^]ÛÜ™
+ˆÛÛX˜]ˆ[œÝ[˜ÙRYˆ›ÝÝ\PØ\™Ù^]ÛÜ™‘]\™X[
+JBˆ•Ð\œ˜^J
+NÂˆ˜\ˆ]\™X[Ù]H]\™X[•Ò\ÚÙ]
+
+NÂˆ˜\ˆ™\Ù\™R[™BˆÛÛX˜]”^Y\”ÝÙ\œË[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™]™[Ò[™\ØØ\™
+Bˆ^Y\‹XÝ]™T™[XÜË[žJ™[XÈO‚ˆ›ÝÝ\PÛÛ[”™[XÊ™[XË”™[XÒY
+Bˆ”™]™[Ò[™\ØØ\™
+NÂˆ˜\ˆ™]Z[™YHÛÛX˜]’[™ˆ•Ú\™J[œÝ[˜ÙRYO‚ˆY]\™X[Ù]ÛÛZ[œÊ[œÝ[˜ÙRY
+Bˆ	‰ˆ
+™\Ù\™R[™ˆØ\™\ÒÙ^]ÛÜ™
+ˆÛÛX˜]ˆ[œÝ[˜ÙRYˆ›ÝÝ\PØ\™Ù^]ÛÜ™”™]Z[ŠJJBˆ•Ð\œ˜^J
+NÂˆ˜\ˆ™]Z[™YÙ]H™]Z[™Y•Ò\ÚÙ]
+
+NÂˆ˜\ˆ\ØØ\™YHÛÛX˜]’[™ˆ•Ú\™J[œÝ[˜ÙRYO‚ˆY]\™X[Ù]ÛÛZ[œÊ[œÝ[˜ÙRY
+Bˆ	‰ˆ\™]Z[™YÙ]ÛÛZ[œÊ[œÝ[˜ÙRY
+JBˆ•Ð\œ˜^J
+NÂ‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^]\Ý[HHÛÛX˜]‘^]\Ý[KÛÛ˜Ø]
+]\™X[
+K•Ð\œ˜^J
+Kˆ\ØØ\™[HHÛÛX˜]‘\ØØ\™[KÛÛ˜Ø]
+\ØØ\™Y
+K•Ð\œ˜^J
+Kˆ[™H™]Z[™YˆNÂ‚ˆ›Ü™XXÚ
+˜\ˆØ\™[œÝ[˜ÙRY[ˆ]\™X[
+BˆÂˆ˜\ˆ^]\ÝYØ\™H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]Ø\™[œÝ[˜ÙRY
+NÂˆ˜\ˆ^]\ÝYH\Ü]ÚÛÛX˜]]™[
+ˆ^Y\‹ˆÛÛX˜]ˆ™]È›ÝÝ\PÛÛX˜]]™[
+ˆ›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™^]\ÝYˆÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆØ\™[œÝ[˜ÙRYˆØ\™Yˆ^]\ÝYØ\™Ø\™Y
+KˆÝ]K”›™ÊNÂˆ^Y\ˆH^]\ÝY”^Y\ŽÂˆÛÛX˜]H^]\ÝYÛÛX˜]ÂˆB‚ˆÛÛX˜]HÛX\•[\Ü˜\žPØ\™Ù^]ÛÜ™Ý™\œšY\ÊˆÛÛX˜]ˆ›ÝÝ\PØ\™Ù^]ÛÜ™Ý™\œšYQ^\žK‘[™Ù•\›ŠNÂˆÛÛX˜]HXÜ™[Y[^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆO‚ˆYš[š][Û‹‘XÜ™[Y[Y\’[™ÛX[\
+NÂ‚ˆœ™XZÎÂˆB‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™‘\Ü]Ú[™[^TÝ]\ÔÝYÙN‚ˆYˆ
+]]ÛX]XÔÝ\”ÝYÙH\È[
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ‘[™[^K\Ý]\È\[[™HÝ\\ÈZ\ÜÚ[™ÈHÝYÙKˆŠNÂˆB‚ˆËÈØ[™]Ú[ÈHY™™XÝY^Y\ˆ\È]™XXÚ\ÂˆËÈ™\›È]H[™[^HÚYK\Ý\ˆ˜]]™H^Y\‹Ü]ˆËÈ[š[X][Ûˆ\ÈÝ]ÚYHH[][]ÜˆØÛÜK‚ˆYˆ
+]]ÛX]XÔÝ\”ÝYÙK•˜[YHOBˆ›ÝÝ\U\›”ÝYÙK‘[™[^U\›”Ý\ˆ	‰ˆÛÛX˜]•\›ˆˆBˆ	‰ˆÛÛX˜]‘[™[ZY\Ë[žJ[™[^HO‚ˆ[™[^K’ˆ	‰ˆ[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOBˆ›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë”Ø[™]Yˆ	‰ˆÝÙ\‹”ÝXÚÜÈOHJJJBˆ^Y\ˆH^Y\ˆÚ]ÈHNÂ‚ˆÛÛX˜]H™\ÛÛ™Q[™[^TÝ]\ÔÝYÙJˆÛÛX˜]ˆ]]ÛX]XÔÝ\”ÝYÙK•˜[YKˆÝ]K”›™ÊNÂˆYˆ
+]]ÛX]XÔÝ\”ÝYÙK•˜[YBˆOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›‘[™
+BˆÂˆÛÛX˜]HXÜ™[Y[^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆO‚ˆYš[š][Û‚ˆ‘XÜ™[Y[][™[^U\›‘[™
+NÂˆËÈ˜]]™HZ[YÝÙ\ˆ^\™\ÈY\ˆH[™[^HÚYK]\›‚ˆËÈ
+[ÝXÚÜÈÚ[][[™[Ý\ÛK›ÝÛ™H\ˆ\›ŠK‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOBˆ›ÝÝ\S˜]]™R]™Q[]\Ë•Z[YÝÙ\’Y
+Bˆ•Ð\œ˜^J
+BˆNÂˆB‚ˆÛÛX˜]H™\ÛÛ™Q[™[^QX]Ý[[[ÛœÊˆÛÛX˜]ˆÝ]K”›™Ëˆ[™[^PXÝ[Û”ÚÚ\Î‚ˆ]]ÛX]XÔÝ\”ÝYÙK•˜[YBˆOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›”Ý\ˆÈ‚ˆˆJNÂˆœ™XZÎÂ‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™”™\Ù][™[^P›ØÚÎ‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+[™[^HOˆ[™[^HÚ]ˆÂˆ›ØÚÈH[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™]™[Ñ[™[^P›ØÚÐÛX\ŠBˆÈ[™[^K›ØÚÈˆˆJBˆ•Ð\œ˜^J
+BˆNÂˆœ™XZÎÂ‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™”™\ÛÛ™Q[™[^PXÝ[ÛœÎ‚ˆÂˆÛÛX˜]H™YÚ[’Û›ÝÛYÙQ[[ÛÚÚXÙJÛÛX˜]
+NÂˆYˆ
+ÛÛX˜]”[™[™ÒÛ›ÝÛYÙQ[[ÛÚÚXÙH\È›Ý[
+Bˆœ™XZÎÂˆ˜\ˆ™\Ý[H™\ÛÛ™Q[™[^PXÝ[ÛœÊˆ^Y\‹ˆÛÛX˜]ˆÛÜ›XÝˆÝ]K\ØÙ[œÚ[Û‹ˆÝ]K”›™ÊNÂˆ^Y\ˆH™\Ý[”^Y\ŽÂˆÛÛX˜]H™\Ý[ÛÛX˜]Âˆœ™XZÎÂˆB‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™Y˜[˜ÙU\›Ž‚ˆËÈ[™[^U\›‘[™Ý]\Ù\ËÝ[[[ÛœË[™›Ü›X][ÛˆÚ[™Ù\È]™BˆËÈÛÛ\]YˆÙ[XÝØÛÛ[Z]H™^[™[^H[Ý™\È‘Q“Ô‘HBˆËÈ™^^Y\ˆ\›ˆ™YÚ[œË™]™\ˆ\š[™ÈØœÙ\™J
+K‚ˆÛÛX˜]HÛÛ[Z][™[^R[[ÊÛÛX˜]Ý]K”›™ÊHÚ]ˆÂˆ\›ˆHÛÛX˜]•\›ˆ
+ÈKˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œË”Ù[XÝ
+ÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+K”Û˜\ÚÝÙ[™\˜][Û”ÝXÚÜÐ]\›”Ý\ˆÈÝÙ\ˆÚ]ÈÝÜ™Y˜[YHHÝÙ\‹”ÝXÚÜÈHˆÝÙ\ŠK•Ð\œ˜^J
+KˆÛÝ[\œÈHY˜[˜ÙU\›ÛÝ[\œÊÛÛX˜]ÛÝ[\”Ý]JBˆNÂˆœ™XZÎÂ‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™”™\Ù]^Y\›ØÚÎ‚ˆÂˆ˜\ˆ™]™[Ð›ØÚÐÛX\ˆHÛÛX˜]”^Y\”ÝÙ\œË[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™]™[Ô^Y\›ØÚÐÛX\ŠNÂˆYˆ
+\™]™[Ð›ØÚÐÛX\ŠBˆÂˆÛÛX˜]HÛÛX˜]Ú]È^Y\›ØÚÈHNÂˆB‚ˆ˜\ˆÜšXÔÚY[ÈHÛÛX˜]•ÜšXÔÚY[ÂˆÏÈ\œ˜^K‘[\O›ÝÝ\UÜšXÔÚY[Š
+NÂˆ˜\ˆÜšXÐ›ØÚÈHÜšXÔÚY[Ë”Ý[J][HO‚ˆ][K›ØÚÐ[[Ý[
+NÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆÜšXÔÚY[ÈHÜšXÔÚY[Âˆ•Ú\™J][HOˆ][KÛX\œÔ™[XZ[š[™ÈˆJBˆ”Ù[XÝ
+][HOˆ][HÚ]ˆÂˆÛX\œÔ™[XZ[š[™ÈH][KÛX\œÔ™[XZ[š[™ÈHBˆJBˆ•Ð\œ˜^J
+Kˆ^Y\›ØÚÈHÛÛX˜]”^Y\›ØÚÈ
+ÈÜšXÐ›ØÚÂˆNÂ‚ˆ˜\ˆ[^YY›ØÚÈHÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ›ØÚÐY\ÛX\”\”ÝXÚÈ
+ˆÝÙ\‹”ÝXÚÜÊNÂˆYˆ
+[^YY›ØÚÈˆ
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\›ØÚÈHÛÛX˜]”^Y\›ØÚÈ
+È[^YY›ØÚÂˆNÂˆB‚ˆÛÛX˜]H™[[Ý™T^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹”™[[Ý™PY\›ØÚÐÛX\ŠNÂˆœ™XZÎÂˆB‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™”™Yœ™\Ú^Y\‘[™\™ÞN‚ˆÂˆ˜\ˆ™\Ù\™U[\ÙY[™\™ÞHBˆ^Y\‹XÝ]™T™[XÜË[žJ™[XÈO‚ˆ›ÝÝ\PÛÛ[”™[XÊ™[XË”™[XÒY
+Bˆ”™\Ù\™U[\ÙY[™\™ÞJNÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™\™ÞHH™\Ù\™U[\ÙY[™\™ÞBˆÈÛÛX˜]‘[™\™ÞH
+È[™\™ÞT\•\›Š^Y\‹ÛÛX˜]•\›ŠBˆˆ[™\™ÞT\•\›Š^Y\‹ÛÛX˜]•\›ŠBˆNÂˆ˜\ˆ[^YY[™\™ÞHHÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆ™]\›ˆYš[š][Û‹‘[™\™ÞPY\”™\Ù]\”ÝXÚÈ
+ˆÝÙ\‹”ÝXÚÜÂˆ
+È
+ÝÙ\‹”ÝXÚÜÈˆˆÈYš[š][Û‹‘[™\™ÞP›Û\ÕÚ[PXÝ]™Bˆˆ
+NÂˆJNÂˆYˆ
+[^YY[™\™ÞHOH
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™\™ÞHHX]“X^
+ÛÛX˜]‘[™\™ÞH
+È[^YY[™\™ÞJBˆNÂˆB‚ˆÛÛX˜]HXÜ™[Y[^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹‘XÜ™[Y[Y\‘[™\™ÞT™\Ù]
+NÂ‚ˆÛÛX˜]H™[[Ý™T^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹”™[[Ý™PY\‘[™\™ÞT™\Ù]
+NÂˆ˜\ˆÚYTÝ\YH\Ü]ÚÛÛX˜]]™[
+^Y\‹ÛÛX˜]ˆ™]È›ÝÝ\PÛÛX˜]]™[
+›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\”ÚYU\›”Ý\Y
+KˆÝ]K”›™Ë[ÝÔÝ\Ü[œÚ[ÛŽˆYJNÂˆ^Y\ˆHÚYTÝ\Y”^Y\ŽÂˆÛÛX˜]HXÚÔY[ÓYÚ[Û]^Y\•\›”Ý\
+ÚYTÝ\YÛÛX˜]
+NÂˆœ™XZÎÂˆB‚ˆØ\ÙH›ÝÝ\P]]ÛX]XÔÝ\Ú[™‘˜]Ô^Y\’[™‚ˆÂˆ˜\ˆ™Y›Ü™R[™˜]ÈH\Ü]ÚÛÛX˜]]™[
+ˆ^Y\‹ˆÛÛX˜]ˆ™]È›ÝÝ\PÛÛX˜]]™[
+ˆ›ÝÝ\PÛÛX˜]]™[Ú[™™Y›Ü™R[™˜]ÊKˆÝ]K”›™ÊNÂˆ^Y\ˆH™Y›Ü™R[™˜]Ë”^Y\ŽÂˆÛÛX˜]H™]\›“\Ý\›”™X›Ý[™Ø\™ÕÒ[™
+™Y›Ü™R[™˜]ËÛÛX˜]
+NÂ‚ˆ˜\ˆÛ[›Ý\Õ\›ˆH\TÛ[›Ý\ÐÛÜ™R[™˜]Ê^Y\ŠNÂˆ^Y\ˆHÛ[›Ý\Õ\›‹”^Y\ŽÂˆ˜\ˆ[™˜]Ð›Û\ÈBˆÛ[›Ý\Õ\›‹›Û\Âˆ
+ÈÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ’[™˜]Ð›Û\Ô\”ÝXÚÂˆ
+ˆÝÙ\‹”ÝXÚÜÊBˆ
+ÈÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆÈ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ’[™˜]Ð›Û\ÕÚ[PXÝ]™Bˆˆ
+Bˆ
+È›ÝÝ\S˜]]™SÜ›Ø˜\Ô™[XÜË’[™˜]Ð›Û\Ñ›Ü•\›Šˆ^Y\‹ÛÛX˜]•\›ŠNÂˆ˜\ˆ˜]ÛˆH˜]ÐØ\™Êˆ^Y\‹ˆÛÛX˜]ˆX]“X^
+›ÝÝ\PÛÛ[”[\Ë’[™Ú^™Bˆ
+È[™˜]Ð›Û\ÊKˆÝ]K”›™Ëˆœ›ÛR[™˜]ÎˆYJNÂˆ^Y\ˆH˜]Û‹”^Y\ŽÂˆÛÛX˜]H˜]Û‹ÛÛX˜]ÂˆYˆ
+˜]Û‹”ÚY™›TÙ[XÝ[Û”[™[™ÊBˆÂˆ˜\ˆ[™[™Ñ˜]ÈH™]È]Y]YO›ÝÝ\T]Y]YYÜ\˜][ÛŠˆ™]Ö×BˆÂˆÝ˜]YÙ[PÚÚXÙSÜ\˜][ÛŠÛÛX˜]
+Kˆ™]È›ÝÝ\T]Y]YYÜ\˜][ÛŠˆ›ÝÝ\PÛÛX˜]Y™™XÝÚ[™‘˜]ÐØ\™Ëˆ˜]Û‹”™[XZ[š[™ÐÛÝ[œ›ÛR[™˜]ÎˆYJBˆJNÂˆ˜\ˆ™\Ý[YYH™\ÛÛ™SÜ\˜][ÛœÊˆ^Y\‹ÛÛX˜][™[™Ñ˜]ËÝ]K”›™Ëˆ[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][ÛŽˆ˜[ÙJNÂˆ^Y\ˆH™\Ý[YY”^Y\ŽÂˆÛÛX˜]H™\Ý[YYÛÛX˜]ÂˆB‚ˆÛÛX˜]H™[[Ý™T^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹”™[[Ý™PY\’[™˜]ÊNÂˆÛÛX˜]HXÜ™[Y[^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹‘XÜ™[Y[Y\’[™˜]ÊNÂˆœ™XZÎÂˆB‚ˆY˜][‚ˆ›ÝÈ™]È\™Ý[Y[Ý]Ù”˜[™ÙQ^Ù\[ÛŠ
+NÂˆB‚ˆ™]\›ˆÝ]HÚ]ˆÂˆ^Y\ˆH^Y\‹ˆÛÜ›HÛÜ›Ú]ÈÛÛX˜]HÛÛX˜]BˆNÂˆB‚ˆš]˜]HÝ]XÈ›ÝÝ\PÛÛX˜]ÛÝ[\œÈY˜[˜ÙU\›ÛÝ[\œÊˆ›ÝÝ\PÛÛX˜]ÛÝ[\œÈÛÝ[\œÊHOˆÛÝ[\œÈÚ]ˆÂˆØ\™Ô^YY\Õ\›ˆHˆX[X[Ø\™Ô^YY\Õ\›ˆHˆ]XÚÜÔ^YY\Ý\›ˆHÛÝ[\œË]XÚÜÔ^YY\Õ\›‹ˆ]XÚÜÔ^YY\Õ\›ˆHˆÚÚ[Ô^YY\Õ\›ˆHˆØ\™Ñ\ØØ\™Y\Õ\›ˆHˆ^YYØ\™YÓ\Ý\›ˆHÛÝ[\œË”^YYØ\™YÕ\Õ\›‹ˆ^YYØ\™YÕ\Õ\›ˆH\œ˜^K‘[\OÛ™ÏŠ
+Kˆ^YYØ\™YÜÕ\Õ\›ˆH\œ˜^K‘[\OÝš[™ÏŠ
+Kˆ\ÝÜšYÚ[˜[]XÚÓ\Ý\›ˆHÛÝ[\œË“\ÝÜšYÚ[˜[]XÚÕ\Õ\›Ë‘›ÜšÊ
+Kˆ\ÝÜšYÚ[˜[]XÚÕ\Õ\›ˆH[ˆNÂ‚ˆš]˜]HÝ]XÈ›ÝÝ\T]Y]YYÜ\˜][ÛˆÝ˜]YÙ[PÚÚXÙSÜ\˜][ÛŠˆÛÛX˜]Ý]HÛÛX˜]
+BˆÂˆ˜\ˆ[[Ý[HÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOHœ›ÝËœÝÙ\‹œÝ˜]YÙ[HŠBˆ”Ý[JÝÙ\ˆOˆX]“X^
+ÝÙ\‹”ÝXÚÜÊJNÂˆ™]\›ˆ™]È›ÝÝ\T]Y]YYÜ\˜][ÛŠˆ›ÝÝ\PÛÛX˜]Y™™XÝÚ[™ÚÛÜÙPØ\™ËˆÙ[XÝ[ÛŽˆ™]È›ÝÝ\PØ\™Ù[XÝ[Û”ÜXÊˆ›ÝÝ\PØ\™›Û™K‘˜]Ô[Kˆ[[Ý[[[Ý[ˆ›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÒ[™
+JNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™]\›“\Ý\›”™X›Ý[™Ø\™ÕÒ[™
+ˆÛÛX˜]Ý]HÛÛX˜]
+BˆÂˆ˜\ˆ\Ý\›ˆHÛÛX˜]ÛÝ[\”Ý]K”^YYØ\™YÓ\Ý\›‚ˆÏÈ\œ˜^K‘[\OÛ™ÏŠ
+NÂˆ›Ü™XXÚ
+˜\ˆY[ˆ\Ý\›‹‘\Ý[˜Ý
+
+JBˆÂˆYˆ
+ÛÛX˜]’[™ÛÛZ[œÊY
+JBˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆØ\™HÛÛX˜]Ø\™Ë‘š\œÝÜ‘Y˜][
+ÈOˆË’[œÝ[˜ÙRYOHY
+NÂˆYˆ
+Ø\™\È[Ø\™Ø\™Y\È›Ýˆ
+œ›ÝË˜ÛÛÜ›\ÜË˜›Û\ÈˆÜˆœ›ÝË˜ÛÛÜ›\ÜË[[Z[™×Ú]Ú]ŠJBˆÂˆÛÛ[YNÂˆB‚ˆYˆ
+ÛÛX˜]’[™“[™ÝHL
+BˆÂˆœ™XZÎÂˆB‚ˆ˜\ˆœ›ÛQ˜]ÈHÛÛX˜]‘˜]Ô[KÛÛZ[œÊY
+NÂˆ˜\ˆœ›ÛQ\ØØ\™HÛÛX˜]‘\ØØ\™[KÛÛZ[œÊY
+NÂˆ˜\ˆœ›ÛQ^]\ÝHÛÛX˜]‘^]\Ý[KÛÛZ[œÊY
+NÂˆYˆ
+Yœ›ÛQ˜]È	‰ˆYœ›ÛQ\ØØ\™	‰ˆYœ›ÛQ^]\Ý
+BˆÂˆÛÛ[YNÂˆB‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ˜]Ô[HHÛÛX˜]‘˜]Ô[K•Ú\™JOˆOHY
+K•Ð\œ˜^J
+Kˆ\ØØ\™[HHÛÛX˜]‘\ØØ\™[K•Ú\™JOˆOHY
+K•Ð\œ˜^J
+Kˆ^]\Ý[HHÛÛX˜]‘^]\Ý[K•Ú\™JOˆOHY
+K•Ð\œ˜^J
+Kˆ[™HÛÛX˜]’[™\[™
+Y
+K•Ð\œ˜^J
+BˆNÂˆBˆ™]\›ˆÛÛX˜]ÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™\ÛÛ™Q[™[^TÝ]\ÔÝYÙJˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\U\›”ÝYÙHÝYÙKˆ›™Ð[™H›™ÊBˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JK•Ð\œ˜^J
+NÂ‚ˆ›Üˆ
+˜\ˆ[™[^R[™^HÈ[™[^R[™^[™[ZY\Ë“[™ÝÈ[™[^R[™^
+ÊÊBˆÂˆ˜\ˆ[™[^HH[™[ZY\ÖÙ[™[^R[™^NÂˆ˜\ˆØ\Ð[]™HH[™[^K’ˆÂˆYˆ
+[™[^K’H
+BˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆÝ]\Ù\ÈH™]ÈXÝ[Û˜\žOÝš[™Ë[Š[™[^K”Ý]\Ù\ËÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+NÂˆ›Ü™XXÚ
+˜\ˆZ\ˆ[ˆ[™[^K”Ý]\Ù\Ë•Ð\œ˜^J
+JBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”Ý]\ÊZ\‹’Ù^JNÂˆ˜\ˆÝXÚÜÈHZ\‹•˜[YNÂ‚ˆYˆ
+Yš[š][Û‹•šYÙÙ\”ÝYÙHOHÝYÙJBˆÂˆYˆ
+Yš[š][Û‹•šYÙÙ\’Ú[™ˆOH›ÝÝ\TÝ]\ÕšYÙÙ\’Ú[™ˆ‘[XYÙTÙ[žTÝXÚÜÊBˆÂˆ˜\ˆšYÙÙ\ÛÝ[Bˆ™\ÛÛ™Q[™[^TÝ]\ÕšYÙÙ\ÛÝ[
+ˆÛÛX˜]ˆZ\‹’Ù^KˆÝXÚÜÊNÂˆ›Üˆ
+˜\ˆšYÙÙ\ˆHÂˆšYÙÙ\ˆšYÙÙ\ÛÝ[ÂˆšYÙÙ\ŠÊÊBˆÂˆYˆ
+[™[^K’HˆÝXÚÜÈH
+BˆÂˆœ™XZÎÂˆB‚ˆ˜\ˆÜÜÈBˆ[ÙYžQ[™[^RÜÜÊˆ[™[^KˆÝXÚÜÊNÂˆ[™[^HHÜÜË‘[™[^HÚ]ˆÂˆHX]“X^
+ˆˆÜÜË‘[™[^K’ˆHÜÜË’ÜÜÊBˆNÂ‚ˆYˆ
+[™[^K’ˆ
+BˆÂˆÝXÚÜÈOBˆYš[š][Û‚ˆ‘XØ^SÛ•šYÙÙ\ŽÂˆBˆBˆBˆ[ÙBˆÂˆÝXÚÜÈOBˆYš[š][Û‹‘XØ^SÛ•šYÙÙ\ŽÂˆBˆB‚ˆYˆ
+Yš[š][Û‹‘XØ^TÝYÙHOHÝYÙJBˆÂˆÝXÚÜÈOHYš[š][Û‹‘XØ^P]ÝYÙNÂˆB‚ˆYˆ
+ÝXÚÜÈˆ
+BˆÂˆÝ]\Ù\ÖÜZ\‹’Ù^WHHÝXÚÜÎÂˆBˆ[ÙBˆÂˆÝ]\Ù\Ë”™[[Ý™JZ\‹’Ù^JNÂˆBˆB‚ˆËÈ^\š[™È[ˆ[™[^K\ÚYHÛÝ[ÝÛˆØ[ˆØZÙH]ÈÝÛ™\ˆ[™ˆËÈ™[[Ý™HÛÛ\[š[Ûˆ›ÝXÝ[Ûˆ
+˜™Y›Ü™JˆÝ\ˆÝÙ\œÈÛÛšX]BˆËÈ[™[Ù‹]\›ˆ›ØÚÈ
+˜]]™H\ÛY\Ô][™ÈÜ™\š[™ÊK‚ˆÝš[™ÏÈZPY\‘^\žHH[Âˆ˜\ˆÝÙ\œÕÔ™[[Ý™SÛ‘^\žHH™]È\ÚÙ]Ýš[™ÏŠˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+NÂˆYˆ
+ÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›‘[™
+BˆÂˆ›Ü™XXÚ
+˜\ˆÝÙ\ˆ[ˆ[™[^K”ÝÙ\”Ý]\ÊBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆYˆ
+Yš[š][Û‹‘[™[^TÝXÚÜÑXØ^P]ÚYU\›‘[™ˆˆ	‰ˆÝÙ\‹”ÝXÚÜÈBˆYš[š][Û‹‘[™[^TÝXÚÜÑXØ^P]ÚYU\›‘[™
+BˆÂˆZPY\‘^\žHÏÏBˆYš[š][Û‹“ÝÛ™\ZTÝ]SÛ”ÝÙ\‘^\žNÂˆ›Ü™XXÚ
+˜\ˆY[ˆYš[š][Û‚ˆ”™[[Ý™SÝÛ™\”ÝÙ\œÓÛ”ÝÙ\‘^\žBˆÏÈ\œ˜^K‘[\OÝš[™ÏŠ
+JBˆÂˆÝÙ\œÕÔ™[[Ý™SÛ‘^\žKY
+Y
+NÂˆBˆBˆBˆB‚ˆ[™[^HH[\˜Ù\[™[^S][X]
+[™[^JNÂˆ˜\ˆÝ™[™Ý]ÚYU\›‘[™HÂˆËÈ^\š[™È[\Ü˜\žHXY™œÈ™\ÝÜ™HZ\ˆÜšYÚ[˜[Ý™[™ÝˆËÈ
+˜Y\ŠˆH[™[^H\ÈXÝY]™[ˆÝYÚHÛÝ\˜ÙHÝÙ\‚ˆËÈ]Ù[ˆ\È™[[Ý™Y]\ÈÝYÙK‚ˆ˜\ˆ[\Ü˜\žTÝ™[™Ý™\ÝÜ˜][ÛˆBˆÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›‘[™ˆÈ[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™[[Ý™P][™[^U\›‘[™
+Bˆ”Ý[JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÂˆ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘[™[^TÝ™[™Ý™\ÝÜ™P]ÚYU\›‘[™\”ÝXÚÊBˆˆÂˆ˜\ˆ›ØÚÐ]ÚYU\›‘[™HÂˆ˜\ˆÝÙ\œÈHÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›‘[™ˆÈ[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆO‚ˆT›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™[[Ý™P][™[^U\›‘[™ˆ	‰ˆ\ÝÙ\œÕÔ™[[Ý™SÛ‘^\žKÛÛZ[œÊÝÙ\‹”ÝÙ\’Y
+JBˆ”Ù[XÝ
+ÝÙ\ˆO‚ˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆYˆ
+ÝÙ\‹”ÚÚ\™^[™[^TÚYU\›‘[™
+BˆÂˆËÈ™]ÛH\YY[™[^Hš]X[]\Ý›ÝXÝ]˜]BˆËÈÛˆHØ[YH[™[^H\›ˆ]Ø\È\YY‚ˆ™]\›ˆÝÙ\ˆÚ]ˆÂˆÚÚ\™^[™[^TÚYU\›‘[™H˜[ÙBˆNÂˆB‚ˆÝ™[™Ý]ÚYU\›‘[™
+ÏBˆÝÙ\‹”ÝXÚÜÂˆ
+ˆYš[š][Û‹‘[™[^TÝ™[™Ý]ÚYU\›‘[™\”ÝXÚÎÂˆ›ØÚÐ]ÚYU\›‘[™
+ÏBˆÝÙ\‹”ÝXÚÜÂˆ
+ˆYš[š][Û‹‘[™[^P›ØÚÐ]ÚYU\›‘[™\”ÝXÚÎÂˆ™]\›ˆÝÙ\ˆÚ]ˆÂˆÝXÚÜÈHÝÙ\‹”ÝXÚÜÈBˆYš[š][Û‹‘[™[^TÝXÚÜÑXØ^P]ÚYU\›‘[™ˆNÂˆJBˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÈˆˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ[ÝÓ™YØ]]™JBˆ•Ð\œ˜^J
+BˆˆÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›”Ý\ˆ	‰ˆÛÛX˜]•\›ˆˆBˆÈ[™[^K”ÝÙ\”Ý]\Âˆ”Ù[XÝ
+ÝÙ\ˆOˆÝÙ\ˆÚ]ˆÂˆÝXÚÜÈHÝÙ\‹”ÝXÚÜÈBˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘[™[^TÝXÚÜÑXØ^P]ÚYU\›”Ý\Y\‘š\œÝˆJBˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÈˆˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ[ÝÓ™YØ]]™JBˆ•Ð\œ˜^J
+Bˆˆ[™[^K”ÝÙ\”Ý]\ÎÂ‚ˆËÈ˜]]™H˜]]ÛÜ›‘[[^U[YS[Z]ÝÙ\ŽˆH[[^BˆËÈ\ØØ\\ÈÚ[ˆ]È\™[™[^K\ÚYH\›ˆ[™Ë[™™]™\‚ˆËÈÜ˜[ÈHÙ[XÝY™]Ø\™ÛˆÝXÚH[Y[Ý]‚ˆ˜\ˆ[YYÝ]HÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›‘[™ˆ	‰ˆ[™[^K’ˆˆ	‰ˆ[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOBˆ›ÝÝ\S˜]]™QÛÜžQ]™[Ë˜]]ÛÜ›•[YS[Z]Yˆ	‰ˆÝÙ\‹”ÝXÚÜÈHJNÂˆ[™[ZY\ÖÙ[™[^R[™^HH[™[^HÚ]ˆÂˆH[YYÝ]Èˆ[™[^K’ˆ\ØØ\YH[YYÝ][™[^K‘\ØØ\YˆÝ]\Ù\ÈHÝ]\Ù\ËˆÝÙ\œÈHÝÙ\œËˆZTÝ]RYHZPY\‘^\žHÏÈ[™[^KZTÝ]RYˆ›ØÚÈH[™[^K›ØÚÈ
+È›ØÚÐ]ÚYU\›‘[™ˆÚ\™YÝ[[[Û•\ÙY\Õ\›ˆBˆÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›”Ý\ˆÈ˜[ÙHˆ[™[^K”Ú\™YÝ[[[Û•\ÙY\Õ\›‹ˆÜÜÐYÙ]\ÙYBˆÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›”Ý\ˆÈˆ[™[^K’ÜÜÐYÙ]\ÙYˆØZ[™Y™XXÝ]™P›ØÚÕ\Õ\›ˆBˆÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›‘[™ˆÈ˜[ÙHˆ[™[^K‘ØZ[™Y™XXÝ]™P›ØÚÕ\Õ\›‚ˆNÂ‚ˆ˜\ˆÝ[Ý™[™Ý™\ÝÜ˜][ÛˆBˆÝ™[™Ý]ÚYU\›‘[™
+È[\Ü˜\žTÝ™[™Ý™\ÝÜ˜][ÛŽÂˆYˆ
+[™[^K’ˆ	‰ˆÝ[Ý™[™Ý™\ÝÜ˜][ÛˆOH
+BˆÂˆ˜\ˆÝ™[™Ý[™YH\Q[™[^TÝÙ\•ÔÝ]JˆÛÛX˜][™[ZY\ÖÙ[™[^R[™^Kˆœ›ÝËœÝÙ\‹œÝ™[™Ý‹Ý[Ý™[™Ý™\ÝÜ˜][Û‹ˆYÛ›Ü™QXY™”™]™[[ÛŽˆYJNÂˆÛÛX˜]HÝ™[™Ý[™YÛÛX˜]Âˆ[™[ZY\ÖÙ[™[^R[™^HHÝ™[™Ý[™Y‘[™[^NÂˆBˆYˆ
+Ø\Ð[]™H	‰ˆ[™[ZY\ÖÙ[™[^R[™^K’Hˆ	‰ˆY[™[ZY\ÖÙ[™[^R[™^K‘\ØØ\Y
+BˆÂˆËÈØÚY[YÚ\ÛÛˆ[XYÙH\È›ØÙ\ÜÙY\™XÝH[ˆ\ÂˆËÈÝYÙH˜]\ˆ[ˆ›ÝYÚÜÙQ[™[^Rˆ]]\ÝÝ[ˆËÈ\Ü]Ú[KYX]ÝÙ\œÈ™Y›Ü™HÝ\ˆ[™[ZY\ÈXÝ‚ˆÛÛX˜]H™\ÛÛ™P[QX]ÝÙ\œÊˆÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈK[™[^K’[œÝ[˜ÙRY
+NÂˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+][HOˆ][K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆB‚ˆYˆ
+ÝYÙHOH›ÝÝ\U\›”ÝYÙK‘[™[^U\›‘[™ˆ	‰ˆ[™[ZY\ÖÙ[™[^R[™^K’ˆ
+BˆÂˆ˜\ˆ[Z\ÙRÜÜÈH[™[ZY\ÖÙ[™[^R[™^K”ÝÙ\”Ý]\Ë”Ý[JˆÝÙ\ˆOˆX]“X^
+ÝÙ\‹”ÝXÚÜÊBˆ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘[™[^RÜÜÐ]ÚYU\›‘[™\”ÝXÚÊNÂˆYˆ
+[Z\ÙRÜÜÈˆ
+BˆÂˆ˜\ˆÜÝHÜÙQ[™[^R
+ˆÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈKˆ[™[ZY\ÖÙ[™[^R[™^K’[œÝ[˜ÙRYˆ[Z\ÙRÜÜÊNÂˆÛÛX˜]HÜÝÛÛX˜]Âˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+][HOˆ][K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆYˆ
+ÜÝ‘Y™X]Y
+BˆÂˆÛÛX˜]HÛX[\ÛÝ\˜ÙP›Ý[™ÝÙ\œÑ›Ü‘Y™X]Y[™[ZY\ÊˆÛÛX˜]
+NÂˆÛÛX˜]H™\ÛÛ™Q[™[^QX]Ý[[[ÛœÊÛÛX˜]›™ÊNÂˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+][HOˆ][K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆBˆBˆBˆB‚ˆÛÛX˜]HÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆ™]\›ˆÛX[\ÛÝ\˜ÙP›Ý[™ÝÙ\œÑ›Ü‘Y™X]Y[™[ZY\ÊˆÛÛX˜]
+NÂˆB‚ˆËÈÛÛ[Z]XXÚ[™[^IÜÈXÝ[Ûˆ]ÛÛX˜][žH[™]H[™ÙˆXXÚˆËÈ[™[^H\›‹ˆ[\Ü[K\ÈÛÛœÝ[Y\ÈHÛÛX˜]“‘ÈÛ˜ÙK]BˆËÈ˜[œÚ][Ûˆ›Ý[™\žNÈ™\X]YX›XÈØœÙ\˜][ÛœÈ™]™\ˆ™\›Û[Ý™\Ë‚ˆ[\›˜[Ý]XÈÛÛX˜]Ý]HÛÛ[Z][™[^R[[ÊˆÛÛX˜]Ý]HÛÛX˜]ˆ›™Ð[™H›™ÊBˆÂˆËÈÛÛ™H\œÚ\Ý[˜]]™HÝ™X[\È™Y›Ü™HÙ[XÝ[™È[[ËˆYØXÞBˆËÈÝ]\ÈÛÛ[YHÛÛœÝ[Z[™ÈZ\ˆÜšYÚ[˜[›ÝÝ\HÛÛX˜]Ý™X[K‚ˆ˜\ˆÝÛ™Y˜]]™HHÛÛX˜]“˜]]™T›™ÏË‘›ÜšÊ
+NÂˆ[˜Ï[[ˆ™^[™^HÝÛ™Y˜]]™H\È[ˆÈX^^Û\Ú]™HOˆ›ÝÝ\T›™Ë“™^[
+›™Ë˜ÛÛX˜]‹X^^Û\Ú]™JBˆˆX^^Û\Ú]™HOˆ˜]]™T›™ÕŒLLK“™^[
+ˆÝÛ™Y˜]]™K”[”Ý™X[\Ëœ[‹›[ÛœÝ\—ØZH‹X^^Û\Ú]™JNÂˆ˜\ˆ›Ü›X][ÛˆHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JK•Ð\œ˜^J
+NÂˆ›Üˆ
+˜\ˆ[™^HÈ[™^›Ü›X][Û‹“[™ÝÈ[™^
+ÊÊBˆÂˆ˜\ˆ[™[^HH›Ü›X][Û–Ú[™^NÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[‘[™[^J[™[^K‘[™[^RY
+NÂˆYˆ
+[™[^K’Hˆ[™[^K”ÚÚ\™^[™[^PXÝ[Û‚ˆ[™[^K‘[™[^PXÝ[Û”ÚÚ\Ô™[XZ[š[™ÈˆˆYš[š][Û‹“[Ý™\Ë“[™ÝOH
+BˆÂˆ›Ü›X][Û–Ú[™^HH[™[^HÚ]ˆÂˆ[›™Y[Ý™R[™^H[ˆ[›™Y™^ZTÝ]RYH[ˆNÂˆÛÛ[YNÂˆB‚ˆYˆ
+[™[^K”Ý[‘›ÛÝÕ\[Ý™R[™^\ÈÈHÝ[‘›ÛÝÕ\
+BˆÂˆYˆ
+Ý[‘›ÛÝÕ\ˆÝ[‘›ÛÝÕ\HYš[š][Û‹“[Ý™\Ë“[™Ý
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^HÙ[™[^K‘[™[^RYH\È[ˆ[˜[YÝ[›™Y›ÛÝË]\[Ý™KˆŠNÂˆB‚ˆ›Ü›X][Û–Ú[™^HH[™[^HÚ]ˆÂˆ[›™Y[Ý™R[™^HÝ[‘›ÛÝÕ\ˆ[›™Y™^ZTÝ]RYBˆ[™[^K”Ý[‘›ÛÝÕ\ZTÝ]RYÏÈ[™[^KZTÝ]RYˆÝ[‘›ÛÝÕ\[Ý™R[™^H[ˆÝ[‘›ÛÝÕ\ZTÝ]RYH[ˆNÂˆÛÛ[YNÂˆB‚ˆËÈ[šÛ]Ó›Ü›X[Ù]ÈZYR[šÛ]^XÚ]H\Ü]H[ˆËÈ˜]]™HÛÝ˜[Y\ËˆRÚ[›ÜÜÈÙ]ÈÝ\ÕÚ][˜ÙO]YBˆËÈÛ›HÛˆ]È’T”ÕÚ[‘›ÛÝÙ\ˆ
+ÛÝJKˆ]˜[X]HZ\‚ˆËÈ›ÝÝ\HÛÝX˜\ÙYÛÛ™][Û˜[RH›ÝYÚ˜[œÚY[ˆËÈ[X\Ù\ËÚ]Ý]]]][™È˜]]™HÛÝ\˜ÙHÛÝY[]K‚ˆ˜\ˆ˜]]™Q[žHHÝÛ™Y˜]]™OË‘›Ü›X][Û‹“˜]]™Q[˜ÛÝ[\‘[žNÂˆ˜\ˆ]˜[X][™ÈH˜]]™Q[žHOH’[šÛ]Ó›Ü›X[‚ˆ	‰ˆ[™[^K‘[™[^RYOHœ›ÝË™[™[^Kš[šÛ]‚ˆ	‰ˆ[™[^K”ÛÝ˜[YH\È[ˆÈ[™[^HÚ]ˆÂˆÛÝ˜[YHH[™[^K‘›Ü›X][Û”ÜÚ][ÛˆÝÚ]ÚˆÂˆOˆ›Y‹ˆHOˆ›ZYH‹ˆˆOˆœšYÚ‹ˆÈOˆ[ˆBˆBˆˆ˜]]™Q[žHOH•RÚ[›ÜÜÈ‚ˆ	‰ˆ[™[^K‘[™[^RYOHœ›ÝË™[™[^KšÚ[—Ù›ÛÝÙ\ˆ‚ˆÈ[™[^HÚ]ˆÂˆÛÝ˜[YHH[™[^K”ÛÝ˜[YHÝÚ]ÚˆÂˆœÛÝHˆOˆ™[˜ÙH‹ˆœÛÝˆˆOˆœ]ZXÚÈ‹ˆÈOˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ•[šÛ›ÝÛˆ˜]]™HÚ[‘›ÛÝÙ\ˆÝ\[™ÈÛÝˆŠBˆBˆBˆˆ[™[^NÂˆ˜\ˆÙ[XÝYHÙ[XÝ[™[^S[Ý™JˆYš[š][Û‹]˜[X][™Ë›Ü›X][Û‹™^[™^
+NÂˆ˜\ˆÙ[XÝY[™^H\œ˜^K’[™^ÙŠYš[š][Û‹“[Ý™\ËÙ[XÝY“[Ý™JNÂˆYˆ
+Ù[XÝY[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙ[™[^K‘[™[^RYIÈÙ[XÝY[ˆ[šÛ›ÝÛˆ[Ý™KˆŠNÂˆB‚ˆ›Ü›X][Û–Ú[™^HH[™[^HÚ]ˆÂˆ[›™Y[Ý™R[™^HÙ[XÝY[™^ˆ[›™Y™^ZTÝ]RYHÙ[XÝY“™^ZTÝ]RYˆNÂˆB‚ˆ™]\›ˆÛÛX˜]Ú]ˆÂˆ[™[ZY\ÈH›Ü›X][Û‹ˆ˜]]™T›™ÈHÝÛ™Y˜]]™BˆNÂˆB‚ˆš]˜]HÝ]XÈ
+ˆ›ÝÝ\Q[™[^S[Ý™QYš[š][Ûˆ[Ý™KˆÝš[™ÏÈ™^ZTÝ]RY
+BˆÙ[XÝ[™[^S[Ý™Jˆ›ÝÝ\Q[™[^QYš[š][ÛˆYš[š][Û‹ˆ[™[^PÛÛX˜]Ý]H[™[^KˆT™XYÛ›S\Ý[™[^PÛÛX˜]Ý]Oˆ›Ü›X][Û‹ˆ›™Ð[™H›™ÊHO‚ˆÙ[XÝ[™[^S[Ý™JYš[š][Û‹[™[^K›Ü›X][Û‹ˆX^^Û\Ú]™HOˆ›ÝÝ\T›™Ë“™^[
+›™Ë˜ÛÛX˜]‹X^^Û\Ú]™JJNÂ‚ˆš]˜]HÝ]XÈ
+ˆ›ÝÝ\Q[™[^S[Ý™QYš[š][Ûˆ[Ý™KˆÝš[™ÏÈ™^ZTÝ]RY
+BˆÙ[XÝ[™[^S[Ý™Jˆ›ÝÝ\Q[™[^QYš[š][ÛˆYš[š][Û‹ˆ[™[^PÛÛX˜]Ý]H[™[^KˆT™XYÛ›S\Ý[™[^PÛÛX˜]Ý]Oˆ›Ü›X][Û‹ˆ[˜Ï[[ˆ™^[™^
+BˆÂˆYˆ
+Yš[š][Û‹“[Ý™\Ë“[™ÝOH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈ\È›È[Ý™\ËˆŠNÂˆB‚ˆÝÚ]Ú
+Yš[š][Û‹“[Ý™TÛXÞJBˆÂˆØ\ÙH›ÝÝ\Q[™[^S[Ý™TÛXÞK”Ù\]Y[X[ÛÜ‚ˆÂˆYˆ
+Yš[š][Û‹“[Ý™SÛÜÝ\[™^ˆYš[š][Û‹“[Ý™SÛÜÝ\[™^ˆHYš[š][Û‹“[Ý™\Ë“[™Ý
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈ\È[˜[Y[Ý™K[ÛÜÝ\[™^ÙYš[š][Û‹“[Ý™SÛÜÝ\[™^KˆŠNÂˆB‚ˆ˜\ˆ[Ý™R[™^H[™[^K“[Ý™R[™^ÂˆYˆ
+[Ý™R[™^HYš[š][Û‹“[Ý™\Ë“[™Ý
+BˆÂˆ˜\ˆÛÜ[™ÝBˆYš[š][Û‹“[Ý™\Ë“[™ÝˆHYš[š][Û‹“[Ý™SÛÜÝ\[™^Âˆ[Ý™R[™^BˆYš[š][Û‹“[Ý™SÛÜÝ\[™^ˆ
+È
+
+[Ý™R[™^ˆHYš[š][Û‹“[Ý™SÛÜÝ\[™^
+Bˆ	HÛÜ[™Ý
+NÂˆB‚ˆ™]\›ˆ
+ˆYš[š][Û‹“[Ý™\ÖÛ[Ý™R[™^Kˆ[™[^KZTÝ]RY
+NÂˆB‚ˆØ\ÙH›ÝÝ\Q[™[^S[Ý™TÛXÞK•[šY›Ü›T˜[™ÛPY\“Ü[™\Ž‚ˆÂˆ˜\ˆÜ[š[™Ó[Ý™\ÈBˆYš[š][Û‹“Ü[š[™Ó[Ý™R[™XÙ\ÂˆÏÈÙYš[š][Û‹“Ü[š[™Ó[Ý™R[™^NÂ‚ˆYˆ
+Ü[š[™Ó[Ý™\Ë“[™ÝOH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈ\È[ˆ[\HÜ[š[™È[Ý™HÙ\]Y[˜ÙKˆŠNÂˆB‚ˆ›Ü™XXÚ
+˜\ˆÜ[š[™Ó[Ý™R[™^[ˆÜ[š[™Ó[Ý™\ÊBˆÂˆYˆ
+Ü[š[™Ó[Ý™R[™^ˆÜ[š[™Ó[Ý™R[™^ˆHYš[š][Û‹“[Ý™\Ë“[™Ý
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈ\È[˜[YÜ[š[™È[Ý™H[™^ÛÜ[š[™Ó[Ý™R[™^KˆŠNÂˆBˆB‚ˆYˆ
+[™[^K“[Ý™R[™^Ü[š[™Ó[Ý™\Ë“[™Ý
+BˆÂˆ™]\›ˆ
+ˆYš[š][Û‹“[Ý™\ÖÂˆÜ[š[™Ó[Ý™\ÖÙ[™[^K“[Ý™R[™^WKˆ[™[^KZTÝ]RY
+NÂˆB‚ˆYˆ
+Yš[š][Û‹”˜[™ÛS[Ý™TÛÛÝ\[™^ˆYš[š][Û‹”˜[™ÛS[Ý™TÛÛÝ\[™^ˆHYš[š][Û‹“[Ý™\Ë“[™Ý
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈ\È[˜[Y˜[™ÛK\ÛÛÝ\[™^ÙYš[š][Û‹”˜[™ÛS[Ý™TÛÛÝ\[™^KˆŠNÂˆB‚ˆ˜\ˆØ[™Y]\ÈHYš[š][Û‹“[Ý™\Âˆ”ÚÚ\
+Yš[š][Û‹”˜[™ÛS[Ý™TÛÛÝ\[™^
+Bˆ•Ú\™J[Ý™HO‚ˆ[Ý™K“X^ÛÛœÙXÝ]]™U\Ù\ÈHˆTÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Êˆ[™[^K“\Ý[Ý™RYˆ[Ý™K’Y
+Bˆ[™[^KÛÛœÙXÝ]]™S[Ý™U\Ù\Âˆ[Ý™K“X^ÛÛœÙXÝ]]™U\Ù\ÊBˆ•Ð\œ˜^J
+NÂˆYˆ
+Ø[™Y]\Ë“[™ÝOH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈ\È›ÈYØ[˜[™ÛH[Ý™\ËˆŠNÂˆB‚ˆ™]\›ˆ
+ˆØ[™Y]\ÖÛ™^[™^
+Ø[™Y]\Ë“[™Ý
+WKˆ[™[^KZTÝ]RY
+NÂˆB‚ˆØ\ÙH›ÝÝ\Q[™[^S[Ý™TÛXÞK”Ý]SXXÚ[™N‚ˆ™]\›ˆÙ[XÝ[™[^TÝ]SXXÚ[™S[Ý™JˆYš[š][Û‹ˆ[™[^Kˆ›Ü›X][Û‹ˆ™^[™^
+NÂ‚ˆY˜][‚ˆ›ÝÈ™]È\™Ý[Y[Ý]Ù”˜[™ÙQ^Ù\[ÛŠˆ˜[Y[ÙŠYš[š][Û‹“[Ý™TÛXÞJJNÂˆBˆB‚ˆš]˜]HÝ]XÈ
+ˆ›ÝÝ\Q[™[^S[Ý™QYš[š][Ûˆ[Ý™KˆÝš[™ÏÈ™^ZTÝ]RY
+BˆÙ[XÝ[™[^TÝ]SXXÚ[™S[Ý™Jˆ›ÝÝ\Q[™[^QYš[š][ÛˆYš[š][Û‹ˆ[™[^PÛÛX˜]Ý]H[™[^KˆT™XYÛ›S\Ý[™[^PÛÛX˜]Ý]Oˆ›Ü›X][Û‹ˆ[˜Ï[[ˆ™^[™^
+BˆÂˆ˜\ˆZHHYš[š][Û‹ZBˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈ\Ù\ÈÝ]SXXÚ[™HÛXÞHÚ]Ý][ˆRHYš[š][Û‹ˆŠNÂˆYˆ
+ZK”Ý]\Ë“[™ÝOH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈ\È[ˆ[\HRHÝ]HXXÚ[™KˆŠNÂˆB‚ˆ˜\ˆÝ]\ÈHZK”Ý]\Ë•ÑXÝ[Û˜\žJˆÝ]HOˆÝ]K’YˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+NÂˆ˜\ˆÝ]RYH[™[^KZTÝ]RYˆÏÈZK’[š]X[Ý]RYÂ‚ˆ›Üˆ
+˜\ˆ\HÈ\ÌŽÈ\
+ÊÊBˆÂˆYˆ
+\Ý]\Ë•žQÙ]˜[YJˆÝ]RYˆÝ]˜\ˆÝ]JJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈRH™Y™\™[˜Ù\ÈZ\ÜÚ[™ÈÝ]H	ÞÜÝ]RYIËˆŠNÂˆB‚ˆÝÚ]Ú
+Ý]K’Ú[™
+BˆÂˆØ\ÙH›ÝÝ\Q[™[^PZTÝ]RÚ[™“[Ý™N‚ˆÂˆYˆ
+Ý]K“[Ý™R[™^\È[ˆÝ]K“[Ý™R[™^•˜[YHˆÝ]K“[Ý™R[™^•˜[YBˆHYš[š][Û‹“[Ý™\Ë“[™Ý
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈRH[Ý™HÝ]H	ÞÜÝ]K’YIÈ\È[˜[Y[Ý™H[™^ˆŠNÂˆB‚ˆ™]\›ˆ
+ˆYš[š][Û‹“[Ý™\ÖÂˆÝ]K“[Ý™R[™^•˜[YWKˆÝ]K“™^Ý]RY
+NÂˆB‚ˆØ\ÙH›ÝÝ\Q[™[^PZTÝ]RÚ[™”˜[™ÛN‚ˆÂˆ˜\ˆœ˜[˜Ú\ÈBˆÝ]Kœ˜[˜Ú\ÂˆÏÈ\œ˜^K‘[\Oˆ›ÝÝ\Q[™[^PZPœ˜[˜ÚŠ
+NÂˆ˜\ˆYØ[Hœ˜[˜Ú\Âˆ•Ú\™Jœ˜[˜ÚO‚ˆœ˜[˜Ú•ÙZYÚˆˆ	‰ˆ\Ñ[™[^PZPœ˜[˜ÚYØ[
+ˆYš[š][Û‹ˆ[™[^KˆÝ]\Ëˆœ˜[˜Úˆ›Ü›X][ÛŠJBˆ•Ð\œ˜^J
+NÂˆYˆ
+YØ[“[™ÝOH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈRH˜[™ÛHÝ]H	ÞÜÝ]K’YIÈ\È›ÈYØ[œ˜[˜Ú\ËˆŠNÂˆB‚ˆ˜\ˆÝ[ÙZYÚBˆYØ[”Ý[Jœ˜[˜ÚO‚ˆœ˜[˜Ú•ÙZYÚ
+NÂˆ˜\ˆ›ÛH™^[™^
+Ý[ÙZYÚ
+NÂˆ˜\ˆÙ[XÝYHYØ[×ŒWNÂˆ›Ü™XXÚ
+˜\ˆœ˜[˜Ú[ˆYØ[
+BˆÂˆYˆ
+›Ûœ˜[˜Ú•ÙZYÚ
+BˆÂˆÙ[XÝYHœ˜[˜ÚÂˆœ™XZÎÂˆB‚ˆ›ÛOHœ˜[˜Ú•ÙZYÚÂˆB‚ˆÝ]RYBˆÙ[XÝY•\™Ù]Ý]RYÂˆœ™XZÎÂˆB‚ˆØ\ÙH›ÝÝ\Q[™[^PZTÝ]RÚ[™ÛÛ™][Û˜[‚ˆÂˆ˜\ˆœ˜[˜Ú\ÈBˆÝ]KÛÛ™][Û˜[œ˜[˜Ú\ÂˆÏÈ\œ˜^K‘[\Oˆ›ÝÝ\Q[™[^PZPÛÛ™][Û˜[œ˜[˜ÚŠ
+NÂˆ˜\ˆÙ[XÝYHœ˜[˜Ú\Ë‘š\œÝÜ‘Y˜][
+ˆœ˜[˜ÚOˆ[™[^PZPÛÛ™][Û“X]Ú\Êˆ[™[^Kˆ›Ü›X][Û‹ˆœ˜[˜Ú
+JNÂˆYˆ
+Ù[XÝY\È[
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈRHÛÛ™][Û˜[Ý]H	ÞÜÝ]K’YIÈ\È›ÈX]Ú[™Èœ˜[˜ÚˆŠNÂˆB‚ˆYˆ
+\Ý]\Ë•žQÙ]˜[YJˆÙ[XÝY•\™Ù]Ý]RYˆÝ]˜\ˆ\™Ù]
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈRHÛÛ™][Û˜[œ˜[˜Ú\™Ù]ÈZ\ÜÚ[™ÈÝ]H	ÞÜÙ[XÝY•\™Ù]Ý]RYIËˆŠNÂˆB‚ˆËÈH˜]]™H^ÜÚÙ[]Ûˆ›Ý\ÛÝœ˜[˜Ú\ÈÂˆËÈS‘˜]\ˆ[ˆ\™XÝHÈH[Ý™TÝ]K‚ˆËÈÛÛ[YH™\ÛÛš[™ÈHÜ˜\[[HÛÛ˜Ü™]BˆËÈ[Ý™H\ÈÛÛ[Z]Y\Ú[™ÈHØ[YH“‘È[™Ú]Ý]ˆËÈØ[\[™È[ž][™È\š[™ÈØœÙ\™J
+K‚ˆÝ]RYH\™Ù]’YÂˆœ™XZÎÂˆB‚ˆY˜][‚ˆ›ÝÈ™]È\™Ý[Y[Ý]Ù”˜[™ÙQ^Ù\[ÛŠˆ˜[Y[ÙŠÝ]K’Ú[™
+JNÂˆBˆB‚ˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈRH^ÙYYYHÝ]K\™\ÛÛ][Ûˆ\[Z]ˆŠNÂˆB‚ˆ[\›˜[Ý]XÈ›ÛÛ[™[^PZPÛÛ™][Û“X]Ú\Êˆ[™[^PÛÛX˜]Ý]H[™[^KˆT™XYÛ›S\Ý[™[^PÛÛX˜]Ý]Oˆ›Ü›X][Û‹ˆ›ÝÝ\Q[™[^PZPÛÛ™][Û˜[œ˜[˜Úœ˜[˜Ú
+BˆÂˆ˜\ˆ]š[™ÈH›Ü›X][Û‚ˆ•Ú\™J][HOˆ][K’ˆ
+Bˆ“Ü™\žJ][HOˆ][K‘›Ü›X][Û”ÜÚ][ÛŠBˆ•[žJ][HOˆ][K’[œÝ[˜ÙRY
+Bˆ•Ð\œ˜^J
+NÂˆ˜\ˆ\Ð[Û™HH]š[™Ë“[™ÝOHBˆ	‰ˆ]š[™ÖÌK’[œÝ[˜ÙRYOH[™[^K’[œÝ[˜ÙRYÂˆ˜\ˆ\Ñœ›ÛH]š[™Ë“[™Ýˆˆ	‰ˆ]š[™ÖÌK’[œÝ[˜ÙRYOH[™[^K’[œÝ[˜ÙRYÂ‚ˆËÈÛ›ÝÛYÙH[[Ûˆ˜XÚÜÈH[X™\ˆÙˆÝ\œÙH›Ý[™È[ˆ]ÂˆËÈÝÛ™\‹[ØØ[[Ý™K]\ÙHÙË[™\[™[ÙˆØœÙ\™Y[[Ë‚ˆ˜\ˆ[Ý™U™\ÚÛHœ˜[˜Ú•˜[YOË”Ü]
+	Î‰ÊNÂˆ˜\ˆ\ÙYH[Ý™U™\ÚÛ\ÈÈ[™ÝˆˆBˆÈ[™[^K“[Ý™U\ÙPÛÝ[ÏË‘Ù]˜[YSÜ‘Y˜][
+[Ý™U™\ÚÛÌJHÏÈˆˆÂˆ˜\ˆ\Õ™\ÚÛH[Ý™U™\ÚÛ\ÈÈ[™ÝˆˆBˆ	‰ˆ[•žT\œÙJ[Ý™U™\ÚÛÌWKÝ]ÊNÂ‚ˆ™]\›ˆœ˜[˜ÚÛÛ™][ÛˆÝÚ]ÚˆÂˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™“[Ý™U\ÙY™]Ù\•[ˆO‚ˆ\Õ™\ÚÛˆ	‰ˆ\ÙY[”\œÙJ[Ý™U™\ÚÛVÌWJKˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™“[Ý™U\ÙY]X\ÝO‚ˆ\Õ™\ÚÛˆ	‰ˆ\ÙYH[”\œÙJ[Ý™U™\ÚÛVÌWJKˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’]X\Ý[ˆO‚ˆ[™[^K“X^ˆ	‰ˆ[™[^K’H[™[^K“X^È‹ˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’™[ÝÒ[ˆO‚ˆ[™[^K“X^ˆ	‰ˆ[™[^K’[™[^K“X^È‹ˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’\Ó]š[™Ñ[™[^RYO‚ˆœ˜[˜Ú•˜[YH\È›Ý[	‰ˆ›Ü›X][Û‹[žJ][HO‚ˆ][K’ˆ	‰ˆ][K‘[™[^RYOHœ˜[˜Ú•˜[YJKˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™“XÚÜÓ]š[™Ñ[™[^RYO‚ˆœ˜[˜Ú•˜[YH\È›Ý[	‰ˆY›Ü›X][Û‹[žJ][HO‚ˆ][K’ˆ	‰ˆ][K‘[™[^RYOHœ˜[˜Ú•˜[YJKˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’\Ð[Û™HO‚ˆ\Ð[Û™Kˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’\Ñœ›ÛO‚ˆ\Ñœ›Ûˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’\Ó›Ýœ›ÛO‚ˆZ\Ñœ›Ûˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™”ÛÝ˜[YQ\]X[ÈO‚ˆœ˜[˜Ú•˜[YH\È›Ý[ˆ	‰ˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Êˆ[™[^K”ÛÝ˜[YKˆœ˜[˜Ú•˜[YJKˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’\ÓÙ™˜[[˜ÙHO‚ˆ[™[^K’\ÓÙ™˜[[˜ÙKˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’\Ó›ÝÙ™˜[[˜ÙHO‚ˆY[™[^K’\ÓÙ™˜[[˜ÙKˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™’\Ñ[™[^TÝÙ\ˆO‚ˆœ˜[˜Ú•˜[YH\È›Ý[ˆ	‰ˆ[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOHœ˜[˜Ú•˜[YH	‰ˆÝÙ\‹”ÝXÚÜÈˆ
+Kˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™“XÚÜÑ[™[^TÝÙ\ˆO‚ˆœ˜[˜Ú•˜[YH\È›Ý[ˆ	‰ˆY[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOHœ˜[˜Ú•˜[YH	‰ˆÝÙ\‹”ÝXÚÜÈˆ
+KˆËÈÙ]X[[X]\ÓÙˆ[˜ÛY\ÈHXÝ[™È[ÛœÝ\‹‚ˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™“]š[™Ñ[™[ZY\Ð][ÜÝO‚ˆ[•žT\œÙJœ˜[˜Ú•˜[YKÝ]˜\ˆX^[]™JBˆ	‰ˆ]š[™Ë“[™ÝHX^[]™Kˆ›ÝÝ\Q[™[^PZPÛÛ™][Û’Ú[™“]š[™Ñ[™[ZY\ÑÜ™X]\•[ˆO‚ˆ[•žT\œÙJœ˜[˜Ú•˜[YKÝ]˜\ˆZ[[]™JBˆ	‰ˆ]š[™Ë“[™ÝˆZ[[]™KˆÈOˆ›ÝÈ™]È\™Ý[Y[Ý]Ù”˜[™ÙQ^Ù\[ÛŠˆ˜[Y[ÙŠœ˜[˜ÚÛÛ™][ÛŠJBˆNÂˆB‚ˆš]˜]HÝ]XÈ›ÛÛ\Ñ[™[^PZPœ˜[˜ÚYØ[
+ˆ›ÝÝ\Q[™[^QYš[š][ÛˆYš[š][Û‹ˆ[™[^PÛÛX˜]Ý]H[™[^KˆT™XYÛ›QXÝ[Û˜\žOˆÝš[™Ëˆ›ÝÝ\Q[™[^PZTÝ]QYš[š][ÛˆÝ]\Ëˆ›ÝÝ\Q[™[^PZPœ˜[˜Úœ˜[˜ÚˆT™XYÛ›S\Ý[™[^PÛÛX˜]Ý]Oˆ›Ü›X][ÛŠBˆÂˆYˆ
+\Ý]\Ë•žQÙ]˜[YJˆœ˜[˜Ú•\™Ù]Ý]RYˆÝ]˜\ˆ\™Ù]
+Bˆ\™Ù]’Ú[™ˆOH›ÝÝ\Q[™[^PZTÝ]RÚ[™“[Ý™Bˆ\™Ù]“[Ý™R[™^\È[ˆ\™Ù]“[Ý™R[™^•˜[YHˆ\™Ù]“[Ý™R[™^•˜[YBˆHYš[š][Û‹“[Ý™\Ë“[™Ý
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^H	ÞÙYš[š][Û‹’YIÈRHœ˜[˜Ú\™Ù]È[˜[Y[Ý™HÝ]H	ÞØœ˜[˜Ú•\™Ù]Ý]RYIËˆŠNÂˆB‚ˆ˜\ˆ[Ý™HHYš[š][Û‹“[Ý™\ÖÂˆ\™Ù]“[Ý™R[™^•˜[YWNÂ‚ˆYˆ
+œ˜[˜Ú”™\]Z\™\Ð]˜Z[X›TÝ[[[ÛŠBˆÂˆ˜\ˆÝ[[[ÛˆH[Ý™K‘Y™™XÝË‘š\œÝÜ‘Y˜][
+Y™™XÝO‚ˆY™™XÝ’Ú[™OH›ÝÝ\Q[™[^QY™™XÝÚ[™”Ý[[[Û‘[™[^JNÂˆ˜\ˆÛÝÈHÝ[[[ÛË”Ý[[[Û”ÛÝ˜[Y\ÎÂˆYˆ
+Yš[š][Û‹“X^ÛÛÜ™[˜]YÝ[[[ÛœÈHˆ[™[^K“›Û”Ý[[[Û“[Ý™\Õ[[[YÚX›Hˆˆ[™[^K”Ú\™YÝ[[[ÛœÕ\ÙYHYš[š][Û‹“X^ÛÛÜ™[˜]YÝ[[[ÛœÂˆ[™[^K”Ú\™YÝ[[[Û•\ÙY\Õ\›‚ˆÛÝÈ\È›ÝÈ[™ÝˆˆBˆ\ÛÝË[žJÛÝOˆY›Ü›X][Û‹[žJØ[™Y]HO‚ˆØ[™Y]K’ˆˆ	‰ˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊØ[™Y]K”ÛÝ˜[YKÛÝ
+JJJBˆÂˆ™]\›ˆ˜[ÙNÂˆBˆB‚ˆ™]\›ˆœ˜[˜Ú”™\X][HÝÚ]ÚˆÂˆ›ÝÝ\Q[™[^PZT™\X][BˆØ[”™\X]›Ü™]™\ˆOˆYKˆ›ÝÝ\Q[™[^PZT™\X][BˆØ[››Ý™\X]O‚ˆTÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Êˆ[™[^K“\Ý[Ý™RYˆ[Ý™K’Y
+Kˆ›ÝÝ\Q[™[^PZT™\X][BˆØ[”™\X][Y\ÈO‚ˆœ˜[˜Ú“X^[Y\Èˆˆ	‰ˆ
+TÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Êˆ[™[^K“\Ý[Ý™RYˆ[Ý™K’Y
+Bˆ[™[^KÛÛœÙXÝ]]™S[Ý™U\Ù\Âˆœ˜[˜Ú“X^[Y\ÊKˆ›ÝÝ\Q[™[^PZT™\X][Bˆ•\ÙSÛ›SÛ˜ÙHO‚ˆ
+[™[^K“[Ý™U\ÙPÛÝ[ÏË‘Ù]˜[YSÜ‘Y˜][
+ˆ[Ý™K’Y
+HÏÈ
+HOHˆÈOˆ›ÝÈ™]È\™Ý[Y[Ý]Ù”˜[™ÙQ^Ù\[ÛŠˆ˜[Y[ÙŠœ˜[˜Ú”™\X][JJBˆNÂˆB‚ˆš]˜]HÝ]XÈ
+^Y\”Ý]H^Y\‹ÛÛX˜]Ý]HÛÛX˜]
+H™\ÛÛ™Q[™[^PXÝ[ÛœÊˆ^Y\”Ý]H^Y\‹ˆÛÛX˜]Ý]HÛÛX˜]ˆ[XÝˆ[\ØÙ[œÚ[Û‹ˆ›™Ð[™H›™ÊBˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JBˆ•Ó\Ý
+
+NÂˆ˜\ˆ›ØÚÈHÛÛX˜]”^Y\›ØÚÎÂˆ˜\ˆH^Y\‹’Âˆ˜\ˆÛÛH^Y\‹‘ÛÛÂ‚ˆ›Üˆ
+˜\ˆ[™^HÈ[™^[™[ZY\ËÛÝ[È[™^
+ÊÊBˆÂˆ˜\ˆ[™[^HH[™[ZY\ÖÚ[™^NÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[‘[™[^J[™[^K‘[™[^RY
+NÂ‚ˆYˆ
+[™[^K’H
+BˆÂˆËÈ™X]XÚÝÙ\ŽˆHXÙX\ÙYÙYÛY[™[XZ[œÈ[ˆÛÛX˜]ˆËÈ[\™Ù]X›Kˆ]š\œÝÜ[™È]ÈPQ[Ý™K[‚ˆËÈ™X]XÚ\È›ÜˆHÛˆH]\ˆ[™[^HXÝ[ÛˆYˆ]ˆËÈX\ÝÛ™HÝ\ˆÙYÛY[™[XZ[œÈ[]™Kˆ]È™^ˆËÈ›Ü›X[[[\ÈÚÜÙ[ˆY\ˆ™X]XÚY[‚ˆYˆ
+[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™R]™Q[]\Ë”™X]XÚY
+Bˆ	‰ˆ[™[ZY\Ë[žJÝ\ˆO‚ˆÝ\‹’[œÝ[˜ÙRYOH[™[^K’[œÝ[˜ÙRYˆ	‰ˆÝ\‹’ˆˆ	‰ˆÝ\‹”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOBˆ›ÝÝ\S˜]]™R]™Q[]\Ë”™X]XÚY
+JJBˆÂˆ[™[^HH[™[^K”™X]XÚXY[Ý™T™\ÛÛ™YˆÈ[™[^HÚ]ˆÂˆHX]“Z[ŠYš[š][Û‹’˜[™ÙP]
+XÝˆ\ØÙ[œÚ[ÛŠK“X^ˆ[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOBˆ›ÝÝ\S˜]]™R]™Q[]\Ë”™X]XÚY
+Bˆ”Ý[JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÊJKˆ›ØÚÈHˆ\Ý[Ý™RYHœ™X]XÚ‹ˆ™X]XÚXY[Ý™T™\ÛÛ™YH˜[ÙKˆZTÝ]RYHœ™X]XÚÜ˜[™ÛH‹ˆÝ]\Ù\ÈH™]ÈXÝ[Û˜\žOÝš[™Ë[ŠˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+BˆBˆˆ[™[^HÚ]ˆÂˆ\Ý[Ý™RYH™XY‹ˆ™X]XÚXY[Ý™T™\ÛÛ™YHYBˆNÂˆ[™[ZY\ÖÚ[™^HH[™[^NÂˆÛÛ[YNÂˆB‚ˆ˜\ˆXY\[]™HH[™[^K“XY\‘[™[^R[œÝ[˜ÙRY\È›ÝˆÈHXY\’Yˆ[™[ZY\Ë[žJØ[™Y]HO‚ˆØ[™Y]K’[œÝ[˜ÙRYOHXY\’Yˆ	‰ˆØ[™Y]K’ˆ
+NÂˆYˆ
+Yš[š][Û‹”™]š]™\ÓÛ‘[™[^U\›ˆ	‰ˆXY\[]™JBˆÂˆ˜\ˆ˜[™ÙHHYš[š][Û‹’˜[™ÙP]
+ˆXÝˆ\ØÙ[œÚ[ÛŠNÂˆ[™[^HH[™[^HÚ]ˆÂˆH˜[™ÙK“X^ˆ›ØÚÈHˆ\Ý[Ý™RYHœ™]š]™H‹ˆÝ]\Ù\ÈBˆ™]ÈXÝ[Û˜\žOÝš[™Ë[ŠˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+BˆNÂˆ[™[ZY\ÖÚ[™^HH[™[^NÂˆB‚ˆÛÛ[YNÂˆB‚ˆYˆ
+[™[^K‘[™[^PXÝ[Û”ÚÚ\Ô™[XZ[š[™Èˆ
+BˆÂˆ[™[ZY\ÖÚ[™^HH[™[^HÚ]ˆÂˆ[™[^PXÝ[Û”ÚÚ\Ô™[XZ[š[™ÈBˆ[™[^K‘[™[^P}ßžû¶‰žËkºwµç]Ý]K•˜[YRÚ[™OBˆÞ\Ý[K•^’œÛÛ‹’œÛÛ•˜[YRÚ[™“Øš™XÝˆÈÞ\Ý[K•^’œÛÛ‹“›Ù\Ë’œÛÛ“›ÙK”\œÙJˆ™[XË”\œÚ\Ý[Ý]K‘Ù]˜]Õ^
+
+JH\ÂˆÞ\Ý[K•^’œÛÛ‹“›Ù\Ë’œÛÛ“Øš™XÝˆÏÈ™]ÈÞ\Ý[K•^’œÛÛ‹“›Ù\Ë’œÛÛ“Øš™XÝ
+
+Bˆˆ™]ÈÞ\Ý[K•^’œÛÛ‹“›Ù\Ë’œÛÛ“Øš™XÝ
+
+NÂˆ\œÚ\Ý[Ü›Ü\WHHÛÝ[Âˆ™[XÜÖÜ™[XÔÝ]K”\œÚ\Ý[[™^HH™[XÈÚ]ˆÂˆ\œÚ\Ý[Ý]HHÞ\Ý[K•^’œÛÛ‹’œÛÛ”Ù\šX[^™\‚ˆ”Ù\šX[^™UÑ[[Y[
+\œÚ\Ý[
+BˆNÂˆ™]\›ˆ^Y\ˆÚ]È™[XÜÈH™[XÜÈNÂˆB‚ˆËÈ\È\ÈÙ^YYžHÝÙ\ˆ\XØ][ÛˆÜ™\‹ÛÈ][\H[˜XÚ\ÈÜ‚ˆËÈÙ\\˜]HÛÝ[ÝÛœÈ™[XZ[ˆ[™\[™[[™›ÜšÈ]\›Z[š\ÝXØ[K‚ˆš]˜]HÝ]XÈ
+ÛÛX˜]Ý]HÛÛX˜]›ÛÛÚÝ[šYÙÙ\ŠBˆÚXÚÔÝÙ\”ÝXœØÜšX™\•šYÙÙ\ŠˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\Q]™[ÝXœØÜšX™\”Ý]HÝXœØÜšX™\ŠBˆÂˆYˆ
+ÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\ˆ\È›ÝÈHÜ™\ŠBˆÂˆ™]\›ˆ
+ÛÛX˜]˜[ÙJNÂˆB‚ˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+ÛÛX˜]”^Y\”ÝÙ\œËˆÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ˆOHÜ™\ŠNÂˆYˆ
+[™^
+BˆÂˆ™]\›ˆ
+ÛÛX˜]˜[ÙJNÂˆB‚ˆ˜\ˆÝ\œ™[HÛÛX˜]”^Y\”ÝÙ\œÖÚ[™^NÂˆYˆ
+ÝXœØÜšX™\‹ÛÝ[ÝÛ™Y›Ü™UšYÙÙ\ŠBˆÂˆYˆ
+Ý\œ™[”ÝXÚÜÈˆJBˆÂˆ˜\ˆÝÙ\œÈH
+›ÝÝ\TÝÙ\’[œÝ[˜ÙTÝ]V×JXÛÛX˜]”^Y\”ÝÙ\œËÛÛ™J
+NÂˆÝÙ\œÖÚ[™^HHÝ\œ™[Ú]ÈÝXÚÜÈHÝ\œ™[”ÝXÚÜÈHHNÂˆ™]\›ˆ
+ÛÛX˜]Ú]È^Y\”ÝÙ\œÈHÝÙ\œÈK˜[ÙJNÂˆB‚ˆ™]\›ˆ
+ÛÛX˜]YJNÂˆB‚ˆYˆ
+ÝXœØÜšX™\‹‘]™\žSHJBˆÂˆ™]\›ˆ
+ÛÛX˜]YJNÂˆB‚ˆYˆ
+ÝXœØÜšX™\‹”ÝÙ\•šYÙÙ\’[™^\È›ÝÈHšYÙÙ\’[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ”ÝÙ\ˆšYÙÙ\ˆÛÝ[\ˆ\È›È[™^ˆŠNÂˆB‚ˆ˜\ˆÛÝ[ÈHÝ\œ™[•šYÙÙ\ÛÝ[È\È[ˆÈ™]È[Ô›ÝÝ\PÛÛ[”ÝÙ\ŠÝ\œ™[”ÝÙ\’Y
+K•šYÙÙ\œË“[™ÝBˆˆ
+[×JXÝ\œ™[•šYÙÙ\ÛÝ[ËÛÛ™J
+NÂˆ˜\ˆ™^ÛÝ[HÚXÚÙY
+ÛÝ[ÖÝšYÙÙ\’[™^H
+ÈJNÂˆËÈÛÝ[\‹\Ý[H˜]]™HÝÙ\œÈ™\Ý\]™\›ÈY\ˆZ\ˆˆËÈšYÙÙ\ŽÈØ]š[™ÈH™\ÚYYH[ÛÈ›Ý[™ÈH\œÚ\ÝYÝ]K‚ˆÛÝ[ÖÝšYÙÙ\’[™^HH™^ÛÝ[	HÝXœØÜšX™\‹‘]™\žSÂˆ˜\ˆ\]YH
+›ÝÝ\TÝÙ\’[œÝ[˜ÙTÝ]V×JXÛÛX˜]”^Y\”ÝÙ\œËÛÛ™J
+NÂˆ\]YÚ[™^HHÝ\œ™[Ú]ÈšYÙÙ\ÛÝ[ÈHÛÝ[ÈNÂˆ™]\›ˆ
+ÛÛX˜]Ú]È^Y\”ÝÙ\œÈH\]YKˆÛÝ[ÖÝšYÙÙ\’[™^HOH
+NÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™\Ù]^Y\”ÝÙ\•šYÙÙ\ÛÝ[\œÊÛÛX˜]Ý]HÛÛX˜]
+HO‚ˆÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œË”Ù[XÝ
+ÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™\Ù]šYÙÙ\ÛÝ[\œÐ]^Y\•\›‘[™ˆ	‰ˆÝÙ\‹•šYÙÙ\ÛÝ[È\È›Ý[ˆÈÝÙ\ˆÚ]ˆÂˆšYÙÙ\ÛÝ[ÈH™]È[ÜÝÙ\‹•šYÙÙ\ÛÝ[Ë“[™ÝBˆBˆˆÝÙ\ŠK•Ð\œ˜^J
+BˆNÂ‚‚ˆËÈ›ÝÛÚÜÈ[ˆ]H˜]]™HY\Ø\™^YY›Ý[™\žNˆY\ˆBˆËÈY™™XÝÈÙˆHØ\™]™H™\ÛÛ™Y™Y›Ü™HH™^Ø\™XÝ[Û‹‚ˆËÈ[™\ˆ™\ÝÜ™\ÈÛ›HÝ™[™ÝÑ^\š]HXÝX[HÜÝ
+\Y˜XÝØ[‚ˆËÈ›ØÚÈZ]\ˆ\XØ][ÛŠKÚ]ÛÝ[\œÈÝÜ™YÛˆHÝÙ\ˆ[œÝ[˜ÙK‚ˆËÈÝ\›\ØZ]È›ÜˆH
+œØ[YHØ\™[œÝ[˜ÙJˆ]š\œÝ]XÚÙY]‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™Yœ™\Ú˜]]™QÛÜžQØ[˜[šXÊˆÛÛX˜]Ý]HÛÛX˜]
+BˆÂˆ˜\ˆØ[˜[šXÔÛÝ\˜ÙHHÛÛX˜]‘[™[ZY\Âˆ•Ú\™J[™[^HOˆ[™[^K’ˆ
+Bˆ”Ù[XÝX[žJ[™[^HOˆ[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘Ø[˜[š^™TÝÙ\Ø\™Ô\”ÝXÚÈˆ
+Bˆ”Ù[XÝ
+ÝÙ\ˆOˆ
+ˆ[™[^Nˆ[™[^Kˆ[[Ý[ˆÝÙ\‹”ÝXÚÜÈ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠˆÝÙ\‹”ÝÙ\’Y
+K‘Ø[˜[š^™TÝÙ\Ø\™Ô\”ÝXÚÊJJBˆ‘š\œÝÜ‘Y˜][
+
+NÂˆYˆ
+Ø[˜[šXÔÛÝ\˜ÙK‘[™[^H\È[
+Bˆ™]\›ˆÛÛX˜]Â‚ˆ™]\›ˆÛÛX˜]Ú]ˆÂˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+Ø\™O‚ˆØ\™Y™›XÝ[Ûˆ\È[ˆ	‰ˆ›ÝÝ\PÛÛ[Ø\™
+Ø\™Ø\™Y
+K•\BˆOH›ÝÝ\PØ\™\K”ÝÙ\‚ˆÈØ\™Ú]ˆÂˆY™›XÝ[ÛˆH™]È›ÝÝ\PØ\™Y™›XÝ[ÛŠˆ›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™‘Ø[˜[š^™YˆØ[˜[šXÔÛÝ\˜ÙK[[Ý[ˆØ[˜[šXÔÛÝ\˜ÙK‘[™[^K’[œÝ[˜ÙRY
+BˆBˆˆØ\™
+K•Ð\œ˜^J
+BˆNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™Yœ™\Ú˜]]™R]™Uš][Ü\šÊˆÛÛX˜]Ý]HÛÛX˜]
+BˆÂˆ˜\ˆÛÝ\˜Ù\ÈHÛÛX˜]‘[™[ZY\Âˆ•Ú\™J[™[^HOˆ[™[^K’ˆ
+Bˆ”Ù[XÝ
+[™[^HOˆ
+[™[^K’[œÝ[˜ÙRYˆ[[Ý[ˆ[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOBˆ›ÝÝ\S˜]]™R]™Q[]\Ë•š][Ü\šÒY
+Bˆ”Ý[JÝÙ\ˆOˆX]“X^
+ÝÙ\‹”ÝXÚÜÊJJJBˆ•Ú\™JÛÝ\˜ÙHOˆÛÝ\˜ÙK[[Ý[ˆ
+Bˆ“Ü™\žJÛÝ\˜ÙHOˆÛÝ\˜ÙK’[œÝ[˜ÙRY
+Bˆ•Ð\œ˜^J
+NÂ‚ˆËÈÛ™H˜]]™H[™™\ÝYš\ÛH\ˆ[˜ÛÝ[\‹ˆ™]Z[ˆ]\›Z[š\ÝXÂˆËÈ™Z]š[Üˆ›Üˆ›Ü˜ÙY][KTš\ÛHØÙ[˜\š[ÜË‚ˆ˜\ˆÝÛ™\ˆHÛÝ\˜Ù\Ë‘š\œÝÜ‘Y˜][
+
+NÂˆ™]\›ˆÛÛX˜]Ú]ˆÂˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+Ø\™O‚ˆÂˆYˆ
+Ø\™Y™›XÝ[Ûˆ\ÂˆÈÚ[™ˆ›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™•Z[YJBˆÂˆ™]\›ˆÝÛ™\‹[[Ý[ˆˆÈØ\™Ú]ˆÂˆY™›XÝ[ÛˆH™]È›ÝÝ\PØ\™Y™›XÝ[ÛŠˆ›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™•Z[YˆÝÛ™\‹[[Ý[ÝÛ™\‹’[œÝ[˜ÙRY
+BˆBˆˆØ\™Ú]ÈY™›XÝ[ÛˆH[NÂˆBˆYˆ
+ÝÛ™\‹[[Ý[HØ\™Y™›XÝ[Ûˆ\È›Ý[ˆ›ÝÝ\PÛÛ[Ø\™
+Ø\™Ø\™Y
+K•\BˆOH›ÝÝ\PØ\™\K”ÚÚ[
+Bˆ™]\›ˆØ\™Âˆ™]\›ˆØ\™Ú]ˆÂˆY™›XÝ[ÛˆH™]È›ÝÝ\PØ\™Y™›XÝ[ÛŠˆ›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™•Z[YˆÝÛ™\‹[[Ý[ÝÛ™\‹’[œÝ[˜ÙRY
+BˆNÂˆJK•Ð\œ˜^J
+BˆNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™\ÛÛ™S˜]]™PØ\™ÛÛ\][Û”ÝÙ\œÊˆÛÛX˜]Ý]HÛÛX˜]›ÝÝ\PÛÛX˜]]™[ÛÛX˜]]™[
+BˆÂˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Y
+BˆÂˆ›Ü™XXÚ
+˜\ˆ[™\ˆ[ˆÛÛX˜]”^Y\”ÝÙ\œË•Ú\™JÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”^Y\”Ý™[™Ý^\š]SÜÜÔ\Ø\™^YY\”ÝXÚÈˆ
+Bˆ•Ð\œ˜^J
+JBˆÂˆ˜\ˆ™YXÙYH[™\‹•šYÙÙ\ÛÝ[ÈÏÈ\œ˜^K‘[\O[Š
+NÂˆYˆ
+™YXÙY“[™ÝHŠBˆÂˆYˆ
+™YXÙYÌHˆ
+BˆÛÛX˜]H\T^Y\”ÝÙ\ŠÛÛX˜]ˆœ›ÝËœÝÙ\‹œÝ™[™Ý‹™YXÙYÌJNÂˆYˆ
+™YXÙYÌWHˆ
+BˆÛÛX˜]H\T^Y\”ÝÙ\ŠÛÛX˜]ˆœ›ÝËœÝÙ\‹™^\š]H‹™YXÙYÌWJNÂˆBˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œË”Ù[XÝ
+ÝÙ\ˆO‚ˆÝÙ\‹\XØ][Û“Ü™\ˆOH[™\‹\XØ][Û“Ü™\‚ˆÈÝÙ\ˆÚ]ÈšYÙÙ\ÛÝ[ÈH[ˆÝÜ™Y˜[YHHBˆˆÝÙ\ŠK•Ð\œ˜^J
+BˆNÂˆBˆ™]\›ˆÛÛX˜]ÂˆB‚ˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™^YYˆÛÛX˜]]™[Ø\™Y\È[
+Bˆ™]\›ˆÛÛX˜]Â‚ˆËÈœ˜[XÈ\ØØ\HÜÝÛ™\ÈHØ[™]ÛÝ[ÝÛˆžHÛ™H[™ˆËÈ[˜Ü™X\Ù\È\ÈØ\™[œÝ[˜ÙIÜÈÛÜÝ›ÜˆH™\ÝÙˆÛÛX˜]‚ˆYˆ
+ÛÛX˜]]™[Ø\™YOBˆ›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë‘œ˜[XÑ\ØØ\RYˆ	‰ˆÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY\ÈÈH\ØØ\RY
+BˆÂˆ˜\ˆÝÛ™\ˆHÛÛX˜]‘[™[ZY\Ë‘š\œÝÜ‘Y˜][
+[™[^HO‚ˆ[™[^K’ˆ	‰ˆ[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë”Ø[™]Y
+JNÂˆYˆ
+ÝÛ™\ˆ\È›Ý[
+BˆÛÛX˜]H\Q[™[^TÝÙ\ŠÛÛX˜]ÝÛ™\‹’[œÝ[˜ÙRYˆ›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë”Ø[™]YJNÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+Ø\™O‚ˆØ\™’[œÝ[˜ÙRYOH\ØØ\RYˆÈØ\™Ú]ˆÂˆÛÛX˜][™\™ÞPÛÜÝ[HBˆØ\™ÛÛX˜][™\™ÞPÛÜÝ[H
+ÈBˆBˆˆØ\™
+K•Ð\œ˜^J
+BˆNÂˆB‚ˆËÈXXÚÛÛ\]YY™›XÝYÚÚ[[™›XÝÈZ[Y\]X[ÂˆËÈH[X™\ˆÙˆš][Ü\šÈÝXÚÜÈÝ[\YÛˆHØ\™‚ˆYˆ
+ÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY\ÈÈH^YYY
+BˆÂˆ˜\ˆ^YYHÛÛX˜]Ø\™Ë‘š\œÝÜ‘Y˜][
+Ø\™O‚ˆØ\™’[œÝ[˜ÙRYOH^YYY
+NÂˆYˆ
+^YYËY™›XÝ[Ûˆ\ÂˆÈÚ[™ˆ›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™•Z[YHY™›XÝ[ÛŠBˆÂˆÛÛX˜]H\T^Y\”ÝÙ\ŠÛÛX˜]ˆ›ÝÝ\S˜]]™R]™Q[]\Ë•Z[YÝÙ\’YˆY™›XÝ[Û‹[[Ý[
+NÂˆBˆB‚ˆ›Ü™XXÚ
+˜\ˆ[™\ˆ[ˆÛÛX˜]”^Y\”ÝÙ\œË•Ú\™JÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”^Y\”Ý™[™Ý^\š]SÜÜÔ\Ø\™^YY\”ÝXÚÈˆ
+Bˆ•Ð\œ˜^J
+JBˆÂˆ˜\ˆ[[Ý[HÝÙ\“ÜÜÊ[™\ŠNÂˆ˜\ˆ™Y›Ü™TÝ™[™ÝHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOHœ›ÝËœÝÙ\‹œÝ™[™ÝŠBˆ”Ý[JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÊNÂˆÛÛX˜]H\T^Y\”ÝÙ\ŠÛÛX˜]œ›ÝËœÝÙ\‹œÝ™[™Ý‹X[[Ý[
+NÂˆ˜\ˆY\”Ý™[™ÝHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOHœ›ÝËœÝÙ\‹œÝ™[™ÝŠBˆ”Ý[JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÊNÂˆ˜\ˆ™Y›Ü™Q^\š]HHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOHœ›ÝËœÝÙ\‹™^\š]HŠBˆ”Ý[JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÊNÂˆÛÛX˜]H\T^Y\”ÝÙ\ŠÛÛX˜]œ›ÝËœÝÙ\‹™^\š]H‹X[[Ý[
+NÂˆ˜\ˆY\‘^\š]HHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YOHœ›ÝËœÝÙ\‹™^\š]HŠBˆ”Ý[JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÊNÂˆ˜\ˆ™]š[Ý\ÈH[™\‹•šYÙÙ\ÛÝ[ÈÏÈ™]È[Ì—NÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œË”Ù[XÝ
+ÝÙ\ˆO‚ˆÝÙ\‹\XØ][Û“Ü™\ˆOH[™\‹\XØ][Û“Ü™\‚ˆÈÝÙ\ˆÚ]ˆÂˆšYÙÙ\ÛÝ[ÈH™]Ö×BˆÂˆ™]š[Ý\ÖÌH
+È™Y›Ü™TÝ™[™ÝHY\”Ý™[™Ýˆ™]š[Ý\ÖÌWH
+È™Y›Ü™Q^\š]HHY\‘^\š]BˆKˆÝÜ™Y˜[YHHÝÙ\‹”ÝÜ™Y˜[YH
+ÈBˆHˆÝÙ\ŠK•Ð\œ˜^J
+BˆNÂˆB‚ˆYˆ
+ÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY\ÈÈHØ\™Y
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HO‚ˆÂˆYˆ
+[™[^K’H
+Bˆ™]\›ˆ[™[^NÂˆ˜\ˆÛÛ\][™ÈH[™[^K”ÝÙ\”Ý]\Ë•Ú\™JÝÙ\ˆO‚ˆÝÙ\‹”[™[™Ð]XÚÚ[™ÐØ\™[œÝ[˜ÙRYOHØ\™Yˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘[™[^P›ØÚÐY\]XÚÚ[™ÐØ\™^YY\”ÝXÚÈˆ
+Bˆ•Ð\œ˜^J
+NÂˆYˆ
+ÛÛ\][™Ë“[™ÝOH
+Bˆ™]\›ˆ[™[^NÂˆ˜\ˆ›ØÚÈHÛÛ\][™Ë”Ý[JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÂˆ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘[™[^P›ØÚÐY\]XÚÚ[™ÐØ\™^YY\”ÝXÚÊNÂˆ˜\ˆÜ™\œÈHÛÛ\][™Ë”Ù[XÝ
+ÝÙ\ˆO‚ˆÝÙ\‹\XØ][Û“Ü™\ŠK•Ò\ÚÙ]
+
+NÂˆ™]\›ˆ[™[^HÚ]ˆÂˆ›ØÚÈH[™[^K›ØÚÈ
+È›ØÚËˆÝÙ\œÈH[™[^K”ÝÙ\”Ý]\Ë•Ú\™JÝÙ\ˆO‚ˆ[Ü™\œËÛÛZ[œÊÝÙ\‹\XØ][Û“Ü™\ŠJK•Ð\œ˜^J
+BˆNÂˆJK•Ð\œ˜^J
+BˆNÂˆBˆ™]\›ˆÛÛX˜]Â‚ˆÝ]XÈ[ÝÙ\“ÜÜÊ›ÝÝ\TÝÙ\’[œÝ[˜ÙTÝ]HÝÙ\ŠHO‚ˆÝÙ\‹”ÝXÚÜÈ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”^Y\”Ý™[™Ý^\š]SÜÜÔ\Ø\™^YY\”ÝXÚÎÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™\ÛÛ™S˜]]™QÛÜžP›ÜÜÐØ\™ÛÚÜÊˆÛÛX˜]Ý]HÛÛX˜]›ÝÝ\PÛÛX˜]]™[ÛÛX˜]]™[
+BˆÂˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Y
+BˆÂˆ™]\›ˆÛÛX˜]Ú]ˆÂˆ›Ý[™Ø\™^YY\Õ\›ˆH˜[ÙKˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+Ø\™O‚ˆØ\™Y™›XÝ[ÛË’Ú[™OH›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™›Ý[™ˆÈØ\™Ú]ÈY™›XÝ[ÛˆH[BˆˆØ\™
+K•Ð\œ˜^J
+Kˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œË”Ù[XÝ
+ÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\ËÚZ[œÒYˆÈÝÙ\ˆÚ]ÈÝÜ™Y˜[YHHHˆÝÙ\ŠK•Ð\œ˜^J
+BˆNÂˆB‚ˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™˜]Û‚ˆ	‰ˆÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY\ÈÈH˜]Û’Y
+BˆÂˆ˜\ˆØ\™HÛÛX˜]Ø\™Ë‘š\œÝÜ‘Y˜][
+Ø[™Y]HO‚ˆØ[™Y]K’[œÝ[˜ÙRYOH˜]Û’Y
+NÂˆYˆ
+Ø\™\È›Ý[	‰ˆØ\™Y™›XÝ[Ûˆ\È[
+BˆÂˆ›Üˆ
+˜\ˆÝÙ\’[™^HÈÝÙ\’[™^ÛÛX˜]”^Y\”ÝÙ\œË“[™ÝÂˆÝÙ\’[™^
+ÊÊBˆÂˆ˜\ˆÝÙ\ˆHÛÛX˜]”^Y\”ÝÙ\œÖÜÝÙ\’[™^NÂˆYˆ
+ÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\ËÚZ[œÒYˆÝÙ\‹”ÝÜ™Y˜[YHHÝÙ\‹”ÝXÚÜÂˆÝÙ\‹”ÛÝ\˜ÙQ[™[^R[œÝ[˜ÙRY\È›ÝÈHÛÝ\˜ÙRYˆXÛÛX˜]‘[™[ZY\Ë[žJ[™[^HO‚ˆ[™[^K’[œÝ[˜ÙRYOHÛÝ\˜ÙRY	‰ˆ[™[^K’ˆ
+JBˆÛÛ[YNÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+Ø[™Y]HO‚ˆØ[™Y]K’[œÝ[˜ÙRYOH˜]Û’YˆÈØ[™Y]HÚ]ˆÂˆY™›XÝ[ÛˆH™]È›ÝÝ\PØ\™Y™›XÝ[ÛŠˆ›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™›Ý[™ˆÛÝ\˜ÙQ[™[^R[œÝ[˜ÙRYˆÛÝ\˜ÙRY
+BˆBˆˆØ[™Y]JK•Ð\œ˜^J
+Kˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œË”Ù[XÝ
+
+Ø[™Y]KJHO‚ˆHOHÝÙ\’[™^ˆÈØ[™Y]HÚ]ÈÝÜ™Y˜[YHHÝÙ\‹”ÝÜ™Y˜[YH
+ÈHBˆˆØ[™Y]JK•Ð\œ˜^J
+BˆNÂˆœ™XZÎÂˆBˆBˆB‚ˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™^YY
+Bˆ™]\›ˆÛÛX˜]Â‚ˆYˆ
+ÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY\ÈÈH^YYYˆ	‰ˆÛÛX˜]Ø\™Ë‘š\œÝÜ‘Y˜][
+Ø\™O‚ˆØ\™’[œÝ[˜ÙRYOH^YYY
+OËY™›XÝ[ÛË’Ú[™ˆOH›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™›Ý[™
+BˆÛÛX˜]HÛÛX˜]Ú]È›Ý[™Ø\™^YY\Õ\›ˆHYHNÂ‚ˆËÈ\ÝÝXš™XÝ[œ˜YÙHÜ›ÝÜÈÛˆXXÚÛÛ\]YÚÚ[^K‚ˆYˆ
+ÛÛX˜]]™[Ø\™Y\ÈÈHYˆ	‰ˆ›ÝÝ\PÛÛ[Ø\™
+Y
+K•\HOH›ÝÝ\PØ\™\K”ÚÚ[
+BˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë•Ð\œ˜^J
+NÂˆ›Üˆ
+˜\ˆ[™^HÈ[™^[™[ZY\Ë“[™ÝÈ[™^
+ÊÊBˆÂˆ˜\ˆ[™[^HH[™[ZY\ÖÚ[™^NÂˆYˆ
+[™[^K’Hˆ[™[^K‘[™[^RYOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\Ë•\ÝÝXš™XÝY
+BˆÛÛ[YNÂˆ˜\ˆ[[Ý[H[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝÙ\’YˆOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\Ë‘[œ˜YÙRY
+Bˆ”Ý[JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÊNÂˆYˆ
+[[Ý[H
+BˆÛÛ[YNÂˆ˜\ˆ\YYH\Q[™[^TÝÙ\•ÔÝ]JˆÛÛX˜][™[^Kœ›ÝËœÝÙ\‹œÝ™[™Ý‹[[Ý[
+NÂˆÛÛX˜]H\YYÛÛX˜]Âˆ[™[ZY\ÖÚ[™^HH\YY‘[™[^NÂˆBˆÛÛX˜]HÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆB‚ˆËÈY[Û™Û\ÜÉÜÈÚ]\š[™È™\Ù[˜ÙH\ÈÛ™HÚ^XØ\™ÛÝ[ÝÛ‚ˆËÈ\ˆÝÛ™\‹™YØ\™\ÜÈÙˆÝ\ˆ[™[ZY\ÈÜˆØ\™\K‚ˆ˜\ˆ\]Y[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë•Ð\œ˜^J
+NÂˆ›Üˆ
+˜\ˆ[™^HÈ[™^\]Y[™[ZY\Ë“[™ÝÈ[™^
+ÊÊBˆÂˆ˜\ˆ[™[^HH\]Y[™[ZY\ÖÚ[™^NÂˆYˆ
+[™[^K’Hˆ[™[^K‘[™[^RYOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\ËY[Û™Û\ÜÒY
+BˆÛÛ[YNÂˆ˜\ˆÝÙ\œÈH[™[^K”ÝÙ\”Ý]\Ë•Ð\œ˜^J
+NÂˆ˜\ˆÝÙ\’[™^H\œ˜^K‘š[™[™^
+ÝÙ\œËÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\Ë•Ú]\š[™Ô™\Ù[˜ÙRY
+NÂˆYˆ
+ÝÙ\’[™^
+BˆÛÛ[YNÂˆ˜\ˆ™^HÝÙ\œÖÜÝÙ\’[™^K”ÝXÚÜÈHNÂˆÝÙ\œÖÜÝÙ\’[™^HHÝÙ\œÖÜÝÙ\’[™^HÚ]ˆÂˆÝXÚÜÈH™^ˆÈ™^ˆ‚ˆNÂˆ\]Y[™[ZY\ÖÚ[™^HH[™[^HÚ]ÈÝÙ\œÈHÝÙ\œÈNÂˆÛÛX˜]HÛÛX˜]Ú]È[™[ZY\ÈH\]Y[™[ZY\ÈNÂˆYˆ
+™^H
+BˆÛÛX˜]HYÙ[™\˜]Y[™[^PØ\™ÕÒ[™
+ˆÛÛX˜]›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\Ë•Ú]\’YJNÂˆBˆ™]\›ˆÛÛX˜]ÂˆB‚ˆš]˜]HÝ]XÈ
+^Y\”Ý]H^Y\‹ÛÛX˜]Ý]HÛÛX˜]
+H\Ü]ÚÛÛX˜]]™[
+ˆ^Y\”Ý]H^Y\‹ˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\PÛÛX˜]]™[ÛÛX˜]]™[ˆ›™Ð[™H›™Ëˆ[]™[\Hˆ›ÛÛ[ÝÔÝ\Ü[œÚ[ÛˆH˜[ÙJBˆÂˆYˆ
+]™[\ˆ
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”›ÝÝ\HÛÛX˜]]™[ÚZ[ˆ^ÙYYYHØY™]H\[Z]ˆŠNÂˆB‚ˆYˆ
+ÛÛX˜]]™[’Ú[™ˆOH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›”Ý\Y
+BˆÂˆÛÛX˜]H™\Ù]\•\›”™[XÐÛÝ[\œÊÛÛX˜]
+NÂˆÛÛX˜]HÜ˜[[™[^P[P›ØÚÓÛ”^Y\•\›”Ý\
+ÛÛX˜]
+NÂˆB‚ˆÛÛX˜]H™XÛÜ™ÛÛX˜]ÛÝ[\‘]™[
+ÛÛX˜]ÛÛX˜]]™[
+NÂˆÛÛX˜]H™\ÛÛ™S˜]]™QÛÜžP›ÜÜÐØ\™ÛÚÜÊÛÛX˜]ÛÛX˜]]™[
+NÂˆÛÛX˜]H™Yœ™\Ú˜]]™R]™Uš][Ü\šÊÛÛX˜]
+NÂˆÛÛX˜]H™Yœ™\Ú˜]]™QÛÜžQØ[˜[šXÊÛÛX˜]
+NÂˆÛÛX˜]H™\ÛÛ™S˜]]™PØ\™ÛÛ\][Û”ÝÙ\œÊÛÛX˜]ÛÛX˜]]™[
+NÂˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™^YYˆ	‰ˆÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY\ÈÈHÛÛÜRYˆ	‰ˆÛÛX˜]Ø\™Ë‘š\œÝÜ‘Y˜][
+Ø\™OˆØ\™’[œÝ[˜ÙRYOHÛÛÜRY
+H\ÂˆÈ[˜Ú[Y[ˆÈÚ[™ˆ›ÝÝ\PØ\™[˜Ú[Y[Ú[™‘ÛÛÜHHÛÛÜHHÛÛÜPØ\™
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ÈØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+Ø\™OˆØ\™’[œÝ[˜ÙRYOHÛÛÜRYˆÈØ\™Ú]È[˜Ú[Y[HÛÛÜHÚ]È[[Ý[HÚXÚÙY
+ÛÛÜK[[Ý[
+ÈJHHBˆˆØ\™
+K•Ð\œ˜^J
+HNÂˆYˆ
+ÛÛÜPØ\™”\œÚ\Ý[Ø\™[œÝ[˜ÙRY\ÈÈHXÚÒY
+Bˆ^Y\ˆH^Y\ˆÚ]ÈXÚÈH^Y\‹‘XÚË”Ù[XÝ
+Ø\™O‚ˆØ\™’[œÝ[˜ÙRYOHXÚÒY	‰ˆØ\™‘[˜Ú[Y[\ÈÈÚ[™ˆ›ÝÝ\PØ\™[˜Ú[Y[Ú[™‘ÛÛÜHH\œÚ\Ý[ˆÈØ\™Ú]È[˜Ú[Y[H\œÚ\Ý[Ú]È[[Ý[HÚXÚÙY
+\œÚ\Ý[[[Ý[
+ÈJHHBˆˆØ\™
+K•Ð\œ˜^J
+HNÂˆBˆËÈØ[˜[šXÔÝÙ\‹Y\Ø\™^YY\È[œÝ[YÛˆH]š[™ÂˆËÈÛØ™HXY›ÝÛˆHØ\™ˆHØ\™™[XZ[œÈY™›XÝYY‚ˆËÈHÝÛ™\ˆY\Ë]›È\\ˆ[XYÙHšYÙÙ\ˆš\™\Ë‚ˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™^YYˆ	‰ˆÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY\ÈÈHØ[˜[šXÐØ\™Y
+BˆÂˆ˜\ˆØ\™HÛÛX˜]Ø\™Ë‘š\œÝÜ‘Y˜][
+][HO‚ˆ][K’[œÝ[˜ÙRYOHØ[˜[šXÐØ\™Y
+NÂˆYˆ
+Ø\™ËY™›XÝ[ÛË’Ú[™ˆOH›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™‘Ø[˜[š^™Y
+BˆÂˆ˜\ˆ[XYÙHHÛÛX˜]‘[™[ZY\Âˆ•Ú\™J[™[^HOˆ[™[^K’ˆ
+Bˆ”Ù[XÝX[žJ[™[^HOˆ[™[^K”ÝÙ\”Ý]\ÊBˆ”Ý[JÝÙ\ˆOˆX]“X^
+ÝÙ\‹”ÝXÚÜÊBˆ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘Ø[˜[š^™TÝÙ\Ø\™Ô\”ÝXÚÊNÂˆ˜\ˆXœÛÜ˜™YHX]“Z[ŠÛÛX˜]”^Y\›ØÚËˆX]“X^
+[XYÙJJNÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\›ØÚÈHÛÛX˜]”^Y\›ØÚÈHXœÛÜ˜™YˆNÂˆ˜\ˆÜÜÈH\T^Y\’ÜÜÊˆ^Y\‹ˆÛÛX˜]ˆ[XYÙHHXœÛÜ˜™Y
+NÂˆ^Y\ˆHÜÜË”^Y\ŽÂˆÛÛX˜]HÜÜËÛÛX˜]ÂˆBˆBˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™^YYˆ	‰ˆÛÛX˜]]™[’\ÔÝÙ\™Y]XÚÂˆ	‰ˆÛÛX˜]]™[Ø\™Y\ÈÈHÝÙ\™YØ\™Yˆ	‰ˆ›ÝÝ\PÛÛ[Ø\™
+ÝÙ\™YØ\™Y
+K•\BˆOH›ÝÝ\PØ\™\K]XÚÊBˆÂˆÛÛX˜]H™[[Ý™T^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹”™[[Ý™PY\‘š\œÝÝÙ\™Y]XÚÊNÂˆBˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Y
+BˆÂˆ˜\ˆš]X[Ý™[™ÝHÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆX]“X^
+ÝÙ\‹”ÝXÚÜÊBˆ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”^Y\”Ý™[™Ý]\›‘[™\”ÝXÚÊNÂˆYˆ
+š]X[Ý™[™Ýˆ
+BˆÂˆÛÛX˜]H\T^Y\”ÝÙ\ŠˆÛÛX˜]ˆœ›ÝËœÝÙ\‹œÝ™[™Ý‹ˆš]X[Ý™[™Ý
+NÂˆB‚ˆ˜\ˆ][™ÈHÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆX]“X^
+ÝÙ\‹”ÝXÚÜÊBˆ
+ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”^Y\›ØÚÐ]\›‘[™\”ÝXÚÊNÂˆYˆ
+][™Èˆ
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\›ØÚÈHÛÛX˜]”^Y\›ØÚÂˆ
+ÈX]“X^
+[ÙYžT^Y\›ØÚÑØZ[ŠˆÛÛX˜]][™Ëœ›ÛPØ\™ˆ˜[ÙJJBˆNÂˆBˆB‚ˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™^YYˆ	‰ˆÛÛX˜]]™[Ø\™Y\ÈÈH^YYØ\™Yˆ	‰ˆ›ÝÝ\PÛÛ[Ø\™
+^YYØ\™Y
+K•\BˆOH›ÝÝ\PØ\™\K”ÚÚ[
+BˆÂˆ›Ü™XXÚ
+˜\ˆÝÙ\ˆ[ˆÛÛX˜]”^Y\”ÝÙ\œÊBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆYˆ
+ÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆYš[š][Û‹”ÚÚ[^PY™›XÝ[Ûˆ\ÈÈHÚ[™
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+Ø\™O‚ˆ›ÝÝ\PÛÛ[Ø\™
+Ø\™Ø\™Y
+K•\BˆOH›ÝÝ\PØ\™\K”ÚÚ[ˆ	‰ˆØ\™Y™›XÝ[Ûˆ\È[ˆÈØ\™Ú]ˆÂˆY™›XÝ[ÛˆH™]È›ÝÝ\PØ\™Y™›XÝ[ÛŠÚ[™
+BˆBˆˆØ\™
+K•Ð\œ˜^J
+BˆNÂˆBˆBˆB‚ˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Y
+BˆÂˆ˜\ˆÛX\’Ú[™ÈHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+BˆÛX\“X]Ú[™ÐY™›XÝ[Û]^Y\•\›‘[™
+Bˆ”Ù[XÝ
+ÝÙ\ˆOˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”ÚÚ[^PY™›XÝ[ÛŠBˆ“Ù•\O›ÝÝ\PØ\™Y™›XÝ[Û’Ú[™Š
+Bˆ•Ò\ÚÙ]
+
+NÂˆYˆ
+ÛX\’Ú[™ËÛÝ[ˆ
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆØ\™ÈHÛÛX˜]Ø\™Ë”Ù[XÝ
+Ø\™O‚ˆØ\™Y™›XÝ[Ûˆ\ÈÈÛÝ\˜ÙQ[™[^R[œÝ[˜ÙRYˆ[BˆY™›XÝ[Û‚ˆ	‰ˆÛX\’Ú[™ËÛÛZ[œÊY™›XÝ[Û‹’Ú[™
+BˆÈØ\™Ú]ÈY™›XÝ[ÛˆH[BˆˆØ\™
+K•Ð\œ˜^J
+BˆNÂˆBˆB‚ˆ˜\ˆÝXœØÜšX™\œÈH™]È\Ý›ÝÝ\Q]™[ÝXœØÜšX™\”Ý]OŠ
+NÂ‚ˆ›Ü™XXÚ
+˜\ˆÝÙ\ˆ[ˆÛÛX˜]”^Y\”ÝÙ\œÊBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆÝXœØÜšX™\œËY˜[™ÙJˆYš[š][Û‹•šYÙÙ\œÂˆ”Ù[XÝ
+
+šYÙÙ\‹[™^
+HOˆ™]ÈÈšYÙÙ\ˆHšYÙÙ\‹[™^H[™^JBˆ•Ú\™J][HO‚ˆ][K•šYÙÙ\‹‘]™[Ú[™OHÛÛX˜]]™[’Ú[™ˆ	‰ˆ
+Z][K•šYÙÙ\‹‘^ÛYR[™˜]ÂˆXÛÛX˜]]™[‘œ›ÛR[™˜]ÊBˆ	‰ˆ
+Z][K•šYÙÙ\‹”™\]Z\™\Ô^Y\•\›‚ˆÛÛX˜]’\Ô^Y\•\›ŠBˆ	‰ˆ
+][K•šYÙÙ\‹”™\]Z\™YÛÝ\˜ÙPØ\™\H\È[ˆ
+ÛÛX˜]]™[Ø\™Y\È›Ý[ˆ	‰ˆ›ÝÝ\PÛÛ[Ø\™
+ˆÛÛX˜]]™[Ø\™Y
+K•\BˆOH][K•šYÙÙ\‹”™\]Z\™YÛÝ\˜ÙPØ\™\K•˜[YJJBˆ	‰ˆZ][K•šYÙÙ\‹”™\]Z\™\ÓÝÛ™\•\™Ù]ˆ	‰ˆ
+ÛÛX˜]]™[”ÝÙ\\XØ][Û“Ü™\ÙZ[[™È\È[ˆÝÙ\‹\XØ][Û“Ü™\‚ˆHÛÛX˜]]™[”ÝÙ\\XØ][Û“Ü™\ÙZ[[™Ë•˜[YJJBˆ”Ù[XÝ
+][HOˆ™]È›ÝÝ\Q]™[ÝXœØÜšX™\”Ý]JˆÝÙ\‹\XØ][Û“Ü™\‹ˆ][K•šYÙÙ\‹‘Y™™XÝËˆÝÙ\‹”ÝXÚÜËˆ›ÝÝ\QY™™XÝÛÝ\˜ÙRÚ[™”ÝÙ\‹ˆÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\ŽˆÝÙ\‹\XØ][Û“Ü™\‹ˆÝÙ\Ø\™^[ØYˆÝÙ\‹Ø\™^[ØYË‘›ÜšÊ
+Kˆ™[[Ý™TÛÝ\˜ÙTÝÙ\Y\•šYÙÙ\Ž‚ˆ][K•šYÙÙ\‹”™[[Ý™TÛÝ\˜ÙTÝÙ\Y\•šYÙÙ\‹ˆ]™\žSˆ][K•šYÙÙ\‹‘]™\žSˆÝÙ\•šYÙÙ\’[™^ˆ][K’[™^ˆÛÝ[ÝÛ™Y›Ü™UšYÙÙ\Žˆ][K•šYÙÙ\‹ÛÝ[ÝÛ™Y›Ü™UšYÙÙ\‹ˆÛÝ\˜ÙTÝÙ\”ÝÜ™Y˜[YNˆÝÙ\‹”ÝÜ™Y˜[YJJJNÂˆB‚ˆ›Ü™XXÚ
+˜\ˆ[™[^H[ˆÛÛX˜]‘[™[ZY\ÊBˆÂˆ›Ü™XXÚ
+˜\ˆÝÙ\ˆ[ˆ[™[^K”ÝÙ\”Ý]\ÊBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆÝXœØÜšX™\œËY˜[™ÙJˆYš[š][Û‹•šYÙÙ\œÂˆ•Ú\™JšYÙÙ\ˆO‚ˆšYÙÙ\‹‘]™[Ú[™OHÛÛX˜]]™[’Ú[™ˆ	‰ˆ
+]šYÙÙ\‹‘^ÛYR[™˜]ÂˆXÛÛX˜]]™[‘œ›ÛR[™˜]ÊBˆ	‰ˆ
+]šYÙÙ\‹”™\]Z\™\Ô^Y\•\›‚ˆÛÛX˜]’\Ô^Y\•\›ŠBˆ	‰ˆ
+šYÙÙ\‹”™\]Z\™YÛÝ\˜ÙPØ\™\H\È[ˆ
+ÛÛX˜]]™[Ø\™Y\È›Ý[ˆ	‰ˆ›ÝÝ\PÛÛ[Ø\™
+ˆÛÛX˜]]™[Ø\™Y
+K•\BˆOHšYÙÙ\‹”™\]Z\™YÛÝ\˜ÙPØ\™\K•˜[YJJBˆ	‰ˆ
+ÛÛX˜]]™[”ÝÙ\\XØ][Û“Ü™\ÙZ[[™È\È[ˆÝÙ\‹\XØ][Û“Ü™\‚ˆHÛÛX˜]]™[”ÝÙ\\XØ][Û“Ü™\ÙZ[[™Ë•˜[YJBˆ	‰ˆ
+]šYÙÙ\‹”™\]Z\™\ÓÝÛ™\•\™Ù]ˆÛÛX˜]]™[•\™Ù][™[^RYOH[™[^K’[œÝ[˜ÙRY
+Bˆ	‰ˆ
+[™[^K’ˆˆ
+šYÙÙ\‹”™\]Z\™\ÓÝÛ™\•\™Ù]ˆ	‰ˆÛÛX˜]]™[•\™Ù][™[^RYOH[™[^K’[œÝ[˜ÙRY
+JJBˆ”Ù[XÝ
+šYÙÙ\ˆOˆ™]È›ÝÝ\Q]™[ÝXœØÜšX™\”Ý]JˆÝÙ\‹\XØ][Û“Ü™\‹ˆšYÙÙ\‹‘Y™™XÝËˆÝÙ\‹”ÝXÚÜËˆ›ÝÝ\QY™™XÝÛÝ\˜ÙRÚ[™”ÝÙ\‹ˆÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\ŽˆÝÙ\‹\XØ][Û“Ü™\‹ˆÛÝ\˜ÙTÝÙ\‘[™[^RYˆ[™[^K’[œÝ[˜ÙRYˆÝÙ\Ø\™^[ØYˆÝÙ\‹Ø\™^[ØYË‘›ÜšÊ
+Kˆ™[[Ý™TÛÝ\˜ÙTÝÙ\Y\•šYÙÙ\Ž‚ˆšYÙÙ\‹”™[[Ý™TÛÝ\˜ÙTÝÙ\Y\•šYÙÙ\ŠJJNÂˆBˆB‚ˆ›Üˆ
+˜\ˆ™[XÒ[™^HÈ™[XÒ[™^ÛÛX˜]”™[XÔÝ]\Ë“[™ÝÈ™[XÒ[™^
+ÊÊBˆÂˆ˜\ˆ™[XÈHÛÛX˜]”™[XÔÝ]\ÖÜ™[XÒ[™^NÂˆYˆ
+™[XË’\ÓY[Y
+BˆÛÛ[YNÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”™[XÊ™[XË”™[XÒY
+NÂˆ˜\ˆšYÙÙ\œÈHYš[š][Û‹•šYÙÙ\œÈÏÈ\œ˜^K‘[\O›ÝÝ\T™[XÕšYÙÙ\”ÜXÏŠ
+NÂˆYˆ
+™[XË”™[XÒYOH˜]]™TY[™]Ø\™ÕŒLLK•X\œÒY	‰ˆ\™[XË’YYÝ™\‘[™\™ÞJBˆÛÛ[YNÂˆ›Üˆ
+˜\ˆšYÙÙ\’[™^HÈšYÙÙ\’[™^šYÙÙ\œË“[™ÝÈšYÙÙ\’[™^
+ÊÊBˆÂˆ˜\ˆšYÙÙ\ˆHšYÙÙ\œÖÝšYÙÙ\’[™^NÂˆYˆ
+šYÙÙ\‹‘]™[Ú[™OHÛÛX˜]]™[’Ú[™ˆ
+šYÙÙ\‹”™\]Z\™YÛÝ\˜ÙPØ\™\H\È›Ý[ˆ	‰ˆ
+ÛÛX˜]]™[Ø\™Y\È[ˆ›ÝÝ\PÛÛ[Ø\™
+ˆÛÛX˜]]™[Ø\™Y
+K•\BˆOHšYÙÙ\‹”™\]Z\™YÛÝ\˜ÙPØ\™\K•˜[YJJBˆ
+šYÙÙ\‹”™\]Z\™\Ñ[\R[™ˆ	‰ˆÛÛX˜]’[™“[™ÝOH
+BˆT™[XÕšYÙÙ\“X]Ú\Ô^Y\ŠˆšYÙÙ\‹ˆ^Y\‹ˆÛÛX˜]
+JBˆÂˆÛÛ[YNÂˆB‚ˆÝXœØÜšX™\œËY
+™]È›ÝÝ\Q]™[ÝXœØÜšX™\”Ý]Jˆ™[XË\XØ][Û“Ü™\‹ˆšYÙÙ\‹‘Y™™XÝËˆÝÙ\”ÝXÚÜÎˆˆÛÝ\˜ÙRÚ[™ˆ›ÝÝ\QY™™XÝÛÝ\˜ÙRÚ[™”™[XËˆ™[XÔÝ]R[™^ˆ™[XÒ[™^ˆ™[XÕšYÙÙ\’[™^ˆšYÙÙ\’[™^ˆ]™\žSˆšYÙÙ\‹‘]™\žSˆX^šYÙÙ\œÔ\ÛÝ[\•Ú[™ÝÎ‚ˆšYÙÙ\‹“X^šYÙÙ\œÔ\ÛÝ[\•Ú[™ÝÊJNÂˆBˆB‚ˆ˜\ˆÜ™\™YÝXœØÜšX™\œÈHÝXœØÜšX™\œÂˆ“Ü™\žJ][HOˆ][K\XØ][Û“Ü™\ŠBˆ•Ð\œ˜^J
+NÂ‚ˆ›Üˆ
+˜\ˆÝXœØÜšX™\’[™^HÂˆÝXœØÜšX™\’[™^Ü™\™YÝXœØÜšX™\œË“[™ÝÂˆÝXœØÜšX™\’[™^
+ÊÊBˆÂˆ˜\ˆÝXœØÜšX™\ˆHÜ™\™YÝXœØÜšX™\œÖÜÝXœØÜšX™\’[™^NÂˆYˆ
+ÝXœØÜšX™\‹”ÝÙ\•šYÙÙ\’[™^\È›Ý[
+BˆÂˆ˜\ˆÚXÚÙYÝÙ\ˆHÚXÚÔÝÙ\”ÝXœØÜšX™\•šYÙÙ\ŠÛÛX˜]ÝXœØÜšX™\ŠNÂˆÛÛX˜]HÚXÚÙYÝÙ\‹ÛÛX˜]ÂˆYˆ
+XÚXÚÙYÝÙ\‹”ÚÝ[šYÙÙ\ŠBˆÂˆÛÛ[YNÂˆBˆB‚ˆYˆ
+ÝXœØÜšX™\‹”™[XÔÝ]R[™^\È›Ý[
+BˆÂˆYˆ
+ÝXœØÜšX™\‹”™[XÕšYÙÙ\’[™^\È[ÝXœØÜšX™\‹‘]™\žSH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ”™[XÈšYÙÙ\ˆÛÝ[\ˆY]Y]H\È[˜[YˆŠNÂˆB‚ˆ˜\ˆ[˜Ü™[Y[YH[˜Ü™[Y[™[XÕšYÙÙ\ÛÝ[\ŠˆÛÛX˜]ˆÝXœØÜšX™\‹”™[XÔÝ]R[™^•˜[YKˆÝXœØÜšX™\‹”™[XÕšYÙÙ\’[™^•˜[YJNÂˆÛÛX˜]H[˜Ü™[Y[YÛÛX˜]Âˆ^Y\ˆH\œÚ\Ý™[XÕšYÙÙ\ÛÝ[
+ˆ^Y\‹ˆÛÛX˜]”™[XÔÝ]\ÖÜÝXœØÜšX™\‹”™[XÔÝ]R[™^•˜[YWKˆÝXœØÜšX™\‹”™[XÕšYÙÙ\’[™^•˜[YKˆ[˜Ü™[Y[YÛÝ[
+NÂˆYˆ
+ÝXœØÜšX™\‹“X^šYÙÙ\œÔ\ÛÝ[\•Ú[™ÝÈ\ÂˆÈHX^šYÙÙ\œÂˆ	‰ˆ[˜Ü™[Y[YÛÝ[ˆX^šYÙÙ\œÊBˆÂˆÛÛ[YNÂˆB‚ˆYˆ
+[˜Ü™[Y[YÛÝ[	HÝXœØÜšX™\‹‘]™\žSOH
+BˆÂˆÛÛ[YNÂˆBˆB‚ˆ˜\ˆÜ\˜][ÛœÈH™]È]Y]YO›ÝÝ\T]Y]YYÜ\˜][ÛŠ
+NÂˆ›Ü™XXÚ
+˜\ˆY™™XÝ[ˆÝXœØÜšX™\‹‘Y™™XÝÊBˆÂˆ[œ]Y]YQY™™XÝÜ\˜][ÛœÊˆÜ\˜][ÛœËˆY™™XÝˆ\Ü˜YS]™[ˆˆ[™\™ÞTÜ[ˆˆXÝ[Û•\™Ù][™[^RYˆÛÛX˜]]™[•\™Ù][™[^RYˆÛÛX˜]ˆÛÛX˜]ˆÝÙ\”ÝXÚÜÎˆÝXœØÜšX™\‹”ÝÙ\”ÝXÚÜËˆÛÝ\˜ÙRÚ[™ˆÝXœØÜšX™\‹”ÛÝ\˜ÙRÚ[™ˆÝÙ\Ø\™^[ØYˆÝXœØÜšX™\‹”ÝÙ\Ø\™^[ØYˆÛÝ\˜ÙTÝÙ\‘[™[^RY‚ˆÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\‘[™[^RYˆÛÝ\˜ÙTÝÙ\”ÝÜ™Y˜[YN‚ˆÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\”ÝÜ™Y˜[YKˆÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\Ž‚ˆÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\ŠNÂˆB‚ˆ˜\ˆÛÛ[X][ÛˆBˆ™]È›ÝÝ\Q]™[\Ü]ÚÛÛ[X][Û”Ý]JˆÛÛX˜]]™[ˆÝXœØÜšX™\‹‘›ÜšÊ
+KˆÜ™\™YÝXœØÜšX™\œÂˆ”ÚÚ\
+ÝXœØÜšX™\’[™^
+ÈJBˆ”Ù[XÝ
+][HOˆ][K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+Kˆ]™[\
+NÂˆ˜\ˆ™\ÛÛ™YH™\ÛÛ™SÜ\˜][ÛœÊˆ^Y\‹ˆÛÛX˜]ˆÜ\˜][ÛœËˆ›™Ëˆ]™[\ˆ]™[\ˆ]™[ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY‚ˆÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆ]™[\Ü]ÚÛÛ[X][ÛŽ‚ˆÛÛ[X][ÛŠNÂˆ^Y\ˆH™\ÛÛ™Y”^Y\ŽÂˆÛÛX˜]H™\ÛÛ™YÛÛX˜]Â‚ˆYˆ
+ÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆYˆ
+X[ÝÔÝ\Ü[œÚ[ÛŠBˆÂˆ›ÝÈ™]È›ÝÝ\ÜY^Ù\[ÛŠˆÛÛX˜]Y]™[Ý\Ü[œÚ[ÛˆÝ]ÚYHHÜ[]™[]]ÛX]XÈ]™[Ý\™\]Z\™\È[ˆÝ]\ˆÛÛ[X][Ûˆœ˜[YKˆŠNÂˆB‚ˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆB‚ˆÛÛX˜]Hš[˜[^™Q]™[ÝXœØÜšX™\ŠˆÛÛX˜]ˆÝXœØÜšX™\ŠNÂˆB‚ˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Y
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆO‚ˆT›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™[[Ý™P]^Y\•\›‘[™
+Bˆ•Ð\œ˜^J
+BˆNÂˆÛÛX˜]HXÜ™[Y[^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹‘XÜ™[Y[]^Y\•\›‘[™
+NÂˆÛÛX˜]H™\Ù]^Y\”ÝÙ\•šYÙÙ\ÛÝ[\œÊÛÛX˜]
+NÂˆB‚ˆYˆ
+ÛÛX˜]]™[’Ú[™OH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›”Ý\Y
+BˆÂˆÛÛX˜]HXÜ™[Y[^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹‘XÜ™[Y[Y\”^Y\•\›”Ý\
+NÂˆB‚ˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆB‚ˆš]˜]HÝ]XÈ
+^Y\”Ý]H^Y\‹ÛÛX˜]Ý]HÛÛX˜]
+Bˆ™\Ý[YQ]™[\Ü]ÚÛÛ[X][ÛŠˆ^Y\”Ý]H^Y\‹ˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\Q]™[\Ü]ÚÛÛ[X][Û”Ý]HÛÛ[X][Û‹ˆ›™Ð[™H›™ÊBˆÂˆÛÛX˜]Hš[˜[^™Q]™[ÝXœØÜšX™\ŠˆÛÛX˜]ˆÛÛ[X][Û‹Ý\œ™[ÝXœØÜšX™\ŠNÂ‚ˆ˜\ˆ™[XZ[š[™ÈHÛÛ[X][Û‹”™[XZ[š[™ÔÝXœØÜšX™\œÎÂˆ›Üˆ
+˜\ˆ[™^HÈ[™^™[XZ[š[™Ë“[™ÝÈ[™^
+ÊÊBˆÂˆ˜\ˆÝXœØÜšX™\ˆH™[XZ[š[™ÖÚ[™^NÂˆYˆ
+ÝXœØÜšX™\‹”ÝÙ\•šYÙÙ\’[™^\È›Ý[
+BˆÂˆ˜\ˆÚXÚÙYÝÙ\ˆHÚXÚÔÝÙ\”ÝXœØÜšX™\•šYÙÙ\ŠÛÛX˜]ÝXœØÜšX™\ŠNÂˆÛÛX˜]HÚXÚÙYÝÙ\‹ÛÛX˜]ÂˆYˆ
+XÚXÚÙYÝÙ\‹”ÚÝ[šYÙÙ\ŠBˆÂˆÛÛ[YNÂˆBˆB‚ˆYˆ
+ÝXœØÜšX™\‹”™[XÔÝ]R[™^\È›Ý[
+BˆÂˆYˆ
+ÝXœØÜšX™\‹”™[XÕšYÙÙ\’[™^\È[ˆÝXœØÜšX™\‹‘]™\žSH
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”™[XÈšYÙÙ\ˆÛÝ[\ˆY]Y]H\È[˜[YˆŠNÂˆB‚ˆ˜\ˆ[˜Ü™[Y[YH[˜Ü™[Y[™[XÕšYÙÙ\ÛÝ[\ŠˆÛÛX˜]ˆÝXœØÜšX™\‹”™[XÔÝ]R[™^•˜[YKˆÝXœØÜšX™\‹”™[XÕšYÙÙ\’[™^•˜[YJNÂˆÛÛX˜]H[˜Ü™[Y[YÛÛX˜]Âˆ^Y\ˆH\œÚ\Ý™[XÕšYÙÙ\ÛÝ[
+ˆ^Y\‹ˆÛÛX˜]”™[XÔÝ]\ÖÜÝXœØÜšX™\‹”™[XÔÝ]R[™^•˜[YWKˆÝXœØÜšX™\‹”™[XÕšYÙÙ\’[™^•˜[YKˆ[˜Ü™[Y[YÛÝ[
+NÂˆYˆ
+ÝXœØÜšX™\‹“X^šYÙÙ\œÔ\ÛÝ[\•Ú[™ÝÈ\ÂˆÈHX^šYÙÙ\œÂˆ	‰ˆ[˜Ü™[Y[YÛÝ[ˆX^šYÙÙ\œÊBˆÂˆÛÛ[YNÂˆB‚ˆYˆ
+[˜Ü™[Y[YÛÝ[	HÝXœØÜšX™\‹‘]™\žSOH
+BˆÂˆÛÛ[YNÂˆBˆB‚ˆ˜\ˆÜ\˜][ÛœÈH™]È]Y]YO›ÝÝ\T]Y]YYÜ\˜][ÛŠ
+NÂˆ›Ü™XXÚ
+˜\ˆY™™XÝ[ˆÝXœØÜšX™\‹‘Y™™XÝÊBˆÂˆ[œ]Y]YQY™™XÝÜ\˜][ÛœÊˆÜ\˜][ÛœËˆY™™XÝˆ\Ü˜YS]™[ˆˆ[™\™ÞTÜ[ˆˆXÝ[Û•\™Ù][™[^RY‚ˆÛÛ[X][Û‹ÛÛX˜]]™[•\™Ù][™[^RYˆÛÛX˜]ˆÛÛX˜]ˆÝÙ\”ÝXÚÜÎˆÝXœØÜšX™\‹”ÝÙ\”ÝXÚÜËˆÛÝ\˜ÙRÚ[™ˆÝXœØÜšX™\‹”ÛÝ\˜ÙRÚ[™ˆÝÙ\Ø\™^[ØYˆÝXœØÜšX™\‹”ÝÙ\Ø\™^[ØYˆÛÝ\˜ÙTÝÙ\‘[™[^RY‚ˆÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\‘[™[^RYˆÛÝ\˜ÙTÝÙ\”ÝÜ™Y˜[YN‚ˆÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\”ÝÜ™Y˜[YKˆÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\Ž‚ˆÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\ŠNÂˆB‚ˆ˜\ˆ™^ÛÛ[X][ÛˆBˆ™]È›ÝÝ\Q]™[\Ü]ÚÛÛ[X][Û”Ý]JˆÛÛ[X][Û‹ÛÛX˜]]™[ˆÝXœØÜšX™\‹‘›ÜšÊ
+Kˆ™[XZ[š[™Âˆ”ÚÚ\
+[™^
+ÈJBˆ”Ù[XÝ
+][HOˆ][K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+KˆÛÛ[X][Û‹‘]™[\
+NÂˆ˜\ˆ™\ÛÛ™YH™\ÛÛ™SÜ\˜][ÛœÊˆ^Y\‹ˆÛÛX˜]ˆÜ\˜][ÛœËˆ›™Ëˆ]™[\ˆÛÛ[X][Û‹‘]™[\ˆ]™[ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY‚ˆÛÛ[X][Û‹ÛÛX˜]]™[”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆ]™[\Ü]ÚÛÛ[X][ÛŽ‚ˆ™^ÛÛ[X][ÛŠNÂˆ^Y\ˆH™\ÛÛ™Y”^Y\ŽÂˆÛÛX˜]H™\ÛÛ™YÛÛX˜]Â‚ˆYˆ
+ÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆB‚ˆÛÛX˜]Hš[˜[^™Q]™[ÝXœØÜšX™\ŠˆÛÛX˜]ˆÝXœØÜšX™\ŠNÂˆB‚ˆYˆ
+ÛÛ[X][Û‹ÛÛX˜]]™[’Ú[™ˆOH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›‘[™Y
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆO‚ˆT›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™[[Ý™P]^Y\•\›‘[™
+Bˆ•Ð\œ˜^J
+BˆNÂˆÛÛX˜]HXÜ™[Y[^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹‘XÜ™[Y[]^Y\•\›‘[™
+NÂˆÛÛX˜]H™\Ù]^Y\”ÝÙ\•šYÙÙ\ÛÝ[\œÊÛÛX˜]
+NÂˆB‚ˆYˆ
+ÛÛ[X][Û‹ÛÛX˜]]™[’Ú[™ˆOH›ÝÝ\PÛÛX˜]]™[Ú[™”^Y\•\›”Ý\Y
+BˆÂˆÛÛX˜]HXÜ™[Y[^Y\”ÝÙ\œÊˆÛÛX˜]ˆYš[š][ÛˆOˆYš[š][Û‹‘XÜ™[Y[Y\”^Y\•\›”Ý\
+NÂˆB‚ˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]Hš[˜[^™Q]™[ÝXœØÜšX™\ŠˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\Q]™[ÝXœØÜšX™\”Ý]HÝXœØÜšX™\ŠBˆÂˆYˆ
+\ÝXœØÜšX™\‹”™[[Ý™TÛÝ\˜ÙTÝÙ\Y\•šYÙÙ\ŠBˆÂˆ™]\›ˆÛÛX˜]ÂˆB‚ˆYˆ
+ÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\ˆ\È[
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”Ù[‹\™[[Ýš[™ÈÝÙ\ˆšYÙÙ\ˆ\ÈZ\ÜÚ[™ÈÛÝ\˜ÙK\ÝÙ\ˆY[]KˆŠNÂˆB‚ˆ™]\›ˆ™[[Ý™TÝÙ\’[œÝ[˜ÙJˆÛÛX˜]ˆÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\\XØ][Û“Ü™\‹•˜[YKˆÝXœØÜšX™\‹”ÛÝ\˜ÙTÝÙ\‘[™[^RY
+NÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™[[Ý™TÝÙ\’[œÝ[˜ÙJˆÛÛX˜]Ý]HÛÛX˜]ˆÛ™È\XØ][Û“Ü™\‹ˆ[È[™[^RY
+BˆÂˆYˆ
+[™[^RY\È[
+BˆÂˆ™]\›ˆÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ˆOH\XØ][Û“Ü™\ŠBˆ•Ð\œ˜^J
+BˆNÂˆB‚ˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JK•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+ˆ[™[ZY\Ëˆ[™[^HOˆ[™[^K’[œÝ[˜ÙRYOH[™[^RY•˜[YJNÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^HÙ[™[^RY•˜[Y_H\ÈZ\ÜÚ[™ÈÚ[H™[[Ýš[™ÈHÝÙ\‹ˆŠNÂˆB‚ˆ[™[ZY\ÖÚ[™^HH[™[ZY\ÖÚ[™^HÚ]ˆÂˆÝÙ\œÈH[™[ZY\ÖÚ[™^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ˆOH\XØ][Û“Ü™\ŠBˆ•Ð\œ˜^J
+BˆNÂˆ™]\›ˆÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆB‚ˆš]˜]HÝ]XÈT™XYÛ›S\ÝØ[YPXÝ[ÛˆÙ][™[™ÐÚÚXÙPXÝ[ÛœÊˆ[™[™ÐÛÛX˜]ÚÚXÙTÝ]H[™[™ÊBˆÂˆYˆ
+TÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Ê[™[™ËÚÚXÙRYœÙ[XÝØØ\™ÈŠJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	•[šÛ›ÝÛˆ[™[™ÈÛÛX˜]ÚÚXÙH	ÞÜ[™[™ËÚÚXÙRYIËˆŠNÂˆB‚ˆ˜\ˆXÝ[ÛœÈH™]È\ÝØ[YPXÝ[ÛŠ
+NÂˆYˆ
+[™[™Ë”Ù[XÝ[Û‹”Ù\]Y[X[Ü[Û˜[
+BˆÂˆ˜\ˆÙ[XÝYÛÝ[Bˆ[™[™Ë”Ù\]Y[X[Ù[XÝYØ\™[œÝ[˜ÙRYÏË“[™ÝˆÏÈÂˆ›Ü™XXÚ
+˜\ˆØ[™Y]H[‚ˆ[™[™ËØ[™Y]PØ\™[œÝ[˜ÙRYÊBˆÂˆYˆ
+Ù[XÝYÛÝ[ˆH[™[™Ë”Ù[XÝ[Û‹“X^Ù[XÝ[ÛœÊBˆÂˆœ™XZÎÂˆB‚ˆXÝ[ÛœËY
+Ø[YPXÝ[Û‹Ü™X]JˆœÙ[XÝØØ\™È‹ˆ™]ÈÙ[XÝØ\™Ô^[ØY
+ØØ[™Y]WJJJNÂˆB‚ˆYˆ
+Ù[XÝYÛÝ[ˆH[™[™Ë”Ù[XÝ[Û‹“Z[”Ù[XÝ[ÛœÊBˆÂˆXÝ[ÛœËY
+Ø[YPXÝ[Û‹Ü™X]JˆœÙ[XÝØØ\™È‹ˆ™]ÈÙ[XÝØ\™Ô^[ØY
+×JJJNÂˆB‚ˆ™]\›ˆXÝ[ÛœÎÂˆB‚ˆ›Üˆ
+˜\ˆÛÝ[H[™[™Ë”Ù[XÝ[Û‹“Z[”Ù[XÝ[ÛœÎÂˆÛÝ[H[™[™Ë”Ù[XÝ[Û‹“X^Ù[XÝ[ÛœÎÂˆÛÝ[
+ÊÊBˆÂˆ›Ü™XXÚ
+˜\ˆÙ[XÝ[Ûˆ[ˆÚÛÜÙPÛÛXš[˜][ÛœÊˆ[™[™ËØ[™Y]PØ\™[œÝ[˜ÙRYËˆÛÝ[
+JBˆÂˆXÝ[ÛœËY
+Ø[YPXÝ[Û‹Ü™X]JˆœÙ[XÝØØ\™È‹ˆ™]ÈÙ[XÝØ\™Ô^[ØY
+Ù[XÝ[ÛŠJJNÂˆBˆB‚ˆ™]\›ˆXÝ[ÛœÎÂˆB‚ˆš]˜]HÝ]XÈ[”Ý]H™\ÛÛ™T[™[™ÐÚÚXÙJ[”Ý]HÝ]KØ[YPXÝ[ÛˆXÝ[ÛŠBˆÂˆ™\]Z\™RÚ[™
+XÝ[Û‹œÙ[XÝØØ\™ÈŠNÂˆ˜\ˆ^[ØYHXÝ[Û‹”™XY^[ØYÙ[XÝØ\™Ô^[ØYŠ
+NÂˆ˜\ˆÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆÛÛX˜]HÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]\ÙH\È›ÈÛÛX˜]Ý]KˆŠNÂˆ˜\ˆ[™[™ÈHÛÛX˜]”[™[™ÐÚÚXÙBˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠÛÛX˜]\È›È[™[™ÈÚÚXÙKˆŠNÂ‚ˆYˆ
+TÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[Ê[™[™ËÚÚXÙRYœÙ[XÝØØ\™ÈŠJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	•[šÛ›ÝÛˆ[™[™ÈÛÛX˜]ÚÚXÙH	ÞÜ[™[™ËÚÚXÙRYIËˆŠNÂˆB‚ˆ˜\ˆÙ[XÝYH^[ØYØ\™[œÝ[˜ÙRYÎÂˆYˆ
+Ù[XÝY“[™ÝOHÙ[XÝY‘\Ý[˜Ý
+
+KÛÝ[
+
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆØ\™Ù[XÝ[ÛˆÛÛZ[œÈ\XØ]H[œÝ[˜ÙHQËˆŠNÂˆB‚ˆYˆ
+[™[™Ë”Ù[XÝ[Û‹”Ù\]Y[X[Ü[Û˜[
+BˆÂˆYˆ
+Ù[XÝY“[™ÝˆJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”Ù\]Y[X[Ø\™Ù[XÝ[ÛˆXØÙ\ÈÛ™HØ\™ÜˆHš[š\ÚXÝ[Û‹ˆŠNÂˆB‚ˆ˜\ˆXØÝ[][]YBˆ[™[™Ë”Ù\]Y[X[Ù[XÝYØ\™[œÝ[˜ÙRYÂˆÏÈ\œ˜^K‘[\OÛ™ÏŠ
+NÂˆYˆ
+Ù[XÝY“[™ÝOHJBˆÂˆ˜\ˆÙ[XÝYYHÙ[XÝYÌNÂˆYˆ
+\[™[™ËØ[™Y]PØ\™[œÝ[˜ÙRYÂˆÛÛZ[œÊÙ[XÝYY
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”Ù\]Y[X[Ù[XÝ[ÛˆÛÛZ[œÈHØ\™Ý]ÚYHH[™[™ÈØ[™Y]HÙ]ˆŠNÂˆB‚ˆ˜\ˆ™^XØÝ[][]YBˆXØÝ[][]Y\[™
+Ù[XÝYY
+K•Ð\œ˜^J
+NÂˆ˜\ˆ™[XZ[š[™ÐØ[™Y]\ÈBˆ[™[™ËØ[™Y]PØ\™[œÝ[˜ÙRYÂˆ•Ú\™JYOˆYOHÙ[XÝYY
+Bˆ•Ð\œ˜^J
+NÂ‚ˆYˆ
+™^XØÝ[][]Y“[™Ýˆ[™[™Ë”Ù[XÝ[Û‹“X^Ù[XÝ[ÛœÂˆ	‰ˆ™[XZ[š[™ÐØ[™Y]\Ë“[™Ýˆ
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™[™ÐÚÚXÙHH[™[™ÈÚ]ˆÂˆØ[™Y]PØ\™[œÝ[˜ÙRYÈBˆ™[XZ[š[™ÐØ[™Y]\ËˆÙ\]Y[X[Ù[XÝYØ\™[œÝ[˜ÙRYÈBˆ™^XØÝ[][]YˆBˆNÂˆ™]\›ˆÝ]HÚ]ˆÂˆÛÜ›HÛÜ›Ú]ˆÂˆÛÛX˜]HÛÛX˜]ˆBˆNÂˆB‚ˆÙ[XÝYH™^XØÝ[][]YÂˆBˆ[ÙBˆÂˆYˆ
+XØÝ[][]Y“[™Ýˆ[™[™Ë”Ù[XÝ[Û‹“Z[”Ù[XÝ[ÛœÊBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”Ù\]Y[X[Ù[XÝ[ÛˆØ[››Ýš[š\Ú™Y›Ü™H]ÈZ[š[][HÙ[XÝ[ÛˆÛÝ[ˆŠNÂˆB‚ˆÙ[XÝYHXØÝ[][]YÂˆBˆB‚ˆYˆ
+Ù[XÝY“[™Ý[™[™Ë”Ù[XÝ[Û‹“Z[”Ù[XÝ[ÛœÂˆÙ[XÝY“[™Ýˆ[™[™Ë”Ù[XÝ[Û‹“X^Ù[XÝ[ÛœÊBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	”Ù[XÝ[ÛˆÛÝ[ÜÙ[XÝY“[™ÝH\ÈÝ]ÚYHˆ
+Âˆ	žÜ[™[™Ë”Ù[XÝ[Û‹“Z[”Ù[XÝ[ÛœßK‹žÜ[™[™Ë”Ù[XÝ[Û‹“X^Ù[XÝ[ÛœßKˆŠNÂˆB‚ˆYˆ
+\[™[™Ë”Ù[XÝ[Û‹”Ù\]Y[X[Ü[Û˜[
+BˆÂˆ˜\ˆØ[™Y]\ÈBˆ[™[™ËØ[™Y]PØ\™[œÝ[˜ÙRYË•Ò\ÚÙ]
+
+NÂˆYˆ
+Ù[XÝY[žJØ\™YO‚ˆXØ[™Y]\ËÛÛZ[œÊØ\™Y
+JJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”Ù[XÝ[ÛˆÛÛZ[œÈHØ\™Ý]ÚYHH[™[™ÈØ[™Y]HÙ]ˆŠNÂˆBˆB‚ˆ˜\ˆÛPØ\™ÈH[™[™Ë”Ù[XÝ[Û‹”ÛÝ\˜ÙV›Û™HOH›ÝÝ\PØ\™›Û™K’[™ˆ	‰ˆ[™[™Ë”Ù[XÝ[Û‹”™\ÛÛ][ÛˆOH›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÑ\ØØ\™ˆÈÙ[XÝYˆ”Ù[XÝ
+Ø\™YOˆ™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]Ø\™Y
+JBˆ•Ú\™JØ\™O‚ˆØ\™\ÒÙ^]ÛÜ™
+ˆÛÛX˜]ˆØ\™’[œÝ[˜ÙRYˆ›ÝÝ\PØ\™Ù^]ÛÜ™”ÛJJBˆ”Ù[XÝ
+Ø\™OˆØ\™’[œÝ[˜ÙRY
+Bˆ•Ð\œ˜^J
+Bˆˆ\œ˜^K‘[\OÛ™ÏŠ
+NÂ‚ˆÛÛX˜]H\PØ\™Ù[XÝ[ÛŠˆÛÛX˜][™[™Ë”Ù[XÝ[Û‹Ù[XÝYÝ]K”›™ÊNÂˆÛÛX˜]HÛÛX˜]Ú]È[™[™ÐÚÚXÙHH[NÂ‚ˆYˆ
+[™[™Ë”Ù[XÝYØ\™[\Ü˜\žPÛÜÝ\È›Ý[
+BˆÂˆ›Ü™XXÚ
+˜\ˆØ\™[œÝ[˜ÙRY[ˆÙ[XÝY
+BˆÂˆÛÛX˜]HÙ]Ø\™[\Ü˜\žQ[™\™ÞPÛÜÝ
+ˆÛÛX˜]ˆØ\™[œÝ[˜ÙRYˆ[™[™Ë”Ù[XÝYØ\™[\Ü˜\žPÛÜÝ
+NÂˆBˆB‚ˆYˆ
+[™[™Ë”Ù[XÝYØ\™ÝÙ\ˆ\È›Ý[
+BˆÂˆYˆ
+Ù[XÝY“[™ÝOHJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”Ù[XÝYXØ\™ÝÙ\ˆXÝ[ÛœÈ™\]Z\™H^XÝHÛ™HÙ[XÝYØ\™ˆŠNÂˆB‚ˆÛÛX˜]H\T^Y\”ÝÙ\•Ú]Ù[XÝYØ\™
+ˆÛÛX˜]ˆ[™[™Ë”Ù[XÝYØ\™ÝÙ\‹ˆ™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]Ù[XÝYÌJJNÂˆB‚ˆYˆ
+[™[™Ë”Ù[XÝYØ\™Ù^]ÛÜ™\È›Ý[
+BˆÂˆ›Ü™XXÚ
+˜\ˆØ\™[œÝ[˜ÙRY[ˆÙ[XÝY
+BˆÂˆÛÛX˜]H\PØ\™Ù^]ÛÜ™Ý™\œšYJˆÛÛX˜]ˆØ\™[œÝ[˜ÙRYˆ[™[™Ë”Ù[XÝYØ\™Ù^]ÛÜ™
+NÂˆBˆB‚ˆËÈ™\ÛÛ™HÙ[XÝ[Û‹Z[™XÙY^]\Ý[™\ØØ\™\Ú[™ÈH›Ü›X[ˆËÈÜ™\™Y]™[Y\Ü]ÚÛÛ[X][Ûˆ
+[˜ÛY[™È™\ÝYÚÚXÙ\ÊK‚ˆ˜\ˆ\ØØ\™]™[ÈBˆ[™[™Ë”Ù[XÝ[Û‹”ÛÝ\˜ÙV›Û™HOH›ÝÝ\PØ\™›Û™K’[™ˆ	‰ˆ
+[™[™Ë”Ù[XÝ[Û‹”™\ÛÛ][Û‚ˆOH›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÑ\ØØ\™ˆ[™[™Ë”Ù[XÝ[Û‹”™\ÛÛ][Û‚ˆOH›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÑ^]\Ý
+BˆÈÙ[XÝY”Ù[XÝ
+Ø\™YO‚ˆÂˆ˜\ˆ[Ý™YØ\™H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]Ø\™Y
+NÂˆ™]\›ˆ™]È›ÝÝ\PÛÛX˜]]™[
+ˆ[™[™Ë”Ù[XÝ[Û‹”™\ÛÛ][Û‚ˆOH›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÑ^]\ÝˆÈ›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™^]\ÝYˆˆ›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™\ØØ\™YˆÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆØ\™YˆØ\™Yˆ[Ý™YØ\™Ø\™Y
+NÂˆJK•Ð\œ˜^J
+Bˆˆ\œ˜^K‘[\O›ÝÝ\PÛÛX˜]]™[Š
+NÂ‚ˆ˜\ˆÛÛ[X][Û“Ü\˜][ÛœÈBˆ
+›ÝÝ\T]Y]YYÜ\˜][Û–×JBˆ[™[™ËÛÛ[X][Û‹ÛÛ™J
+NÂˆYˆ
+[™[™Ë”Ù[XÝ[Û‚ˆ‘˜]Ñ\]X[ÔÙ[XÝ[ÛœÓÛÛÛ\][Û‚ˆ	‰ˆÙ[XÝY“[™Ýˆ
+BˆÂˆÛÛ[X][Û“Ü\˜][ÛœÈBˆ™]Ö×BˆÂˆ™]È›ÝÝ\T]Y]YYÜ\˜][ÛŠˆ›ÝÝ\PÛÛX˜]Y™™XÝÚ[™‘˜]ÐØ\™ËˆÙ[XÝY“[™Ý
+BˆBˆÛÛ˜Ø]
+ÛÛ[X][Û“Ü\˜][ÛœÊBˆ•Ð\œ˜^J
+NÂˆB‚ˆ˜\ˆ™\ÛÛ][ÛÛÛ[X][ÛˆBˆ™]È›ÝÝ\PÚÚXÙT™\ÛÛ][ÛÛÛ[X][Û”Ý]JˆÛÝ\˜ÙPØ\™[œÝ[˜ÙRY‚ˆ[™[™Ë”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆÛÝ\˜ÙPØ\™\Ý[˜][ÛŽ‚ˆ[™[™Ë”ÛÝ\˜ÙPØ\™\Ý[˜][Û‹ˆÜ\˜][ÛœÎ‚ˆÛÛ[X][Û“Ü\˜][ÛœËˆ[™[™Ñ\ØØ\™]™[Îˆ\ØØ\™]™[Ëˆ[™[™ÔÛPØ\™[œÝ[˜ÙRYÎ‚ˆ
+Û™Ö×J\ÛPØ\™ËÛÛ™J
+KˆÛÛ\][Û‘]™[Î‚ˆ
+›ÝÝ\PÛÛX˜]]™[×JBˆ[™[™ËÛÛ\][Û‘]™[ËÛÛ™J
+KˆØ\™^TÙ\šY\Î‚ˆ[™[™ËØ\™^TÙ\šY\Ëˆ[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][ÛŽ‚ˆ[™[™Ë“[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][Û‹ˆ™[[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][ÛŽ‚ˆ[™[™Ë”™[[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][Û‹ˆÛÝ\˜ÙPØ\™[™XYS[Ý™Y‚ˆ[™[™Ë”ÛÝ\˜ÙPØ\™[™XYS[Ý™Yˆ]™[\Ü]ÚÛÛ[X][ÛŽ‚ˆ[™[™Ë‘]™[\Ü]ÚÛÛ[X][ÛË‘›ÜšÊ
+Kˆ\™[‚ˆ[™[™Ë“Ý]\ÚÚXÙPÛÛ[X][ÛË‘›ÜšÊ
+JNÂ‚ˆ˜\ˆ™\ÛÛ™YH™\Ý[YPÚÚXÙT™\ÛÛ][ÛÛÛ[X][ÛŠˆÝ]K”^Y\‹ˆÛÛX˜]ˆÝ]K”›™Ëˆ™\ÛÛ][ÛÛÛ[X][ÛŠNÂ‚ˆÝ]HHÝ]HÚ]ˆÂˆ^Y\ˆH™\ÛÛ™Y”^Y\‹ˆÛÜ›HÛÜ›Ú]ÈÛÛX˜]H™\ÛÛ™YÛÛX˜]BˆNÂ‚ˆYˆ
+™\ÛÛ™YÛÛX˜]”[™[™ÐÚÚXÙH\È[ˆ	‰ˆ™\ÛÛ™YÛÛX˜]]]ÛX]XÔ\[[™PÛÛ[X][Ûˆ\ÂˆÈH]]ÛX]XÐÛÛ[X][ÛŠBˆÂˆ˜\ˆ™\Ý[YYÛÜ›H™\]Z\™UÛÜ›
+Ý]JNÂˆ˜\ˆ™\Ý[YYÛÛX˜]H™\Ý[YYÛÜ›ÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂˆÝ]HHÝ]HÚ]ˆÂˆÛÜ›H™\Ý[YYÛÜ›Ú]ˆÂˆÛÛX˜]H™\Ý[YYÛÛX˜]Ú]ˆÂˆ]]ÛX]XÔ\[[™PÛÛ[X][ÛˆH[ˆBˆBˆNÂˆÝ]HH]]ÛX]XÐÛÛ[X][Û‹“Ü[š[™ÔÝYÙH\ÈÈHÜ[š[™ÔÝYÙBˆÈ™\Ý[YSÜ[š[™ÐÛÛX˜]
+Ý]KÜ[š[™ÔÝYÙJBˆˆ™\Ý[YP]]ÛX]XÔ\[[™JÝ]Kˆ]]ÛX]XÐÛÛ[X][Û‹“™^Ý\[™^ˆ]]ÛX]XÐÛÛ[X][Û‹”[™[™ÔÜÝ\Ü]Ú]™[Ú[™
+NÂˆB‚ˆYˆ
+Ý]K”\ÙHOH[”\ÙKÛÛX˜]
+BˆÂˆ™]\›ˆÝ]NÂˆB‚ˆ˜\ˆÝ\œ™[ÛÛX˜]H™\]Z\™UÛÜ›
+Ý]JKÛÛX˜]ˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆÛÛX˜][™^XÝYH\Ø\X\™YˆŠNÂˆ™]\›ˆ[[™[ZY\ÑY™X]Y
+Ý\œ™[ÛÛX˜]
+BˆÈ[\ÛÛX˜]™]Ø\™
+Ý]JBˆˆÝ]NÂˆB‚ˆš]˜]HÝ]XÈ
+^Y\”Ý]H^Y\‹ÛÛX˜]Ý]HÛÛX˜]
+Bˆ™\Ý[YPÚÚXÙT™\ÛÛ][ÛÛÛ[X][ÛŠˆ^Y\”Ý]H^Y\‹ˆÛÛX˜]Ý]HÛÛX˜]ˆ›™Ð[™H›™Ëˆ›ÝÝ\PÚÚXÙT™\ÛÛ][ÛÛÛ[X][Û”Ý]HÛÛ[X][Û‹ˆ›ÛÛ™\Ý[YPØ\™^TÙ\šY\ÈHYJBˆÂˆ›Üˆ
+˜\ˆ]™[[™^HÂˆ]™[[™^ÛÛ[X][Û‹”[™[™Ñ\ØØ\™]™[Ë“[™ÝÂˆ]™[[™^
+ÊÊBˆÂˆ˜\ˆ\Ü]ÚYH\Ü]ÚÛÛX˜]]™[
+ˆ^Y\‹ˆÛÛX˜]ˆÛÛ[X][Û‹”[™[™Ñ\ØØ\™]™[ÖÙ]™[[™^Kˆ›™ÊNÂˆ^Y\ˆH\Ü]ÚY”^Y\ŽÂˆÛÛX˜]H\Ü]ÚYÛÛX˜]Â‚ˆYˆ
+ÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ˜\ˆ™[XZ[š[™ÈHÛÛ[X][ÛˆÚ]ˆÂˆ[™[™Ñ\ØØ\™]™[ÈBˆÛÛ[X][Û‹”[™[™Ñ\ØØ\™]™[Âˆ”ÚÚ\
+]™[[™^
+ÈJBˆ•Ð\œ˜^J
+BˆNÂˆÛÛX˜]H]XÚÝ]\ÚÚXÙPÛÛ[X][ÛŠˆÛÛX˜]ˆ™[XZ[š[™ÊNÂˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆBˆB‚ˆ›Üˆ
+˜\ˆÛR[™^HÂˆÛR[™^ÛÛ[X][Û‹”[™[™ÔÛPØ\™[œÝ[˜ÙRYË“[™ÝÂˆÛR[™^
+ÊÊBˆÂˆYˆ
+[[™[ZY\ÑY™X]Y
+ÛÛX˜]
+JBˆÂˆœ™XZÎÂˆB‚ˆ˜\ˆÛPØ\™YBˆÛÛ[X][Û‹”[™[™ÔÛPØ\™[œÝ[˜ÙRYÖÜÛR[™^NÂˆYˆ
+XÛÛX˜]‘\ØØ\™[KÛÛZ[œÊÛPØ\™Y
+JBˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆ]]Ô^YYH]]Ô^TÛPØ\™
+ˆ^Y\‹ˆÛÛX˜]ˆÛPØ\™Yˆ›™ÊNÂˆ^Y\ˆH]]Ô^YY”^Y\ŽÂˆÛÛX˜]H]]Ô^YYÛÛX˜]Â‚ˆYˆ
+ÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ˜\ˆ™[XZ[š[™ÈHÛÛ[X][ÛˆÚ]ˆÂˆ[™[™Ñ\ØØ\™]™[ÈBˆ\œ˜^K‘[\O›ÝÝ\PÛÛX˜]]™[Š
+Kˆ[™[™ÔÛPØ\™[œÝ[˜ÙRYÈBˆÛÛ[X][Û‹”[™[™ÔÛPØ\™[œÝ[˜ÙRYÂˆ”ÚÚ\
+ÛR[™^
+ÈJBˆ•Ð\œ˜^J
+BˆNÂˆÛÛX˜]H]XÚÝ]\ÚÚXÙPÛÛ[X][ÛŠˆÛÛX˜]ˆ™[XZ[š[™ÊNÂˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆBˆB‚ˆ˜\ˆ™\ÛÛ™YH™\ÛÛ™SÜ\˜][ÛœÊˆ^Y\‹ˆÛÛX˜]ˆ™]È]Y]YO›ÝÝ\T]Y]YYÜ\˜][ÛŠˆÛÛ[X][Û‹“Ü\˜][ÛœÊKˆ›™ËˆÛÛ[X][Û‹”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆÛÛ[X][Û‹”ÛÝ\˜ÙPØ\™\Ý[˜][Û‹ˆÛÛ[X][Û‹ÛÛ\][Û‘]™[ËˆØ\™^TÙ\šY\ÎˆÛÛ[X][Û‹Ø\™^TÙ\šY\Ëˆ[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][ÛŽ‚ˆÛÛ[X][Û‹“[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][Û‹ˆ™[[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][ÛŽ‚ˆÛÛ[X][Û‹”™[[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][Û‹ˆÛÝ\˜ÙPØ\™[™XYS[Ý™Y‚ˆÛÛ[X][Û‹”ÛÝ\˜ÙPØ\™[™XYS[Ý™Yˆ]™[\Ü]ÚÛÛ[X][ÛŽ‚ˆÛÛ[X][Û‹‘]™[\Ü]ÚÛÛ[X][ÛŠNÂ‚ˆYˆ
+™\ÛÛ™YÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆ
+ˆ™\ÛÛ™Y”^Y\‹ˆ]XÚ\™[ÚÚXÙPÛÛ[X][ÛŠˆ™\ÛÛ™YÛÛX˜]ˆÛÛ[X][Û‹”\™[
+JNÂˆB‚ˆYˆ
+ÛÛ[X][Û‹‘]™[\Ü]ÚÛÛ[X][Ûˆ\È›Ý[
+BˆÂˆ™\ÛÛ™YH™\Ý[YQ]™[\Ü]ÚÛÛ[X][ÛŠˆ™\ÛÛ™Y”^Y\‹ˆ™\ÛÛ™YÛÛX˜]ˆÛÛ[X][Û‹‘]™[\Ü]ÚÛÛ[X][Û‹ˆ›™ÊNÂˆYˆ
+™\ÛÛ™YÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆ
+ˆ™\ÛÛ™Y”^Y\‹ˆ]XÚ\™[ÚÚXÙPÛÛ[X][ÛŠˆ™\ÛÛ™YÛÛX˜]ˆÛÛ[X][Û‹”\™[
+JNÂˆBˆB‚ˆYˆ
+™\Ý[YPØ\™^TÙ\šY\Âˆ	‰ˆÛÛ[X][Û‹Ø\™^TÙ\šY\È\ÂˆÈ\Ô™[XZ[š[™Ñ^XÝ][ÛœÎˆYHHÙ\šY\ÊBˆÂˆ™\ÛÛ™YH[[™[ZY\ÑY™X]Y
+™\ÛÛ™YÛÛX˜]
+BˆÈš[˜[^™R[\œ\YØ\™^TÙ\šY\Êˆ™\ÛÛ™Y”^Y\‹ˆ™\ÛÛ™YÛÛX˜]ˆ›™ËˆÙ\šY\ÊBˆˆ™\ÛÛ™PØ\™^TÙ\šY\Êˆ™\ÛÛ™Y”^Y\‹ˆ™\ÛÛ™YÛÛX˜]ˆ›™ËˆÙ\šY\ÊNÂ‚ˆYˆ
+™\ÛÛ™YÛÛX˜]”[™[™ÐÚÚXÙH\È›Ý[
+BˆÂˆ™]\›ˆ
+ˆ™\ÛÛ™Y”^Y\‹ˆ]XÚ\™[ÚÚXÙPÛÛ[X][ÛŠˆ™\ÛÛ™YÛÛX˜]ˆÛÛ[X][Û‹”\™[
+JNÂˆBˆB‚ˆYˆ
+ÛÛ[X][Û‹Ø\™^TÙ\šY\È\ÂˆÈ\Ô™[XZ[š[™Ñ^XÝ][ÛœÎˆ˜[ÙHHÛÛ\]YÙ\šY\Âˆ	‰ˆ™\ÛÛ™YÛÛX˜]”[™[™ÐÚÚXÙH\È[ˆ	‰ˆ™\ÛÛ™Y”^Y\‹’ˆ
+Bˆ™\ÛÛ™YH
+™\ÛÛ™Y”^Y\‹ÛÛ\]TY[ÓYÚ[ÛØ\™^Jˆ™\ÛÛ™YÛÛX˜]ÛÛ\]YÙ\šY\Ë”ÛÝ\˜ÙPØ\™[œÝ[˜ÙRY
+JNÂ‚ˆ™]\›ˆÛÛ[X][Û‹”\™[\È[ˆÈ™\ÛÛ™Yˆˆ™\Ý[YPÚÚXÙT™\ÛÛ][ÛÛÛ[X][ÛŠˆ™\ÛÛ™Y”^Y\‹ˆ™\ÛÛ™YÛÛX˜]ˆ›™ËˆÛÛ[X][Û‹”\™[
+NÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H]XÚÝ]\ÚÚXÙPÛÛ[X][ÛŠˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\PÚÚXÙT™\ÛÛ][ÛÛÛ[X][Û”Ý]HÛÛ[X][ÛŠBˆÂˆ˜\ˆ[™[™ÈHÛÛX˜]”[™[™ÐÚÚXÙBˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ“™\ÝYÚÚXÙHÛÛ[X][Ûˆ™\]Z\™\ÈH[™[™ÈÚÚXÙKˆŠNÂˆ˜\ˆÛÛXš[™YH[™[™Ë“Ý]\ÚÚXÙPÛÛ[X][Ûˆ\È[ˆÈÛÛ[X][Û‹‘›ÜšÊ
+Bˆˆ\[™ÚÚXÙPÛÛ[X][Û”\™[
+ˆ[™[™Ë“Ý]\ÚÚXÙPÛÛ[X][Û‹ˆÛÛ[X][ÛŠNÂˆ™]\›ˆÛÛX˜]Ú]ˆÂˆ[™[™ÐÚÚXÙHH[™[™ÈÚ]ˆÂˆÝ]\ÚÚXÙPÛÛ[X][ÛˆHÛÛXš[™YˆBˆNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H]XÚ\™[ÚÚXÙPÛÛ[X][ÛŠˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\PÚÚXÙT™\ÛÛ][ÛÛÛ[X][Û”Ý]OÈ\™[
+HO‚ˆ\™[\È[ˆÈÛÛX˜]ˆˆ]XÚÝ]\ÚÚXÙPÛÛ[X][ÛŠÛÛX˜]\™[
+NÂ‚ˆš]˜]HÝ]XÈ›ÝÝ\PÚÚXÙT™\ÛÛ][ÛÛÛ[X][Û”Ý]Bˆ\[™ÚÚXÙPÛÛ[X][Û”\™[
+ˆ›ÝÝ\PÚÚXÙT™\ÛÛ][ÛÛÛ[X][Û”Ý]HÝ\œ™[ˆ›ÝÝ\PÚÚXÙT™\ÛÛ][ÛÛÛ[X][Û”Ý]H\™[
+HO‚ˆÝ\œ™[”\™[\È[ˆÈÝ\œ™[Ú]È\™[H\™[‘›ÜšÊ
+HBˆˆÝ\œ™[Ú]ˆÂˆ\™[H\[™ÚÚXÙPÛÛ[X][Û”\™[
+ˆÝ\œ™[”\™[ˆ\™[
+BˆNÂ‚ˆš]˜]HÝ]XÈ
+^Y\”Ý]H^Y\‹ÛÛX˜]Ý]HÛÛX˜]
+H]]Ô^TÛPØ\™
+ˆ^Y\”Ý]H^Y\‹ˆÛÛX˜]Ý]HÛÛX˜]ˆÛ™ÈØ\™[œÝ[˜ÙRYˆ›™Ð[™H›™ÊBˆÂˆYˆ
+XÛÛX˜]‘\ØØ\™[KÛÛZ[œÊØ\™[œÝ[˜ÙRY
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	”ÛHØ\™ØØ\™[œÝ[˜ÙRYH]\Ý™H[ˆH\ØØ\™[H™Y›Ü™H]]Ë\^KˆŠNÂˆB‚ˆ˜\ˆØ\™H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]Ø\™[œÝ[˜ÙRY
+NÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[Ø\™
+Ø\™Ø\™Y
+NÂˆYˆ
+PØ\™\ÒÙ^]ÛÜ™
+ˆÛÛX˜]ˆØ\™[œÝ[˜ÙRYˆ›ÝÝ\PØ\™Ù^]ÛÜ™”ÛJJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	Ø\™ØØ\™[œÝ[˜ÙRYH\È›ÝÛKˆŠNÂˆB‚ˆËÈÛÝ\˜ÙHØ\™ÛY]]Ô^JÚÚXÙPÛÛ^Ø\™\™Ù]ˆ[ˆËÈ]]Ô^U\K”ÛQ\ØØ\™
+HÚÛÜÙ\È[ˆ[™[^HÚ]ˆËÈ[”Ý]K”›™ËÛÛX˜]\™Ù]Ë“™^][JÛÛX˜]Ý]K’]X›Q[™[ZY\ÊBˆËÈ›Üˆ\™Ù]\K[žQ[™[^Kˆ™\Ù\™HHÜ™\™Y[YÚX›HÙ][™ˆËÈÙ[XÝY™\Ý[[ˆÛÛX˜]\ÝÜžKˆ›ÝÝ\HÛÛX˜]\Ý™X[BˆËÈÝÛ™\œÚ\™[XZ[œÈ›Ýš\Ú[Û˜[[[ŒLLHÛÛX˜]\™Ù]È\š]K‚ˆ[È]]Ô^U\™Ù]H[ÂˆYˆ
+Yš[š][Û‹•\™Ù]OH›ÝÝ\PØ\™\™Ù]‘[™[^JBˆÂˆ˜\ˆ[YÚX›HHÛÛX˜]‘[™[ZY\Âˆ•Ú\™J[™[^HOˆ[™[^K’ˆ	‰ˆY[™[^K‘\ØØ\Y
+Bˆ•Ð\œ˜^J
+NÂˆYˆ
+[YÚX›K“[™ÝOH
+BˆÂˆËÈÛÝ\˜ÙH[Ý™\È[ˆ[‹]\™Ù]X›H]]Ë\^H[È]È™\Ý[ˆËÈ[HÚ]Ý]XÝ]˜][™ÈY™™XÝËˆ\È\È›Ü›X[BˆËÈ[\˜Ù\YX\›Y\ˆžHH[™[Ù‹XÛÛX˜]ÝX\™‚ˆ™]\›ˆ
+^Y\‹ÛÛX˜]
+NÂˆBˆ˜\ˆÙ[XÝY[™^H›ÝÝ\T›™Ë“™^[
+ˆ›™Ë˜ÛÛX˜]‹[YÚX›K“[™Ý
+NÂˆ]]Ô^U\™Ù]H[YÚX›VÜÙ[XÝY[™^K’[œÝ[˜ÙRYÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ]]Ô^U\™Ù]›ÛÈBˆ
+ÛÛX˜]]]Ô^U\™Ù]›ÛÂˆÏÈ\œ˜^K‘[\O›ÝÝ\P]]Ô^U\™Ù]›ÛŠ
+JBˆ\[™
+™]È›ÝÝ\P]]Ô^U\™Ù]›Û
+ˆØ\™[œÝ[˜ÙRYÛÛX˜]•\›‹[YÚX›K“[™ÝˆÙ[XÝY[™^]]Ô^U\™Ù]•˜[YJJBˆ•Ð\œ˜^J
+BˆNÂˆB‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ\ØØ\™[HHÛÛX˜]‘\ØØ\™[Bˆ•Ú\™JYOˆYOHØ\™[œÝ[˜ÙRY
+Bˆ•Ð\œ˜^J
+BˆNÂ‚ˆYˆ
+\ÐØ\™œ™YPžTÝÙ\ŠÛÛX˜]Yš[š][ÛŠJBˆÂˆÛÛX˜]HÛÛœÝ[YSX]Ú[™Ñœ™YPØ\™ÝÙ\ŠÛÛX˜]Yš[š][Û‹•\JNÂˆB‚ˆ˜\ˆ^PÛÝ[™\Ý[Bˆ™\ÛÛ™PØ\™^PÛÝ[[™ÛÛœÝ[YS[ÙYšY\œÊˆÛÛX˜]ˆØ\™ˆYš[š][Û‹•\JNÂˆÛÛX˜]H^PÛÝ[™\Ý[ÛÛX˜]Â‚ˆ˜\ˆÛÝ\˜ÙQ\Ý[˜][ÛˆHØ\™^]\ÝÓÛ•\ÙJˆYš[š][Û‹Ø\™
+BˆÈ›ÝÝ\PØ\™›Û™K‘^]\Ý[Bˆˆ›ÝÝ\PØ\™›Û™K‘\ØØ\™[NÂ‚ˆ™]\›ˆ™\ÛÛ™PØ\™^TÙ\šY\Êˆ^Y\‹ˆÛÛX˜]ˆ›™Ëˆ™]È›ÝÝ\PØ\™^TÙ\šY\ÔÝ]JˆÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆØ\™[œÝ[˜ÙRYˆÛÝ\˜ÙPØ\™\Ý[˜][ÛŽˆÛÝ\˜ÙQ\Ý[˜][Û‹ˆ\™Ù][™[^RYˆ]]Ô^U\™Ù]ˆ[™\™ÞTÜ[ˆˆ^PÛÝ[ˆ^PÛÝ[™\Ý[”^PÛÝ[ˆ™^^R[™^ˆˆ™[[Ý™TÛÝ\˜ÙPØ\™ÛÛÛ\][ÛŽ‚ˆYš[š][Û‹•\HOH›ÝÝ\PØ\™\K”ÝÙ\‹ˆ\Ð]]Ô^NˆYJJNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H\PØ\™Ù[XÝ[ÛŠˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\PØ\™Ù[XÝ[Û”ÜXÈÙ[XÝ[Û‹ˆÛ™Ö×HÙ[XÝYˆ›™Ð[™H›™ÊBˆÂˆ˜\ˆÛÝ\˜ÙHHÙ]›Û™JÛÛX˜]Ù[XÝ[Û‹”ÛÝ\˜ÙV›Û™JNÂˆ˜\ˆÙ[XÝYÙ]HÙ[XÝY•Ò\ÚÙ]
+
+NÂ‚ˆYˆ
+Ù[XÝY[žJØ\™YOˆ\ÛÝ\˜ÙKÛÛZ[œÊØ\™Y
+JJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ”Ù[XÝYØ\™\È›ÈÛ™Ù\ˆ[ˆH™\]Y\ÝYÛÝ\˜ÙH›Û™KˆŠNÂˆB‚ˆYˆ
+Ù[XÝ[Û‹”™\ÛÛ][ÛˆOH›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™ÛÜUÒ[™
+BˆÂˆ›Ü™XXÚ
+˜\ˆY[ˆÙ[XÝY
+BˆÂˆ˜\ˆØ\™H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]Y
+NÂˆÛÛX˜]HYÙ[™\˜]YØ\™ÛÜY\ÊÛÛX˜]™]È›ÝÝ\PÛÛX˜]Ø\™Û˜\ÚÝ
+ˆØ\™Ø\™YØ\™•\Ü˜YS]™[Ø\™”Ý]KÛÛ™J
+KØ\™ÛÛX˜][™\™ÞPÛÜÝ[KˆØ\™•[\Ü˜\žQ[™\™ÞPÛÜÝØ\™’Ù^]ÛÜ™Ý™\œšY\ËØ\™”™\^PÛÝ[ˆØ\™‘[˜Ú[Y[Ø\™‘[˜Ú[Y[šYÙÙ\™Y\ÐÛÛX˜]Ø\™Y™›XÝ[Û‹ˆØ\™”Ý\™\ÜÙY\Ü˜YS]™[ÊKÙ[XÝ[Û‹ÛÜY\Ô\”Ù[XÝ[ÛŠNÂˆBˆ™]\›ˆÛÛX˜]ÂˆB‚ˆYˆ
+Ù[XÝ[Û‹”™\ÛÛ][Û‚ˆOH›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™•˜[œÙ›Ü›T˜[™ÛJBˆÂˆ›Ü™XXÚ
+˜\ˆ[œÝ[˜ÙRY[ˆÙ[XÝY
+BˆÂˆ˜\ˆÜšYÚ[˜[H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜][œÝ[˜ÙRY
+NÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[Ø\™
+ÜšYÚ[˜[Ø\™Y
+NÂˆYˆ
+›ÝÝ\PØ\™[\Ë’\Ñ]\›˜[
+ÜšYÚ[˜[
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ‘]\›˜[ÛÛX˜]Ø\™ÈØ[››Ý™H˜[œÙ›Ü›YYˆŠNÂˆB‚ˆËÈ˜]]™HÛÛX˜]˜[œÙ›Ü›\È[ÈHY™™\™[[YÚX›BˆËÈØ\™œ›ÛHHÔ’QÒSSØ\™	ÜÈÝÛˆÙ[™\˜][ÛˆÛÛ‚ˆ˜\ˆÛÛHÜšYÚ[˜[Ø\™Y”Ý\ÕÚ]
+ˆœ›ÝË˜ÛÛÜ›\ÜËˆ‹Ýš[™ÐÛÛ\\š\ÛÛ‹“Ü™[˜[
+BˆÈ›ÝÝ\PÛÛÜ›\ÜÐØ\™Ë’[\[Y[YÛÛX˜]Ù[™\˜][Û”ÛÛˆˆ›ÝÝ\PÛÛ[”™]Ø\™Ø\™ÛÛÂˆ˜\ˆ[YÚX›HHÛÛ•Ú\™JYO‚ˆÂˆ˜\ˆØ[™Y]HH›ÝÝ\PÛÛ[Ø\™
+Y
+NÂˆ™]\›ˆYOHÜšYÚ[˜[Ø\™Yˆ	‰ˆØ[™Y]KØ[™QÙ[™\˜]Y[ÛÛX˜]ˆ	‰ˆØ[™Y]K“YXÚ[šXÜÒ[\[Y[Yˆ	‰ˆØ[™Y]K”˜\š]H\Âˆ›ÝÝ\PØ\™˜\š]KÛÛ[[Û‚ˆÜˆ›ÝÝ\PØ\™˜\š]K•[˜ÛÛ[[Û‚ˆÜˆ›ÝÝ\PØ\™˜\š]K”˜\™NÂˆJK•Ð\œ˜^J
+NÂˆYˆ
+[YÚX›K“[™ÝOH
+BˆÂˆ›ÝÈ™]È›ÝÝ\ÜY^Ù\[ÛŠˆ“›È[YÚX›H˜]]™K\ÛÛÛÛÈ˜[œÙ›Ü›H\™Ù]ËˆŠNÂˆB‚ˆ˜\ˆ™\XÙ[Y[H[YÚX›VÔ›ÝÝ\T›™Ë“™^[
+ˆ›™Ë˜ÛÛX˜]‹[YÚX›K“[™Ý
+WNÂˆ˜\ˆ™\XÙ[Y[YHÛÛX˜]“™^Ø\™[œÝ[˜ÙRYÂˆ˜\ˆÛ\œÚ\Ý[YHÜšYÚ[˜[”\œÚ\Ý[Ø\™[œÝ[˜ÙRYÂˆ˜\ˆ˜[œÙ›Ü›YYHÛÛX˜]•˜[œÙ›Ü›YY\œÚ\Ý[Ø\™YÂˆÏÈ\œ˜^K‘[\OÛ™ÏŠ
+NÂ‚ˆËÈ˜[œÙ›Ü›HÜ™X]\ÈH™]È\ÚXØ[Ø\™È]Ù\È›ÝˆËÈ]]]HHÜšYÚ[˜[Ø\™	ÜÈ\œÚ\Ý[XÚÈY[]K‚ˆËÈ˜XÚÈ]XœÙ[˜ÙH^XÚ]H›Üˆ[ˆ[˜\šX[Ë‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆØ\™ÈHÛÛX˜]Ø\™Âˆ•Ú\™JØ\™OˆØ\™’[œÝ[˜ÙRYOH[œÝ[˜ÙRY
+Bˆ\[™
+™]ÈÛÛX˜]Ø\™[œÝ[˜ÙJˆ™\XÙ[Y[Yˆ\œÚ\Ý[Ø\™[œÝ[˜ÙRYˆ[ˆØ\™Yˆ™\XÙ[Y[ˆ\Ü˜YS]™[ˆˆ\Õ[\Ü˜\žNˆYKˆÝ]Nˆ›ÝÝ\RœÛÛ‹‘[\SØš™XÝ
+
+JJBˆ•Ð\œ˜^J
+Kˆ[™HÛÛX˜]’[™”Ù[XÝ
+YO‚ˆYOH[œÝ[˜ÙRYÈ™\XÙ[Y[YˆY
+K•Ð\œ˜^J
+Kˆ˜]Ô[HHÛÛX˜]‘˜]Ô[K”Ù[XÝ
+YO‚ˆYOH[œÝ[˜ÙRYÈ™\XÙ[Y[YˆY
+K•Ð\œ˜^J
+Kˆ\ØØ\™[HHÛÛX˜]‘\ØØ\™[K”Ù[XÝ
+YO‚ˆYOH[œÝ[˜ÙRYÈ™\XÙ[Y[YˆY
+K•Ð\œ˜^J
+Kˆ^]\Ý[HHÛÛX˜]‘^]\Ý[K”Ù[XÝ
+YO‚ˆYOH[œÝ[˜ÙRYÈ™\XÙ[Y[YˆY
+K•Ð\œ˜^J
+Kˆ™^Ø\™[œÝ[˜ÙRYH™\XÙ[Y[Y
+ÈKˆ˜[œÙ›Ü›YY\œÚ\Ý[Ø\™YÈBˆÛ\œÚ\Ý[Y\ÈÈH\œÚ\Ý[YˆÈ˜[œÙ›Ü›YY\[™
+\œÚ\Ý[Y
+K•Ð\œ˜^J
+Bˆˆ˜[œÙ›Ü›YYˆNÂˆBˆ™]\›ˆÛÛX˜]ÂˆB‚ˆYˆ
+Ù[XÝ[Û‹”™\ÛÛ][Û‚ˆOH›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™”™\Ù\™Bˆ	‰ˆ\Ù[XÝ[Û‹”™[[Ý™U[œÙ[XÝYœ›ÛTÛÝ\˜ÙJBˆÂˆ™]\›ˆÛÛX˜]ÂˆB‚ˆ˜\ˆ\Ý[˜][Û–›Û™HHÙ[XÝ[Û‹”™\ÛÛ][ÛˆÝÚ]ÚˆÂˆ›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™”™\Ù\™HO‚ˆ
+›ÝÝ\PØ\™›Û™OÊ[[ˆ›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÒ[™O‚ˆ›ÝÝ\PØ\™›Û™K’[™ˆ›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÑ\ØØ\™O‚ˆ›ÝÝ\PØ\™›Û™K‘\ØØ\™[Kˆ›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÑ^]\ÝO‚ˆ›ÝÝ\PØ\™›Û™K‘^]\Ý[KˆËÈ˜]ÐØ\™ÈÜÈH\Ý˜]Ë\[H[žNˆ\[™YX[œÈÜ‚ˆ›ÝÝ\PØ\™Ù[XÝ[Û”™\ÛÛ][Û’Ú[™“[Ý™UÑ˜]ÕÜO‚ˆ›ÝÝ\PØ\™›Û™K‘˜]Ô[KˆÈOˆ›ÝÈ™]È\™Ý[Y[Ý]Ù”˜[™ÙQ^Ù\[ÛŠ
+BˆNÂ‚ˆYˆ
+\Ý[˜][Û–›Û™HOHÙ[XÝ[Û‹”ÛÝ\˜ÙV›Û™JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆØ\™\Ù[XÝ[ÛˆÛÝ\˜ÙH[™\Ý[˜][Ûˆ›Û™\ÈÛÚ[˜ÚYKˆŠNÂˆB‚ˆ˜\ˆ[œÙ[XÝYHÛÝ\˜ÙBˆ•Ú\™JØ\™YOˆ\Ù[XÝYÙ]ÛÛZ[œÊØ\™Y
+JBˆ•Ð\œ˜^J
+NÂˆÛÛX˜]HÙ]›Û™JˆÛÛX˜]ˆÙ[XÝ[Û‹”ÛÝ\˜ÙV›Û™KˆÙ[XÝ[Û‹”™[[Ý™U[œÙ[XÝYœ›ÛTÛÝ\˜ÙBˆÈ\œ˜^K‘[\OÛ™ÏŠ
+Bˆˆ[œÙ[XÝY
+NÂ‚ˆYˆ
+Ù[XÝ[Û‹”™[[Ý™U[œÙ[XÝYœ›ÛTÛÝ\˜ÙJBˆÂˆ˜\ˆ[œÙ[XÝYÙ]H[œÙ[XÝY•Ò\ÚÙ]
+
+NÂˆYˆ
+ÛÛX˜]Ø\™Ë[žJØ\™O‚ˆ[œÙ[XÝYÙ]ÛÛZ[œÊØ\™’[œÝ[˜ÙRY
+Bˆ	‰ˆXØ\™’\Õ[\Ü˜\žJJBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ“Û›H[\Ü˜\žHÚÚXÙHØ\™ÈX^H™H™[[Ý™YÚ[ˆHÙ[XÝ[Ûˆ™\ÛÛ™\ËˆŠNÂˆB‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆØ\™ÈHÛÛX˜]Ø\™Âˆ•Ú\™JØ\™O‚ˆ][œÙ[XÝYÙ]ÛÛZ[œÊØ\™’[œÝ[˜ÙRY
+JBˆ•Ð\œ˜^J
+BˆNÂˆB‚ˆYˆ
+\Ý[˜][Û–›Û™H\ÈÈH\Ý[˜][ÛŠBˆÂˆ˜\ˆ\Ý[˜][ÛØ\™ÈHÙ]›Û™JÛÛX˜]\Ý[˜][ÛŠNÂˆÛÛX˜]HÙ]›Û™JˆÛÛX˜]ˆ\Ý[˜][Û‹ˆ\Ý[˜][ÛØ\™ËÛÛ˜Ø]
+Ù[XÝY
+K•Ð\œ˜^J
+JNÂˆB‚ˆ™]\›ˆÛÛX˜]ÂˆB‚ˆš]˜]HÝ]XÈÛ™Ö×HÙ]›Û™JÛÛX˜]Ý]HÛÛX˜]›ÝÝ\PØ\™›Û™H›Û™JHO‚ˆ›Û™HÝÚ]ÚˆÂˆ›ÝÝ\PØ\™›Û™K’[™OˆÛÛX˜]’[™ˆ›ÝÝ\PØ\™›Û™K‘˜]Ô[HOˆÛÛX˜]‘˜]Ô[Kˆ›ÝÝ\PØ\™›Û™K‘\ØØ\™[HOˆÛÛX˜]‘\ØØ\™[Kˆ›ÝÝ\PØ\™›Û™K‘^]\Ý[HOˆÛÛX˜]‘^]\Ý[Kˆ›ÝÝ\PØ\™›Û™K”^T[HOˆÛÛX˜]”^PØ\™YËˆ›ÝÝ\PØ\™›Û™KÚÚXÙTÛÛOˆÛÛX˜]ÚÚXÙPØ\™YËˆÈOˆ›ÝÈ™]È\™Ý[Y[Ý]Ù”˜[™ÙQ^Ù\[ÛŠ˜[Y[ÙŠ›Û™JJBˆNÂ‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]HÙ]›Û™JˆÛÛX˜]Ý]HÛÛX˜]ˆ›ÝÝ\PØ\™›Û™H›Û™KˆÛ™Ö×HØ\™ÊHO‚ˆ›Û™HÝÚ]ÚˆÂˆ›ÝÝ\PØ\™›Û™K’[™OˆÛÛX˜]Ú]È[™HØ\™ÈKˆ›ÝÝ\PØ\™›Û™K‘˜]Ô[HOˆÛÛX˜]Ú]È˜]Ô[HHØ\™ÈKˆ›ÝÝ\PØ\™›Û™K‘\ØØ\™[HOˆÛÛX˜]Ú]È\ØØ\™[HHØ\™ÈKˆ›ÝÝ\PØ\™›Û™K‘^]\Ý[HOˆÛÛX˜]Ú]È^]\Ý[HHØ\™ÈKˆ›ÝÝ\PØ\™›Û™K”^T[HOˆÛÛX˜]Ú]È^T[HHØ\™ÈKˆ›ÝÝ\PØ\™›Û™KÚÚXÙTÛÛOˆÛÛX˜]Ú]ÈÚÚXÙTÛÛHØ\™ÈKˆÈOˆ›ÝÈ™]È\™Ý[Y[Ý]Ù”˜[™ÙQ^Ù\[ÛŠ˜[Y[ÙŠ›Û™JJBˆNÂ‚ˆš]˜]HÝ]XÈQ[[Y\˜X›OÛ™Ö×OˆÚÛÜÙPÛÛXš[˜][ÛœÊÛ™Ö×HÛÝ\˜ÙK[ÛÝ[
+BˆÂˆYˆ
+ÛÝ[ÛÝ[ˆÛÝ\˜ÙK“[™Ý
+BˆÂˆZY[œ™XZÎÂˆB‚ˆYˆ
+ÛÝ[OH
+BˆÂˆZY[™]\›ˆ\œ˜^K‘[\OÛ™ÏŠ
+NÂˆZY[œ™XZÎÂˆB‚ˆ˜\ˆY™™\ˆH™]ÈÛ™ÖØÛÝ[NÂˆ›Ü™XXÚ
+˜\ˆ™\Ý[[ˆÚÛÜÙPÛÛXš[˜][ÛœÐÛÜ™JÛÝ\˜ÙKY™™\ŠJBˆÂˆZY[™]\›ˆ™\Ý[ÂˆBˆB‚ˆš]˜]HÝ]XÈQ[[Y\˜X›OÛ™Ö×OˆÚÛÜÙPÛÛXš[˜][ÛœÐÛÜ™JˆÛ™Ö×HÛÝ\˜ÙKˆ[Ý\ˆ[\ˆÛ™Ö×HY™™\ŠBˆÂˆYˆ
+\OHY™™\‹“[™Ý
+BˆÂˆZY[™]\›ˆ
+Û™Ö×JXY™™\‹ÛÛ™J
+NÂˆZY[œ™XZÎÂˆB‚ˆ˜\ˆ™[XZ[š[™ÈHY™™\‹“[™ÝH\Âˆ›Üˆ
+˜\ˆ[™^HÝ\È[™^HÛÝ\˜ÙK“[™ÝH™[XZ[š[™ÎÈ[™^
+ÊÊBˆÂˆY™™\–Ù\HHÛÝ\˜ÙVÚ[™^NÂˆ›Ü™XXÚ
+˜\ˆ™\Ý[[ˆÚÛÜÙPÛÛXš[˜][ÛœÐÛÜ™JˆÛÝ\˜ÙKˆ[™^
+ÈKˆ\
+ÈKˆY™™\ŠJBˆÂˆZY[™]\›ˆ™\Ý[ÂˆBˆBˆB‚ˆš]˜]HÝ]XÈ›ÛÛ\Ò[›˜]JÛÛX˜]Ø\™[œÝ[˜ÙHØ\™
+BˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[Ø\™
+Ø\™Ø\™Y
+NÂˆ™]\›ˆYš[š][Û‹’[›˜]Bˆ
+Ø\™•\Ü˜YS]™[ˆ	‰ˆYš[š][Û‹’[›˜]SÛ•\Ü˜YJNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ø\™[œÝ[˜ÙH™\]Z\™PÛÛX˜]Ø\™
+ˆÛÛX˜]Ý]HÛÛX˜]ˆÛ™È[œÝ[˜ÙRY
+HO‚ˆÛÛX˜]Ø\™Ë‘š\œÝÜ‘Y˜][
+Ø\™OˆØ\™’[œÝ[˜ÙRYOH[œÝ[˜ÙRY
+BˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	ÛÛX˜]Ø\™[œÝ[˜ÙHÚ[œÝ[˜ÙRYH\ÈZ\ÜÚ[™ËˆŠNÂ‚ˆš]˜]HÙX[Y™XÛÜ™›ÝÝ\Q[XYÙT™\Ý[
+ˆÛÛX˜]Ý]HÛÛX˜]ˆ[[XYÙQX[ˆ›ÛÛY™X]Y
+NÂ‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]HÙ][™[^P›ØÚÊˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆ[›ØÚÊBˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+ˆ[™[ZY\Ëˆ[™[^HOˆ[™[^K’[œÝ[˜ÙRYOH[™[^RY
+NÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^HÙ[™[^RYH\ÈZ\ÜÚ[™ËˆŠNÂˆB‚ˆ[™[ZY\ÖÚ[™^HH[™[ZY\ÖÚ[™^HÚ]ˆÂˆ›ØÚÈHX]“X^
+›ØÚÊBˆNÂˆ™]\›ˆÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™[[Ý™Q[™[^TÝÙ\ŠˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆÝš[™ÈÝÙ\’Y
+BˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+ˆ[™[ZY\Ëˆ[™[^HOˆ[™[^K’[œÝ[˜ÙRYOH[™[^RY
+NÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^HÙ[™[^RYH\ÈZ\ÜÚ[™ËˆŠNÂˆB‚ˆ[™[ZY\ÖÚ[™^HH[™[ZY\ÖÚ[™^HÚ]ˆÂˆÝÙ\œÈH[™[ZY\ÖÚ[™^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆO‚ˆTÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊˆÝÙ\‹”ÝÙ\’YˆÝÙ\’Y
+JBˆ•Ð\œ˜^J
+BˆNÂˆ™]\›ˆÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆB‚ˆš]˜]HÝ]XÈ[™\ÛÛ™Q[™[^TÝ]\ÕšYÙÙ\ÛÝ[
+ˆÛÛX˜]Ý]HÛÛX˜]ˆÝš[™ÈÝ]\ÒYˆ[ÝXÚÜÊBˆÂˆ˜\ˆ^˜UšYÙÙ\œÈBˆÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆÂˆ˜\ˆYš[š][ÛˆBˆ›ÝÝ\PÛÛ[”ÝÙ\ŠˆÝÙ\‹”ÝÙ\’Y
+NÂˆ™]\›ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊˆYš[š][Û‚ˆ‘^˜Q[™[^TÝ]\ÕšYÙÙ\”Ý]\ÒYˆÝ]\ÒY
+BˆÈYš[š][Û‚ˆ‘^˜Q[™[^TÝ]\ÕšYÙÙ\œÔ\”ÝXÚÂˆ
+ˆÝÙ\‹”ÝXÚÜÂˆˆÂˆJNÂ‚ˆ™]\›ˆX]“Z[ŠˆX]“X^
+ÝXÚÜÊKˆH
+ÈX]“X^
+^˜UšYÙÙ\œÊJNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]HšYÙÙ\‘[™[^TÝ]\ÊˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆÝš[™ÈÝ]\ÒYˆ›™Ð[™H›™ÊBˆÂˆ˜\ˆ[™[^HHÛÛX˜]‘[™[ZY\Ë”Ú[™ÛSÜ‘Y˜][
+ˆ][HOˆ][K’[œÝ[˜ÙRYOH[™[^RY
+BˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^HÙ[™[^RYH\ÈZ\ÜÚ[™ËˆŠNÂˆ˜\ˆÝXÚÜÈBˆ[™[^K”Ý]\Ù\Ë‘Ù]˜[YSÜ‘Y˜][
+Ý]\ÒY
+NÂˆ˜\ˆšYÙÙ\ÛÝ[Bˆ™\ÛÛ™Q[™[^TÝ]\ÕšYÙÙ\ÛÝ[
+ˆÛÛX˜]ˆÝ]\ÒYˆÝXÚÜÊNÂ‚ˆ›Üˆ
+˜\ˆšYÙÙ\ˆHÂˆšYÙÙ\ˆšYÙÙ\ÛÝ[ÂˆšYÙÙ\ŠÊÊBˆÂˆ[™[^HHÛÛX˜]‘[™[ZY\Ë”Ú[™ÛJˆ][HO‚ˆ][K’[œÝ[˜ÙRYOH[™[^RY
+NÂˆYˆ
+[™[^K’Hˆ[™[^K”Ý]\Ù\Ë‘Ù]˜[YSÜ‘Y˜][
+ˆÝ]\ÒY
+HH
+BˆÂˆœ™XZÎÂˆB‚ˆÛÛX˜]HšYÙÙ\‘[™[^TÝ]\ÓÛ˜ÙJˆÛÛX˜]ˆ[™[^RYˆÝ]\ÒYˆ›™ÊNÂˆB‚ˆ™]\›ˆÛÛX˜]ÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]HšYÙÙ\‘[™[^TÝ]\ÓÛ˜ÙJˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆÝš[™ÈÝ]\ÒYˆ›™Ð[™H›™ÊBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”Ý]\ÊÝ]\ÒY
+NÂˆ˜\ˆ[™[^HHÛÛX˜]‘[™[ZY\Ë”Ú[™ÛSÜ‘Y˜][
+][HO‚ˆ][K’[œÝ[˜ÙRYOH[™[^RY
+BˆÏÈ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^HÙ[™[^RYH\ÈZ\ÜÚ[™ËˆŠNÂ‚ˆ˜\ˆÝXÚÜÈH[™[^K”Ý]\Ù\Ë‘Ù]˜[YSÜ‘Y˜][
+ˆÝ]\ÒY
+NÂˆYˆ
+[™[^K’HÝXÚÜÈH
+BˆÂˆ™]\›ˆÛÛX˜]ÂˆB‚ˆYˆ
+Yš[š][Û‹•šYÙÙ\’Ú[™ˆOH›ÝÝ\TÝ]\ÕšYÙÙ\’Ú[™‘[XYÙTÙ[žTÝXÚÜÊBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	”Ý]\È	ÞÜÝ]\ÒYIÈ\È›È[[YYX]HšYÙÙ\ˆÙ[X[XÜËˆŠNÂˆB‚ˆ˜\ˆÜÜÈHÜÙQ[™[^R
+ˆÛÛX˜]ˆ[™[^RYˆÝXÚÜÊNÂˆÛÛX˜]HÜÜËÛÛX˜]Â‚ˆYˆ
+ZÜÜË‘Y™X]Yˆ	‰ˆYš[š][Û‹‘XØ^SÛ•šYÙÙ\ˆOH
+BˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+][HOˆ][K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+ˆ[™[ZY\Ëˆ][HOˆ][K’[œÝ[˜ÙRYOH[™[^RY
+NÂˆ˜\ˆÝ]\Ù\ÈH™]ÈXÝ[Û˜\žOÝš[™Ë[Šˆ[™[ZY\ÖÚ[™^K”Ý]\Ù\ËˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+NÂˆ˜\ˆ™[XZ[š[™ÈBˆÝXÚÜÈHYš[š][Û‹‘XØ^SÛ•šYÙÙ\ŽÂˆYˆ
+™[XZ[š[™Èˆ
+BˆÂˆÝ]\Ù\ÖÜÝ]\ÒYHH™[XZ[š[™ÎÂˆBˆ[ÙBˆÂˆÝ]\Ù\Ë”™[[Ý™JÝ]\ÒY
+NÂˆB‚ˆ[™[ZY\ÖÚ[™^HH[™[ZY\ÖÚ[™^HÚ]ˆÂˆÝ]\Ù\ÈHÝ]\Ù\ÂˆNÂˆÛÛX˜]HÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆB‚ˆYˆ
+ÜÜË‘Y™X]Y
+BˆÂˆÛÛX˜]BˆÛX[\ÛÝ\˜ÙP›Ý[™ÝÙ\œÑ›Ü‘Y™X]Y[™[ZY\ÊˆÛÛX˜]
+NÂˆÛÛX˜]H™\ÛÛ™Q[™[^QX]Ý[[[ÛœÊˆÛÛX˜]ˆ›™ÊNÂˆB‚ˆ™]\›ˆÛÛX˜]ÂˆB‚ˆËÈ˜\œ›ÝÈ[\›˜[ÛÛX˜]\Ý]H\ÝÙX[\ÎˆÛ‰Ý^ÜÙHBˆËÈ[\[Y[][Û‹\š]˜]H›ÝÝ\Q[XYÙT™\Ý[™\Ý[\K‚ˆ[\›˜[Ý]XÈÛÛX˜]Ý]H\T˜]ÒÜÜÑ›Ü”ÛÝ\˜ÙT™YÜ™\ÜÚ[ÛŠˆÛÛX˜]Ý]HÛÛX˜][[™[^RY[[[Ý[
+HO‚ˆÜÙQ[™[^R
+ÛÛX˜][™[^RY[[Ý[
+KÛÛX˜]Â‚ˆ[\›˜[Ý]XÈÛÛX˜]Ý]H\R]›Ü”ÛÝ\˜ÙT™YÜ™\ÜÚ[ÛŠˆÛÛX˜]Ý]HÛÛX˜][[™[^RY[[[Ý[
+HO‚ˆ[XYÙQ[™[^JÛÛX˜][™[^RY[[Ý[
+KÛÛX˜]Â‚ˆš]˜]HÝ]XÈ›ÝÝ\Q[XYÙT™\Ý[ÜÙQ[™[^R
+ˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆ[ÜÜÊBˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+ˆ[™[ZY\Ëˆ[™[^HOˆ[™[^K’[œÝ[˜ÙRYOH[™[^RY
+NÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^HÙ[™[^RYH\ÈZ\ÜÚ[™ËˆŠNÂˆB‚ˆ˜\ˆ[™[^HH[™[ZY\ÖÚ[™^NÂˆYˆ
+[™[^K’H[™[^K›ÜÜÔ[™[™Ô™]š]˜[
+BˆÂˆ™]\›ˆ™]È›ÝÝ\Q[XYÙT™\Ý[
+ˆÛÛX˜]ˆˆ˜[ÙJNÂˆB‚ˆËÈ˜]]™HÝÔÝÙ\‹ÔÚšYZÔÝÙ\ˆšYÙÙ\ˆÛ›Hœ›ÛBˆËÈÝÙ\“[Ù[Y\‘[XYÙT™XÙZ]™YÚ[ˆ™\Ý[•[˜›ØÚÙY[XYÙHˆ‚ˆËÈÚ\ÛÛ‹\™XÝÜÙRY™™XÝÈ[™X[ÛÜÝÈ\™H›Ý[XYÙBˆËÈØ[˜XÚÜËˆ™\Ù\™HHY˜][›ÝÝ\IÜÈ\ÝÜšXØ[ˆËÈÙ[™\˜[^™Y]™\ÚÛ™Z]š[Üˆ[›\ÜÈ˜]]™HÛÛX˜]ÝÛœÂˆËÈÛ™HÙˆ\ÙHÛÝ\˜ÙKX]Y]Y›ÜÜÙ\Ë‚ˆ˜\ˆ˜]]™Q[XYÙSÛ›U™\ÚÛBˆ
+ÛÛX˜]“˜]]™T›™ÏË‘›Ü›X][Û‹“˜]]™Q[˜ÛÝ[\‘[žKˆ[™[^K‘[™[^RY
+H\Âˆ
+Ù\™[[ÛšX[™X\Ý›ÜÜÈ‹œ›ÝË™[™[^K˜Ù\™[[ÛšX[Ø™X\ÝŠBˆÜˆ
+•\œ›Ü‘Y[[]H‹œ›ÝË™[™[^K\œ›Ü—ÙY[ŠNÂˆ˜\ˆ[ÙYšYYH[ÙYžQ[™[^RÜÜÊˆ[™[^KˆÜÜËˆ[ÝÑ[XYÙUšYÙÙ\™Y™\ÚÛˆ[˜]]™Q[XYÙSÛ›U™\ÚÛ
+NÂˆ[™[^HH[ÙYšYY‘[™[^NÂˆ˜\ˆ™^HX]“X^
+ˆˆ[™[^K’H[ÙYšYY’ÜÜÊNÂˆ˜\ˆ[XYÙQX[H[™[^K’H™^Â‚ˆ[™[ZY\ÖÚ[™^HH[\˜Ù\[™[^S][X]
+ˆ[™[^HÚ]ÈH™^JNÂ‚ˆ˜\ˆY™X]YH[™[^K’ˆ	‰ˆ[™[ZY\ÖÚ[™^K’OHÂˆ˜\ˆ™^ÛÛX˜]HÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆYˆ
+Y™X]Y
+BˆÂˆ™^ÛÛX˜]H™\ÛÛ™P[QX]ÝÙ\œÊ™^ÛÛX˜][™[^RY
+NÂˆBˆ™]\›ˆ™]È›ÝÝ\Q[XYÙT™\Ý[
+ˆ™^ÛÛX˜][XYÙQX[Y™X]YˆY™X]Y
+NÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H\T^Y\‘[™[^P›ØÚÐœ›ÚÙ[”™[XÜÊˆ^Y\”Ý]H^Y\‹ÛÛX˜]Ý]HÛÛX˜][[™[^RY
+BˆÂˆ›Ü™XXÚ
+˜\ˆ™[XÈ[ˆ^Y\‹XÝ]™T™[XÜÊBˆÂˆ˜\ˆ[[Ý[H›ÝÝ\PÛÛ[”™[XÊ™[XË”™[XÒY
+K‘[™[^U[™\˜X›SÛ›ØÚÐœ›ÚÙ[ŽÂˆYˆ
+[[Ý[ˆ
+HÛÛX˜]H\Q[™[^TÝÙ\ŠÛÛX˜][™[^RYœ›ÝËœÝÙ\‹[™\˜X›H‹[[Ý[
+NÂˆBˆ™]\›ˆÛÛX˜]ÂˆB‚ˆš]˜]HÝ]XÈ›ÝÝ\Q[XYÙT™\Ý[[XYÙQ[™[^JˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆ[[XYÙKˆ[Z[”ÝÙ\™Y]XÚÒÜÜÈH
+HO‚ˆ[XYÙQ[™[^R[\›˜[
+ÛÛX˜][™[^RY[XYÙKˆZ[”ÝÙ\™Y]XÚÒÜÜË˜[ÙJNÂ‚ˆš]˜]HÝ]XÈ›ÝÝ\Q[XYÙT™\Ý[[XYÙQ[™[^R[\›˜[
+ˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆ[[XYÙKˆ[Z[”ÝÙ\™Y]XÚÒÜÜËˆ›ÛÛ\ÔÝÙ\™Y]XÚÊBˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JK•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+[™[ZY\Ë[™[^HOˆ[™[^K’[œÝ[˜ÙRYOH[™[^RY
+NÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	‘[™[^HÙ[™[^RYH\ÈZ\ÜÚ[™ËˆŠNÂˆB‚ˆ˜\ˆ[™[^HH[™[ZY\ÖÚ[™^NÂˆYˆ
+[™[^K’H[™[^K›ÜÜÔ[™[™Ô™]š]˜[
+BˆÂˆ™]\›ˆ™]È›ÝÝ\Q[XYÙT™\Ý[
+ÛÛX˜]˜[ÙJNÂˆB‚ˆËÈ›]\ˆ[ÙYšY\ÈÛ›HÝÙ\™Y]XÚÈ[XYÙKˆÜ™[˜\žHÜÜËˆËÈÚ\ÛÛˆ[™›Û‹\ÝÙ\™Y]Y™™XÝÈž\\ÜÈHL	H[ÙYšY\‹‚ˆ˜\ˆ›]\ˆH[™[^K”ÝÙ\”Ý]\Ë‘š\œÝÜ‘Y˜][
+ÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆÝÙ\‹”ÝÙ\’YOHœ›ÝË›˜]]™Kš]™K™›]\ˆŠNÂˆYˆ
+\ÔÝÙ\™Y]XÚÈ	‰ˆ›]\ˆ\È›Ý[
+BˆÂˆ[XYÙHH
+[
+SX]‘›ÛÜŠ[XYÙH
+ˆ[JNÂˆB‚ˆYˆ
+\ÔÝÙ\™Y]XÚÊBˆÂˆ›Ü™XXÚ
+˜\ˆÝÙ\ˆ[ˆ[™[^K”ÝÙ\”Ý]\Ë•Ú\™JÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆ
+JBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆYˆ
+Yš[š][Û‹‘[™[^R[˜ÛÛZ[™ÔÝÙ\™Y]XÚÑ[›ÛZ[˜]ÜˆH
+Bˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ‘[™[^HÝÙ\™YX]XÚÈ[ÙYšY\ˆ\È›ÛœÜÚ]]™H[›ÛZ[˜]Ü‹ˆŠNÂˆ[XYÙHH
+[
+SX]‘›ÛÜŠˆ
+XÚ[X[
+Y[XYÙBˆ
+ˆYš[š][Û‹‘[™[^R[˜ÛÛZ[™ÔÝÙ\™Y]XÚÓ[Y\˜]Ü‚ˆÈYš[š][Û‹‘[™[^R[˜ÛÛZ[™ÔÝÙ\™Y]XÚÑ[›ÛZ[˜]ÜŠNÂˆBˆB‚ˆ˜\ˆXœÛÜ˜™YHX]“Z[Š[™[^K›ØÚËX]“X^
+[XYÙJJNÂˆËÈ\œ›ÝÙYÝÙ\‹Y\›ØÚÐœ›ÚÙ[ˆš\™\ÈÚ[ˆHUXÝX[BˆËÈÛÛœÝ[Y\ÈH\ÝÚ[ÙˆHÚY[ˆÜ™[˜\žH[™[^H›ØÚÂˆËÈ™\Ù][™Ë[ÜÜÈY™™XÝÈ[™]ÈÛˆ™\›È›ØÚÈÈ›ÝÝ[‹‚ˆ˜\ˆœ›ÚÙP\œ›ÝÙY›ØÚÈH[™[^K›ØÚÈˆˆ	‰ˆXœÛÜ˜™YOH[™[^K›ØÚÂˆ	‰ˆ[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆÝÙ\‹”ÝÙ\’YOHœ›ÝË›˜]]™Kš]™K˜\œ›ÝÙYŠNÂˆ˜\ˆ[˜›ØÚÙYHX]“X^
+[XYÙHHXœÛÜ˜™Y
+NÂˆËÈH›ÛÝ[ÙYšY\È]XÚÈÜÜÈQ•Tˆ›ØÚÈXœÛÜœ[Û‹‚ˆËÈH[H›ØÚÙY]Üˆ›Û‹X]XÚÈÜÜÈÙ\È›ÝšYÙÙ\‹‚ˆËÈ˜]]™H[™[^H[ÜÜÈØ\È\™H\YYY\Ø\™Ë‚ˆ˜\ˆ[XYÙHH[ÙYžQ[™[^RÜÜÊˆ[™[^Kˆ[˜›ØÚÙYˆˆÈX]“X^
+[˜›ØÚÙYZ[”ÝÙ\™Y]XÚÒÜÜÊBˆˆ
+NÂˆ[™[^HH[XYÙK‘[™[^NÂˆ˜\ˆ™^HX]“X^
+[™[^K’H[XYÙK’ÜÜÊNÂˆ˜\ˆ[XYÙQX[H[™[^K’H™^Â‚ˆYˆ
+\ÔÝÙ\™Y]XÚÈ	‰ˆ[XYÙK’ÜÜÈˆˆ	‰ˆ›]\ˆ\È›Ý[	‰ˆ™^ˆ
+BˆÂˆËÈ›]\‹Y\‘[XYÙT™XÙZ]™YXÜ™[Y[ÈÛ˜ÙH\ˆ[˜›ØÚÙYˆËÈÝÙ\™Y]ˆÛˆHšYÜ™X]\™PÛY”Ý[ˆÝ™\œšY\ÈBˆËÈ™]š[Ý\ÛHÛÛ[Z]Y[Ý™H›Üˆ^XÝHÛ™H[™[^H\›ŽÂˆËÈ™\Ý[YHH[\œ\Y[Ý™H™^\›‹‚ˆ˜\ˆ™[XZ[š[™ÈH›]\‹”ÝXÚÜÈHNÂˆ[™[^HH[™[^HÚ]ˆÂˆÝÙ\œÈH[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\‚ˆOH›]\‹\XØ][Û“Ü™\ŠBˆÛÛ˜Ø]
+™[XZ[š[™ÈˆˆÈ™]Ö×HÈ›]\ˆÚ]ÈÝXÚÜÈH™[XZ[š[™ÈHBˆˆ\œ˜^K‘[\O›ÝÝ\TÝÙ\’[œÝ[˜ÙTÝ]OŠ
+JBˆ“Ü™\žJÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ŠBˆ•Ð\œ˜^J
+Kˆ[›™Y[Ý™R[™^H™[XZ[š[™ÈHˆÈHˆ[™[^K”[›™Y[Ý™R[™^ˆ[›™Y™^ZTÝ]RYH™[XZ[š[™ÈHˆÈ[™[^KZTÝ]RYˆ[™[^K”[›™Y™^ZTÝ]RYˆNÂˆB‚ˆËÈÛ[X™\”ÝÙ\‹Y\‘[XYÙT™XÙZ]™Y™[[Ý™\ÈÛ™HÝXÚÈ›ÜˆXXÚˆËÈ[XYÙHØ[˜XÚÈÚ][˜›ØÚÙY[XYÙKˆ]\È\Ý[˜Ýœ›ÛH˜]ÂˆËÈÜÜÈ
+Ú\ÛÛ‹ÜÙRÛÜÝÊH[™œ›ÛHH[™\™ØÚÜÈ\ÛY\ˆËÈÝÙ\‹ÚXÚØZÙ\ÈÛˆHš\œÝ]X[YžZ[™È]XÚÈ]‚ˆ›ÝÝ\TÝÙ\‘Yš[š][ÛÈØZÙHH[ÂˆYˆ
+[˜›ØÚÙYˆ	‰ˆ™^ˆ
+BˆÂˆ›Ü™XXÚ
+˜\ˆÝÙ\”Ý]H[ˆ[™[^K”ÝÙ\”Ý]\ÊBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠˆÝÙ\”Ý]K”ÝÙ\’Y
+NÂˆYˆ
+Yš[š][Û‹‘[™[^TÝXÚÜÑXØ^SÛ•[˜›ØÚÙY[XYÙHHˆÝÙ\”Ý]K”ÝXÚÜÈH
+BˆÂˆÛÛ[YNÂˆB‚ˆ˜\ˆ™[XZ[š[™ÈHÝÙ\”Ý]K”ÝXÚÜÂˆHYš[š][Û‹‘[™[^TÝXÚÜÑXØ^SÛ•[˜›ØÚÙY[XYÙNÂˆ[™[^HH[™[^HÚ]ˆÂˆÝÙ\œÈH[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\‚ˆOHÝÙ\”Ý]K\XØ][Û“Ü™\ŠBˆÛÛ˜Ø]
+™[XZ[š[™ÈˆˆÈÜÝÙ\”Ý]HÚ]ÈÝXÚÜÈH™[XZ[š[™ÈWBˆˆ\œ˜^K‘[\O›ÝÝ\TÝÙ\’[œÝ[˜ÙTÝ]OŠ
+JBˆ“Ü™\žJÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ŠBˆ•Ð\œ˜^J
+BˆNÂˆYˆ
+™[XZ[š[™ÈH
+BˆÂˆØZÙHÏÏHYš[š][ÛŽÂˆBˆBˆB‚ˆËÈÛÛYHY™œÈ
+K™Ëˆ˜]]™H\ÛY\
+HØZÙHÛˆ[˜›ØÚÙY]XÚÈˆËÈ[XYÙK›ÝÛˆ›ØÚÙY]XÚÜÈÜˆÚ\ÛÛˆÜÜËˆÝ[ˆBˆËÈ[™[™È[™[^HXÝ[Ûˆ[™Ù[XÝ]ÈØZÚ[™ÈRHÝ]K‚ˆØZÙHÏÏH[XYÙK’ÜÜÈˆ	‰ˆ™^ˆˆÈ[™[^K”ÝÙ\”Ý]\Âˆ”Ù[XÝ
+ÝÙ\ˆOˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+JBˆ‘š\œÝÜ‘Y˜][
+ÝÙ\ˆO‚ˆÝÙ\‹•ØZÙSÝÛ™\“Û•[˜›ØÚÙY]XÚÑ[XYÙJBˆˆ[ÂˆYˆ
+ØZÙH\È›Ý[
+BˆÂˆ˜\ˆ™[[Ý™HH
+ØZÙK”™[[Ý™SÝÛ™\”ÝÙ\œÓÛ•ØZÙBˆÏÈ\œ˜^K‘[\OÝš[™ÏŠ
+JBˆ•Ò\ÚÙ]
+Ýš[™ÐÛÛ\\™\‹“Ü™[˜[
+NÂˆ[™[^HH[™[^HÚ]ˆÂˆÝÙ\œÈH[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆOˆ\™[[Ý™KÛÛZ[œÊÝÙ\‹”ÝÙ\’Y
+JBˆ•Ð\œ˜^J
+KˆZTÝ]RYHØZÙK“ÝÛ™\ZTÝ]SÛ•ØZÙHÏÈ[™[^KZTÝ]RYˆ[™[^PXÝ[Û”ÚÚ\Ô™[XZ[š[™ÈHØZÙK”Ý[“ÝÛ™\“Û•ØZÙBˆÈX]“X^
+K[™[^K‘[™[^PXÝ[Û”ÚÚ\Ô™[XZ[š[™ÊBˆˆ[™[^K‘[™[^PXÝ[Û”ÚÚ\Ô™[XZ[š[™ÂˆNÂˆB‚ˆ[™[ZY\ÖÚ[™^HH[\˜Ù\[™[^S][X]
+ˆ[™[^HÚ]ˆÂˆ›ØÚÈH[™[^K›ØÚÈHXœÛÜ˜™YˆH™^ˆJNÂ‚ˆYˆ
+œ›ÚÙP\œ›ÝÙY›ØÚÈ	‰ˆ[™[ZY\ÖÚ[™^K’ˆ
+BˆÂˆËÈ[›™[\‹‘Ù]Ý[›™YOˆÜ™X]\™PÛY”Ý[ŠÝ[^žžKˆËÈ’UWÓSÕ‘HŠHÝ™\œšY\ÈH™]š[Ý\ÛH[››Ý[˜ÙY‘SÕË‚ˆËÈ\œÚ\ÝH›Ü˜ÙYXÝ[Ûˆ›ÝË›Ý\š[™ÈØœÙ\˜][Û‹‚ˆ˜\ˆ[\œ\YH[™[ZY\ÖÚ[™^NÂˆ[™[ZY\ÖÚ[™^HH[\œ\YÚ]ˆÂˆÝÙ\œÈH[\œ\Y”ÝÙ\”Ý]\Ë•Ú\™JÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOHœ›ÝË›˜]]™Kš]™K˜\œ›ÝÙYŠBˆ•Ð\œ˜^J
+Kˆ›ØÚÈHˆZTÝ]RYH™^žžH‹ˆ[›™Y[Ý™R[™^HËˆ[›™Y™^ZTÝ]RYH˜š]H‚ˆNÂˆB‚ˆ˜\ˆY™X]YH[™[^K’ˆ	‰ˆ[™[ZY\ÖÚ[™^K’OHÂˆ˜\ˆ™^ÛÛX˜]HÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆYˆ
+Y™X]Y
+BˆÂˆ™^ÛÛX˜]H™\ÛÛ™P[QX]ÝÙ\œÊ™^ÛÛX˜][™[^RY
+NÂˆBˆ™]\›ˆ™]È›ÝÝ\Q[XYÙT™\Ý[
+ˆ™^ÛÛX˜][XYÙQX[Y™X]YˆY™X]Y
+NÂˆB‚ˆËËÈÝ[[X\žO‚ˆËËÈH\Ý\Ý[™ÝÙ\ˆØ[ˆ\›ˆ][[™[^HÜÜÈ[ÈHÙ\\˜]BˆËËÈØÜš\YÛÛX˜]\ÙKˆH[\˜Ù\\ÈÛ™K\ÚÝÛÈH]™[X[ˆËËÈØÜš\YÙ[‹YX]\È›Ý[\˜Ù\YYØZ[‹‚ˆËËÈÜÝ[[X\žO‚ˆš]˜]HÝ]XÈ[™[^PÛÛX˜]Ý]H[\˜Ù\[™[^S][X]
+ˆ[™[^PÛÛX˜]Ý]H[™[^JBˆÂˆYˆ
+[™[^K›ÜÜÔ[™[™Ô™]š]˜[[™[^K’ˆˆ[™[^K“\ÝÝ[™šYÙÙ\™Y
+BˆÂˆ™]\›ˆ[™[^NÂˆB‚ˆËÈY\X›NˆHš\œÝÛÈ][]È[\œ\H[››Ý[˜ÙYˆËÈXÝ[ÛˆÚ]H›Ü˜ÙY™\Ý\œ™XÝ[ÛˆÛˆHØ[YH[™[^H[œÝ[˜ÙK‚ˆËÈHš[˜[
+\™Y›Ü›JH][][™ÈÛÛX˜]›Ü›X[K‚ˆYˆ
+[™[^K‘[™[^RYOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\Ë•\ÝÝXš™XÝYˆ	‰ˆ[™[^K›ÜÜÔ\ÙH‚ˆ	‰ˆ[™[^K”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\ËY\X›RY
+JBˆÂˆ™]\›ˆ[™[^HÚ]ˆÂˆHKˆ›ØÚÈHˆ›ÜÜÔ[™[™Ô™]š]˜[HYKˆZTÝ]RYHœ™\Ü]Ûˆ‹ˆ[›™Y[Ý™R[™^HËˆ[›™Y™^ZTÝ]RYH[™[^K›ÜÜÔ\ÙHOHˆÈ˜Û]Èˆˆ›XÙ\˜]H‚ˆNÂˆB‚ˆ›Ü™XXÚ
+˜\ˆÝÙ\ˆ[ˆ[™[^K”ÝÙ\”Ý]\ÊBˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+NÂˆYˆ
+ÝÙ\‹”ÝXÚÜÈHˆYš[š][Û‹“\ÝÝ[™HˆYš[š][Û‹“\ÝÝ[™ZTÝ]RY\È›ÝÈH™^Ý]JBˆÂˆÛÛ[YNÂˆB‚ˆËÈH][Z[\˜Ù\ØÜš\Ý™\œšY\ÈH™]š[Ý\ÛBˆËÈ[››Ý[˜ÙYXÝ[Ûˆ[[YYX][KˆYˆ]È\Ý[˜][Ûˆ\ÈBˆËÈ]\›Z[š\ÝXÈ[Ý™HÝ]KÛÛ[Z]][Ý™H[™]ÂˆËÈÛÛ[X][ÛˆÚ]Ý]ÛÛœÝ[Z[™ÈH™]È“‘È˜]Ë‚ˆ˜\ˆ[Ý™TÝ]HH›ÝÝ\PÛÛ[‘[™[^J[™[^K‘[™[^RY
+BˆZOË”Ý]\Ë‘š\œÝÜ‘Y˜][
+Ý]HO‚ˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊÝ]K’Y™^Ý]JBˆ	‰ˆÝ]K’Ú[™OH›ÝÝ\Q[™[^PZTÝ]RÚ[™“[Ý™JNÂˆ™]\›ˆ[™[^HÚ]ˆÂˆHYš[š][Û‹“\ÝÝ[™ˆ›ØÚÈHˆ\ÝÝ[™šYÙÙ\™YHYKˆZTÝ]RYH™^Ý]Kˆ[›™Y[Ý™R[™^H[Ý™TÝ]OË“[Ý™R[™^ˆ[›™Y™^ZTÝ]RYH[Ý™TÝ]OË“™^Ý]RYˆNÂˆB‚ˆ™]\›ˆ[™[^NÂˆB‚ˆËËÈÝ[[X\žO‚ˆËËÈ\Ü]ÚÛÝ\˜ÙKX˜XÚÙYÝÙ\œÈ]™XXÝÈHY™™\™[[IÜÂˆËËÈX]ˆ\È[œÈ›Üˆ›ÝÝÙ\™Y]XÚÜÈ[™˜]ÈÜÜÈ
+K™Ë‹ˆËËÈÚ\ÛÛŠK™Y›Ü™H™[[Ý˜[ÙˆY™X]YÜ™X]\™\ËˆÛ›HH]š[™ÂˆËËÈÝÛ™\ˆX^H™XXÝ[™HÝÛ™\ˆ™]™\ˆ™XXÝÈÈ]ÈÝÛˆX]‚ˆËËÈÜÝ[[X\žO‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™\ÛÛ™P[QX]ÝÙ\œÊˆÛÛX˜]Ý]HÛÛX˜][Y™X]Y[™[^RY
+BˆÂˆËÈÜÜÙ\ÜÔÝ™[™ÝÔÜÜÙ\ÜÔÜYYÝÜ™HHXÝX[ÝXØÙ\ÜÙ[ˆËÈ^Y\ˆÝ]ÜÜË›ÝH][\YXY™Žˆ\Y˜XÝØ[‚ˆËÈ™]™[YˆX]™]\›œÈ™XÚ\Ù[HÜÙHÝÛ[ˆÝXÚÜËˆËÈÛ˜ÙK™Y›Ü™H]š[™È[Y\È›ØÙ\ÜÈZ\ˆX]™XXÝ[ÛœË‚ˆ˜\ˆY™X]YHÛÛX˜]‘[™[ZY\Ë‘š\œÝÜ‘Y˜][
+[™[^HO‚ˆ[™[^K’[œÝ[˜ÙRYOHY™X]Y[™[^RY
+NÂˆYˆ
+Y™X]Y\È›Ý[ˆ	‰ˆY™X]Y‘[™[^RYOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\Ë[X[Ø[RY
+BˆÂˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HO‚ˆ[™[^K‘[™[^RYOH›ÝÝ\S˜]]™QÛÜžP›ÜÜÙ\Ë”]YY[’Yˆ	‰ˆ[™[^K’ˆˆ	‰ˆ[™[^K”[›™Y[Ý™R[™^OH‚ˆÈ[™[^HÚ]ˆÂˆZTÝ]RYH™[œ˜YÙH‹ˆ[›™Y[Ý™R[™^HKˆ[›™Y™^ZTÝ]RYHšXYÈ‚ˆBˆˆ[™[^JK•Ð\œ˜^J
+BˆNÂˆBˆYˆ
+Y™X]Y\È›Ý[
+BˆÂˆ›Ü™XXÚ
+˜\ˆÝÛ[”ÝÙ\ˆ[ˆY™X]Y”ÝÙ\”Ý]\Ë•Ú\™JÝÙ\ˆO‚ˆÝÙ\‹”ÝÜ™Y˜[YHˆˆ	‰ˆÝÙ\‹”ÝÙ\’Y\Âˆ
+›ÝÝ\S˜]]™QÛÜžS™]Ó›Ü›X[Ë”ÜÜÙ\ÜÔÝ™[™ÝYˆÜˆ›ÝÝ\S˜]]™QÛÜžS™]Ó›Ü›X[Ë”ÜÜÙ\ÜÔÜYYY
+JJBˆÂˆ˜\ˆ™\ÝÜ™YÝ]HÝÛ[”ÝÙ\‹”ÝÙ\’YOBˆ›ÝÝ\S˜]]™QÛÜžS™]Ó›Ü›X[Ë”ÜÜÙ\ÜÔÝ™[™ÝYˆÈœ›ÝËœÝÙ\‹œÝ™[™Ý‚ˆˆœ›ÝËœÝÙ\‹™^\š]HŽÂˆÛÛX˜]H\T^Y\”ÝÙ\ŠˆÛÛX˜]™\ÝÜ™YÝ]ÝÛ[”ÝÙ\‹”ÝÜ™Y˜[YJNÂˆBˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HO‚ˆ[™[^K’[œÝ[˜ÙRYOHY™X]Y[™[^RYˆÈ[™[^HÚ]ˆÂˆÝÙ\œÈH[™[^K”ÝÙ\”Ý]\Ë”Ù[XÝ
+ÝÙ\ˆO‚ˆÝÙ\‹”ÝÜ™Y˜[YHˆˆ	‰ˆÝÙ\‹”ÝÙ\’Y\Âˆ
+›ÝÝ\S˜]]™QÛÜžS™]Ó›Ü›X[Ë”ÜÜÙ\ÜÔÝ™[™ÝYˆÜˆ›ÝÝ\S˜]]™QÛÜžS™]Ó›Ü›X[Ë”ÜÜÙ\ÜÔÜYYY
+BˆÈÝÙ\ˆÚ]ÈÝÜ™Y˜[YHHBˆˆÝÙ\ŠK•Ð\œ˜^J
+BˆBˆˆ[™[^JK•Ð\œ˜^J
+BˆNÂˆB‚ˆ›Ü™XXÚ
+˜\ˆÝÛ™\ˆ[ˆÛÛX˜]‘[™[ZY\Âˆ•Ú\™J][HOˆ][K’ˆˆ	‰ˆ][K’[œÝ[˜ÙRYOHY™X]Y[™[^RY
+Bˆ“Ü™\žJ][HOˆ][K’[œÝ[˜ÙRY
+JBˆÂˆ˜\ˆ™XXÝ[ÛœÈHÝÛ™\‹”ÝÙ\”Ý]\Âˆ“Ü™\žJÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ŠBˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÈˆ
+Bˆ”Ù[XÝ
+ÝÙ\ˆOˆ
+ˆYš[š][ÛŽˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+KˆÝÙ\‹”ÝXÚÜÊJBˆ•Ú\™JZ\ˆO‚ˆZ\‹‘Yš[š][Û‹[QX]Ý™[™Ý\”ÝXÚÈˆˆZ\‹‘Yš[š][Û‹[QX]›ØÚÔ\”ÝXÚÈˆˆZ\‹‘Yš[š][Û‹”Ý[“Û[QX]
+Bˆ•Ð\œ˜^J
+NÂˆ›Ü™XXÚ
+˜\ˆ™XXÝ[Ûˆ[ˆ™XXÝ[ÛœÊBˆÂˆYˆ
+™XXÝ[Û‹‘Yš[š][Û‹[QX]Ý™[™Ý\”ÝXÚÈˆ
+BˆÂˆÛÛX˜]H\Q[™[^TÝÙ\ŠˆÛÛX˜]ÝÛ™\‹’[œÝ[˜ÙRYœ›ÝËœÝÙ\‹œÝ™[™Ý‹ˆÚXÚÙY
+™XXÝ[Û‹”ÝXÚÜÂˆ
+ˆ™XXÝ[Û‹‘Yš[š][Û‹[QX]Ý™[™Ý\”ÝXÚÊJNÂˆBˆYˆ
+™XXÝ[Û‹‘Yš[š][Û‹[QX]›ØÚÔ\”ÝXÚÈˆˆ™XXÝ[Û‹‘Yš[š][Û‹ÛÛœÝ[YSÛ[QX]
+BˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+][HOˆ][K‘›ÜšÊ
+JK•Ð\œ˜^J
+NÂˆ˜\ˆYH\œ˜^K‘š[™[™^
+[™[ZY\Ë][HO‚ˆ][K’[œÝ[˜ÙRYOHÝÛ™\‹’[œÝ[˜ÙRY
+NÂˆYˆ
+YH	‰ˆ[™[ZY\ÖÚYK’ˆ
+BˆÂˆ[™[ZY\ÖÚYHH[™[ZY\ÖÚYHÚ]ˆÂˆ›ØÚÈH[™[ZY\ÖÚYK›ØÚÈ
+ÈÚXÚÙY
+ˆ™XXÝ[Û‹”ÝXÚÜÈ
+‚ˆ™XXÝ[Û‹‘Yš[š][Û‹[QX]›ØÚÔ\”ÝXÚÊKˆÝÙ\œÈH™XXÝ[Û‹‘Yš[š][Û‹ÛÛœÝ[YSÛ[QX]ˆÈ[™[ZY\ÖÚYK”ÝÙ\”Ý]\Ë•Ú\™JÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH™XXÝ[Û‹‘Yš[š][Û‹’Y
+Bˆ•Ð\œ˜^J
+Bˆˆ[™[ZY\ÖÚYK”ÝÙ\”Ý]\ÂˆNÂˆÛÛX˜]HÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆBˆBˆYˆ
+™XXÝ[Û‹‘Yš[š][Û‹”Ý[“Û[QX]
+BˆÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+][HOˆ][K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+[™[ZY\Ëˆ][HOˆ][K’[œÝ[˜ÙRYOHÝÛ™\‹’[œÝ[˜ÙRY
+NÂˆYˆ
+[™^[™[ZY\ÖÚ[™^K’H
+BˆÂˆÛÛ[YNÂˆBˆËÈ˜]]™HÜ™X]\™PÛY”Ý[ˆ™\XÙ\ÈH[™[™È[Ý™BˆËÈ›ÜˆÛ™H\›ŽÈ™\X]Y\XØ][ÛœÈ™Y›Ü™H]\›‚ˆËÈ]\Ý›ÝÝXÚÈ][\HÚÚ\Y\›œË‚ˆ[™[ZY\ÖÚ[™^HH[™[ZY\ÖÚ[™^HÚ]ˆÂˆ[™[^PXÝ[Û”ÚÚ\Ô™[XZ[š[™ÈBˆX]“X^
+Kˆ[™[ZY\ÖÚ[™^K‘[™[^PXÝ[Û”ÚÚ\Ô™[XZ[š[™ÊBˆNÂˆÛÛX˜]HÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆBˆBˆBˆ™]\›ˆÛÛX˜]ÂˆB‚ˆš]˜]HÙX[Y™XÛÜ™›ÝÝ\Q[™[^RÜÜÔ™\Ý[
+ˆ[™[^PÛÛX˜]Ý]H[™[^Kˆ[ÜÜÊNÂ‚ˆš]˜]HÝ]XÈ›ÝÝ\Q[™[^RÜÜÔ™\Ý[[ÙYžQ[™[^RÜÜÊˆ[™[^PÛÛX˜]Ý]H[™[^Kˆ[™\]Y\ÝYÜÜËˆ›ÛÛ[ÝÑ[XYÙUšYÙÙ\™Y™\ÚÛHYJBˆÂˆ˜\ˆÜÜÈHX]“X^
+™\]Y\ÝYÜÜÊNÂˆYˆ
+ÜÜÈOH[™[^K’H[™[^K›ÜÜÔ[™[™Ô™]š]˜[
+BˆÂˆ™]\›ˆ™]È›ÝÝ\Q[™[^RÜÜÔ™\Ý[
+ˆ[™[^Kˆ[™[^K›ÜÜÔ[™[™Ô™]š]˜[ÈˆÜÜÊNÂˆB‚ˆ˜\ˆÝÙ\œÈH[™[^K”ÝÙ\”Ý]\Ë•Ó\Ý
+
+NÂˆ˜\ˆØ\Ø[™Y]HHÝÙ\œÂˆ•Ú\™JÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘[™[^RÜÜÐØ\\•šYÙÙ\ˆˆ
+Bˆ“Ü™\žJÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ŠBˆ‘š\œÝÜ‘Y˜][
+
+NÂ‚ˆYˆ
+Ø\Ø[™Y]H\È›Ý[
+BˆÂˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠˆØ\Ø[™Y]K”ÝÙ\’Y
+NÂˆÜÜÈHX]“Z[ŠˆÜÜËˆYš[š][Û‹‘[™[^RÜÜÐØ\\•šYÙÙ\ŠNÂ‚ˆYˆ
+Yš[š][Û‹ÛÛœÝ[YSÛ‘[™[^RÜÜÊBˆÂˆ˜\ˆ[™^HÝÙ\œË‘š[™[™^
+ÝÙ\ˆO‚ˆÝÙ\‹\XØ][Û“Ü™\‚ˆOHØ\Ø[™Y]K\XØ][Û“Ü™\ŠNÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ‘[™[^H[ÜÜÈ[ÙYšY\ˆ\Ø\X\™Y™Y›Ü™HÛÛœÝ[\[Û‹ˆŠNÂˆB‚ˆYˆ
+ÝÙ\œÖÚ[™^K”ÝXÚÜÈHJBˆÂˆÝÙ\œË”™[[Ý™P]
+[™^
+NÂˆBˆ[ÙBˆÂˆÝÙ\œÖÚ[™^HHÝÙ\œÖÚ[™^HÚ]ˆÂˆÝXÚÜÈHÝÙ\œÖÚ[™^K”ÝXÚÜÈHBˆNÂˆBˆBˆB‚ˆ˜\ˆÜÜÐYÙ]HÝÙ\œÂˆ•Ú\™JÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ‘[™[^RÜÜÓ[Z]Y\”ÚYU\›žTÝXÚÜÊBˆ”Ù[XÝ
+ÝÙ\ˆOˆÝÙ\‹”ÝXÚÜÊBˆ‘Y˜][Y‘[\J[“X^˜[YJBˆ“Z[Š
+NÂˆYˆ
+ÜÜÐYÙ]OH[“X^˜[YJBˆÂˆÜÜÈHX]“Z[ŠÜÜËˆX]“X^
+ÜÜÐYÙ]H[™[^K’ÜÜÐYÙ]\ÙY
+JNÂˆ[™[^HH[™[^HÚ]ˆÂˆÜÜÐYÙ]\ÙYH[™[^K’ÜÜÐYÙ]\ÙY
+ÈÜÜÂˆNÂˆB‚ˆ˜\ˆ™^HX]“X^
+[™[^K’HÜÜÊNÂˆ˜\ˆ™\ÚÛØ[™Y]HHÝÙ\œÂˆ•Ú\™JÝÙ\ˆO‚ˆÂˆYˆ
+ÝÙ\‹”ÝXÚÜÈH
+BˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆ˜\ˆYš[š][ÛˆH›ÝÝ\PÛÛ[”ÝÙ\ŠˆÝÙ\‹”ÝÙ\’Y
+NÂˆ™]\›ˆ[ÝÑ[XYÙUšYÙÙ\™Y™\ÚÛˆ	‰ˆYš[š][Û‹•šYÙÙ\“ÝÛ™\]]Ü™[ÝÔÝXÚÜÂˆ	‰ˆ™^HÝÙ\‹”ÝXÚÜÎÂˆJBˆ“Ü™\žJÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ŠBˆ‘š\œÝÜ‘Y˜][
+
+NÂ‚ˆYˆ
+™\ÚÛØ[™Y]H\È›Ý[
+BˆÂˆ˜\ˆ™\ÚÛYš[š][ÛˆBˆ›ÝÝ\PÛÛ[”ÝÙ\Šˆ™\ÚÛØ[™Y]K”ÝÙ\’Y
+NÂˆÝÙ\œË”™[[Ý™P[
+ÝÙ\ˆO‚ˆÝÙ\‹\XØ][Û“Ü™\‚ˆOH™\ÚÛØ[™Y]K\XØ][Û“Ü™\ŠNÂ‚ˆYˆ
+™\ÚÛYš[š][Û‚ˆÛX\“ÝÛ™\”Ý™[™ÝÛ’™\ÚÛšYÙÙ\ŠBˆÂˆÝÙ\œË”™[[Ý™P[
+ÝÙ\ˆO‚ˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊˆÝÙ\‹”ÝÙ\’Yˆœ›ÝËœÝÙ\‹œÝ™[™ÝŠJNÂˆB‚ˆ˜\ˆ›Ü˜ÙYÝ]RYBˆ™\ÚÛYš[š][Û‹“ÝÛ™\ZTÝ]SÛ’™\ÚÛšYÙÙ\ŽÂˆ˜\ˆ›Ü˜ÙYZTÝ]HH›Ü˜ÙYÝ]RY\È[ˆÈ[ˆˆ›ÝÝ\PÛÛ[‘[™[^J[™[^K‘[™[^RY
+BˆZOË”Ý]\Ë‘š\œÝÜ‘Y˜][
+Ý]HO‚ˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[‘\]X[ÊˆÝ]K’Y›Ü˜ÙYÝ]RY
+JNÂˆËÈH^Y\‹]šYÙÙ\™Y™\ÚÛX^HÕ‘T”’QH[ˆ[››Ý[˜ÙY[Ý™KˆËÈK™ËˆHÙ\™[[ÛšX[™X\Ý\Èš\ÚX›HÝ[›™Yˆ\È\ÈBˆËÈ]\›Z[š\ÝXÈ[\œ\™]™\ˆH™]ÈY[ˆ˜[™ÛH›Û‚ˆ[™[^HH[™[^HÚ]ˆÂˆZTÝ]RYH›Ü˜ÙYÝ]RYÏÈ[™[^KZTÝ]RYˆ[›™Y[Ý™R[™^H›Ü˜ÙYZTÝ]H\ÂˆÈÚ[™ˆ›ÝÝ\Q[™[^PZTÝ]RÚ[™“[Ý™HBˆÈ›Ü˜ÙYZTÝ]K“[Ý™R[™^ˆ[™[^K”[›™Y[Ý™R[™^ˆ[›™Y™^ZTÝ]RYH›Ü˜ÙYZTÝ]H\ÂˆÈÚ[™ˆ›ÝÝ\Q[™[^PZTÝ]RÚ[™“[Ý™HBˆÈ›Ü˜ÙYZTÝ]K“™^Ý]RYˆ[™[^K”[›™Y™^ZTÝ]RYˆNÂˆB‚ˆ[™[^HH[™[^HÚ]ˆÂˆÝÙ\œÈHÝÙ\œË•Ð\œ˜^J
+BˆNÂ‚ˆ™]\›ˆ™]È›ÝÝ\Q[™[^RÜÜÔ™\Ý[
+ˆ[™[^KˆÜÜÊNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H][\Q[™[^TÝ]\ÊˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆÝš[™ÈÝ]\ÒYˆ[][\Y\ŠBˆÂˆÈH›ÝÝ\PÛÛ[”Ý]\ÊÝ]\ÒY
+NÂˆYˆ
+][\Y\ˆ
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ”Ý]\È][\Y\ˆØ[››Ý™H™YØ]]™KˆŠNÂˆB‚ˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Ë”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JK•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+[™[ZY\Ë[™[^HOˆ[™[^K’[œÝ[˜ÙRYOH[™[^RY
+NÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	‘[™[^HÙ[™[^RYH\ÈZ\ÜÚ[™ËˆŠNÂˆB‚ˆ˜\ˆ[™[^HH[™[ZY\ÖÚ[™^NÂˆYˆ
+[™[^K’H
+BˆÂˆ™]\›ˆÛÛX˜]ÂˆB‚ˆ˜\ˆÝ]\Ù\ÈH™]ÈXÝ[Û˜\žOÝš[™Ë[Š[™[^K”Ý]\Ù\ËÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+NÂˆ˜\ˆÝ\œ™[HÝ]\Ù\Ë‘Ù]˜[YSÜ‘Y˜][
+Ý]\ÒY
+NÂˆ˜\ˆ™^HÝ\œ™[
+ˆ][\Y\ŽÂˆYˆ
+™^ˆ
+BˆÂˆÝ]\Ù\ÖÜÝ]\ÒYHH™^ÂˆBˆ[ÙBˆÂˆÝ]\Ù\Ë”™[[Ý™JÝ]\ÒY
+NÂˆB‚ˆ[™[ZY\ÖÚ[™^HH[™[^HÚ]ÈÝ]\Ù\ÈHÝ]\Ù\ÈNÂˆ™]\›ˆÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆB‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H\Q[™[^TÝ]\ÊˆÛÛX˜]Ý]HÛÛX˜]ˆ[[™[^RYˆÝš[™ÈÝ]\ÒYˆ[[[Ý[
+BˆÂˆ˜\ˆÝ]\ÑYš[š][ÛˆBˆ›ÝÝ\PÛÛ[”Ý]\ÊÝ]\ÒY
+NÂˆ˜\ˆ[™[ZY\ÈHÛÛX˜]‘[™[ZY\Âˆ”Ù[XÝ
+[™[^HOˆ[™[^K‘›ÜšÊ
+JBˆ•Ð\œ˜^J
+NÂˆ˜\ˆ[™^H\œ˜^K‘š[™[™^
+ˆ[™[ZY\Ëˆ[™[^HOˆ[™[^K’[œÝ[˜ÙRYOH[™[^RY
+NÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ	‘[™[^HÙ[™[^RYH\ÈZ\ÜÚ[™ËˆŠNÂˆB‚ˆ˜\ˆ[™[^HH[™[ZY\ÖÚ[™^NÂˆYˆ
+[™[^K’H
+BˆÂˆ™]\›ˆÛÛX˜]ÂˆB‚ˆYˆ
+[[Ý[ˆ	‰ˆÝ]\ÑYš[š][Û‹’\ÑXY™ŠBˆÂˆ˜\ˆ›ØÚÙYBˆžP›ØÚÒ[˜ÛÛZ[™Ñ[™[^QXY™Š[™[^JNÂˆ[™[^HH›ØÚÙY‘[™[^NÂˆYˆ
+›ØÚÙY›ØÚÙY
+BˆÂˆ[™[ZY\ÖÚ[™^HH[™[^NÂˆ™]\›ˆÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆBˆB‚ˆ˜\ˆÝ]\Ù\ÈH™]ÈXÝ[Û˜\žOÝš[™Ë[Šˆ[™[^K”Ý]\Ù\ËˆÝš[™ÐÛÛ\\™\‹“Ü™[˜[
+NÂˆÝ]\Ù\ÖÜÝ]\ÒYHBˆÝ]\Ù\Ë‘Ù]˜[YSÜ‘Y˜][
+Ý]\ÒY
+Bˆ
+È[[Ý[Âˆ[™[ZY\ÖÚ[™^HH[™[^HÚ]ˆÂˆÝ]\Ù\ÈHÝ]\Ù\ÂˆNÂˆ™]\›ˆÛÛX˜]Ú]È[™[ZY\ÈH[™[ZY\ÈNÂˆB‚ˆš]˜]HÙX[Y™XÛÜ™›ÝÝ\Q[™[^QXY™›ØÚÔ™\Ý[
+ˆ[™[^PÛÛX˜]Ý]H[™[^Kˆ›ÛÛ›ØÚÙY
+NÂ‚ˆš]˜]HÝ]XÈ›ÝÝ\Q[™[^QXY™›ØÚÔ™\Ý[ˆžP›ØÚÒ[˜ÛÛZ[™Ñ[™[^QXY™Šˆ[™[^PÛÛX˜]Ý]H[™[^JBˆÂˆ˜\ˆØ[™Y]HH[™[^K”ÝÙ\”Ý]\Âˆ•Ú\™JÝÙ\ˆO‚ˆÝÙ\‹”ÝXÚÜÈˆˆ	‰ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠˆÝÙ\‹”ÝÙ\’Y
+Bˆ›ØÚÜÓ™^XY™ŠBˆ“Ü™\žJÝÙ\ˆOˆÝÙ\‹\XØ][Û“Ü™\ŠBˆ‘š\œÝÜ‘Y˜][
+
+NÂˆYˆ
+Ø[™Y]H\È[
+BˆÂˆ™]\›ˆ™]È›ÝÝ\Q[™[^QXY™›ØÚÔ™\Ý[
+ˆ[™[^Kˆ˜[ÙJNÂˆB‚ˆ˜\ˆÝÙ\œÈH[™[^K”ÝÙ\”Ý]\Âˆ”Ù[XÝ
+ÝÙ\ˆOˆÝÙ\‹‘›ÜšÊ
+JBˆ•Ó\Ý
+
+NÂˆ˜\ˆ[™^HÝÙ\œË‘š[™[™^
+ÝÙ\ˆO‚ˆÝÙ\‹\XØ][Û“Ü™\‚ˆOHØ[™Y]K\XØ][Û“Ü™\ŠNÂˆYˆ
+[™^
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠˆ‘[™[^HXY™‹X›ØÚÚ[™ÈÝÙ\ˆ\Ø\X\™Y™Y›Ü™HÛÛœÝ[\[Û‹ˆŠNÂˆB‚ˆYˆ
+ÝÙ\œÖÚ[™^K”ÝXÚÜÈHJBˆÂˆÝÙ\œË”™[[Ý™P]
+[™^
+NÂˆBˆ[ÙBˆÂˆÝÙ\œÖÚ[™^HHÝÙ\œÖÚ[™^HÚ]ˆÂˆÝXÚÜÈHÝÙ\œÖÚ[™^K”ÝXÚÜÈHBˆNÂˆB‚ˆ™]\›ˆ™]È›ÝÝ\Q[™[^QXY™›ØÚÔ™\Ý[
+ˆ[™[^HÚ]ÈÝÙ\œÈHÝÙ\œË•Ð\œ˜^J
+HKˆYJNÂˆB‚ˆš]˜]HÙX[Y™XÛÜ™›ÝÝ\Q˜]ÐØ\™Ô™\Ý[
+ˆ^Y\”Ý]H^Y\‹ˆÛÛX˜]Ý]HÛÛX˜]ˆÛ™Ö×H˜]ÛØ\™[œÝ[˜ÙRYËˆ[™[XZ[š[™ÐÛÝ[Hˆ›ÛÛÚY™›TÙ[XÝ[Û”[™[™ÈH˜[ÙJNÂ‚ˆš]˜]HÝ]XÈ›ÝÝ\Q˜]ÐØ\™Ô™\Ý[˜]ÐØ\™Êˆ^Y\”Ý]H^Y\‹ˆÛÛX˜]Ý]HÛÛX˜]ˆ[ÛÝ[ˆ›™Ð[™H›™Ëˆ›ÛÛœ›ÛR[™˜]Ëˆ[]™[\H
+BˆÂˆÛÛœÝ[X^[™Ú^™HHLÂˆ˜\ˆ˜]ÛØ\™[œÝ[˜ÙRYÈH™]È\ÝÛ™ÏŠ
+NÂ‚ˆ›Üˆ
+˜\ˆ˜]Ó[X™\ˆHÈ˜]Ó[X™\ˆÛÝ[È˜]Ó[X™\ŠÊÊBˆÂˆYˆ
+Yœ›ÛR[™˜]Âˆ	‰ˆÛÛX˜]”^Y\”ÝÙ\œË[žJÝÙ\ˆO‚ˆ›ÝÝ\PÛÛ[”ÝÙ\ŠÝÙ\‹”ÝÙ\’Y
+Bˆ”™]™[ÐY][Û˜[˜]ÊJBˆÂˆœ™XZÎÂˆB‚ˆYˆ
+ÛÛX˜]’[™“[™ÝHX^[™Ú^™JBˆÂˆœ™XZÎÂˆB‚ˆ˜\ˆ˜]ÈHÛÛX˜]‘˜]Ô[K•Ó\Ý
+
+NÂˆ˜\ˆ\ØØ\™HÛÛX˜]‘\ØØ\™[K•Ó\Ý
+
+NÂ‚ˆYˆ
+˜]ËÛÝ[OH
+BˆÂˆYˆ
+\ØØ\™ÛÝ[OH
+BˆÂˆœ™XZÎÂˆB‚ˆ˜\ˆ™XÞXÛYH\ØØ\™•Ð\œ˜^J
+NÂˆ\ØØ\™ÛX\Š
+NÂˆ›ÝÝ\T›™Ë”ÚY™›J›™Ë˜ÛÛX˜]‹™XÞXÛY
+NÂˆ˜]ËY˜[™ÙJ\T\™™XÝš]ÚY™›SÜ™\ŠˆÛÛX˜]™XÞXÛY
+JNÂˆÛÛX˜]H\T™[XÐY\”ÚY™›PØ\™ÊÛÛX˜]Ú]ˆÂˆ˜]Ô[HH˜]Ë•Ð\œ˜^J
+K\ØØ\™[HH\ØØ\™•Ð\œ˜^J
+BˆK›™ÊNÂˆ˜]ÈHÛÛX˜]‘˜]Ô[K•Ó\Ý
+
+NÂˆ˜\ˆÝ˜]YÙ[HHÛÛX˜]”^Y\”ÝÙ\œË”Ý[JÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOHœ›ÝËœÝÙ\‹œÝ˜]YÙ[H‚ˆÈX]“X^
+ÝÙ\‹”ÝXÚÜÊHˆ
+NÂˆYˆ
+Ý˜]YÙ[Hˆ	‰ˆÛÛX˜]’[™“[™ÝX^[™Ú^™JBˆÂˆËÈ\œÚ\ÝH™XÞXÛY˜]È[H™Y›Ü™H›Û\[™Ë‚ˆËÈHÝ\Ü[™Y˜]È™\Ý[Y\ÈY\ˆ\ÈÚÚXÙK‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ˜]Ô[HH˜]Ë•Ð\œ˜^J
+Kˆ\ØØ\™[HH\ØØ\™•Ð\œ˜^J
+BˆNÂˆ™]\›ˆ™]È›ÝÝ\Q˜]ÐØ\™Ô™\Ý[
+ˆ^Y\‹ÛÛX˜]˜]ÛØ\™[œÝ[˜ÙRYË•Ð\œ˜^J
+Kˆ™[XZ[š[™ÐÛÝ[ˆÛÝ[H˜]Ó[X™\‹ˆÚY™›TÙ[XÝ[Û”[™[™ÎˆYJNÂˆBˆB‚ˆ˜\ˆ[™^H˜]ËÛÝ[HNÂˆ˜\ˆØ\™[œÝ[˜ÙRYH˜]ÖÚ[™^NÂˆ˜]Ë”™[[Ý™P]
+[™^
+NÂ‚ˆÛÛX˜]HÛÛX˜]Ú]ˆÂˆ[™HÛÛX˜]’[™\[™
+Ø\™[œÝ[˜ÙRY
+K•Ð\œ˜^J
+Kˆ˜]Ô[HH˜]Ë•Ð\œ˜^J
+Kˆ\ØØ\™[HH\ØØ\™•Ð\œ˜^J
+BˆNÂˆ˜]ÛØ\™[œÝ[˜ÙRYËY
+Ø\™[œÝ[˜ÙRY
+NÂ‚ˆ˜\ˆØ\™H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]Ø\™[œÝ[˜ÙRY
+NÂˆ˜\ˆ˜[™ÛZ^™YÛÜÝ\\›Ý[™Bˆ^Y\‹XÝ]™T™[XÜÂˆ”Ù[XÝ
+™[XÈO‚ˆ›ÝÝ\PÛÛ[”™[XÊ™[XË”™[XÒY
+Bˆ”˜[™ÛZ^™Q˜]ÛØ\™ÛÜÝX^^Û\Ú]™JBˆ‘Y˜][Y‘[\J
+Bˆ“X^
+
+NÂˆ˜\ˆØ\™Yš[š][ÛˆBˆ›ÝÝ\PÛÛ[Ø\™
+Ø\™Ø\™Y
+NÂˆYˆ
+˜[™ÛZ^™YÛÜÝ\\›Ý[™ˆˆ	‰ˆØ\™Yš[š][Û‹ÛÜÝ’Ú[™ˆOH›ÝÝ\PØ\™ÛÜÝÚ[™‘š^Yˆ	‰ˆØ\™Yš[š][Û‹ÛÜÝ[[Ý[H
+BˆÂˆÛÛX˜]HÙ]Ø\™[\Ü˜\žQ[™\™ÞPÛÜÝ
+ˆÛÛX˜]ˆØ\™[œÝ[˜ÙRYˆ™]È›ÝÝ\U[\Ü˜\žPØ\™ÛÜÝ
+ˆ›ÝÝ\T›™Ë“™^[
+ˆ›™Ëˆ˜ÛÛX˜]‹ˆ˜[™ÛZ^™YÛÜÝ\\›Ý[™
+Kˆ›ÝÝ\U[\Ü˜\žPØ\™ÛÜÝ^\žK“›Û™JJNÂˆØ\™H™\]Z\™PÛÛX˜]Ø\™
+ˆÛÛX˜]ˆØ\™[œÝ[˜ÙRY
+NÂˆB‚ˆYˆ
+Ø\™‘[˜Ú[Y[\ÂˆÈÚ[™ˆ›ÝÝ\PØ\™[˜Ú[Y[Ú[™”Û]\ˆJBˆÂˆËÈÛ]\ˆ™\›ÛÈ\ÈÛÛX˜]	ÜÈÛÜÝ]™\žH[YH]ÂˆËÈØ\™\È˜]Û‹[˜ÛY[™ÈY\ˆ[H™XÞXÛ[™Ë‚ˆÛÛX˜]HÙ]Ø\™[\Ü˜\žQ[™\™ÞPÛÜÝ
+ˆÛÛX˜]ˆØ\™[œÝ[˜ÙRYˆ™]È›ÝÝ\U[\Ü˜\žPØ\™ÛÜÝ
+ˆ›ÝÝ\T›™Ë“™^[
+›™Ë˜ÛÛX˜]‹
+Kˆ›ÝÝ\U[\Ü˜\žPØ\™ÛÜÝ^\žK“›Û™JJNÂˆØ\™H™\]Z\™PÛÛX˜]Ø\™
+ÛÛX˜]Ø\™[œÝ[˜ÙRY
+NÂˆB‚ˆ˜\ˆ\Ü]ÚYH\Ü]ÚÛÛX˜]]™[
+ˆ^Y\‹ˆÛÛX˜]ˆ™]È›ÝÝ\PÛÛX˜]]™[
+ˆ›ÝÝ\PÛÛX˜]]™[Ú[™Ø\™˜]Û‹ˆÛÝ\˜ÙPØ\™[œÝ[˜ÙRYˆØ\™[œÝ[˜ÙRYˆØ\™YˆØ\™Ø\™Yˆœ›ÛR[™˜]Îˆœ›ÛR[™˜]ÊKˆ›™Ëˆ]™[\
+NÂˆ^Y\ˆH\Ü]ÚY”^Y\ŽÂˆÛÛX˜]H\Ü]ÚYÛÛX˜]ÂˆB‚ˆ™]\›ˆ™]È›ÝÝ\Q˜]ÐØ\™Ô™\Ý[
+ˆ^Y\‹ˆÛÛX˜]ˆ˜]ÛØ\™[œÝ[˜ÙRYË•Ð\œ˜^J
+JNÂˆB‚ˆš]˜]HÝ]XÈ›ÚY˜[Y]U\™Ù]
+ˆ›ÝÝ\PØ\™\™Ù]\™Ù]Ú[™ˆ[È\™Ù][™[^RYˆÛÛX˜]Ý]HÛÛX˜]
+BˆÂˆYˆ
+\™Ù]Ú[™OH›ÝÝ\PØ\™\™Ù]“›Û™JBˆÂˆYˆ
+\™Ù][™[^RY\È›Ý[
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ•\ÈXÝ[ÛˆÙ\È›ÝXØÙ\[ˆ[™[^H\™Ù]ˆŠNÂˆB‚ˆ™]\›ŽÂˆB‚ˆYˆ
+\™Ù][™[^RY\È[
+BˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ•\ÈXÝ[Ûˆ™\]Z\™\È[ˆ[™[^H\™Ù]ˆŠNÂˆB‚ˆYˆ
+XÛÛX˜]‘[™[ZY\Ë[žJˆ[™[^HOˆ[™[^K’[œÝ[˜ÙRYOH\™Ù][™[^RY•˜[YH	‰ˆ[™[^K’ˆ
+JBˆÂˆ›ÝÈ™]È[˜[YÜ\˜][Û‘^Ù\[ÛŠ	‘[™[^HÝ\™Ù][™[^RY•˜[Y_H\È›ÝH]™H\™Ù]ˆŠNÂˆBˆB‚ˆËÈZ[š[Û”ÝÙ\ˆY[YšY\ÈÙXÛÛ™\žH[™[ZY\ËˆHÛÛX˜]Ú]š[X\žBˆËÈ[™[ZY\È\ÈÛÛˆÚ[ˆ^H˜[]™[ˆYˆHÝ[[[Û™YYÙÈÜˆ[\Ú[Û‚ˆËÈÝ[Ý\š]™\ÎÈÝ[™[Û™HZ[š[Ûˆš^\™\È™\]Z\™H[YXY‚ˆš]˜]HÝ]XÈÛÛX˜]Ý]H™\ÛÛ™RØZ\Ù\Ü˜X‘˜XÚ[™ÊˆÛÛX˜]Ý]HÛÛX˜][È\™Ù][™[^RY
+BˆÂˆYˆ
+\™Ù][™[^RY\È[
+Bˆ™]\›ˆÛÛX˜]Âˆ˜\ˆ\™Ù]HÛÛX˜]‘[™[ZY\Ë‘š\œÝÜ‘Y˜][
+[™[^HO‚ˆ[™[^K’[œÝ[˜ÙRYOH\™Ù][™[^RY•˜[YH	‰ˆ[™[^K’ˆ
+NÂˆYˆ
+\™Ù]\È[
+Bˆ™]\›ˆÛÛX˜]Â‚ˆËÈ˜XÚ[™ÈY˜][ÈšYÚˆ\™Ù][™ÈHY\›H\›œÈYˆËÈ\™Ù][™ÈHšYÚ\›H\›œÈšYÚ[˜ÛY[™È›Û‹X]XÚÜË‚ˆ˜\ˆ\™XÝ[ÛˆH\™Ù]”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë˜XÚÓYY
+HÈBˆˆ\™Ù]”ÝÙ\”Ý]\Ë[žJÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë˜XÚÔšYÚY
+HÈˆˆLNÂˆYˆ
+\™XÝ[Ûˆ
+Bˆ™]\›ˆÛÛX˜]Âˆ™]\›ˆÛÛX˜]Ú]ˆÂˆ^Y\”ÝÙ\œÈHÛÛX˜]”^Y\”ÝÙ\œË”Ù[XÝ
+ÝÙ\ˆO‚ˆÝÙ\‹”ÝÙ\’YOH›ÝÝ\S˜]]™R]™P›ÜÜÙ\Ë”Ý\œ›Ý[™YYˆÈÝÙ\ˆÚ]ÈÝÜ™Y˜[YHH\™XÝ[ÛˆHˆÝÙ\ŠBˆ•Ð\œ˜^J
+BˆNÂˆB‚ˆš]˜]HÝ]XÈ›ÛÛ[[™[ZY\ÑY™X]Y
+ÛÛX˜]Ý]HÛÛX˜]
+BˆÂˆ˜\ˆš[X\žHHÛÛX˜]‘[™[ZY\Ë•Ú\™J[™[^HO‚ˆT›ÝÝ\PÛÛ[‘[™[^J[™[^K‘[™[^RY
+K’\ÓZ[š[ÛŠK•Ð\œ˜^J
+NÂˆ™]\›ˆš[X\žK“[™ÝˆˆÈš[X\žK[
+[™[^HOˆ[™[^K’H
+BˆˆÛÛX˜]‘[™[ZY\Ë[
+[™[^HOˆ[™[^K’H
+NÂˆBŸB

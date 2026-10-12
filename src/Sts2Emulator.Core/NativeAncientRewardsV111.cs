@@ -120,6 +120,10 @@ public static class NativeAncientRewardsV111
                 NativeEventRng: null })
             throw new InvalidOperationException(
                 "Tanx requires its persisted native event RNG context.");
+        if (state.World?.Event is { EventId: NativeNonupeipeEventV111.EventId,
+                NativeEventRng: null })
+            throw new InvalidOperationException(
+                "Nonupeipe requires its persisted native event RNG context.");
 
         if (state.World?.Event is not { NativeEventRng: { } stream } evt)
             return;
@@ -131,6 +135,11 @@ public static class NativeAncientRewardsV111
         if (evt.EventId == NativeTanxEventV111.EventId)
         {
             NativeTanxEventV111.ValidateEventContext(state);
+            return;
+        }
+        if (evt.EventId == NativeNonupeipeEventV111.EventId)
+        {
+            NativeNonupeipeEventV111.ValidateEventContext(state);
             return;
         }
         if (evt.EventId != TezcataraId || stream.StreamId != "context.event.TEZCATARA.player_0"

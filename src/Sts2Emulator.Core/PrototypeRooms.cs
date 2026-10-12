@@ -901,6 +901,7 @@ public sealed partial class PrototypeGameEngine
         var choices = eventState.EventId is NativeAncientRewardsV111.TezcataraId
                 or NativePaelRewardsV111.PaelId
                 or NativeTanxEventV111.EventId
+                or NativeNonupeipeEventV111.EventId
                 && eventState.OfferedChoiceIds is { } offeredIds
             ? offeredIds.Select(id => definition.Choices.Single(choice => choice.Id == id))
             : definition.Choices.AsEnumerable();
@@ -1504,6 +1505,14 @@ public sealed partial class PrototypeGameEngine
                         rng: state.Rng, allocateCardId: () => nextId++,
                         nativeRunRng: nativeRunRng);
 
+                    if (eventState.EventId == NativeNonupeipeEventV111.EventId
+                        && relicId == NativeGloryAncientsV111.FurCoatId)
+                    {
+                        player = NativeGloryAncientsV111.MarkFurCoatCombats(
+                            player, world.Map, world.Act, state.RunSeed,
+                            state.Rng, nativeRunRng is not null);
+                    }
+
                     if (relicId == NativeAncientRewardsV111.ToyBoxId)
                     {
                         if (deferredReward is not null)
@@ -1732,6 +1741,9 @@ public sealed partial class PrototypeGameEngine
         || (eventId == PrototypeNativeHiveEvents.LostWispId
             && relicId == PrototypeNativeHiveEvents.LostWispRelicId)
         || (eventId == NativeTanxEventV111.EventId
+            && NativeGloryAncientsV111.Relics.Any(relic =>
+                relic.Id == relicId))
+        || (eventId == NativeNonupeipeEventV111.EventId
             && NativeGloryAncientsV111.Relics.Any(relic =>
                 relic.Id == relicId));
 
