@@ -467,6 +467,20 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PAPER_KRANE"
+            && engineIds.Contains(PrototypeNativeSilentRelics.PaperKraneId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.PaperKraneId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.PaperKraneId, out var craneRarity)
+            && craneRarity == PrototypeRelicRarity.Rare)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";

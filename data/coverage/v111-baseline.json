@@ -27461,17 +27461,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.paper_krane"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PaperKrane.cs#f1e5b7e31cdf642085e9e74cd13bbad2fef3babf50a88becc3e950158020bce9"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PAPER_KRANE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29612,8 +29614,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 10,
-        "integrated": 10,
+        "implemented": 11,
+        "integrated": 11,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

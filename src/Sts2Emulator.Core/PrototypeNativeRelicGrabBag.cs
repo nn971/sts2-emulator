@@ -66,6 +66,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.frozen_egg"] = PrototypeRelicRarity.Rare,
             ["proto.relic.captains_wheel"] = PrototypeRelicRarity.Rare,
             ["proto.relic.black_star"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSilentRelics.PaperKraneId] = PrototypeRelicRarity.Rare,
             ["proto.relic.kunai"] = PrototypeRelicRarity.Rare,
             ["proto.relic.shuriken"] = PrototypeRelicRarity.Rare,
             ["proto.relic.ice_cream"] = PrototypeRelicRarity.Rare,

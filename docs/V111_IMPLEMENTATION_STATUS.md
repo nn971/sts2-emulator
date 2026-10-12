@@ -1044,3 +1044,7 @@ Added **Snecko Skull** to the common relic pool. Each positive Poison
 application the player gives to an enemy gains one additional stack, through
 the shared enemy-status application path. Source:
 [SneckoSkull.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/SneckoSkull.cs).
+Added the Silent rare relic **Paper Krane**. Weak enemy attacks against the
+player use a 60% damage multiplier (the base Weak multiplier is 75%); Weak
+does not reduce enemy non-attack damage. Source:
+[PaperKrane.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/PaperKrane.cs).

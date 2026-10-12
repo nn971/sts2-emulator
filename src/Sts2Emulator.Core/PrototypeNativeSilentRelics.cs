@@ -9,6 +9,7 @@ public static class PrototypeNativeSilentRelics
 {
     public const string HelicalDartId = "proto.relic.helical_dart";
     public const string NinjaScrollId = "proto.relic.ninja_scroll";
+    public const string PaperKraneId = "proto.relic.paper_krane";
     public const string SneckoSkullId = "proto.relic.snecko_skull";
     public const string TwistedFunnelId = "proto.relic.twisted_funnel";
 
@@ -28,6 +29,10 @@ public static class PrototypeNativeSilentRelics
         new(SneckoSkullId, "Snecko Skull",
             AppliedEnemyStatusAmountBonusId: "proto.status.poison",
             AppliedEnemyStatusAmountBonus: 1),
+        // Native ModifyWeakMultiplier subtracts fifteen points for attacks
+        // that target the Silent while an enemy has Weak.
+        new(PaperKraneId, "Paper Krane",
+            WeakAttackDamageReductionPercent: 15),
         // Native BeforeHandDraw creates three Shivs on the first player turn.
         new(NinjaScrollId, "Ninja Scroll",
             Triggers:

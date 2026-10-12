@@ -7529,6 +7529,7 @@ public static class PrototypeContent
         "proto.relic.horn_cleat",
         "proto.relic.captains_wheel",
         "proto.relic.black_star",
+        "proto.relic.paper_krane",
         "proto.relic.kunai",
         "proto.relic.shuriken",
         "proto.relic.ice_cream",

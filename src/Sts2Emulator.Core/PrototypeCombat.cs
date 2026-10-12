@@ -7974,6 +7974,29 @@ public sealed partial class PrototypeGameEngine
         foreach (var status in enemy.Statuses)
         {
             var definition = PrototypeContent.Status(status.Key);
+            if (status.Key == "proto.status.weak")
+            {
+                if (!effect.IsAttack)
+                    continue;
+
+                var extraReductionPercent = combat.RelicStates
+                    .Where(relic => !relic.IsMelted)
+                    .Select(relic => PrototypeContent.Relic(relic.RelicId)
+                        .WeakAttackDamageReductionPercent)
+                    .Sum();
+                if (extraReductionPercent > 0)
+                {
+                    var adjustedNumerator = Math.Max(0,
+                        checked(100 * definition.OutgoingDamageNumerator
+                            - extraReductionPercent
+                                * definition.OutgoingDamageDenominator));
+                    damage = checked(damage * adjustedNumerator)
+                        / checked(100
+                            * definition.OutgoingDamageDenominator);
+                    continue;
+                }
+            }
+
             damage = (damage * definition.OutgoingDamageNumerator)
                 / definition.OutgoingDamageDenominator;
         }

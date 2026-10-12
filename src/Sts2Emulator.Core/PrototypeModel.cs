@@ -837,7 +837,8 @@ public sealed record PrototypeRelicDefinition(
     int ExtraEliteRelicRewardCount = 0,
     bool PreventGoldGain = false,
     string? AppliedEnemyStatusAmountBonusId = null,
-    int AppliedEnemyStatusAmountBonus = 0);
+    int AppliedEnemyStatusAmountBonus = 0,
+    int WeakAttackDamageReductionPercent = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
