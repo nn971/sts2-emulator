@@ -16,8 +16,8 @@ from native_parity import load_trace
 REQUIRED_COMBAT_FIELDS = (
     "$.player.hp", "$.player.max_hp", "$.combat.energy",
     "$.combat.hand", "$.combat.draw_pile", "$.combat.discard_pile",
-    "$.combat.exhaust_pile", "$.combat.creatures", "$.combat.powers",
-    "$.combat.turn", "$.combat.continuation_state",
+    "$.combat.exhaust_pile", "$.combat.creatures", "$.player.powers",
+    "$.combat.turn", "$.combat.max_energy", "$.player.block",
 )
 
 
@@ -34,10 +34,10 @@ def import_manifest(records: list[dict], decision_id: int) -> dict:
     unsupported = list(coverage.get("unsupported_mechanics", []))
     if phase != "Combat":
         unsupported.append("NON_COMBAT_IMPORT")
-    unsupported.append("EMULATOR_NATIVE_CONTINUATION_LOADER_UNIMPLEMENTED")
+    unsupported.append("EMULATOR_NATIVE_CONTINUATION_STEPPER_UNIMPLEMENTED")
     return {
         "status": "PARTIAL" if phase == "Combat" else "UNSUPPORTED",
-        "reason": "Captured evidence available; deterministic continuation not yet established",
+        "reason": "Visible native combat state can be structurally imported by the .NET core; deterministic continuation is still unverified",
         "decision_id": decision_id,
         "phase": phase,
         "state_hash": decision.get("state_hash"),
@@ -46,6 +46,8 @@ def import_manifest(records: list[dict], decision_id: int) -> dict:
         "unsupported_mechanics": unsupported,
         "rng_status": coverage.get("rng_status", "RNG_UNAUDITED"),
         "legal_actions": decision.get("legal_actions", []),
+        "visible_snapshot_importer": "Sts2Emulator.Core.NativeCombatSnapshotImporter",
+        "verified_continuation": False,
         "next_step_ready": False,
     }
 
