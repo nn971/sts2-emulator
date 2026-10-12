@@ -5,11 +5,17 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class NativeGloryAncientsV111
 {
+    public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
     public const string LoomingFruitId = "proto.native.ancient.looming_fruit";
     public const string SignetRingId = "proto.native.ancient.signet_ring";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        new(DiamondDiademId, "Diamond Diadem", Triggers:
+        [
+            new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                [new(PrototypeCombatEffectKind.GainPlayerBlock, 20)])
+        ]),
         new(LoomingFruitId, "Looming Fruit", RunTriggers:
         [
             new(PrototypeRunEventKind.RelicAcquired,

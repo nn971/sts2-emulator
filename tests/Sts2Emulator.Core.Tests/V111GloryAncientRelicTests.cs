@@ -92,6 +92,42 @@ public sealed class V111GloryAncientRelicTests
             relic.RelicId == NativeGloryAncientsV111.LoomingFruitId);
     }
 
+    [Fact]
+    public void DiamondDiademGrants20BlockAtEachPlayerSideTurnStart()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-diamond-diadem");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var empty = PrototypeJson.EmptyObject();
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = [..state.Player.Relics,
+                    new RelicInstance(NativeGloryAncientsV111.DiamondDiademId,
+                        empty)]
+            },
+            World = state.World! with
+            {
+                Map = new MapState(
+                    [new MapNodeState("diadem-combat", 1, 1,
+                        PrototypeRoomType.Combat, [])],
+                    EntryNodeIds: ["diadem-combat"])
+            }
+        };
+
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload("diadem-combat"))).State;
+        Assert.Equal(20, state.World!.Combat!.PlayerBlock);
+
+        state = engine.Step(state, engine.GetLegalActions(state)
+            .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(2, state.World!.Combat!.Turn);
+        Assert.Equal(20, state.World.Combat.PlayerBlock);
+    }
+
     private static RelicInstance Relic(string id) =>
         new(id, PrototypeJson.EmptyObject());
 }

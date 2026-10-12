@@ -160,10 +160,11 @@ regional entry/branch has direct integration and semantic coverage.
   card-instance mutation and cleanup.
 - Close all regional events and Ancient options, including Lantern Key/Repy
   carryover, event-only content and timed Battleworn Dummy fights.
-- Glory's Signet Ring (+888 gold) and Looming Fruit (+31 current and maximum
-  HP) dependencies are registered and tested through reward resolution. This
-  does not expose or complete Nonupeipe; all three Glory Ancients remain gated.
-  See the [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
+- Glory's Signet Ring (+888 gold), Looming Fruit (+31 current and maximum HP),
+  and Diamond Diadem (20 Block per player-side turn start) dependencies are
+  registered and tested through reward/combat resolution. This does not expose
+  or complete Nonupeipe; all three Glory Ancients remain gated. See the
+  [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.
 
