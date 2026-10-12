@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "eb4663fbe09d37886f37185503e38a7be94544273aac744ec0dd5a69b0bf5c6c",
+  "inventory_file_sha256": "7759158a4830ba4fd4ab6aa1400d14394d0df56b3a8ec2570b5e18894081f23a",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "3655e77a0f86895183bc4af74244124cdce1d30d77baaf5f36783d94dba72b3b",
+    "inventory_hash": "10bcf9b4272dac612b7b0c41b6f15d71465da20de0a92bc4254215f46db102cf",
     "items": [
       {
         "catalogued": true,
@@ -16474,25 +16474,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WaterloggedScriptorium.cs#2bdc5b5c44cfbfc45b575af00cc91495d3098d8fbfe1dcdc835286931f394aaf"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/BLOODY_INK",
-          "initial/PRICKLY_SPONGE",
-          "initial/PRICKLY_SPONGE_LOCKED",
-          "initial/TENTACLE_QUILL",
-          "initial/TENTACLE_QUILL_LOCKED",
-          "page/BLOODY_INK",
-          "page/INITIAL",
-          "page/INITIAL/BLOODY_INK",
-          "page/INITIAL/PRICKLY_SPONGE",
-          "page/INITIAL/PRICKLY_SPONGE_LOCKED",
-          "page/INITIAL/TENTACLE_QUILL",
-          "page/INITIAL/TENTACLE_QUILL_LOCKED",
-          "page/PRICKLY_SPONGE",
-          "page/TENTACLE_QUILL"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "WATERLOGGED_SCRIPTORIUM",
         "registered": true,
@@ -29731,7 +29716,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 9,
+        "implemented": 10,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,

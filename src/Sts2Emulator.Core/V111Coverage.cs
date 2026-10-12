@@ -216,6 +216,13 @@ public static class V111Coverage
             && engineIds.Contains(PrototypeNativeDenseVegetation.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "WATERLOGGED_SCRIPTORIUM"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                "proto.native.underdocks.waterlogged_scriptorium",
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {

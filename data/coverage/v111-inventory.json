@@ -12482,7 +12482,7 @@
         "page/PRICKLY_SPONGE",
         "page/TENTACLE_QUILL"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

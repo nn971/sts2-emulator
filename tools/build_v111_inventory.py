@@ -23,6 +23,7 @@ BRANCH_COMPLETE_EVENTS = {
     "SUNKEN_TREASURY", "SELF_HELP_BOOK", "TINKER_TIME",
     "POTION_COURIER", "MORPHIC_GROVE", "WELLSPRING",
     "WHISPERING_HOLLOW", "DENSE_VEGETATION",
+    "WATERLOGGED_SCRIPTORIUM",
 }
 KINDS = {
     "acts": "Acts", "afflictions": "Afflictions", "ascensions": None,
