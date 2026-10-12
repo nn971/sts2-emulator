@@ -1,11 +1,11 @@
 # Desired RNG Implementation
 
-**Status:** proposed target architecture; documentation only (2026-10-12).  
+**Status:** target architecture recorded 2026-10-12; D1 provider interface and first D2 call sites partially implemented in draft PR #123 (2026-10-13). See [migration matrix](DESIRED_RNG_MIGRATION_STATUS.md).  
 **Scope:** `sts2-emulator`, pinned STS2 v0.111.0, single-player first.  
 **Primary goal:** faithful mechanics and ordered triggers with an interchangeable source of random decisions.  
 **Related plans:** [RNG model](RNG.md), [v111 native RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md), [complete implementation roadmap](FULL_IMPLEMENTATION_ROADMAP.md), [configured v111 interface](V111_INTERFACE.md).
 
-This document records the **desired RNG implementation** for the next emulator architecture milestone. It specifies what we want to build; it does **not** claim that these interfaces, migrations, or probability calibrations are implemented today. The existing v111 native RNG work should be extended rather than discarded.
+This document records the **desired RNG implementation** for the next emulator architecture milestone. It specifies the full target architecture. A first provider API and the initial HP/committed-intent call sites are now implemented separately; **persisted controlled-gameplay continuations, the consumer bridge and probability calibration are not implemented.** The existing v111 native RNG work should be extended rather than discarded.
 
 ## 1. Governing decision
 
