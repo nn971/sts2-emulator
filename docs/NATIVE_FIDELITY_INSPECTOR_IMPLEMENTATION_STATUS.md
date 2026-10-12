@@ -1,25 +1,45 @@
 # Inspector implementation status
 
-**Feature branch:** feature/native-fidelity-inspector-foundation
+**Feature branch:** `feature/native-fidelity-inspector-foundation`
 
 | Gate | Status | Evidence / blocker |
 |---|---|---|
-| P0 | PARTIAL | Opt-in source-audited combat hook, hash-pinned loader and packaging script; actual v111 compilation, smoke test and game behavior unverified |
-| P1 | PARTIAL | 0.2 records, writer, journal, identity; source-backed partial native combat adapter; nested choices and other phases unsupported |
-| P2 | PARTIAL | Strict offline comparator/import coverage and HTML timeline; actual emulator continuation and native traces absent |
-| P3 | PARTIAL | Decision controller contracts; native dispatcher and Godot overlay absent; optional loopback transport is implemented but not attached |
-| P4 | NOT STARTED | Broader native coverage and regression corpus |
-| P5 | DEFERRED | Exact RNG/Nature training is a separate milestone |
+| P0 | PARTIAL | Pinned binary SHA-256 preflight; game-conditional C# compile, manifest/PCK packaging, and opt-in loader; actual installed-game compile/load test outstanding |
+| P1 | PARTIAL | Combat action/executor and history callbacks, stable readiness check, source-audited snapshot adapter, JSONL 0.2 writer, independent event journal and local trace auditor; nested prompts/map/reward support and no-perturbation run outstanding |
+| P2 | PARTIAL | Strict offline parity checker, partial combat coverage importer, first-difference reporting and synthetic fixtures; true emulator continuation import and real native fixture outstanding |
+| P3 | PARTIAL | Read-only F8 Godot timeline and offline HTML viewer; action coordinator and optional loopback protocol; native Step/Resume dispatch still deferred |
+| P4 | NOT STARTED | Broad game phases/acts, native corpus, first real differential regression |
+| P5 | DEFERRED | RNG/Nature and agent playback are independent future milestones |
 
-Synthetic contract tests establish protocol behavior and are not counted as
-native parity validation. Main currently provides generic deterministic engine
-contracts rather than a verified native combat snapshot continuation loader.
+## Verification and honesty
 
-Next native-local steps: run build-native-inspector.fish using a real installed game; check emitted trace against native behavior; audit semantic combat
-boundary/action/effect hooks; attach read-only Silent combat adapter; demonstrate
-passive/no-perturbation capture; add actual Strike/Defend fixtures; implement
-strict emulator snapshot import and run first differential single-step parity;
-then connect controlled input dispatch and the in-game panel.
+- Default .NET build/tests and Python synthetic protocol tests run in CI.
+- The game-dependent source is compiled only when `Sts2DataDir` points to a real installed game. **Native v111 signatures and run behavior are not yet validated against that build.**
+- Recording opt-in requires `STS2_FIDELITY_CAPTURE=1` and matching
+  `STS2_FIDELITY_EXPECT_SHA256`. Build-pin data remains local.
+- The passive capture begins at the first stable player decision, so earlier
+  combat-setup hook order remains outside semantic event coverage.
+- Typed native history events are *diagnostic* until exact payload fields are
+  audited. Unsupported capture fields and missing RNG state are declared.
+- Structural recording validity is reported separately from emulator
+  mechanical parity. Synthetic comparator `MATCH` is not a real-game result.
+- `CHANCE_UNALIGNED`, `UNSUPPORTED`, `INVALID_SETUP` and
+  `INCOMPLETE_CAPTURE` never count as parity passes.
 
-Coverage labels must remain explicit. INCOMPLETE_CAPTURE, CHANCE_UNALIGNED,
-INVALID_SETUP and UNSUPPORTED never count as passes.
+## To satisfy the first acceptance gate
+
+1. On the pinned installed game, run `scripts/build-native-inspector.fish`,
+   correct any version-specific native API differences and preserve exact
+   SHA-256 and loader/build metadata.
+2. Compare opt-in passive recording against a baseline human Silent run for
+   observable game outcomes and RNG non-perturbation.
+3. Capture Strike and Defend decisions, transition effects, event order, and
+   complete supported fields. Audit event scalar extraction against the game.
+4. Implement a strict native combat snapshot importer into the emulator,
+   including relevant hidden continuation and target/card identities.
+5. Run a deterministic native/emulator step and intentionally introduce a
+   mechanical defect; require the precise first differing field/event.
+6. Wire the native main-thread controller to actual audited player choices
+   and enable a synchronized comparison display.
+
+See Issue #122 and PR #121 for active tracking.
