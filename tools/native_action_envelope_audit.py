@@ -98,10 +98,16 @@ def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
         "exhaust_pile_change", "creature_set_change",
         "nested_choice_pause", "potion_history_entry",
     ):
-        result[label] = {"count": 0, "status": "UNOBSERVED"}
+        result[label] = {"count": 0, "status": "UNOBSERVED",
+                         "counts_by_observer": {"action": 0, "frame": 0, "history": 0}}
 
-    def add(name: str):
-        result[name]["count"] += 1
+    def add(name: str, origin: str = "action"):
+        # The same mechanical change can appear both inside an action
+        # snapshot and again in a frame delta. Do not add those two
+        # overlapping observation streams as if they were distinct effects.
+        counts = result[name]["counts_by_observer"]
+        counts[origin] += 1
+        result[name]["count"] = max(counts.values())
         result[name]["status"] = "OBSERVED_UNVERIFIED_MECHANICS"
 
     for action in actions:
@@ -142,21 +148,21 @@ def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
             current = record["state"]
             if last_frame is not None:
                 delta = diff_scalars(last_frame, current)
-                if "player_hp" in delta: add("player_hp_change")
-                if "player_block" in delta: add("block_change")
-                if "energy" in delta: add("energy_change")
-                if "player_powers" in delta: add("power_change")
-                if delta.get("zones"): add("card_zone_change")
-                if "exhaust_pile" in delta.get("zones", {}): add("exhaust_pile_change")
+                if "player_hp" in delta: add("player_hp_change", "frame")
+                if "player_block" in delta: add("block_change", "frame")
+                if "energy" in delta: add("energy_change", "frame")
+                if "player_powers" in delta: add("power_change", "frame")
+                if delta.get("zones"): add("card_zone_change", "frame")
+                if "exhaust_pile" in delta.get("zones", {}): add("exhaust_pile_change", "frame")
                 if any(isinstance(info, dict) and "hp" in info
                        for info in delta.get("creatures", {}).values()):
-                    add("creature_hp_change")
+                    add("creature_hp_change", "frame")
             last_frame = current
         if record.get("type") == "nested_choice_pause":
-            add("nested_choice_pause")
+            add("nested_choice_pause", "history")
         if (record.get("type") == "history_entry" and
                 record.get("native_type") == "potion_used"):
-            add("potion_history_entry")
+            add("potion_history_entry", "history")
     return result
 
 
