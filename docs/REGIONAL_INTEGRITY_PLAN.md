@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Progress after integrating fetched work: 1,716 C# tests pass, executable coverage
+Progress after integrating fetched work: 1,717 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 42 of 90 encounters as implemented
 and integrated, with zero native-validated; its event category reports zero
@@ -86,7 +86,7 @@ source provenance and verification requirement.
 
 ## 2. Close Underdocks
 
-Current executable check (2026-10-12): all 100 tests selected by
+Current executable check (2026-10-12): all 101 tests selected by
 `FullyQualifiedName~PrototypeUnderdocks` pass. The eight synthetic full-route
 cases also pass from both Act 1 regions through Hive and Glory, including A10
 double boss. These checks establish supported branch execution and transition
