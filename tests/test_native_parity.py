@@ -83,6 +83,21 @@ class NativeParityContractTests(unittest.TestCase):
         candidate[4]["chance_unaligned_at"] = "shuffle_1"
         self.assertEqual("CHANCE_UNALIGNED", compare(reference, candidate, decision_limit=1)["status"])
 
+    def test_unaudited_preconditions_cannot_match(self):
+        candidate = sample()
+        candidate[1]["coverage"].pop("required_preconditions")
+        self.assertEqual("INVALID_SETUP",
+                         compare(sample(), candidate, decision_limit=1)["status"])
+
+    def test_gapped_event_sequence_is_incomplete(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trace.jsonl"
+            records = sample()
+            records[3]["event_seq"] = 2
+            path.write_text("\n".join(map(json.dumps, records)) + "\n", encoding="utf-8")
+            _, error = load_trace(path)
+            self.assertIn("event_seq", error)
+
     def test_partial_jsonl_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "trace.jsonl"
