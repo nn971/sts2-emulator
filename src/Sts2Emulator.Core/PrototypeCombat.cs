@@ -1819,11 +1819,12 @@ public sealed partial class PrototypeGameEngine
                         {
                             PlayerBlock = combat.PlayerBlock - absorbed
                         };
-                        player = player with
-                        {
-                            Hp = Math.Max(0, player.Hp -
-                                (disintegration - absorbed))
-                        };
+                        var loss = ApplyPlayerHpLoss(
+                            player,
+                            combat,
+                            disintegration - absorbed);
+                        player = loss.Player;
+                        combat = loss.Combat;
                     }
                 }
                 break;
@@ -4565,14 +4566,12 @@ public sealed partial class PrototypeGameEngine
                                 {
                                     PlayerBlock = combat.PlayerBlock - absorbed
                                 };
-                                player = player with
-                                {
-                                    Hp = Math.Max(
-                                        0,
-                                        player.Hp - Math.Max(
-                                            0,
-                                            retaliation - absorbed))
-                                };
+                                var loss = ApplyPlayerHpLoss(
+                                    player,
+                                    combat,
+                                    retaliation - absorbed);
+                                player = loss.Player;
+                                combat = loss.Combat;
                                 if (player.Hp <= 0)
                                 {
                                     var prevented =
@@ -5721,15 +5720,12 @@ public sealed partial class PrototypeGameEngine
                             combat.PlayerBlock
                             - absorbed
                     };
-                    player = player with
-                    {
-                        Hp = Math.Max(
-                            0,
-                            player.Hp
-                            - Math.Max(
-                                0,
-                                incoming - absorbed))
-                    };
+                    var loss = ApplyPlayerHpLoss(
+                        player,
+                        combat,
+                        incoming - absorbed);
+                    player = loss.Player;
+                    combat = loss.Combat;
                     if (player.Hp <= 0)
                     {
                         var prevented =
@@ -8564,6 +8560,61 @@ public sealed partial class PrototypeGameEngine
             true);
     }
 
+    private static (PlayerState Player, CombatState Combat)
+        ApplyPlayerHpLoss(
+            PlayerState player,
+            CombatState combat,
+            int amount)
+    {
+        amount = Math.Max(0, amount);
+        if (amount == 0)
+        {
+            return (player, combat);
+        }
+
+        var buffer = combat.PlayerPowers
+            .Where(power => power.Stacks > 0
+                && PrototypeContent.Power(power.PowerId)
+                    .PreventsNextHpLoss)
+            .OrderBy(power => power.ApplicationOrder)
+            .FirstOrDefault();
+        if (buffer is not null)
+        {
+            var powers = combat.PlayerPowers
+                .Select(power => power.Fork())
+                .ToList();
+            var index = powers.FindIndex(power =>
+                power.ApplicationOrder == buffer.ApplicationOrder);
+            if (index < 0)
+            {
+                throw new InvalidOperationException(
+                    "Buffer disappeared before consuming HP loss.");
+            }
+
+            if (powers[index].Stacks == 1)
+            {
+                powers.RemoveAt(index);
+            }
+            else
+            {
+                powers[index] = powers[index] with
+                {
+                    Stacks = powers[index].Stacks - 1
+                };
+            }
+
+            return (player, combat with
+            {
+                PlayerPowers = powers.ToArray()
+            });
+        }
+
+        return (player with
+        {
+            Hp = Math.Max(0, player.Hp - amount)
+        }, combat);
+    }
+
     private static CombatState ApplyPlayerPower(
         CombatState combat,
         string powerId,
@@ -9887,11 +9938,12 @@ public sealed partial class PrototypeGameEngine
                 {
                     PlayerBlock = combat.PlayerBlock - absorbed
                 };
-                player = player with
-                {
-                    Hp = Math.Max(0, player.Hp -
-                        Math.Max(0, damage - absorbed))
-                };
+                var loss = ApplyPlayerHpLoss(
+                    player,
+                    combat,
+                    damage - absorbed);
+                player = loss.Player;
+                combat = loss.Combat;
             }
         }
         if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed

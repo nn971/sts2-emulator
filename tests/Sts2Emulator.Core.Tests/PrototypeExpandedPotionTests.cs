@@ -601,6 +601,54 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void LuckyTonicPreventsAndConsumesTheNextHpLossInstance()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.lucky_tonic");
+        var combat = state.World!.Combat!;
+        combat = combat with
+        {
+            Enemies =
+            [
+                combat.Enemies.Single() with
+                {
+                    SkipNextEnemyAction = true,
+                    Powers =
+                    [
+                        new PrototypePowerInstanceState(
+                            "proto.power.constrict",
+                            3,
+                            1,
+                            SourceEnemyInstanceId: 1)
+                    ]
+                }
+            ]
+        };
+        state = state with
+        {
+            World = state.World with { Combat = combat }
+        };
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        Assert.Contains(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.buffer");
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(70, state.Player.Hp);
+        Assert.DoesNotContain(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.buffer");
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

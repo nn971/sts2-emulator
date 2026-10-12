@@ -2201,6 +2201,15 @@ public static class PrototypeContent
                     PrototypeCombatEffectKind.ApplyEnemyPower,
                     9,
                     PowerId: "proto.power.demise")]),
+            // Shared Rare potion: prevent the next instance of player HP loss.
+            new PrototypePotionDefinition(
+                "proto.potion.lucky_tonic",
+                "Lucky Tonic",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyPlayerPower,
+                    1,
+                    PowerId: "proto.power.buffer")]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -3387,6 +3396,12 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 IsDebuff: true,
                 EnemyHpLossAtSideTurnEndPerStack: 1),
+            new PrototypePowerDefinition(
+                "proto.power.buffer",
+                "Buffer",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                PreventsNextHpLoss: true),
             new PrototypePowerDefinition(
                 "proto.power.duplication",
                 "Duplication",
