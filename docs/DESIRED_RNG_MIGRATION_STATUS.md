@@ -34,7 +34,10 @@ site. This preserves ordered eligibility and native `NextInt(n)` behavior;
 specifically, `NextInt(1)` is **not skipped**.
 
 Request identity includes `SiteId`, `StreamId`, `OwnerId` (stable CombatId),
-`Ordinal` (creation order), `OrderedCandidates`, and `SourceVersion`.
+`Ordinal` (creation order), `OrderedCandidates`, `OperationKind`, and `SourceVersion`.
+The HP site uses `choose_index`; the committed-intent callback uses
+`bounded_integer` because the sampled integer may represent a ticket within
+weighted legal AI branches. Both use the pinned primitive `NextInt`.
 A transcript records selected index, provider provenance and, in native mode,
 exact pre/post xoshiro counter and state words. Outcomes are **not** assigned
 reference probabilities. The native attachment returns the unchanged
