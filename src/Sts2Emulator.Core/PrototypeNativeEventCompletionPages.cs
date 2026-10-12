@@ -11,6 +11,8 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeSelfHelpBook.EventId
             or PrototypeNativePotionCourier.EventId
             or "proto.native.event.morphic_grove"
+            or "proto.native.event.wellspring"
+            or "proto.native.event.whispering_hollow"
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
@@ -46,6 +48,10 @@ public static class PrototypeNativeEventCompletionPages
                 or PrototypeNativePotionCourier.RansackChoiceId
         || eventId == "proto.native.event.morphic_grove"
             && choiceId is "group" or "loner"
+        || eventId == "proto.native.event.wellspring"
+            && choiceId is "bottle" or "bathe"
+        || eventId == "proto.native.event.whispering_hollow"
+            && choiceId is "gold" or "hug"
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId

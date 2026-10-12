@@ -23,13 +23,12 @@ enchantment amount to each powered Attack hit.
 Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C# tests
 passed, including the eight synthetic full-route cases and Ancient
 acquisition/assignment coverage. The latest solution build and coverage-baseline
-check pass. Potion Courier is now integrated into Hive and Glory, with both
-event branches represented in the complete branch inventory. The coverage
-report records 50 integrated event paths, five complete event implementations,
-and 18 events with complete branch inventories. Morphic Grove now retains the
-Group and Loner result pages, completing its seven source branches. The report
-records six complete event implementations and 19 complete branch inventories.
-Native validation remains unverified.
+check pass. Potion Courier is integrated into Hive and Glory. Morphic Grove
+retains the Group and Loner result pages. Wellspring and Whispering Hollow
+retain their result pages after potion and card continuations. The coverage
+report records 50 integrated event paths, eight complete event implementations,
+and 21 events with complete branch inventories. Native validation remains
+unverified.
 
 # v111 implementation status
 

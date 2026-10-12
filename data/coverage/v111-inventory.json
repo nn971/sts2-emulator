@@ -12534,7 +12534,7 @@
         "page/INITIAL/BATHE",
         "page/INITIAL/BOTTLE"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
@@ -12554,7 +12554,7 @@
         "page/INITIAL/GOLD",
         "page/INITIAL/HUG"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "9ca7008f62b8a73f90c00169104f3563e9b3eefb745cdac4a3c8943dbb3a227d",
+  "inventory_file_sha256": "17d060af753fa764471cc1bcaedb2c6df93a77578eeded6f298b212d8e468be9",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "b1cfb4d85a77a631f24bfee9db2cb0edac19f2feff7340cb39acff5aab688524",
+    "inventory_hash": "e5f905582d273bf30245e2e1e022a5d753e7656b4fa16e1142a0e543023df2c9",
     "items": [
       {
         "catalogued": true,
@@ -16552,18 +16552,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Wellspring.cs#64627bd5c9bf2a842e21ba09f31fdd2d7f1e6fa38dbf6bebf5237e2b3ede8a18"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/BATHE",
-          "initial/BOTTLE",
-          "page/BATHE",
-          "page/BOTTLE",
-          "page/INITIAL",
-          "page/INITIAL/BATHE",
-          "page/INITIAL/BOTTLE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "WELLSPRING",
         "registered": true,
@@ -16578,18 +16570,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WhisperingHollow.cs#79115b848e083bb9ebb4f7198177b6e89f7d06377e852ee08e35f80776cc160d"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/GOLD",
-          "initial/HUG",
-          "page/GOLD",
-          "page/HUG",
-          "page/INITIAL",
-          "page/INITIAL/GOLD",
-          "page/INITIAL/HUG"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "WHISPERING_HOLLOW",
         "registered": true,
@@ -29756,7 +29740,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 6,
+        "implemented": 8,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,
