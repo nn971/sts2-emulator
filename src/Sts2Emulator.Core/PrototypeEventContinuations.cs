@@ -192,6 +192,13 @@ public sealed partial class PrototypeGameEngine
                     Phase = RunPhase.MapChoice
                 };
 
+            if (NativeTanxEventV111.IsOpeningEvent(world))
+                return state with
+                {
+                    World = world with { Event = null },
+                    Phase = RunPhase.MapChoice
+                };
+
             if (StringComparer.Ordinal.Equals(
                     eventState.EventId,
                     PrototypeNativeOvergrowthEvents.NeowEventId)
@@ -260,7 +267,11 @@ public sealed partial class PrototypeGameEngine
             : requested with
             {
                 RemainingSelections = selections,
-                CandidateCardInstanceIds = candidates
+                CandidateCardInstanceIds = candidates,
+                MinimumSelectionsRemaining = Math.Min(
+                    requested.MinimumSelectionsRemaining
+                        ?? requested.RemainingSelections,
+                    selections)
             };
     }
 }

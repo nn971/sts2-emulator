@@ -116,11 +116,21 @@ public static class NativeAncientRewardsV111
             throw new InvalidOperationException(
                 "Hive opening Ancient disagrees with the prepared assignment.");
 
+        if (state.World?.Event is { EventId: NativeTanxEventV111.EventId,
+                NativeEventRng: null })
+            throw new InvalidOperationException(
+                "Tanx requires its persisted native event RNG context.");
+
         if (state.World?.Event is not { NativeEventRng: { } stream } evt)
             return;
         if (evt.EventId == NativePaelRewardsV111.PaelId)
         {
             NativePaelRewardsV111.ValidateOpeningOfferState(state, evt, stream);
+            return;
+        }
+        if (evt.EventId == NativeTanxEventV111.EventId)
+        {
+            NativeTanxEventV111.ValidateEventContext(state);
             return;
         }
         if (evt.EventId != TezcataraId || stream.StreamId != "context.event.TEZCATARA.player_0"

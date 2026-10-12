@@ -2265,7 +2265,10 @@ public sealed record PrototypePendingEventDeckChoiceState(
     PrototypeCardEnchantmentKind? EnchantmentKind = null,
     bool BasicCardsOnly = false,
     string? RequiredCardTag = null,
-    bool RequiresUpgradable = false)
+    bool RequiresUpgradable = false,
+    bool PreserveUpgradeOnTransformation = false,
+    bool PreserveEnchantmentOnTransformation = false,
+    int? MinimumSelectionsRemaining = null)
 {
     public PrototypePendingEventDeckChoiceState Fork() => this with
     {
@@ -2314,7 +2317,9 @@ public sealed record EventState(
     // the type is persisted independently of the random rider offer.
     string? NativeTinkerType = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    RngStreamState? NativeEventRng = null)
+    RngStreamState? NativeEventRng = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    bool? NativeTanxTriEligible = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();

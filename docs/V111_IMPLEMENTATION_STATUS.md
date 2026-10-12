@@ -110,10 +110,12 @@ cancel-without-transforming, upgrade/enchantment transfer and combat growth
 are covered. War Hammer upgrades up to four distinct upgradable deck cards
 after Elite victories using run.niche when native RNG ownership is enabled;
 native stream selection and snapshot cursor tests are covered. All ten Tanx
-relic effects now have executable dependencies, but the Tanx event remains
-gated until its source-owned offer pool and Ancient branch flow are integrated.
-Nonupeipe, Tanx and Vakuu remain unavailable until their full offer pools,
-relic effects, Ancient assignment and branch continuations are implemented.
+relic effects now have executable dependencies. Tanx's conditional offer pool,
+native event shuffle, persisted RNG cursor and relic-choice branches are
+executable through a named Glory Ancient opening fixture. Normal Ancient
+assignment remains gated; the fixture does not make Tanx a random event.
+Nonupeipe and Vakuu remain unavailable until their full offer pools, relic
+effects, Ancient assignment and branch continuations are implemented.
 
 ## Delivered
 

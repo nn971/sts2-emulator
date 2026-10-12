@@ -638,6 +638,7 @@ public static class PrototypeStateInvariants
         if (world.Act < active.MinAct || world.Act > active.MaxAct
             || (active.Weight <= 0
                 && !NativeAncientRewardsV111.IsOpeningEvent(world)
+                && !NativeTanxEventV111.IsOpeningEvent(world)
                 && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
                 && !(world.Act is 2 or 3
                     && (world.Map.GenerationProfileId ==
@@ -1052,6 +1053,9 @@ public static class PrototypeStateInvariants
             string? expectedTransformToCardId;
             bool expectedBasicCardsOnly;
             bool expectedRequiresUpgradable;
+            bool expectedPreserveUpgradeOnTransformation;
+            bool expectedPreserveEnchantmentOnTransformation;
+            int expectedMinimumSelections;
 
             if (pending.SourceRelicId is { } sourceRelicId)
             {
@@ -1074,9 +1078,15 @@ public static class PrototypeStateInvariants
                 expectedUpgradeTransformedCards =
                     relicSpec.UpgradeTransformedCards;
                 expectedEnchantmentKind = relicSpec.EnchantmentKind;
-                expectedTransformToCardId = null;
+                expectedTransformToCardId = relicSpec.TransformToCardId;
                 expectedBasicCardsOnly = false;
                 expectedRequiresUpgradable = relicSpec.RequiresUpgradable;
+                expectedPreserveUpgradeOnTransformation =
+                    relicSpec.PreserveUpgradeOnTransformation;
+                expectedPreserveEnchantmentOnTransformation =
+                    relicSpec.PreserveEnchantmentOnTransformation;
+                expectedMinimumSelections = relicSpec.MinimumSelections
+                    ?? relicSpec.Selections;
             }
             else
             {
@@ -1090,8 +1100,13 @@ public static class PrototypeStateInvariants
                 expectedTransformToCardId = spec.TransformToCardId;
                 expectedBasicCardsOnly = spec.BasicCardsOnly;
                 expectedRequiresUpgradable = false;
+                expectedPreserveUpgradeOnTransformation = false;
+                expectedPreserveEnchantmentOnTransformation = false;
+                expectedMinimumSelections = spec.Selections;
             }
 
+            var minimumSelections = pending.MinimumSelectionsRemaining
+                ?? pending.RemainingSelections;
             if (!StringComparer.Ordinal.Equals(
                     pending.ChoiceId,
                     choice.Id)
@@ -1101,7 +1116,14 @@ public static class PrototypeStateInvariants
                 || pending.EnchantmentKind != expectedEnchantmentKind
                 || pending.TransformToCardId != expectedTransformToCardId
                 || pending.BasicCardsOnly != expectedBasicCardsOnly
-                || pending.RequiresUpgradable != expectedRequiresUpgradable)
+                || pending.RequiresUpgradable != expectedRequiresUpgradable
+                || pending.PreserveUpgradeOnTransformation
+                    != expectedPreserveUpgradeOnTransformation
+                || pending.PreserveEnchantmentOnTransformation
+                    != expectedPreserveEnchantmentOnTransformation
+                || minimumSelections > expectedMinimumSelections
+                || minimumSelections < 0
+                || minimumSelections > pending.RemainingSelections)
             {
                 throw new InvalidOperationException(
                     "Pending event deck choice disagrees with its source.");

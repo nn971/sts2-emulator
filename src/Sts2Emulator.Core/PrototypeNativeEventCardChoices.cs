@@ -93,7 +93,8 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static PlayerState ApplyFixedEventTransformation(
-        PlayerState player, long instanceId, string resultId)
+        PlayerState player, long instanceId, string resultId,
+        bool preserveUpgrade = false, bool preserveEnchantment = false)
     {
         _ = PrototypeContent.Card(resultId);
         var original = player.Deck.Single(card => card.InstanceId == instanceId);
@@ -103,11 +104,10 @@ public sealed partial class PrototypeGameEngine
         {
             Deck = player.Deck.Select(card =>
                 card.InstanceId == instanceId
-                    ? new CardInstance(
-                        card.InstanceId,
-                        resultId,
-                        0,
-                        PrototypeJson.EmptyObject())
+                    ? new CardInstance(card.InstanceId, resultId,
+                        preserveUpgrade ? card.UpgradeLevel : 0,
+                        PrototypeJson.EmptyObject(),
+                        preserveEnchantment ? card.Enchantment : null)
                     : card).ToArray()
         };
     }

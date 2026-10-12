@@ -822,13 +822,17 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.PendingDeckChoice is { } pending)
         {
-            return pending.CandidateCardInstanceIds
+            var actions = pending.CandidateCardInstanceIds
                 .Select(cardInstanceId =>
                     GameAction.Create(
                         "choose_event_deck_card",
                         new ChooseEventDeckCardPayload(
                             cardInstanceId)))
-                .ToArray();
+                .ToList();
+            if ((pending.MinimumSelectionsRemaining
+                    ?? pending.RemainingSelections) == 0)
+                actions.Add(GameAction.Empty("finish_relic_deck_choice"));
+            return actions;
         }
 
         if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
@@ -896,6 +900,7 @@ public sealed partial class PrototypeGameEngine
 
         var choices = eventState.EventId is NativeAncientRewardsV111.TezcataraId
                 or NativePaelRewardsV111.PaelId
+                or NativeTanxEventV111.EventId
                 && eventState.OfferedChoiceIds is { } offeredIds
             ? offeredIds.Select(id => definition.Choices.Single(choice => choice.Id == id))
             : definition.Choices.AsEnumerable();
@@ -996,6 +1001,21 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.PendingDeckChoice is { } pending)
         {
+            if (StringComparer.Ordinal.Equals(action.Kind,
+                    "finish_relic_deck_choice"))
+            {
+                if ((pending.MinimumSelectionsRemaining
+                        ?? pending.RemainingSelections) != 0)
+                    throw new InvalidOperationException(
+                        "This event deck choice still requires a selection.");
+                eventState = eventState with { PendingDeckChoice = null };
+                state = state with
+                {
+                    World = world with { Event = eventState }
+                };
+                return AdvanceEventContinuations(state);
+            }
+
             RequireKind(
                 action,
                 "choose_event_deck_card");
@@ -1025,6 +1045,9 @@ public sealed partial class PrototypeGameEngine
                     .ToArray();
             var remainingSelections =
                 pending.RemainingSelections - 1;
+            var minimumSelections = Math.Max(
+                0, (pending.MinimumSelectionsRemaining
+                    ?? pending.RemainingSelections) - 1);
 
             if (remainingSelections > 0
                 && remainingCandidates.Length > 0)
@@ -1037,8 +1060,9 @@ public sealed partial class PrototypeGameEngine
                             Math.Min(
                                 remainingSelections,
                                 remainingCandidates.Length),
-                        CandidateCardInstanceIds =
-                            remainingCandidates
+                        CandidateCardInstanceIds = remainingCandidates,
+                        MinimumSelectionsRemaining = Math.Min(
+                            minimumSelections, remainingCandidates.Length)
                     }
                 };
 
@@ -1702,7 +1726,10 @@ public sealed partial class PrototypeGameEngine
         || (eventId == "proto.native.underdocks.drowning_beacon"
             && relicId == "proto.native.underdocks.fresnel_lens")
         || (eventId == PrototypeNativeHiveEvents.LostWispId
-            && relicId == PrototypeNativeHiveEvents.LostWispRelicId);
+            && relicId == PrototypeNativeHiveEvents.LostWispRelicId)
+        || (eventId == NativeTanxEventV111.EventId
+            && NativeGloryAncientsV111.Relics.Any(relic =>
+                relic.Id == relicId));
 
     private static bool CanTakeEventChoice(
         PlayerState player,
@@ -1864,8 +1891,15 @@ public sealed partial class PrototypeGameEngine
                 Array.Empty<long>(),
                 spec.UpgradeTransformedCards,
                 SourceRelicId: relic.Id,
+                TransformToCardId: spec.TransformToCardId,
                 EnchantmentKind: spec.EnchantmentKind,
-                RequiresUpgradable: spec.RequiresUpgradable);
+                RequiresUpgradable: spec.RequiresUpgradable,
+                PreserveUpgradeOnTransformation:
+                    spec.PreserveUpgradeOnTransformation,
+                PreserveEnchantmentOnTransformation:
+                    spec.PreserveEnchantmentOnTransformation,
+                MinimumSelectionsRemaining:
+                    spec.MinimumSelections ?? spec.Selections);
     }
 
     private static PrototypePendingEventDeckChoiceState?
@@ -1884,7 +1918,8 @@ public sealed partial class PrototypeGameEngine
                 TransformToCardId: spec.TransformToCardId,
                 EnchantmentKind: spec.EnchantmentKind,
                 BasicCardsOnly: spec.BasicCardsOnly,
-                RequiredCardTag: spec.RequiredCardTag);
+                RequiredCardTag: spec.RequiredCardTag,
+                MinimumSelectionsRemaining: spec.Selections);
     }
 
     private static PlayerState ResolveEventDeckChoice(
@@ -1931,7 +1966,9 @@ public sealed partial class PrototypeGameEngine
             PrototypePersistentDeckChoiceKind.Transform =>
                 pending.TransformToCardId is { } resultId
                     ? ApplyFixedEventTransformation(
-                        player, selected.InstanceId, resultId)
+                        player, selected.InstanceId, resultId,
+                        pending.PreserveUpgradeOnTransformation,
+                        pending.PreserveEnchantmentOnTransformation)
                     : TransformPersistentDeckCard(
                         player,
                         selected.InstanceId,
