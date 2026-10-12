@@ -15246,8 +15246,7 @@
           "relic/CALLING_BELL",
           "relic/DUSTY_TOME",
           "relic/ECTOPLASM",
-          "relic/PANDORAS_BOX",
-          "relic/PHILOSOPHERS_STONE"
+          "relic/PANDORAS_BOX"
         ],
         "missing_variants": [],
         "native_id": "DARV",
@@ -27842,17 +27841,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.philosophers_stone"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PhilosophersStone.cs#71c53c9bac96a1ebfda53a04a3b36bcfdbd0cffea0ef02d45ee58bd777d1784a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PHILOSOPHERS_STONE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },

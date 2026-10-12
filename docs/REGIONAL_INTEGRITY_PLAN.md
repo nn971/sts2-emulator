@@ -24,9 +24,10 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Before the current Darv slice, 1,847 C# tests passed; the latest solution build
-and coverage-baseline check pass. Darv tests are present but were not executed
-in this update. Python snapshot/batch/replay checks passed on the prior baseline.
+Before the Darv and Philosopher's Stone slices, 1,847 C# tests passed. The
+latest solution build and coverage-baseline check pass; the new paths were not
+tested in these updates. Python snapshot/batch/replay checks passed on the
+prior baseline.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
 event category now reports 47 of 66 event paths integrated into a regional or
@@ -63,8 +64,9 @@ reused. Orobas executes its eight Silent relic options with a locked third
 pool when both starter dependencies are absent. Cross-character Sea Glass and
 Prismatic Gem offers, plus Colorful Philosophers, are explicitly postponed by
 the current user scope. Shared Darv now participates in revealed-profile
-assignment and offers six already-modeled relics. Its other relic options and
-Dusty Tome path remain open. Assignment uses prototype event randomness;
+assignment and offers seven modeled relics. Philosopher's Stone adds one energy
+per turn and gives living enemies one Strength at combat start. Its other relic
+options and Dusty Tome path remain open. Assignment uses prototype event randomness;
 native UpFront scheduling and source offer parity are left for the RNG pass.
 See [the assignment ledger](reference-builds/v0.111.0-ancient-assignment.md).
 Seven
@@ -195,7 +197,7 @@ Overgrowth, with no regional fallback or reachable unsupported behavior.
   source assignment call order is audited in
   [the Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md),
   with all three Hive act-local Ancients now executable. Shared Darv assignment
-  and six Silent relic choices are integrated; its remaining options and
+  and seven Silent relic choices are integrated; its remaining options and
   run-start UpFront integration remain open, with the latter deferred to RNG work.
 - Remove Hive/Glory initialization rejection only after supported regional
   policies exist. Keep unfinished paths explicitly gated during development.

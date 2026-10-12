@@ -2,7 +2,7 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Silent's executable shared Ancient offer. Cross-character cards are not
-/// used by this event; the six choices reuse relics with existing mechanics.
+/// used by this event; the seven choices reuse existing Silent mechanics.
 /// </summary>
 public static class NativeDarvEventV111
 {
@@ -17,6 +17,7 @@ public static class NativeDarvEventV111
         "proto.relic.runic_pyramid",
         "proto.relic.snecko_eye",
         "proto.relic.sozu",
+        "proto.relic.philosophers_stone",
         "proto.relic.velvet_choker"
     ];
 
@@ -45,6 +46,7 @@ public static class NativeDarvEventV111
         "proto.relic.runic_pyramid" => "Runic Pyramid",
         "proto.relic.snecko_eye" => "Snecko Eye",
         "proto.relic.sozu" => "Sozu",
+        "proto.relic.philosophers_stone" => "Philosopher's Stone",
         "proto.relic.velvet_choker" => "Velvet Choker",
         _ => throw new ArgumentOutOfRangeException(nameof(id))
     };

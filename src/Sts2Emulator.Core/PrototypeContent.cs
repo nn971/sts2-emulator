@@ -2711,6 +2711,22 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypeRelicDefinition(
+                "proto.relic.philosophers_stone",
+                "Philosopher's Stone",
+                EnergyPerTurnBonus: 1,
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyEnemyPower,
+                                1,
+                                Target: PrototypeEffectTarget.AllEnemies,
+                                PowerId: "proto.power.strength")
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
                 "proto.relic.blood_vial",
                 "Blood Vial",
                 Triggers:
