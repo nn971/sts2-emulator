@@ -70,6 +70,27 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task ChangedFrameSnapshotsDeduplicateAndKeepChronology()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.ObserveFrame(State(3));
+            recorder.ObserveFrame(State(3));
+            recorder.ObserveFrame(State(2));
+            recorder.Finish("Combat ended", State(2));
+        });
+        var frames = entries.Where(x =>
+            x.GetProperty("type").GetString() == "frame_state").ToArray();
+        Assert.Equal(2, frames.Length);
+        Assert.Equal(1, frames[0].GetProperty("data")
+            .GetProperty("frame_index").GetInt64());
+        Assert.Equal(3, frames[1].GetProperty("data")
+            .GetProperty("frame_index").GetInt64());
+        Assert.Equal(2, frames[1].GetProperty("state")
+            .GetProperty("combat").GetProperty("energy").GetInt32());
+    }
+
+    [Fact]
     public async Task TerminalWithUnfinishedActionIsExplicitlyIncomplete()
     {
         var entries = await Record(recorder =>
