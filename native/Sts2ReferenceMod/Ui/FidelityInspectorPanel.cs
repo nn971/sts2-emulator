@@ -172,7 +172,7 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
             try { await File.WriteAllTextAsync(path, snapshot).ConfigureAwait(false); }
             catch (Exception error)
             {
-                Godot.GD.PushError("[Sts2ReferenceMod] Diagnostic export failed: " + error);
+                Console.Error.WriteLine("[Sts2ReferenceMod] Diagnostic export failed: " + error);
             }
         });
         _status.Text = "Export requested: " + path;
