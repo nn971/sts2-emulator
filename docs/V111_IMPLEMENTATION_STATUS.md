@@ -26,8 +26,10 @@ acquisition/assignment coverage. The latest solution build and coverage-baseline
 check pass. Potion Courier is now integrated into Hive and Glory, with both
 event branches represented in the complete branch inventory. The coverage
 report records 50 integrated event paths, five complete event implementations,
-and 18 events with complete branch inventories. Native validation remains
-unverified.
+and 18 events with complete branch inventories. Morphic Grove now retains the
+Group and Loner result pages, completing its seven source branches. The report
+records six complete event implementations and 19 complete branch inventories.
+Native validation remains unverified.
 
 # v111 implementation status
 

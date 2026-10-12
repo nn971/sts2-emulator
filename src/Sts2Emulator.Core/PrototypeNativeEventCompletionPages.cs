@@ -10,6 +10,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeBrainLeech.EventId
             or PrototypeNativeSelfHelpBook.EventId
             or PrototypeNativePotionCourier.EventId
+            or "proto.native.event.morphic_grove"
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
@@ -43,6 +44,8 @@ public static class PrototypeNativeEventCompletionPages
         || eventId == PrototypeNativePotionCourier.EventId
             && choiceId is PrototypeNativePotionCourier.GrabPotionsChoiceId
                 or PrototypeNativePotionCourier.RansackChoiceId
+        || eventId == "proto.native.event.morphic_grove"
+            && choiceId is "group" or "loner"
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId

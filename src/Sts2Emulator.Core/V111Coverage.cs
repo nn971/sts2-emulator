@@ -196,6 +196,11 @@ public static class V111Coverage
             && engineIds.Contains(PrototypeNativePotionCourier.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "MORPHIC_GROVE" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.morphic_grove",
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {

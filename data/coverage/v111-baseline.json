@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "94bf4d4663bc565a3f2910a6bfcd8335e188a1ce5a724de79e6e7ad325082ebe",
+  "inventory_file_sha256": "9ca7008f62b8a73f90c00169104f3563e9b3eefb745cdac4a3c8943dbb3a227d",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "cb2f46ccc7b53279396a0872278d8d00a31016367c1875a42fc7408a5603ad94",
+    "inventory_hash": "b1cfb4d85a77a631f24bfee9db2cb0edac19f2feff7340cb39acff5aab688524",
     "items": [
       {
         "catalogued": true,
@@ -15544,18 +15544,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/MorphicGrove.cs#1a1f37cdab4f130ca7556226417414612fa6e547d95f653341a5d8b8cb8553a4"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/GROUP",
-          "initial/LONER",
-          "page/GROUP",
-          "page/INITIAL",
-          "page/INITIAL/GROUP",
-          "page/INITIAL/LONER",
-          "page/LONER"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "MORPHIC_GROVE",
         "registered": true,
@@ -29764,7 +29756,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 5,
+        "implemented": 6,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,
