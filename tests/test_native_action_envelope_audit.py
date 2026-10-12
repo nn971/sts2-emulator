@@ -54,6 +54,68 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual({"before": [0], "after": []},
                          action["observed_delta"]["zones"]["hand"])
 
+    def test_true_action_resumption_and_terminal_cleanup_are_valid(self):
+        records = sample()
+        records.insert(5, {"type": "action_resumed", "action_id": 1,
+                           "native_type": "PlayCardAction",
+                           "state": {"combat": {"energy": 2}}})
+        records.insert(-1, {"type": "history_reset", "data": {
+            "previous_count": 5, "new_count": 0}})
+        records[-1]["data"]["reason"] = "Combat ended"
+        for i, entry in enumerate(records):
+            entry["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, result["action_resumptions"])
+        self.assertEqual(1, result["terminal_history_clears"])
+
+    def test_legacy_choice_resume_is_qualified_not_rewritten(self):
+        records = sample()
+        records.insert(5, {"type": "anomaly", "data": {
+            "reason": "duplicate_action_start", "detail": "PlayCardAction"}})
+        records.insert(-1, {"type": "history_reset", "data": {
+            "previous_count": 5, "new_count": 0}})
+        records[-1]["data"].update({"status": "INCOMPLETE_CAPTURE",
+                                     "reason": "Combat ended"})
+        for i, entry in enumerate(records):
+            entry["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("LEGACY_CALLBACK_SEQUENCE_RECOVERABLE", result["status"])
+        self.assertEqual("INCOMPLETE_CAPTURE", result["raw_terminal_status"])
+        self.assertEqual(1, result["legacy_resume_candidates"])
+        self.assertEqual(1, result["terminal_history_clears"])
+
+    def test_duplicate_start_without_choice_cannot_be_recovered(self):
+        records = sample()
+        records.insert(3, {"type": "anomaly", "data": {
+            "reason": "duplicate_action_start", "detail": "PlayCardAction"}})
+        for i, entry in enumerate(records):
+            entry["ordinal"] = i + 1
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(records)["status"])
+
+    def test_history_reset_during_live_action_is_incomplete(self):
+        records = sample()
+        records.insert(4, {"type": "history_reset", "data": {
+            "previous_count": 4, "new_count": 0}})
+        for i, entry in enumerate(records):
+            entry["ordinal"] = i + 1
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(records)["status"])
+
+    def test_frame_hp_delta_records_enemy_damage_between_callbacks(self):
+        records = sample()
+        state1 = {"player": {"hp": 45}, "combat": {"energy": 2}}
+        state2 = {"player": {"hp": 40}, "combat": {"energy": 2}}
+        records.insert(-1, {"type": "frame_state", "state": state1,
+                            "data": {"frame_index": 1, "state_hash": "a"}})
+        records.insert(-1, {"type": "frame_state", "state": state2,
+                            "data": {"frame_index": 2, "state_hash": "b"}})
+        for i, entry in enumerate(records):
+            entry["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, result["observed_mechanic_indicators"]
+                         ["player_hp_change"]["count"])
+
     def test_missing_action_end_is_fail_closed(self):
         records = sample()
         records.pop(7)
