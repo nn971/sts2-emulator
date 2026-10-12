@@ -89,6 +89,30 @@ public static class PrototypeNativeOvergrowthEvents
                             PrototypeRunEventKind.RestSiteHealed,
                             [new(PrototypeRunEffectKind.GainMaxHp, 5)])
                     ],
+                    "CursedPearl" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [
+                                new(PrototypeRunEffectKind.AddCard,
+                                    CardId: "proto.native.neow.greed"),
+                                new(PrototypeRunEffectKind.GainGold, 333)
+                            ])
+                    ],
+                    "DowsingRod" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.native.neow.dowsing")])
+                    ],
+                    "NeowsTorment" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [new(PrototypeRunEffectKind.AddCard,
+                                CardId: "proto.native.neow.neows_fury")])
+                    ],
                     "NutritiousOyster" =>
                     [
                         new PrototypeRelicRunTriggerSpec(
@@ -127,10 +151,7 @@ public static class PrototypeNativeOvergrowthEvents
                         "CursedPearl" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
-                                RelicId: NeowRelicId(name)),
-                            new(PrototypeRunEffectKind.AddCard,
-                                CardId: "proto.native.neow.greed"),
-                            new(PrototypeRunEffectKind.GainGold, 333)
+                                RelicId: NeowRelicId(name))
                         ],
                         "ArcaneScroll" =>
                         [
@@ -177,16 +198,12 @@ public static class PrototypeNativeOvergrowthEvents
                         "NeowsTorment" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
-                                RelicId: NeowRelicId(name)),
-                            new(PrototypeRunEffectKind.AddCard,
-                                CardId: "proto.native.neow.neows_fury")
+                                RelicId: NeowRelicId(name))
                         ],
                         "DowsingRod" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
-                                RelicId: NeowRelicId(name)),
-                            new(PrototypeRunEffectKind.AddCard,
-                                CardId: "proto.native.neow.dowsing")
+                                RelicId: NeowRelicId(name))
                         ],
                         "PhialHolster" =>
                         [
