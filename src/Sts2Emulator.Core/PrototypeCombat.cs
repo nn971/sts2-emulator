@@ -2333,20 +2333,38 @@ public sealed partial class PrototypeGameEngine
             combat);
     }
 
+    internal sealed record NativeCommittedIntentAuditV111(
+        CombatState Combat, RandomIndexDecisionV111[] Choices);
+
     // Commit each enemy's action at combat entry and at the end of each
     // enemy turn. Importantly, this consumes the combat RNG once, at a
     // transition boundary; repeated public observations never reroll moves.
     internal static CombatState CommitEnemyIntents(
         CombatState combat,
+        RngBundle rng) => CommitEnemyIntentsCore(combat, rng, null);
+
+    internal static NativeCommittedIntentAuditV111 CommitEnemyIntentsWithAudit(
+        CombatState combat,
         RngBundle rng)
     {
-        // Clone persistent native streams before selecting intents. Legacy
-        // states continue consuming their original prototype combat stream.
+        if (combat.NativeRng is null)
+            throw new InvalidOperationException(
+                "Native intent audits require an attached native RNG owner.");
+        var decisions = new List<RandomIndexDecisionV111>();
+        var result = CommitEnemyIntentsCore(combat, rng, decisions);
+        return new NativeCommittedIntentAuditV111(result, decisions.ToArray());
+    }
+
+    private static CombatState CommitEnemyIntentsCore(
+        CombatState combat,
+        RngBundle rng,
+        List<RandomIndexDecisionV111>? audit)
+    {
+        // Native mode uses the source-identical NextInt primitive. Prototype
+        // callers retain their previous stream and semantics unchanged.
         var ownedNative = combat.NativeRng?.Fork();
-        Func<int, int> nextIndex = ownedNative is null
-            ? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)
-            : maxExclusive => NativeRngV111.NextInt(
-                ownedNative.RunStreams, "run.monster_ai", maxExclusive);
+        var nativeProvider = new NativeRandomIndexProviderV111();
+        var occurrence = 0;
         var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         for (var index = 0; index < formation.Length; index++)
         {
@@ -2397,6 +2415,24 @@ public sealed partial class PrototypeGameEngine
                             }
                         }
                         : enemy;
+            // The AI state machine / anti-repeat checks construct eligibility
+            // BEFORE invoking this callback. Keep the source move-selection
+            // logic unchanged and only substitute the random-number source.
+            Func<int, int> nextIndex = ownedNative is null
+                ? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)
+                : maxExclusive =>
+                {
+                    if (maxExclusive <= 0)
+                        throw new ArgumentOutOfRangeException(nameof(maxExclusive));
+                    var request = new RandomIndexRequestV111(
+                        "combat.committed_intent.index_draw", "run.monster_ai",
+                        "creature:" + enemy.InstanceId, occurrence,
+                        Enumerable.Range(0, maxExclusive).ToArray());
+                    var chosen = nativeProvider.Resolve(request, ownedNative.RunStreams);
+                    audit?.Add(chosen);
+                    occurrence++;
+                    return chosen.SelectedIndex;
+                };
             var selected = SelectEnemyMove(
                 definition, evaluating, formation, nextIndex);
             var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
