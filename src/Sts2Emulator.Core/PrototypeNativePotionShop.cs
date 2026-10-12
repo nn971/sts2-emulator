@@ -28,6 +28,8 @@ public static class PrototypeNativePotionShop
             ["proto.potion.energy"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.strength"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.flex"] = PrototypeNativePotionRarity.Common,
+            ["proto.potion.explosive_ampoule"] =
+                PrototypeNativePotionRarity.Common,
             ["proto.potion.attack"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.skill"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.power"] = PrototypeNativePotionRarity.Common,
@@ -57,7 +59,9 @@ public static class PrototypeNativePotionShop
             ["proto.potion.snecko_oil"] = PrototypeNativePotionRarity.Rare,
             ["proto.potion.fairy_in_a_bottle"] = PrototypeNativePotionRarity.Rare,
             ["proto.potion.distilled_chaos"] = PrototypeNativePotionRarity.Rare,
-            ["proto.potion.ship_in_a_bottle"] = PrototypeNativePotionRarity.Rare
+            ["proto.potion.ship_in_a_bottle"] = PrototypeNativePotionRarity.Rare,
+            ["proto.potion.droplet_of_precognition"] =
+                PrototypeNativePotionRarity.Rare
         };
 
     public static bool TryGetRarity(

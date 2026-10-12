@@ -2077,6 +2077,20 @@ public static class PrototypeContent
                         10,
                         PowerId: "proto.power.block_next_turn")
                 ]),
+            // Shared Rare potion: choose one card in the draw pile and move
+            // it to hand through the ordinary suspended card-choice path.
+            new PrototypePotionDefinition(
+                "proto.potion.droplet_of_precognition",
+                "Droplet of Precognition",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ChooseCards,
+                    0,
+                    Selection: new(
+                        PrototypeCardZone.DrawPile,
+                        1,
+                        1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand))]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -2142,6 +2156,16 @@ public static class PrototypeContent
                         10,
                         Target: PrototypeEffectTarget.AllEnemies)
                 ]),
+            // Separate shared Common model with the same native ten-damage
+            // all-enemy effect as Explosive Potion.
+            new PrototypePotionDefinition(
+                "proto.potion.explosive_ampoule",
+                "Explosive Ampoule",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.DamageEnemy,
+                    10,
+                    Target: PrototypeEffectTarget.AllEnemies)]),
             new PrototypePotionDefinition(
                 "proto.potion.energy",
                 "Energy Potion",

@@ -185,6 +185,58 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void DropletOfPrecognitionLetsPlayerChooseOneDrawPileCard()
+    {
+        var state = CombatStateWith(
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend")
+            ],
+            hand: [1],
+            potionId: "proto.potion.droplet_of_precognition",
+            drawPile: [2]);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var pending = Assert.IsType<PendingCombatChoiceState>(
+            state.World!.Combat!.PendingChoice);
+        Assert.Equal(PrototypeCardZone.DrawPile,
+            pending.Selection.SourceZone);
+        Assert.Equal([2L], pending.CandidateCardInstanceIds);
+        var choose = Assert.Single(
+            engine.GetLegalActions(state),
+            action => action.Kind == "select_cards"
+                && action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.SequenceEqual([2L]));
+
+        state = engine.Step(state, choose).State;
+
+        Assert.Equal(new long[] { 1, 2 }, state.World!.Combat!.Hand);
+        Assert.Empty(state.World.Combat.DrawPile);
+        Assert.Null(state.World.Combat.PendingChoice);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void ExplosiveAmpouleDealsTenDamageToEveryEnemy()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.strike")],
+            hand: [1],
+            potionId: "proto.potion.explosive_ampoule",
+            enemyHp: 20,
+            additionalEnemies: 1);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(new[] { 10, 10 },
+            state.World!.Combat!.Enemies.Select(enemy => enemy.Hp));
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(
@@ -369,7 +421,8 @@ public sealed class PrototypeExpandedPotionTests
         int playerBlock = 0,
         int enemyHp = 100,
         int playerHp = 70,
-        int additionalEnemies = 0)
+        int additionalEnemies = 0,
+        long[]? drawPile = null)
     {
         var empty = PrototypeJson.EmptyObject();
         var persistent = cards
@@ -395,7 +448,7 @@ public sealed class PrototypeExpandedPotionTests
             Energy: 3,
             PlayerBlock: playerBlock,
             Hand: hand,
-            DrawPile: [],
+            DrawPile: drawPile ?? [],
             DiscardPile: [],
             ExhaustPile: [],
             Enemies: Enumerable.Range(0, additionalEnemies + 1)
