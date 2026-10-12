@@ -13,6 +13,7 @@ using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
@@ -129,8 +130,9 @@ internal static class NativeV111PassiveBridge
         var player = combat.Players[0];
         if (player.PlayerCombatState?.Phase != PlayerTurnPhase.Play || !player.Creature.IsAlive)
             return false;
-        // Native input readiness includes the actual hand interaction mode,
-        // which distinguishes play from a card-selection prompt.
+        // A nested overlay can obscure the hand while its mode remains Play.
+        // Treat the overlay as an independent unsupported choice boundary.
+        if (NOverlayStack.Instance is { ScreenCount: > 0 }) return false;
         var hand = NCombatRoom.Instance?.Ui?.Hand;
         return hand is not null && !hand.InCardPlay &&
             hand.CurrentMode == NPlayerHand.Mode.Play;
