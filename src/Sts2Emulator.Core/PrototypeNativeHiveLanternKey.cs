@@ -5,7 +5,8 @@ namespace Sts2Emulator.Core;
 /// 100 Gold; keeping it reveals a single Mysterious Knight encounter.
 /// Winning publishes an optional SpecialCardReward for the Lantern Key.
 /// The later Glory War Historian Repy quest is a separate unresolved
-/// progression mechanic and this event remains a gated forced fixture.
+/// progression mechanic. This event is included in the opt-in Hive route;
+/// default v111 event selection remains gated.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {

@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Source-pinned Glory normal enemy slice. Synthetic fixtures only until
-/// the native Act 3 map/encounter selector is complete.
+/// Source-pinned Glory normal enemy slice. The opt-in three-act route selects
+/// these encounters from its prepared Glory history; default v111 routing
+/// remains gated and native draw parity remains unverified.
 /// Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class PrototypeNativeGloryNewNormals

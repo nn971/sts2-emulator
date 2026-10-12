@@ -244,7 +244,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeNativeGloryEvents.HungryForMushroomsId)
         {
             throw new InvalidOperationException(
-                "Hungry for Mushrooms requires the forced Glory event fixture.");
+                "Hungry for Mushrooms requires its active Glory event.");
         }
         var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
         var relicId = choice switch

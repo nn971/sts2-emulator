@@ -326,8 +326,8 @@ public static class PrototypeNativeLaterActs
             MoveLoopStartIndex: 1,
             HpAscensionDeltas: [new(8, 10)]),
         // Source: TurretOperator.cs. Its weak formation with Living
-        // Shield and Rampart is in PrototypeNativeGloryWeak, still
-        // forced-test-only until native Glory routing is implemented.
+        // Shield and Rampart is in PrototypeNativeGloryWeak and selected
+        // from the opt-in route's Glory weak history.
         new("proto.native.glory.turret_operator", "Turret Operator",
             41, 0,
             [

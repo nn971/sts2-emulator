@@ -1,7 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Pinned v0.111.0 Glory normals, gated from native route generation.
+/// Pinned v0.111.0 Glory normals selected from the opt-in route's prepared
+/// regional history. Default v111 routing remains gated.
 /// Source: Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class PrototypeNativeGloryNormals

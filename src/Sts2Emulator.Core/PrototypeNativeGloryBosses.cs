@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Source-pinned Glory three-knight elite and final-act bosses. All entries
-/// remain forced-combat only until Glory route generation is source-audited.
+/// Source-pinned Glory three-knight elite and final-act bosses. The opt-in
+/// three-act route draws from prepared regional histories; default v111
+/// routing and native RNG parity remain unverified.
 /// Source: Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class PrototypeNativeGloryBosses

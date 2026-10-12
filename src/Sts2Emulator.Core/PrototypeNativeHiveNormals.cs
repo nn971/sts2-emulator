@@ -1,10 +1,10 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Source-pinned Hive normal encounter definitions. These are independently
-/// executable in forced combat fixtures but deliberately NOT selectable by
-/// the legacy prototype map: Hive encounter pools and act progression are
-/// still incomplete in v0.111.0.
+/// Source-pinned Hive normal encounter definitions. The opt-in three-act
+/// route selects its supported subset from a prepared Hive history; the
+/// generic legacy map excludes these definitions and default v111 routing
+/// remains gated.
 /// </summary>
 public static class PrototypeNativeHiveNormals
 {

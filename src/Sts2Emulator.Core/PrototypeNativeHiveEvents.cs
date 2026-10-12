@@ -317,8 +317,8 @@ public sealed partial class PrototypeGameEngine
         // CardFactory in the native game draws from the unlocked character
         // pool using its noncombat rarity odds. Until the remaining
         // character/profile and native card-generation streams land,
-        // restrict this forced-event fixture to the implemented, solo-safe
-        // Silent reward pool. This is a deliberate approximation of the
+        // restrict this routed event to the implemented, solo-safe Silent
+        // reward pool. This is a deliberate approximation of the
         // selection distribution, not of either eligibility predicate.
         var eligible = PrototypeContent.RewardCardPool
             .Where(id =>

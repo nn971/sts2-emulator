@@ -1,8 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Pinned v0.111.0 Glory elite combat fixtures, deliberately excluded from
-/// configured Act 3 encounter selection pending native map/room integration.
+/// Pinned v0.111.0 Glory elite encounters selected by the opt-in three-act
+/// route's prepared regional history. Default v111 routing remains gated.
 /// Source: Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class PrototypeNativeGloryElites

@@ -5,8 +5,9 @@ namespace Sts2Emulator.Core;
 ///
 /// Native LanternKey.ModifyUnknownMapPointRoomTypes converts a Glory '?'
 /// to Event, and ModifyNextEvent selects WarHistorianRepy even though
-/// its own IsAllowed is false. This quest override works on a forced
-/// Glory map fixture without enabling general later-act generation.
+/// its own IsAllowed is false. The override is integrated with the opt-in
+/// Glory map path; general event selection and native RNG parity remain
+/// separate fidelity gates.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {

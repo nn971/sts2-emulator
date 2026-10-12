@@ -1,8 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Pinned v0.111.0 Hive normal fights. Kept force-test-only until
-/// native Hive encounter bags and map transitions are integrated.
+/// Pinned v0.111.0 Hive normal fights selected from the prepared Hive queue
+/// in the opt-in three-act route. Default v111 routing remains gated.
 /// </summary>
 public static class PrototypeNativeHiveRemainingNormals
 {
