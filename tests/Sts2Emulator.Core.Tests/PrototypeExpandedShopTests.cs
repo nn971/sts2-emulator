@@ -430,6 +430,74 @@ public sealed class PrototypeExpandedShopTests
     }
 
     [Fact]
+    public void LordsParasolPurchasesShopInventoryForFreeThenForcesOneRemoval()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = EnterGeneratedShop(
+            gold: 0,
+            relicIds: [NativeGloryAncientsV111.LordsParasolId],
+            removalCards: true);
+
+        Assert.Equal(RunPhase.Shop, state.Phase);
+        Assert.Equal(0, state.Player.Gold);
+        Assert.All(state.World!.Shop!.CardOffers, offer =>
+            Assert.True(offer.Sold));
+        Assert.All(state.World.Shop.RelicOffers, offer =>
+            Assert.True(offer.Sold));
+        Assert.Equal(2, state.World.Shop.PotionOffers.Count(offer =>
+            offer.Sold));
+        Assert.Equal(102,
+            state.World.Shop.LordsParasolPendingPotionOfferId);
+        state = RunSnapshot.Load(RunSnapshot.Save(state));
+        var replacePotion = engine.GetLegalActions(state).First(action =>
+            action.Kind == "replace_shop_potion");
+        state = engine.Step(state, replacePotion).State;
+
+        Assert.All(state.World!.Shop!.PotionOffers, offer =>
+            Assert.True(offer.Sold));
+        Assert.True(state.World.Shop.LordsParasolPurchaseFlowActive);
+        Assert.True(state.World.Shop.LordsParasolRemovalChoicePending);
+        state = RunSnapshot.Load(RunSnapshot.Save(state));
+        Assert.DoesNotContain(engine.GetLegalActions(state), action =>
+            action.Kind == "leave_shop");
+
+        var removal = engine.GetLegalActions(state).First(action =>
+            action.Kind == "remove_card");
+        state = engine.Step(state, removal).State;
+
+        Assert.Equal(0, state.Player.Gold);
+        Assert.Equal(1 + state.World!.Shop!.CardOffers.Length,
+            state.Player.Deck.Length);
+        Assert.Equal(1, state.World!.ShopRemovalsUsed);
+        Assert.False(state.World.Shop!.LordsParasolPurchaseFlowActive);
+        Assert.Contains(engine.GetLegalActions(state), action =>
+            action.Kind == "leave_shop");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
+    public void LordsParasolLeavesPotionOffersWhenSozuPreventsAcquisition()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = EnterGeneratedShop(
+            gold: 0,
+            relicIds:
+            [
+                NativeGloryAncientsV111.LordsParasolId,
+                "proto.relic.sozu"
+            ],
+            removalCards: true);
+
+        Assert.All(state.World!.Shop!.PotionOffers, offer =>
+            Assert.False(offer.Sold));
+        Assert.True(state.World.Shop.LordsParasolPotionOffersSkipped);
+        Assert.True(state.World.Shop.LordsParasolRemovalChoicePending);
+        Assert.DoesNotContain(engine.GetLegalActions(state), action =>
+            action.Kind is "buy_potion" or "replace_shop_potion");
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void AtMostOneCardCanBeMarkedOnSale()
     {
         var state = EnterGeneratedShop(

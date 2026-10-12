@@ -199,6 +199,13 @@ public sealed partial class PrototypeGameEngine
                     Phase = RunPhase.MapChoice
                 };
 
+            if (NativeVakuuEventV111.IsOpeningEvent(world))
+                return state with
+                {
+                    World = world with { Event = null },
+                    Phase = RunPhase.MapChoice
+                };
+
             if (NativeNonupeipeEventV111.IsOpeningEvent(world))
                 return state with
                 {

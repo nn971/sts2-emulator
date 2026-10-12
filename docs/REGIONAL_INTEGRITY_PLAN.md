@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,821 C# tests pass, executable coverage
+Current validation (2026-10-13): 1,826 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -193,8 +193,12 @@ regional entry/branch has direct integration and semantic coverage.
   gated. Fiddle's opening hand bonus and player-turn extra-draw suppression,
   Blood-Soaked Rose's energy and Enthralled acquisition, Whispering Earring's
   first-turn paid autoplay, and Sere Talon's Max HP loss plus Wish cards are
-  implemented as dependencies; Vakuu remains unavailable until its event and
-  remaining source-owned branches are covered. Preserved Fog now removes up to
+  implemented as dependencies. Vakuu now samples one relic from each of its
+  three source pools using the native event stream, and Lord's Parasol runs
+  free shop purchases through existing acquisition hooks before offering a
+  potion replacement or forced card-removal choice. These branches use a
+  named Ancient fixture; ordinary Ancient assignment remains gated. Preserved
+  Fog now removes up to
   three selected cards before adding its Innate, Ethereal, Eternal Folly curse
   through reward, shop and event deck-choice continuations. Music Box also
   copies the first Attack played each player turn into hand as Ethereal and
@@ -206,8 +210,9 @@ regional entry/branch has direct integration and semantic coverage.
   Distinguished Cape now adds two distinct modifier-eligible curses using the
   native `run.niche` stream, then adds three Apparitions. All ten
   source-eligible curses are modeled; its reward test checks selected curse
-  IDs and the native stream cursor. Vakuu remains gated on its three-pool
-  offer sequence and Lord's Parasol.
+  IDs and the native stream cursor. Vakuu's three-pool event, native offer
+  stream, and Lord's Parasol shop continuation are implemented through the
+  named Ancient fixture; ordinary Ancient assignment remains gated.
   [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.

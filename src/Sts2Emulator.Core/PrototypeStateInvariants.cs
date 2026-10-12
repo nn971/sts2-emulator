@@ -639,6 +639,7 @@ public static class PrototypeStateInvariants
             || (active.Weight <= 0
                 && !NativeAncientRewardsV111.IsOpeningEvent(world)
                 && !NativeTanxEventV111.IsOpeningEvent(world)
+                && !NativeVakuuEventV111.IsOpeningEvent(world)
                 && !NativeNonupeipeEventV111.IsOpeningEvent(world)
                 && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
                 && !(world.Act is 2 or 3
@@ -1349,6 +1350,37 @@ public static class PrototypeStateInvariants
 
     private static void ValidateShop(PlayerState player, ShopState shop)
     {
+        var parasolHeld = player.Relics.Any(relic =>
+            StringComparer.Ordinal.Equals(
+                relic.RelicId,
+                NativeGloryAncientsV111.LordsParasolId));
+        if ((shop.LordsParasolPurchaseFlowActive
+                || shop.LordsParasolPendingPotionOfferId is not null
+                || shop.LordsParasolRemovalChoicePending)
+            && (!parasolHeld || !shop.LordsParasolPurchaseFlowActive))
+        {
+            throw new InvalidOperationException(
+                "Lord's Parasol shop continuation requires its relic and active flow.");
+        }
+
+        if (shop.LordsParasolPendingPotionOfferId is { } potionOfferId
+            && (Array.IndexOf(player.PotionSlots, null) >= 0
+                || !shop.PotionOffers.Any(offer =>
+                    offer.OfferId == potionOfferId && !offer.Sold)))
+        {
+            throw new InvalidOperationException(
+                "Lord's Parasol potion choice must target an unsold offer while the belt is full.");
+        }
+
+        if (shop.LordsParasolRemovalChoicePending
+            && (shop.RemovalUsed
+                || !player.Deck.Any(card =>
+                    !PrototypeCardRules.IsEternal(card))))
+        {
+            throw new InvalidOperationException(
+                "Lord's Parasol removal choice needs an unused removal and eligible card.");
+        }
+
         if (shop.PendingDeckChoice is { } pending)
         {
             if (pending.RemainingSelections < 0

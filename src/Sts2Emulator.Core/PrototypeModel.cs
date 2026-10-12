@@ -2275,7 +2275,11 @@ public sealed record ShopState(
     int? BaseRemovalPrice = null,
     ShopOffer[]? AdditionalPotionOffers = null,
     ShopOffer[]? AdditionalRelicOffers = null,
-    PrototypePendingDeckChoiceState? PendingDeckChoice = null)
+    PrototypePendingDeckChoiceState? PendingDeckChoice = null,
+    bool LordsParasolPurchaseFlowActive = false,
+    int? LordsParasolPendingPotionOfferId = null,
+    bool LordsParasolRemovalChoicePending = false,
+    bool LordsParasolPotionOffersSkipped = false)
 {
     public int UndiscountedRemovalPrice =>
         BaseRemovalPrice ?? RemovalPrice;

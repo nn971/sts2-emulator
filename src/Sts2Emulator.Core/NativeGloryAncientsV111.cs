@@ -20,6 +20,7 @@ public static class NativeGloryAncientsV111
     public const string MusicBoxId = "proto.native.ancient.music_box";
     public const string JeweledMaskId = "proto.native.ancient.jeweled_mask";
     public const string ChoicesParadoxId = "proto.native.ancient.choices_paradox";
+    public const string LordsParasolId = "proto.native.ancient.lords_parasol";
     public const string DistinguishedCapeId = "proto.native.ancient.distinguished_cape";
     public const string BloodSoakedRoseId = "proto.native.ancient.blood_soaked_rose";
     public const string EnthralledCardId = "proto.native.ancient.enthralled";
@@ -100,6 +101,7 @@ public static class NativeGloryAncientsV111
                     GeneratedChoiceUsesNativeCardGenerationRng: true)],
                 TurnEquals: 1)
         ]),
+        new(LordsParasolId, "Lord's Parasol"),
         new(DistinguishedCapeId, "Distinguished Cape"),
         new(BlessedAntlerId, "Blessed Antler",
             EnergyPerTurnBonus: 1,

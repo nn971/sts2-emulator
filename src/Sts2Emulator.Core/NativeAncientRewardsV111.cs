@@ -120,6 +120,10 @@ public static class NativeAncientRewardsV111
                 NativeEventRng: null })
             throw new InvalidOperationException(
                 "Tanx requires its persisted native event RNG context.");
+        if (state.World?.Event is { EventId: NativeVakuuEventV111.EventId,
+                NativeEventRng: null })
+            throw new InvalidOperationException(
+                "Vakuu requires its persisted native event RNG context.");
         if (state.World?.Event is { EventId: NativeNonupeipeEventV111.EventId,
                 NativeEventRng: null })
             throw new InvalidOperationException(
@@ -135,6 +139,11 @@ public static class NativeAncientRewardsV111
         if (evt.EventId == NativeTanxEventV111.EventId)
         {
             NativeTanxEventV111.ValidateEventContext(state);
+            return;
+        }
+        if (evt.EventId == NativeVakuuEventV111.EventId)
+        {
+            NativeVakuuEventV111.ValidateEventContext(state);
             return;
         }
         if (evt.EventId == NativeNonupeipeEventV111.EventId)

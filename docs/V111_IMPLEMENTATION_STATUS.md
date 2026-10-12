@@ -119,8 +119,11 @@ executable through a named Glory Ancient opening fixture. Normal Ancient
 assignment remains gated; the fixture does not make Tanx a random event.
 Nonupeipe's conditional offer shuffle and all ten relic branches now execute
 through a named Glory Ancient opening fixture; normal run-start assignment
-remains gated. Vakuu's event, source-owned offer pools, and relic effects remain
-unavailable.
+remains gated. Vakuu's three source-owned offer pools and native event shuffle
+now run through a named Ancient opening fixture. Lord's Parasol free-purchase
+flow reuses existing card, relic and potion acquisition paths, persists its
+potion-replacement and forced-removal choices, and is covered by a full shop
+entry test. Normal Ancient assignment and route integration remain gated.
 Nonupeipe's Jewelry Box branch now follows its persistent acquisition through
 the Innate, Exhaust Apotheosis card; playing Apotheosis upgrades all other
 upgradable combat cards. Brilliant Scarf's fifth manual card play now costs
@@ -146,7 +149,8 @@ to hand before turn-one draw and makes it free through end of turn; its native
 combat path consumes `run.combat_card_selection`. Distinguished Cape adds its
 two source-eligible modifier curses and three Apparitions through relic
 acquisition, consuming `run.niche` when native RNG ownership is active.
-Vakuu's offer event and Lord's Parasol remain gated. Fur Coat marks
+Vakuu's offer event and Lord's Parasol shop flow are implemented through the
+named Ancient fixture; ordinary Ancient assignment remains gated. Fur Coat marks
 up to eight current-act Monster/Elite rooms and reduces initial and summoned
 enemies there to 1 HP while persisting its map selection and content RNG
 snapshot. Delicate Frond now

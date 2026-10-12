@@ -30,6 +30,7 @@ public static class PrototypeNativeGloryEvents
         "proto.relic.forgotten_soul";
     public const string TrialId = "proto.native.glory.trial";
     public const string TanxId = NativeTanxEventV111.EventId;
+    public const string VakuuId = NativeVakuuEventV111.EventId;
     public const string RegretId = "proto.native.glory.regret";
     public const string ShameId = "proto.native.glory.shame";
     public const string DoubtId = "proto.native.glory.doubt";
@@ -124,6 +125,7 @@ public static class PrototypeNativeGloryEvents
     public static PrototypeEventDefinition[] Events { get; } =
     [
         NativeTanxEventV111.Definition,
+        NativeVakuuEventV111.Definition,
         NativeNonupeipeEventV111.Definition,
         new(HungryForMushroomsId, "Hungry for Mushrooms",
         [

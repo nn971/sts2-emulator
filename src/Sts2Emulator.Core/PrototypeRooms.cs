@@ -901,6 +901,7 @@ public sealed partial class PrototypeGameEngine
         var choices = eventState.EventId is NativeAncientRewardsV111.TezcataraId
                 or NativePaelRewardsV111.PaelId
                 or NativeTanxEventV111.EventId
+                or NativeVakuuEventV111.EventId
                 or NativeNonupeipeEventV111.EventId
                 && eventState.OfferedChoiceIds is { } offeredIds
             ? offeredIds.Select(id => definition.Choices.Single(choice => choice.Id == id))
@@ -2231,14 +2232,22 @@ public sealed partial class PrototypeGameEngine
         shop = RepriceShop(
             shop,
             player);
+        if (player.Relics.Any(relic =>
+                StringComparer.Ordinal.Equals(
+                    relic.RelicId,
+                    NativeGloryAncientsV111.LordsParasolId)))
+        {
+            shop = shop with { LordsParasolPurchaseFlowActive = true };
+        }
         world = world with { Shop = shop };
 
-        return state with
+        var started = state with
         {
             Player = player,
             World = world,
             Phase = RunPhase.Shop
         };
+        return AdvanceLordsParasolPurchases(started);
     }
 
     private static IReadOnlyList<GameAction> GetShopActions(RunState state)
@@ -2256,6 +2265,29 @@ public sealed partial class PrototypeGameEngine
             if (pending.MinimumSelectionsRemaining == 0)
                 pendingActions.Add(GameAction.Empty("finish_relic_deck_choice"));
             return pendingActions;
+        }
+
+        if (shop.LordsParasolPendingPotionOfferId is { } parasolPotionId)
+        {
+            return state.Player.PotionSlots
+                .Select((potion, slot) => (Potion: potion, Slot: slot))
+                .Where(item => item.Potion is not null)
+                .Select(item => GameAction.Create(
+                    "replace_shop_potion",
+                    new ReplaceShopPotionPayload(
+                        parasolPotionId,
+                        item.Slot)))
+                .ToArray();
+        }
+
+        if (shop.LordsParasolRemovalChoicePending)
+        {
+            return state.Player.Deck
+                .Where(card => !PrototypeCardRules.IsEternal(card))
+                .Select(card => GameAction.Create(
+                    "remove_card",
+                    new RemoveCardPayload(card.InstanceId)))
+                .ToArray();
         }
 
         var actions = new List<GameAction>();
@@ -2322,15 +2354,31 @@ public sealed partial class PrototypeGameEngine
                         new RemoveCardPayload(card.InstanceId))));
         }
 
-        actions.Add(GameAction.Empty("leave_shop"));
+        if (!shop.LordsParasolPurchaseFlowActive)
+            actions.Add(GameAction.Empty("leave_shop"));
         return actions;
     }
 
     private static RunState StepShop(RunState state, GameAction action)
     {
+        return AdvanceLordsParasolPurchases(StepShopCore(state, action));
+    }
+
+    private static RunState StepShopCore(
+        RunState state,
+        GameAction action,
+        bool ignoreCost = false)
+    {
         var world = RequireWorld(state);
         var shop = world.Shop
             ?? throw new InvalidOperationException("Shop phase has no shop state.");
+        if (shop.LordsParasolPendingPotionOfferId is { } pendingPotionOfferId
+            && StringComparer.Ordinal.Equals(
+                action.Kind, "replace_shop_potion"))
+        {
+            ignoreCost |= action.ReadPayload<ReplaceShopPotionPayload>()
+                .OfferId == pendingPotionOfferId;
+        }
         var nativeRunRng = state.NativeRunRng?.Fork();
 
         if (shop.PendingDeckChoice is { } pending)
@@ -2392,12 +2440,15 @@ public sealed partial class PrototypeGameEngine
 
         if (StringComparer.Ordinal.Equals(action.Kind, "remove_card"))
         {
-            if (shop.RemovalUsed)
+            var freeParasolRemoval =
+                shop.LordsParasolRemovalChoicePending;
+            if (shop.RemovalUsed && !freeParasolRemoval)
             {
                 throw new InvalidOperationException("Shop card removal was already used.");
             }
 
-            if (player.Gold < shop.RemovalPrice)
+            if (!freeParasolRemoval && !ignoreCost
+                && player.Gold < shop.RemovalPrice)
             {
                 throw new InvalidOperationException("Shop card removal is unaffordable.");
             }
@@ -2416,12 +2467,18 @@ public sealed partial class PrototypeGameEngine
 
             player = player with
             {
-                Gold = player.Gold - shop.RemovalPrice,
+                Gold = freeParasolRemoval
+                    ? player.Gold
+                    : player.Gold - (ignoreCost ? 0 : shop.RemovalPrice),
                 Deck = player.Deck
                     .Where(card => card.InstanceId != payload.CardInstanceId)
                     .ToArray()
             };
-            shop = shop with { RemovalUsed = true };
+            shop = shop with
+            {
+                RemovalUsed = true,
+                LordsParasolRemovalChoicePending = false
+            };
             world = world with
             {
                 ShopRemovalsUsed = checked(world.ShopRemovalsUsed + 1)
@@ -2432,9 +2489,12 @@ public sealed partial class PrototypeGameEngine
             var payload = action.ReadPayload<BuyOfferPayload>();
             var offer = shop.CardOffers.FirstOrDefault(item => item.OfferId == payload.OfferId)
                 ?? throw new InvalidOperationException($"Unknown card offer {payload.OfferId}.");
-            EnsurePurchasable(player, offer);
+            EnsurePurchasable(player, offer, ignoreCost);
             player = AppendCard(
-                player with { Gold = player.Gold - offer.Price },
+                player with
+                {
+                    Gold = player.Gold - (ignoreCost ? 0 : offer.Price)
+                },
                 nextId++,
                 offer.ItemId,
                 state.Rng);
@@ -2454,7 +2514,7 @@ public sealed partial class PrototypeGameEngine
                 ?? throw new InvalidOperationException(
                     $"Unknown potion offer {payload.OfferId}.");
 
-            EnsurePurchasable(player, offer);
+            EnsurePurchasable(player, offer, ignoreCost);
             if (!CanAcquirePotion(player))
             {
                 throw new InvalidOperationException(
@@ -2471,7 +2531,7 @@ public sealed partial class PrototypeGameEngine
             slots[slot] = new PotionInstance(offer.ItemId, PrototypeJson.EmptyObject());
             player = player with
             {
-                Gold = player.Gold - offer.Price,
+                Gold = player.Gold - (ignoreCost ? 0 : offer.Price),
                 PotionSlots = slots
             };
             shop = UpdatePotionOffer(
@@ -2491,7 +2551,7 @@ public sealed partial class PrototypeGameEngine
                 ?? throw new InvalidOperationException(
                     $"Unknown potion offer {payload.OfferId}.");
 
-            EnsurePurchasable(player, offer);
+            EnsurePurchasable(player, offer, ignoreCost);
             if (!CanAcquirePotion(player))
             {
                 throw new InvalidOperationException(
@@ -2509,7 +2569,7 @@ public sealed partial class PrototypeGameEngine
             player = player with
             {
                 Gold =
-                    player.Gold - offer.Price,
+                    player.Gold - (ignoreCost ? 0 : offer.Price),
                 PotionSlots = ReplacePotionSlot(
                     player.PotionSlots,
                     payload.Slot,
@@ -2528,10 +2588,10 @@ public sealed partial class PrototypeGameEngine
                 ?? throw new InvalidOperationException(
                     $"Unknown relic offer {payload.OfferId}.");
 
-            EnsurePurchasable(player, offer);
+            EnsurePurchasable(player, offer, ignoreCost);
             player = player with
             {
-                Gold = player.Gold - offer.Price,
+                Gold = player.Gold - (ignoreCost ? 0 : offer.Price),
                 Relics = player.Relics.Append(
                     new RelicInstance(offer.ItemId, PrototypeJson.EmptyObject())).ToArray()
             };
@@ -2576,6 +2636,167 @@ public sealed partial class PrototypeGameEngine
             NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world
         };
+    }
+
+    private static RunState AdvanceLordsParasolPurchases(RunState state)
+    {
+        var world = state.World;
+        var shop = world?.Shop;
+        if (state.Phase != RunPhase.Shop
+            || world is null
+            || shop is null
+            || !shop.LordsParasolPurchaseFlowActive)
+        {
+            return state;
+        }
+
+        while (true)
+        {
+            shop = world.Shop!;
+            if (shop.PendingDeckChoice is not null)
+                return state with { World = world };
+
+            if (shop.LordsParasolPendingPotionOfferId is { } pendingPotionId)
+            {
+                var pendingPotion = shop.PotionOffers.FirstOrDefault(offer =>
+                    offer.OfferId == pendingPotionId);
+                if (pendingPotion is null || pendingPotion.Sold)
+                {
+                    world = world with
+                    {
+                        Shop = shop with
+                        {
+                            LordsParasolPendingPotionOfferId = null
+                        }
+                    };
+                    state = state with { World = world };
+                    continue;
+                }
+
+                if (Array.IndexOf(state.Player.PotionSlots, null) < 0
+                    && CanAcquirePotion(state.Player))
+                {
+                    return state with { World = world };
+                }
+
+                world = world with
+                {
+                    Shop = shop with
+                    {
+                        LordsParasolPendingPotionOfferId = null
+                    }
+                };
+                state = state with { World = world };
+                continue;
+            }
+
+            if (shop.LordsParasolRemovalChoicePending)
+            {
+                if (state.Player.Deck.Any(card =>
+                        !PrototypeCardRules.IsEternal(card)))
+                    return state with { World = world };
+
+                world = world with
+                {
+                    Shop = shop with
+                    {
+                        LordsParasolRemovalChoicePending = false,
+                        LordsParasolPurchaseFlowActive = false
+                    }
+                };
+                return state with { World = world };
+            }
+
+            var card = shop.CardOffers.FirstOrDefault(offer => !offer.Sold);
+            if (card is not null)
+            {
+                state = StepShopCore(
+                    state with { World = world },
+                    GameAction.Create(
+                        "buy_card",
+                        new BuyOfferPayload(card.OfferId)),
+                    ignoreCost: true);
+                world = state.World!;
+                continue;
+            }
+
+            var relic = shop.RelicOffers.FirstOrDefault(offer => !offer.Sold);
+            if (relic is not null)
+            {
+                state = StepShopCore(
+                    state with { World = world },
+                    GameAction.Create(
+                        "buy_relic",
+                        new BuyOfferPayload(relic.OfferId)),
+                    ignoreCost: true);
+                world = state.World!;
+                continue;
+            }
+
+            var potion = shop.LordsParasolPotionOffersSkipped
+                ? null
+                : shop.PotionOffers.FirstOrDefault(offer => !offer.Sold);
+            if (potion is not null)
+            {
+                if (!CanAcquirePotion(state.Player))
+                {
+                    world = world with
+                    {
+                        Shop = shop with
+                        {
+                            LordsParasolPotionOffersSkipped = true
+                        }
+                    };
+                    state = state with { World = world };
+                    continue;
+                }
+
+                if (Array.IndexOf(state.Player.PotionSlots, null) < 0)
+                {
+                    world = world with
+                    {
+                        Shop = shop with
+                        {
+                            LordsParasolPendingPotionOfferId = potion.OfferId
+                        }
+                    };
+                    return state with { World = world };
+                }
+
+                world = world with { Shop = shop };
+                state = StepShopCore(
+                    state with { World = world },
+                    GameAction.Create(
+                        "buy_potion",
+                        new BuyOfferPayload(potion.OfferId)),
+                    ignoreCost: true);
+                world = state.World!;
+                continue;
+            }
+
+            if (!shop.RemovalUsed
+                && state.Player.Deck.Any(card =>
+                    !PrototypeCardRules.IsEternal(card)))
+            {
+                world = world with
+                {
+                    Shop = shop with
+                    {
+                        LordsParasolRemovalChoicePending = true
+                    }
+                };
+                return state with { World = world };
+            }
+
+            world = world with
+            {
+                Shop = shop with
+                {
+                    LordsParasolPurchaseFlowActive = false
+                }
+            };
+            return state with { World = world };
+        }
     }
 
     private static ShopState UpdatePotionOffer(
@@ -2672,14 +2893,17 @@ public sealed partial class PrototypeGameEngine
         return slots;
     }
 
-    private static void EnsurePurchasable(PlayerState player, ShopOffer offer)
+    private static void EnsurePurchasable(
+        PlayerState player,
+        ShopOffer offer,
+        bool ignoreCost = false)
     {
         if (offer.Sold)
         {
             throw new InvalidOperationException($"Offer {offer.OfferId} is already sold.");
         }
 
-        if (player.Gold < offer.Price)
+        if (!ignoreCost && player.Gold < offer.Price)
         {
             throw new InvalidOperationException($"Offer {offer.OfferId} is unaffordable.");
         }
