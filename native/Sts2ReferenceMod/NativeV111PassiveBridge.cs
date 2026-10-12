@@ -216,27 +216,15 @@ internal static class NativeV111PassiveBridge
             while (_historyIndex < history.Count)
             {
                 var entry = history[_historyIndex++];
-                string type = entry.GetType().Name;
-                string kind = type switch
-                {
-                    "DamageReceivedEntry" => "damage",
-                    "BlockGainedEntry" => "block_gained",
-                    "CardPlayStartedEntry" => "card_play_started",
-                    "CardPlayFinishedEntry" => "card_play_finished",
-                    "EnergySpentEntry" => "energy_spent",
-                    "PotionUsedEntry" => "potion_used",
-                    "PowerReceivedEntry" => "power_received",
-                    "MonsterPerformedMoveEntry" => "monster_move",
-                    _ => "native_history_entry"
-                };
-                // The payload is intentionally limited to audited primitive
-                // history metadata. More typed fields follow a pinned hook audit.
-                var payload = JsonSerializer.SerializeToElement(new
-                {
-                    entry_type = type,
-                    history_index = _historyIndex - 1
-                });
-                _recording.OnSemanticEffect(kind, payload, "CombatHistory.Changed",
+                var effect = HistoryEventProjector.Project(entry, _historyIndex - 1,
+                    creature => creature is Creature c
+                        ? "creature:" + (c.CombatId?.ToString() ?? "UNASSIGNED")
+                        : null);
+                // Unexpected history shapes are captured as diagnostics. Until
+                // required payload fields have been audited, event coverage
+                // remains empty and parity does not assert semantic event order.
+                _recording.OnSemanticEffect(effect.Kind, effect.Payload,
+                    "CombatHistory.Changed", effect.ActorId, effect.TargetId,
                     visibility: "diagnostic");
             }
         }
