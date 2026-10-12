@@ -41,6 +41,10 @@ def collect(directory: Path) -> dict:
             "reason": result["reason"],
             "action_count": len(result["actions"]),
             "nested_choice_pauses": result["nested_choice_pauses"],
+            "action_resumptions": result["action_resumptions"],
+            "legacy_resume_candidates": result["legacy_resume_candidates"],
+            "terminal_history_clears": result["terminal_history_clears"],
+            "raw_terminal_status": result["raw_terminal_status"],
             "frame_states": result["frame_states"],
             "unattributed_history_entries": result["unattributed_history_entries"],
             "incomplete_observations": result["incomplete_observations"],
@@ -51,6 +55,10 @@ def collect(directory: Path) -> dict:
             "NO_CAPTURES" if not files
             else "CALLBACK_CORPUS_CONSISTENT" if all(
                 entry["status"] == "CALLBACK_TIMELINE_CONSISTENT"
+                for entry in traces)
+            else "LEGACY_OBSERVER_ARTIFACTS_REVIEWED" if all(
+                entry["status"] in ("CALLBACK_TIMELINE_CONSISTENT",
+                                    "LEGACY_CALLBACK_SEQUENCE_RECOVERABLE")
                 for entry in traces)
             else "CAPTURE_GAPS_REQUIRE_REVIEW"),
         "native_game_parity": "NOT_TESTED",
