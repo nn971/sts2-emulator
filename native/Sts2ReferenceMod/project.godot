@@ -1,0 +1,12 @@
+; Minimal Godot project for exporting a resource-only PCK with the game-compatible editor.
+config_version=5
+
+[application]
+config/name="Sts2ReferenceMod"
+config/features=PackedStringArray("4.5", "C#")
+
+[dotnet]
+project/assembly_name="Sts2ReferenceMod"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
