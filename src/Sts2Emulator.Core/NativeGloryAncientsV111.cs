@@ -5,6 +5,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class NativeGloryAncientsV111
 {
+    public const string BlessedAntlerId = "proto.native.ancient.blessed_antler";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
     public const string CrossbowId = "proto.native.ancient.crossbow";
     public const string IronClubId = "proto.native.ancient.iron_club";
@@ -27,6 +28,15 @@ public static class NativeGloryAncientsV111
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        new(BlessedAntlerId, "Blessed Antler",
+            EnergyPerTurnBonus: 1,
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.BeforeHandDraw,
+                    [new(PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+                        3, CardId: "proto.status.dazed")],
+                    TurnEquals: 1)
+            ]),
         new(CrossbowId, "Crossbow", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,

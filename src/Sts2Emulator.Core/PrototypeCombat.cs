@@ -6078,6 +6078,36 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions:
+                {
+                    if (operation.CardId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Random draw-pile generation requires a card ID.");
+                    }
+
+                    _ = PrototypeContent.Card(operation.CardId);
+                    for (var i = 0; i < Math.Max(0, operation.Amount); i++)
+                    {
+                        var id = combat.NextCardInstanceId;
+                        var draw = combat.DrawPile.ToList();
+                        var insertionIndex = PrototypeRng.NextInt(
+                            rng, "combat", draw.Count + 1);
+                        draw.Insert(insertionIndex, id);
+                        combat = combat with
+                        {
+                            NextCardInstanceId = id + 1,
+                            Cards = combat.Cards.Append(
+                                new CombatCardInstance(
+                                    id, null, operation.CardId, 0, true,
+                                    PrototypeJson.EmptyObject()))
+                                .ToArray(),
+                            DrawPile = draw.ToArray()
+                        };
+                    }
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand:
                 case PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand:
                 case PrototypeCombatEffectKind.CreateRandomCharacterPowerCardsInHand:

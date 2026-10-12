@@ -94,6 +94,7 @@ public enum PrototypeCombatEffectKind
     AcquireRandomCombatPotion,
     CreateRandomCharacterAttackCardsInHand,
     CreateRandomFreeAttacksInDrawPile,
+    CreateGeneratedCardsAtRandomDrawPositions,
     AutoPlayRandomCardsFromZone,
     IncreaseSourcePowerStacks,
     ApplyEnemyStatus,

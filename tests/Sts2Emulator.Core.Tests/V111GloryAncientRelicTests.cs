@@ -5,6 +5,55 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class V111GloryAncientRelicTests
 {
     [Fact]
+    public void BlessedAntlerAddsEnergyAndThreeDazedBeforeOpeningDraw()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-blessed-antler");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var empty = PrototypeJson.EmptyObject();
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new(1, "proto.silent.strike", 0, empty),
+                    new(2, "proto.silent.defend", 0, empty),
+                    new(3, "proto.silent.strike", 0, empty),
+                    new(4, "proto.silent.defend", 0, empty),
+                    new(5, "proto.silent.strike", 0, empty)
+                ],
+                Relics = [..state.Player.Relics,
+                    Relic(NativeGloryAncientsV111.BlessedAntlerId)]
+            },
+            World = state.World! with
+            {
+                NextCardInstanceId = 6,
+                Map = new MapState(
+                    [new MapNodeState("antler-combat", 1, 1,
+                        PrototypeRoomType.Combat, [])],
+                    EntryNodeIds: ["antler-combat"])
+            }
+        };
+
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload("antler-combat"))).State;
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(4, combat.Energy);
+        var dazed = combat.Cards.Where(card =>
+            card.CardId == "proto.status.dazed").ToArray();
+        Assert.Equal(3, dazed.Length);
+        Assert.All(dazed, card => Assert.True(card.IsTemporary));
+        var zones = combat.Hand.Concat(combat.DrawPile)
+            .Concat(combat.DiscardPile).Concat(combat.ExhaustPile)
+            .ToArray();
+        Assert.All(dazed, card => Assert.Contains(card.InstanceId, zones));
+        Assert.Equal(zones.Length, zones.Distinct().Count());
+    }
+
+    [Fact]
     public void SignetRingGrants888GoldOnlyForTheNewlyAcquiredInstance()
     {
         var initial = PrototypeNativeUnderdocksRunFactory.Create(
