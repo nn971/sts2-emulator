@@ -70,6 +70,19 @@ class NativePackageContractTests(unittest.TestCase):
         self.assertNotIn('pushd "$project"', script)
         self.assertNotIn('"$godot" --headless --path . --export-pack', script)
 
+    def test_passive_hook_logs_activation_and_gate_diagnostics(self):
+        native = (ROOT / "native" / "Sts2ReferenceMod" /
+                  "NativeV111PassiveBridge.cs").read_text(encoding="utf-8")
+        plugin = (ROOT / "native" / "Sts2ReferenceMod" /
+                  "Plugin.cs").read_text(encoding="utf-8")
+        for state in ("PIN_REJECTED", "HOOK_ENABLED", "WAITING_FOR_COMBAT",
+                      "RECORDING_STARTED", "WAITING_FOR_DECISION:",
+                      "DECISION_CAPTURED:", "CAPTURE_EXCEPTION"):
+            self.assertIn(state, native)
+        self.assertIn("CAPTURE_STATUS=MOD_INITIALIZED", plugin)
+        self.assertIn("_failedCombat", native)
+        self.assertIn("if (ReferenceEquals(_failedCombat, combat)) return;", native)
+
     def test_manifest_pck_name_is_consistent(self):
         import json
         manifest = json.loads(
