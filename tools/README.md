@@ -38,3 +38,15 @@ this protocol without proving any actual game mechanics.
 
 See [native mod instructions](../native/Sts2ReferenceMod/README.md) for opt-in
 capture, build pinning, and the read-only in-game inspector.
+
+## Native Strike/Defend expectation export
+
+```fish
+python tools/native_expectation_fixture.py native.jsonl --decision 1 --out native-strike.json
+```
+
+This exports one recorded native pre-state/action/post-state and diagnostic
+events, labelled `RECORDED_NATIVE_EXPECTATION`. It always retains
+`emulator_parity=NOT_TESTED`. The .NET structural importer can inspect such
+a pre-state but continues to report `PARTIAL` until engine continuation is
+available and audited.
