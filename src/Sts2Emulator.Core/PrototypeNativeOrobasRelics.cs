@@ -17,6 +17,8 @@ public static class PrototypeNativeOrobasRelics
         "proto.native.ancient.electric_shrymp";
     public const string DriftwoodId = "proto.native.ancient.driftwood";
     public const string GlassEyeId = "proto.native.ancient.glass_eye";
+    public const string PrismaticGemId =
+        "proto.native.ancient.prismatic_gem";
     public const string RingOfTheSnakeId = "proto.relic.silent_ring";
     public const string RingOfTheDrakeId = "proto.native.ancient.ring_of_the_drake";
     public const string NeutralizeId = "proto.silent.neutralize";
@@ -44,6 +46,10 @@ public static class PrototypeNativeOrobasRelics
         new(SandCastleId, "Sand Castle"),
         new(TouchOfOrobasId, "Touch of Orobas"),
         new(ArchaicToothId, "Archaic Tooth"),
+        // The persistent energy bonus is source-backed. Its foreign
+        // character card-pool expansion remains unimplemented, so Orobas
+        // stays gated until the full Prismatic Gem dependency is complete.
+        new(PrismaticGemId, "Prismatic Gem", EnergyPerTurnBonus: 1),
         new(RingOfTheDrakeId, "Ring of the Drake", HandDrawBonus: 2,
             HandDrawBonusThroughTurn: 3)
     ];

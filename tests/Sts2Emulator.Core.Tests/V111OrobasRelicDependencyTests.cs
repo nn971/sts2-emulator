@@ -249,6 +249,44 @@ public sealed class V111OrobasRelicDependencyTests
     }
 
     [Fact]
+    public void PrismaticGemAddsOneEnergyAtCombatStart()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = engine.Step(PrototypeGameFactory.Create(
+            "orobas-prismatic-gem-energy"),
+            GameAction.Empty("start_run")).State;
+        var world = state.World!;
+        var entry = world.Map.EntryNodeIds![0];
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = state.Player.Relics.Append(new RelicInstance(
+                    PrototypeNativeOrobasRelics.PrismaticGemId,
+                    PrototypeJson.EmptyObject())).ToArray()
+            },
+            World = world with
+            {
+                Map = world.Map with
+                {
+                    Nodes = world.Map.Nodes.Select(node =>
+                        node.NodeId == entry
+                            ? node with { RoomType = PrototypeRoomType.Combat }
+                            : node).ToArray()
+                }
+            }
+        };
+
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload(entry))).State;
+
+        Assert.Equal(4, state.World!.Combat!.Energy);
+        Assert.Equal(1, PrototypeContent.Relic(
+            PrototypeNativeOrobasRelics.PrismaticGemId).EnergyPerTurnBonus);
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void AlchemicalCofferAddsFourSlotsAndFillsOnlyTheNewSlots()
     {
         var original = PrototypeNativeUnderdocksRunFactory.Create(
