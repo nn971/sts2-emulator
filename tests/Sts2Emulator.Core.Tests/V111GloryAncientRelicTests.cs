@@ -168,6 +168,105 @@ public sealed class V111GloryAncientRelicTests
         Assert.Equal(7, state.World.Combat.PlayerBlock);
     }
 
+    [Fact]
+    public void SpikedGauntletsAddsEnergyAndRaisesOnlyPowerCardCosts()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-spiked-gauntlets");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var empty = PrototypeJson.EmptyObject();
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new(1, "proto.silent.footwork", 0, empty),
+                    new(2, "proto.silent.strike", 0, empty),
+                    new(3, "proto.silent.strike", 0, empty),
+                    new(4, "proto.silent.strike", 0, empty),
+                    new(5, "proto.silent.strike", 0, empty)
+                ],
+                Relics = [..state.Player.Relics,
+                    new RelicInstance(
+                        NativeGloryAncientsV111.SpikedGauntletsId, empty)]
+            },
+            World = state.World! with
+            {
+                NextCardInstanceId = 6,
+                Map = new MapState(
+                    [new MapNodeState("gauntlets-combat", 1, 1,
+                        PrototypeRoomType.Combat, [])],
+                    EntryNodeIds: ["gauntlets-combat"])
+            }
+        };
+
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload("gauntlets-combat"))).State;
+        Assert.Equal(4, state.World!.Combat!.Energy);
+        var footwork = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1);
+
+        state = engine.Step(state, footwork).State;
+
+        Assert.Equal(2, state.World!.Combat!.Energy);
+        var strike = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == 2);
+        state = engine.Step(state, strike).State;
+        Assert.Equal(1, state.World!.Combat!.Energy);
+    }
+
+    [Fact]
+    public void CrossbowAddsAFreeCharacterAttackToTheOpeningHand()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-crossbow");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var empty = PrototypeJson.EmptyObject();
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new(1, "proto.silent.footwork", 0, empty),
+                    new(2, "proto.silent.strike", 0, empty),
+                    new(3, "proto.silent.strike", 0, empty),
+                    new(4, "proto.silent.strike", 0, empty),
+                    new(5, "proto.silent.strike", 0, empty)
+                ],
+                Relics = [..state.Player.Relics,
+                    new RelicInstance(NativeGloryAncientsV111.CrossbowId,
+                        empty)]
+            },
+            World = state.World! with
+            {
+                NextCardInstanceId = 6,
+                Map = new MapState(
+                    [new MapNodeState("crossbow-combat", 1, 1,
+                        PrototypeRoomType.Combat, [])],
+                    EntryNodeIds: ["crossbow-combat"])
+            }
+        };
+
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload("crossbow-combat"))).State;
+
+        var combat = state.World!.Combat!;
+        var generated = Assert.Single(combat.Cards, card =>
+            card.InstanceId > 5);
+        Assert.Equal(PrototypeCardType.Attack,
+            PrototypeContent.Card(generated.CardId).Type);
+        Assert.Contains(generated.InstanceId, combat.Hand);
+        Assert.Equal(0, generated.TemporaryEnergyCost?.Cost);
+        Assert.Equal(PrototypeTemporaryCardCostExpiry.EndOfTurn,
+            generated.TemporaryEnergyCost?.Expiry);
+    }
+
     private static RelicInstance Relic(string id) =>
         new(id, PrototypeJson.EmptyObject());
 }

@@ -799,7 +799,8 @@ public sealed record PrototypeRelicDefinition(
     string? AfterShuffleGeneratedCardId = null,
     int EnergyBonusMinTurn = 1,
     bool AddsCombatPet = false,
-    bool AddsPet = false);
+    bool AddsPet = false,
+    int PowerCardEnergyCostIncrease = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

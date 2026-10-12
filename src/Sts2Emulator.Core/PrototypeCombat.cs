@@ -7901,10 +7901,17 @@ public sealed partial class PrototypeGameEngine
                     power.PowerId == PrototypeNativeGloryEvents.CuriousId)
                 .Sum(power => Math.Max(0, power.Stacks))
             : 0;
+        var relicSurcharge = definition.Type == PrototypeCardType.Power
+            ? (combat.Relics ?? Array.Empty<CombatRelicState>())
+                .Where(relic => !relic.IsMelted)
+                .Sum(relic => PrototypeContent.Relic(relic.RelicId)
+                    .PowerCardEnergyCostIncrease)
+            : 0;
 
         return Math.Max(
             0,
-            baseCost + afflictionSurcharge - curiousDiscount);
+            baseCost + afflictionSurcharge + relicSurcharge
+                - curiousDiscount);
     }
 
     private static CombatState SetCardTemporaryEnergyCost(

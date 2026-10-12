@@ -6,12 +6,20 @@ namespace Sts2Emulator.Core;
 public static class NativeGloryAncientsV111
 {
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
+    public const string CrossbowId = "proto.native.ancient.crossbow";
     public const string LoomingFruitId = "proto.native.ancient.looming_fruit";
     public const string SaiId = "proto.native.ancient.sai";
+    public const string SpikedGauntletsId = "proto.native.ancient.spiked_gauntlets";
     public const string SignetRingId = "proto.native.ancient.signet_ring";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        new(CrossbowId, "Crossbow", Triggers:
+        [
+            new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                [new(PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand,
+                    1, GeneratedCharacterCardsFreeThisTurn: true)])
+        ]),
         new(DiamondDiademId, "Diamond Diadem", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
@@ -31,6 +39,9 @@ public static class NativeGloryAncientsV111
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
                 [new(PrototypeCombatEffectKind.GainPlayerBlock, 7)])
         ]),
+        new(SpikedGauntletsId, "Spiked Gauntlets",
+            EnergyPerTurnBonus: 1,
+            PowerCardEnergyCostIncrease: 1),
         new(SignetRingId, "Signet Ring", RunTriggers:
         [
             new(PrototypeRunEventKind.RelicAcquired,
