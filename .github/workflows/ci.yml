@@ -22,6 +22,8 @@ jobs:
         run: python tools/check_v111_coverage.py
       - name: v111 Python binding, snapshots and deterministic batches
         run: python tools/v111_interface_smoke.py
+      - name: Experimental isolated Nature HP/intent JSONL protocol
+        run: python tools/nature_jsonl_smoke.py
       - name: Unassisted v111 Silent natural-run integrity sweep
         run: |
           set +e
