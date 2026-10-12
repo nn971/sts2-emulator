@@ -77,7 +77,10 @@ def summarize_trace(path: Path) -> tuple[dict, list[tuple[int, dict]]]:
 
 
 def triage(directory: Path, fixture_dir: Path | None = None) -> dict:
-    paths = sorted(directory.glob("passive-*.jsonl"))
+    # The all-executor observer writes a distinct sidecar protocol next
+    # to the strict passive trace. Never parse it as a decision trace.
+    paths = sorted(path for path in directory.glob("passive-*.jsonl")
+                   if not path.name.endswith(".actions.jsonl"))
     result = {"schema": "native-trace-triage-v1",
               "status": "NATIVE_EVIDENCE_ONLY; EMULATOR_PARITY_NOT_TESTED",
               "source_directory": str(directory),
