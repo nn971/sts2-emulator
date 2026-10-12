@@ -92,6 +92,25 @@ public sealed class NativeEngineFidelityV111Tests
     }
 
     [Fact]
+    public void FidelityJournalScopeDoesNotLeakToItsParent()
+    {
+        using var parent = NativeEngineEventJournalV111.Begin();
+        var result = NativeEngineFidelityV111.Compare(Fixture());
+        Assert.NotNull(result.EmulatorEventJournal);
+        Assert.NotEmpty(result.EmulatorEventJournal!);
+        Assert.Empty(parent.Entries);
+    }
+
+    [Fact]
+    public void FidelityMismatchRetainsExecutionJournal()
+    {
+        var result = NativeEngineFidelityV111.Compare(Fixture(nativeTargetAfterHp: 36));
+        Assert.Equal("CORE_ENGINE_CHECKPOINT_MISMATCH", result.Status);
+        Assert.Contains(result.EmulatorEventJournal!, entry =>
+            entry.Kind == "enemy_damage" && entry.Amount == 6);
+    }
+
+    [Fact]
     public void RealNativeSludgeSpinnerIdentityMapsToSourceBackedEngineAndSteps()
     {
         // SLUDGE_SPINNER is registered in the executable v111 content,
