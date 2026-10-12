@@ -103,6 +103,12 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         if typ == "header" and ordinal != 1:
             report["reason"] = "Duplicate header"
             return report
+        if typ == "history_baseline":
+            count = (record.get("data") or {}).get("existing_entry_count")
+            if type(count) is not int or count < 0 or history_index >= 0:
+                report["reason"] = "Invalid native history baseline"
+                return report
+            history_index = count - 1
         if typ == "terminal" and ordinal != len(records):
             report["reason"] = "Premature terminal"
             return report
