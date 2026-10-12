@@ -115,6 +115,19 @@ for sidecar in $trace/*.actions.jsonl
 end
 ```
 
+For an aggregate report over all recorded combats, including mechanic families
+that remain **unobserved**, run:
+
+```fish
+python tools/native_action_envelope_batch.py "$trace" \\
+    --out ~/projects/sts2-inspector-stage/reports/next-combat-corpus.json
+```
+
+A corpus is a set of observations, so the report deliberately retains
+`native_game_parity=NOT_TESTED`. `OBSERVED_UNVERIFIED_MECHANICS` means a
+matching state change or callback was encountered, not that its implementation
+or hook ordering has been independently verified.
+
 Run `python tools/native_trace_audit.py` separately on matching
 `passive-*.jsonl` files; expect that strict decisions might fail closed
 without discarding the all-action sidecar. Preserve raw JSONL files and
