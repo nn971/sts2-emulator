@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "7759158a4830ba4fd4ab6aa1400d14394d0df56b3a8ec2570b5e18894081f23a",
+  "inventory_file_sha256": "6b8d41606aa25dda9331095e4cba9057f785b5260450ade71722ccb522d5aa80",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "10bcf9b4272dac612b7b0c41b6f15d71465da20de0a92bc4254215f46db102cf",
+    "inventory_hash": "f172944c7ea41520484eca58b7dcdf71923377e244cfc4826887fa0ee232980e",
     "items": [
       {
         "catalogued": true,
@@ -16323,18 +16323,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TrashHeap.cs#b77aee03653e6c21fe74f7760eea3d211a1f426155ba32c5f29ecdfe1f1062d7"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/DIVE_IN",
-          "initial/GRAB",
-          "page/DIVE_IN",
-          "page/GRAB",
-          "page/INITIAL",
-          "page/INITIAL/DIVE_IN",
-          "page/INITIAL/GRAB"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "TRASH_HEAP",
         "registered": true,
@@ -29716,7 +29708,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 10,
+        "implemented": 11,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,

@@ -184,7 +184,17 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         var action = engine.GetLegalActions(state).Single(action =>
             action.Kind == "event_choice"
             && action.ReadPayload<EventChoicePayload>().ChoiceId == choice);
-        return engine.Step(state, action).State;
+        var resolved = engine.Step(state, action).State;
+        if (resolved.Phase == RunPhase.Event
+            && resolved.World?.Event is { } eventState
+            && eventState.EventId == EventId
+            && eventState.NativePageIndex == 1)
+        {
+            var continueEvent = engine.GetLegalActions(resolved).Single(item =>
+                item.Kind == "continue_event");
+            resolved = engine.Step(resolved, continueEvent).State;
+        }
+        return resolved;
     }
 
     private static RunState FindTrashHeap(

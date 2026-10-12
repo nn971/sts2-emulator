@@ -223,6 +223,12 @@ public static class V111Coverage
                 "proto.native.underdocks.waterlogged_scriptorium",
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TRASH_HEAP" && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeUnderdocksTrashHeap.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {

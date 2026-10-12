@@ -15,6 +15,7 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.event.whispering_hollow"
             or PrototypeNativeDenseVegetation.EventId
             or "proto.native.underdocks.waterlogged_scriptorium"
+            or PrototypeNativeUnderdocksTrashHeap.EventId
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
@@ -60,6 +61,8 @@ public static class PrototypeNativeEventCompletionPages
         || eventId == "proto.native.underdocks.waterlogged_scriptorium"
             && choiceId is "bloody_ink" or "tentacle_quill"
                 or "prickly_sponge"
+        || eventId == PrototypeNativeUnderdocksTrashHeap.EventId
+            && choiceId is "dive" or "grab"
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId
