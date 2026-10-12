@@ -242,6 +242,51 @@ expectation fixture to an independent emulator continuation. A structurally
 valid JSONL, or replaying recorded post-state as expected output, is
 **not** emulator parity.
 
+## Independent basic-card rule projection (2026-10-13)
+
+After the user uploaded `first-strike-delta.json` and `triage.json`, the first
+observed Strike against `SLUDGE_SPINNER` is:
+
+- target `creature:1`: 41 HP -> 35 HP, a six-damage delta
+- energy: 3 -> 2
+- card instance 0: hand -> discard, with hand 7 -> 6 and discard 0 -> 1
+- native effect kinds: energy_spent, card_play_started, damage,
+  native_history_entry (diagnostic), card_play_finished
+
+These agree with the separately verified `StrikeSilent` card definition
+(1 energy, base damage 6, upgraded damage 9). **This is only native checkpoint
+consistency;** uploaded files do not contain a complete native pre-state or
+post-state and cannot support verified emulator continuation.
+
+Added a conservative .NET 9 pure rule projection in
+`Sts2Emulator.Core.NativeBasicCardStepper`, and comparator
+`NativeBasicRuleComparer`, which independently predict an *unmodified*
+Strike/Defend action from a structurally imported pre-state. They refuse
+power-bearing snapshots, unsupported costs/targets/upgrade levels, target
+block or lethal hits outside the first slice. Even on success, the report
+`emulator_parity` is **always `NOT_TESTED`**, with unobserved relic,
+enchantment, pending-effect, hook-order and RNG conditions explicit.
+This is a separate rule-level diagnostic; it does not implement a
+full `IDeterministicEngine.Step` from true continuation state.
+
+Use a real **native-expectation fixture** produced from the clean Strike trace
+(not the compressed delta/triage files):
+
+```fish
+cd ~/projects/sts2-inspector-test
+set trace "/mnt/d/SteamLibrary/sts2-inspector-traces/passive-20261012-124318892-31fed163df2f4f03b417a53da0bb9428.jsonl"
+set fixture ~/projects/sts2-inspector-stage/reports/first-strike-expectation.json
+python tools/native_expectation_fixture.py "$trace" --decision 1 --out "$fixture"
+dotnet run -c Release --project src/Sts2Emulator.Cli -- \
+    native-basic-check "$fixture" \
+    --out ~/projects/sts2-inspector-stage/reports/first-strike-basic-rule-check.json
+```
+
+Exit codes: `0` = rule projection consistent, `1` = rule projection differs,
+`2` = unsupported/insufficient input. None imply verified native/emulator parity.
+The next phase requires implementing genuine deterministic continuation in
+the emulator and an independently audited set of comparison preconditions.
+
 ## First authentic Strike decision selected (2026-10-12)
 
 The first recorded native action suitable for a parity fixture is decision 1
