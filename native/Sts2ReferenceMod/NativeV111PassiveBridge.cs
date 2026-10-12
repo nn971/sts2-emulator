@@ -145,7 +145,7 @@ internal static class NativeV111PassiveBridge
         _lastCapturedGeneration = -1;
         _awaitingSettlement = false;
         _choiceInterrupted = false;
-        _historyIndex = CombatManager.Instance.History.Entries.Count;
+        _historyIndex = CombatManager.Instance.History.Entries.Count();
         _adapter = new NativeCombatAdapter(combat, () => _choiceInterrupted);
         string runId = Guid.NewGuid().ToString("N");
         string root = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
@@ -234,16 +234,26 @@ internal static class NativeV111PassiveBridge
         if (_recording is null || _combat is null) return;
         try
         {
-            var history = CombatManager.Instance.History.Entries;
+            // Entries is IEnumerable<CombatHistoryEntry>, not IReadOnlyList.
+            // Take a stable ordered snapshot for this Changed callback rather
+            // than indexing the enumerable or enumerating it repeatedly.
+            var history = CombatManager.Instance.History.Entries.ToArray();
             if (_recording.RecordedDecisions.Count == 0)
             {
                 // The audited trace starts at the first stable player choice.
                 // Setup effects before that point are represented in the
                 // snapshot, but their history order is outside trace coverage.
-                _historyIndex = history.Count;
+                _historyIndex = history.Length;
                 return;
             }
-            while (_historyIndex < history.Count)
+            if (history.Length < _historyIndex)
+            {
+                // Clear() also raises Changed. A shrinking history mid-capture
+                // breaks this ordinal cursor; never silently skip future entries.
+                EndCombat("INCOMPLETE_CAPTURE: native CombatHistory was reset during recording");
+                return;
+            }
+            while (_historyIndex < history.Length)
             {
                 var entry = history[_historyIndex++];
                 var effect = HistoryEventProjector.Project(entry, _historyIndex - 1,
