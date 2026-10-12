@@ -22,6 +22,10 @@ five Silent cards and requires one selection, while Rip the Leech Off costs
 Neow's Lead Paperweight now suspends the opening for a one-of-two supported
 Colorless card reward drawn from all implemented single-player Colorless
 reward cards. Account unlock filtering and native reward RNG remain open.
+Neow now retains the selected positive or cursed option's finished page after
+its relic effect and queued rewards resolve; dismissing the pre-map opening
+returns to map choice without completing a room. Choice generation still
+approximates native unlock filtering and RNG.
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

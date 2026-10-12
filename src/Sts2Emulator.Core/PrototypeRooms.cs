@@ -1014,10 +1014,18 @@ public sealed partial class PrototypeGameEngine
             if (NativeAncientRewardsV111.IsOpeningEvent(world)
                 || NativeTanxEventV111.IsOpeningEvent(world)
                 || NativeVakuuEventV111.IsOpeningEvent(world)
-                || NativeNonupeipeEventV111.IsOpeningEvent(world))
+                || NativeNonupeipeEventV111.IsOpeningEvent(world)
+                || StringComparer.Ordinal.Equals(
+                    eventState.EventId,
+                    PrototypeNativeOvergrowthEvents.NeowEventId)
+                    && world.Act == 1
+                    && world.Map.GenerationProfileId
+                        is PrototypeNativeOvergrowthMap.GenerationProfileId
+                        or PrototypeNativeUnderdocks.GenerationProfileId
+                    && world.Map.CurrentNodeId is null)
             {
-                // Ancient events precede the map and do not complete a map
-                // room when their SetEventFinished page is dismissed.
+                // Ancient openings precede the map and do not complete a
+                // map room when their SetEventFinished page is dismissed.
                 return state with
                 {
                     Phase = RunPhase.MapChoice,

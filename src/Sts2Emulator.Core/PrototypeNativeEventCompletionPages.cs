@@ -6,7 +6,8 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeEventCompletionPages
 {
     public static bool HasTerminalChoicePage(string eventId) =>
-        eventId is "proto.native.event.aroma_of_chaos"
+        eventId is PrototypeNativeOvergrowthEvents.NeowEventId
+            or "proto.native.event.aroma_of_chaos"
             or PrototypeNativeBrainLeech.EventId
             or PrototypeNativeSelfHelpBook.EventId
             or PrototypeNativePotionCourier.EventId
@@ -173,6 +174,7 @@ public static class PrototypeNativeEventCompletionPages
         string eventId, string? choiceId) =>
         choiceId is not null
         && (eventId is NativeAncientRewardsV111.TezcataraId
+            or PrototypeNativeOvergrowthEvents.NeowEventId
             or NativePaelRewardsV111.PaelId
             or NativeOrobasEventV111.EventId
             or NativeTanxEventV111.EventId
