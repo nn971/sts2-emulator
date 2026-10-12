@@ -167,6 +167,34 @@ public sealed class ControlledInitialHpV111Tests
     }
 
     [Fact]
+    public void SourceOwnerSwapAndTranscriptTamperingAreRejected()
+    {
+        var (initial, formation) = Input("nature-ownership-check");
+        var invalid = formation.Fork();
+        invalid.MonsterContexts[1] = invalid.MonsterContexts[1] with
+        {
+            CombatId = invalid.MonsterContexts[0].CombatId
+        };
+        Assert.Throws<InvalidDataException>(() =>
+            ControlledInitialHpV111.Begin(initial, invalid));
+
+        var start = ControlledInitialHpV111.Begin(initial, formation);
+        var next = ControlledInitialHpV111.Resolve(
+            start, start.Pending!.BoundaryId, 0);
+        var altered = next.Fork();
+        altered.Transcript[0] = altered.Transcript[0] with
+        {
+            SelectedIndex = (altered.Transcript[0].SelectedIndex + 1)
+                % altered.Transcript[0].Request.SupportCount
+        };
+        Assert.Throws<InvalidDataException>(() =>
+            ControlledInitialHpV111.Validate(altered));
+        Assert.Equal(0, start.NextEnemyIndex);
+        ControlledInitialHpV111.Validate(start);
+        ControlledInitialHpV111.Validate(next);
+    }
+
+    [Fact]
     public void ControlledContinuationDoesNotAcceptAlreadyNativeAttachedCombat()
     {
         var (initial, formation) = Input("native-owner-cannot-be-nature");
