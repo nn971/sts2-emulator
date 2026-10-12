@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,776 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,782 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -44,6 +44,15 @@ then complete Hive and Glory using test-only combat finishers. A0 routes cover
 three seeds per starting region; A10 routes cover both starting regions and the
 Glory double boss. This checks route plumbing and state persistence, not
 unassisted victories or native RNG parity.
+The legal natural-run CLI now preserves its original baseline policy and adds a
+balanced coverage policy. On the same 256 A0 seeds (128 per starting region,
+offset 256), the balanced policy reached Hive six times versus two for the
+baseline, with zero engine blockers; neither policy reached Glory. All six
+balanced Hive checkpoints resumed to ordinary combat defeats on floors 1–3,
+and repeating the sweep reproduced all terminal hashes. This improves natural
+later-act exercise but does not establish Hive completion or an unassisted
+three-act victory. See the [natural-run sweep
+ledger](reference-builds/v0.111.0-unassisted-silent-run-sweep.md).
 When the prepared Hive history contains an assigned Pael or Tezcatara Ancient,
 Act 1→Hive now opens that Ancient before map choice. The persisted assignment,
 offer generation, event context and snapshot restore are covered. Run-start
