@@ -43,6 +43,15 @@ internal static class NativeV111PassiveBridge
 
     internal static void Start()
     {
+        string? expected = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_EXPECT_SHA256");
+        if (string.IsNullOrWhiteSpace(expected) || expected.Length != 64 ||
+            !BuildId.EndsWith("sha256=" + expected.ToLowerInvariant(), StringComparison.Ordinal))
+        {
+            Godot.GD.PushError("[Sts2ReferenceMod] Refusing capture: exact sts2.dll SHA-256 pin " +
+                "missing or mismatched. Run tools/native_game_preflight.py and set " +
+                "STS2_FIDELITY_EXPECT_SHA256 to that verified hash.");
+            return;
+        }
         if (Godot.Engine.GetMainLoop() is not SceneTree tree)
         {
             Godot.GD.PushError("[Sts2ReferenceMod] SceneTree unavailable; passive capture disabled.");
