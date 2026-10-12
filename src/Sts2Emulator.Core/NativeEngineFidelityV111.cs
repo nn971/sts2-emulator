@@ -176,14 +176,28 @@ public static class NativeEngineFidelityV111
 
             var enemies = new List<EnemyCombatState>();
             var idsToEnemy = new Dictionary<string, int>(StringComparer.Ordinal);
+            var originalCreatureModels = new Dictionary<string, string>(StringComparer.Ordinal);
             if (creatures is { ValueKind: JsonValueKind.Array })
             {
                 foreach (var nativeCreature in creatures.Value.EnumerateArray())
                 {
                     string nativeId = RequireString(nativeCreature, "id");
                     string nativeModel = RequireString(nativeCreature, "model_id");
-                    if (nativeModel == "SILENT" && nativeId == "creature:0")
+                    if (!originalCreatureModels.TryAdd(nativeId, nativeModel))
+                    {
+                        blockers.Add("DUPLICATE_NATIVE_CREATURE_ID:" + nativeId);
                         continue;
+                    }
+                    if (nativeId == "creature:0")
+                    {
+                        if (nativeModel != "SILENT" ||
+                            RequireInt(nativeCreature, "hp") != RequireInt(originalPlayer, "hp") ||
+                            RequireInt(nativeCreature, "max_hp") != RequireInt(originalPlayer, "max_hp") ||
+                            RequireInt(nativeCreature, "block") != RequireInt(originalPlayer, "block") ||
+                            RequireBool(nativeCreature, "alive") != (RequireInt(originalPlayer, "hp") > 0))
+                            blockers.Add("INCONSISTENT_NATIVE_PLAYER_CREATURE");
+                        continue;
+                    }
                     if (!nativeId.StartsWith("creature:", StringComparison.Ordinal) ||
                         !int.TryParse(nativeId.AsSpan("creature:".Length),
                             System.Globalization.NumberStyles.None,
@@ -212,6 +226,13 @@ public static class NativeEngineFidelityV111
                         Powers: []));
                 }
             }
+            if (!originalCreatureModels.ContainsKey("creature:0"))
+                blockers.Add("MISSING_NATIVE_PLAYER_CREATURE");
+            if (!zoneCards.TryGetValue("hand", out var nativeHandIds) ||
+                !nativeHandIds.Contains(cardId))
+                blockers.Add("NATIVE_SELECTED_CARD_NOT_IN_HAND");
+            if (ids.Count == 0)
+                blockers.Add("MISSING_NATIVE_CARDS");
             if (Get(payload, "target_id") is { } targetEl &&
                 targetEl.ValueKind == JsonValueKind.String &&
                 !idsToEnemy.ContainsKey(targetEl.GetString()!))
@@ -299,22 +320,43 @@ public static class NativeEngineFidelityV111
             Check("$.combat.energy", RequireInt(observedCombat, "energy"), next.Energy);
 
             var afterCreatures = Require(observedCombat, "creatures");
+            var nativeAfterCreatureIds = afterCreatures.EnumerateArray()
+                .Select(creature => RequireString(creature, "id"))
+                .Order(StringComparer.Ordinal).ToArray();
+            var emulatorCreatureIds = new[] { "creature:0" }
+                .Concat(next.Enemies.Select(enemy => "creature:" + enemy.InstanceId))
+                .Order(StringComparer.Ordinal).ToArray();
+            // Explicitly compare the complete creature identity multiset.
+            // Otherwise missing native entries (or unknown entries that happen
+            // to have the player's HP) could yield a false positive.
+            Check("$.combat.creatures.ids", nativeAfterCreatureIds, emulatorCreatureIds);
             foreach (var nativeCreature in afterCreatures.EnumerateArray())
             {
                 string nativeId = RequireString(nativeCreature, "id");
+                bool isPlayer = nativeId == "creature:0";
                 var enemy = idsToEnemy.TryGetValue(nativeId, out var id)
-                    ? next.Enemies.Single(e => e.InstanceId == id)
+                    ? next.Enemies.SingleOrDefault(e => e.InstanceId == id)
                     : null;
+                // The identity-multiset check above covers unknown/missing
+                // creatures. Never substitute player state for an unknown enemy.
+                if (!isPlayer && enemy is null)
+                    continue;
                 string path = "$.combat.creatures[" + nativeId + "]";
-                int hp = enemy?.Hp ?? result.Player.Hp;
-                int maxHp = enemy?.MaxHp ?? result.Player.MaxHp;
-                int block = enemy?.Block ?? next.PlayerBlock;
+                var emulatedModel = isPlayer ? "SILENT" :
+                    originalCreatureModels.TryGetValue(nativeId, out var originalModel) &&
+                    enemy!.EnemyId == Map(originalModel, "monsters")
+                        ? originalModel : "MISSING_OR_CHANGED_ENGINE_MODEL";
+                Check(path + ".model_id", RequireString(nativeCreature, "model_id"),
+                    emulatedModel);
+                int hp = isPlayer ? result.Player.Hp : enemy!.Hp;
+                int maxHp = isPlayer ? result.Player.MaxHp : enemy!.MaxHp;
+                int block = isPlayer ? next.PlayerBlock : enemy!.Block;
                 Check(path + ".hp", RequireInt(nativeCreature, "hp"), hp);
                 Check(path + ".max_hp", RequireInt(nativeCreature, "max_hp"), maxHp);
                 Check(path + ".block", RequireInt(nativeCreature, "block"), block);
                 Check(path + ".alive", RequireBool(nativeCreature, "alive"), hp > 0);
                 if (Require(nativeCreature, "powers").GetArrayLength() != 0 ||
-                    (enemy?.Powers?.Length ?? next.PlayerPowers.Length) != 0)
+                    (isPlayer ? next.PlayerPowers.Length : enemy!.Powers?.Length ?? 0) != 0)
                     guards.Add("POWER_SEMANTICS_UNVERIFIED:" + nativeId);
             }
 
