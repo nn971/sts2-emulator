@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "261e8e3165d3a2b1a0ebf70eaee725171c7c695a017941dc246be03dd2a2a0d9",
+  "inventory_file_sha256": "5081acc0958531b3bd9011e6bba5173cb4034973db8638c5fbcd9c63a2a71ec6",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "af81976cb2333297cd916d56c6fbcaeb3c4381ea0c056f86b9a0559862d04fe0",
+    "inventory_hash": "3d40b247e229e2cb3095eeef8a560dd0f5ab74ab5a5d5291bb21dbc4637ffaef",
     "items": [
       {
         "catalogued": true,
@@ -15895,18 +15895,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/ENJOY_TEA",
-          "initial/PICK_FIGHT",
-          "page/CONTINUE_FIGHT",
-          "page/ENJOY_TEA",
-          "page/INITIAL",
-          "page/INITIAL/ENJOY_TEA",
-          "page/INITIAL/PICK_FIGHT",
-          "page/NOPE",
-          "page/PICK_FIGHT",
-          "page/PICK_FIGHT/CONTINUE_FIGHT"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "ROUND_TEA_PARTY",
         "registered": true,

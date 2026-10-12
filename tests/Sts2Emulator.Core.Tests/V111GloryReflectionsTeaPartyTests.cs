@@ -207,10 +207,17 @@ public sealed class V111GloryReflectionsTeaPartyTests
             }
         };
         var result = Choose(start, "enjoy_tea");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(2, result.World!.Event!.NativePageIndex);
+        Assert.Equal("enjoy_tea", result.World.Event.ChosenChoiceId);
         Assert.Equal(result.Player.MaxHp, result.Player.Hp);
         Assert.Single(result.Player.Relics, r => r.RelicId
             == PrototypeNativeGloryEvents.RoyalPoisonId);
+        PrototypeStateInvariants.Validate(result);
+        Assert.Equal(CanonicalJson.Sha256(result), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(result))));
+        result = Continue(result);
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
         PrototypeStateInvariants.Validate(result);
     }
 
@@ -239,14 +246,19 @@ public sealed class V111GloryReflectionsTeaPartyTests
         PrototypeStateInvariants.Validate(first);
 
         var result = Choose(first, "continue_fight");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(2, result.World!.Event!.NativePageIndex);
+        Assert.Equal("continue_fight", result.World.Event.ChosenChoiceId);
         Assert.Equal(start.Player.Hp - 11, result.Player.Hp);
         Assert.Single(result.Player.Relics.Except(start.Player.Relics));
-        Assert.DoesNotContain(
-            PrototypeNativeGloryEvents.ReflectionsId,
-            result.World!.EventIds);
         Assert.Equal(CanonicalJson.Sha256(result),
             CanonicalJson.Sha256(Choose(first.Fork(), "continue_fight")));
+        Assert.Equal(CanonicalJson.Sha256(result), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(result))));
+        PrototypeStateInvariants.Validate(result);
+        result = Continue(result);
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Null(result.World!.Event);
         PrototypeStateInvariants.Validate(result);
     }
 

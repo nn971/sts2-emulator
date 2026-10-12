@@ -11897,7 +11897,7 @@
         "page/PICK_FIGHT",
         "page/PICK_FIGHT/CONTINUE_FIGHT"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

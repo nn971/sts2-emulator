@@ -726,7 +726,7 @@ public static class PrototypeStateInvariants
                     ? eventState.NativePageIndex > 5
                 : eventState.EventId ==
                     PrototypeNativeGloryEvents.RoundTeaPartyId
-                    ? eventState.NativePageIndex > 1
+                    ? eventState.NativePageIndex > 2
                     : eventState.EventId ==
                         PrototypeNativeHiveEvents.LanternKeyEventId
                         ? eventState.NativePageIndex > 2
