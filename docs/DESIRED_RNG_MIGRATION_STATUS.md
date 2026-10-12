@@ -17,7 +17,7 @@ v111 consumer protocols have **not** been switched.
 | Mechanics call site | Owner and stream | Native source audited | Existing native mode | Provider seam migrated | Controlled in live mechanics | Native cursor parity gate | Reference law calibrated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Initial unique enemy HP | each creation-order creature; `run.niche` | Yes: filtered inclusive pool, fallback, singleton consumes | Yes | **Yes, typed finite index** | No, D3 continuation pending | Seeded hash/counter equivalence added | No |
-| Committed enemy intent | current enemy; `run.monster_ai` | Supported moves audited per enemy | Yes (subset) | No; next D2 seam | No | Existing isolated tests | No |
+| Committed enemy intent | current enemy; `run.monster_ai` | Supported moves audited per enemy | Yes (subset) | **Yes, bounded integer index with creature owner** | No, D3 continuation pending | Seeded exact hash/counter equality added | No |
 | Encounter formation | encounter-local context RNG | Supported formations source audited | Yes (subset) | No | No | Existing tests | No |
 | Hatch / death spawn HP | creature creation; `run.niche` | Selected source hooks audited | Yes (subset) | No | No | Existing tests | No |
 | Monster-local randomness | monster CombatId owner stream | Partial | Yes (selected) | No | No | Existing tests | No |
@@ -49,11 +49,24 @@ controlled indices without consuming a native stream.
 
 ## D2 and D3 gates
 
-**Next D2:** route a source-audited subset of committed `run.monster_ai`
-intents through the same request contract, preserving existing anti-repeat
-eligibility and drawing only where the source draws. Add native seeded
-hash/cursor equivalence and deterministic controlled-choice tests. Do not
-rewrite an already committed intent.
+**D2 progress:** both initial `run.niche` unique HP and
+`run.monster_ai` committed intent index rolls now use the common provider.
+The intent engine's eligibility logic (source move state, weighted
+branches, anti-repeat, opening sequence and per-creature commit order)
+remains inside `PrototypeGameEngine.SelectEnemyMove`. The callback
+to its existing `nextIndex(maxExclusive)` asks for an ordered index
+`[0,...,maxExclusive-1]` after the eligibility checks.
+It records a per-enemy CombatId owner and global per-transition
+occurrence sequence. `CommitIntentsWithAudit` is opt-in and returns
+the selected indices and exact pre/post native stream words/counters.
+Seeded fixture tests assert entire combat hashes and exact cursor
+equality, including encounters with deterministic enemies that consume
+no draws. None of these changes activate Nature-controlled intent
+selection in the live engine.
+
+**D2 remaining:** encounter formation, monster-local draws, summons,
+shuffle/targets/rewards and other audited call sites; explicit weighted
+outcome metadata at move-level instead of primitive index selections.
 
 **D3:** persist the *pending* choice and continuation stage inside the
 state (including already executed mechanics, encounter/owner identity and
