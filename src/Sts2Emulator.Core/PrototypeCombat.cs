@@ -2108,6 +2108,9 @@ public sealed partial class PrototypeGameEngine
                 player = pollinousTurn.Player;
                 var handDrawBonus =
                     pollinousTurn.Bonus
+                    + (player.ActiveRelics.Any(relic =>
+                        relic.RelicId == NativeGloryAncientsV111.FiddleId)
+                        ? 2 : 0)
                     + combat.PlayerPowers.Sum(power =>
                         PrototypeContent.Power(power.PowerId)
                             .HandDrawBonusPerStack
@@ -12717,6 +12720,11 @@ public sealed partial class PrototypeGameEngine
 
         for (var drawNumber = 0; drawNumber < count; drawNumber++)
         {
+            if (!fromHandDraw && combat.IsPlayerTurn
+                && player.ActiveRelics.Any(relic =>
+                    relic.RelicId == NativeGloryAncientsV111.FiddleId))
+                break;
+
             if (!fromHandDraw
                 && combat.PlayerPowers.Any(power =>
                     PrototypeContent.Power(power.PowerId)

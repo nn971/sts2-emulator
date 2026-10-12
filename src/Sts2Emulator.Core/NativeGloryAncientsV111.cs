@@ -10,6 +10,7 @@ public static class NativeGloryAncientsV111
     public const string BlessedAntlerId = "proto.native.ancient.blessed_antler";
     public const string BeautifulBraceletId = "proto.native.ancient.beautiful_bracelet";
     public const string FurCoatId = "proto.native.ancient.fur_coat";
+    public const string FiddleId = "proto.native.ancient.fiddle";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
     public const string CrossbowId = "proto.native.ancient.crossbow";
     public const string IronClubId = "proto.native.ancient.iron_club";
@@ -44,6 +45,7 @@ public static class NativeGloryAncientsV111
             ]),
         new(BeautifulBraceletId, "Beautiful Bracelet"),
         new(FurCoatId, "Fur Coat"),
+        new(FiddleId, "Fiddle", HandDrawBonus: 2),
         new(CrossbowId, "Crossbow", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,

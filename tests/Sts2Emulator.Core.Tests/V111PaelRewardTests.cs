@@ -128,6 +128,64 @@ public sealed class V111PaelRewardTests
         }
     }
 
+    [Fact]
+    public void FiddleAddsTwoOpeningCardsAndBlocksExtraPlayerTurnDraws()
+    {
+        var state = Acquire(NativePaelRewardsV111.FleshId);
+        var nextId = state.World!.NextCardInstanceId;
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = [..state.Player.Relics,
+                    new(NativeGloryAncientsV111.FiddleId,
+                        PrototypeJson.EmptyObject())],
+                Deck = [..state.Player.Deck,
+                    new(nextId, "proto.silent.backflip", 0,
+                        PrototypeJson.EmptyObject())]
+            },
+            World = state.World with { NextCardInstanceId = nextId + 1 }
+        };
+
+        state = Combat(state);
+        var combat = state.World!.Combat!;
+        Assert.Equal(9, combat.Hand.Length);
+
+        var backflip = Assert.Single(combat.Cards,
+            card => card.CardId == "proto.silent.backflip");
+        var drawPileBefore = combat.Cards
+            .Where(card => card.InstanceId != backflip.InstanceId)
+            .Select(card => card.InstanceId).ToArray();
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Hand = [backflip.InstanceId],
+                    DrawPile = combat.Cards
+                        .Where(card => card.InstanceId != backflip.InstanceId)
+                        .Select(card => card.InstanceId).ToArray(),
+                    DiscardPile = [],
+                    ExhaustPile = [],
+                    Energy = 3
+                }
+            }
+        };
+
+        var play = Engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == backflip.InstanceId);
+        state = Engine.Step(state, play).State;
+
+        combat = state.World!.Combat!;
+        Assert.Equal(drawPileBefore.Order().ToArray(),
+            combat.DrawPile.Order().ToArray());
+        Assert.Empty(combat.Hand);
+        Assert.Contains(backflip.InstanceId, combat.DiscardPile);
+    }
+
     [Theory]
     [InlineData(0, false, 3)]
     [InlineData(1, false, 5)]
