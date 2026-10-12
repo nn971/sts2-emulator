@@ -161,6 +161,8 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
     if not asteps:
         return report("UNSUPPORTED", "No decisions captured")
 
+    # Keep complete decision maps for finding the post-state boundary.
+    all_asteps, all_bsteps = asteps, bsteps
     if decision_limit is not None:
         asteps = {i: v for i, v in asteps.items() if i <= decision_limit}
     for decision_id, a in asteps.items():
@@ -266,8 +268,8 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
             return report("INCOMPLETE_CAPTURE", "Missing post-decision checkpoint",
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)
 
-        anext = next((v["before"] for i, v in asteps.items() if i > decision_id), None)
-        bnext = next((v["before"] for i, v in bsteps.items() if i > decision_id), None)
+        anext = next((v["before"] for i, v in all_asteps.items() if i > decision_id), None)
+        bnext = next((v["before"] for i, v in all_bsteps.items() if i > decision_id), None)
         if anext is None or bnext is None:
             return report("UNSUPPORTED", "No comparable post-state boundary",
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)
