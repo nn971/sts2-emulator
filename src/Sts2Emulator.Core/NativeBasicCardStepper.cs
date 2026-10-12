@@ -34,6 +34,7 @@ public static class NativeBasicCardStepper
             return NativeBasicCardProjection.Unsupported("Only ordinary play_card supported");
         if (action.Payload.ValueKind != JsonValueKind.Object ||
             !action.Payload.TryGetProperty("card_instance_id", out var idValue) ||
+            idValue.ValueKind != JsonValueKind.Number ||
             !idValue.TryGetInt64(out long cardId))
             return NativeBasicCardProjection.Unsupported("Missing or invalid card instance");
         var cards = before.Hand.Where(c => c.InstanceId == cardId).ToArray();
@@ -87,7 +88,9 @@ public static class NativeBasicCardStepper
             if (action.Payload.TryGetProperty("target_id", out var targetValue) &&
                 targetValue.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined))
                 return NativeBasicCardProjection.Unsupported("Defend cannot target an enemy");
-            playerBlock = checked(before.Block + 5 + 3 * card.UpgradeLevel);
+            if (before.Block > int.MaxValue - (5 + 3 * card.UpgradeLevel))
+                return NativeBasicCardProjection.Unsupported("Block overflow");
+            playerBlock = before.Block + 5 + 3 * card.UpgradeLevel;
         }
         return new NativeBasicCardProjection(
             "RULE_PROJECTION_ONLY",
