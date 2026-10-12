@@ -70,6 +70,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "nested_choice_pauses": 0,
         "unattributed_history_entries": 0,
         "history_entries_with_missing_fields": 0,
+        "frame_states": 0,
         "incomplete_observations": [],
     }
     if error:
@@ -84,13 +85,15 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         report["reason"] = "Missing terminal record"
         return report
     allowed = {
-        "header", "history_baseline", "action_started", "action_completed", "stable_decision",
+        "header", "history_baseline", "frame_state", "action_started", "action_completed", "stable_decision",
         "nested_choice_pause", "history_entry", "history_reset", "anomaly",
         "observation_failure", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
     history_index = -1
+    last_frame_index = -1
+    last_frame_hash = None
     strict_failures: list[str] = []
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
@@ -139,6 +142,18 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 "pre_state_present": isinstance(start.get("state"), dict),
                 "post_state_present": isinstance(record.get("state"), dict),
             }
+        elif typ == "frame_state":
+            info = record.get("data") or {}
+            idx, state_hash = info.get("frame_index"), info.get("state_hash")
+            if (type(idx) is not int or idx <= last_frame_index or not isinstance(
+                    record.get("state"), dict) or not isinstance(state_hash, str) or not state_hash:
+                report["reason"] = f"Invalid changed-frame snapshot at ordinal {ordinal}"
+                return report
+            if last_frame_hash == state_hash:
+                report["reason"] = f"Duplicate unchanged frame snapshot at ordinal {ordinal}"
+                return report
+            last_frame_index, last_frame_hash = idx, state_hash
+            report["frame_states"] += 1
         elif typ == "nested_choice_pause":
             report["nested_choice_pauses"] += 1
             if aid not in running:
