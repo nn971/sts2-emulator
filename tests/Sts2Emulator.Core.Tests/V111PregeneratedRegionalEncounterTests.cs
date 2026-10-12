@@ -130,6 +130,27 @@ public sealed class V111PregeneratedRegionalEncounterTests
         }
     }
 
+    [Fact]
+    public void HiveEliteAndGloryBossPoolsKeepPinnedActEncounterOrder()
+    {
+        Assert.Equal(
+            new[]
+            {
+                PrototypeNativeHiveElites.DecimillipedeEncounterId,
+                PrototypeNativeHiveElites.EntomancerEncounterId,
+                PrototypeNativeHiveElites.PrismEncounterId
+            },
+            ExperimentalSilentThreeActRouteV111.HiveElites);
+        Assert.Equal(
+            new[]
+            {
+                PrototypeNativeGloryBosses.AeonglassEncounterId,
+                PrototypeNativeGloryBosses.QueenEncounterId,
+                PrototypeNativeGloryBosses.TestSubjectEncounterId
+            },
+            ExperimentalSilentThreeActRouteV111.GloryBosses);
+    }
+
     [Theory]
     [InlineData(2)]
     [InlineData(3)]

@@ -30,9 +30,9 @@ public static class ExperimentalSilentThreeActRouteV111
     ];
     public static readonly string[] HiveElites =
     [
+        PrototypeNativeHiveElites.DecimillipedeEncounterId,
         PrototypeNativeHiveElites.EntomancerEncounterId,
         PrototypeNativeHiveElites.PrismEncounterId,
-        PrototypeNativeHiveElites.DecimillipedeEncounterId
     ];
     public static readonly string[] HiveBosses =
     [
@@ -66,9 +66,9 @@ public static class ExperimentalSilentThreeActRouteV111
     ];
     public static readonly string[] GloryBosses =
     [
+        PrototypeNativeGloryBosses.AeonglassEncounterId,
         PrototypeNativeGloryBosses.QueenEncounterId,
-        PrototypeNativeGloryBosses.TestSubjectEncounterId,
-        PrototypeNativeGloryBosses.AeonglassEncounterId
+        PrototypeNativeGloryBosses.TestSubjectEncounterId
     ];
 
     // Colorful Philosophers is still unimplemented, so it is not
