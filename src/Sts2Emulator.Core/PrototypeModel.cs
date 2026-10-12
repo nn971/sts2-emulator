@@ -817,7 +817,8 @@ public sealed record PrototypeRelicDefinition(
     string? PersistentTriggerCountProperty = null,
     int AdditionalCardPlayCountOncePerCombat = 0,
     int? FreeCardAtManualCardPlayCount = null,
-    bool ProcureRandomPotionsBeforeCombat = false);
+    bool ProcureRandomPotionsBeforeCombat = false,
+    string? CardIdAfterAcquisitionDeckChoices = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1935,6 +1936,7 @@ public sealed record PrototypePendingDeckChoiceState(
     bool UpgradeTransformedCards = false)
 {
     public int MinimumSelectionsRemaining { get; init; } = RemainingSelections;
+    public string? CardIdAfterChoices { get; init; }
 
     public PrototypePendingDeckChoiceState Fork() => this with
     {

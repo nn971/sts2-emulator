@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,809 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,812 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -194,7 +194,9 @@ regional entry/branch has direct integration and semantic coverage.
   Blood-Soaked Rose's energy and Enthralled acquisition, Whispering Earring's
   first-turn paid autoplay, and Sere Talon's Max HP loss plus Wish cards are
   implemented as dependencies; Vakuu remains unavailable until its event and
-  remaining source-owned branches are covered. See the [Glory Ancient source
+  remaining source-owned branches are covered. Preserved Fog now removes up to
+  three selected cards before adding its Innate, Ethereal, Eternal Folly curse
+  through reward, shop and event deck-choice continuations. See the [Glory Ancient source
   ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.

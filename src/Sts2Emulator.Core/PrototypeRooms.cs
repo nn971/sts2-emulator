@@ -1505,6 +1505,15 @@ public sealed partial class PrototypeGameEngine
                         rng: state.Rng, allocateCardId: () => nextId++,
                         nativeRunRng: nativeRunRng);
 
+                    if (relicDefinition.CardIdAfterAcquisitionDeckChoices
+                        is { } postChoiceCardId)
+                    {
+                        if (deferredCardId is not null)
+                            throw new InvalidOperationException(
+                                "An event cannot queue multiple deferred card grants.");
+                        deferredCardId = postChoiceCardId;
+                    }
+
                     if (eventState.EventId == NativeNonupeipeEventV111.EventId
                         && relicId == NativeGloryAncientsV111.FurCoatId)
                     {
@@ -2325,37 +2334,47 @@ public sealed partial class PrototypeGameEngine
 
         if (shop.PendingDeckChoice is { } pending)
         {
+            PlayerState resolvedPlayer;
+            PrototypePendingDeckChoiceState? remaining;
             if (StringComparer.Ordinal.Equals(
                     action.Kind, "finish_relic_deck_choice"))
             {
                 if (pending.MinimumSelectionsRemaining != 0)
                     throw new InvalidOperationException(
                         "This relic deck choice still requires a selection.");
-                return state with
-                {
-                    World = world with
-                    {
-                        Shop = shop with { PendingDeckChoice = null }
-                    }
-                };
+                resolvedPlayer = state.Player;
+                remaining = null;
+            }
+            else
+            {
+                RequireKind(action, "choose_shop_relic_deck_card");
+                var payload = action.ReadPayload<ChooseDeckCardPayload>();
+                var resolved = ResolveRelicDeckChoice(
+                    state.Player,
+                    pending,
+                    payload.CardInstanceId,
+                    state.Rng);
+                resolvedPlayer = resolved.Player;
+                remaining = resolved.Remaining;
             }
 
-            RequireKind(action, "choose_shop_relic_deck_card");
-            var payload = action.ReadPayload<ChooseDeckCardPayload>();
-            var resolved = ResolveRelicDeckChoice(
-                state.Player,
-                pending,
-                payload.CardInstanceId,
-                state.Rng);
+            var nextCardInstanceId = world.NextCardInstanceId;
+            if (remaining is null
+                && pending.CardIdAfterChoices is { } afterChoicesCardId)
+            {
+                resolvedPlayer = AppendCard(
+                    resolvedPlayer, nextCardInstanceId++, afterChoicesCardId, state.Rng);
+            }
             return state with
             {
-                Player = resolved.Player,
+                Player = resolvedPlayer,
                 World = world with
                 {
                     Shop = shop with
                     {
-                        PendingDeckChoice = resolved.Remaining
-                    }
+                        PendingDeckChoice = remaining
+                    },
+                    NextCardInstanceId = nextCardInstanceId
                 }
             };
         }
@@ -3325,6 +3344,13 @@ public sealed partial class PrototypeGameEngine
                     PendingDeckChoice = resolved.Remaining
                 };
             }
+
+            if (reward.PendingDeckChoice is null
+                && deckChoice.CardIdAfterChoices is { } afterChoicesCardId)
+            {
+                player = AppendCard(
+                    player, nextId++, afterChoicesCardId, state.Rng);
+            }
         }
         else if (!reward.CardResolved && reward.CardBundles is { } bundles)
         {
@@ -4270,15 +4296,19 @@ public sealed partial class PrototypeGameEngine
             PlayerState player,
             string relicId)
     {
-        var spec =
-            PrototypeContent.Relic(relicId)
-                .AcquisitionDeckChoice;
-        if (spec is null || spec.Selections <= 0)
+        var relic = PrototypeContent.Relic(relicId);
+        var spec = relic.AcquisitionDeckChoice;
+        var afterChoicesCardId =
+            relic.CardIdAfterAcquisitionDeckChoices;
+        if ((spec is null || spec.Selections <= 0)
+            && afterChoicesCardId is null)
         {
             return null;
         }
 
-        var candidates = player.Deck
+        var candidates = spec is null || spec.Selections <= 0
+            ? Array.Empty<long>()
+            : player.Deck
             .Where(card =>
                 PrototypeGameEngine.CanSelectRelicDeckCard(card, spec)
                 && (!spec.RequiresUpgradable
@@ -4286,20 +4316,22 @@ public sealed partial class PrototypeGameEngine
             .OrderBy(card => spec.RequiresUpgradable ? card.CardId : string.Empty, StringComparer.Ordinal)
             .Select(card => card.InstanceId)
             .ToArray();
-        var selections =
-            Math.Min(spec.Selections, candidates.Length);
-        return selections <= 0
+        var selections = spec is null
+            ? 0
+            : Math.Min(spec.Selections, candidates.Length);
+        return selections <= 0 && afterChoicesCardId is null
             ? null
             : new PrototypePendingDeckChoiceState(
                 relicId,
-                spec.Kind,
+                spec?.Kind ?? PrototypePersistentDeckChoiceKind.Remove,
                 selections,
                 candidates,
-                spec.UpgradeTransformedCards)
+                spec?.UpgradeTransformedCards ?? false)
             {
                 MinimumSelectionsRemaining = Math.Min(
-                    spec.MinimumSelections ?? spec.Selections,
-                    selections)
+                    spec?.MinimumSelections ?? spec?.Selections ?? 0,
+                    selections),
+                CardIdAfterChoices = afterChoicesCardId
             };
     }
 

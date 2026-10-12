@@ -1351,7 +1351,9 @@ public static class PrototypeStateInvariants
     {
         if (shop.PendingDeckChoice is { } pending)
         {
-            if (pending.RemainingSelections <= 0
+            if (pending.RemainingSelections < 0
+                || (pending.RemainingSelections == 0
+                    && pending.CardIdAfterChoices is null)
                 || pending.MinimumSelectionsRemaining < 0
                 || pending.MinimumSelectionsRemaining
                     > pending.RemainingSelections
@@ -1380,11 +1382,16 @@ public static class PrototypeStateInvariants
                     "Shop relic deck choice has no acquisition specification.");
             if (spec.Kind != pending.Kind
                 || spec.UpgradeTransformedCards
-                    != pending.UpgradeTransformedCards)
+                    != pending.UpgradeTransformedCards
+                || pending.CardIdAfterChoices
+                    != PrototypeContent.Relic(pending.SourceRelicId)
+                        .CardIdAfterAcquisitionDeckChoices)
             {
                 throw new InvalidOperationException(
                     "Shop relic deck choice disagrees with the source relic.");
             }
+            if (pending.CardIdAfterChoices is { } postChoiceCardId)
+                _ = PrototypeContent.Card(postChoiceCardId);
 
             if (!shop.RelicOffers.Any(offer =>
                     offer.Sold
@@ -1851,7 +1858,9 @@ public static class PrototypeStateInvariants
                     "Pending relic deck choice requires an acquired relic reward.");
             }
 
-            if (deckChoice.RemainingSelections <= 0)
+            if (deckChoice.RemainingSelections < 0
+                || (deckChoice.RemainingSelections == 0
+                    && deckChoice.CardIdAfterChoices is null))
             {
                 throw new InvalidOperationException(
                     "Pending relic deck choice has no remaining selections.");
@@ -1893,6 +1902,14 @@ public static class PrototypeStateInvariants
             var sourceDefinition =
                 PrototypeContent.Relic(
                     deckChoice.SourceRelicId);
+            if (deckChoice.CardIdAfterChoices
+                != sourceDefinition.CardIdAfterAcquisitionDeckChoices)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice disagrees with its post-choice card effect.");
+            }
+            if (deckChoice.CardIdAfterChoices is { } postChoiceCardId)
+                _ = PrototypeContent.Card(postChoiceCardId);
             var sourceSpec =
                 sourceDefinition.AcquisitionDeckChoice
                 ?? throw new InvalidOperationException(

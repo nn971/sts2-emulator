@@ -250,6 +250,22 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Ancient,
                 Type: PrototypeCardType.Skill,
                 MaxUpgradeLevel: 1),
+            // Preserved Fog's curse enters after its acquisition removals.
+            // Folly is Innate, Ethereal, Eternal, and cannot be played.
+            new PrototypeCardDefinition(
+                NativeGloryAncientsV111.FollyCardId,
+                "Folly",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Innate: true,
+                Ethereal: true,
+                Unplayable: true,
+                Eternal: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
             // Neow's Cursed Pearl grants Greed: a permanent Eternal,
             // unplayable curse, not eligible for ordinary card rewards.
             new PrototypeCardDefinition(
