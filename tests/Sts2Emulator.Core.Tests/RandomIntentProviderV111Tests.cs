@@ -54,6 +54,19 @@ public sealed class RandomIntentProviderV111Tests
                 Assert.Equal("UNVERIFIED", choice.ProbabilityStatus);
             }
 
+            // Independent primitive oracle: resolve the same bounded
+            // integer calls using the original native RNG codec, not the
+            // provider, and compare all resulting RNG stream words.
+            var primitiveOracle = before.NativeRng!.RunStreams.Fork();
+            foreach (var choice in audited.Choices)
+            {
+                int primitiveIndex = NativeRngV111.NextInt(primitiveOracle,
+                    "run.monster_ai", choice.Request.OrderedCandidates.Length);
+                Assert.Equal(primitiveIndex, choice.SelectedIndex);
+            }
+            Assert.Equal(CanonicalJson.Sha256(primitiveOracle),
+                CanonicalJson.Sha256(audited.Combat.NativeRng!.RunStreams));
+
             var streams = NativeRngV111.CreateBundle("intent-counterfactual");
             string controlHash = CanonicalJson.Sha256(streams);
             var scripted = new ScriptedRandomIndexProviderV111(audited.Choices);
