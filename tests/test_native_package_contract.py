@@ -38,6 +38,22 @@ class NativePackageContractTests(unittest.TestCase):
         self.assertIn("../../src/Sts2Emulator.Core/*.cs", native_compiles)
         self.assertIn("../../src/Sts2Emulator.Trace/*.cs", native_compiles)
 
+    def test_native_sdk_excludes_godot_generated_assembly_attributes(self):
+        project = ET.parse(CSPROJ).getroot()
+        excludes = [
+            (node.text or "")
+            for node in project.findall("./PropertyGroup/DefaultItemExcludes")
+        ]
+        self.assertTrue(
+            any(".godot/**" in value for value in excludes),
+            "The SDK must never pick up Godot's generated obj/*.cs.",
+        )
+        removed = [
+            node.attrib.get("Remove")
+            for node in project.findall("./ItemGroup/Compile")
+        ]
+        self.assertIn(".godot/**/*.cs", removed)
+
     def test_package_includes_single_mod_dll_and_pck(self):
         script = BUILDER.read_text(encoding="utf-8")
         self.assertIn('cp "$project/bin/Release/net9.0/Sts2ReferenceMod.dll" "$dest/"', script)
