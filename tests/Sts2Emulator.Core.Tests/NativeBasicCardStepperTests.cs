@@ -107,13 +107,6 @@ public sealed class NativeBasicCardStepperTests
     public void NativeExpectationComparisonIsOnlyRuleLevelConsistency()
     {
         using var before = JsonDocument.Parse(BeforeState());
-        using var after = JsonDocument.Parse(BeforeState()
-            .Replace("\"energy\":3", "\"energy\":2")
-            .Replace("\"hp\":41", "\"hp\":35")
-            .Replace("\"hand\":[{\"instance_id\":0",
-                     "\"discard_pile\":[{\"instance_id\":0")
-            .Replace("\"draw_pile\":[],\"discard_pile\":[],",
-                     "\"draw_pile\":[],\"hand\":[],"));
         // Construct a canonical synthetic post-state without fragile string
         // movement replacement (the comparator accepts complete state data).
         var post = JsonSerializer.SerializeToElement(new {
