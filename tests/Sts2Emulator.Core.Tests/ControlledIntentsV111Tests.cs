@@ -79,6 +79,56 @@ public sealed class ControlledIntentsV111Tests
     }
 
     [Fact]
+    public void ControlledHpToIntentsUsesSameMechanicsAndPersistsAllPriorChoices()
+    {
+        for (int n = 0; n < 16; n++)
+        {
+            string seed = "composed-nature-entry-" + n;
+            var pre = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
+                seed, 2, PrototypeNativeHiveNormals.ExoskeletonsNormalId,
+                "ExoskeletonsNormal", 20, mapColumn: 3, mapRow: 5);
+            var nativeHp = NativeCombatRngEntryV111.AttachAndRollInitialHpWithAudit(
+                pre.Combat, pre.Formation, pre.NativeStreams);
+            var hp = ControlledInitialHpV111.Begin(
+                pre.Combat, pre.Formation, pre.NativeStreams);
+            foreach (var choice in nativeHp.Choices)
+                hp = ControlledInitialHpV111.Resolve(
+                    hp, hp.Fingerprint, choice.SelectedIndex);
+            Assert.True(hp.Complete);
+            var initialHash = CanonicalJson.Sha256(hp.ReferenceStreams);
+            var intents = ControlledIntentsV111.BeginAfterControlledHp(hp);
+            Assert.NotNull(intents.PriorHpTranscript);
+            Assert.Equal(nativeHp.Choices.Length, intents.PriorHpTranscript!.Length);
+            var nativeIntent = NativeCombatRngEntryV111.CommitIntentsWithAudit(nativeHp.Combat);
+            foreach (var choice in nativeIntent.Choices)
+            {
+                Assert.NotNull(intents.Pending);
+                Assert.Equal(choice.Request.OwnerId, intents.Pending!.OwnerId);
+                Assert.Equal(choice.Request.SupportCount, intents.Pending.SupportCount);
+                intents = ControlledIntentsV111.Resolve(
+                    intents, intents.Fingerprint, choice.SelectedIndex);
+            }
+            Assert.True(intents.Complete);
+            Assert.Equal(initialHash,
+                CanonicalJson.Sha256(intents.ReferenceStreams));
+            Assert.Equal(
+                nativeIntent.Combat.Enemies.Select(x => (x.Hp, x.PlannedMoveIndex, x.PlannedNextAiStateId)),
+                intents.Combat.Enemies.Select(x => (x.Hp, x.PlannedMoveIndex, x.PlannedNextAiStateId)));
+            var restored = ControlledIntentsV111.Restore(
+                ControlledIntentsV111.Save(intents));
+            Assert.Equal(intents.Fingerprint, restored.Fingerprint);
+
+            var forged = intents.Fork();
+            forged.PriorHpTranscript![0] = forged.PriorHpTranscript[0] with
+            {
+                SelectedIndex = forged.PriorHpTranscript[0].Request.SupportCount
+            };
+            Assert.Throws<ArgumentException>(() =>
+                ControlledIntentsV111.Restore(JsonSerializer.Serialize(forged)));
+        }
+    }
+
+    [Fact]
     public void IllegalStaleAndTamperedTicketsFailBeforeMutatingParent()
     {
         var pending = ControlledIntentsV111.Begin(Prepared("intent-fail-closed"));
