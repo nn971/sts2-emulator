@@ -2157,6 +2157,16 @@ public static class PrototypeContent
                     PrototypeCombatEffectKind.ApplyEnemyPower,
                     4,
                     PowerId: "proto.power.shrink")]),
+            // Shared Rare potion: triple the next powered Attack card's
+            // damage, then consume the power after the full card resolves.
+            new PrototypePotionDefinition(
+                "proto.potion.gigantification",
+                "Gigantification Potion",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyPlayerPower,
+                    1,
+                    PowerId: "proto.power.gigantification")]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -3322,6 +3332,13 @@ public static class PrototypeContent
                 AllowNegative: true,
                 PlayerAttackDamageBonusPerStack: 1,
                 RemoveAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.gigantification",
+                "Gigantification",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                PlayerAttackDamageMultiplierWhileActiveNumerator: 3,
+                RemoveAfterFirstPoweredAttack: true),
             new PrototypePowerDefinition(
                 "proto.power.duplication",
                 "Duplication",

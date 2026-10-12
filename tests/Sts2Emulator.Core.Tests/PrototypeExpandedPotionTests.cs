@@ -422,6 +422,40 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void GigantificationTriplesAndConsumesOnTheNextPoweredAttack()
+    {
+        var state = CombatStateWith(
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.strike")
+            ],
+            hand: [1, 2],
+            potionId: "proto.potion.gigantification",
+            enemyHp: 100);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        Assert.Contains(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.gigantification");
+
+        var firstStrike = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1);
+        state = engine.Step(state, firstStrike).State;
+        Assert.Equal(82, state.World!.Combat!.Enemies.Single().Hp);
+        Assert.DoesNotContain(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.gigantification");
+
+        var secondStrike = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 2);
+        state = engine.Step(state, secondStrike).State;
+        Assert.Equal(76, state.World!.Combat!.Enemies.Single().Hp);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

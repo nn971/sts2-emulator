@@ -71,6 +71,8 @@ public static class PrototypeNativePotionShop
             ["proto.potion.mazaleths_gift"] =
                 PrototypeNativePotionRarity.Rare,
             ["proto.potion.beetle_juice"] =
+                PrototypeNativePotionRarity.Rare,
+            ["proto.potion.gigantification"] =
                 PrototypeNativePotionRarity.Rare
         };
 

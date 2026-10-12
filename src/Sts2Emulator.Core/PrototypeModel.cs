@@ -311,7 +311,8 @@ public sealed record PrototypeCombatEvent(
     int Amount = 0,
     long? PowerApplicationOrderCeiling = null,
     bool FromHandDraw = false,
-    bool IsAutoPlay = false);
+    bool IsAutoPlay = false,
+    bool IsPoweredAttack = false);
 
 public sealed record PrototypeEventSubscriberState(
     long ApplicationOrder,
@@ -946,7 +947,10 @@ public sealed record PrototypePowerDefinition(
     int EnergyBonusWhileActive = 0,
     bool DecrementAfterEnergyReset = false,
     int EnemyOutgoingPoweredAttackNumerator = 1,
-    int EnemyOutgoingPoweredAttackDenominator = 1);
+    int EnemyOutgoingPoweredAttackDenominator = 1,
+    int PlayerAttackDamageMultiplierWhileActiveNumerator = 1,
+    int PlayerAttackDamageMultiplierWhileActiveDenominator = 1,
+    bool RemoveAfterFirstPoweredAttack = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

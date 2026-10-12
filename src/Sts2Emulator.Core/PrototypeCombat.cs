@@ -7134,7 +7134,9 @@ public sealed partial class PrototypeGameEngine
                     CardId: card.CardId,
                     PowerApplicationOrderCeiling:
                         powerApplicationOrderCeiling,
-                    IsAutoPlay: series.IsAutoPlay)
+                    IsAutoPlay: series.IsAutoPlay,
+                    IsPoweredAttack: PrototypeContent.Card(card.CardId)
+                        .Type == PrototypeCardType.Attack)
             ],
             cardPlaySeries: nextSeries,
             moveSourceCardOnCompletion: isLastExecution,
@@ -7425,6 +7427,16 @@ public sealed partial class PrototypeGameEngine
 
             modified = (modified * definition.PlayerAttackDamageNumerator)
                 / definition.PlayerAttackDamageDenominator;
+            if (definition.PlayerAttackDamageMultiplierWhileActiveDenominator
+                <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Power '{definition.Id}' has invalid player attack multiplier denominator.");
+            }
+
+            modified = (modified
+                * definition.PlayerAttackDamageMultiplierWhileActiveNumerator)
+                / definition.PlayerAttackDamageMultiplierWhileActiveDenominator;
         }
 
         return modified;
@@ -9834,6 +9846,16 @@ public sealed partial class PrototypeGameEngine
                         Math.Max(0, damage - absorbed))
                 };
             }
+        }
+        if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed
+            && combatEvent.IsPoweredAttack
+            && combatEvent.CardId is { } poweredCardId
+            && PrototypeContent.Card(poweredCardId).Type
+                == PrototypeCardType.Attack)
+        {
+            combat = RemovePlayerPowers(
+                combat,
+                definition => definition.RemoveAfterFirstPoweredAttack);
         }
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
         {
