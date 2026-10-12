@@ -113,6 +113,45 @@ public static class PrototypeNativeOvergrowthEvents
                             [new(PrototypeRunEffectKind.AddCard,
                                 CardId: "proto.native.neow.neows_fury")])
                     ],
+                    "ArcaneScroll" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [new(PrototypeRunEffectKind.GainRandomRareCard)])
+                    ],
+                    "PhialHolster" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [
+                                new(PrototypeRunEffectKind.GainPotionSlots, 1),
+                                new(PrototypeRunEffectKind.GainRandomPotion),
+                                new(PrototypeRunEffectKind.GainRandomPotion)
+                            ])
+                    ],
+                    "NeowsSacrifice" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [
+                                new(PrototypeRunEffectKind.GainPotion,
+                                    PotionId: "proto.native.neow.ambergris"),
+                                new(PrototypeRunEffectKind.AddCard,
+                                    CardId: "proto.native.event.guilty")
+                            ])
+                    ],
+                    "LeafyPoultice" =>
+                    [
+                        new PrototypeRelicRunTriggerSpec(
+                            PrototypeRunEventKind.RelicAcquired,
+                            [
+                                new(PrototypeRunEffectKind.LoseMaxHp, 12),
+                                new(PrototypeRunEffectKind.TransformFirstCardOfId,
+                                    CardId: "proto.silent.strike"),
+                                new(PrototypeRunEffectKind.TransformFirstCardOfId,
+                                    CardId: "proto.silent.defend")
+                            ])
+                    ],
                     "NutritiousOyster" =>
                     [
                         new PrototypeRelicRunTriggerSpec(
@@ -156,8 +195,7 @@ public static class PrototypeNativeOvergrowthEvents
                         "ArcaneScroll" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
-                                RelicId: NeowRelicId(name)),
-                            new(PrototypeRunEffectKind.GainRandomRareCard)
+                                RelicId: NeowRelicId(name))
                         ],
                         "NeowsBones" =>
                         [
@@ -208,10 +246,7 @@ public static class PrototypeNativeOvergrowthEvents
                         "PhialHolster" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
-                                RelicId: NeowRelicId(name)),
-                            new(PrototypeRunEffectKind.GainPotionSlots, 1),
-                            new(PrototypeRunEffectKind.GainRandomPotion),
-                            new(PrototypeRunEffectKind.GainRandomPotion)
+                                RelicId: NeowRelicId(name))
                         ],
                         "LargeCapsule" =>
                         [
@@ -227,11 +262,7 @@ public static class PrototypeNativeOvergrowthEvents
                         "NeowsSacrifice" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
-                                RelicId: NeowRelicId(name)),
-                            new(PrototypeRunEffectKind.GainPotion,
-                                PotionId: "proto.native.neow.ambergris"),
-                            new(PrototypeRunEffectKind.AddCard,
-                                CardId: "proto.native.event.guilty")
+                                RelicId: NeowRelicId(name))
                         ],
                         "PrecariousShears" =>
                         [
@@ -244,12 +275,7 @@ public static class PrototypeNativeOvergrowthEvents
                         "LeafyPoultice" =>
                         [
                             new(PrototypeRunEffectKind.GainRelic,
-                                RelicId: NeowRelicId(name)),
-                            new(PrototypeRunEffectKind.LoseMaxHp, 12),
-                            new(PrototypeRunEffectKind.TransformFirstCardOfId,
-                                CardId: "proto.silent.strike"),
-                            new(PrototypeRunEffectKind.TransformFirstCardOfId,
-                                CardId: "proto.silent.defend")
+                                RelicId: NeowRelicId(name))
                         ],
                         _ =>
                         [

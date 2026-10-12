@@ -525,19 +525,126 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     continue;
                 }
 
-                if (trigger.Effects.Any(effect => effect.Kind == PrototypeRunEffectKind.AddCard))
+                player = ApplyRelicAcquisitionRunEffects(
+                    player, trigger.Effects, rng, allocateCardId);
+            }
+        }
+
+        return player;
+    }
+
+    private static PlayerState ApplyRelicAcquisitionRunEffects(
+        PlayerState player,
+        IEnumerable<PrototypeRunEffectSpec> effects,
+        RngBundle? rng,
+        Func<long>? allocateCardId)
+    {
+        foreach (var effect in effects)
+        {
+            switch (effect.Kind)
+            {
+                case PrototypeRunEffectKind.AddCard:
+                    player = AppendCard(
+                        player,
+                        (allocateCardId ?? throw new InvalidOperationException(
+                            "Card-granting relic acquisition requires an instance allocator."))(),
+                        effect.CardId ?? throw new InvalidOperationException(
+                            "Card grant requires a card ID."),
+                        rng ?? throw new InvalidOperationException(
+                            "Card grant requires RNG context."));
+                    break;
+
+                case PrototypeRunEffectKind.GainRandomRareCard:
                 {
-                    foreach (var effect in trigger.Effects)
-                        player = effect.Kind == PrototypeRunEffectKind.AddCard
-                            ? AppendCard(player,
-                                (allocateCardId ?? throw new InvalidOperationException(
-                                    "Card-granting relic acquisition requires an instance allocator."))(),
-                                effect.CardId ?? throw new InvalidOperationException("Card grant requires a card ID."),
-                                rng ?? throw new InvalidOperationException("Card grant requires RNG context."))
-                            : ApplyPlayerRunEffects(player, [effect], rng);
+                    var rewardRng = rng ?? throw new InvalidOperationException(
+                        "Random Rare-card relic acquisition requires RNG context.");
+                    var cardAllocator = allocateCardId
+                        ?? throw new InvalidOperationException(
+                            "Random Rare-card relic acquisition requires an instance allocator.");
+                    var rarePool = PrototypeContent.RewardCardPool
+                        .Where(cardId => PrototypeContent.Card(cardId).Rarity
+                            == PrototypeCardRarity.Rare)
+                        .ToArray();
+                    if (rarePool.Length == 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Random Rare-card reward has an empty pool.");
+                    }
+
+                    var cardId = rarePool[PrototypeRng.NextInt(
+                        rewardRng, "reward", rarePool.Length)];
+                    player = AppendCard(
+                        player, cardAllocator(), cardId, rewardRng);
+                    break;
                 }
-                else
-                    player = ApplyPlayerRunEffects(player, trigger.Effects, rng);
+
+                case PrototypeRunEffectKind.GainPotionSlots:
+                    if (effect.Amount <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Potion slot increase must be positive.");
+                    }
+                    player = player with
+                    {
+                        PotionSlots = player.PotionSlots
+                            .Concat(new PotionInstance?[effect.Amount])
+                            .ToArray()
+                    };
+                    break;
+
+                case PrototypeRunEffectKind.GainPotion:
+                case PrototypeRunEffectKind.GainRandomPotion:
+                {
+                    if (!CanAcquirePotion(player))
+                    {
+                        throw new InvalidOperationException(
+                            "Player cannot acquire potions.");
+                    }
+
+                    var slot = Array.IndexOf(player.PotionSlots, null);
+                    if (slot < 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Relic pickup potion reward has no open slot.");
+                    }
+
+                    var potionId = effect.Kind
+                            == PrototypeRunEffectKind.GainRandomPotion
+                        ? PrototypeContent.PotionPool[PrototypeRng.NextInt(
+                            rng ?? throw new InvalidOperationException(
+                                "Random potion relic acquisition requires RNG context."),
+                            "event", PrototypeContent.PotionPool.Length)]
+                        : effect.PotionId ?? throw new InvalidOperationException(
+                            "Potion relic acquisition requires a potion ID.");
+                    _ = PrototypeContent.Potion(potionId);
+                    var slots = (PotionInstance?[])player.PotionSlots.Clone();
+                    slots[slot] = new PotionInstance(
+                        potionId, PrototypeJson.EmptyObject());
+                    player = player with { PotionSlots = slots };
+                    break;
+                }
+
+                case PrototypeRunEffectKind.TransformFirstCardOfId:
+                {
+                    var cardId = effect.CardId ?? throw new InvalidOperationException(
+                        "Transform-first-card effect requires a card ID.");
+                    var first = player.Deck.FirstOrDefault(card =>
+                        StringComparer.Ordinal.Equals(card.CardId, cardId));
+                    if (first is not null)
+                    {
+                        player = TransformPersistentDeckCard(
+                            player,
+                            first.InstanceId,
+                            upgradeResult: false,
+                            rng ?? throw new InvalidOperationException(
+                                "Deck transformation requires RNG context."));
+                    }
+                    break;
+                }
+
+                default:
+                    player = ApplyPlayerRunEffects(player, [effect], rng);
+                    break;
             }
         }
 

@@ -231,8 +231,10 @@ public sealed partial class PrototypeGameEngine
                 // executable there.
                 string[] supportedNativeNames =
                 [
-                    "CursedPearl", "DowsingRod", "BoomingConch",
-                    "FishingRod", "GoldenPearl", "NeowsTorment",
+                    "ArcaneScroll", "BoomingConch", "CursedPearl",
+                    "DowsingRod", "FishingRod", "GoldenPearl",
+                    "LeafyPoultice", "NeowsSacrifice", "NeowsTorment",
+                    "PhialHolster",
                     "LavaRock", "NutritiousOyster", "StoneHumidifier",
                     "NeowsTalisman", "Pomander", "PreciseScissors",
                     "NewLeaf", "SilverCrucible", "SilkenTress"
