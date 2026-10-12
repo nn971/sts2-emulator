@@ -15,7 +15,8 @@ def sample():
     coverage = {"verified_fields": ["$.player.hp", "$.combat.energy"],
                 "missing_fields": ["$.combat.draw_pile"],
                 "unsupported_mechanics": [], "verified_events": ["damage"],
-                "rng_status": "RNG_UNAUDITED"}
+                "rng_status": "RNG_UNAUDITED",
+                "required_preconditions": ["$.player.hp", "$.combat.energy"]}
     def decision(n, hp):
         return {"type": "decision", "decision_id": n, "phase": "Combat",
                 "state": {"player": {"hp": hp}, "combat": {"energy": 3}},
