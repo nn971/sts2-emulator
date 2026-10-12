@@ -11613,7 +11613,7 @@
         "page/OFFER_TRIBUTE",
         "page/REACH_INTO_THE_FLESH"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

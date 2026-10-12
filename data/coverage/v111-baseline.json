@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "76d6b88b43d94b58db84651dd260fae6fcfa590201c8861cdecad060f63780f8",
+  "inventory_file_sha256": "7abcdd83a2194b020c5d9e3c52e894b0496d47e64bcb353b5fb3031e2273e3be",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "8820e3a14ac19d6f410b7acb4bf391afde61b9ee6baa32f5fec302023b8b5bed",
+    "inventory_hash": "a02b6fa29a1c91a337b8ce02ad4fe8d99c32c5806acd458f78bf8768c536b8c2",
     "items": [
       {
         "catalogued": true,
@@ -15445,20 +15445,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/LuminousChoir.cs#cb5a64762a1206ca73f28130c0f9e71ef0bce6c1dbe6dd878a6f08305d6c52de"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/OFFER_TRIBUTE",
-          "initial/OFFER_TRIBUTE_LOCKED",
-          "initial/REACH_INTO_THE_FLESH",
-          "page/INITIAL",
-          "page/INITIAL/OFFER_TRIBUTE",
-          "page/INITIAL/OFFER_TRIBUTE_LOCKED",
-          "page/INITIAL/REACH_INTO_THE_FLESH",
-          "page/OFFER_TRIBUTE",
-          "page/REACH_INTO_THE_FLESH"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "LUMINOUS_CHOIR",
         "registered": true,
@@ -29637,7 +29627,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 14,
+        "implemented": 15,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,

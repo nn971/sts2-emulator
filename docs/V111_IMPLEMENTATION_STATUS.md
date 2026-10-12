@@ -29,8 +29,8 @@ retain their result pages after potion and card continuations. Waterlogged
 Scriptorium now keeps its result page after each optional Steady selection;
 Trash Heap retains its result page after either successful reward, and
 Endless Conveyor retains its Observe Chef/Leave results. The coverage report
-records 50 integrated event paths, fourteen complete event implementations,
-and 27 events with complete branch inventories. Punch Off also retains its
+records 50 integrated event paths, fifteen complete event implementations,
+and 28 events with complete branch inventories. Punch Off also retains its
 Nab result page after the relic reward resolves. Native
 validation remains
 unverified.
