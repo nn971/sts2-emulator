@@ -99,7 +99,8 @@ public sealed class V111HiveFlowerSpiritGrafterTests
             hp: 60, gold: 0);
         var id = state.World!.NextCardInstanceId;
         var result = Select(state, "let_it_in");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
         Assert.Equal(70, result.Player.Hp);
         Assert.Equal(0, result.Player.Gold);
         Assert.Equal(state.Player.Deck.Length + 1,
@@ -108,6 +109,13 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         Assert.Equal(PrototypeNativeHiveEvents.MetamorphosisId,
             result.Player.Deck.Last().CardId);
         Assert.Equal(id + 1, result.World!.NextCardInstanceId);
+        Assert.Equal(CanonicalJson.Sha256(result), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(result))));
+        Assert.Equal("continue_event",
+            Assert.Single(Engine.GetLegalActions(result)).Kind);
+        result = Engine.Step(result, GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Null(result.World!.Event);
     }
 
     [Fact]
@@ -121,17 +129,51 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         Assert.Equal(30, selected.Player.Hp);
         var choice = Engine.GetLegalActions(selected).First(a =>
             a.Kind == "choose_event_deck_card");
+        Assert.Equal(CanonicalJson.Sha256(selected), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(selected))));
         var cardId = choice.ReadPayload<ChooseEventDeckCardPayload>()
             .CardInstanceId;
         var original = state.Player.Deck.Single(c =>
             c.InstanceId == cardId).UpgradeLevel;
         var result = Engine.Step(selected, choice).State;
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        PrototypeStateInvariants.Validate(result);
+        Assert.Equal(CanonicalJson.Sha256(result), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(result))));
         Assert.Equal(20, result.Player.Hp);
         Assert.Equal(original + 1,
             result.Player.Deck.Single(c =>
                 c.InstanceId == cardId).UpgradeLevel);
+        result = Engine.Step(result, GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Null(result.World!.Event);
         Assert.Equal(initialHash, CanonicalJson.Sha256(state));
+    }
+
+    [Fact]
+    public void GrafterRejectionStillFinishesWhenNoCardCanBeUpgraded()
+    {
+        var state = EventRun(PrototypeNativeHiveEvents.SpiritGrafterId,
+            hp: 30);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Select(card => card with
+                {
+                    UpgradeLevel = PrototypeContent.Card(card.CardId)
+                        .MaxUpgradeLevel
+                }).ToArray()
+            }
+        };
+        var result = Select(state, "rejection");
+        Assert.Equal(20, result.Player.Hp);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        Assert.Null(result.World.Event.PendingDeckChoice);
+        result = Engine.Step(result, GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Null(result.World!.Event);
     }
 
     [Theory]
@@ -237,20 +279,22 @@ public sealed class V111HiveFlowerSpiritGrafterTests
     {
         var start = Engine.Step(
             PrototypeGameFactory.Create("hive-v3"), GameAction.Empty("start_run")).State;
+        var map = PrototypeNativeLaterActMap.GenerateNative("hive-v3", 2);
+        var eventNode = map.Nodes.First(node =>
+            node.RoomType == PrototypeRoomType.Unknown
+            && node.Floor > 1
+            && node.Floor < PrototypeNativeLaterActMap.RoomRows(2));
         return start with
         {
             Phase = RunPhase.Event,
             Player = start.Player with { Hp = hp, Gold = gold },
             World = start.World! with
             {
-                Act = 2, Floor = 1,
+                Act = 2, Floor = eventNode.Floor,
                 ActiveRoom = PrototypeRoomType.Event,
                 Event = new EventState(id),
-                Map = new MapState(
-                [
-                    new("event", 2, 1, PrototypeRoomType.Event, ["next"]),
-                    new("next", 2, 2, PrototypeRoomType.Combat, [])
-                ], "event", ["event"])
+                EventHistory = [id],
+                Map = map with { CurrentNodeId = eventNode.NodeId }
             }
         };
     }

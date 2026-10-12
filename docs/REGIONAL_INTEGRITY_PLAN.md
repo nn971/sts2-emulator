@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-13): 1,837 C# tests pass, executable coverage
+Current validation (2026-10-13): 1,838 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -95,10 +95,13 @@ Hive's Amalgamator now retains its source completion page after both card
 removals and Ultimate-card creation; its seven pinned page/choice paths have
 direct branch tests and a complete inventory in
 [the Amalgamator ledger](reference-builds/v0.111.0-hive-amalgamator.md). The
-coverage report now honors `branch_inventory_complete`; Amalgamator and Lost
-Wisp are the two of 66 event inventories marked complete. Lost Wisp now keeps
-its source result page after Claim/Search, with stored gold and no extra result
-draw. See [the Lost Wisp ledger](reference-builds/v0.111.0-hive-lost-wisp.md).
+coverage report now honors `branch_inventory_complete`; Amalgamator, Lost Wisp
+and Spirit Grafter are the three of 66 event inventories marked complete. Lost
+Wisp now keeps its source result page after Claim/Search, with stored gold and
+no extra result draw. See [the Lost Wisp ledger](reference-builds/v0.111.0-hive-lost-wisp.md).
+Spirit Grafter now retains its result page after Let It In or Rejection,
+including the optional card-upgrade step and unblockable HP loss. See [the
+Spirit Grafter ledger](reference-builds/v0.111.0-hive-spirit-grafter.md).
 The other event inventories still require source audits.
 Prepared Hive/Glory boss selection now applies each act's source
 `BossDiscoveryOrder` using `SimulationProfile.SeenBossEncounters`, while still

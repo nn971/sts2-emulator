@@ -64,13 +64,15 @@ public static class PrototypeNativeHiveEvents
             or PrototypeNativeLaterActs.HiveBugslayerId;
 
     public static bool HasTerminalChoicePage(string eventId) =>
-        eventId is AmalgamatorId or LostWispId;
+        eventId is AmalgamatorId or LostWispId or SpiritGrafterId;
 
     public static bool HasTerminalChoice(string eventId, string? choiceId) =>
         eventId == AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == LostWispId
-            && choiceId is "claim" or "search";
+            && choiceId is "claim" or "search"
+        || eventId == SpiritGrafterId
+            && choiceId is "let_it_in" or "rejection";
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         eventId is SpiritGrafterId or FieldOfManSizedHolesId;
