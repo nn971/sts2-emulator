@@ -286,6 +286,31 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "nature_release_many":
+                    {
+                        if (!request.TryGetProperty("nature_handles", out var elements) ||
+                            elements.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "nature_release_many requires nature_handles array.");
+                        // Validate the complete batch before removing any
+                        // handle so malformed requests leave session intact.
+                        var handles = elements.EnumerateArray().Select(element =>
+                            element.ValueKind == JsonValueKind.String
+                                ? element.GetString()
+                                : throw new ArgumentException(
+                                    "nature_handles entries must be strings")).ToArray();
+                        if (handles.Any(string.IsNullOrWhiteSpace))
+                            throw new ArgumentException("Empty Nature handle.");
+                        int released = 0;
+                        foreach (var handle in handles)
+                        {
+                            if (natureHp.Remove(handle!) || natureIntents.Remove(handle!))
+                                released++;
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
                     case "nature_save":
                     {
                         var handle = RequiredString(request, "nature_handle");
