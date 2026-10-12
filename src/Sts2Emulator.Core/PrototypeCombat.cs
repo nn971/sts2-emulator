@@ -2527,6 +2527,26 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (enemy.StunFollowUpMoveIndex is { } stunFollowUp)
+            {
+                if (stunFollowUp < 0
+                    || stunFollowUp >= definition.Moves.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"Enemy {enemy.EnemyId} has an invalid stunned follow-up move.");
+                }
+
+                formation[index] = enemy with
+                {
+                    PlannedMoveIndex = stunFollowUp,
+                    PlannedNextAiStateId =
+                        enemy.StunFollowUpAiStateId ?? enemy.AiStateId,
+                    StunFollowUpMoveIndex = null,
+                    StunFollowUpAiStateId = null
+                };
+                continue;
+            }
+
             // InkletsNormal sets MiddleInklet explicitly despite null
             // native slot names. TheKinBoss sets StartsWithDance=true
             // only on its FIRST KinFollower (slot1). Evaluate their
@@ -4981,6 +5001,51 @@ public sealed partial class PrototypeGameEngine
                             rng);
                     }
 
+                    break;
+                }
+
+                case PrototypeCombatEffectKind.StunEnemy:
+                {
+                    if (targetEnemyId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Enemy stun operation requires a target.");
+                    }
+
+                    var enemies = combat.Enemies
+                        .Select(enemy => enemy.Fork()).ToArray();
+                    var index = Array.FindIndex(enemies,
+                        enemy => enemy.InstanceId == targetEnemyId.Value);
+                    if (index < 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Enemy {targetEnemyId.Value} is missing.");
+                    }
+
+                    if (enemies[index].Hp > 0)
+                    {
+                        var stunned = enemies[index];
+                        var moveCount = PrototypeContent.Enemy(
+                            stunned.EnemyId).Moves.Length;
+                        enemies[index] = enemies[index] with
+                        {
+                            EnemyActionSkipsRemaining = Math.Max(
+                                Math.Max(1, operation.Amount),
+                                enemies[index].EnemyActionSkipsRemaining),
+                            StunFollowUpMoveIndex =
+                                stunned.StunFollowUpMoveIndex
+                                    ?? stunned.PlannedMoveIndex
+                                    ?? (moveCount > 0
+                                        ? stunned.MoveIndex : null),
+                            StunFollowUpAiStateId =
+                                stunned.StunFollowUpAiStateId
+                                    ?? stunned.PlannedNextAiStateId
+                                    ?? stunned.AiStateId,
+                            PlannedMoveIndex = null,
+                            PlannedNextAiStateId = null
+                        };
+                        combat = combat with { Enemies = enemies };
+                    }
                     break;
                 }
 

@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,768 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,771 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -165,8 +165,9 @@ regional entry/branch has direct integration and semantic coverage.
   turn start), Spiked Gauntlets (+1 energy and +1 Power cost), Crossbow
   (one free generated Attack at each player-side turn start), and Iron Club
   (draw a card every fourth card played), Throwing Axe (repeat the first card
-  each combat), and Meat Cleaver (remove two cards at rest to gain 5 Max HP)
-  dependencies are implemented and tested through reward/combat resolution.
+  each combat), Meat Cleaver (remove two cards at rest to gain 5 Max HP), and
+  Tanx's Whistle (adds a 2-cost, 33-damage Stun attack) dependencies are
+  implemented and tested through reward/combat resolution.
   This does not expose or complete Nonupeipe, Tanx or Vakuu. See the
   [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss

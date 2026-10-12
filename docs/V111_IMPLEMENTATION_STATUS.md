@@ -96,6 +96,11 @@ checks the replay and confirms later cards play once.
 Meat Cleaver adds Cook to rest sites when at least two removable deck cards
 remain. Cooking removes the selected pair and adds 5 current and maximum HP;
 tests cover eligibility and the complete rest-site action.
+Tanx's Whistle adds an Ancient attack to the deck. Whistle costs 2, deals 33
+damage (44 upgraded), exhausts and stuns a surviving target for one turn while
+preserving its committed follow-up move. Acquisition, combat, upgrade,
+snapshot and stun-resume cases are covered. The Tanx event remains gated until
+its offer and remaining relic branches are complete.
 Nonupeipe, Tanx and Vakuu remain unavailable until their full offer pools,
 relic effects, Ancient assignment and branch continuations are implemented.
 

@@ -10,6 +10,8 @@ public static class NativeGloryAncientsV111
     public const string IronClubId = "proto.native.ancient.iron_club";
     public const string MeatCleaverId = "proto.native.ancient.meat_cleaver";
     public const string ThrowingAxeId = "proto.native.ancient.throwing_axe";
+    public const string TanxsWhistleId = "proto.native.ancient.tanxs_whistle";
+    public const string WhistleCardId = "proto.native.ancient.whistle";
     public const string LoomingFruitId = "proto.native.ancient.looming_fruit";
     public const string SaiId = "proto.native.ancient.sai";
     public const string SpikedGauntletsId = "proto.native.ancient.spiked_gauntlets";
@@ -32,6 +34,12 @@ public static class NativeGloryAncientsV111
         new(ThrowingAxeId, "Throwing Axe",
             AdditionalCardPlayCountOncePerCombat: 1),
         new(MeatCleaverId, "Meat Cleaver"),
+        new(TanxsWhistleId, "Tanx's Whistle", RunTriggers:
+        [
+            new(PrototypeRunEventKind.RelicAcquired,
+                [new(PrototypeRunEffectKind.AddCard,
+                    CardId: WhistleCardId)])
+        ]),
         new(DiamondDiademId, "Diamond Diadem", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
@@ -59,5 +67,22 @@ public static class NativeGloryAncientsV111
             new(PrototypeRunEventKind.RelicAcquired,
                 [new(PrototypeRunEffectKind.GainGold, 888)])
         ])
+    ];
+
+    public static PrototypeCardDefinition[] Cards { get; } =
+    [
+        new(WhistleCardId, "Whistle", new(
+            PrototypeCardCostKind.Fixed, 2),
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 33,
+                    UpgradeDelta: 11),
+                new(PrototypeCombatEffectKind.StunEnemy, 1)
+            ],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Ancient,
+            RewardEligible: false,
+            Type: PrototypeCardType.Attack,
+            CanBeGeneratedInCombat: false)
     ];
 }

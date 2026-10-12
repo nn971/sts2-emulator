@@ -91,9 +91,110 @@ public sealed class V111TanxRelicTests
             state.World!.Combat!.CounterState.CardsPlayedThisCombat);
     }
 
+    [Fact]
+    public void TanxsWhistleAcquisitionAddsOneWhistleCard()
+    {
+        var initial = PrototypeNativeUnderdocksRunFactory.Create(
+            "tanx-whistle-acquisition");
+        var state = initial with
+        {
+            Phase = RunPhase.Reward,
+            World = initial.World! with
+            {
+                Floor = 1,
+                Map = new MapState([]),
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = null,
+                Shop = null,
+                Event = null,
+                Reward = new RewardState("Combat", [], null,
+                    NativeGloryAncientsV111.TanxsWhistleId,
+                    CardResolved: true, PotionResolved: true,
+                    RelicResolved: false, EndsAct: false)
+            }
+        };
+        var engine = new PrototypeGameEngine();
+        var acquire = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "take_reward_relic");
+
+        state = engine.Step(state, acquire).State;
+
+        var whistle = Assert.Single(state.Player.Deck, card =>
+            card.CardId == NativeGloryAncientsV111.WhistleCardId);
+        Assert.Equal(0, whistle.UpgradeLevel);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == NativeGloryAncientsV111.TanxsWhistleId);
+    }
+
+    [Theory]
+    [InlineData(0, 33)]
+    [InlineData(1, 44)]
+    public void WhistleDealsItsDamageAndStunsTheLivingTarget(
+        int upgradeLevel,
+        int damage)
+    {
+        var (engine, state) = StartCombat(
+            relicId: null,
+            firstCardId: NativeGloryAncientsV111.WhistleCardId,
+            firstCardUpgradeLevel: upgradeLevel);
+        var combat = state.World!.Combat!;
+        var target = combat.Enemies[0];
+        var followUpMove = target.PlannedMoveIndex ?? target.MoveIndex;
+        var followUpAiState = target.PlannedNextAiStateId
+            ?? target.AiStateId;
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Enemies = combat.Enemies.Select(enemy => enemy with
+                    {
+                        Hp = 100,
+                        MaxHp = 100,
+                        EnemyActionSkipsRemaining = 0,
+                        SkipNextEnemyAction = false
+                    }).ToArray()
+                }
+            }
+        };
+        var cardId = state.World.Combat!.Hand.Single(id => id == 1);
+        var play = engine.GetLegalActions(state).First(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == cardId
+            && action.ReadPayload<PlayCardPayload>().TargetEnemyId
+                == target.InstanceId);
+
+        state = engine.Step(state, play).State;
+
+        var stunned = Assert.Single(state.World!.Combat!.Enemies,
+            enemy => enemy.InstanceId == target.InstanceId);
+        Assert.Equal(100 - damage, stunned.Hp);
+        Assert.Equal(1, stunned.EnemyActionSkipsRemaining);
+        Assert.Null(stunned.PlannedMoveIndex);
+        Assert.Equal(followUpMove, stunned.StunFollowUpMoveIndex);
+        Assert.Equal(followUpAiState, stunned.StunFollowUpAiStateId);
+        Assert.Contains(1, state.World.Combat.ExhaustPile);
+
+        var stunnedSnapshotHash = CanonicalJson.Sha256(state);
+        state = RunSnapshot.Load(RunSnapshot.Save(state));
+        Assert.Equal(stunnedSnapshotHash, CanonicalJson.Sha256(state));
+        var endTurn = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "end_turn");
+        state = engine.Step(state, endTurn).State;
+        var resumed = Assert.Single(state.World!.Combat!.Enemies,
+            enemy => enemy.InstanceId == target.InstanceId);
+        Assert.Equal(0, resumed.EnemyActionSkipsRemaining);
+        Assert.Equal(followUpMove, resumed.PlannedMoveIndex);
+        Assert.Null(resumed.StunFollowUpMoveIndex);
+    }
+
     private static (PrototypeGameEngine Engine, RunState State) StartCombat(
-        string relicId,
-        int cardsPlayed = 0)
+        string? relicId,
+        int cardsPlayed = 0,
+        string firstCardId = "proto.silent.shiv",
+        int firstCardUpgradeLevel = 0)
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeGameFactory.Create(
@@ -107,13 +208,17 @@ public sealed class V111TanxRelicTests
             {
                 Deck = Enumerable.Range(1, 10)
                     .Select(id => new CardInstance(id,
-                        "proto.silent.shiv", 0, empty)).ToArray(),
-                Relics = [..state.Player.Relics,
-                    new RelicInstance(relicId,
-                        relicId == NativeGloryAncientsV111.IronClubId
-                            ? JsonSerializer.SerializeToElement(
-                                new { CardsPlayed = cardsPlayed })
-                            : empty)]
+                        id == 1 ? firstCardId : "proto.silent.shiv",
+                        id == 1 ? firstCardUpgradeLevel : 0,
+                        empty)).ToArray(),
+                Relics = relicId is null
+                    ? state.Player.Relics
+                    : [..state.Player.Relics,
+                        new RelicInstance(relicId,
+                            relicId == NativeGloryAncientsV111.IronClubId
+                                ? JsonSerializer.SerializeToElement(
+                                    new { CardsPlayed = cardsPlayed })
+                                : empty)]
             },
             World = state.World! with
             {

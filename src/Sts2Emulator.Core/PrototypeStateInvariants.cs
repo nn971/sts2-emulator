@@ -2806,6 +2806,16 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Enemy HP/block cannot be negative.");
         }
 
+        if (combat.Enemies.Any(enemy =>
+                enemy.StunFollowUpMoveIndex is { } moveIndex
+                && (moveIndex < 0
+                    || moveIndex >= PrototypeContent.Enemy(enemy.EnemyId)
+                        .Moves.Length)))
+        {
+            throw new InvalidOperationException(
+                "Stunned enemy follow-up move is outside its move set.");
+        }
+
         if (combat.KnowledgeDemonChoiceResolvedTurn < 0
             || combat.KnowledgeDemonChoiceResolvedTurn > combat.Turn)
             throw new InvalidOperationException(

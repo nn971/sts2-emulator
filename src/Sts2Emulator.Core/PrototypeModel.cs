@@ -129,7 +129,8 @@ public enum PrototypeCombatEffectKind
     LosePlayerMaxHp,
     ReturnHandToDrawAndShuffle,
     ChooseGeneratedColorlessCards,
-    CreateRandomCharacterPowerCardsInHand
+    CreateRandomCharacterPowerCardsInHand,
+    StunEnemy
 }
 
 public enum PrototypeCardKeyword
@@ -1565,6 +1566,12 @@ public sealed record EnemyCombatState(
     // Committed at combat entry / the player-turn boundary, never on Observe.
     int? PlannedMoveIndex = null,
     string? PlannedNextAiStateId = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? StunFollowUpMoveIndex = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? StunFollowUpAiStateId = null,
     // BowlbugRock.Imbalanced tracks whether its prior attack was fully
     // blocked; survives intent commitment and deterministic snapshots.
     bool IsOffBalance = false,

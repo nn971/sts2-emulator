@@ -1908,6 +1908,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryBosses.Cards)
             .Concat(NativeAncientRewardsV111.Cards)
             .Concat(NativePaelRewardsV111.Cards)
+            .Concat(NativeGloryAncientsV111.Cards)
             .Concat(PrototypeNativeOrobasRelics.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
