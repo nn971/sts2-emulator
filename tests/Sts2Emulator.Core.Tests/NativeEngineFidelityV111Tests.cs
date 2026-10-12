@@ -69,13 +69,24 @@ public sealed class NativeEngineFidelityV111Tests
     }
 
     [Fact]
-    public void RealCapturedSludgeSpinnerMustNotBeSwappedForAnUnrelatedEnemy()
+    public void RealNativeSludgeSpinnerIdentityMapsToSourceBackedEngineAndSteps()
     {
+        // SLUDGE_SPINNER is registered in the executable v111 content,
+        // although the initial GitHub code-text search did not find it.
         var report = NativeEngineFidelityV111.Compare(Fixture(monster: "SLUDGE_SPINNER"));
+        Assert.Equal("CORE_ENGINE_CHECKPOINT_CONSISTENT", report.Status);
+        Assert.True(report.ExecutedActualEngineStep, report.EngineFailure);
+        Assert.All(report.CheckedFields, check => Assert.True(check.Equal, check.Path));
+        Assert.Equal("NOT_TESTED", report.NativeGameParity);
+    }
+
+    [Fact]
+    public void UnknownMonsterNeverSilentlyBecomesAnUnrelatedSpecies()
+    {
+        var report = NativeEngineFidelityV111.Compare(Fixture(monster: "MISSING_NATIVE_MONSTER"));
         Assert.Equal("UNSUPPORTED_NATIVE_STATE", report.Status);
         Assert.False(report.ExecutedActualEngineStep);
-        Assert.Contains("UNSUPPORTED_NATIVE_MONSTER:SLUDGE_SPINNER", report.Blockers);
-        Assert.Equal("NOT_TESTED", report.NativeGameParity);
+        Assert.Contains("UNSUPPORTED_NATIVE_MONSTER:MISSING_NATIVE_MONSTER", report.Blockers);
     }
 
     [Fact]
