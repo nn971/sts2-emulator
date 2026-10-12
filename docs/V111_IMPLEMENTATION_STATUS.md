@@ -18,6 +18,8 @@ five Silent cards and requires one selection, while Rip the Leech Off costs
 5 HP and offers three implemented colorless cards.
 Neow's Lead Paperweight now suspends the opening for a one-of-two supported
 Colorless card reward; the full eligible Colorless pool remains unfinished.
+Silken Tress now persists its one-shot Glam enchantment through the first
+combat card reward.
 Self-Help Book is integrated as a shared event in all three Acts. It applies
 Sharp 2 to an Attack, Nimble 2 to a block-producing Skill, or Swift 2 to a
 Power, with a Move On path when no eligible card exists. Sharp now adds its

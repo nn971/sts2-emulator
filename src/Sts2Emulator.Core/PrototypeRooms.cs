@@ -4321,11 +4321,14 @@ public sealed partial class PrototypeGameEngine
             world = world with { CardRarityOffsetBasisPoints = offset };
         }
 
+        var silkenTress = ConsumeSilkenTressCardReward(
+            state.Player, cardOptions.Length > 0);
         var silverCrucible = ApplySilverCrucibleToCardRewardGeneration(
-            state.Player, 1 + extraCardOptions.Length);
+            silkenTress.Player, 1 + extraCardOptions.Length);
         var hasGlitter = state.Player.ActiveRelics.Any(relic =>
             relic.RelicId == NativeGloryAncientsV111.GlitterId);
         var cardOptionEnchantments = hasGlitter
+            || silkenTress.EnchantFirstCardReward
             ? ApplyGlitterToCardRewardOptions(cardOptions)
             : null;
         var extraCardOptionEnchantments = hasGlitter
