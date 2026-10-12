@@ -168,13 +168,18 @@ public static class ControlledInitialHpV111
             {
                 var choice = state.Transcript[i];
                 choice.Validate();
+                var used = state.Combat.Enemies.Take(i)
+                    .Select(previous => previous.MaxHp).ToHashSet();
+                var expected = new RandomIndexRequestV111(
+                    "combat.initial_unique_hp", "run.niche",
+                    "creature:" + owner.CombatId, i,
+                    NativeCombatRngEntryV111.InitialHpPool(state.Combat, e, used));
                 if (choice.ProviderMode != "controlled-v111" ||
                     choice.NativeCursorBefore is not null ||
                     choice.NativeCursorAfter is not null ||
-                    choice.Request.Ordinal != i ||
-                    choice.Request.OwnerId != "creature:" + owner.CombatId ||
+                    !SameRequest(expected, choice.Request) ||
                     e.Hp != choice.SelectedValue || e.MaxHp != choice.SelectedValue)
-                    throw new InvalidDataException("Controlled HP transcript does not match current state.");
+                    throw new InvalidDataException("Controlled HP transcript does not match source eligibility/state.");
             }
         }
         if ((state.Pending is null) !=
