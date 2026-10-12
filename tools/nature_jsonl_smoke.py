@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DLL = ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"
@@ -120,7 +121,32 @@ def main() -> None:
         proc.stdin.close()
         assert proc.wait(timeout=20) == 0
 
-    print("Isolated v111 Nature HP/intent JSONL begin/resolve/fork/save/load smoke passed")
+    sys.path.insert(0, str(ROOT / "bindings/python"))
+    from sts2_emulator import EmulatorError, Session
+    command = ["dotnet", str(DLL), "prototype-ai-jsonl"]
+    with Session(command) as session:
+        hp = session.begin_nature("nature-python-hp", kind="initial_hp",
+                                  act=2,
+                                  encounter_id="proto.native.hive.encounter.mytes_normal",
+                                  native_entry="MytesNormal", total_floor=21)
+        saved = hp.save_snapshot()
+        restored = session.load_nature_snapshot(saved, kind="initial_hp")
+        assert restored.fingerprint == hp.fingerprint
+        first = hp.resolve(0)
+        second = first.resolve(0)
+        assert second.complete and second.pending is None
+        intents = second.advance()
+        while not intents.complete:
+            intents = intents.resolve(0)
+        assert intents.complete
+        assert session.release_nature_many([hp, restored, first, second, intents]) == 5
+        try:
+            hp.resolve(0)
+        except EmulatorError:
+            pass
+        else:
+            raise AssertionError("Released Nature parent handle resolved")
+    print("Isolated v111 Nature HP/intent JSONL and Python binding smoke passed")
 
 
 if __name__ == "__main__":
