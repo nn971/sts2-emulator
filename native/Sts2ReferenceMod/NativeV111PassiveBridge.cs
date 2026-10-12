@@ -141,6 +141,14 @@ internal static class NativeV111PassiveBridge
             // Executor callbacks must stay attached even when the stricter
             // decision trace has stopped due to an unsupported player prompt.
             AttachActionExecutor();
+            if (_actionEnvelopes is not null && _adapter is not null)
+            {
+                // Changed-state frame samples continue after the strict player
+                // decision trace reaches an unsupported nested UI choice.
+                var frameState = TryActionSnapshot("frame_state");
+                if (frameState.HasValue)
+                    _actionEnvelopes.ObserveFrame(frameState.Value);
+            }
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
             string? blocker = StableDecisionBlocker(combat);
             if (blocker is not null)
