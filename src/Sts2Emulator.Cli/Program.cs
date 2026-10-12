@@ -15,6 +15,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Resume the same deterministic legal policy from an unmodified saved state");
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
+    Console.WriteLine("  native-engine-fidelity <native-expectation.json> [Overgrowth|Underdocks] [ascension]");
+    Console.WriteLine("                          Actual engine checkpoint diagnostic; strict native ID mappings");
     Console.WriteLine("  prototype-native-overgrowth-map [seed] [ascension]");
     Console.WriteLine("                          Print source-shaped 15-row Act 1 map (not native RNG-exact)");
     Console.WriteLine("  prototype-native-overgrowth-sweep [n] [ascension]");
@@ -118,6 +120,31 @@ switch (args[0])
         V111NaturalRunSweep.Write(result);
         if (result.Blocker is not null)
             Environment.ExitCode = 1;
+        break;
+    }
+
+    case "native-engine-fidelity":
+    {
+        if (args.Length is < 2 or > 4)
+            throw new ArgumentException(
+                "Usage: native-engine-fidelity <native-expectation.json> [Overgrowth|Underdocks] [ascension]");
+        using var fixture = JsonDocument.Parse(File.ReadAllText(args[1]));
+        var region = args.Length >= 3
+            ? Enum.Parse<ActIdentity>(args[2], ignoreCase: true)
+            : ActIdentity.Overgrowth;
+        int ascension = args.Length >= 4 ? int.Parse(args[3]) : 0;
+        var report = NativeEngineFidelityV111.Compare(
+            fixture.RootElement, region, ascension);
+        Console.WriteLine(JsonSerializer.Serialize(report,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                WriteIndented = true
+            }));
+        if (report.Status is "CORE_ENGINE_CHECKPOINT_MISMATCH")
+            Environment.ExitCode = 1;
+        else if (report.Status != "CORE_ENGINE_CHECKPOINT_CONSISTENT")
+            Environment.ExitCode = 2;
         break;
     }
 
