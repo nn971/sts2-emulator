@@ -542,8 +542,8 @@ branches.
 
 Tough Bandages gains 3 Block for each actual discard, Tingsha deals 3 damage to a random living
 enemy for each actual discard, and Hovering Kite gains 1 Energy on only the first actual discard
-each player turn. Ordinary end-of-turn hand cleanup remains separate from CardDiscarded and does
-not trigger these relics.
+each player turn. End-of-turn hand cleanup now dispatches one `CardDiscarded` event per normal
+discarded card while the player side is still active, before hand-cleanup powers expire.
 
 
 ## Mechanics-expansion pass: run economy relics
