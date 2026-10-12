@@ -101,7 +101,12 @@ public sealed class RandomIntentProviderV111Tests
         Assert.Throws<InvalidOperationException>(() =>
             replay.Resolve(req with { Ordinal = 1 }, stream));
         Assert.Throws<InvalidOperationException>(() =>
-            replay.Resolve(req with { OperationKind = "choose_index" }, stream));
+            replay.Resolve(req with
+            {
+                OperationKind = "choose_index",
+                OrderedCandidates = [0],
+                BoundedCount = null
+            }, stream));
         Assert.Throws<InvalidOperationException>(() =>
             replay.Resolve(req with { BoundedCount = req.BoundedCount + 1 }, stream));
         Assert.Equal(1, replay.Remaining);
