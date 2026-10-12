@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,805 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,806 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -190,8 +190,9 @@ regional entry/branch has direct integration and semantic coverage.
   Glitter, Jewelry Box/Apotheosis, Brilliant Scarf and Delicate Frond.
   Nonupeipe's conditional offer sequence and all ten relic branches execute
   through a named Glory Ancient fixture; ordinary Ancient assignment remains
-  gated. Fiddle's opening hand bonus and player-turn extra-draw suppression
-  are implemented as a dependency; Vakuu remains unavailable until its other
+  gated. Fiddle's opening hand bonus and player-turn extra-draw suppression,
+  and Blood-Soaked Rose's energy and Enthralled acquisition, are implemented
+  as dependencies; Vakuu remains unavailable until its event and remaining
   source-owned branches are covered. See the [Glory Ancient source
   ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss

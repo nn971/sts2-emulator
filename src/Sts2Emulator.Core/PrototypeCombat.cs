@@ -7974,6 +7974,14 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         CombatCardInstance card)
     {
+        if (combat.Hand.Any(instanceId => instanceId != card.InstanceId
+                && PrototypeContent.Card(
+                    RequireCombatCard(combat, instanceId).CardId)
+                    .PreventsOtherManualCardPlaysWhileInHand))
+        {
+            return false;
+        }
+
         // Native Normality.ShouldPlay only intervenes while the
         // unplayable Curse is physically in the player's hand. The
         // limit uses play-start counts, not energy or card draws.

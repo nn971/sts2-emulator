@@ -717,7 +717,8 @@ public sealed record PrototypeCardDefinition(
     bool MultiplayerOnly = false,
     bool RetainOnUpgrade = false,
     bool CanBeGeneratedInCombat = true,
-    int MaxUpgradeLevel = 1);
+    int MaxUpgradeLevel = 1,
+    bool PreventsOtherManualCardPlaysWhileInHand = false);
 
 public sealed record PrototypePotionDefinition(
     string Id,

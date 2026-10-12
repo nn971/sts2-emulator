@@ -216,6 +216,21 @@ public static class PrototypeContent
                 Rarity: PrototypeCardRarity.Curse,
                 Type: PrototypeCardType.Curse,
                 MaxUpgradeLevel: 0),
+            // Vakuu's Blood-Soaked Rose adds Enthralled. It prevents
+            // manually playing other cards while it remains in hand, but
+            // can itself be played and is permitted to auto-play.
+            new PrototypeCardDefinition(
+                NativeGloryAncientsV111.EnthralledCardId,
+                "Enthralled",
+                2,
+                PrototypeCardTarget.None,
+                [],
+                Eternal: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0,
+                PreventsOtherManualCardPlaysWhileInHand: true),
             // Neow's Cursed Pearl grants Greed: a permanent Eternal,
             // unplayable curse, not eligible for ordinary card rewards.
             new PrototypeCardDefinition(

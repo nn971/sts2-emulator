@@ -186,6 +186,87 @@ public sealed class V111PaelRewardTests
         Assert.Contains(backflip.InstanceId, combat.DiscardPile);
     }
 
+    [Fact]
+    public void BloodSoakedRoseAddsEternalEnthralledAndGatesOtherManualPlays()
+    {
+        var initial = PrototypeNativeLaterActFixture.Create(
+            "blood-soaked-rose-acquisition", 2);
+        var state = initial with
+        {
+            Phase = RunPhase.Reward,
+            World = initial.World! with
+            {
+                Floor = 1,
+                Map = new MapState([], GenerationProfileId:
+                    PrototypeNativeLaterActMap.HiveProfileId),
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = null,
+                Event = null,
+                Reward = new RewardState("Combat", [], null,
+                    NativeGloryAncientsV111.BloodSoakedRoseId,
+                    CardResolved: true, PotionResolved: true,
+                    RelicResolved: false, EndsAct: false)
+            }
+        };
+        var acquireRose = Engine.GetLegalActions(state).Single(
+            action => action.Kind == "take_reward_relic");
+        var acquired = Engine.Step(state, acquireRose).State;
+        var replayedAcquisition = Engine.Step(
+            RunSnapshot.Load(RunSnapshot.Save(state)), acquireRose).State;
+        Assert.Equal(CanonicalJson.Sha256(acquired),
+            CanonicalJson.Sha256(replayedAcquisition));
+        state = RunSnapshot.Load(RunSnapshot.Save(acquired));
+        var enthralled = Assert.Single(state.Player.Deck,
+            card => card.CardId == NativeGloryAncientsV111.EnthralledCardId);
+        Assert.True(PrototypeCardRules.IsEternal(enthralled));
+
+        state = Combat(state);
+        var combat = state.World!.Combat!;
+        Assert.Equal(4, combat.Energy);
+        var curse = Assert.Single(combat.Cards,
+            card => card.CardId == NativeGloryAncientsV111.EnthralledCardId);
+        var strike = combat.Cards.First(card =>
+            card.CardId == "proto.silent.strike");
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Hand = [curse.InstanceId, strike.InstanceId],
+                    DrawPile = combat.Cards.Where(card =>
+                            card.InstanceId != curse.InstanceId
+                            && card.InstanceId != strike.InstanceId)
+                        .Select(card => card.InstanceId).ToArray(),
+                    DiscardPile = [],
+                    ExhaustPile = [],
+                    Energy = 4
+                }
+            }
+        };
+
+        GameAction Play(long cardId) => Engine.GetLegalActions(state)
+            .Single(action => action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                    == cardId);
+
+        Assert.DoesNotContain(Engine.GetLegalActions(state), action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == strike.InstanceId);
+        var playCurse = Play(curse.InstanceId);
+        var playedCurse = Engine.Step(state, playCurse).State;
+        Assert.Equal(CanonicalJson.Sha256(playedCurse),
+            CanonicalJson.Sha256(Engine.Step(
+                RunSnapshot.Load(RunSnapshot.Save(state)), playCurse).State));
+        state = playedCurse;
+        Assert.Contains(curse.InstanceId, state.World!.Combat!.DiscardPile);
+        Assert.Contains(Engine.GetLegalActions(state), action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == strike.InstanceId);
+    }
+
     [Theory]
     [InlineData(0, false, 3)]
     [InlineData(1, false, 5)]

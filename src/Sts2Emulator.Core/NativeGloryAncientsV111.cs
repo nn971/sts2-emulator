@@ -11,6 +11,8 @@ public static class NativeGloryAncientsV111
     public const string BeautifulBraceletId = "proto.native.ancient.beautiful_bracelet";
     public const string FurCoatId = "proto.native.ancient.fur_coat";
     public const string FiddleId = "proto.native.ancient.fiddle";
+    public const string BloodSoakedRoseId = "proto.native.ancient.blood_soaked_rose";
+    public const string EnthralledCardId = "proto.native.ancient.enthralled";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
     public const string CrossbowId = "proto.native.ancient.crossbow";
     public const string IronClubId = "proto.native.ancient.iron_club";
@@ -46,6 +48,14 @@ public static class NativeGloryAncientsV111
         new(BeautifulBraceletId, "Beautiful Bracelet"),
         new(FurCoatId, "Fur Coat"),
         new(FiddleId, "Fiddle", HandDrawBonus: 2),
+        new(BloodSoakedRoseId, "Blood-Soaked Rose",
+            EnergyPerTurnBonus: 1,
+            RunTriggers:
+            [
+                new(PrototypeRunEventKind.RelicAcquired,
+                    [new(PrototypeRunEffectKind.AddCard,
+                        CardId: EnthralledCardId)])
+            ]),
         new(CrossbowId, "Crossbow", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
