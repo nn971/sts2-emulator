@@ -6,15 +6,15 @@ Orobas's eight Silent relic offers reuse the existing acquisition
 handlers and continuations. Coffer capacity metadata now records its four
 added potion slots. Cross-character card mechanics (including Sea Glass,
 Prismatic Gem's foreign pools and Colorful Philosophers) are postponed by user
-scope. Shared Darv now has revealed-profile assignment and seven executable
+scope. Shared Darv now has revealed-profile assignment and eight executable
 Silent relic choices; its other relics and Dusty Tome path remain outstanding.
 Exact RNG and fidelity inspection are follow-up work; the current assignment
 still uses prototype event randomness.
-Before the Darv and Philosopher's Stone slices, 1,847 C# tests passed, including
-the eight synthetic full-route cases and Ancient acquisition/assignment
-coverage. The latest solution build and coverage-baseline check pass; the new
-paths were not tested in these updates. The coverage report records 47
-integrated event paths, with native validation unverified.
+Before the Darv, Philosopher's Stone and Black Star slices, 1,847 C# tests
+passed, including the eight synthetic full-route cases and Ancient
+acquisition/assignment coverage. The latest solution build and coverage-baseline
+check pass; the new paths were not tested in these updates. The coverage report
+records 47 integrated event paths, with native validation unverified.
 
 # v111 implementation status
 

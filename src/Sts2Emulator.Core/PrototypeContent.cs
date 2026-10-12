@@ -2711,6 +2711,10 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypeRelicDefinition(
+                "proto.relic.black_star",
+                "Black Star",
+                ExtraEliteRelicRewardCount: 1),
+            new PrototypeRelicDefinition(
                 "proto.relic.philosophers_stone",
                 "Philosopher's Stone",
                 EnergyPerTurnBonus: 1,
@@ -7509,6 +7513,7 @@ public static class PrototypeContent
         "proto.relic.orichalcum",
         "proto.relic.horn_cleat",
         "proto.relic.captains_wheel",
+        "proto.relic.black_star",
         "proto.relic.kunai",
         "proto.relic.shuriken",
         "proto.relic.ice_cream",

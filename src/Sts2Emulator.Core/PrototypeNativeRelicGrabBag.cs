@@ -2,7 +2,7 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Persistent rarity-partitioned relic queues for the restricted
-/// single-player Overgrowth/Silent profile. The native game shuffles
+/// configured single-player Silent profile. The native game shuffles
 /// queues at run creation and draws front for rewards, back for shops.
 /// This class preserves the mechanics, not byte-identical RNG.
 /// </summary>
@@ -63,6 +63,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.toxic_egg"] = PrototypeRelicRarity.Rare,
             ["proto.relic.frozen_egg"] = PrototypeRelicRarity.Rare,
             ["proto.relic.captains_wheel"] = PrototypeRelicRarity.Rare,
+            ["proto.relic.black_star"] = PrototypeRelicRarity.Rare,
             ["proto.relic.kunai"] = PrototypeRelicRarity.Rare,
             ["proto.relic.shuriken"] = PrototypeRelicRarity.Rare,
             ["proto.relic.ice_cream"] = PrototypeRelicRarity.Rare,

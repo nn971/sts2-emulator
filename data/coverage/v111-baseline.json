@@ -15242,7 +15242,6 @@
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [
-          "relic/BLACK_STAR",
           "relic/CALLING_BELL",
           "relic/DUSTY_TOME",
           "relic/ECTOPLASM",
@@ -24803,17 +24802,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.black_star"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BlackStar.cs#236a57f088df6306350579a36d3e9de80b705e12675eb6c9e18d82c9285c2e37"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BLACK_STAR",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29842,8 +29843,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 0,
-        "integrated": 0,
+        "implemented": 1,
+        "integrated": 1,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

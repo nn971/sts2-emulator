@@ -158,6 +158,19 @@ public static class V111Coverage
             if (engineIds.Any(IsIntegratedEvent))
                 integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && engineIds.Any(id =>
+            {
+                var relic = PrototypeContent.Relic(id);
+                return relic.ExtraEliteRelicRewardCount > 0
+                    && PrototypeContent.RelicPool.Contains(id,
+                        StringComparer.Ordinal)
+                    && PrototypeNativeRelicGrabBag.TryGetRarity(id, out _);
+            }))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";

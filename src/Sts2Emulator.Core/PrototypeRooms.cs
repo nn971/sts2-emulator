@@ -4227,6 +4227,22 @@ public sealed partial class PrototypeGameEngine
         var lavaRock = ApplyLavaRockBossRewards(
             silverCrucible.Player, room, world.Act,
             relicOptions, state.Rng);
+        var extraRelicRewardIds = lavaRock.AdditionalRelicIds.ToList();
+        if (nativeOvergrowth && room == PrototypeRoomType.Elite)
+        {
+            var blackStarRewards = state.Player.ActiveRelics.Sum(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .ExtraEliteRelicRewardCount);
+            for (var index = 0; index < blackStarRewards; index++)
+            {
+                var draw = PrototypeNativeRelicGrabBag.Draw(
+                    world, state.Player, state.Rng, merchant: false);
+                world = draw.World;
+                if (draw.Id is { } relicId)
+                    extraRelicRewardIds.Add(relicId);
+            }
+        }
+        var extraRelicRewards = extraRelicRewardIds.ToArray();
 
         var reward = new RewardState(
             SourceRoom: room.ToString(),
@@ -4248,7 +4264,7 @@ public sealed partial class PrototypeGameEngine
             CardOptionsUpgraded: silverCrucible.UpgradeGroups[0],
             ExtraCardOptionsUpgraded:
                 silverCrucible.UpgradeGroups.Skip(1).ToArray(),
-            ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
+            ExtraRelicRewardIds: extraRelicRewards,
             CardOptionUpgradeFlags: cardUpgradeFlags,
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
             CardOptionEnchantments: cardOptionEnchantments,
@@ -4260,7 +4276,7 @@ public sealed partial class PrototypeGameEngine
                 ? new bool[extraCardOptions.Length]
                 : null,
             ExtraRelicGroupsResolved: nativeOvergrowth
-                ? new bool[lavaRock.AdditionalRelicIds.Length]
+                ? new bool[extraRelicRewards.Length]
                 : null,
             ExtraGoldOptions: nativeOvergrowth && recoveredGold > 0 ? [recoveredGold] : null,
             ExtraGoldGroupsResolved: nativeOvergrowth && recoveredGold > 0 ? [false] : null,
