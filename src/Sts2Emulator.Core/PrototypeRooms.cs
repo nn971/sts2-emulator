@@ -5,7 +5,8 @@ public sealed partial class PrototypeGameEngine
     private static IReadOnlyList<GameAction> GetMapActions(RunState state)
     {
         var world = RequireWorld(state);
-        return world.Map.AvailableNodes()
+        return PrototypeNativeWingedBoots.AvailableNodes(
+                world, state.Player)
             .Select(node => GameAction.Create(
                 "choose_map_node",
                 new ChooseMapNodePayload(node.NodeId)))
@@ -17,9 +18,13 @@ public sealed partial class PrototypeGameEngine
         RequireKind(action, "choose_map_node");
         var payload = action.ReadPayload<ChooseMapNodePayload>();
         var world = RequireWorld(state);
-        var node = world.Map.AvailableNodes().FirstOrDefault(
+        var node = PrototypeNativeWingedBoots.AvailableNodes(
+                world, state.Player).FirstOrDefault(
             option => StringComparer.Ordinal.Equals(option.NodeId, payload.NodeId))
             ?? throw new InvalidOperationException($"Unknown map node '{payload.NodeId}'.");
+
+        var playerAfterTravel = PrototypeNativeWingedBoots
+            .ConsumeIfSkippingEdge(state.Player, world.Map, node.NodeId);
 
         // Later-act maps execute only under the explicit experimental
         // three-act profile while Ancient assignment and native fidelity
@@ -63,7 +68,7 @@ public sealed partial class PrototypeGameEngine
         {
             World = world,
             Player = ApplyRelicRoomEntryGold(
-                ApplyPersistentCardRoomEntry(state.Player, node))
+                ApplyPersistentCardRoomEntry(playerAfterTravel, node))
         };
 
         return room switch

@@ -29254,8 +29254,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/WingedBoots.cs#7d0b9d0e3d301b54cb277d84a017c7fe1e74872943512e47a61fed20f843f7e7"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29613,8 +29613,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 5,
-        "integrated": 5,
+        "implemented": 6,
+        "integrated": 6,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

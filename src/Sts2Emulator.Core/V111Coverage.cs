@@ -398,6 +398,14 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "WINGED_BOOTS"
+            && engineIds.Contains(PrototypeNativeWingedBoots.RelicId,
+                StringComparer.Ordinal))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";

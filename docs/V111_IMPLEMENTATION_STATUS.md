@@ -19,6 +19,8 @@ five Silent cards and requires one selection, while Rip the Leech Off costs
 Neow's Lead Paperweight now suspends the opening for a one-of-two supported
 Colorless card reward drawn from all implemented single-player Colorless
 reward cards. Account unlock filtering and native reward RNG remain open.
+Winged Boots now allows next-row map travel, consuming its three persistent
+uses only when the selected point skips a normal map edge.
 Silver Crucible now consumes its first three group charges on supported custom
 event card rewards as well as combat rewards.
 Silken Tress now persists its one-shot Glam enchantment through the first

@@ -57,6 +57,10 @@ public static class PrototypeStateInvariants
                 _ = NativePaelRewardsV111.ToothCards(relic);
             if (relic.RelicId == NativePaelRewardsV111.LegionId)
                 _ = NativePaelRewardsV111.LegionSkin(relic);
+            if (relic.RelicId == PrototypeNativeWingedBoots.RelicId
+                && !PrototypeNativeWingedBoots.HasValidState(relic))
+                throw new InvalidOperationException(
+                    "Winged Boots uses must be between zero and three.");
         }
         if (world.LastCombatEndDecisionIndex is { } endIndex
             && (endIndex < 0 || endIndex > state.DecisionIndex))
