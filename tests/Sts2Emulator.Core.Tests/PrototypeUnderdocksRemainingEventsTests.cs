@@ -190,6 +190,43 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
     }
 
     [Fact]
+    public void ConveyorCaviarClamRollAndGoldenFyshApplyTheirExactPayouts()
+    {
+        var engine = new PrototypeGameEngine();
+
+        var caviar = ForceConveyorDish(engine, "conveyor-caviar", "CAVIAR");
+        var caviarHp = caviar.Player.Hp;
+        var caviarMaxHp = caviar.Player.MaxHp;
+        var caviarGold = caviar.Player.Gold;
+        var afterCaviar = Choose(engine, caviar, "grab");
+        Assert.Equal(caviarMaxHp + 4, afterCaviar.Player.MaxHp);
+        Assert.Equal(caviarHp + 4, afterCaviar.Player.Hp);
+        Assert.Equal(caviarGold - 40, afterCaviar.Player.Gold);
+        Assert.Equal(2, afterCaviar.World!.Event!.NativeDishCount);
+
+        var clam = ForceConveyorDish(engine, "conveyor-clam-roll", "CLAM_ROLL");
+        clam = clam with
+        {
+            Player = clam.Player with { Hp = clam.Player.MaxHp - 20 }
+        };
+        var clamGold = clam.Player.Gold;
+        var clamHp = clam.Player.Hp;
+        var afterClam = Choose(engine, clam, "grab");
+        Assert.Equal(clamHp + 10, afterClam.Player.Hp);
+        Assert.Equal(clam.Player.MaxHp, afterClam.Player.MaxHp);
+        Assert.Equal(clamGold - 40, afterClam.Player.Gold);
+        Assert.Equal(2, afterClam.World!.Event!.NativeDishCount);
+
+        var fysh = ForceConveyorDish(engine, "conveyor-golden-fysh", "GOLDEN_FYSH");
+        var fyshGold = fysh.Player.Gold;
+        var afterFysh = Choose(engine, fysh, "grab");
+        Assert.Equal(fyshGold + 75, afterFysh.Player.Gold);
+        Assert.Equal(fysh.Player.Hp, afterFysh.Player.Hp);
+        Assert.Equal(fysh.Player.MaxHp, afterFysh.Player.MaxHp);
+        Assert.Equal(2, afterFysh.World!.Event!.NativeDishCount);
+    }
+
+    [Fact]
     public void PunchOffNabOffersOnlyRelicAndAddsInjury()
     {
         var engine = new PrototypeGameEngine();
@@ -518,6 +555,24 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             .Select(action =>
                 action.ReadPayload<EventChoicePayload>().ChoiceId)
             .ToArray();
+
+    private static RunState ForceConveyorDish(
+        PrototypeGameEngine engine, string seed, string dishId)
+    {
+        var state = FindEvent(engine,
+            PrototypeNativeEndlessConveyor.EventId, seed, gold: 400);
+        return state with
+        {
+            World = state.World! with
+            {
+                Event = state.World.Event! with
+                {
+                    NativeDishId = dishId,
+                    NativeLastDishId = dishId
+                }
+            }
+        };
+    }
 
     private static RunState Choose(
         PrototypeGameEngine engine, RunState state, string id)
