@@ -1422,6 +1422,7 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
                 case PrototypeRunEffectKind.OfferFiveClassCards:
                 case PrototypeRunEffectKind.OfferThreeColorlessCards:
+                case PrototypeRunEffectKind.OfferTwoColorlessCards:
                 case PrototypeRunEffectKind.OfferCardBundles:
                 case PrototypeRunEffectKind.OfferNeowsBonesRelics:
                 case PrototypeRunEffectKind.OfferRandomRelic:

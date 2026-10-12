@@ -457,7 +457,8 @@ public enum PrototypeRunEffectKind
     UpgradeRandomCard,
     UpgradeAllCards,
     UpgradeLastCardOfId,
-    OfferWaxRelics
+    OfferWaxRelics,
+    OfferTwoColorlessCards
 }
 
 public enum PrototypeRunEventKind

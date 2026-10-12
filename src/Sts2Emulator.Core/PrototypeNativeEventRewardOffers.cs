@@ -124,6 +124,28 @@ public sealed partial class PrototypeGameEngine
                     EndsAct: false);
             }
 
+            case PrototypeRunEffectKind.OfferTwoColorlessCards:
+            {
+                var pool = PrototypeColorlessCards
+                    .ImplementedCombatGenerationPool;
+                if (pool.Length < 2)
+                {
+                    throw new InvalidOperationException(
+                        "Lead Paperweight requires two implemented Colorless cards.");
+                }
+
+                return new RewardState(
+                    SourceRoom: prefix,
+                    CardOptions: PickDistinct(
+                        pool, 2, state.Rng, "reward"),
+                    PotionOption: null,
+                    RelicOption: null,
+                    CardResolved: false,
+                    PotionResolved: true,
+                    RelicResolved: true,
+                    EndsAct: false);
+            }
+
             case PrototypeRunEffectKind.OfferCardBundles:
             {
                 var commons = PrototypeContent.NativeSilentRewardCardPool
