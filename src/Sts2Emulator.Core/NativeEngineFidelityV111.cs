@@ -105,8 +105,8 @@ public static class NativeEngineFidelityV111
             if (Get(originalPlayer, "powers") is not { } playerPowers ||
                 playerPowers.ValueKind != JsonValueKind.Array || playerPowers.GetArrayLength() != 0)
                 blockers.Add("UNSUPPORTED_PLAYER_POWERS");
-            if (Get(originalCombat, "creatures") is not { } creatures ||
-                creatures.ValueKind != JsonValueKind.Array)
+            var creatures = Get(originalCombat, "creatures");
+            if (creatures is null || creatures.Value.ValueKind != JsonValueKind.Array)
                 blockers.Add("MISSING_NATIVE_CREATURES");
 
             var coverageMap = V111Coverage.Create().Items;
@@ -169,9 +169,9 @@ public static class NativeEngineFidelityV111
 
             var enemies = new List<EnemyCombatState>();
             var idsToEnemy = new Dictionary<string, int>(StringComparer.Ordinal);
-            if (creatures.ValueKind == JsonValueKind.Array)
+            if (creatures is { ValueKind: JsonValueKind.Array })
             {
-                foreach (var nativeCreature in creatures.EnumerateArray())
+                foreach (var nativeCreature in creatures.Value.EnumerateArray())
                 {
                     string nativeId = RequireString(nativeCreature, "id");
                     string nativeModel = RequireString(nativeCreature, "model_id");
