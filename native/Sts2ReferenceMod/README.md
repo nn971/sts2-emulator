@@ -81,6 +81,7 @@ implemented independently and awaits audited native action dispatch.
 ```fish
 python tools/native_trace_audit.py /path/to/passive.jsonl --out capture-audit.json
 python tools/native_scenario_import.py /path/to/passive.jsonl --decision 1 --out import.json
+python tools/native_expectation_fixture.py /path/to/passive.jsonl --decision 1 --out strike-expectation.json
 python tools/inspector_html.py /path/to/passive.jsonl --out inspector.html
 ```
 
@@ -108,3 +109,15 @@ main thread and only at a stable input-ready boundary.
 
 Reference implementation and confidence gates are recorded in
 `docs/NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_STATUS.md`.
+
+## Native expectation and structural emulator import
+
+The Python fixture extractor packages a recorded native action, pre/post
+state and event sequence as an oracle expectation. It reports parity as
+`NOT_TESTED` and retains unsupported continuation fields.
+
+The .NET `NativeCombatSnapshotImporter` under `Sts2Emulator.Core` parses
+the canonical snapshot without game assemblies. It validates identities,
+scalar ranges and card zones, returning a typed **PARTIAL** state for inspection.
+Actual deterministic replay remains gated on hidden continuation state and
+a verified emulator action engine.
