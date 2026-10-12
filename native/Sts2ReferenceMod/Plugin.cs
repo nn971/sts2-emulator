@@ -14,8 +14,13 @@ public static class Plugin
 {
     public static void Initialize()
     {
-        if (string.Equals(System.Environment.GetEnvironmentVariable("STS2_FIDELITY_CAPTURE"),
-                "1", StringComparison.Ordinal))
+        string? captureValue = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_CAPTURE");
+        Log.Info("[Sts2ReferenceMod] CAPTURE_STATUS=MOD_INITIALIZED; capture_env=" +
+            (captureValue is null ? "MISSING" : captureValue == "1" ? "ENABLED" : "DISABLED") +
+            "; trace_dir=" +
+            (string.IsNullOrWhiteSpace(System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR"))
+                ? "GODOT_USER_DATA_DEFAULT" : "EXPLICIT"));
+        if (string.Equals(captureValue, "1", StringComparison.Ordinal))
         {
             Log.Info("[Sts2ReferenceMod] Native passive combat capture is explicitly enabled.");
             NativeV111PassiveBridge.Start();
