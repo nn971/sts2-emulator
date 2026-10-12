@@ -196,6 +196,15 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
             "emulator_unsupported": bcov.get("unsupported_mechanics", []),
         }
         last_coverage = manifest
+        left_required = set(acov.get("required_preconditions") or [])
+        right_required = set(bcov.get("required_preconditions") or [])
+        manifest["required_preconditions"] = sorted(left_required | right_required)
+        if not left_required or left_required != right_required:
+            return report("INVALID_SETUP", "Precondition requirements unaudited or unequal",
+                          decision_id=decision_id, coverage=manifest, native_prefix=prefix)
+        if not left_required.issubset(fields):
+            return report("INVALID_SETUP", "A required continuation field is unverified",
+                          decision_id=decision_id, coverage=manifest, native_prefix=prefix)
         if ad.get("phase") != bd.get("phase"):
             return report("INVALID_SETUP", "Different phases at decision",
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)
@@ -308,6 +317,8 @@ def main() -> int:
         result = report("INCOMPLETE_CAPTURE", left_error or right_error or "Incomplete")
     else:
         result = compare(native, emulator, decision_limit=args.decision)
+    result["provenance"] = {"native": native[0] if native else None,
+                            "emulator": emulator[0] if emulator else None}
     data = json.dumps(result, indent=2, sort_keys=True)
     print(data)
     if args.out:
