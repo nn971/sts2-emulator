@@ -40,6 +40,12 @@ passive instrumentation mod. See docs/NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_S
 
     python tools/native_scenario_import.py native.jsonl --decision 1 --out import.json
     python tools/native_parity.py native.jsonl emulator.jsonl --decision 1 --out parity.json
+    python tools/inspector_html.py native.jsonl --emulator emulator.jsonl --out inspector.html
+
+Open inspector.html locally in a browser to navigate decisions and inspect event
+timelines. The viewer is a standalone offline replay of recorded decisions, not
+a live Godot control panel. The emulator argument is optional for native-only
+viewing.
 
 The comparator requires a post-action boundary, verified equivalent pre-state,
 same normalized action and legal actions, and declared event/field coverage.
