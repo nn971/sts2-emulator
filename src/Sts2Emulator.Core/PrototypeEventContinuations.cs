@@ -213,6 +213,14 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
+            if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
+                && eventState.NativePageIndex == 0
+                && eventState.ChosenChoiceId == "push")
+            {
+                _ = PrototypeRng.NextInt(state.Rng, "event", 100);
+                return PreserveNativeEventCompletionPage(state, "push");
+            }
+
             if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                     eventState.EventId)
                 && eventState.NativePageIndex == 0

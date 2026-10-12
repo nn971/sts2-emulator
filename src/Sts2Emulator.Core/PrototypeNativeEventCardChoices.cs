@@ -55,6 +55,9 @@ public sealed partial class PrototypeGameEngine
                     != PrototypeCardEnchantmentKind.Sharp
                     || definition.Type == PrototypeCardType.Attack)
                 && (enchantmentKind
+                    != PrototypeCardEnchantmentKind.Vigorous
+                    || definition.Type == PrototypeCardType.Attack)
+                && (enchantmentKind
                     != PrototypeCardEnchantmentKind.Imbued
                     || definition.Type == PrototypeCardType.Skill)
                 && (enchantmentKind

@@ -148,6 +148,20 @@ public static class V111Coverage
                     NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel > 0)
                 integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "enchantments"
+            && item.Id == "VIGOROUS"
+            && engineIds.Contains("Vigorous", StringComparer.Ordinal)
+            && PrototypeNativeStoneOfAllTime.Definition.Choices.Any(choice =>
+                choice.DeckChoice?.EnchantmentKind
+                    == PrototypeCardEnchantmentKind.Vigorous
+                && choice.DeckChoice.EnchantmentAmount == 8)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeStoneOfAllTime.EventId, 2))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "encounters")
         {
             var pools = PrototypeContent.OvergrowthWeakEncounterPool
@@ -366,6 +380,13 @@ public static class V111Coverage
             && item.Id == "THIS_OR_THAT" && missingBranches.Length == 0
             && engineIds.Contains(
                 PrototypeNativeSharedEvents.ThisOrThatId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "STONE_OF_ALL_TIME"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeStoneOfAllTime.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"

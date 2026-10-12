@@ -35,6 +35,10 @@ This or That is registered as a shared event in Overgrowth, Underdocks, Hive,
 and Glory. Its plain choice deals 6 HP damage before awarding the saved 41–68
 gold roll. Its ornate choice obtains a random relic, resolves any relic
 acquisition deck choice, then adds Clumsy.
+Stone of All Time is integrated in Hive. Lift discards the potion chosen on
+event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one
+eligible Attack for Vigorous 8. Vigorous adds its amount to powered Attack
+damage and disables itself after the card's first completed play.
 Silver Crucible now consumes its first three group charges on supported custom
 event card rewards as well as combat rewards.
 Silken Tress now persists its one-shot Glam enchantment through the first

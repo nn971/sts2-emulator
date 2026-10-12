@@ -11,6 +11,8 @@ public static class PrototypeNativeHiveEvents
 {
     public const string InfestedAutomatonId =
         "proto.native.hive.infested_automaton";
+    public const string StoneOfAllTimeId =
+        PrototypeNativeStoneOfAllTime.EventId;
 
     // The ten native Hive.AllEvents entries, in source order. The opted-in
     // regional pool excludes Colorful Philosophers until its foreign card
@@ -61,6 +63,7 @@ public static class PrototypeNativeHiveEvents
         id is LanternKeyEventId or FieldOfManSizedHolesId or AmalgamatorId
             or InfestedAutomatonId or LostWispId or ZenWeaverId
             or ColossalFlowerId or SpiritGrafterId
+            or StoneOfAllTimeId
             or PrototypeNativeLaterActs.HiveBugslayerId;
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
@@ -77,7 +80,9 @@ public static class PrototypeNativeHiveEvents
                     card, PrototypePersistentDeckChoiceKind.Enchant,
                     null, PrototypeCardEnchantmentKind.PerfectFit, false)))
         && (evt.Id != ZenWeaverId || player.Gold >= 125)
-        && (evt.Id != ColossalFlowerId || player.Hp >= 19);
+        && (evt.Id != ColossalFlowerId || player.Hp >= 19)
+        && (evt.Id != StoneOfAllTimeId
+            || player.PotionSlots.Any(potion => potion is not null));
 
     private static int CountBasic(PlayerState player, string tag) =>
         player.Deck.Count(card =>

@@ -102,6 +102,7 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeHiveEvents.SpiritGrafterId,
         PrototypeNativeHiveEvents.LanternKeyEventId,
         PrototypeNativeHiveEvents.ZenWeaverId,
+        PrototypeNativeStoneOfAllTime.EventId,
         PrototypeNativeFakeMerchant.EventId,
         PrototypeNativeSharedEvents.ThisOrThatId
     ];

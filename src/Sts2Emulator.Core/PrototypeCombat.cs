@@ -7690,16 +7690,29 @@ public sealed partial class PrototypeGameEngine
             || isLastExecution
             || resolved.Player.Hp <= 0)
         {
+            if (isLastExecution
+                && resolved.Combat.PendingChoice is null
+                && resolved.Player.Hp > 0)
+            {
+                resolved = ApplyVigorousAfterCardPlayed(
+                    resolved.Player,
+                    resolved.Combat,
+                    series.SourceCardInstanceId);
+            }
             return resolved;
         }
 
         if (AllEnemiesDefeated(resolved.Combat))
         {
-            return FinalizeInterruptedCardPlaySeries(
+            var finalized = FinalizeInterruptedCardPlaySeries(
                 resolved.Player,
                 resolved.Combat,
                 rng,
                 nextSeries);
+            return ApplyVigorousAfterCardPlayed(
+                finalized.Player,
+                finalized.Combat,
+                series.SourceCardInstanceId);
         }
 
         return ResolveCardPlaySeries(
@@ -7707,6 +7720,52 @@ public sealed partial class PrototypeGameEngine
             resolved.Combat,
             rng,
             nextSeries);
+    }
+
+    private static (PlayerState Player, CombatState Combat)
+        ApplyVigorousAfterCardPlayed(
+            PlayerState player,
+            CombatState combat,
+            long sourceCardInstanceId)
+    {
+        var card = RequireCombatCard(combat, sourceCardInstanceId);
+        if (card.PersistentCardInstanceId is not { } persistentId
+            || card.Enchantment is not
+                {
+                    Kind: PrototypeCardEnchantmentKind.Vigorous,
+                    Disabled: false
+                } vigorous)
+        {
+            return (player, combat);
+        }
+
+        var persistentCardExists = player.Deck.Any(deckCard =>
+            deckCard.InstanceId == persistentId);
+        if (persistentCardExists)
+        {
+            player = player with
+            {
+                Deck = player.Deck.Select(deckCard =>
+                    deckCard.InstanceId == persistentId
+                        ? deckCard with
+                        {
+                            Enchantment = vigorous with { Disabled = true }
+                        }
+                        : deckCard).ToArray()
+            };
+        }
+
+        combat = combat with
+        {
+            Cards = combat.Cards.Select(combatCard =>
+                combatCard.InstanceId == sourceCardInstanceId
+                    ? combatCard with
+                    {
+                        Enchantment = vigorous with { Disabled = true }
+                    }
+                    : combatCard).ToArray()
+        };
+        return (player, combat);
     }
 
     private static (PlayerState Player, CombatState Combat)
@@ -9019,8 +9078,16 @@ public sealed partial class PrototypeGameEngine
             { Kind: PrototypeCardEnchantmentKind.Sharp } sharp
                 ? Math.Max(0, sharp.Amount)
                 : 0;
+        var vigorousBonus = sourceCard.Enchantment is
+            {
+                Kind: PrototypeCardEnchantmentKind.Vigorous,
+                Disabled: false
+            } vigorous
+                ? Math.Max(0, vigorous.Amount)
+                : 0;
         var modified =
-            damage + sharpBonus + additive + firstTaggedPlayBonus;
+            damage + sharpBonus + vigorousBonus + additive
+            + firstTaggedPlayBonus;
         if (sourceCard.CardId == NativeGloryAncientsV111.MaulCardId)
         {
             modified += combat.CounterState.MaulDamageBonus;
@@ -11627,17 +11694,26 @@ public sealed partial class PrototypeGameEngine
             && continuation.CardPlaySeries is
                 { HasRemainingExecutions: true } series)
         {
-            resolved = AllEnemiesDefeated(resolved.Combat)
-                ? FinalizeInterruptedCardPlaySeries(
-                    resolved.Player,
-                    resolved.Combat,
-                    rng,
-                    series)
-                : ResolveCardPlaySeries(
+            if (AllEnemiesDefeated(resolved.Combat))
+            {
+                var finalized = FinalizeInterruptedCardPlaySeries(
+                        resolved.Player,
+                        resolved.Combat,
+                        rng,
+                        series);
+                resolved = ApplyVigorousAfterCardPlayed(
+                    finalized.Player,
+                    finalized.Combat,
+                    series.SourceCardInstanceId);
+            }
+            else
+            {
+                resolved = ResolveCardPlaySeries(
                     resolved.Player,
                     resolved.Combat,
                     rng,
                     series);
+            }
 
             if (resolved.Combat.PendingChoice is not null)
             {
@@ -11653,8 +11729,14 @@ public sealed partial class PrototypeGameEngine
                 { HasRemainingExecutions: false } completedSeries
             && resolved.Combat.PendingChoice is null
             && resolved.Player.Hp > 0)
+        {
             resolved = (resolved.Player, CompletePaelsLegionCardPlay(
                 resolved.Combat, completedSeries.SourceCardInstanceId));
+            resolved = ApplyVigorousAfterCardPlayed(
+                resolved.Player,
+                resolved.Combat,
+                completedSeries.SourceCardInstanceId);
+        }
 
         return continuation.Parent is null
             ? resolved

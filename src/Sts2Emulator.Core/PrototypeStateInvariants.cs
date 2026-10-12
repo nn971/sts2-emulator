@@ -170,6 +170,16 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Persistent deck contains duplicate card instance IDs.");
         }
 
+        if (state.Player.Deck.Any(card =>
+                card.Enchantment is { Disabled: true } disabled
+                && (disabled.Kind != PrototypeCardEnchantmentKind.Vigorous
+                    || PrototypeContent.Card(card.CardId).Type
+                        != PrototypeCardType.Attack)))
+        {
+            throw new InvalidOperationException(
+                "Only an Attack with Vigorous can retain a disabled enchantment.");
+        }
+
         if (world.NextCardInstanceId <= deckIds.DefaultIfEmpty(0).Max())
         {
             throw new InvalidOperationException("Next card instance ID does not exceed all live card IDs.");
@@ -719,6 +729,31 @@ public static class PrototypeStateInvariants
         {
             throw new InvalidOperationException(
                 "Neow must offer exactly three distinct choices.");
+        }
+
+        if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId)
+        {
+            if (eventState.NativeEventPotionSlot is { } potionSlot
+                && (potionSlot < 0
+                    || potionSlot >= player.PotionSlots.Length
+                    || player.PotionSlots[potionSlot] is null))
+            {
+                throw new InvalidOperationException(
+                    "Stone of All Time's saved potion slot is invalid.");
+            }
+
+            if (eventState.ChosenChoiceId == "lift"
+                ? eventState.NativeEventPotionSlot is not null
+                : eventState.NativeEventPotionSlot is null)
+            {
+                throw new InvalidOperationException(
+                    "Stone of All Time's potion choice state is inconsistent.");
+            }
+        }
+        else if (eventState.NativeEventPotionSlot is not null)
+        {
+            throw new InvalidOperationException(
+                "A non-Stone event cannot retain a selected potion slot.");
         }
 
         if (eventState.DeferredHpLoss < 0)

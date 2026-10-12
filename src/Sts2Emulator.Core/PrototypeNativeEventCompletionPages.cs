@@ -31,6 +31,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeHiveEvents.SpiritGrafterId
             or PrototypeNativeHiveEvents.FieldOfManSizedHolesId
             or PrototypeNativeHiveEvents.ColossalFlowerId
+            or PrototypeNativeStoneOfAllTime.EventId
             or PrototypeNativeGloryEvents.ReflectionsId
             or PrototypeNativeGloryEvents.RoundTeaPartyId
             or PrototypeNativeGloryEvents.HungryForMushroomsId
@@ -110,6 +111,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "resist" or "enter_your_hole"
         || eventId == PrototypeNativeHiveEvents.ColossalFlowerId
             && choiceId is "extract" or "relic"
+        || eventId == PrototypeNativeStoneOfAllTime.EventId
+            && choiceId is "lift" or "push"
         || eventId == PrototypeNativeGloryEvents.ReflectionsId
             && choiceId is "touch_mirror" or "shatter"
         || eventId == PrototypeNativeGloryEvents.RoundTeaPartyId

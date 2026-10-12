@@ -6771,6 +6771,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeSelfHelpBook.Definition)
             .Append(PrototypeNativePotionCourier.Definition)
             .Concat(PrototypeNativeHiveEvents.Definitions)
+            .Append(PrototypeNativeStoneOfAllTime.Definition)
             .Append(PrototypeNativeFakeMerchant.Definition)
             .Append(PrototypeNativeSharedEvents.ThisOrThatDefinition)
             .Concat(PrototypeNativeGloryEvents.Events)

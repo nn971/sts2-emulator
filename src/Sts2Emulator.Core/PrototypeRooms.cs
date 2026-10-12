@@ -793,7 +793,12 @@ public sealed partial class PrototypeGameEngine
                         : selected.Id == "proto.native.underdocks.sunken_treasury"
                             ? 303 + PrototypeRng.NextInt(
                                 state.Rng, "event", 61)
-                            : 0),
+                            : 0,
+                NativeEventPotionSlot:
+                    selected.Id == PrototypeNativeStoneOfAllTime.EventId
+                        ? PrototypeNativeStoneOfAllTime.RollPotionSlot(
+                            state.Player, state.Rng)
+                        : null),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
@@ -986,6 +991,13 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
         var nativeRunRng = state.NativeRunRng?.Fork();
+
+        if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
+            && action.Kind == "event_choice"
+            && action.ReadPayload<EventChoicePayload>().ChoiceId == "lift")
+        {
+            return StepNativeStoneOfAllTimeLift(state);
+        }
 
         if (eventState.EventId == PrototypeNativeFakeMerchant.EventId)
             return StepNativeFakeMerchant(state, action);

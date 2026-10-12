@@ -2386,6 +2386,9 @@ public sealed record EventState(
     string? DeferredCardId = null,
     int NativeEventGold = 0,
     int NativeEventSecondaryGold = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? NativeEventPotionSlot = null,
     string? NativeDishId = null,
     string? NativeLastDishId = null,
     int NativeDishCount = 0,

@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "0e4227be5e652697599ffb968d93b4ddf22fb58551554ffddb84ab34d3285edb",
+  "inventory_file_sha256": "f3d84b27f9cdfc3058ea5d327c99ee95862e2e50b846cc4796cea486de7c8850",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "b488848226599d9d71c9d1389c303b5be7f0f3ae16cd751ea9e207892c4e0188",
+    "inventory_hash": "6b6b05e9eec0411242ed3ece26645461fcc8c79e8c02db2d073b5c8c531334cc",
     "items": [
       {
         "catalogued": true,
@@ -12529,17 +12529,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "Vigorous"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/Vigorous.cs#d3b1738fae73f45744597822ec600104614d833784b433fcb331ffe263de3222"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "VIGOROUS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15864,29 +15866,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.stone_of_all_time"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/StoneOfAllTime.cs#4baf93382c98e7e1e03a52f9064506565df21af4f37fea015917f1accc67c2fc"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/LIFT",
-          "initial/LIFT_LOCKED",
-          "initial/PUSH",
-          "initial/PUSH_LOCKED",
-          "page/INITIAL",
-          "page/INITIAL/LIFT",
-          "page/INITIAL/LIFT_LOCKED",
-          "page/INITIAL/PUSH",
-          "page/INITIAL/PUSH_LOCKED",
-          "page/LIFT",
-          "page/PUSH"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "STONE_OF_ALL_TIME",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29558,8 +29550,8 @@
         "catalogued": 22,
         "eligible": 22,
         "excluded": 0,
-        "implemented": 0,
-        "integrated": 0,
+        "implemented": 1,
+        "integrated": 1,
         "kind": "enchantments",
         "scope_review_required": 0,
         "validated": 0
@@ -29588,8 +29580,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 38,
-        "integrated": 52,
+        "implemented": 39,
+        "integrated": 53,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

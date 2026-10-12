@@ -19,12 +19,16 @@ public enum PrototypeCardEnchantmentKind
     Imbued,
     Instinct,
     Swift,
-    Sharp
+    Sharp,
+    Vigorous
 }
 
 public sealed record PrototypeCardEnchantment(
     PrototypeCardEnchantmentKind Kind,
-    int Amount = 1);
+    int Amount = 1,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool Disabled = false);
 
 public sealed record CardInstance(
     long InstanceId,
