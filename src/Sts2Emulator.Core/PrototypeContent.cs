@@ -2147,6 +2147,16 @@ public static class PrototypeContent
                         3,
                         PowerId: "proto.power.radiance")
                 ]),
+            // Shared Rare potion: shrink one enemy for four of its turns,
+            // reducing its powered attack damage by 30% while active.
+            new PrototypePotionDefinition(
+                "proto.potion.beetle_juice",
+                "Beetle Juice",
+                PrototypeCardTarget.Enemy,
+                [new(
+                    PrototypeCombatEffectKind.ApplyEnemyPower,
+                    4,
+                    PowerId: "proto.power.shrink")]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -3803,7 +3813,10 @@ public static class PrototypeContent
                 DoesNotStack: true,
                 IsDebuff: true,
                 PlayerAttackDamageNumerator: 7,
-                PlayerAttackDamageDenominator: 10),
+                PlayerAttackDamageDenominator: 10,
+                EnemyStacksDecayAtSideTurnEnd: 1,
+                EnemyOutgoingPoweredAttackNumerator: 7,
+                EnemyOutgoingPoweredAttackDenominator: 10),
             new PrototypePowerDefinition(
                 "proto.power.artifact",
                 "Artifact",

@@ -7460,6 +7460,20 @@ public sealed partial class PrototypeGameEngine
             damage = (damage * definition.OutgoingDamageNumerator)
                 / definition.OutgoingDamageDenominator;
         }
+        foreach (var power in enemy.PowerStates.Where(power =>
+            effect.IsAttack && power.Stacks > 0))
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.EnemyOutgoingPoweredAttackDenominator <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Power '{definition.Id}' has invalid enemy outgoing-attack denominator.");
+            }
+
+            damage = (damage
+                * definition.EnemyOutgoingPoweredAttackNumerator)
+                / definition.EnemyOutgoingPoweredAttackDenominator;
+        }
 
         return effect.IsAttack
             ? ModifyIncomingPlayerAttackDamage(combat, damage)

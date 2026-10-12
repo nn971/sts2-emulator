@@ -944,7 +944,9 @@ public sealed record PrototypePowerDefinition(
     int GalvanizePowerCardsPerStack = 0,
     int PlayerStrengthAtTurnEndPerStack = 0,
     int EnergyBonusWhileActive = 0,
-    bool DecrementAfterEnergyReset = false);
+    bool DecrementAfterEnergyReset = false,
+    int EnemyOutgoingPoweredAttackNumerator = 1,
+    int EnemyOutgoingPoweredAttackDenominator = 1);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

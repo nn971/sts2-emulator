@@ -387,6 +387,41 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void BeetleJuiceReducesPoweredEnemyDamageAndExpiresAfterFourTurns()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.beetle_juice");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        var enemy = Assert.Single(combat.Enemies);
+        Assert.Equal(4, Assert.Single(
+            enemy.PowerStates,
+            power => power.PowerId == "proto.power.shrink").Stacks);
+        Assert.Equal(7, PrototypeGameEngine.EnemyHitDamage(
+            enemy,
+            combat,
+            new PrototypeEnemyEffectSpec(
+                PrototypeEnemyEffectKind.DamagePlayer,
+                10),
+            act: 1,
+            ascension: 0));
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(3, Assert.Single(
+            state.World!.Combat!.Enemies.Single().PowerStates,
+            power => power.PowerId == "proto.power.shrink").Stacks);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(
