@@ -40,6 +40,8 @@ public static class PrototypeNativePotionShop
             ["proto.potion.cunning"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.fysh_oil"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.binding"] = PrototypeNativePotionRarity.Uncommon,
+            ["proto.potion.heart_of_iron"] =
+                PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.duplicator"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.blessing_of_the_forge"] =
                 PrototypeNativePotionRarity.Uncommon,
@@ -62,7 +64,8 @@ public static class PrototypeNativePotionShop
             ["proto.potion.droplet_of_precognition"] =
                 PrototypeNativePotionRarity.Rare,
             ["proto.potion.bottled_potential"] =
-                PrototypeNativePotionRarity.Rare
+                PrototypeNativePotionRarity.Rare,
+            ["proto.potion.shackling"] = PrototypeNativePotionRarity.Rare
         };
 
     public static bool TryGetRarity(

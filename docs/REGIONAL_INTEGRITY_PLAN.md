@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation: 1,731 C# tests pass, executable coverage
+Current validation: 1,735 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 42 of 90 encounters as implemented
 and integrated, with zero native-validated; its event category reports zero
@@ -59,8 +59,8 @@ Alchemical Coffer also has a partial acquisition hook: it adds four potion slots
 and generates four distinct potions into those slots, while preserving existing
 inventory and honoring Sozu. The supported Silent pool includes Cunning
 Potion, Fysh Oil, Potion of Binding, Ship in a Bottle, Droplet of Precognition,
-Explosive Ampoule and Bottled Potential, and excludes
-Ironclad-only Blood Potion and the off-pool legacy Explosive Potion; 11
+Explosive Ampoule, Bottled Potential, Heart of Iron and Shackling Potion, and
+excludes Ironclad-only Blood Potion and the off-pool legacy Explosive Potion; 9
 source-pool entries remain unimplemented.
 The full source potion pool, native replacement continuation and native RNG
 parity remain open. Prismatic Gem now implements

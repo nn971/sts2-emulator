@@ -265,6 +265,63 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void HeartOfIronAppliesSevenPlating()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.heart_of_iron");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(7, Assert.Single(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.plating").Stacks);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void ShacklingPotionTemporarilyReducesEveryEnemyStrength()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.shackling",
+            enemyStrength: 5,
+            additionalEnemies: 1);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.All(state.World!.Combat!.Enemies, enemy =>
+        {
+            Assert.Equal(-2, Assert.Single(
+                enemy.PowerStates,
+                power => power.PowerId == "proto.power.strength").Stacks);
+            Assert.Equal(7, Assert.Single(
+                enemy.PowerStates,
+                power => power.PowerId == "proto.power.shackling_potion")
+                .Stacks);
+        });
+        Assert.Null(state.Player.PotionSlots[0]);
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.All(state.World!.Combat!.Enemies, enemy =>
+        {
+            Assert.Equal(5, Assert.Single(
+                enemy.PowerStates,
+                power => power.PowerId == "proto.power.strength").Stacks);
+            Assert.DoesNotContain(enemy.PowerStates,
+                power => power.PowerId == "proto.power.shackling_potion");
+        });
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(
@@ -450,7 +507,8 @@ public sealed class PrototypeExpandedPotionTests
         int enemyHp = 100,
         int playerHp = 70,
         int additionalEnemies = 0,
-        long[]? drawPile = null)
+        long[]? drawPile = null,
+        int enemyStrength = 0)
     {
         var empty = PrototypeJson.EmptyObject();
         var persistent = cards
@@ -486,7 +544,13 @@ public sealed class PrototypeExpandedPotionTests
                     enemyHp,
                     0,
                     0,
-                    new Dictionary<string, int>(StringComparer.Ordinal)))
+                    new Dictionary<string, int>(StringComparer.Ordinal),
+                    Powers: enemyStrength == 0
+                        ? []
+                        : [new PrototypePowerInstanceState(
+                            "proto.power.strength",
+                            enemyStrength,
+                            1)]))
                 .ToArray(),
             NextCardInstanceId:
                 cards.Max(card => card.InstanceId) + 1,

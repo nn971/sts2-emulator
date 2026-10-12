@@ -2103,6 +2103,27 @@ public static class PrototypeContent
                         0),
                     new(PrototypeCombatEffectKind.DrawCards, 5)
                 ]),
+            // Shared Uncommon potion: apply seven Plating using the existing
+            // player-turn block and decay behavior.
+            new PrototypePotionDefinition(
+                "proto.potion.heart_of_iron",
+                "Heart of Iron",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyPlayerPower,
+                    7,
+                    PowerId: "proto.power.plating")]),
+            // Shared Rare potion: temporarily reduce all living enemies'
+            // Strength by seven, restoring it after their next side turn.
+            new PrototypePotionDefinition(
+                "proto.potion.shackling",
+                "Shackling Potion",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyEnemyPower,
+                    7,
+                    PowerId: "proto.power.shackling_potion",
+                    Target: PrototypeEffectTarget.AllEnemies)]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -3222,6 +3243,15 @@ public static class PrototypeContent
             new PrototypePowerDefinition(
                 "proto.power.dark_shackles",
                 "Dark Shackles",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                RemoveAtEnemyTurnEnd: true,
+                EnemyStrengthOnApplyPerStack: -1,
+                EnemyStrengthRestoreAtSideTurnEndPerStack: 1),
+            new PrototypePowerDefinition(
+                "proto.power.shackling_potion",
+                "Shackling Potion",
                 BlockBonusPerStack: 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 IsDebuff: true,
