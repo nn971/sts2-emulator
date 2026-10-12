@@ -2046,6 +2046,37 @@ public static class PrototypeContent
                     3,
                     CardId: "proto.silent.shiv",
                     GeneratedCardUpgradeLevel: 1)]),
+            // Shared Uncommon potion: apply one Weak and one Vulnerable to
+            // every living enemy without asking the player to pick a target.
+            new PrototypePotionDefinition(
+                "proto.potion.binding",
+                "Potion of Binding",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        1,
+                        StatusId: "proto.status.weak",
+                        Target: PrototypeEffectTarget.AllEnemies),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        1,
+                        StatusId: "proto.status.vulnerable",
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ]),
+            // Shared Rare potion: gain 10 Block now and retain that amount
+            // through the next turn's block reset.
+            new PrototypePotionDefinition(
+                "proto.potion.ship_in_a_bottle",
+                "Ship in a Bottle",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 10),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        10,
+                        PowerId: "proto.power.block_next_turn")
+                ]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",

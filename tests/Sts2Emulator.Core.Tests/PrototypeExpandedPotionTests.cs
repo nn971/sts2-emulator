@@ -133,6 +133,58 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void PotionOfBindingAppliesWeakAndVulnerableToEveryEnemy()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.strike")],
+            hand: [1],
+            potionId: "proto.potion.binding",
+            additionalEnemies: 2);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(3, state.World!.Combat!.Enemies.Length);
+        Assert.All(state.World.Combat.Enemies, enemy =>
+        {
+            Assert.Equal(1,
+                enemy.Statuses.GetValueOrDefault("proto.status.weak"));
+            Assert.Equal(1,
+                enemy.Statuses.GetValueOrDefault("proto.status.vulnerable"));
+        });
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void ShipInABottleGivesBlockNowAndAfterTheNextReset()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.ship_in_a_bottle");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(10, state.World!.Combat!.PlayerBlock);
+        Assert.Equal(10, Assert.Single(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.block_next_turn").Stacks);
+        Assert.Null(state.Player.PotionSlots[0]);
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(2, state.World!.Combat!.Turn);
+        Assert.Equal(10, state.World.Combat.PlayerBlock);
+        Assert.DoesNotContain(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.block_next_turn");
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(
@@ -316,7 +368,8 @@ public sealed class PrototypeExpandedPotionTests
         string potionId,
         int playerBlock = 0,
         int enemyHp = 100,
-        int playerHp = 70)
+        int playerHp = 70,
+        int additionalEnemies = 0)
     {
         var empty = PrototypeJson.EmptyObject();
         var persistent = cards
@@ -345,17 +398,15 @@ public sealed class PrototypeExpandedPotionTests
             DrawPile: [],
             DiscardPile: [],
             ExhaustPile: [],
-            Enemies:
-            [
-                new EnemyCombatState(
-                    1,
+            Enemies: Enumerable.Range(0, additionalEnemies + 1)
+                .Select(index => new EnemyCombatState(
+                    index + 1,
                     "proto.enemy.crawler",
                     enemyHp,
                     0,
                     0,
-                    new Dictionary<string, int>(
-                        StringComparer.Ordinal))
-            ],
+                    new Dictionary<string, int>(StringComparer.Ordinal)))
+                .ToArray(),
             NextCardInstanceId:
                 cards.Max(card => card.InstanceId) + 1,
             Cards: cards,
