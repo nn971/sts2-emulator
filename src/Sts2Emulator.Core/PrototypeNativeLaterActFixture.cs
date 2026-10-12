@@ -90,17 +90,18 @@ public static class PrototypeNativeLaterActFixture
     /// intents, but deliberately omits player deck, rewards, card draw,
     /// combat hooks and cross-battle run-RNG history. It is not a playable run.
     /// </summary>
-    public static CombatState CreateCombatRngSnapshot(
-        string seed,
-        int act,
-        string emulatorEncounterId,
-        string nativeEncounterEntry,
-        int totalFloor,
-        int ascension = 0,
-        long firstMonsterCombatId = 1,
-        int? mapColumn = null,
-        int? mapRow = null,
-        bool commitInitialIntents = true)
+    /// <summary>
+    /// Source-shaped isolated pre-combat-entry fixture before any initial HP
+    /// draw. Controlled Nature starts here; it never undoes an existing draw.
+    /// Not a complete run state or a native parity oracle.
+    /// </summary>
+    public static (
+        CombatState Combat, NativeEncounterFormationV111 Formation,
+        RngBundle NativeStreams) CreateCombatRngPreEntry(
+        string seed, int act, string emulatorEncounterId,
+        string nativeEncounterEntry, int totalFloor, int ascension = 0,
+        long firstMonsterCombatId = 1, int? mapColumn = null,
+        int? mapRow = null)
     {
         if (ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(ascension));
@@ -152,8 +153,26 @@ public static class PrototypeNativeLaterActFixture
             NextPowerApplicationOrder: 1,
             Act: act,
             Ascension: ascension);
+        return (bare, formation, NativeRngV111.CreateBundle(seed));
+    }
+
+    public static CombatState CreateCombatRngSnapshot(
+        string seed,
+        int act,
+        string emulatorEncounterId,
+        string nativeEncounterEntry,
+        int totalFloor,
+        int ascension = 0,
+        long firstMonsterCombatId = 1,
+        int? mapColumn = null,
+        int? mapRow = null,
+        bool commitInitialIntents = true)
+    {
+        var prepared = CreateCombatRngPreEntry(
+            seed, act, emulatorEncounterId, nativeEncounterEntry,
+            totalFloor, ascension, firstMonsterCombatId, mapColumn, mapRow);
         var native = NativeCombatRngEntryV111.AttachAndRollInitialHp(
-            bare, formation, NativeRngV111.CreateBundle(seed));
+            prepared.Combat, prepared.Formation, prepared.NativeStreams);
         return commitInitialIntents
             ? PrototypeGameEngine.CommitEnemyIntents(
                 native, PrototypeRng.CreateBundle(seed))
