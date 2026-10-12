@@ -60,6 +60,9 @@ class NativePackageContractTests(unittest.TestCase):
         self.assertIn('"$dest/Sts2ReferenceMod.pck"', script)
         self.assertIn('rm -f "$dest/Sts2Emulator.Trace.dll" "$dest/Sts2Emulator.Core.dll"', script)
         self.assertNotIn("for dll in Sts2ReferenceMod.dll Sts2Emulator.Trace.dll", script)
+        self.assertIn('cp "$project/Sts2ReferenceMod.json" "$dest/"', script)
+        self.assertIn('rm -f "$dest/mod_manifest.json"', script)
+        self.assertNotIn('cp "$project/mod_manifest.json" "$dest/"', script)
 
     def test_godot_export_uses_temporary_source_free_project(self):
         script = BUILDER.read_text(encoding="utf-8")
