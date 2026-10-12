@@ -174,7 +174,7 @@ public static class PrototypeNativePotionShop
         IReadOnlyCollection<string>? excluded = null)
     {
         var rarity = RollRarity(rng, streamId);
-        var candidates = PrototypeContent.PotionPool
+        var candidates = NativePotionPoolOrder
             .Where(id => Rarities[id] == rarity
                 && (excluded is null || !excluded.Contains(id)))
             .ToArray();
@@ -192,7 +192,8 @@ public static class PrototypeNativePotionShop
 
     /// <summary>
     /// Native merchant inventories call CreateRandomPotions with a
-    /// mutable candidate list, removing each selected model.
+    /// mutable candidate list, removing each selected model. Retain source
+    /// order because each NextItem indexes the remaining rarity subset.
     /// </summary>
     public static string[] PickWeightedDistinct(
         RngBundle rng, string streamId, int count)

@@ -119,6 +119,26 @@ public sealed class PrototypeNativePotionShopTests
     }
 
     [Fact]
+    public void MerchantPotionTierSelectionUsesPinnedSourcePoolOrder()
+    {
+        var actualRng = PrototypeRng.CreateBundle(
+            "native-merchant-potion-pool-order");
+        var expectedRng = actualRng.Fork();
+        var rarity = PrototypeNativePotionShop.RollRarity(
+            expectedRng, "shop");
+        var candidates = PrototypeNativePotionShop.NativePotionPoolOrder
+            .Where(id => PrototypeNativePotionShop.TryGetRarity(
+                id, out var candidateRarity)
+                && candidateRarity == rarity)
+            .ToArray();
+        var expected = candidates[PrototypeRng.NextInt(
+            expectedRng, "shop", candidates.Length)];
+
+        Assert.Equal(expected,
+            PrototypeNativePotionShop.PickWeighted(actualRng, "shop"));
+    }
+
+    [Fact]
     public void WeightedRollDoesNotSubstituteMissingRareTier()
     {
         var rng = PrototypeRng.CreateBundle("native-rare-exhaustion");
