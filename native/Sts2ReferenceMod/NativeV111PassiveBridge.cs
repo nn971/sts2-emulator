@@ -40,6 +40,7 @@ internal static class NativeV111PassiveBridge
     private static NativeRecordingSession? _recording;
     private static NativeCombatAdapter? _adapter;
     private static int _decisionGeneration;
+    private static int _lastCapturedGeneration = -1;
     private static bool _awaitingSettlement;
     private static bool _choiceInterrupted;
     private static int _historyIndex;
@@ -103,9 +104,12 @@ internal static class NativeV111PassiveBridge
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
             AttachActionExecutor();
             if (!IsStablePlayerDecision(combat)) return;
+            if (_lastCapturedGeneration == _decisionGeneration) return;
             if (_awaitingSettlement) _awaitingSettlement = false;
             _adapter.Generation = _decisionGeneration;
-            _recording.OnStableDecision(_adapter);
+            var recorded = _recording.OnStableDecision(_adapter);
+            if (recorded is not null)
+                _lastCapturedGeneration = _decisionGeneration;
         }
         catch (Exception error)
         {
@@ -135,6 +139,7 @@ internal static class NativeV111PassiveBridge
     {
         _combat = combat;
         _decisionGeneration = 0;
+        _lastCapturedGeneration = -1;
         _awaitingSettlement = false;
         _choiceInterrupted = false;
         _historyIndex = CombatManager.Instance.History.Entries.Count;
@@ -227,6 +232,14 @@ internal static class NativeV111PassiveBridge
         try
         {
             var history = CombatManager.Instance.History.Entries;
+            if (_recording.RecordedDecisions.Count == 0)
+            {
+                // The audited trace starts at the first stable player choice.
+                // Setup effects before that point are represented in the
+                // snapshot, but their history order is outside trace coverage.
+                _historyIndex = history.Count;
+                return;
+            }
             while (_historyIndex < history.Count)
             {
                 var entry = history[_historyIndex++];
@@ -426,7 +439,8 @@ internal sealed class NativeCombatAdapter(
         var unsupported = new List<string>
         {
             "NATIVE_V111_PINNED_BUILD_VALIDATION_PENDING",
-            "HUMAN_ACTION_ORIGIN_UNVERIFIED"
+            "HUMAN_ACTION_ORIGIN_UNVERIFIED",
+            "PRE_BOUNDARY_COMBAT_HISTORY_UNAUDITED"
         };
         if (potions) unsupported.Add("POTIONS_NOT_IN_LEGAL_MENU");
         if (exoticTargets) unsupported.Add("ALLY_TARGETING_UNVERIFIED");
