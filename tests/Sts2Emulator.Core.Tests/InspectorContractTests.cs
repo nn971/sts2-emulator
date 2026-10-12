@@ -141,7 +141,7 @@ public sealed class InspectorContractTests
         public IReadOnlyList<GameAction> GetCanonicalLegalActions() => new[] { EndTurn() };
         public CaptureCoverage GetCoverage() =>
             new(new[] { "$.player.hp" }, Array.Empty<string>(), Array.Empty<string>(),
-                "RNG_UNAUDITED", new[] { "damage" });
+                "RNG_UNAUDITED", new[] { "damage" }, new[] { "$.player.hp" });
     }
 
 }
