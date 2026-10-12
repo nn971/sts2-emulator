@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "17d060af753fa764471cc1bcaedb2c6df93a77578eeded6f298b212d8e468be9",
+  "inventory_file_sha256": "eb4663fbe09d37886f37185503e38a7be94544273aac744ec0dd5a69b0bf5c6c",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "e5f905582d273bf30245e2e1e022a5d753e7656b4fa16e1142a0e543023df2c9",
+    "inventory_hash": "3655e77a0f86895183bc4af74244124cdce1d30d77baaf5f36783d94dba72b3b",
     "items": [
       {
         "catalogued": true,
@@ -15246,19 +15246,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/DenseVegetation.cs#07bfcb3131b1f4cf006fd8d6e1ba2d76aa4cd4385ff60d55015ca59a0764d9f0"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/REST",
-          "initial/TRUDGE_ON",
-          "page/INITIAL",
-          "page/INITIAL/REST",
-          "page/INITIAL/TRUDGE_ON",
-          "page/REST",
-          "page/REST/FIGHT",
-          "page/TRUDGE_ON"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "DENSE_VEGETATION",
         "registered": true,
@@ -29740,7 +29731,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 8,
+        "implemented": 9,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,

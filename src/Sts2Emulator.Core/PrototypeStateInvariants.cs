@@ -746,7 +746,7 @@ public static class PrototypeStateInvariants
                         ? eventState.NativePageIndex > 2
                     : eventState.EventId ==
                         PrototypeNativeDenseVegetation.EventId
-                        ? eventState.NativePageIndex > 2
+                        ? eventState.NativePageIndex > 3
                     : eventState.EventId ==
                         PrototypeNativeEndlessConveyor.EventId
                         ? eventState.NativePageIndex > 1

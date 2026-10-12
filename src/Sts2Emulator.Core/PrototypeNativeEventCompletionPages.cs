@@ -13,6 +13,7 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.event.morphic_grove"
             or "proto.native.event.wellspring"
             or "proto.native.event.whispering_hollow"
+            or PrototypeNativeDenseVegetation.EventId
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
@@ -28,7 +29,8 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.underdocks.sunken_statue";
 
     public static int TerminalChoicePageIndex(string eventId) =>
-        eventId == PrototypeNativeHiveEvents.ColossalFlowerId ? 3
+        eventId is PrototypeNativeHiveEvents.ColossalFlowerId
+            or PrototypeNativeDenseVegetation.EventId ? 3
             : eventId == PrototypeNativeGloryEvents.RoundTeaPartyId ? 2 : 1;
 
     public static bool HasTerminalChoice(
@@ -52,6 +54,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "bottle" or "bathe"
         || eventId == "proto.native.event.whispering_hollow"
             && choiceId is "gold" or "hug"
+        || eventId == PrototypeNativeDenseVegetation.EventId
+            && choiceId is "trudge"
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId

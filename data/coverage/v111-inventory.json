@@ -11360,7 +11360,7 @@
         "page/REST/FIGHT",
         "page/TRUDGE_ON"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

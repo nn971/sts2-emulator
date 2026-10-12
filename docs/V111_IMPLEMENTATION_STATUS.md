@@ -26,8 +26,8 @@ acquisition/assignment coverage. The latest solution build and coverage-baseline
 check pass. Potion Courier is integrated into Hive and Glory. Morphic Grove
 retains the Group and Loner result pages. Wellspring and Whispering Hollow
 retain their result pages after potion and card continuations. The coverage
-report records 50 integrated event paths, eight complete event implementations,
-and 21 events with complete branch inventories. Native validation remains
+report records 50 integrated event paths, nine complete event implementations,
+and 22 events with complete branch inventories. Native validation remains
 unverified.
 
 # v111 implementation status

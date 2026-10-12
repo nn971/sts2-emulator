@@ -211,6 +211,11 @@ public static class V111Coverage
             && engineIds.Contains("proto.native.event.whispering_hollow",
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DENSE_VEGETATION" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeDenseVegetation.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
