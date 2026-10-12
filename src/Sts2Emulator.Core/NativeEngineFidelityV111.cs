@@ -20,7 +20,8 @@ public sealed record NativeEngineFidelityReportV111(
     string[] UnverifiedPreconditions,
     NativeEngineFieldCheckV111[] CheckedFields,
     string? FirstMismatchPath,
-    string? EngineFailure = null)
+    string? EngineFailure = null,
+    NativeEngineJournalEntryV111[]? EmulatorEventJournal = null)
 {
     public static NativeEngineFidelityReportV111 Stop(
         string status, string? build, IEnumerable<string> blockers,
@@ -298,12 +299,19 @@ public static class NativeEngineFidelityV111
 
             // This is the actual, unchanged combat engine step, NOT an
             // independent Strike shortcut or a copied native post-state.
-            var result = engine.Step(state, action).State;
+            RunState result;
+            NativeEngineJournalEntryV111[] engineEvents;
+            using (var journal = NativeEngineEventJournalV111.Begin())
+            {
+                result = engine.Step(state, action).State;
+                engineEvents = journal.Entries.ToArray();
+            }
             if (result.Phase != RunPhase.Combat || result.World?.Combat is null)
                 return new NativeEngineFidelityReportV111(
                     "ENGINE_PHASE_DIVERGENCE", "NOT_TESTED", true, build,
                     ["Engine left combat before the next native checkpoint."],
-                    guards.ToArray(), [], "$.phase");
+                    guards.ToArray(), [], "$.phase",
+                    EmulatorEventJournal: engineEvents);
             var next = result.World.Combat;
             var checks = new List<NativeEngineFieldCheckV111>();
             void Check(string path, object native, object emulated)
@@ -395,7 +403,8 @@ public static class NativeEngineFidelityV111
                     ? "CORE_ENGINE_CHECKPOINT_CONSISTENT"
                     : "CORE_ENGINE_CHECKPOINT_MISMATCH",
                 "NOT_TESTED", true, build, [], guards.ToArray(),
-                checks.ToArray(), differences.FirstOrDefault()?.Path);
+                checks.ToArray(), differences.FirstOrDefault()?.Path,
+                EmulatorEventJournal: engineEvents);
         }
         catch (Exception e) when (e is JsonException or InvalidOperationException
                                   or ArgumentException or KeyNotFoundException)
