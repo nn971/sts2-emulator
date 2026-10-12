@@ -1035,3 +1035,8 @@ Source: [TwistedFunnel.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa
 Added the Silent shop relic **Ninja Scroll** to the shop rarity pool; before
 the opening hand draw on turn one, it creates three Shivs in hand. Source:
 [NinjaScroll.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/NinjaScroll.cs).
+Added the Silent rare relic **Helical Dart** to the rare relic pool. Each
+played Shiv grants 1 temporary Dexterity for the current player turn, using
+the card tag in the shared relic trigger pipeline. Source:
+[HelicalDart.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/HelicalDart.cs)
+and [HelicalDartPower.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Powers/HelicalDartPower.cs).

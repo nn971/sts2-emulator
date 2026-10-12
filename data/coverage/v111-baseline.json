@@ -26131,17 +26131,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.helical_dart"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/HelicalDart.cs#25a04b2d07b1491016c9e3dadb21cb30209c18f090ea0c1f00416ec5fc4f6d34"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "HELICAL_DART",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29608,8 +29610,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 8,
-        "integrated": 8,
+        "implemented": 9,
+        "integrated": 9,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

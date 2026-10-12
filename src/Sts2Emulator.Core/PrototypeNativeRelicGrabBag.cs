@@ -68,6 +68,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.kunai"] = PrototypeRelicRarity.Rare,
             ["proto.relic.shuriken"] = PrototypeRelicRarity.Rare,
             ["proto.relic.ice_cream"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSilentRelics.HelicalDartId] = PrototypeRelicRarity.Rare,
             ["proto.relic.tough_bandages"] = PrototypeRelicRarity.Rare,
             ["proto.relic.prayer_wheel"] = PrototypeRelicRarity.Rare,
             ["proto.relic.white_beast_statue"] = PrototypeRelicRarity.Rare,

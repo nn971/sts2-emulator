@@ -10720,6 +10720,11 @@ public sealed partial class PrototypeGameEngine
                             || PrototypeContent.Card(
                                 combatEvent.CardId).Type
                                 != trigger.RequiredSourceCardType.Value))
+                    || (trigger.RequiredSourceCardTag is not null
+                        && (combatEvent.CardId is null
+                            || !(PrototypeContent.Card(combatEvent.CardId).Tags?
+                                .Contains(trigger.RequiredSourceCardTag,
+                                    StringComparer.Ordinal) ?? false)))
                     || (trigger.RequiresEmptyHand
                         && combat.Hand.Length != 0)
                     || !RelicTriggerMatchesPlayer(

@@ -439,6 +439,20 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "HELICAL_DART"
+            && engineIds.Contains(PrototypeNativeSilentRelics.HelicalDartId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.HelicalDartId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.HelicalDartId, out var dartRarity)
+            && dartRarity == PrototypeRelicRarity.Rare)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";

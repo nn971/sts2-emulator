@@ -7531,6 +7531,7 @@ public static class PrototypeContent
         "proto.relic.kunai",
         "proto.relic.shuriken",
         "proto.relic.ice_cream",
+        "proto.relic.helical_dart",
         "proto.relic.tough_bandages",
         "proto.relic.tingsha",
         "proto.relic.hovering_kite",

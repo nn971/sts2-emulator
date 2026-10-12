@@ -7,11 +7,21 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class PrototypeNativeSilentRelics
 {
+    public const string HelicalDartId = "proto.relic.helical_dart";
     public const string NinjaScrollId = "proto.relic.ninja_scroll";
     public const string TwistedFunnelId = "proto.relic.twisted_funnel";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Native AfterCardPlayed adds Temporary Dexterity for each Shiv.
+        new(HelicalDartId, "Helical Dart",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CardPlayed,
+                    [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                        PowerId: "proto.power.temporary_dexterity")],
+                    RequiredSourceCardTag: "Shiv")
+            ]),
         // Native BeforeHandDraw creates three Shivs on the first player turn.
         new(NinjaScrollId, "Ninja Scroll",
             Triggers:

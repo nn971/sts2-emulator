@@ -761,7 +761,8 @@ public sealed record PrototypeRelicTriggerSpec(
     bool ResetCounterEachTurn = false,
     int? MaxTriggersPerCounterWindow = null,
     int? MaxAttacksPlayedLastTurn = null,
-    bool RequiresEmptyHand = false);
+    bool RequiresEmptyHand = false,
+    string? RequiredSourceCardTag = null);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
