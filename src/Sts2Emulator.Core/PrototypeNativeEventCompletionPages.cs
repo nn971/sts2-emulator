@@ -37,6 +37,7 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.underdocks.doors_of_light_and_dark"
             or "proto.native.underdocks.drowning_beacon"
             or "proto.native.underdocks.sunken_treasury"
+            or "proto.native.event.sunken_statue"
             or "proto.native.underdocks.sunken_statue";
 
     public static int TerminalChoicePageIndex(string eventId) =>
@@ -119,6 +120,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "bottle" or "climb"
         || eventId == "proto.native.underdocks.sunken_treasury"
             && choiceId is "first_chest" or "second_chest"
+        || eventId == "proto.native.event.sunken_statue"
+            && choiceId is "grab" or "dive"
         || eventId == "proto.native.underdocks.sunken_statue"
             && choiceId is "sword" or "dive";
 }

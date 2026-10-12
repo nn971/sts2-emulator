@@ -242,6 +242,13 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SUNKEN_STATUE" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.sunken_statue",
+                StringComparer.Ordinal)
+            && engineIds.Contains("proto.native.underdocks.sunken_statue",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "DENSE_VEGETATION" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeDenseVegetation.EventId,
                 StringComparer.Ordinal))

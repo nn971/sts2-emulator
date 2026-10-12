@@ -29,7 +29,7 @@ retain their result pages after potion and card continuations. Waterlogged
 Scriptorium now keeps its result page after each optional Steady selection;
 Trash Heap retains its result page after either successful reward, and
 Endless Conveyor retains its Observe Chef/Leave results. The coverage report
-records 50 integrated event paths, twenty complete event implementations,
+records 50 integrated event paths, twenty-one complete event implementations,
 and 33 events with complete branch inventories. Sapphire Seed and Unrest Site
 now retain their choice-specific result pages after their effects resolve.
 Tablet of Truth now retains its Smash, Give Up, or fifth-Decipher result page;

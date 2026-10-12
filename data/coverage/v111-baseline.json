@@ -15908,7 +15908,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SunkenStatue.cs#5c60d58620b3ab002ab676c72c30b621ff4281d1d2f6e49e4cdc98d484781053"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -29571,7 +29571,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 20,
+        "implemented": 21,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,
