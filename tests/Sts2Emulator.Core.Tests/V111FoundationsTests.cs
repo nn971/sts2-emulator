@@ -52,6 +52,24 @@ public sealed class V111FoundationsTests
             && item.Scope == "multiplayer-only" && item.Implementation == "excluded");
         Assert.Contains(report.Items, item => item.Kind == "events" && item.NativeId == "NEOW"
             && item.MissingBranches.Length > 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "ABYSSAL_BATHS"
+            && item.Implementation == "partial"
+            && item.Integration == "integrated");
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "AMALGAMATOR"
+            && item.Integration == "integrated");
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "REFLECTIONS"
+            && item.Integration == "integrated");
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "VAKUU"
+            && item.Implementation == "partial"
+            && item.Integration == "missing");
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "COLORFUL_PHILOSOPHERS"
+            && item.Implementation == "missing"
+            && item.Integration == "missing");
         Assert.Equal(CanonicalJson.Serialize(report), CanonicalJson.Serialize(V111Coverage.Create()));
     }
 

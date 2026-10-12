@@ -704,11 +704,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.apparition"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Apparition.cs#108391d46dcacf68b0c0bce425f40dc3119901ba739240585dea800c8370ea63"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -717,7 +719,7 @@
           "upgraded"
         ],
         "native_id": "APPARITION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -2353,11 +2355,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.shared.clumsy"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Clumsy.cs#dd7b6af48036835a8cb5ce2180272ab7f5f8ab576017eb9a45854c04a55cc805"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -2365,7 +2369,7 @@
           "base"
         ],
         "native_id": "CLUMSY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -3146,11 +3150,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.shared.debt"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Debt.cs#3d905c35b7731c658893b2bc0f06a46c20777298181962a08543e5c6ffb0c315"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -3158,7 +3164,7 @@
           "base"
         ],
         "native_id": "DEBT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -3965,11 +3971,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.enthralled"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Enthralled.cs#0b58200841e8d0d14628c03a3100373e1e31aa2c1181fdcd208a310fd638638b"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -3977,7 +3985,7 @@
           "base"
         ],
         "native_id": "ENTHRALLED",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -4707,11 +4715,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.folly"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Folly.cs#5c69fae719e7beb963cc8586e10b77001e1ec9f0a14ee2f924b2127c1534de9a"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -4719,7 +4729,7 @@
           "base"
         ],
         "native_id": "FOLLY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -11899,11 +11909,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.wish"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Wish.cs#2c0a731ca7bb415506ae7ba8ba74a32270b0eef8e6732e9459938b898d2d6af3"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -11912,7 +11924,7 @@
           "upgraded"
         ],
         "native_id": "WISH",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -11999,11 +12011,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.shared.writhe"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Writhe.cs#bf77a7842c14bd69a4aad67c201d89e5af8d8ce11b050bf3622c73917600db82"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -12011,7 +12025,7 @@
           "base"
         ],
         "native_id": "WRITHE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -12475,17 +12489,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "Swift"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/Swift.cs#efe0086917e21ead2de37ef0e06bffbf39a67bcde1b56c38e9b01922d515b57a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SWIFT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -14940,7 +14956,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/AbyssalBaths.cs#0e405b07cea79ddff27d71f6fdd2dfb104950cd6f1fa949b915cf26caf656fd1"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/ABSTAIN",
@@ -15002,7 +15018,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Amalgamator.cs#d0f41ef96e918a6c65a11293ff1f35a187ed09ae70d95419c17030b05f720727"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/COMBINE_DEFENDS",
@@ -15028,7 +15044,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/AromaOfChaos.cs#663a6eb3c9fc090ff451a0e9ec7d6844ec2efb48d15d14d54914c76c6481090e"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/LET_GO",
@@ -15054,7 +15070,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/BattlewornDummy.cs#4bfd480ac396230c2cff26cc3862d8df12c74e779f02ae55ea1657e04b254cf4"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/SETTING_1",
@@ -15106,7 +15122,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Bugslayer.cs#5ea3d90ad9ac2ec95fb1316662f5669cfba1b346e7dce24406393d7875564f7f"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/EXTERMINATION",
@@ -15133,7 +15149,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ByrdonisNest.cs#82f879d42393f8199548d815ea4c2c4d79c389c716c3653caa81d01d1b2bf130"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/EAT",
@@ -15188,7 +15204,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ColossalFlower.cs#ca0ee1f25d200ea85ddfe301965370d20e7930606409956c22c2317b2622c0d3"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/EXTRACT_CURRENT_PRIZE_1",
@@ -15275,7 +15291,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/DenseVegetation.cs#07bfcb3131b1f4cf006fd8d6e1ba2d76aa4cd4385ff60d55015ca59a0764d9f0"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/REST",
@@ -15333,7 +15349,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/DoorsOfLightAndDark.cs#ef7233f0b82ec9e37577bd3541d599acfd1709bba37c3bf0ffeb4e9f0381306f"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/DARK",
@@ -15359,7 +15375,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/DrowningBeacon.cs#c8bcbd0c528afb6a1207679c4aef0cced4c1e2ef355573b5558aff01917c841a"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/BOTTLE",
@@ -15385,7 +15401,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/EndlessConveyor.cs#7f9c7f3854678b7e3782eff0b8edc881d4b4d8b6cbeb7942822dea08a4288019"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/OBSERVE_CHEF",
@@ -15437,7 +15453,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/FieldOfManSizedHoles.cs#2f6fcabc64b998eb55c266f1fd2907659d071e419fa41b131ab16d0a4106c5f1"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/ENTER_YOUR_HOLE",
@@ -15463,7 +15479,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/GraveOfTheForgotten.cs#d33803392dbe3cb11ee5154bd847a694228f90ab78253ba4e7ce5f83c39ef957"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/ACCEPT",
@@ -15491,7 +15507,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/HungryForMushrooms.cs#2d2d2d521b75a254729bbc78b230a56bd4177feafcdadb60d9e821c33f49fdbc"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/BIG_MUSHROOM",
@@ -15518,7 +15534,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/InfestedAutomaton.cs#4ad1a8b6be3f4fd38bf39c03a53e03a6d102fa7ace82684eb751a3da7767a62f"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/STUDY",
@@ -15544,7 +15560,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/JungleMazeAdventure.cs#a56722a6f47b1c57cbfe81e340c686e504272fd8546fbd5659fe5a0ac857d1b3"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/JOIN_FORCES",
@@ -15570,7 +15586,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/LostWisp.cs#a6779ac7cf9cbd79cbe348b74d6c5a944f828acaa7c44ccd7a116dcd426c2f5c"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/CLAIM",
@@ -15596,7 +15612,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/LuminousChoir.cs#cb5a64762a1206ca73f28130c0f9e71ef0bce6c1dbe6dd878a6f08305d6c52de"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/OFFER_TRIBUTE",
@@ -15624,7 +15640,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/MorphicGrove.cs#1a1f37cdab4f130ca7556226417414612fa6e547d95f653341a5d8b8cb8553a4"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/GROUP",
@@ -15650,7 +15666,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Neow.cs#91792868cca097093258c6306b784e54509e292147cfa2275c8ba161fdd7a303"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "relic/ARCANE_SCROLL",
@@ -15691,11 +15707,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.nonupeipe"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Nonupeipe.cs#beaf1b558150881c7072e07b7481d1671b52489d79a4eccb2f409c5c3b9c8d0f"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -15712,7 +15730,7 @@
         ],
         "missing_variants": [],
         "native_id": "NONUPEIPE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15805,7 +15823,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/PunchOff.cs#2599f3342e85dbc82a7fefb8fbfccab7b998f2b8842385862bb3009bced32ae3"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/I_CAN_TAKE_THEM",
@@ -15863,7 +15881,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Reflections.cs#728bfd3c6044fc0a04411285a5e811e6b518d981e21257941b44f872f87e066e"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/SHATTER",
@@ -15938,7 +15956,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/RoundTeaParty.cs#863bcb03830443c7c2e4ed256c2287c962146f486a32346665092baa5b09d012"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/ENJOY_TEA",
@@ -15967,7 +15985,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SapphireSeed.cs#34c6008129d3c88be4253cf2e901bed0ab8e89c4dd8eb1978ffb8d470d383092"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/EAT",
@@ -16068,7 +16086,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SpiralingWhirlpool.cs#61b5a6b6e49499ea69bc5c404ee71477ca62aead047ff721723e79c822ceb2a2"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/DRINK",
@@ -16094,7 +16112,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SpiritGrafter.cs#3be1eb82235e62924fb5437399610e2d73e5550da31d3c373627cf9ff5e05098"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/LET_IT_IN",
@@ -16149,7 +16167,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SunkenStatue.cs#5c60d58620b3ab002ab676c72c30b621ff4281d1d2f6e49e4cdc98d484781053"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/DIVE_INTO_WATER",
@@ -16175,7 +16193,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SunkenTreasury.cs#aff29a71527bf8fe8b091ee99b9365b30a55a2e1bd6bf7ea8036e8c7d8598ab0"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/FIRST_CHEST",
@@ -16227,7 +16245,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TabletOfTruth.cs#75b20df028a330c6e52116565777ea4107c182e8e6a6651fa8380e448224c67d"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/DECIPHER_1",
@@ -16389,7 +16407,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TheLanternKey.cs#40fe0fcbfbf2f30267ddcf065c524452baa1079df4eb515908625a61ba911cac"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/KEEP_THE_KEY",
@@ -16465,7 +16483,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TinkerTime.cs#cac562ffd790a2eec13be854b4646d242dea639b212788bce977a517e9a87723"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/CHOOSE_CARD_TYPE",
@@ -16502,7 +16520,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TrashHeap.cs#b77aee03653e6c21fe74f7760eea3d211a1f426155ba32c5f29ecdfe1f1062d7"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/DIVE_IN",
@@ -16528,7 +16546,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Trial.cs#ca4a1dcf6495ff8e8222b59748dc7425ff01cc0ab217104552d05a94a68acf7f"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/ACCEPT",
@@ -16570,7 +16588,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/UnrestSite.cs#0caacca3924788462f3c4406a05fa3dedde94638531027df72126815efb3a672"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/KILL",
@@ -16589,11 +16607,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.vakuu"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Vakuu.cs#f889c0428921f664bc52c119574ef8978a910f85a5cfffac70f71e1fc690a84b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "events",
         "missing_branches": [
@@ -16610,7 +16630,7 @@
         ],
         "missing_variants": [],
         "native_id": "VAKUU",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16623,7 +16643,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WarHistorianRepy.cs#407e38a628ad60779054bf55c71fcb8cc7f2b93d6a3d942493e4db341eb0a737"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/UNLOCK_CAGE",
@@ -16651,7 +16671,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WaterloggedScriptorium.cs#2bdc5b5c44cfbfc45b575af00cc91495d3098d8fbfe1dcdc835286931f394aaf"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/BLOODY_INK",
@@ -16720,7 +16740,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Wellspring.cs#64627bd5c9bf2a842e21ba09f31fdd2d7f1e6fa38dbf6bebf5237e2b3ede8a18"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/BATHE",
@@ -16746,7 +16766,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WhisperingHollow.cs#79115b848e083bb9ebb4f7198177b6e89f7d06377e852ee08e35f80776cc160d"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/GOLD",
@@ -16772,7 +16792,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WoodCarvings.cs#d20954b51973fbe71cea76b6175bc5f52e224cf3d44bb4206cf3c4e5e64f0ea3"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/BIRD",
@@ -16803,7 +16823,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ZenWeaver.cs#7cf5ba4e7c71eb4ba0537312fc1dc1339ce9f98f2633a2d1fff53269ff4181b3"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "initial/ARACHNID_ACUPUNCTURE",
@@ -24788,17 +24808,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.beautiful_bracelet"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BeautifulBracelet.cs#5de3205cc373ee93763d5f136d07ae1268e7120f0776eac0c05edc4542045b9d"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BEAUTIFUL_BRACELET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24936,33 +24958,37 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.blessed_antler"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BlessedAntler.cs#a1510a9be4bb28f9d34cce3977fcea155ee6a09be7b5e5d1dc68f2a7cf6ceb59"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BLESSED_ANTLER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.blood_soaked_rose"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BloodSoakedRose.cs#6738e21d8bab474b0e1755711d4d2d0df06aaecac02564260c3093d6da4d0bed"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BLOOD_SOAKED_ROSE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -25132,17 +25158,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.brilliant_scarf"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BrilliantScarf.cs#7256a929a0dff043f6d1a106df17917a47f6759b35c1b412476574d1e304ee04"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BRILLIANT_SCARF",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -25368,17 +25396,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.choices_paradox"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ChoicesParadox.cs#77f50ace7c6343b92ede9d2dc37af01ca35301d3eab1cae4f9294ca4bacf023b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CHOICES_PARADOX",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -25552,17 +25582,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.delicate_frond"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DelicateFrond.cs#df8797785c515b3392392623a941ecc2cf1e223a4759cc4b870ba96db1da58e5"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DELICATE_FROND",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -25618,17 +25650,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.distinguished_cape"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DistinguishedCape.cs#0513ba2907671770a7eb6405752535e651db6300a1a426a5fabb914a0c223b00"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DISTINGUISHED_CAPE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26060,17 +26094,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.fiddle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Fiddle.cs#6c2062234d4433cd088e7dd1b268b0f42c25bbd54190aa0a3e23940708787f96"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FIDDLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26182,17 +26218,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.fur_coat"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FurCoat.cs#bd00005bae367e1ba29b51239aaba8fc17cdde27ac1f66eb47e931a76ebee1f9"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FUR_COAT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26298,17 +26336,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.glitter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Glitter.cs#e2394bb75b61ac2ab906a4031f28e3127ecea186d6c932847c4de6b5c5001acb"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "GLITTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26606,17 +26646,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.jeweled_mask"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/JeweledMask.cs#4b972dc83eec39ec1fb7a7e1091a1c3f0f36c1bd4f981939a15bf5aa50e8c789"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "JEWELED_MASK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26934,17 +26976,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.lords_parasol"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/LordsParasol.cs#962f2adac8d5f509a702683965bc79d3b98eda4ca1d4522c5c9c41ae43db17b5"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "LORDS_PARASOL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -27280,17 +27324,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.music_box"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MusicBox.cs#8ffc2ec937b016f65d79cbfb6d1eb81126bee25a15ed1153a026e431e7db9044"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MUSIC_BOX",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -28120,17 +28166,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.preserved_fog"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PreservedFog.cs#78b7ba31a3122554398d3c6b8c8584edd6a7847cb8eafb3755876e21d595ab85"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PRESERVED_FOG",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -28592,17 +28640,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.sere_talon"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/SereTalon.cs#26d2b7ceddd5b245661dd01b118a14a09d66110072ceaa00c5cc7dd22691093b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SERE_TALON",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29512,17 +29562,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.whispering_earring"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/WhisperingEarring.cs#4d4a67823048a590d8d7984dd328fe44973da1c945277e262c6d722acc564bba"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "WHISPERING_EARRING",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29827,7 +29879,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 195,
+        "implemented": 202,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,
@@ -29878,7 +29930,7 @@
         "eligible": 66,
         "excluded": 0,
         "implemented": 0,
-        "integrated": 0,
+        "integrated": 40,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

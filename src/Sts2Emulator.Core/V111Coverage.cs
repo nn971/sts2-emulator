@@ -151,6 +151,13 @@ public static class V111Coverage
                 integration = "integrated";
             }
         }
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && engineIds.Length > 0)
+        {
+            implementation = "partial";
+            if (engineIds.Any(IsIntegratedEvent))
+                integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";
@@ -173,6 +180,26 @@ public static class V111Coverage
                 && key == last + Normalize(item.Pool ?? "");
         }
         return key == last || key == Normalize(name);
+    }
+
+    private static bool IsIntegratedEvent(string eventId)
+    {
+        if (eventId == PrototypeNativeOvergrowthEvents.NeowEventId)
+            return true;
+        if (PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(eventId))
+            return true;
+        if (PrototypeNativeUnderdocksEvents.IsSupported(eventId))
+            return true;
+        if (ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 2)
+            || ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 3))
+            return true;
+        if (eventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+            return true;
+
+        // Ancient models execute through named opening fixtures, but are not
+        // integrated into normal run assignment until every Ancient pool can
+        // resolve all its visible branches.
+        return false;
     }
 
     private static string Normalize(string value) =>
