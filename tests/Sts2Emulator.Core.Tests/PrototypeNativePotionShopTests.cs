@@ -105,9 +105,13 @@ public sealed class PrototypeNativePotionShopTests
     [Fact]
     public void EverySupportedShopPotionHasExactlyOneNativeRarity()
     {
-        Assert.Equal(37, PrototypeContent.PotionPool.Length);
+        Assert.Equal(36, PrototypeContent.PotionPool.Length);
         Assert.Contains("proto.potion.cunning", PrototypeContent.PotionPool);
         Assert.DoesNotContain("proto.potion.blood", PrototypeContent.PotionPool);
+        Assert.DoesNotContain(
+            "proto.potion.explosive", PrototypeContent.PotionPool);
+        Assert.False(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.explosive", out _));
         Assert.True(PrototypeNativePotionShop.TryGetRarity(
             "proto.potion.cunning", out var cunningRarity));
         Assert.Equal(PrototypeNativePotionRarity.Uncommon, cunningRarity);

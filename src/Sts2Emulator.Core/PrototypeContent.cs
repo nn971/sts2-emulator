@@ -7202,12 +7202,13 @@ public static class PrototypeContent
         };
 
     // This is the restricted Silent ordinary pool: Blood Potion belongs to
-    // Ironclad and is not generated in a Silent run. The full shared potion
-    // catalogue is still incomplete; unsupported source potions stay out.
+    // Ironclad and the legacy Explosive Potion is absent from the pinned
+    // Silent/shared pool. Unsupported source potions stay out.
     public static string[] PotionPool { get; } = Potions.Keys
         .Where(id => id != "proto.native.neow.ambergris"
             && id != "proto.native.underdocks.glowwater_potion"
-            && id != "proto.potion.blood")
+            && id != "proto.potion.blood"
+            && id != "proto.potion.explosive")
         .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [

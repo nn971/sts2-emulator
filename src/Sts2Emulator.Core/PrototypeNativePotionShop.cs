@@ -24,7 +24,6 @@ public static class PrototypeNativePotionShop
             ["proto.potion.swift"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.weak"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.dexterity"] = PrototypeNativePotionRarity.Common,
-            ["proto.potion.explosive"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.energy"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.strength"] = PrototypeNativePotionRarity.Common,
             ["proto.potion.flex"] = PrototypeNativePotionRarity.Common,

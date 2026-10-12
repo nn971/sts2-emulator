@@ -59,10 +59,10 @@ Alchemical Coffer also has a partial acquisition hook: it adds four potion slots
 and generates four distinct potions into those slots, while preserving existing
 inventory and honoring Sozu. The supported Silent pool includes Cunning
 Potion, Fysh Oil, Potion of Binding, Ship in a Bottle, Droplet of Precognition
-and Explosive Ampoule, and excludes Ironclad-only Blood Potion;
-11 source-pool entries remain unimplemented. The full source potion pool,
-native replacement continuation,
-and native RNG parity remain open. Prismatic Gem now implements
+and Explosive Ampoule, and excludes Ironclad-only Blood Potion and the
+off-pool legacy Explosive Potion; 12 source-pool entries remain unimplemented.
+The full source potion pool, native replacement continuation and native RNG
+parity remain open. Prismatic Gem now implements
 its persistent +1 energy component, but its foreign card-pool effect is still
 missing; Sea Glass remains unimplemented. See [the Orobas
 dependency ledger](reference-builds/v0.111.0-hive-orobas-ancient.md).
