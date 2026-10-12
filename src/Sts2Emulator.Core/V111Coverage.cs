@@ -217,6 +217,16 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SAPPHIRE_SEED" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.sapphire_seed",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "UNREST_SITE" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.unrest_site",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "DENSE_VEGETATION" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeDenseVegetation.EventId,
                 StringComparer.Ordinal))

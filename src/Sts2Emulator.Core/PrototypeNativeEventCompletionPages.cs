@@ -14,6 +14,8 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.event.wellspring"
             or "proto.native.event.whispering_hollow"
             or "proto.native.event.luminous_choir"
+            or "proto.native.event.sapphire_seed"
+            or "proto.native.event.unrest_site"
             or PrototypeNativeDenseVegetation.EventId
             or "proto.native.underdocks.waterlogged_scriptorium"
             or PrototypeNativeUnderdocksTrashHeap.EventId
@@ -66,6 +68,10 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "gold" or "hug"
         || eventId == "proto.native.event.luminous_choir"
             && choiceId is "reach" or "tribute"
+        || eventId == "proto.native.event.sapphire_seed"
+            && choiceId is "eat" or "plant"
+        || eventId == "proto.native.event.unrest_site"
+            && choiceId is "rest" or "kill"
         || eventId == PrototypeNativeDenseVegetation.EventId
             && choiceId is "trudge"
         || eventId == "proto.native.underdocks.waterlogged_scriptorium"

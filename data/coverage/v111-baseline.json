@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "7abcdd83a2194b020c5d9e3c52e894b0496d47e64bcb353b5fb3031e2273e3be",
+  "inventory_file_sha256": "4bc66ec0582247e6f4f3ed348980913c8aa330f943f771efa3df5d299fa6dc85",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "a02b6fa29a1c91a337b8ce02ad4fe8d99c32c5806acd458f78bf8768c536b8c2",
+    "inventory_hash": "d236037ebef533f95ca527cdad2c9224f8420f760b811939570af366527f46c5",
     "items": [
       {
         "catalogued": true,
@@ -15768,18 +15768,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SapphireSeed.cs#34c6008129d3c88be4253cf2e901bed0ab8e89c4dd8eb1978ffb8d470d383092"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/EAT",
-          "initial/PLANT",
-          "page/EAT",
-          "page/INITIAL",
-          "page/INITIAL/EAT",
-          "page/INITIAL/PLANT",
-          "page/PLANT"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "SAPPHIRE_SEED",
         "registered": true,
@@ -16302,18 +16294,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/UnrestSite.cs#0caacca3924788462f3c4406a05fa3dedde94638531027df72126815efb3a672"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/KILL",
-          "initial/REST",
-          "page/INITIAL",
-          "page/INITIAL/KILL",
-          "page/INITIAL/REST",
-          "page/KILL",
-          "page/REST"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "UNREST_SITE",
         "registered": true,
@@ -29627,7 +29611,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 15,
+        "implemented": 17,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,
