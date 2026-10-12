@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 from native_expectation_fixture import extract
+from native_observed_delta import observed_delta
 from native_trace_audit import audit
 from native_parity import load_trace, transition_data
 
@@ -66,7 +67,8 @@ def summarize_trace(path: Path) -> tuple[dict, list[tuple[int, dict]]]:
     result["fixtures"] = [
         {"decision_id": d, "card_family": fixture["card_family"],
          "status": fixture["status"], "emulator_parity": fixture["emulator_parity"],
-         "ready_for_emulator_step": fixture["ready_for_emulator_step"]}
+         "ready_for_emulator_step": fixture["ready_for_emulator_step"],
+         "observed_delta": observed_delta(fixture)}
         for d, fixture in candidates
     ]
     return result, candidates
