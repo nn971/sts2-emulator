@@ -91,6 +91,46 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task NativeChoiceResumeKeepsTheSameActionIdentity()
+    {
+        object action = new();
+        var entries = await Record(recorder =>
+        {
+            recorder.Start(action, "PlayCardAction", State(3));
+            recorder.ChoicePause(action, State(2));
+            // Native BeforeActionExecuted fires again on this same object.
+            recorder.Start(action, "PlayCardAction", State(2));
+            recorder.Complete(action, State(2));
+            recorder.HistoryReset(12, 0);
+            recorder.Finish("Combat ended", State(2));
+        });
+        Assert.Single(entries, x => x.GetProperty("type").GetString() == "action_started");
+        Assert.Single(entries, x => x.GetProperty("type").GetString() == "action_resumed");
+        Assert.DoesNotContain(entries, x => x.GetProperty("type").GetString() == "anomaly");
+        var resumed = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "action_resumed");
+        Assert.Equal(1, resumed.GetProperty("action_id").GetInt64());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task DuplicateBeforeWithoutChoiceStillFailsClosed()
+    {
+        object action = new();
+        var entries = await Record(recorder =>
+        {
+            recorder.Start(action, "PlayCardAction", State(3));
+            recorder.Start(action, "PlayCardAction", State(3));
+            recorder.Complete(action, State(2));
+            recorder.Finish("Combat ended", State(2));
+        });
+        Assert.Single(entries, x => x.GetProperty("type").GetString() == "anomaly");
+        Assert.Equal("INCOMPLETE_CAPTURE", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task TerminalWithUnfinishedActionIsExplicitlyIncomplete()
     {
         var entries = await Record(recorder =>
