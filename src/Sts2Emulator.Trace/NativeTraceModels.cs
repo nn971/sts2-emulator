@@ -15,7 +15,8 @@ public sealed record CaptureCoverage(
     string[] UnsupportedMechanics,
     string RngStatus,
     string[] VerifiedEvents,
-    string[]? RequiredPreconditions = null);
+    string[]? RequiredPreconditions = null,
+    bool LegalActionsComplete = false);
 
 public sealed record NativeTraceHeader(
     string Type, string TraceSchema, string GameBuild, string BridgeVersion,

@@ -16,7 +16,7 @@ def sample():
     coverage = {"verified_fields": ["$.player.hp", "$.combat.energy"],
                 "missing_fields": ["$.combat.draw_pile"],
                 "unsupported_mechanics": [], "verified_events": ["damage"],
-                "rng_status": "RNG_UNAUDITED",
+                "rng_status": "RNG_UNAUDITED", "legal_actions_complete": True,
                 "required_preconditions": ["$.player.hp", "$.combat.energy"]}
     def decision(n, hp):
         return {"type": "decision", "decision_id": n, "phase": "Combat",
@@ -83,6 +83,16 @@ class NativeParityContractTests(unittest.TestCase):
         reference[4]["chance_unaligned_at"] = "shuffle_1"
         candidate[4]["chance_unaligned_at"] = "shuffle_1"
         self.assertEqual("CHANCE_UNALIGNED", compare(reference, candidate, decision_limit=1)["status"])
+
+    def test_unverified_legal_menu_cannot_pass(self):
+        candidate = sample()
+        candidate[1]["coverage"]["legal_actions_complete"] = False
+        self.assertEqual("UNSUPPORTED", compare(sample(), candidate, decision_limit=1)["status"])
+
+    def test_declared_unsupported_mechanic_cannot_pass(self):
+        candidate = sample()
+        candidate[1]["coverage"]["unsupported_mechanics"] = ["nested_card_selection"]
+        self.assertEqual("UNSUPPORTED", compare(sample(), candidate, decision_limit=1)["status"])
 
     def test_unaudited_preconditions_cannot_match(self):
         candidate = sample()

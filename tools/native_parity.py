@@ -201,6 +201,12 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
         if not fields:
             return report("UNSUPPORTED", "No shared verified semantic fields",
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)
+        if acov.get("unsupported_mechanics") or bcov.get("unsupported_mechanics"):
+            return report("UNSUPPORTED", "Unimplemented mechanics in comparison scope",
+                          decision_id=decision_id, coverage=manifest, native_prefix=prefix)
+        if acov.get("legal_actions_complete") is not True or bcov.get("legal_actions_complete") is not True:
+            return report("UNSUPPORTED", "Exhaustive legal-action enumeration is unaudited",
+                          decision_id=decision_id, coverage=manifest, native_prefix=prefix)
         left_required = set(acov.get("required_preconditions") or [])
         right_required = set(bcov.get("required_preconditions") or [])
         manifest["required_preconditions"] = sorted(left_required | right_required)
@@ -245,6 +251,9 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)
         if not a["action"].get("accepted") or not b["action"].get("accepted"):
             return report("INVALID_SETUP", "Action was rejected",
+                          decision_id=decision_id, coverage=manifest, native_prefix=prefix)
+        if json.dumps(a["action"].get("action"), sort_keys=True, separators=(",", ":")) not in action_keys(ad["legal_actions"]):
+            return report("INVALID_SETUP", "Selected action absent from audited legal-action menu",
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)
         diff = first_diff(a["action"].get("action"), b["action"].get("action"), "$.action")
         if diff:

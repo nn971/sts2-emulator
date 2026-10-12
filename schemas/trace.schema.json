@@ -397,6 +397,9 @@
             "type": "string"
           },
           "uniqueItems": true
+        },
+        "legal_actions_complete": {
+          "type": "boolean"
         }
       },
       "additionalProperties": true
