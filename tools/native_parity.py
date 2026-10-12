@@ -22,6 +22,88 @@ PATH_PART = re.compile(r"\.([A-Za-z_][A-Za-z_0-9]*)|\[(\d+)\]")
 COMPARE_EVENT_FIELDS = ("kind", "actor_id", "target_id", "payload")
 
 
+def validate_lifecycle(records: list[dict[str, Any]]) -> str | None:
+    """Fail closed on truncated or out-of-order 0.2 decision lifecycles.
+
+    This rejects a terminal marker appended after an unfinished decision, which
+    a last-line-only check would otherwise mistake for a complete recording.
+    """
+    if not records or records[0].get("type") != "header":
+        return "Header must be the first record"
+    if records[0].get("trace_schema") != "0.2":
+        return None  # Legacy 0.1 is handled by its separate trace contract.
+    open_id: int | None = None
+    last_id = 0
+    action_seen = False
+    last_transition: dict[str, Any] | None = None
+    expected_event_seq = 1
+    event_seq_at_boundary = 0
+    for index, record in enumerate(records[1:], 1):
+        kind = record.get("type")
+        if kind == "decision":
+            if open_id is not None:
+                return f"Unfinished decision {open_id} before next boundary"
+            decision_id = record.get("decision_id")
+            if type(decision_id) is not int or decision_id != last_id + 1:
+                return f"Non-consecutive decision ID at record {index}"
+            if last_transition is not None:
+                if last_transition.get("after_hash") != record.get("state_hash"):
+                    return "Transition hash disagrees with the next recorded decision"
+            last_id = decision_id
+            open_id = decision_id
+            action_seen = False
+            last_transition = None
+            event_seq_at_boundary = expected_event_seq - 1
+            if record.get("event_seq") != event_seq_at_boundary:
+                return "Decision cursor disagrees with latest ordered event"
+        elif kind in ("action", "event", "transition"):
+            if open_id is None or record.get("decision_id") != open_id:
+                return f"Orphan or late {kind} at record {index}"
+            if kind == "action":
+                if action_seen:
+                    return f"Duplicate action for decision {open_id}"
+                action_seen = True
+            elif kind == "event":
+                if type(record.get("event_seq")) is not int or record["event_seq"] != expected_event_seq:
+                    return "Missing, duplicated or nonmonotone event_seq"
+                expected_event_seq += 1
+            else:
+                if not action_seen:
+                    return f"Transition for decision {open_id} has no selected action"
+                if record.get("status") != "COMPLETE":
+                    return f"Unfinished transition for decision {open_id}"
+                if record.get("first_event_seq") != event_seq_at_boundary + 1:
+                    return "Transition first_event_seq does not match boundary cursor"
+                if record.get("last_event_seq") != expected_event_seq - 1:
+                    return "Transition last_event_seq does not match recorded events"
+                current_boundary = next(
+                    (r for r in records[:index] if r.get("type") == "decision"
+                     and r.get("decision_id") == open_id), None)
+                if current_boundary is None or record.get("before_hash") != current_boundary.get("state_hash"):
+                    return "Transition before_hash does not match decision state"
+                if not isinstance(record.get("after_hash"), str) or not record["after_hash"]:
+                    return "Transition missing post-state hash"
+                last_transition = record
+                open_id = None
+        elif kind == "terminal":
+            if open_id is not None:
+                return f"Terminal recorded while decision {open_id} is unresolved"
+            if index != len(records) - 1:
+                return "Records follow terminal"
+            if last_transition is not None and record.get("state") is not None:
+                # Last terminal may supply a canonical post-state snapshot. Its
+                # transition hash must be the hash recorded on that terminal.
+                # A separate byte-level hash audit is performed once the native
+                # canonical JSON codec is imported into this tool.
+                if not isinstance(record["state"], dict):
+                    return "Terminal state is not a canonical JSON object"
+        else:
+            return f"Unknown native trace record type {kind!r} at record {index}"
+    if records[-1].get("type") != "terminal":
+        return "Missing terminal record"
+    return None
+
+
 def load_trace(path: Path) -> tuple[list[dict[str, Any]], str | None]:
     records: list[dict[str, Any]] = []
     try:
@@ -55,6 +137,9 @@ def load_trace(path: Path) -> tuple[list[dict[str, Any]], str | None]:
             previous = seq
     if path.with_suffix(path.suffix + ".incomplete").exists():
         return records, "Writer reported incomplete data"
+    structural_error = validate_lifecycle(records)
+    if structural_error:
+        return records, structural_error
     if records[-1].get("status") == "INCOMPLETE_CAPTURE":
         return records, "Native trace reports an incomplete capture"
     if any(r.get("type") == "transition" and
