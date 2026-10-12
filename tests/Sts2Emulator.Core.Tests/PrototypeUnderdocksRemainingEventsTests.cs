@@ -475,6 +475,10 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         var before = CanonicalJson.Sha256(state);
         Assert.Contains("sword", ChoiceIds(engine, state));
         var chosen = Choose(engine, state, "sword");
+        Assert.Equal(RunPhase.Event, chosen.Phase);
+        Assert.Equal(1, chosen.World!.Event!.NativePageIndex);
+        chosen = engine.Step(chosen,
+            GameAction.Empty("continue_event")).State;
         Assert.Equal(RunPhase.MapChoice, chosen.Phase);
         var swords = chosen.Player.Relics
             .Where(relic => relic.RelicId == swordId).ToArray();

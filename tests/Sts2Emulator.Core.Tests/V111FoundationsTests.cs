@@ -85,6 +85,10 @@ public sealed class V111FoundationsTests
             && item.Integration == "integrated"
             && item.MissingBranches.Length == 0);
         Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "SUNKEN_STATUE"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
             && item.NativeId == "REFLECTIONS"
             && item.Integration == "integrated");
         Assert.Contains(report.Items, item => item.Kind == "events"

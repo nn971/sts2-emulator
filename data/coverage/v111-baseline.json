@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "3310b581f74ff2c2cc5e3296ac0aff9b731eede3e1dfbd1451e4d18cde4e0c12",
+  "inventory_file_sha256": "920d9756558a14b9271198e998161e5a449ef5247aa71788d2997d3eeb4ff54f",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "71c7d87c75763d028e993da95c1178ad7533cf50b61266a4c172f412b35781ad",
+    "inventory_hash": "c4451fe537631b33093f7c99067ea12f76ca83dea5ef41a474b26d6ce32fe666",
     "items": [
       {
         "catalogued": true,
@@ -16114,15 +16114,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/DIVE_INTO_WATER",
-          "initial/GRAB_SWORD",
-          "page/DIVE_INTO_WATER",
-          "page/GRAB_SWORD",
-          "page/INITIAL",
-          "page/INITIAL/DIVE_INTO_WATER",
-          "page/INITIAL/GRAB_SWORD"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "SUNKEN_STATUE",
         "registered": true,

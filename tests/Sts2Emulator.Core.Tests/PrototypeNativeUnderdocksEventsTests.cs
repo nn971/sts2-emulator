@@ -179,16 +179,24 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             var rolled = state.World.Event.NativeEventGold;
             Assert.InRange(rolled, 101, 121);
             var sword = Select(engine, state, "sword");
+            Assert.Equal(RunPhase.Event, sword.Phase);
+            Assert.Equal(1, sword.World!.Event!.NativePageIndex);
             Assert.Equal(original.Hp, sword.Player.Hp);
             Assert.Equal(original.Gold, sword.Player.Gold);
             Assert.Contains(sword.Player.Relics, relic =>
                 relic.RelicId == "proto.native.event.sword_of_stone");
+            sword = Continue(engine, sword);
+            Assert.Equal(RunPhase.MapChoice, sword.Phase);
 
             var dive = Select(engine, state, "dive");
+            Assert.Equal(RunPhase.Event, dive.Phase);
+            Assert.Equal(1, dive.World!.Event!.NativePageIndex);
             Assert.Equal(original.Gold + rolled, dive.Player.Gold);
             Assert.Equal(original.Hp - 7, dive.Player.Hp);
             Assert.DoesNotContain(dive.Player.Relics, relic =>
                 relic.RelicId == "proto.native.event.sword_of_stone");
+            dive = Continue(engine, dive);
+            Assert.Equal(RunPhase.MapChoice, dive.Phase);
             Assert.Equal(CanonicalJson.Sha256(state),
                 CanonicalJson.Sha256(state.Fork()));
             return;
