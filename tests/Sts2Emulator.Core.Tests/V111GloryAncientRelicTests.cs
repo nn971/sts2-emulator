@@ -53,6 +53,45 @@ public sealed class V111GloryAncientRelicTests
             PrototypeContent.Relic(NativeGloryAncientsV111.SignetRingId).Name);
     }
 
+    [Fact]
+    public void LoomingFruitAdds31CurrentAndMaximumHpWhenAcquired()
+    {
+        var initial = PrototypeNativeUnderdocksRunFactory.Create(
+            "glory-looming-fruit-acquisition");
+        var state = initial with
+        {
+            Phase = RunPhase.Reward,
+            Player = initial.Player with
+            {
+                Hp = 40,
+                MaxHp = 60
+            },
+            World = initial.World! with
+            {
+                Floor = 1,
+                Map = new MapState([]),
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = null,
+                Shop = null,
+                Event = null,
+                Reward = new RewardState("Combat", [], null,
+                    NativeGloryAncientsV111.LoomingFruitId,
+                    CardResolved: true, PotionResolved: true,
+                    RelicResolved: false, EndsAct: false)
+            }
+        };
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(state).Single(item =>
+            item.Kind == "take_reward_relic");
+
+        var acquired = engine.Step(state, action).State;
+
+        Assert.Equal(71, acquired.Player.Hp);
+        Assert.Equal(91, acquired.Player.MaxHp);
+        Assert.Contains(acquired.Player.Relics, relic =>
+            relic.RelicId == NativeGloryAncientsV111.LoomingFruitId);
+    }
+
     private static RelicInstance Relic(string id) =>
         new(id, PrototypeJson.EmptyObject());
 }

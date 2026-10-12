@@ -79,10 +79,11 @@ mappings remain open.
 Glory Ancient source offers and their current gates are tracked in the
 [Glory Ancient ledger](reference-builds/v0.111.0-glory-ancients.md). Signet
 Ring is registered as an Ancient relic and grants 888 gold through the shared
-newly-acquired-relic trigger; duplicate-instance and registration tests pass.
-This is a dependency slice only: Nonupeipe, Tanx and Vakuu remain unavailable
-until their full offer pools, relic effects, Ancient assignment and branch
-continuations are implemented.
+newly-acquired-relic trigger. Looming Fruit adds 31 current and maximum HP
+through the shared acquisition path. Both effects are covered through reward
+resolution. This is a dependency slice only: Nonupeipe, Tanx and Vakuu remain
+unavailable until their full offer pools, relic effects, Ancient assignment
+and branch continuations are implemented.
 
 ## Delivered
 
