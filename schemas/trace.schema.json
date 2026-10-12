@@ -390,6 +390,13 @@
             "ALIGNED",
             "CHANCE_UNALIGNED"
           ]
+        },
+        "required_preconditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
         }
       },
       "additionalProperties": true
