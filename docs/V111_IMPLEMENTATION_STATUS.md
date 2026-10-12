@@ -32,6 +32,9 @@ Endless Conveyor retains its Observe Chef/Leave results. The coverage report
 records 50 integrated event paths, twenty-one complete event implementations,
 and 33 events with complete branch inventories. Sapphire Seed and Unrest Site
 now retain their choice-specific result pages after their effects resolve.
+Jungle Maze Adventure now retains its Solo or Join result page after the
+persisted gold and damage effects resolve; its source branch inventory still
+needs a complete audit.
 Tablet of Truth now retains its Smash, Give Up, or fifth-Decipher result page;
 Byrdonis Nest and Wood Carvings now retain their choice-specific result pages.
 Punch Off retains its Nab result page after the relic reward resolves. Native
