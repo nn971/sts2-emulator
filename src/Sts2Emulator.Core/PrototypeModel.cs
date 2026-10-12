@@ -968,7 +968,8 @@ public sealed record PrototypePowerDefinition(
     bool DecrementAfterHandDraw = false,
     int EnemyHpLossAtSideTurnEndPerStack = 0,
     bool PreventsNextHpLoss = false,
-    bool GeneratedCharacterCardsFreeThisTurn = false);
+    bool GeneratedCharacterCardsFreeThisTurn = false,
+    int EnemyStacksDecayOnUnblockedDamage = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

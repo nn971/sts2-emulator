@@ -431,12 +431,14 @@ effects, Ancient assignment and branch continuations are implemented.
   (Protruding Spikes → Spike Explosion → Tongue Lash, including
   native Thorns damage retaliation and removal) and Slumbering
   Beetle (Rock/Silk/Beetle formation, three-turn Slumber countdown,
-  Plating, unblocked-damage early wake and Roll Out Strength growth).
+  Plating, three unblocked-damage callbacks to wake and Roll Out
+  Strength growth). Slumber now decrements from unblocked damage
+  callbacks regardless of attack source; raw HP loss such as poison does
+  not advance it. Tests cover blocked hits, all three counters and poison.
   Added source-backed enemy power presence/absence AI branches so
   sleep and wake actions are committed before observations and
   persist through forks. Native Hive normal encounters now have
   six guarded entries; native Act 2 map and selection remain disabled.
-  Exotic nonattack Slumber wake triggers require later source audit.
 - Implemented **two further gated Hive normal encounters**:
   Hunter Killer with its source-weighted/nonrepeating Bite/Puncture branch
   and Tender's reversible card-completion Strength/Dexterity penalties;

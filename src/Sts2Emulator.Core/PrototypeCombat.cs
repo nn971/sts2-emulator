@@ -11963,11 +11963,47 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        // Some buffs (e.g. native Asleep) react only to unblocked
-        // attack HP damage, not to blocked attacks or poison HP loss.
-        // Stun the pending enemy action and explicitly select its
-        // waking AI state, without making the rule monster-ID-specific.
-        var wake = hpDamage.HpLoss > 0 && nextHp > 0
+        // SlumberPower.AfterDamageReceived removes one stack for each
+        // damage callback with unblocked damage. It is distinct from raw
+        // HP loss (poison, LoseHp, costs) and from the Underdocks Asleep
+        // power, which wakes on the first qualifying attack hit.
+        PrototypePowerDefinition? wake = null;
+        if (unblocked > 0 && nextHp > 0)
+        {
+            foreach (var powerState in enemy.PowerStates)
+            {
+                var definition = PrototypeContent.Power(
+                    powerState.PowerId);
+                if (definition.EnemyStacksDecayOnUnblockedDamage <= 0
+                    || powerState.Stacks <= 0)
+                {
+                    continue;
+                }
+
+                var remaining = powerState.Stacks
+                    - definition.EnemyStacksDecayOnUnblockedDamage;
+                enemy = enemy with
+                {
+                    Powers = enemy.PowerStates
+                        .Where(power => power.ApplicationOrder
+                            != powerState.ApplicationOrder)
+                        .Concat(remaining > 0
+                            ? [powerState with { Stacks = remaining }]
+                            : Array.Empty<PrototypePowerInstanceState>())
+                        .OrderBy(power => power.ApplicationOrder)
+                        .ToArray()
+                };
+                if (remaining <= 0)
+                {
+                    wake ??= definition;
+                }
+            }
+        }
+
+        // Some buffs (e.g. native Asleep) wake on unblocked attack HP
+        // damage, not on blocked attacks or poison HP loss. Stun the
+        // pending enemy action and select its waking AI state.
+        wake ??= hpDamage.HpLoss > 0 && nextHp > 0
             ? enemy.PowerStates
                 .Select(power => PrototypeContent.Power(power.PowerId))
                 .FirstOrDefault(power =>
