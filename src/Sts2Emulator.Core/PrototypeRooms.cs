@@ -1435,7 +1435,7 @@ public sealed partial class PrototypeGameEngine
                     deferredReward = CreateDeferredEventReward(
                         state,
                         effect.Kind,
-                        player,
+                        ref player,
                         eventState.EventId, ref world);
                     break;
 
@@ -1592,7 +1592,8 @@ public sealed partial class PrototypeGameEngine
                         if (deferredReward is not null)
                             throw new InvalidOperationException("Toy Box acquisition already has a custom reward.");
                         deferredReward = CreateDeferredEventReward(state,
-                            PrototypeRunEffectKind.OfferWaxRelics, player, eventState.EventId, ref world);
+                            PrototypeRunEffectKind.OfferWaxRelics, ref player,
+                            eventState.EventId, ref world);
                     }
                     if (relicId == NativeDarvEventV111.CallingBellId)
                     {

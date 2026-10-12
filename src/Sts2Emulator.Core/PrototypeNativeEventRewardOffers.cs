@@ -13,10 +13,52 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         if (kind == PrototypeRunEffectKind.OfferWaxRelics)
             throw new InvalidOperationException("Wax reward construction requires retained bag updates.");
-        return CreateDeferredEventReward(state, kind, player, eventId, ref world);
+        return CreateDeferredEventRewardCore(
+            state, kind, player, eventId, ref world);
     }
 
     private static RewardState CreateDeferredEventReward(
+        RunState state,
+        PrototypeRunEffectKind kind,
+        ref PlayerState player,
+        string eventId,
+        ref RunWorldState world)
+    {
+        var reward = CreateDeferredEventRewardCore(
+            state, kind, player, eventId, ref world);
+        if (kind is not (PrototypeRunEffectKind.OfferThreeRareCards
+            or PrototypeRunEffectKind.OfferThreeCardsAndPotion
+            or PrototypeRunEffectKind.OfferFiveClassCards
+            or PrototypeRunEffectKind.OfferThreeColorlessCards))
+        {
+            return reward;
+        }
+
+        var primaryGroupCount = reward.CardOptions.Length > 0 ? 1 : 0;
+        var extraGroupCount = reward.ExtraCardOptions?.Length ?? 0;
+        var groupCount = primaryGroupCount + extraGroupCount;
+        if (groupCount == 0)
+        {
+            return reward;
+        }
+
+        var upgraded = ApplySilverCrucibleToCardRewardGeneration(
+            player, groupCount);
+        player = upgraded.Player;
+        var groupIndex = 0;
+        var primaryUpgraded = primaryGroupCount > 0
+            && upgraded.UpgradeGroups[groupIndex++];
+        var extraUpgrades = extraGroupCount > 0
+            ? upgraded.UpgradeGroups.Skip(groupIndex).ToArray()
+            : reward.ExtraCardOptionsUpgraded;
+        return reward with
+        {
+            CardOptionsUpgraded = primaryUpgraded,
+            ExtraCardOptionsUpgraded = extraUpgrades
+        };
+    }
+
+    private static RewardState CreateDeferredEventRewardCore(
         RunState state,
         PrototypeRunEffectKind kind,
         PlayerState player,
