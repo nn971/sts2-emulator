@@ -17,6 +17,7 @@ using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Capture;
 using Sts2ReferenceMod.Trace;
+using Sts2ReferenceMod.Ui;
 using NativeGameAction = MegaCrit.Sts2.Core.GameActions.GameAction;
 using CanonicalAction = Sts2Emulator.Core.GameAction;
 
@@ -32,6 +33,8 @@ internal static class NativeV111PassiveBridge
 {
     private static readonly string BuildId = NativeBuildId();
     private static SceneTree? _tree;
+    private static FidelityInspectorPanel? _panel;
+    private static bool _f8WasDown;
     private static ActionExecutor? _executor;
     private static CombatState? _combat;
     private static NativeRecordingSession? _recording;
@@ -72,6 +75,16 @@ internal static class NativeV111PassiveBridge
         _handlingFrame = true;
         try
         {
+            if (_panel is null && _tree?.Root is not null)
+            {
+                _panel = new FidelityInspectorPanel();
+                _tree.Root.AddChild(_panel);
+            }
+            bool f8Down = Godot.Input.IsKeyPressed(Godot.Key.F8);
+            if (f8Down && !_f8WasDown) _panel?.Toggle();
+            _f8WasDown = f8Down;
+            _panel?.Tick();
+
             var manager = CombatManager.Instance;
             if (!manager.IsInProgress)
             {
@@ -140,6 +153,7 @@ internal static class NativeV111PassiveBridge
             DateTimeOffset.UtcNow, "passive", "v111_source_audited_local_validation_pending;"
                 + "emulator_commit=UNVERIFIED;static_data=UNVERIFIED;single_player_combat");
         _recording = new NativeRecordingSession(_currentFile, header);
+        _panel?.UseSession(_recording, _currentFile);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
         Godot.GD.Print("[Sts2ReferenceMod] Recording (passive): " + _currentFile);
