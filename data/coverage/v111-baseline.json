@@ -12867,17 +12867,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.encounter.dense_vegetation_event"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/DenseVegetationEventEncounter.cs#2ed50e8b623dc07bb034f30237c70ad7f2f31931e2d71831cb1a4fe2fb183320"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DENSE_VEGETATION_EVENT_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29546,8 +29548,8 @@
         "catalogued": 90,
         "eligible": 90,
         "excluded": 0,
-        "implemented": 81,
-        "integrated": 81,
+        "implemented": 82,
+        "integrated": 82,
         "kind": "encounters",
         "scope_review_required": 0,
         "validated": 0

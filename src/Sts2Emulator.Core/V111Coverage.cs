@@ -102,7 +102,10 @@ public static class V111Coverage
                     Normalize(encounter.Id.Split('.').Last()) == normalized
                     || (item.Id == "PUNCH_OFF_EVENT_ENCOUNTER"
                         && encounter.Id
-                            == PrototypeNativePunchOff.EncounterId))
+                            == PrototypeNativePunchOff.EncounterId)
+                    || (item.Id == "DENSE_VEGETATION_EVENT_ENCOUNTER"
+                        && encounter.Id
+                            == PrototypeNativeDenseVegetation.EncounterId))
                 .Select(encounter => encounter.Id).ToArray(),
             "events" => PrototypeContent.Events.Values
                 .Where(evt => Matches(item, evt.Id, evt.Name)).Select(evt => evt.Id).ToArray(),
@@ -177,6 +180,24 @@ public static class V111Coverage
                     ["proto.enemy.punch_construct",
                      "proto.enemy.punch_construct"],
                     StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "DENSE_VEGETATION_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativeDenseVegetation.EncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(
+                    PrototypeNativeDenseVegetation.EventId)
+                && PrototypeContent.Encounter(
+                    PrototypeNativeDenseVegetation.EncounterId).Weight == 0
+                && PrototypeContent.Encounter(
+                    PrototypeNativeDenseVegetation.EncounterId).EnemyIds
+                    .SequenceEqual(
+                        ["proto.enemy.wriggler", "proto.enemy.wriggler",
+                         "proto.enemy.wriggler", "proto.enemy.wriggler"],
+                        StringComparer.Ordinal))
             {
                 implementation = "implemented";
                 integration = "integrated";
