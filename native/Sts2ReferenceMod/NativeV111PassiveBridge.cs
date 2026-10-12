@@ -40,6 +40,9 @@ internal static class NativeV111PassiveBridge
     private static ActionExecutor? _executor;
     private static CombatState? _combat;
     private static NativeRecordingSession? _recording;
+    // Independent action observer: remains active after the strict decision
+    // trace reaches an unsupported nested choice or an unstable input boundary.
+    private static NativeActionEnvelopeRecorder? _actionEnvelopes;
     private static NativeCombatAdapter? _adapter;
     private static int _decisionGeneration;
     private static int _lastCapturedGeneration = -1;
@@ -110,7 +113,7 @@ internal static class NativeV111PassiveBridge
             if (!manager.IsInProgress)
             {
                 _failedCombat = null;
-                if (_recording is not null) EndCombat("Combat ended");
+                if (_combat is not null) EndCombat("Combat ended");
                 ReportGate("WAITING_FOR_COMBAT");
                 return;
             }
@@ -131,12 +134,14 @@ internal static class NativeV111PassiveBridge
             if (ReferenceEquals(_failedCombat, combat)) return;
             if (!ReferenceEquals(_combat, combat))
             {
-                if (_recording is not null) EndCombat("Combat replaced without terminal checkpoint");
+                if (_combat is not null) EndCombat("Combat replaced without terminal checkpoint");
                 OpenCombat(combat);
             }
 
-            if (_recording is null || _adapter is null || _choiceInterrupted) return;
+            // Executor callbacks must stay attached even when the stricter
+            // decision trace has stopped due to an unsupported player prompt.
             AttachActionExecutor();
+            if (_recording is null || _adapter is null || _choiceInterrupted) return;
             string? blocker = StableDecisionBlocker(combat);
             if (blocker is not null)
             {
@@ -154,6 +159,8 @@ internal static class NativeV111PassiveBridge
             if (recorded is not null)
             {
                 _lastCapturedGeneration = _decisionGeneration;
+                _actionEnvelopes?.StableBoundary(
+                    recorded.DecisionId, recorded.State);
                 ReportGate("DECISION_CAPTURED:" + recorded.DecisionId);
             }
             else ReportGate("DECISION_NOT_RECORDED");
@@ -225,6 +232,11 @@ internal static class NativeV111PassiveBridge
             DateTimeOffset.UtcNow, "passive", "v111_source_audited_local_validation_pending;"
                 + "emulator_commit=UNVERIFIED;static_data=UNVERIFIED;single_player_combat");
         _recording = new NativeRecordingSession(_currentFile, header);
+        // A separate append-only action timeline survives unsupported player
+        // input semantics, and retains automatic actions before the first hand.
+        _actionEnvelopes = new NativeActionEnvelopeRecorder(
+            _currentFile[..^".jsonl".Length] + ".actions.jsonl",
+            BuildId, runId);
         _panel?.UseSession(_recording, _currentFile);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
@@ -249,11 +261,22 @@ internal static class NativeV111PassiveBridge
         }
     }
 
+    private static JsonElement? TryActionSnapshot(string stage)
+    {
+        try { return _adapter?.CaptureCanonicalState().Clone(); }
+        catch (Exception error)
+        {
+            _actionEnvelopes?.ObservationFailure(stage, error.GetType().Name);
+            return null;
+        }
+    }
+
     private static void BeforeAction(NativeGameAction action)
     {
-        if (_recording is null || _choiceInterrupted) return;
-        // The async card execution may request an additional player choice. We
-        // must report that unsupported boundary rather than merge two decisions.
+        // This callback runs for every executor action, including monster and
+        // automatic actions which have no matching human legal-menu item.
+        // A distinct timeline protects their evidence from strict-trace gaps.
+        var snapshot = TryActionSnapshot("before_action");
         action.BeforePausedForPlayerChoice -= OnNestedChoice;
         action.BeforePausedForPlayerChoice += OnNestedChoice;
         CanonicalAction? chosen = action switch
@@ -267,7 +290,11 @@ internal static class NativeV111PassiveBridge
             EndPlayerTurnAction => CanonicalAction.Empty("end_turn"),
             _ => null
         };
-        if (chosen is null) return;
+        _actionEnvelopes?.Start(
+            action, action.GetType().FullName ?? action.GetType().Name,
+            snapshot, chosen);
+
+        if (_recording is null || _choiceInterrupted || chosen is null) return;
         try
         {
             _recording.OnHumanAction(chosen);
@@ -277,46 +304,55 @@ internal static class NativeV111PassiveBridge
         catch (InvalidOperationException)
         {
             _choiceInterrupted = true;
-            EndCombat("INCOMPLETE_CAPTURE: action started without a stable boundary");
+            StopStrictCapture("INCOMPLETE_CAPTURE: action started without a stable boundary");
         }
     }
 
     private static void AfterAction(NativeGameAction action)
     {
+        _actionEnvelopes?.Complete(action, TryActionSnapshot("after_action"));
         action.BeforePausedForPlayerChoice -= OnNestedChoice;
-        // A semantic boundary is detected by the next readiness check,
-        // after the native action queue and automatic effects are complete.
+        // AfterAction is an executor callback, not necessarily a settled
+        // semantic input boundary. The sidecar records it as such.
     }
 
     private static void OnNestedChoice(NativeGameAction action)
     {
+        _actionEnvelopes?.ChoicePause(
+            action, TryActionSnapshot("nested_choice_pause"));
         _choiceInterrupted = true;
-        EndCombat("UNSUPPORTED: nested native player choice within " + action.GetType().Name);
+        StopStrictCapture("UNSUPPORTED: nested native player choice within " + action.GetType().Name);
+        // Keep executor and history subscriptions active for the sidecar.
+    }
+
+    private static void StopStrictCapture(string reason)
+    {
+        var recording = _recording;
+        if (recording is null) return;
+        _recording = null;
+        JsonElement? state = TryActionSnapshot("strict_trace_terminal");
+        recording.OnTerminal("INCOMPLETE_CAPTURE", reason, state);
+        _ = FinishAsync(recording);
+        ReportGate("STRICT_TRACE_STOPPED_ACTION_SIDECAR_CONTINUES");
     }
 
     private static void OnHistoryChanged()
     {
-        if (_recording is null || _combat is null) return;
+        if (_combat is null || (_recording is null && _actionEnvelopes is null)) return;
         try
         {
             // Entries is IEnumerable<CombatHistoryEntry>, not IReadOnlyList.
             // Take a stable ordered snapshot for this Changed callback rather
             // than indexing the enumerable or enumerating it repeatedly.
             var history = CombatManager.Instance.History.Entries.ToArray();
-            if (_recording.RecordedDecisions.Count == 0)
-            {
-                // The audited trace starts at the first stable player choice.
-                // Setup effects before that point are represented in the
-                // snapshot, but their history order is outside trace coverage.
-                _historyIndex = history.Length;
-                return;
-            }
             if (history.Length < _historyIndex)
             {
-                // Clear() also raises Changed. A shrinking history mid-capture
-                // breaks this ordinal cursor; never silently skip future entries.
-                EndCombat("INCOMPLETE_CAPTURE: native CombatHistory was reset during recording");
-                return;
+                // Capture the reset in the sidecar, and continue with a new
+                // history epoch. The strict decision trace stops fail-closed.
+                _actionEnvelopes?.HistoryReset(_historyIndex, history.Length);
+                _historyIndex = 0;
+                StopStrictCapture(
+                    "INCOMPLETE_CAPTURE: native CombatHistory reset during recording");
             }
             while (_historyIndex < history.Length)
             {
@@ -325,31 +361,36 @@ internal static class NativeV111PassiveBridge
                     creature => creature is Creature c
                         ? "creature:" + (c.CombatId?.ToString() ?? "UNASSIGNED")
                         : null);
-                // Unexpected history shapes are captured as diagnostics. Until
-                // required payload fields have been audited, event coverage
-                // remains empty and parity does not assert semantic event order.
-                _recording.OnSemanticEffect(effect.Kind, effect.Payload,
-                    "CombatHistory.Changed", effect.ActorId, effect.TargetId,
-                    visibility: "diagnostic");
+                // Preserve all entries in the independent action timeline,
+                // including automatic actions and history after a nested choice.
+                _actionEnvelopes?.HistoryEntry(_historyIndex - 1,
+                    effect.Kind, effect.Payload, effect.ActorId, effect.TargetId,
+                    effect.MissingFields);
+                // Strict decision events begin only after its first semantic
+                // boundary; earlier history remains sidecar-only.
+                if (_recording?.RecordedDecisions.Count > 0)
+                    _recording.OnSemanticEffect(effect.Kind, effect.Payload,
+                        "CombatHistory.Changed", effect.ActorId, effect.TargetId,
+                        visibility: "diagnostic");
             }
         }
         catch (Exception error)
         {
-            EndCombat("INCOMPLETE_CAPTURE: history collection error: " + error.Message);
+            _actionEnvelopes?.ObservationFailure(
+                "history_collection", error.GetType().Name);
+            StopStrictCapture(
+                "INCOMPLETE_CAPTURE: history collection error: " + error.GetType().Name);
         }
     }
 
     private static void EndCombat(string reason)
     {
-        if (reason.StartsWith("INCOMPLETE_CAPTURE", StringComparison.Ordinal) ||
-            reason.StartsWith("UNSUPPORTED:", StringComparison.Ordinal))
-        {
-            _failedCombat = _combat;
-            ReportGate("CAPTURE_ABORTED_FOR_COMBAT");
-        }
         var recording = _recording;
-        if (recording is null) return;
+        var actionEnvelopes = _actionEnvelopes;
+        if (recording is null && actionEnvelopes is null && _combat is null)
+            return;
         _recording = null;
+        _actionEnvelopes = null;
         JsonElement? terminal = null;
         try
         {
@@ -359,9 +400,17 @@ internal static class NativeV111PassiveBridge
         {
             reason += "; terminal state unavailable: " + error.GetType().Name;
         }
-        recording.OnTerminal(terminal is null ? "INCOMPLETE_CAPTURE" : "TERMINAL",
-            reason, terminal);
-        _ = FinishAsync(recording);
+        if (recording is not null)
+        {
+            recording.OnTerminal(terminal is null ? "INCOMPLETE_CAPTURE" : "TERMINAL",
+                reason, terminal);
+            _ = FinishAsync(recording);
+        }
+        if (actionEnvelopes is not null)
+        {
+            actionEnvelopes.Finish(reason, terminal);
+            _ = FinishActionEnvelopesAsync(actionEnvelopes);
+        }
         if (_executor is not null)
         {
             _executor.BeforeActionExecuted -= BeforeAction;
@@ -371,7 +420,17 @@ internal static class NativeV111PassiveBridge
         CombatManager.Instance.History.Changed -= OnHistoryChanged;
         _combat = null;
         _adapter = null;
-        Godot.GD.Print("[Sts2ReferenceMod] Passive combat trace completed: " + _currentFile);
+        Godot.GD.Print("[Sts2ReferenceMod] Passive combat capture completed: " + _currentFile);
+    }
+
+    private static async Task FinishActionEnvelopesAsync(
+        NativeActionEnvelopeRecorder observer)
+    {
+        try { await observer.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception error)
+        {
+            Godot.GD.PushError("[Sts2ReferenceMod] Action sidecar writer failed: " + error);
+        }
     }
 
     private static async Task FinishAsync(NativeRecordingSession session)
