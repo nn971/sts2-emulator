@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "f3d84b27f9cdfc3058ea5d327c99ee95862e2e50b846cc4796cea486de7c8850",
+  "inventory_file_sha256": "ced0206d9a0dc204dda215ddb7653f6aa876322565ff8060f6095680736e7da7",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "6b6b05e9eec0411242ed3ece26645461fcc8c79e8c02db2d073b5c8c531334cc",
+    "inventory_hash": "cb743ba27c40836397c2f0dacf3c2da3d7bf73744744148ee4add8f2b5dd9a0d",
     "items": [
       {
         "catalogued": true,
@@ -15994,31 +15994,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.tea_master"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TeaMaster.cs#3412bef87b4d4201286392ebe9029e7cb4b55cfad00920644f3622e052ef45d3"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/BONE_TEA",
-          "initial/BONE_TEA_LOCKED",
-          "initial/EMBER_TEA",
-          "initial/EMBER_TEA_LOCKED",
-          "initial/TEA_OF_DISCOURTESY",
-          "page/DONE",
-          "page/INITIAL",
-          "page/INITIAL/BONE_TEA",
-          "page/INITIAL/BONE_TEA_LOCKED",
-          "page/INITIAL/EMBER_TEA",
-          "page/INITIAL/EMBER_TEA_LOCKED",
-          "page/INITIAL/TEA_OF_DISCOURTESY",
-          "page/TEA_OF_DISCOURTESY"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "TEA_MASTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24639,17 +24627,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.bone_tea"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BoneTea.cs#e7aa581caffc77b37ad2a6f0a98c2785c6c811cb5efd977282aa511ce3df8c5a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BONE_TEA",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -25453,17 +25443,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.ember_tea"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/EmberTea.cs#ec5fbc0128989b8b0128321f957efb40b161e2873bfbc060ace38e7a4625d52f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "EMBER_TEA",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -28701,17 +28693,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.tea_of_discourtesy"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/TeaOfDiscourtesy.cs#92715bb91a8888fb73935de43ce91631dfb10dd9d7100a4d366f1a68e0414e8a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TEA_OF_DISCOURTESY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29580,8 +29574,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 39,
-        "integrated": 53,
+        "implemented": 40,
+        "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
@@ -29630,8 +29624,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 24,
-        "integrated": 24,
+        "implemented": 27,
+        "integrated": 27,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

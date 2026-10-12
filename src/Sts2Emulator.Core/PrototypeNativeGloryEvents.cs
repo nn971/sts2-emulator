@@ -4,7 +4,8 @@ namespace Sts2Emulator.Core;
 /// v0.111.0 Glory event content for the experimental regional route.
 /// Default runs remain gated until native later-act policy and RNG parity
 /// are complete.
-/// Source: HungryForMushrooms, BigMushroom, FragrantMushroom.
+/// Sources: HungryForMushrooms, BigMushroom, FragrantMushroom,
+/// TeaMaster, BoneTea, EmberTea and TeaOfDiscourtesy.
 /// </summary>
 public static class PrototypeNativeGloryEvents
 {
@@ -20,6 +21,12 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.bad_luck";
     public const string RoundTeaPartyId =
         "proto.native.glory.round_tea_party";
+    public const string TeaMasterId =
+        "proto.native.glory.tea_master";
+    public const string BoneTeaId = "proto.relic.bone_tea";
+    public const string EmberTeaId = "proto.relic.ember_tea";
+    public const string TeaOfDiscourtesyId =
+        "proto.relic.tea_of_discourtesy";
     public const string RoyalPoisonId =
         "proto.native.glory.royal_poison";
     public const string GraveOfTheForgottenId =
@@ -67,6 +74,7 @@ public static class PrototypeNativeGloryEvents
     public static bool IsEligible(PrototypeEventDefinition evt,
         PlayerState player) =>
         (evt.Id != RoundTeaPartyId || player.Hp >= 12)
+        && (evt.Id != TeaMasterId || player.Gold >= 150)
         && (evt.Id != GraveOfTheForgottenId
             || player.Deck.Any(card =>
                 PrototypeGameEngine.CanSelectEventDeckCard(card,
@@ -119,7 +127,10 @@ public static class PrototypeNativeGloryEvents
         // RoundTeaParty.EnjoyTea grants this relic and heals to full.
         // RoyalPoison.AfterPlayerTurnStart deals 4 unblockable HP
         // damage to its owner on turn one of every combat.
-        new(RoyalPoisonId, "Royal Poison")
+        new(RoyalPoisonId, "Royal Poison"),
+        new(BoneTeaId, "Bone Tea"),
+        new(EmberTeaId, "Ember Tea"),
+        new(TeaOfDiscourtesyId, "Tea of Discourtesy")
     ];
 
     public static PrototypeEventDefinition[] Events { get; } =
@@ -141,6 +152,12 @@ public static class PrototypeNativeGloryEvents
         [
             new("enjoy_tea", "Enjoy tea and take Royal Poison", []),
             new("pick_fight", "Pick a fight", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
+        new(TeaMasterId, "Tea Master",
+        [
+            new("bone_tea", "Buy Bone Tea for 50 gold", []),
+            new("ember_tea", "Buy Ember Tea for 150 gold", []),
+            new("tea_of_discourtesy", "Take Tea of Discourtesy", [])
         ], MinAct: 3, MaxAct: 3, Weight: 0),
         // Native IsAllowed requires at least one exhaust-keyword
         // local deck card. Confront grants Decay before selecting one

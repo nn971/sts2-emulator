@@ -20,6 +20,7 @@ BRANCH_COMPLETE_EVENTS = {
     "FIELD_OF_MAN_SIZED_HOLES", "GRAVE_OF_THE_FORGOTTEN",
     "HUNGRY_FOR_MUSHROOMS", "LOST_WISP", "REFLECTIONS",
     "ROUND_TEA_PARTY", "SPIRIT_GRAFTER", "SUNKEN_STATUE",
+    "TEA_MASTER",
     "SUNKEN_TREASURY", "SELF_HELP_BOOK", "TINKER_TIME",
     "POTION_COURIER", "MORPHIC_GROVE", "WELLSPRING",
     "LUMINOUS_CHOIR", "SAPPHIRE_SEED", "UNREST_SITE",
@@ -27,6 +28,11 @@ BRANCH_COMPLETE_EVENTS = {
     "WHISPERING_HOLLOW", "DENSE_VEGETATION", "TABLET_OF_TRUTH",
     "WATERLOGGED_SCRIPTORIUM", "TRASH_HEAP", "ABYSSAL_BATHS",
     "ENDLESS_CONVEYOR", "PUNCH_OFF",
+}
+EVENT_ACT_OVERRIDES = {
+    # TeaMaster.cs uses native CurrentActIndex checks instead of the corpus
+    # table's act annotation. The pinned source permits it only in Glory.
+    "TEA_MASTER": "Act 3 - Glory",
 }
 KINDS = {
     "acts": "Acts", "afflictions": "Afflictions", "ascensions": None,
@@ -103,10 +109,11 @@ def compile_inventory(corpus, source):
         if path is None and entity.get("name"):
             path = source_files.get(kind, {}).get(normalize(entity["name"]))
         excluded = path in exclusions
+        act = entity.get("act") or EVENT_ACT_OVERRIDES.get(entity["id"])
         item = {"kind": kind, "id": key, "parent": parent,
                 "scope": "multiplayer-only" if excluded else "single-player",
                 "pool": entity.get("color", entity.get("pool")),
-                "act": entity.get("act"),
+                "act": act,
                 "source": str(path.relative_to(source)) if path else None,
                 "source_sha256": hashlib.sha256(path.read_bytes()).hexdigest() if path else None}
         if kind not in ["ascensions", "epochs"] and path is None:

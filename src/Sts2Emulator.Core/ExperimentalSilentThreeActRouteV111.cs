@@ -113,6 +113,7 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeGloryEvents.HungryForMushroomsId,
         PrototypeNativeGloryEvents.ReflectionsId,
         PrototypeNativeGloryEvents.RoundTeaPartyId,
+        PrototypeNativeGloryEvents.TeaMasterId,
         PrototypeNativeGloryEvents.GraveOfTheForgottenId,
         PrototypeNativeGloryEvents.TrialId,
         PrototypeNativeGloryEvents.TinkerTimeId,

@@ -115,6 +115,21 @@ public sealed partial class PrototypeGameEngine
         }
 
         state = ApplyBeforeCombatStartRelics(state);
+        state = state with
+        {
+            Player = RemoveExpiredTeaRelics(state.Player)
+        };
+        var emberTeaIndex = FindChargedTeaRelic(
+            state.Player, PrototypeNativeGloryEvents.EmberTeaId);
+        var emberTeaActive = emberTeaIndex >= 0;
+        if (emberTeaActive)
+        {
+            state = state with
+            {
+                Player = ConsumeTeaCharge(
+                    state.Player, emberTeaIndex)
+            };
+        }
 
         var teaSet = PrototypeNativeFakeMerchant.ConsumeTeaSetCharges(
             state.Player);
@@ -337,6 +352,16 @@ public sealed partial class PrototypeGameEngine
             .Select(card => card.InstanceId)
             .ToArray();
         PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
+        var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
+            state.Player,
+            combatCards,
+            drawPile,
+            nextCombatCardId,
+            state.Rng);
+        state = state with { Player = teaOfDiscourtesy.Player };
+        combatCards = teaOfDiscourtesy.Cards;
+        drawPile = teaOfDiscourtesy.DrawPile;
+        nextCombatCardId = teaOfDiscourtesy.NextCardInstanceId;
 
         var boomingConchAtElite = roomType == PrototypeRoomType.Elite
             && state.Player.ActiveRelics.Any(relic =>
@@ -364,6 +389,12 @@ public sealed partial class PrototypeGameEngine
             Ascension: state.Ascension,
             Pets: NativePaelRewardsV111.CreateCombatPets(state.Player),
             CurrentMapNodeId: world.Map.CurrentNodeId);
+
+        if (emberTeaActive)
+        {
+            combat = ApplyPlayerPower(
+                combat, "proto.power.strength", 2);
+        }
 
         // Bind the native owner before combat entry hooks and the first
         // intent commitment. HP and all initial enemy maxima now use

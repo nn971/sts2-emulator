@@ -34,6 +34,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeStoneOfAllTime.EventId
             or PrototypeNativeGloryEvents.ReflectionsId
             or PrototypeNativeGloryEvents.RoundTeaPartyId
+            or PrototypeNativeGloryEvents.TeaMasterId
             or PrototypeNativeGloryEvents.HungryForMushroomsId
             or PrototypeNativeGloryEvents.GraveOfTheForgottenId
             or PrototypeNativeSharedEvents.ThisOrThatId
@@ -117,6 +118,9 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "touch_mirror" or "shatter"
         || eventId == PrototypeNativeGloryEvents.RoundTeaPartyId
             && choiceId is "enjoy_tea" or "continue_fight"
+        || eventId == PrototypeNativeGloryEvents.TeaMasterId
+            && choiceId is "bone_tea" or "ember_tea"
+                or "tea_of_discourtesy"
         || eventId == PrototypeNativeGloryEvents.HungryForMushroomsId
             && choiceId is "big_mushroom" or "fragrant_mushroom"
         || eventId == PrototypeNativeGloryEvents.GraveOfTheForgottenId

@@ -373,7 +373,8 @@ public enum PrototypeOpeningCombatStage
     AutoPrePlay,
     ImbuedAutoPlay,
     LateRelicAutoPlay,
-    Complete
+    Complete,
+    BoneTeaAfterTurnStart
 }
 
 public sealed record PrototypeAutomaticPipelineContinuationState(

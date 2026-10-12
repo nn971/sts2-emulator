@@ -39,6 +39,12 @@ Stone of All Time is integrated in Hive. Lift discards the potion chosen on
 event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one
 eligible Attack for Vigorous 8. Vigorous adds its amount to powered Attack
 damage and disables itself after the card's first completed play.
+Tea Master is integrated in Glory for runs with at least 150 gold. Bone Tea
+upgrades eligible cards in the opening hand of the next combat, Ember Tea
+grants 2 Strength on each of the next five combat room entries, and Tea of
+Discourtesy inserts two Dazed cards into the next combat's draw pile. The tea
+charge counters persist across combats; event and combat RNG parity remain
+open.
 Silver Crucible now consumes its first three group charges on supported custom
 event card rewards as well as combat rewards.
 Silken Tress now persists its one-shot Glam enchantment through the first

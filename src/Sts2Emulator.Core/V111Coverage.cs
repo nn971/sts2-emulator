@@ -465,6 +465,17 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TEA_MASTER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.TeaMasterId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeGloryEvents.TeaMasterId, 3)
+            && PrototypeNativeGloryEvents.IsEligible(
+                PrototypeContent.Event(
+                    PrototypeNativeGloryEvents.TeaMasterId),
+                new PlayerState(1, 1, 150, [], [], [])))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "TINKER_TIME" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeGloryEvents.TinkerTimeId,
                 StringComparer.Ordinal))
@@ -736,6 +747,29 @@ public static class V111Coverage
         {
             implementation = "implemented";
             integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id is ("BONE_TEA" or "EMBER_TEA"
+                or "TEA_OF_DISCOURTESY")
+            && engineIds.Length == 1
+            && PrototypeNativeGloryEvents.Events.Any(evt =>
+                evt.Id == PrototypeNativeGloryEvents.TeaMasterId)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeGloryEvents.TeaMasterId, 3))
+        {
+            var choiceId = item.Id switch
+            {
+                "BONE_TEA" => "bone_tea",
+                "EMBER_TEA" => "ember_tea",
+                _ => "tea_of_discourtesy"
+            };
+            if (PrototypeContent.Event(
+                    PrototypeNativeGloryEvents.TeaMasterId).Choices.Any(
+                    choice => choice.Id == choiceId))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
         }
         if (item.Scope == "multiplayer-only")
         {

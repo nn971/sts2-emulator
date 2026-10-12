@@ -2,6 +2,21 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
+    private static readonly PrototypeOpeningCombatStage[] OpeningCombatStages =
+    [
+        PrototypeOpeningCombatStage.PlayerSideStart,
+        PrototypeOpeningCombatStage.BeforeHandDraw,
+        PrototypeOpeningCombatStage.DrawHand,
+        PrototypeOpeningCombatStage.AfterHandDraw,
+        PrototypeOpeningCombatStage.CombatStarted,
+        PrototypeOpeningCombatStage.PlayerTurnStarted,
+        PrototypeOpeningCombatStage.BoneTeaAfterTurnStart,
+        PrototypeOpeningCombatStage.AutoPrePlay,
+        PrototypeOpeningCombatStage.ImbuedAutoPlay,
+        PrototypeOpeningCombatStage.LateRelicAutoPlay,
+        PrototypeOpeningCombatStage.Complete
+    ];
+
     /// <summary>
     /// Opening side/draw/player-start stages reuse the ordinary dispatch and
     /// choice kernel. Their saved cursor does not change end-turn indices.
@@ -9,8 +24,15 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     private static RunState ResumeOpeningCombat(RunState state, PrototypeOpeningCombatStage start)
     {
-        for (var stage = start; stage < PrototypeOpeningCombatStage.Complete; stage++)
+        var startIndex = Array.IndexOf(OpeningCombatStages, start);
+        if (startIndex < 0)
+            throw new InvalidOperationException(
+                $"Unknown opening combat stage '{start}'.");
+        for (var stageIndex = startIndex;
+             stageIndex < OpeningCombatStages.Length - 1;
+             stageIndex++)
         {
+            var stage = OpeningCombatStages[stageIndex];
             var world = RequireWorld(state);
             var combat = world.Combat ?? throw new InvalidOperationException("Opening combat disappeared.");
             if (AllEnemiesDefeated(combat))
@@ -32,6 +54,17 @@ public sealed partial class PrototypeGameEngine
                 if (kind == PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
                     state = ResolveHistoryCourseAutoPlay(state);
             }
+            else if (stage ==
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart)
+            {
+                var tea = ApplyBoneTeaAfterPlayerTurnStart(
+                    state.Player, combat);
+                state = state with
+                {
+                    Player = tea.Player,
+                    World = world with { Combat = tea.Combat }
+                };
+            }
             else if (stage == PrototypeOpeningCombatStage.ImbuedAutoPlay)
                 state = ResolveImbuedAutoPlay(state);
             else if (stage == PrototypeOpeningCombatStage.LateRelicAutoPlay)
@@ -48,7 +81,9 @@ public sealed partial class PrototypeGameEngine
                 return state with { World = world with { Combat = combat with
                 {
                     AutomaticPipelineContinuation = new(
-                        PrototypeContent.Rules.EndTurnPipeline.Length, OpeningStage: stage + 1)
+                        PrototypeContent.Rules.EndTurnPipeline.Length,
+                        OpeningStage:
+                            OpeningCombatStages[stageIndex + 1])
                 } } };
         }
         var finishedWorld = RequireWorld(state);

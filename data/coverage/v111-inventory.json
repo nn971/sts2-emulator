@@ -12171,7 +12171,7 @@
       "parent": null,
       "scope": "single-player",
       "pool": null,
-      "act": null,
+      "act": "Act 3 - Glory",
       "source": "src/Core/Models/Events/TeaMaster.cs",
       "source_sha256": "3412bef87b4d4201286392ebe9029e7cb4b55cfad00920644f3622e052ef45d3",
       "branches": [
@@ -12189,7 +12189,7 @@
         "page/INITIAL/TEA_OF_DISCOURTESY",
         "page/TEA_OF_DISCOURTESY"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
