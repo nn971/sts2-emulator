@@ -28,6 +28,9 @@ public sealed record NativeCombatRngV111(
 public sealed record NativeInitialHpAuditV111(
     CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
 
+public sealed record NativeIntentAuditV111(
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 public static class NativeCombatRngEntryV111
 {
     /// <summary>
@@ -485,6 +488,23 @@ public static class NativeCombatRngEntryV111
                 "Only a native-RNG combat can use this isolated intent API.");
         return PrototypeGameEngine.CommitEnemyIntents(
             combat, RngBundle.Empty);
+    }
+
+    /// <summary>
+    /// Same mechanics and native stream as CommitIntents, but captures the
+    /// actual bounded index draws with per-creature source identity. The
+    /// transcript is observational and separate from exact game state.
+    /// </summary>
+    public static NativeIntentAuditV111 CommitIntentsWithAudit(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (combat.NativeRng is null)
+            throw new InvalidOperationException(
+                "Only native RNG combat can produce a native intent audit.");
+        var audit = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
+            combat, RngBundle.Empty);
+        return new NativeIntentAuditV111(
+            audit.Combat, audit.Choices, "native-v111");
     }
 
     /// <summary>
