@@ -6,7 +6,7 @@
 |---|---|---|
 | P0 | PARTIAL | Pinned binary SHA-256 preflight; game-conditional C# compile, manifest/PCK packaging, and opt-in loader; actual installed-game compile/load test outstanding |
 | P1 | PARTIAL | Combat action/executor and history callbacks, stable readiness check, source-audited snapshot adapter, JSONL 0.2 writer, independent event journal and local trace auditor; nested prompts/map/reward support and no-perturbation run outstanding |
-| P2 | PARTIAL | Strict offline parity checker, partial combat coverage importer, first-difference reporting and synthetic fixtures; true emulator continuation import and real native fixture outstanding |
+| P2 | PARTIAL | Strict offline parity checker, new .NET typed structural combat importer, partial continuation coverage CLI, native Strike/Defend expectation extractor; deterministic emulator stepping and real native fixtures outstanding |
 | P3 | PARTIAL | Read-only F8 Godot timeline and offline HTML viewer; action coordinator and optional loopback protocol; native Step/Resume dispatch still deferred |
 | P4 | NOT STARTED | Broad game phases/acts, native corpus, first real differential regression |
 | P5 | DEFERRED | RNG/Nature and agent playback are independent future milestones |
@@ -43,3 +43,19 @@
    and enable a synchronized comparison display.
 
 See Issue #122 and PR #121 for active tracking.
+
+## Latest P2 progress
+
+- `Sts2Emulator.Core.NativeCombatSnapshotImporter` reconstructs a typed
+  visible-state projection with HP, block, energy, turn, creature identities,
+  powers, and complete visible card zones. Malformed or duplicated instance IDs
+  and missing fields produce `UNSUPPORTED`. It remains `PARTIAL` and
+  `ReadyForDeterministicStep=false` while native continuation is unaudited.
+- `tools/native_expectation_fixture.py` extracts native recorded
+  Strike/Defend pre-state/action/post-state and diagnostic history, labelled
+  `RECORDED_NATIVE_EXPECTATION` and `emulator_parity=NOT_TESTED`.
+- `tools/native_parity.py` rejects unclosed decisions, duplicate actions,
+  orphaned events, and inconsistent event/hash linkage.
+- Archived v0.1xx API references confirm `NPlayerHand` lives in
+  `MegaCrit.Sts2.Core.Nodes.Combat` and combat card identity is resolved via
+  `NetCombatCard`. The user's pinned v0.111 build remains untested.
