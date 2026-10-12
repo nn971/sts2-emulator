@@ -104,16 +104,7 @@ public static class NativeCombatRngEntryV111
                     "Native combat RNG and existing enemy formation disagree.");
             }
             _ = NativeRngV111.ToSnapshot(context.Rng);
-            var range = PrototypeContent.Enemy(enemy.EnemyId)
-                .HpRangeAt(combat.Act, combat.Ascension);
-            var possible = Enumerable.Range(
-                    range.Min, checked(range.Max - range.Min + 1))
-                .Where(hp => !usedHp.Contains(hp))
-                .ToArray();
-            var pool = possible.Length > 0
-                ? possible
-                : Enumerable.Range(
-                    range.Min, checked(range.Max - range.Min + 1)).ToArray();
+            var pool = InitialHpPool(combat, enemy, usedHp);
             // Candidate eligibility and creation order are owned by mechanics.
             // The native provider consumes the same NextInt as before,
             // including a singleton pool. Outcome identity is an INDEX into
@@ -132,6 +123,22 @@ public static class NativeCombatRngEntryV111
         Validate(attached);
         return new NativeInitialHpAuditV111(
             attached, choices.ToArray(), chooser.Mode);
+    }
+
+    /// <summary>
+    /// Shared mechanics-owned eligible HP construction for native and
+    /// externally controlled initial-combat continuation. This is invoked
+    /// at the actual creation-order choice boundary, never post-hoc.
+    /// </summary>
+    internal static int[] InitialHpPool(
+        CombatState combat, EnemyCombatState enemy, HashSet<int> usedHp)
+    {
+        var range = PrototypeContent.Enemy(enemy.EnemyId)
+            .HpRangeAt(combat.Act, combat.Ascension);
+        var all = Enumerable.Range(
+            range.Min, checked(range.Max - range.Min + 1)).ToArray();
+        var available = all.Where(hp => !usedHp.Contains(hp)).ToArray();
+        return available.Length > 0 ? available : all;
     }
 
     /// <summary>
