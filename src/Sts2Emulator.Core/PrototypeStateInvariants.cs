@@ -1329,6 +1329,9 @@ public static class PrototypeStateInvariants
         if (shop.PendingDeckChoice is { } pending)
         {
             if (pending.RemainingSelections <= 0
+                || pending.MinimumSelectionsRemaining < 0
+                || pending.MinimumSelectionsRemaining
+                    > pending.RemainingSelections
                 || pending.CandidateCardInstanceIds.Length
                     < pending.RemainingSelections
                 || pending.CandidateCardInstanceIds.Length
@@ -1381,6 +1384,14 @@ public static class PrototypeStateInvariants
                 {
                     throw new InvalidOperationException(
                         "Shop relic deck choice cannot target Eternal cards.");
+                }
+                if (pending.Kind == PrototypePersistentDeckChoiceKind.Transform
+                    && spec.TransformToCardId is not null
+                    && PrototypeContent.Card(candidate.CardId).Type
+                        == PrototypeCardType.Quest)
+                {
+                    throw new InvalidOperationException(
+                        "Shop relic deck choice cannot target Quest cards.");
                 }
                 if (pending.Kind == PrototypePersistentDeckChoiceKind.Enchant
                     && !PrototypeGameEngine.CanSelectEventDeckCard(candidate, pending.Kind,
@@ -1802,6 +1813,14 @@ public static class PrototypeStateInvariants
             {
                 throw new InvalidOperationException(
                     "Pending relic deck choice has no remaining selections.");
+            }
+
+            if (deckChoice.MinimumSelectionsRemaining < 0
+                || deckChoice.MinimumSelectionsRemaining
+                    > deckChoice.RemainingSelections)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice has invalid minimum selections.");
             }
 
             if (deckChoice.CandidateCardInstanceIds.Length

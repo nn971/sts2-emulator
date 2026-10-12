@@ -13,6 +13,9 @@ public sealed partial class PrototypeGameEngine
         (spec.RequiredCardType is null
             || PrototypeContent.Card(card.CardId).Type
                 == spec.RequiredCardType.Value)
+        && (spec.TransformToCardId is null
+            || PrototypeContent.Card(card.CardId).Type
+                != PrototypeCardType.Quest)
         && CanSelectEventDeckCard(card, spec.Kind, null,
             spec.EnchantmentKind, false);
 
@@ -31,9 +34,10 @@ public sealed partial class PrototypeGameEngine
 
         return kind switch
         {
-            PrototypePersistentDeckChoiceKind.Remove
-                or PrototypePersistentDeckChoiceKind.Transform =>
-                    !PrototypeCardRules.IsEternal(card),
+            PrototypePersistentDeckChoiceKind.Remove =>
+                !PrototypeCardRules.IsEternal(card),
+            PrototypePersistentDeckChoiceKind.Transform =>
+                !PrototypeCardRules.IsEternal(card),
             PrototypePersistentDeckChoiceKind.Upgrade =>
                 card.UpgradeLevel < definition.MaxUpgradeLevel,
             PrototypePersistentDeckChoiceKind.Enchant =>
@@ -47,6 +51,16 @@ public sealed partial class PrototypeGameEngine
                 && (enchantmentKind
                     != PrototypeCardEnchantmentKind.Instinct
                     || definition.Type == PrototypeCardType.Attack)
+                && (enchantmentKind
+                    != PrototypeCardEnchantmentKind.Imbued
+                    || definition.Type == PrototypeCardType.Skill)
+                && (enchantmentKind
+                    != PrototypeCardEnchantmentKind.Nimble
+                    || definition.Effects.Any(effect => effect.Kind is
+                        PrototypeCombatEffectKind.GainPlayerBlock
+                        or PrototypeCombatEffectKind.MultiplyPlayerBlock
+                        or PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain
+                        or PrototypeCombatEffectKind.GainToricToughnessBlock))
                 // Souls Power can only remove a LOCAL Exhaust keyword.
                 // Ordinary ExhaustOnUse is the canonical local keyword
                 // in the typed card registry; upgraded cards that have

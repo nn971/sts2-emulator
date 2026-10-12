@@ -17,6 +17,9 @@ public static class NativeGloryAncientsV111
     public const string SpikedGauntletsId = "proto.native.ancient.spiked_gauntlets";
     public const string SignetRingId = "proto.native.ancient.signet_ring";
     public const string TriBoomerangId = "proto.native.ancient.tri_boomerang";
+    public const string ClawsId = "proto.native.ancient.claws";
+    public const string WarHammerId = "proto.native.ancient.war_hammer";
+    public const string MaulCardId = "proto.native.ancient.maul";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
@@ -46,6 +49,14 @@ public static class NativeGloryAncientsV111
                 PrototypePersistentDeckChoiceKind.Enchant, 3,
                 EnchantmentKind: PrototypeCardEnchantmentKind.Instinct,
                 RequiredCardType: PrototypeCardType.Attack)),
+        new(ClawsId, "Claws",
+            AcquisitionDeckChoice: new(
+                PrototypePersistentDeckChoiceKind.Transform, 6,
+                TransformToCardId: MaulCardId,
+                PreserveUpgradeOnTransformation: true,
+                PreserveEnchantmentOnTransformation: true,
+                MinimumSelections: 0)),
+        new(WarHammerId, "War Hammer"),
         new(DiamondDiademId, "Diamond Diadem", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
@@ -77,6 +88,19 @@ public static class NativeGloryAncientsV111
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        new(MaulCardId, "Maul", new(
+            PrototypeCardCostKind.Fixed, 1),
+            PrototypeCardTarget.Enemy,
+            [
+                new(PrototypeCombatEffectKind.DamageEnemy, 5,
+                    UpgradeDelta: 1, Repetitions: 2),
+                new(PrototypeCombatEffectKind.BuffMaulDamage, 2,
+                    UpgradeDelta: 1)
+            ],
+            Rarity: PrototypeCardRarity.Ancient,
+            RewardEligible: false,
+            Type: PrototypeCardType.Attack,
+            CanBeGeneratedInCombat: false),
         new(WhistleCardId, "Whistle", new(
             PrototypeCardCostKind.Fixed, 2),
             PrototypeCardTarget.Enemy,

@@ -1294,6 +1294,8 @@ public sealed partial class PrototypeGameEngine
                     state.Rng),
                 combat, state.Rng)
         };
+        state = ApplyWarHammerEliteVictory(
+            state, world.ActiveRoom);
         state = NativeAncientRewardsV111.ApplyCombatEnd(state);
 
         if (world.Event is { } battleworn
@@ -5814,6 +5816,18 @@ public sealed partial class PrototypeGameEngine
                     };
                     break;
 
+                case PrototypeCombatEffectKind.BuffMaulDamage:
+                    combat = combat with
+                    {
+                        Counters = combat.CounterState with
+                        {
+                            MaulDamageBonus = checked(
+                                combat.CounterState.MaulDamageBonus
+                                + Math.Max(0, operation.Amount))
+                        }
+                    };
+                    break;
+
                 case PrototypeCombatEffectKind.GainEnergyForGold:
                     if (operation.PlayerGoldCost < 0)
                         throw new InvalidOperationException("Energy purchase requires a nonnegative gold cost.");
@@ -8548,6 +8562,10 @@ public sealed partial class PrototypeGameEngine
 
         var modified =
             damage + additive + firstTaggedPlayBonus;
+        if (sourceCard.CardId == NativeGloryAncientsV111.MaulCardId)
+        {
+            modified += combat.CounterState.MaulDamageBonus;
+        }
         var conditionalBonus = combat.PlayerPowers.Sum(power =>
         {
             var definition = PrototypeContent.Power(power.PowerId);

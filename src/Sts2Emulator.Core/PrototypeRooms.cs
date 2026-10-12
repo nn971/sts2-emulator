@@ -2186,11 +2186,14 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException("Shop phase has no shop state.");
         if (shop.PendingDeckChoice is { } pending)
         {
-            return pending.CandidateCardInstanceIds
+            var pendingActions = pending.CandidateCardInstanceIds
                 .Select(cardInstanceId => GameAction.Create(
                     "choose_shop_relic_deck_card",
                     new ChooseDeckCardPayload(cardInstanceId)))
-                .ToArray();
+                .ToList();
+            if (pending.MinimumSelectionsRemaining == 0)
+                pendingActions.Add(GameAction.Empty("finish_relic_deck_choice"));
+            return pendingActions;
         }
 
         var actions = new List<GameAction>();
@@ -2269,6 +2272,21 @@ public sealed partial class PrototypeGameEngine
 
         if (shop.PendingDeckChoice is { } pending)
         {
+            if (StringComparer.Ordinal.Equals(
+                    action.Kind, "finish_relic_deck_choice"))
+            {
+                if (pending.MinimumSelectionsRemaining != 0)
+                    throw new InvalidOperationException(
+                        "This relic deck choice still requires a selection.");
+                return state with
+                {
+                    World = world with
+                    {
+                        Shop = shop with { PendingDeckChoice = null }
+                    }
+                };
+            }
+
             RequireKind(action, "choose_shop_relic_deck_card");
             var payload = action.ReadPayload<ChooseDeckCardPayload>();
             var resolved = ResolveRelicDeckChoice(
@@ -2993,13 +3011,16 @@ public sealed partial class PrototypeGameEngine
     {
         if (reward.PendingDeckChoice is { } deckChoice)
         {
-            return deckChoice.CandidateCardInstanceIds
+            var actions = deckChoice.CandidateCardInstanceIds
                 .Select(cardInstanceId =>
                     GameAction.Create(
                         "choose_relic_deck_card",
                         new ChooseDeckCardPayload(
                             cardInstanceId)))
-                .ToArray();
+                .ToList();
+            if (deckChoice.MinimumSelectionsRemaining == 0)
+                actions.Add(GameAction.Empty("finish_relic_deck_choice"));
+            return actions;
         }
 
         if (!reward.CardResolved && reward.CardBundles is { } bundles)
@@ -3226,18 +3247,29 @@ public sealed partial class PrototypeGameEngine
         }
         else if (reward.PendingDeckChoice is { } deckChoice)
         {
-            RequireKind(action, "choose_relic_deck_card");
-            var payload = action.ReadPayload<ChooseDeckCardPayload>();
-            var resolved = ResolveRelicDeckChoice(
-                player,
-                deckChoice,
-                payload.CardInstanceId,
-                state.Rng);
-            player = resolved.Player;
-            reward = reward with
+            if (StringComparer.Ordinal.Equals(
+                    action.Kind, "finish_relic_deck_choice"))
             {
-                PendingDeckChoice = resolved.Remaining
-            };
+                if (deckChoice.MinimumSelectionsRemaining != 0)
+                    throw new InvalidOperationException(
+                        "This relic deck choice still requires a selection.");
+                reward = reward with { PendingDeckChoice = null };
+            }
+            else
+            {
+                RequireKind(action, "choose_relic_deck_card");
+                var payload = action.ReadPayload<ChooseDeckCardPayload>();
+                var resolved = ResolveRelicDeckChoice(
+                    player,
+                    deckChoice,
+                    payload.CardInstanceId,
+                    state.Rng);
+                player = resolved.Player;
+                reward = reward with
+                {
+                    PendingDeckChoice = resolved.Remaining
+                };
+            }
         }
         else if (!reward.CardResolved && reward.CardBundles is { } bundles)
         {
@@ -4171,7 +4203,12 @@ public sealed partial class PrototypeGameEngine
                 spec.Kind,
                 selections,
                 candidates,
-                spec.UpgradeTransformedCards);
+                spec.UpgradeTransformedCards)
+            {
+                MinimumSelectionsRemaining = Math.Min(
+                    spec.MinimumSelections ?? spec.Selections,
+                    selections)
+            };
     }
 
     private static PlayerState TransformPersistentDeckCard(

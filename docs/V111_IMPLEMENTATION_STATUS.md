@@ -102,9 +102,16 @@ preserving its committed follow-up move. Acquisition, combat, upgrade,
 snapshot and stun-resume cases are covered. Tri Boomerang now starts an
 acquisition choice for three eligible Attack instances and applies Instinct's
 2x powered-attack damage effect. Acquisition eligibility, snapshot restore,
-and combat damage are covered. Claws and War Hammer remain the unimplemented
-Tanx relic effects; the Tanx event remains gated until its full offer and
-remaining relic branches are integrated.
+and combat damage are covered. Claws now offers an optional, snapshot-safe
+choice of up to six deck transformations into Maul. Maul preserves one upgrade
+and enchantments that its card accepts, attacks twice for 5/6 damage per hit,
+and each play raises every Maul's damage by 2/3 for the combat. Selection,
+cancel-without-transforming, upgrade/enchantment transfer and combat growth
+are covered. War Hammer upgrades up to four distinct upgradable deck cards
+after Elite victories using run.niche when native RNG ownership is enabled;
+native stream selection and snapshot cursor tests are covered. All ten Tanx
+relic effects now have executable dependencies, but the Tanx event remains
+gated until its source-owned offer pool and Ancient branch flow are integrated.
 Nonupeipe, Tanx and Vakuu remain unavailable until their full offer pools,
 relic effects, Ancient assignment and branch continuations are implemented.
 

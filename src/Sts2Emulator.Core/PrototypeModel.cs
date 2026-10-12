@@ -130,7 +130,8 @@ public enum PrototypeCombatEffectKind
     ReturnHandToDrawAndShuffle,
     ChooseGeneratedColorlessCards,
     CreateRandomCharacterPowerCardsInHand,
-    StunEnemy
+    StunEnemy,
+    BuffMaulDamage
 }
 
 public enum PrototypeCardKeyword
@@ -762,7 +763,11 @@ public sealed record PrototypeRelicDeckChoiceSpec(
     PrototypeCardEnchantmentKind? EnchantmentKind = null,
     int EnchantmentAmount = 1,
     bool RequiresUpgradable = false,
-    PrototypeCardType? RequiredCardType = null);
+    PrototypeCardType? RequiredCardType = null,
+    string? TransformToCardId = null,
+    bool PreserveUpgradeOnTransformation = false,
+    bool PreserveEnchantmentOnTransformation = false,
+    int? MinimumSelections = null);
 
 public sealed record PrototypeRelicDefinition(
     string Id,
@@ -1775,7 +1780,8 @@ public sealed record PrototypeCombatCounters(
     // Captured at the *finished* CardPlayed event; a copy is retained
     // across turn boundaries and through deterministic snapshot forks.
     PrototypeCombatCardSnapshot? LastOriginalAttackThisTurn = null,
-    PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null)
+    PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null,
+    int MaulDamageBonus = 0)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();
@@ -1916,6 +1922,8 @@ public sealed record PrototypePendingDeckChoiceState(
     long[] CandidateCardInstanceIds,
     bool UpgradeTransformedCards = false)
 {
+    public int MinimumSelectionsRemaining { get; init; } = RemainingSelections;
+
     public PrototypePendingDeckChoiceState Fork() => this with
     {
         CandidateCardInstanceIds =
