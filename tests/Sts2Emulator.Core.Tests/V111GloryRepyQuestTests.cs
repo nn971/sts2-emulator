@@ -178,6 +178,44 @@ public sealed class V111GloryRepyQuestTests
         Assert.Equal(RunPhase.Event, Act(other, "leave_reward").Phase);
     }
 
+    [Fact]
+    public void ChestPotionOffersCanReplaceOccupiedSlotsIndependently()
+    {
+        var fixture = Fixture(1);
+        var start = fixture with
+        {
+            Player = fixture.Player with
+            {
+                PotionSlots =
+                [
+                    new PotionInstance("proto.potion.block",
+                        PrototypeJson.EmptyObject()),
+                    new PotionInstance("proto.potion.fire",
+                        PrototypeJson.EmptyObject())
+                ]
+            }
+        };
+        var reward = Choose(EnterRoom(start), "unlock_chest");
+        var offered = reward.World!.Reward!;
+        var firstPotion = offered.PotionOption!;
+        var secondPotion = offered.ExtraPotionOptions![0];
+        var replaceFirst = Engine.GetLegalActions(reward).Single(action =>
+            action.Kind == "replace_reward_potion"
+            && action.ReadPayload<ReplaceRewardPotionPayload>().Slot == 0);
+        reward = Engine.Step(reward, replaceFirst).State;
+        Assert.Equal(firstPotion, reward.Player.PotionSlots[0]!.PotionId);
+
+        var replaceSecond = Engine.GetLegalActions(reward).Single(action =>
+            action.Kind == "replace_reward_extra_potion"
+            && action.ReadPayload<ChooseExtraPotionRewardPayload>().GroupIndex == 0
+            && action.ReadPayload<ChooseExtraPotionRewardPayload>().Slot == 1);
+        reward = Engine.Step(reward, replaceSecond).State;
+        Assert.Equal(secondPotion, reward.Player.PotionSlots[1]!.PotionId);
+        Assert.True(reward.World!.Reward!.PotionResolved);
+        Assert.True(reward.World.Reward.ExtraPotionGroupsResolved![0]);
+        PrototypeStateInvariants.Validate(reward);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
