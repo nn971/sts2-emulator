@@ -48,6 +48,17 @@ internal static class NativeV111PassiveBridge
     private static int _historyIndex;
     private static bool _handlingFrame;
     private static string? _currentFile;
+    private static CombatState? _failedCombat;
+    private static string? _lastGateReason;
+
+    // Only report changes in gate state: these diagnostics must not spam
+    // every Godot frame or affect player input/RNG.
+    private static void ReportGate(string reason)
+    {
+        if (string.Equals(reason, _lastGateReason, StringComparison.Ordinal)) return;
+        _lastGateReason = reason;
+        Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=" + reason);
+    }
 
     internal static void Start()
     {
@@ -55,21 +66,27 @@ internal static class NativeV111PassiveBridge
         if (string.IsNullOrWhiteSpace(expected) || expected.Length != 64 ||
             !BuildId.EndsWith("sha256=" + expected.ToLowerInvariant(), StringComparison.Ordinal))
         {
-            Godot.GD.PushError("[Sts2ReferenceMod] Refusing capture: exact sts2.dll SHA-256 pin " +
-                "missing or mismatched. Run tools/native_game_preflight.py and set " +
-                "STS2_FIDELITY_EXPECT_SHA256 to that verified hash.");
+            Godot.GD.PushError("[Sts2ReferenceMod] CAPTURE_STATUS=PIN_REJECTED; " +
+                "expected_sha=" + (string.IsNullOrWhiteSpace(expected) ? "MISSING" : expected) +
+                "; runtime_build=" + BuildId +
+                ". Run tools/native_game_preflight.py and set " +
+                "STS2_FIDELITY_EXPECT_SHA256 to the local sts2.dll SHA-256.");
             return;
         }
         if (Godot.Engine.GetMainLoop() is not SceneTree tree)
         {
-            Godot.GD.PushError("[Sts2ReferenceMod] SceneTree unavailable; passive capture disabled.");
+            Godot.GD.PushError("[Sts2ReferenceMod] CAPTURE_STATUS=SCENE_TREE_UNAVAILABLE; " +
+                "SceneTree unavailable; passive capture disabled.");
             return;
         }
         if (_tree is not null) return;
         _tree = tree;
         tree.ProcessFrame += OnFrame;
-        Godot.GD.Print("[Sts2ReferenceMod] Source-audited passive combat hook enabled; "
-            + "local build validation and first parity fixture PENDING. build=" + BuildId);
+        Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=HOOK_ENABLED; " +
+            "build=" + BuildId + "; trace_dir=" +
+            (System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
+                ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces")) +
+            "; native parity NOT_TESTED.");
     }
 
     private static void OnFrame()
@@ -91,12 +108,26 @@ internal static class NativeV111PassiveBridge
             var manager = CombatManager.Instance;
             if (!manager.IsInProgress)
             {
+                _failedCombat = null;
                 if (_recording is not null) EndCombat("Combat ended");
+                ReportGate("WAITING_FOR_COMBAT");
                 return;
             }
 
             var combat = manager.DebugOnlyGetState();
-            if (combat is null || combat.Players.Count != 1) return;
+            if (combat is null)
+            {
+                ReportGate("COMBAT_STATE_UNAVAILABLE");
+                return;
+            }
+            if (combat.Players.Count != 1)
+            {
+                ReportGate("UNSUPPORTED_PLAYER_COUNT");
+                return;
+            }
+            // A fatal bridge error should not spawn a fresh incomplete trace
+            // every frame in the same encounter. Retry only next combat.
+            if (ReferenceEquals(_failedCombat, combat)) return;
             if (!ReferenceEquals(_combat, combat))
             {
                 if (_recording is not null) EndCombat("Combat replaced without terminal checkpoint");
@@ -105,37 +136,58 @@ internal static class NativeV111PassiveBridge
 
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
             AttachActionExecutor();
-            if (!IsStablePlayerDecision(combat)) return;
-            if (_lastCapturedGeneration == _decisionGeneration) return;
+            string? blocker = StableDecisionBlocker(combat);
+            if (blocker is not null)
+            {
+                ReportGate("WAITING_FOR_DECISION:" + blocker);
+                return;
+            }
+            if (_lastCapturedGeneration == _decisionGeneration)
+            {
+                ReportGate("AWAITING_PLAYER_ACTION");
+                return;
+            }
             if (_awaitingSettlement) _awaitingSettlement = false;
             _adapter.Generation = _decisionGeneration;
             var recorded = _recording.OnStableDecision(_adapter);
             if (recorded is not null)
+            {
                 _lastCapturedGeneration = _decisionGeneration;
+                ReportGate("DECISION_CAPTURED:" + recorded.DecisionId);
+            }
+            else ReportGate("DECISION_NOT_RECORDED");
         }
         catch (Exception error)
         {
-            Godot.GD.PushError("[Sts2ReferenceMod] Passive boundary capture failed: " + error);
+            Godot.GD.PushError("[Sts2ReferenceMod] CAPTURE_STATUS=CAPTURE_EXCEPTION; " +
+                "Passive boundary capture failed: " + error);
+            // Fail closed for this encounter, even if OpenCombat failed before
+            // creating a recording. Keep the error once rather than per frame.
+            _failedCombat ??= _combat;
             if (_recording is not null) EndCombat("INCOMPLETE_CAPTURE: " + error.GetType().Name);
         }
         finally { _handlingFrame = false; }
     }
 
-    private static bool IsStablePlayerDecision(CombatState combat)
+    private static string? StableDecisionBlocker(CombatState combat)
     {
-        if (combat.CurrentSide != CombatSide.Player) return false;
-        if (CombatManager.Instance.PlayerActionsDisabled) return false;
-        if (_executor is null || _executor.IsRunning || _executor.CurrentlyRunningAction is not null)
-            return false;
+        if (combat.CurrentSide != CombatSide.Player) return "NOT_PLAYER_SIDE";
+        if (CombatManager.Instance.PlayerActionsDisabled) return "PLAYER_ACTIONS_DISABLED";
+        if (_executor is null) return "ACTION_EXECUTOR_MISSING";
+        if (_executor.IsRunning || _executor.CurrentlyRunningAction is not null)
+            return "ACTION_EXECUTOR_BUSY";
         var player = combat.Players[0];
-        if (player.PlayerCombatState?.Phase != PlayerTurnPhase.Play || !player.Creature.IsAlive)
-            return false;
+        if (!player.Creature.IsAlive) return "PLAYER_DEAD";
+        if (player.PlayerCombatState?.Phase != PlayerTurnPhase.Play)
+            return "PLAYER_PHASE_NOT_PLAY";
         // A nested overlay can obscure the hand while its mode remains Play.
         // Treat the overlay as an independent unsupported choice boundary.
-        if (NOverlayStack.Instance is { ScreenCount: > 0 }) return false;
+        if (NOverlayStack.Instance is { ScreenCount: > 0 }) return "OVERLAY_ACTIVE";
         var hand = NCombatRoom.Instance?.Ui?.Hand;
-        return hand is not null && !hand.InCardPlay &&
-            hand.CurrentMode == NPlayerHand.Mode.Play;
+        if (hand is null) return "HAND_UI_MISSING";
+        if (hand.InCardPlay) return "CARD_PLAY_ANIMATION";
+        if (hand.CurrentMode != NPlayerHand.Mode.Play) return "HAND_MODE_NOT_PLAY";
+        return null;
     }
 
     private static void OpenCombat(CombatState combat)
@@ -164,7 +216,8 @@ internal static class NativeV111PassiveBridge
         _panel?.UseSession(_recording, _currentFile);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
-        Godot.GD.Print("[Sts2ReferenceMod] Recording (passive): " + _currentFile);
+        Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=RECORDING_STARTED; " +
+            "Recording (passive): " + _currentFile);
     }
 
     private static void AttachActionExecutor()
@@ -276,6 +329,12 @@ internal static class NativeV111PassiveBridge
 
     private static void EndCombat(string reason)
     {
+        if (reason.StartsWith("INCOMPLETE_CAPTURE", StringComparison.Ordinal) ||
+            reason.StartsWith("UNSUPPORTED:", StringComparison.Ordinal))
+        {
+            _failedCombat = _combat;
+            ReportGate("CAPTURE_ABORTED_FOR_COMBAT");
+        }
         var recording = _recording;
         if (recording is null) return;
         _recording = null;
