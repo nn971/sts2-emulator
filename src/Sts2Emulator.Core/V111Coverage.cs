@@ -363,6 +363,12 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "THIS_OR_THAT" && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeSharedEvents.ThisOrThatId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "SUNKEN_STATUE" && missingBranches.Length == 0
             && engineIds.Contains("proto.native.event.sunken_statue",
                 StringComparer.Ordinal)
@@ -755,6 +761,8 @@ public static class V111Coverage
         if (PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(eventId))
             return true;
         if (PrototypeNativeUnderdocksEvents.IsSupported(eventId))
+            return true;
+        if (PrototypeNativeSharedEvents.IsSupported(eventId))
             return true;
         if (ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 2)
             || ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 3))

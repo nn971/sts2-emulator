@@ -840,6 +840,8 @@ public static class PrototypeStateInvariants
                     eventState.NativeEventGold is >= 45 and <= 75,
                 PrototypeNativePunchOff.EventId =>
                     eventState.NativeEventGold is >= 91 and <= 98,
+                PrototypeNativeSharedEvents.ThisOrThatId =>
+                    eventState.NativeEventGold is >= 41 and <= 68,
                 _ => false
             }) == false)
         {

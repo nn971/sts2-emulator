@@ -20,7 +20,8 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
         "proto.native.underdocks.trash_heap",
-        "proto.native.underdocks.waterlogged_scriptorium"
+        "proto.native.underdocks.waterlogged_scriptorium",
+        PrototypeNativeSharedEvents.ThisOrThatId
     ];
 
     public static string[] SupportedRegionEventIds { get; } =
@@ -36,7 +37,8 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.spiraling_whirlpool",
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
-        "proto.native.underdocks.sunken_statue"
+        "proto.native.underdocks.sunken_statue",
+        PrototypeNativeSharedEvents.ThisOrThatId
     ];
 
     /// <summary>

@@ -31,6 +31,10 @@ are executable, including the Tea Set's next-combat energy after a Rest Site.
 Foul Potion now deals its source 12 damage to all enemies without damaging the
 player. Prototype RNG is used for the inventory and fight, so native parity
 remains open; see the [Fake Merchant implementation note](reference-builds/v0.111.0-fake-merchant.md).
+This or That is registered as a shared event in Overgrowth, Underdocks, Hive,
+and Glory. Its plain choice deals 6 HP damage before awarding the saved 41–68
+gold roll. Its ornate choice obtains a random relic, resolves any relic
+acquisition deck choice, then adds Clumsy.
 Silver Crucible now consumes its first three group charges on supported custom
 event card rewards as well as combat rewards.
 Silken Tress now persists its one-shot Glam enchantment through the first

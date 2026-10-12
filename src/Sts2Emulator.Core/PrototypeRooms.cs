@@ -673,10 +673,15 @@ public sealed partial class PrototypeGameEngine
                         evt.Id, world.Act)
                     : nativeUnderdocks
                         ? PrototypeNativeUnderdocksEvents.IsSupported(evt.Id)
-                        : PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(evt.Id)
-                            == nativeOvergrowth
-                          && !PrototypeNativeUnderdocksEvents
-                              .IsNativeRegionEvent(evt.Id))
+                        : nativeOvergrowth
+                            ? PrototypeNativeOvergrowthEvents
+                                  .IsNativeRegionEvent(evt.Id)
+                                || PrototypeNativeSharedEvents.IsSupported(
+                                    evt.Id)
+                            : !PrototypeNativeOvergrowthEvents
+                                  .IsNativeRegionEvent(evt.Id)
+                                && !PrototypeNativeUnderdocksEvents
+                                    .IsNativeRegionEvent(evt.Id))
                 && (!nativeOvergrowth
                     || PrototypeNativeOvergrowthEvents.IsEligible(
                         evt, state.Player))
@@ -778,6 +783,8 @@ public sealed partial class PrototypeGameEngine
                         // Keep this draw to preserve the event RNG stream.
                         PrototypeNativePunchOff.EventId =>
                             91 + PrototypeRng.NextInt(state.Rng, "event", 8),
+                        PrototypeNativeSharedEvents.ThisOrThatId =>
+                            41 + PrototypeRng.NextInt(state.Rng, "event", 28),
                         _ => 0
                     },
                 NativeEventSecondaryGold:
@@ -1803,6 +1810,13 @@ public sealed partial class PrototypeGameEngine
         }
 
         var rolled = eventState.NativeEventGold;
+        if (eventState.EventId == PrototypeNativeSharedEvents.ThisOrThatId
+            && choiceId == "plain"
+            && effect.Kind == PrototypeRunEffectKind.GainGold
+            && rolled is >= 41 and <= 68)
+        {
+            return rolled;
+        }
         if (eventState.EventId
                 == "proto.native.underdocks.sunken_treasury"
             && effect.Kind == PrototypeRunEffectKind.GainGold)
@@ -1949,6 +1963,8 @@ public sealed partial class PrototypeGameEngine
             && !PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(
                 world.Event?.EventId ?? string.Empty)
             && !PrototypeNativeUnderdocksEvents.IsNativeRegionEvent(
+                world.Event?.EventId ?? string.Empty)
+            && !PrototypeNativeSharedEvents.IsSupported(
                 world.Event?.EventId ?? string.Empty)
             && !PrototypeNativeHiveEvents.IsNativeEvent(
                 world.Event?.EventId ?? string.Empty))

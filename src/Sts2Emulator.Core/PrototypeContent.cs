@@ -6772,6 +6772,7 @@ public static class PrototypeContent
             .Append(PrototypeNativePotionCourier.Definition)
             .Concat(PrototypeNativeHiveEvents.Definitions)
             .Append(PrototypeNativeFakeMerchant.Definition)
+            .Append(PrototypeNativeSharedEvents.ThisOrThatDefinition)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .Append(NativeAncientRewardsV111.TezcataraRewardDefinition)

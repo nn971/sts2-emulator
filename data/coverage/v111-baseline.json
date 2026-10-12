@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "0b24b44b3acb96edcc8da8741d64aeaf44037a1bd683878f97f2f29226f37815",
+  "inventory_file_sha256": "0e4227be5e652697599ffb968d93b4ddf22fb58551554ffddb84ab34d3285edb",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "5da33b5900d811a5a12b7a746dfae5c2066339969218f4c334d09c6fe30238b8",
+    "inventory_hash": "b488848226599d9d71c9d1389c303b5be7f0f3ae16cd751ea9e207892c4e0188",
     "items": [
       {
         "catalogued": true,
@@ -16150,25 +16150,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.this_or_that"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ThisOrThat.cs#0f0895c6ee6d63579ad4f23536151fa2d1eeff2bbfd2e4a29a1a9d08b78ae3ff"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/ORNATE",
-          "initial/PLAIN",
-          "page/INITIAL",
-          "page/INITIAL/ORNATE",
-          "page/INITIAL/PLAIN",
-          "page/ORNATE",
-          "page/PLAIN"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "THIS_OR_THAT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29594,8 +29588,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 37,
-        "integrated": 51,
+        "implemented": 38,
+        "integrated": 52,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

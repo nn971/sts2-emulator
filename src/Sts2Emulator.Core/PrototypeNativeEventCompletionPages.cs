@@ -35,6 +35,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeGloryEvents.RoundTeaPartyId
             or PrototypeNativeGloryEvents.HungryForMushroomsId
             or PrototypeNativeGloryEvents.GraveOfTheForgottenId
+            or PrototypeNativeSharedEvents.ThisOrThatId
             or "proto.native.underdocks.doors_of_light_and_dark"
             or "proto.native.underdocks.drowning_beacon"
             or "proto.native.underdocks.sunken_treasury"
@@ -117,6 +118,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "big_mushroom" or "fragrant_mushroom"
         || eventId == PrototypeNativeGloryEvents.GraveOfTheForgottenId
             && choiceId is "confront" or "accept"
+        || eventId == PrototypeNativeSharedEvents.ThisOrThatId
+            && choiceId is "plain" or "ornate"
         || eventId == "proto.native.underdocks.doors_of_light_and_dark"
             && choiceId is "light" or "dark"
         || eventId == "proto.native.underdocks.drowning_beacon"
