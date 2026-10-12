@@ -134,7 +134,24 @@ def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
             add("exhaust_pile_change")
         if "added_or_removed" in delta.get("creatures", {}).values():
             add("creature_set_change")
+    # Between-action effects (notably enemy-turn HP changes) can happen
+    # outside executor action envelopes. Frame snapshots cover those changes.
+    last_frame = None
     for record in records:
+        if record.get("type") == "frame_state" and isinstance(record.get("state"), dict):
+            current = record["state"]
+            if last_frame is not None:
+                delta = diff_scalars(last_frame, current)
+                if "player_hp" in delta: add("player_hp_change")
+                if "player_block" in delta: add("block_change")
+                if "energy" in delta: add("energy_change")
+                if "player_powers" in delta: add("power_change")
+                if delta.get("zones"): add("card_zone_change")
+                if "exhaust_pile" in delta.get("zones", {}): add("exhaust_pile_change")
+                if any(isinstance(info, dict) and "hp" in info
+                       for info in delta.get("creatures", {}).values()):
+                    add("creature_hp_change")
+            last_frame = current
         if record.get("type") == "nested_choice_pause":
             add("nested_choice_pause")
         if (record.get("type") == "history_entry" and
@@ -159,6 +176,10 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "unattributed_history_entries": 0,
         "history_entries_with_missing_fields": 0,
         "frame_states": 0,
+        "action_resumptions": 0,
+        "legacy_resume_candidates": 0,
+        "terminal_history_clears": 0,
+        "raw_terminal_status": None,
         "incomplete_observations": [],
     }
     if error:
@@ -173,13 +194,14 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         report["reason"] = "Missing terminal record"
         return report
     allowed = {
-        "header", "history_baseline", "frame_state", "action_started", "action_completed", "stable_decision",
+        "header", "history_baseline", "frame_state", "action_started", "action_resumed", "action_completed", "stable_decision",
         "nested_choice_pause", "history_entry", "history_reset", "anomaly",
         "observation_failure", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
     choices: list[dict] = []
+    awaiting_resume: set[int] = set()
     history_index = -1
     last_frame_index = -1
     last_frame_hash = None
@@ -214,11 +236,21 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 report["reason"] = f"Action {aid} references inactive parent {parent}"
                 return report
             running[aid] = record
+        elif typ == "action_resumed":
+            if aid not in running or aid not in awaiting_resume:
+                report["reason"] = f"Resume has no matching suspended action: {aid}"
+                return report
+            if record.get("native_type") != running[aid].get("native_type"):
+                report["reason"] = f"Resumed action type changed: {aid}"
+                return report
+            awaiting_resume.remove(aid)
+            report["action_resumptions"] += 1
         elif typ == "action_completed":
             if aid not in running:
                 report["reason"] = f"Completion has no action start: {aid}"
                 return report
             start = running.pop(aid)
+            awaiting_resume.discard(aid)
             completed[aid] = {
                 "action_id": aid,
                 "native_type": start.get("native_type"),
@@ -252,9 +284,23 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             })
             if aid not in running:
                 strict_failures.append(f"Nested choice with no active action: {aid}")
+            else:
+                awaiting_resume.add(aid)
         elif typ == "history_reset":
             history_index = -1
-            strict_failures.append("Native history reset")
+            details = record.get("data") or {}
+            next_record = records[ordinal] if ordinal < len(records) else None
+            final_reason = ((next_record or {}).get("data") or {}).get("reason")
+            terminal_cleanup = (not running and next_record is not None
+                and next_record.get("type") == "terminal"
+                and final_reason == "Combat ended"
+                and details.get("new_count") == 0
+                and type(details.get("previous_count")) is int
+                and details["previous_count"] > 0)
+            if terminal_cleanup:
+                report["terminal_history_clears"] += 1
+            else:
+                strict_failures.append("Native history reset outside terminal cleanup")
         elif typ == "history_entry":
             data = record.get("data") or {}
             idx = data.get("history_index")
@@ -266,7 +312,25 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 report["unattributed_history_entries"] += 1
             if data.get("missing_fields"):
                 report["history_entries_with_missing_fields"] += 1
-        elif typ in ("observation_failure", "anomaly"):
+        elif typ == "anomaly":
+            detail = record.get("data") or {}
+            preceding = records[ordinal-2] if ordinal > 1 else {}
+            suspended_id = preceding.get("action_id")
+            # Legacy Inspector v1 wrote a duplicate_action_start anomaly
+            # whenever BeforeActionExecuted was emitted on resuming a choice.
+            # Preserve the raw anomaly, but identify explainable sequences.
+            expected_resume = (
+                detail.get("reason") == "duplicate_action_start"
+                and preceding.get("type") == "nested_choice_pause"
+                and suspended_id in running
+                and suspended_id in awaiting_resume
+                and detail.get("detail") == running[suspended_id].get("native_type"))
+            if expected_resume:
+                awaiting_resume.remove(suspended_id)
+                report["legacy_resume_candidates"] += 1
+            else:
+                strict_failures.append(f"anomaly at ordinal {ordinal}")
+        elif typ == "observation_failure":
             strict_failures.append(f"{typ} at ordinal {ordinal}")
         elif typ == "stable_decision" and not isinstance(record.get("state"), dict):
             strict_failures.append(f"Missing stable decision state at {ordinal}")
@@ -292,12 +356,23 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             **candidate,
         })
     report["incomplete_observations"] = strict_failures
-    if running or final.get("status") != "OBSERVED" or strict_failures:
+    report["raw_terminal_status"] = final.get("status")
+    if running or strict_failures or final.get("status") not in ("OBSERVED", "INCOMPLETE_CAPTURE"):
         report["status"] = "INCOMPLETE_CAPTURE"
         report["reason"] = (
             f"{len(running)} unfinished actions, {len(strict_failures)} flagged observations"
             f"; native terminal status={final.get('status')}"
         )
+    elif final.get("status") == "INCOMPLETE_CAPTURE":
+        # Never silently upgrade the historic on-disk terminal. Recovery is a
+        # qualified *audit interpretation*, not repaired source data.
+        if report["legacy_resume_candidates"] and report["terminal_history_clears"]:
+            report["status"] = "LEGACY_CALLBACK_SEQUENCE_RECOVERABLE"
+            report["reason"] = ("Action lifecycle consistent after explaining choice "
+                "re-entrancies and terminal CombatHistory clear; raw terminal remains incomplete")
+        else:
+            report["status"] = "INCOMPLETE_CAPTURE"
+            report["reason"] = "Raw incomplete terminal lacks sufficient recovery evidence"
     else:
         report["status"] = "CALLBACK_TIMELINE_CONSISTENT"
         report["reason"] = "Action callbacks and recorded history have consistent identities/order"
