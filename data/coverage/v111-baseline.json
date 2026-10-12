@@ -14977,7 +14977,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Amalgamator.cs#d0f41ef96e918a6c65a11293ff1f35a187ed09ae70d95419c17030b05f720727"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15133,7 +15133,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ColossalFlower.cs#ca0ee1f25d200ea85ddfe301965370d20e7930606409956c22c2317b2622c0d3"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15243,7 +15243,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/DoorsOfLightAndDark.cs#ef7233f0b82ec9e37577bd3541d599acfd1709bba37c3bf0ffeb4e9f0381306f"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15261,7 +15261,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/DrowningBeacon.cs#c8bcbd0c528afb6a1207679c4aef0cced4c1e2ef355573b5558aff01917c841a"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15313,7 +15313,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/FieldOfManSizedHoles.cs#2f6fcabc64b998eb55c266f1fd2907659d071e419fa41b131ab16d0a4106c5f1"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15331,7 +15331,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/GraveOfTheForgotten.cs#d33803392dbe3cb11ee5154bd847a694228f90ab78253ba4e7ce5f83c39ef957"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15349,7 +15349,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/HungryForMushrooms.cs#2d2d2d521b75a254729bbc78b230a56bd4177feafcdadb60d9e821c33f49fdbc"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15419,7 +15419,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/LostWisp.cs#a6779ac7cf9cbd79cbe348b74d6c5a944f828acaa7c44ccd7a116dcd426c2f5c"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15675,7 +15675,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Reflections.cs#728bfd3c6044fc0a04411285a5e811e6b518d981e21257941b44f872f87e066e"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15742,7 +15742,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/RoundTeaParty.cs#863bcb03830443c7c2e4ed256c2287c962146f486a32346665092baa5b09d012"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15861,7 +15861,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SpiritGrafter.cs#3be1eb82235e62924fb5437399610e2d73e5550da31d3c373627cf9ff5e05098"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -15926,7 +15926,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SunkenTreasury.cs#aff29a71527bf8fe8b091ee99b9365b30a55a2e1bd6bf7ea8036e8c7d8598ab0"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -16189,7 +16189,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TinkerTime.cs#cac562ffd790a2eec13be854b4646d242dea639b212788bce977a517e9a87723"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -29571,7 +29571,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 21,
+        "implemented": 34,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,

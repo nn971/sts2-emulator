@@ -249,6 +249,79 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DOORS_OF_LIGHT_AND_DARK"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                "proto.native.underdocks.doors_of_light_and_dark",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DROWNING_BEACON" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.underdocks.drowning_beacon",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SUNKEN_TREASURY" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.underdocks.sunken_treasury",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "AMALGAMATOR" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.AmalgamatorId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "COLOSSAL_FLOWER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.ColossalFlowerId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "FIELD_OF_MAN_SIZED_HOLES"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.FieldOfManSizedHolesId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "LOST_WISP" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.LostWispId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SPIRIT_GRAFTER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.SpiritGrafterId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "GRAVE_OF_THE_FORGOTTEN"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.GraveOfTheForgottenId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "HUNGRY_FOR_MUSHROOMS"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.HungryForMushroomsId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "REFLECTIONS" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.ReflectionsId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ROUND_TEA_PARTY" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.RoundTeaPartyId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TINKER_TIME" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.TinkerTimeId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "DENSE_VEGETATION" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeDenseVegetation.EventId,
                 StringComparer.Ordinal))
