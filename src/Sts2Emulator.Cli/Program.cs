@@ -8,6 +8,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("Commands:");
     Console.WriteLine("  doctor   Print scaffold/runtime information");
     Console.WriteLine("  hash-demo  Build a tiny synthetic canonical state and hash it");
+    Console.WriteLine("  native-basic-check <fixture.json> [--out <report.json>]");
+    Console.WriteLine("             Provisional native Strike/Defend rule-level check (NOT parity)");
     return;
 }
 
@@ -35,6 +37,47 @@ switch (args[0])
                 ExtensionState: empty);
 
             Console.WriteLine(CanonicalJson.Sha256(state));
+        }
+        break;
+
+    case "native-basic-check":
+        if (args.Length is not (2 or 4) ||
+            args.Length == 4 && args[2] != "--out")
+        {
+            Console.Error.WriteLine(
+                "Usage: native-basic-check <native-expectation.json> [--out <report.json>]");
+            Environment.ExitCode = 2;
+            break;
+        }
+        try
+        {
+            using var fixture = JsonDocument.Parse(File.ReadAllText(args[1]));
+            var comparison = NativeBasicRuleComparer.Check(fixture.RootElement);
+            var report = JsonSerializer.Serialize(comparison,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                });
+            Console.WriteLine(report);
+            if (args.Length == 4)
+            {
+                var output = Path.GetFullPath(args[3]);
+                Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+                File.WriteAllText(output, report + Environment.NewLine);
+            }
+            Environment.ExitCode = comparison.Status switch
+            {
+                "RULE_PROJECTION_CONSISTENT" => 0,
+                "RULE_PROJECTION_MISMATCH" => 1,
+                _ => 2
+            };
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException
+                                  or JsonException or ArgumentException)
+        {
+            Console.Error.WriteLine("Native basic-card rule check failed: " + e.Message);
+            Environment.ExitCode = 2;
         }
         break;
 
