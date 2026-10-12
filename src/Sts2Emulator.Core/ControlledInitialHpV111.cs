@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
@@ -17,6 +18,7 @@ public sealed record ControlledInitialHpStateV111(
     RandomIndexRequestV111? Pending,
     string Mode = "controlled-v111-initial-hp-v1")
 {
+    [JsonIgnore]
     public bool Complete => Pending is null;
 
     public ControlledInitialHpStateV111 Fork() => this with
@@ -37,6 +39,7 @@ public sealed record ControlledInitialHpStateV111(
         }
     };
 
+    [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
 }
 
