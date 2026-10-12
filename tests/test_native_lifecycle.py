@@ -47,7 +47,7 @@ class NativeLifecycleTests(unittest.TestCase):
         lines = complete_fixture()
         late = lines.pop(3)
         lines.insert(4, late)
-        self.assertIn("Orphan", validate_lifecycle(lines))
+        self.assertIn("last_event_seq", validate_lifecycle(lines))
 
     def test_duplicate_action_fails(self):
         lines = complete_fixture()
