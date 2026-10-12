@@ -42,6 +42,8 @@ damage and disables itself after the card's first completed play.
 Infested Automaton is integrated in Hive for Silent. Study adds one eligible
 Power and Touch Core adds one eligible zero cost card when the card generator
 returns one; both choices retain their result page even when no card is added.
+Battleworn Dummy now retains its Victory or Defeat result page after the
+selected training combat and any setting reward resolve.
 Tea Master is integrated in Glory for runs with at least 150 gold. Bone Tea
 upgrades eligible cards in the opening hand of the next combat, Ember Tea
 grants 2 Strength on each of the next five combat room entries, and Tea of

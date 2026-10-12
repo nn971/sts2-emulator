@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "572c793702aeeb2a2062c934eadc0e2cf29a8c9738b0d655501810055d6214bf",
+  "inventory_file_sha256": "c628927aae5ae2e59669507560f221c372dfd913a164877d46832e933c81b359",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "a6429a79b3e804b678df87036d167500220b0654280a31941d87cf533458655e",
+    "inventory_hash": "ff31b14b0eaa6ad644fd0b697b442ad88511e06bfc25a6cf0bdb15a06633a3c9",
     "items": [
       {
         "catalogued": true,
@@ -15021,20 +15021,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/BattlewornDummy.cs#4bfd480ac396230c2cff26cc3862d8df12c74e779f02ae55ea1657e04b254cf4"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/SETTING_1",
-          "initial/SETTING_2",
-          "initial/SETTING_3",
-          "page/DEFEAT",
-          "page/INITIAL",
-          "page/INITIAL/SETTING_1",
-          "page/INITIAL/SETTING_2",
-          "page/INITIAL/SETTING_3",
-          "page/VICTORY"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLEWORN_DUMMY",
         "registered": true,
@@ -29566,7 +29556,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 41,
+        "implemented": 42,
         "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,

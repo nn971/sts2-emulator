@@ -777,7 +777,7 @@ public static class PrototypeStateInvariants
                     ? eventState.NativePageIndex > 2
                 : eventState.EventId ==
                     PrototypeNativeGloryEvents.BattlewornDummyId
-                    ? eventState.NativePageIndex > 3
+                    ? eventState.NativePageIndex > 4
                 : eventState.EventId == PrototypeNativeGloryEvents.TrialId
                     ? eventState.NativePageIndex > 5
                 : eventState.EventId ==
@@ -1007,6 +1007,9 @@ public static class PrototypeStateInvariants
         if (eventState.EventId ==
                 PrototypeNativeGloryEvents.BattlewornDummyId
             && eventState.NativePageIndex > 0
+            && eventState.NativePageIndex <
+                PrototypeNativeEventCompletionPages
+                    .TerminalChoicePageIndex(eventState.EventId)
             && eventState.ChosenChoiceId is not null
             && eventState.PendingDeckChoice is null
             && eventState.PendingReward is null

@@ -491,6 +491,20 @@ public static class V111Coverage
                 new PlayerState(1, 1, 150, [], [], [])))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "BATTLEWORN_DUMMY"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.BattlewornDummyId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeGloryEvents.BattlewornDummyId, 3)
+            && PrototypeContent.Event(
+                PrototypeNativeGloryEvents.BattlewornDummyId).Choices
+                .Select(choice => choice.Id)
+                .ToHashSet(StringComparer.Ordinal)
+                .IsSupersetOf(["setting_1", "setting_2", "setting_3"]))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "TINKER_TIME" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeGloryEvents.TinkerTimeId,
                 StringComparer.Ordinal))

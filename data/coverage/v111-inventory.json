@@ -11180,7 +11180,7 @@
         "page/INITIAL/SETTING_3",
         "page/VICTORY"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

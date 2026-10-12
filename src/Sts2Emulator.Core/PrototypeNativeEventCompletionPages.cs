@@ -26,6 +26,7 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.underdocks.abyssal_baths"
             or PrototypeNativeEndlessConveyor.EventId
             or PrototypeNativePunchOff.EventId
+            or PrototypeNativeGloryEvents.BattlewornDummyId
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.InfestedAutomatonId
             or PrototypeNativeHiveEvents.LostWispId
@@ -48,6 +49,7 @@ public static class PrototypeNativeEventCompletionPages
     public static int TerminalChoicePageIndex(string eventId) =>
         eventId is PrototypeNativeHiveEvents.ColossalFlowerId
             or PrototypeNativeDenseVegetation.EventId ? 3
+            : eventId == PrototypeNativeGloryEvents.BattlewornDummyId ? 4
             : eventId == PrototypeNativeGloryEvents.RoundTeaPartyId ? 2
             : eventId is "proto.native.underdocks.abyssal_baths"
                 or PrototypeNativeEndlessConveyor.EventId
@@ -103,6 +105,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "observe" or "leave"
         || eventId == PrototypeNativePunchOff.EventId
             && choiceId is "nab"
+        || eventId == PrototypeNativeGloryEvents.BattlewornDummyId
+            && choiceId is "victory" or "defeat"
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.InfestedAutomatonId
