@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Sts2Emulator.Core;
 
 namespace Sts2Emulator.Core.Tests;
@@ -178,6 +179,88 @@ public sealed class NativeEngineFidelityV111Tests
         Assert.Equal("UNSUPPORTED_NATIVE_STATE", report.Status);
         Assert.Contains("UNSUPPORTED_NATIVE_CARD:MAGIC_STRIKE_NOT_EXIST", report.Blockers);
         Assert.False(report.ExecutedActualEngineStep);
+    }
+
+    private static JsonElement ChangedFixture(Action<JsonNode> change)
+    {
+        var root = JsonNode.Parse(Fixture().GetRawText())!;
+        change(root);
+        return JsonSerializer.SerializeToElement(root);
+    }
+
+    [Fact]
+    public void MissingNativePostEnemyIsACheckpointMismatch()
+    {
+        var fixture = ChangedFixture(root =>
+            root["post_state"]!["combat"]!["creatures"]!.AsArray().RemoveAt(1));
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.True(report.ExecutedActualEngineStep);
+        Assert.Equal("CORE_ENGINE_CHECKPOINT_MISMATCH", report.Status);
+        Assert.Equal("$.combat.creatures.ids", report.FirstMismatchPath);
+    }
+
+    [Fact]
+    public void DuplicateNativePostEnemyIsACheckpointMismatch()
+    {
+        var fixture = ChangedFixture(root =>
+        {
+            var creatures = root["post_state"]!["combat"]!["creatures"]!.AsArray();
+            creatures.Add(creatures[1]!.DeepClone());
+        });
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.True(report.ExecutedActualEngineStep);
+        Assert.Equal("CORE_ENGINE_CHECKPOINT_MISMATCH", report.Status);
+        Assert.Equal("$.combat.creatures.ids", report.FirstMismatchPath);
+    }
+
+    [Fact]
+    public void ChangedNativeEnemyModelIsDetectedEvenWhenHpMatches()
+    {
+        var fixture = ChangedFixture(root =>
+            root["post_state"]!["combat"]!["creatures"]![1]!["model_id"] =
+                "LEAF_SLIME_M");
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.True(report.ExecutedActualEngineStep);
+        Assert.Equal("CORE_ENGINE_CHECKPOINT_MISMATCH", report.Status);
+        Assert.Equal("$.combat.creatures[creature:1].model_id", report.FirstMismatchPath);
+    }
+
+    [Fact]
+    public void UnknownNativePostCreatureCannotAliasPlayerState()
+    {
+        var fixture = ChangedFixture(root =>
+        {
+            var creature = root["post_state"]!["combat"]!["creatures"]![1]!;
+            creature["id"] = "creature:99";
+            creature["model_id"] = "SILENT";
+            creature["hp"] = 56;
+            creature["max_hp"] = 70;
+        });
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.Equal("CORE_ENGINE_CHECKPOINT_MISMATCH", report.Status);
+        Assert.Equal("$.combat.creatures.ids", report.FirstMismatchPath);
+    }
+
+    [Fact]
+    public void PreStatePlayerAndCreatureMustDescribeTheSamePlayer()
+    {
+        var fixture = ChangedFixture(root =>
+            root["pre_state"]!["combat"]!["creatures"]![0]!["hp"] = 55);
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.Equal("UNSUPPORTED_NATIVE_STATE", report.Status);
+        Assert.False(report.ExecutedActualEngineStep);
+        Assert.Contains("INCONSISTENT_NATIVE_PLAYER_CREATURE", report.Blockers);
+    }
+
+    [Fact]
+    public void SelectedNativeCardMustExistInOriginalHand()
+    {
+        var fixture = ChangedFixture(root =>
+            root["selected_action"]!["payload"]!["card_instance_id"] = 999);
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.Equal("UNSUPPORTED_NATIVE_STATE", report.Status);
+        Assert.False(report.ExecutedActualEngineStep);
+        Assert.Contains("NATIVE_SELECTED_CARD_NOT_IN_HAND", report.Blockers);
     }
 
     [Fact]
