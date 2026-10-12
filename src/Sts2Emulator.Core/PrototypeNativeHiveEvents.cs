@@ -66,7 +66,8 @@ public static class PrototypeNativeHiveEvents
     public static bool HasTerminalChoicePage(string eventId) =>
         eventId is AmalgamatorId or LostWispId or SpiritGrafterId
             or ColossalFlowerId
-            or "proto.native.underdocks.doors_of_light_and_dark";
+            or "proto.native.underdocks.doors_of_light_and_dark"
+            or "proto.native.underdocks.drowning_beacon";
 
     public static int TerminalChoicePageIndex(string eventId) =>
         eventId == ColossalFlowerId ? 3 : 1;
@@ -81,7 +82,9 @@ public static class PrototypeNativeHiveEvents
         || eventId == ColossalFlowerId
             && choiceId is "extract" or "relic"
         || eventId == "proto.native.underdocks.doors_of_light_and_dark"
-            && choiceId is "light" or "dark";
+            && choiceId is "light" or "dark"
+        || eventId == "proto.native.underdocks.drowning_beacon"
+            && choiceId is "bottle" or "climb";
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         eventId is SpiritGrafterId or FieldOfManSizedHolesId;

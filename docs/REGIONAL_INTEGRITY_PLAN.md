@@ -96,8 +96,8 @@ removals and Ultimate-card creation; its seven pinned page/choice paths have
 direct branch tests and a complete inventory in
 [the Amalgamator ledger](reference-builds/v0.111.0-hive-amalgamator.md). The
 coverage report now honors `branch_inventory_complete`; Amalgamator, Lost Wisp,
-Spirit Grafter, Colossal Flower and Doors of Light and Dark are five of 66
-event inventories marked complete. Lost
+Spirit Grafter, Colossal Flower, Doors of Light and Dark, and Drowning Beacon
+are six of 66 event inventories marked complete. Lost
 Wisp now keeps its source result page after Claim/Search, with stored gold and
 no extra result draw. See [the Lost Wisp ledger](reference-builds/v0.111.0-hive-lost-wisp.md).
 Spirit Grafter now retains its result page after Let It In or Rejection,
@@ -108,6 +108,9 @@ its three damage-and-prize stages. See [the Colossal Flower ledger](reference-bu
 Doors of Light and Dark now upgrades up to two distinct eligible cards on
 Light, offers Dark's single removal, and preserves both result pages until
 continuation. See [the Doors ledger](reference-builds/v0.111.0-underdocks-doors-light-dark.md).
+Drowning Beacon's Bottle and Climb outcomes now preserve their completion page
+after the optional potion decision or Fresnel Lens acquisition. See [the
+Drowning Beacon ledger](reference-builds/v0.111.0-underdocks-drowning-beacon.md).
 The other event inventories still require source audits.
 Prepared Hive/Glory boss selection now applies each act's source
 `BossDiscoveryOrder` using `SimulationProfile.SeenBossEncounters`, while still

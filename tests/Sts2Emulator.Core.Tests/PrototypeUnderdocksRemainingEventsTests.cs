@@ -506,6 +506,10 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         };
         Assert.Contains("climb", ChoiceIds(engine, state));
         var after = Choose(engine, state, "climb");
+        Assert.Equal(RunPhase.Event, after.Phase);
+        Assert.Equal(1, after.World!.Event!.NativePageIndex);
+        after = engine.Step(after,
+            GameAction.Empty("continue_event")).State;
         Assert.Equal(RunPhase.MapChoice, after.Phase);
         Assert.Equal(state.Player.MaxHp - 13, after.Player.MaxHp);
         var lenses = after.Player.Relics.Where(relic =>

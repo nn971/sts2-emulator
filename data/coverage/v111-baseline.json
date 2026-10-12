@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "b5288da29b1df007ed519e16c46e04e0b2a6b358677ec361180dfefb33df12ea",
+  "inventory_file_sha256": "63045025ba5d04487723b211e8d7c0781b96905d9c981791c06235f07159aeb1",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "2524bd1ae08c7bb7d7b7d560c64bcbd5992a6b9eeb5bd2a5616e5a52adee7964",
+    "inventory_hash": "d8029c4572f77f3086bc03bd4cc384a11820b452533f77ecccd140229f7cd31a",
     "items": [
       {
         "catalogued": true,
@@ -15346,15 +15346,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/BOTTLE",
-          "initial/CLIMB",
-          "page/BOTTLE",
-          "page/CLIMB",
-          "page/INITIAL",
-          "page/INITIAL/BOTTLE",
-          "page/INITIAL/CLIMB"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "DROWNING_BEACON",
         "registered": true,

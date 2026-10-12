@@ -32,6 +32,9 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
 
         var skip = engine.Step(offered, engine.GetLegalActions(offered)
             .Single(action => action.Kind == "skip_event_potion")).State;
+        Assert.Equal(RunPhase.Event, skip.Phase);
+        Assert.Equal(1, skip.World!.Event!.NativePageIndex);
+        skip = Continue(engine, skip);
         Assert.Equal(RunPhase.MapChoice, skip.Phase);
         Assert.Null(skip.World!.Event);
         Assert.DoesNotContain(skip.Player.PotionSlots, potion =>
@@ -40,6 +43,9 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         var take = engine.GetLegalActions(offered).Single(action =>
             action.Kind == "take_event_potion");
         var accepted = engine.Step(offered, take).State;
+        Assert.Equal(RunPhase.Event, accepted.Phase);
+        Assert.Equal(1, accepted.World!.Event!.NativePageIndex);
+        accepted = Continue(engine, accepted);
         Assert.Equal(RunPhase.MapChoice, accepted.Phase);
         Assert.Contains(accepted.Player.PotionSlots, potion =>
             potion?.PotionId == PotionId);
@@ -71,6 +77,9 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         var replace = engine.GetLegalActions(pending).First(action =>
             action.Kind == "replace_event_potion");
         var result = engine.Step(pending, replace).State;
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        result = Continue(engine, result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Single(result.Player.PotionSlots,
             potion => potion?.PotionId == PotionId);
@@ -87,7 +96,8 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         };
         var rngHash = CanonicalJson.Sha256(wounded.Rng);
         var result = Select(engine, wounded, "climb");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
         Assert.Equal(wounded.Player.MaxHp - 13, result.Player.MaxHp);
         Assert.Equal(Math.Min(wounded.Player.Hp, result.Player.MaxHp),
             result.Player.Hp);
@@ -96,6 +106,8 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         Assert.Equal(rngHash, CanonicalJson.Sha256(result.Rng));
         Assert.DoesNotContain(result.Player.PotionSlots,
             potion => potion?.PotionId == PotionId);
+        result = Continue(engine, result);
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
     }
 
     [Fact]
@@ -188,6 +200,7 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         var take = engine.GetLegalActions(pending).Single(action =>
             action.Kind == "take_event_potion");
         var accepted = engine.Step(pending, take).State;
+        accepted = Continue(engine, accepted);
         Assert.Equal(RunPhase.MapChoice, accepted.Phase);
         var combatNode = new MapNodeState(
             "test-beacon-combat", 1, 1, PrototypeRoomType.Combat,
@@ -245,6 +258,10 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
             && item.ReadPayload<EventChoicePayload>().ChoiceId == choice);
         return engine.Step(state, action).State;
     }
+
+    private static RunState Continue(
+        PrototypeGameEngine engine, RunState state) =>
+        engine.Step(state, GameAction.Empty("continue_event")).State;
 
     private static RunState FindBeacon(PrototypeGameEngine engine)
     {
