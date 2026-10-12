@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from native_action_envelope_audit import audit, diff_scalars
+from native_action_envelope_audit import audit, diff_scalars, infer_choice_discard
 
 
 def sample():
@@ -79,6 +79,26 @@ class EnvelopeAuditTests(unittest.TestCase):
         for i, x in enumerate(records):
             x["ordinal"] = i + 1
         self.assertEqual("INCOMPLETE_CAPTURE", audit(records)["status"])
+
+    def test_nested_discard_candidate_remains_explicitly_unverified(self):
+        before = {"combat": {"hand": [
+            {"instance_id": 2}, {"instance_id": 5}],
+            "discard_pile": [{"instance_id": 0}]}}
+        after = {"combat": {"hand": [{"instance_id": 5}],
+            "discard_pile": [{"instance_id": 0}, {"instance_id": 2}]}}
+        inference = infer_choice_discard(before, after)
+        self.assertEqual(2, inference["candidate_discarded_card_instance_id"])
+        self.assertFalse(inference["semantic_selection_verified"])
+        self.assertEqual("INFERRED_FROM_CARD_ZONE_DIFFERENCE",
+                         inference["provenance"])
+
+    def test_observed_mechanics_never_claim_parity(self):
+        result = audit(sample())
+        indicators = result["observed_mechanic_indicators"]
+        self.assertEqual(1, indicators["card_play"]["count"])
+        self.assertEqual(1, indicators["energy_change"]["count"])
+        self.assertEqual("UNOBSERVED", indicators["potion_history_entry"]["status"])
+        self.assertEqual("NOT_TESTED", result["native_source_hook_order"])
 
     def test_effect_delta_is_independent_of_native_rng_seed(self):
         pre = {"player": {"hp": 50}, "combat": {"energy": 3, "creatures": [],
