@@ -42,6 +42,13 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeGloryEvents.GraveOfTheForgottenId
             or PrototypeNativeHiveEvents.LanternKeyEventId
             or PrototypeNativeHiveEvents.ZenWeaverId
+            or NativeAncientRewardsV111.TezcataraId
+            or NativePaelRewardsV111.PaelId
+            or NativeOrobasEventV111.EventId
+            or NativeTanxEventV111.EventId
+            or NativeVakuuEventV111.EventId
+            or NativeNonupeipeEventV111.EventId
+            or NativeDarvEventV111.EventId
             or PrototypeNativeSharedEvents.ThisOrThatId
             or "proto.native.underdocks.doors_of_light_and_dark"
             or "proto.native.underdocks.drowning_beacon"
@@ -145,6 +152,7 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "big_mushroom" or "fragrant_mushroom"
         || eventId == PrototypeNativeGloryEvents.GraveOfTheForgottenId
             && choiceId is "confront" or "accept"
+        || IsAncientResultChoice(eventId, choiceId)
         || eventId == PrototypeNativeSharedEvents.ThisOrThatId
             && choiceId is "plain" or "ornate"
         || eventId == "proto.native.underdocks.doors_of_light_and_dark"
@@ -157,4 +165,17 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "grab" or "dive"
         || eventId == "proto.native.underdocks.sunken_statue"
             && choiceId is "sword" or "dive";
+
+    private static bool IsAncientResultChoice(
+        string eventId, string? choiceId) =>
+        choiceId is not null
+        && (eventId is NativeAncientRewardsV111.TezcataraId
+            or NativePaelRewardsV111.PaelId
+            or NativeOrobasEventV111.EventId
+            or NativeTanxEventV111.EventId
+            or NativeVakuuEventV111.EventId
+            or NativeNonupeipeEventV111.EventId
+            or NativeDarvEventV111.EventId)
+        && PrototypeContent.Event(eventId).Choices.Any(choice =>
+            StringComparer.Ordinal.Equals(choice.Id, choiceId));
 }

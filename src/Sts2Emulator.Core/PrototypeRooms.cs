@@ -1011,6 +1011,19 @@ public sealed partial class PrototypeGameEngine
                     eventState.EventId))
         {
             RequireKind(action, "continue_event");
+            if (NativeAncientRewardsV111.IsOpeningEvent(world)
+                || NativeTanxEventV111.IsOpeningEvent(world)
+                || NativeVakuuEventV111.IsOpeningEvent(world)
+                || NativeNonupeipeEventV111.IsOpeningEvent(world))
+            {
+                // Ancient events precede the map and do not complete a map
+                // room when their SetEventFinished page is dismissed.
+                return state with
+                {
+                    Phase = RunPhase.MapChoice,
+                    World = world with { Event = null }
+                };
+            }
             return CompleteRoomToMap(state);
         }
 

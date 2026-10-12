@@ -2,6 +2,9 @@
 
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.
+Supported Hive and Glory Ancient relic choices now retain their finished page
+after acquisition and queued rewards, then return to map choice without
+counting the opening as a map room.
 Orobas's eight Silent relic offers reuse the existing acquisition
 handlers and continuations. Coffer capacity metadata now records its four
 added potion slots. Cross-character card mechanics (including Sea Glass,
