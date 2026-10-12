@@ -28,16 +28,17 @@ Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C#
 tests passed. The latest solution build and coverage-baseline check pass; the new
 paths were not tested in these updates. Python snapshot/batch/replay checks
 passed on the prior baseline.
-The current v111 coverage report classifies 83 of 90 encounters as implemented
+The current v111 coverage report classifies 86 of 90 encounters as implemented
 and integrated, with zero native-validated: 80 are in regional encounter
-queues, while Punch Off, Dense Vegetation, and Lantern Key's Mysterious Knight
-event-only encounters are registered at zero map weight and routed through
-their events. The event category reports 50 of 66 event paths integrated into
-a regional or forced quest route, thirty-four with complete branch inventories,
-and zero native-validated. The remaining special/event fights are not counted
-as ordinary queue integration. These classifications are conservative and do
-not replace branch-level review, but they confirm that registered rosters and
-the synthetic route are not regional completion evidence.
+queues, while Punch Off, Dense Vegetation, Lantern Key's Mysterious Knight,
+and Battleworn Dummy's three training encounters are registered at zero map
+weight and routed through their events. The event category reports 50 of 66
+event paths integrated into a regional or forced quest route, thirty-four with
+complete branch inventories, and zero native-validated. The remaining
+special/event fights are not counted as ordinary queue integration. These
+classifications are conservative and do not replace branch-level review, but
+they confirm that registered rosters and the synthetic route are not regional
+completion evidence.
 Existing branches already deliver all ordinary encounter registrations, regional
 experimental routing and Knowledge Demon enemy-side choices. Those implementations
 are reused. Hive/Glory queues now prepare at initialization rather than act entry.

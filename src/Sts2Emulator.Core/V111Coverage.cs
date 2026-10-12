@@ -220,6 +220,37 @@ public static class V111Coverage
                 implementation = "implemented";
                 integration = "integrated";
             }
+            (string EncounterId, string EnemyId, string ChoiceId)? battleworn =
+                item.Id switch
+                {
+                    "BATTLEWORN_DUMMY_EVENT_V1_ENCOUNTER" =>
+                        (PrototypeNativeGloryEvents.BattlewornV1EncounterId,
+                         PrototypeNativeGloryEvents.BattleFriendV1Id,
+                         "setting_1"),
+                    "BATTLEWORN_DUMMY_EVENT_V2_ENCOUNTER" =>
+                        (PrototypeNativeGloryEvents.BattlewornV2EncounterId,
+                         PrototypeNativeGloryEvents.BattleFriendV2Id,
+                         "setting_2"),
+                    "BATTLEWORN_DUMMY_EVENT_V3_ENCOUNTER" =>
+                        (PrototypeNativeGloryEvents.BattlewornV3EncounterId,
+                         PrototypeNativeGloryEvents.BattleFriendV3Id,
+                         "setting_3"),
+                    _ => null
+                };
+            if (battleworn is { } training
+                && engineIds.Contains(
+                    training.EncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeContent.Event(
+                    PrototypeNativeGloryEvents.BattlewornDummyId).Choices
+                    .Any(choice => choice.Id == training.ChoiceId)
+                && PrototypeContent.Encounter(training.EncounterId).Weight == 0
+                && PrototypeContent.Encounter(training.EncounterId).EnemyIds
+                    .SequenceEqual([training.EnemyId], StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
         }
         if (item.Scope == "single-player" && item.Kind == "events"
             && engineIds.Length > 0)

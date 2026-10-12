@@ -12603,8 +12603,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BattlewornDummyEventV1Encounter.cs#29ac6e16942ae5e89132686c63868770abd1b46314d68d5ade8a0c20ad782d38"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12621,8 +12621,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BattlewornDummyEventV2Encounter.cs#e45373df4dc5fb84d476239387b89a5913ba1fe55bc86b6413b2b812b002e0a5"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12639,8 +12639,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BattlewornDummyEventV3Encounter.cs#de56dadeabf94116e356313d31a43c53c39a594aaaaf28c34226abcef5eb48ff"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -29548,8 +29548,8 @@
         "catalogued": 90,
         "eligible": 90,
         "excluded": 0,
-        "implemented": 83,
-        "integrated": 83,
+        "implemented": 86,
+        "integrated": 86,
         "kind": "encounters",
         "scope_review_required": 0,
         "validated": 0
