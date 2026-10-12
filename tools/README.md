@@ -50,3 +50,18 @@ events, labelled `RECORDED_NATIVE_EXPECTATION`. It always retains
 `emulator_parity=NOT_TESTED`. The .NET structural importer can inspect such
 a pre-state but continues to report `PARTIAL` until engine continuation is
 available and audited.
+
+## Minimal native PCK packaging without Godot
+
+The optional `tools/make_inspector_pck.py` writes a single-file unencrypted
+Godot 4.5 PCK v3 containing the root-level `mod_manifest.json` required by
+StS2's PCK-first mod loader:
+
+```fish
+python tools/make_inspector_pck.py --manifest native/Sts2ReferenceMod/mod_manifest.json \
+  --out ~/projects/sts2-inspector-stage/mods/Sts2ReferenceMod/Sts2ReferenceMod.pck
+```
+
+The PCK is not an arbitrary ZIP or bare JSON file; the on-disk format is
+checked against Godot's PCK header/directory layout in synthetic tests.
+It still needs a native game-local loader smoke test.
