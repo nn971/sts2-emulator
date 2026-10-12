@@ -29,6 +29,14 @@ def diff_scalars(before: dict, after: dict) -> dict:
         except (KeyError, TypeError):
             pass
     try:
+        if before["player"].get("powers") != after["player"].get("powers"):
+            values["player_powers"] = {
+                "before": before["player"].get("powers"),
+                "after": after["player"].get("powers"),
+            }
+    except (KeyError, TypeError):
+        pass
+    try:
         pre = {x["id"]: x for x in before["combat"]["creatures"]}
         post = {x["id"]: x for x in after["combat"]["creatures"]}
         for identifier in sorted(pre.keys() | post.keys()):
@@ -117,7 +125,7 @@ def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
         if any(isinstance(info, dict) and "hp" in info
                for info in delta.get("creatures", {}).values()):
             add("creature_hp_change")
-        if any(isinstance(info, dict) and "powers" in info
+        if "player_powers" in delta or any(isinstance(info, dict) and "powers" in info
                for info in delta.get("creatures", {}).values()):
             add("power_change")
         if delta.get("zones"):
