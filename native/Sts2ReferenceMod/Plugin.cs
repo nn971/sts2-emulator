@@ -14,7 +14,16 @@ public static class Plugin
 {
     public static void Initialize()
     {
-        Log.Info("[Sts2ReferenceMod] Inspector foundation loaded; native decision hooks NOT YET ATTACHED. No parity capture is active.");
+        if (string.Equals(System.Environment.GetEnvironmentVariable("STS2_FIDELITY_CAPTURE"),
+                "1", StringComparison.Ordinal))
+        {
+            Log.Info("[Sts2ReferenceMod] Native passive combat capture is explicitly enabled.");
+            NativeV111PassiveBridge.Start();
+        }
+        else
+        {
+            Log.Info("[Sts2ReferenceMod] Passive capture disabled (set STS2_FIDELITY_CAPTURE=1).");
+        }
     }
 }
 #else
