@@ -47,8 +47,9 @@ public sealed class RandomIntentProviderV111Tests
                 Assert.Equal(ordinal, choice.Request.Ordinal);
                 Assert.Contains(choice.Request.OwnerId,
                     before.Enemies.Select(enemy => "creature:" + enemy.InstanceId));
-                Assert.Equal(Enumerable.Range(0, choice.Request.OrderedCandidates.Length),
-                    choice.Request.OrderedCandidates);
+                Assert.Equal("bounded_integer", choice.Request.OperationKind);
+                Assert.Empty(choice.Request.OrderedCandidates);
+                Assert.True(choice.Request.BoundedCount > 0);
                 Assert.Equal(ordinal, choice.NativeCursorBefore!.Counter);
                 Assert.Equal(ordinal + 1, choice.NativeCursorAfter!.Counter);
                 Assert.Equal("UNVERIFIED", choice.ProbabilityStatus);
@@ -61,7 +62,7 @@ public sealed class RandomIntentProviderV111Tests
             foreach (var choice in audited.Choices)
             {
                 int primitiveIndex = NativeRngV111.NextInt(primitiveOracle,
-                    "run.monster_ai", choice.Request.OrderedCandidates.Length);
+                    "run.monster_ai", choice.Request.SupportCount);
                 Assert.Equal(primitiveIndex, choice.SelectedIndex);
             }
             Assert.Equal(CanonicalJson.Sha256(primitiveOracle),
@@ -102,7 +103,7 @@ public sealed class RandomIntentProviderV111Tests
         Assert.Throws<InvalidOperationException>(() =>
             replay.Resolve(req with { OperationKind = "choose_index" }, stream));
         Assert.Throws<InvalidOperationException>(() =>
-            replay.Resolve(req with { OrderedCandidates = [999] }, stream));
+            replay.Resolve(req with { BoundedCount = req.BoundedCount + 1 }, stream));
         Assert.Equal(1, replay.Remaining);
         Assert.Equal(original, CanonicalJson.Sha256(stream));
         var accepted = replay.Resolve(req, stream);
