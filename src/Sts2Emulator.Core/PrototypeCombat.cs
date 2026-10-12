@@ -2427,7 +2427,8 @@ public sealed partial class PrototypeGameEngine
                     var request = new RandomIndexRequestV111(
                         "combat.committed_intent.index_draw", "run.monster_ai",
                         "creature:" + enemy.InstanceId, occurrence,
-                        Enumerable.Range(0, maxExclusive).ToArray());
+                        Enumerable.Range(0, maxExclusive).ToArray(),
+                        OperationKind: "bounded_integer");
                     var chosen = nativeProvider.Resolve(request, ownedNative.RunStreams);
                     audit?.Add(chosen);
                     occurrence++;
