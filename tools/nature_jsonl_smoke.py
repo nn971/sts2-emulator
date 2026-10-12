@@ -67,6 +67,24 @@ def main() -> None:
                                    snapshot=hp_terminal_save["snapshot"])
         assert hp_terminal_restore["fingerprint"] == hp_terminal["fingerprint"]
 
+        premature = call(op="nature_advance", nature_handle=hp_next["natureHandle"])
+        assert not premature["ok"], premature
+        composed = call(op="nature_advance", nature_handle=hp_terminal["natureHandle"])
+        assert composed["ok"] and composed["kind"] == "intents", composed
+        assert composed["natureHandle"] != hp_terminal["natureHandle"]
+        composed_saved = call(op="nature_save", nature_handle=composed["natureHandle"])
+        assert composed_saved["ok"] and composed_saved["kind"] == "intents"
+        composed_loaded = call(op="nature_load", kind="intents",
+                               snapshot=composed_saved["snapshot"])
+        assert composed_loaded["ok"]
+        assert composed_loaded["fingerprint"] == composed["fingerprint"]
+        while composed["pending"] is not None:
+            composed = call(op="nature_resolve",
+                            nature_handle=composed["natureHandle"],
+                            fingerprint=composed["fingerprint"], selected_index=0)
+            assert composed["ok"], composed
+        assert composed["complete"], composed
+
         # The intent selector commits deterministic first enemies and stops
         # at the actual native RNG callback of the last Exoskeleton.
         intents = call(op="nature_begin", kind="intents",
