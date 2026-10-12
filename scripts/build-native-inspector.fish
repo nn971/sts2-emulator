@@ -32,13 +32,15 @@ or exit 1
 dotnet build "$project/Sts2ReferenceMod.csproj" -c Release -p:Sts2DataDir="$data"
 or exit 1
 mkdir -p "$dest"
-for dll in Sts2ReferenceMod.dll Sts2Emulator.Trace.dll Sts2Emulator.Core.dll
-    if not test -f "$project/bin/Release/net9.0/$dll"
-        echo "Missing build output: $dll" >&2
-        exit 1
-    end
-    cp "$project/bin/Release/net9.0/$dll" "$dest/"
+# Core and Trace protocol sources are embedded in the native mod DLL to
+# avoid depending on the game's managed assembly resolver for sibling DLLs.
+# Clean up only our own obsolete companion DLLs from an earlier installation.
+if not test -f "$project/bin/Release/net9.0/Sts2ReferenceMod.dll"
+    echo "Missing native mod DLL" >&2
+    exit 1
 end
+cp "$project/bin/Release/net9.0/Sts2ReferenceMod.dll" "$dest/"
+rm -f "$dest/Sts2Emulator.Trace.dll" "$dest/Sts2Emulator.Core.dll"
 cp "$project/Sts2ReferenceMod.json" "$dest/"
 cp "$project/mod_manifest.json" "$dest/"
 pushd "$project"
