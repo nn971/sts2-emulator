@@ -50,7 +50,7 @@ public sealed class NativeRecordingSession : IAsyncDisposable
         {
             Enqueue(new NativeTransitionRecord("transition", _current.DecisionId,
                 _current.StateHash, hash, _current.EventSeq + 1, _journal.LastSequence,
-                _actionRecorded ? "COMPLETE" : "INCOMPLETE_CAPTURE"));
+                _actionRecorded && !_incomplete ? "COMPLETE" : "INCOMPLETE_CAPTURE"));
             if (!_actionRecorded) _incomplete = true;
         }
 
@@ -71,8 +71,12 @@ public sealed class NativeRecordingSession : IAsyncDisposable
             throw new InvalidOperationException("Human action without a unique decision boundary.");
         }
         _actionRecorded = true;
+        string submitted = action.Kind + ":" + CanonicalJson.Serialize(action.Payload);
+        bool menuMember = _current.LegalActions.Any(legal =>
+            legal.Kind + ":" + CanonicalJson.Serialize(legal.Payload) == submitted);
+        if (!menuMember || !accepted) _incomplete = true;
         Enqueue(new NativeActionRecord("action", _current.DecisionId, action, "human",
-            accepted, reason));
+            accepted && menuMember, !menuMember ? "ACTION_ABSENT_FROM_LEGAL_MENU" : reason));
     }
 
     public NativeEventRecord OnSemanticEffect(
@@ -96,7 +100,7 @@ public sealed class NativeRecordingSession : IAsyncDisposable
         _terminal = true;
         if (_current is not null)
         {
-            bool complete = terminalState.HasValue && _actionRecorded;
+            bool complete = terminalState.HasValue && _actionRecorded && !_incomplete;
             Enqueue(new NativeTransitionRecord("transition", _current.DecisionId,
                 _current.StateHash, complete ? CanonicalJson.Sha256(terminalState.GetValueOrDefault()) : null,
                 _current.EventSeq + 1, _journal.LastSequence,
