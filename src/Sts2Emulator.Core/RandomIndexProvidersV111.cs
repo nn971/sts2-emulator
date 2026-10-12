@@ -9,8 +9,13 @@ public sealed record RandomIndexRequestV111(
     string SiteId, string StreamId, string OwnerId,
     int Ordinal, int[] OrderedCandidates,
     string SourceVersion = "v0.111.0",
-    string OperationKind = "choose_index")
+    string OperationKind = "choose_index",
+    int? BoundedCount = null)
 {
+    // A bounded integer ticket is compact even for very large ranges.
+    public int SupportCount => OperationKind == "bounded_integer"
+        ? BoundedCount ?? 0 : OrderedCandidates.Length;
+
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(SiteId)
@@ -18,7 +23,11 @@ public sealed record RandomIndexRequestV111(
             || string.IsNullOrWhiteSpace(OwnerId)
             || SourceVersion != "v0.111.0"
             || OperationKind is not ("choose_index" or "bounded_integer")
-            || Ordinal < 0 || OrderedCandidates is not { Length: > 0 })
+            || Ordinal < 0 || OrderedCandidates is null
+            || (OperationKind == "choose_index" &&
+                (OrderedCandidates.Length == 0 || BoundedCount is not null))
+            || (OperationKind == "bounded_integer" &&
+                (OrderedCandidates.Length != 0 || BoundedCount is null or <= 0)))
             throw new ArgumentException("Invalid source-pinned random-choice request.");
     }
 }
@@ -35,12 +44,13 @@ public sealed record RandomIndexDecisionV111(
     NativeRngSnapshot? NativeCursorAfter = null,
     string ProbabilityStatus = "UNVERIFIED")
 {
-    public int SelectedValue => Request.OrderedCandidates[SelectedIndex];
+    public int SelectedValue => Request.OperationKind == "bounded_integer"
+        ? SelectedIndex : Request.OrderedCandidates[SelectedIndex];
 
     public void Validate()
     {
         Request.Validate();
-        if (SelectedIndex < 0 || SelectedIndex >= Request.OrderedCandidates.Length ||
+        if (SelectedIndex < 0 || SelectedIndex >= Request.SupportCount ||
             string.IsNullOrWhiteSpace(ProviderMode) ||
             ProbabilityStatus != "UNVERIFIED")
             throw new ArgumentException("Illegal random-choice outcome or probability label.");
@@ -74,7 +84,7 @@ public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
         if (matches.Length != 1)
             throw new InvalidOperationException("Native random stream ownership is ambiguous.");
         var before = NativeRngV111.ToSnapshot(matches[0]);
-        int index = NativeRngV111.NextInt(streams, request.StreamId, request.OrderedCandidates.Length);
+        int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);
         var after = NativeRngV111.ToSnapshot(streams.Streams.Single(s =>
             s.StreamId == request.StreamId));
         var decision = new RandomIndexDecisionV111(
@@ -122,6 +132,7 @@ public sealed class ScriptedRandomIndexProviderV111 : IRandomIndexProviderV111
             expected.Request.Ordinal != request.Ordinal ||
             expected.Request.SourceVersion != request.SourceVersion ||
             expected.Request.OperationKind != request.OperationKind ||
+            expected.Request.BoundedCount != request.BoundedCount ||
             !expected.Request.OrderedCandidates.SequenceEqual(request.OrderedCandidates))
             throw new InvalidOperationException(
                 "Scripted Nature site/owner/ordinal/eligibility mismatch at choice " + _cursor);
