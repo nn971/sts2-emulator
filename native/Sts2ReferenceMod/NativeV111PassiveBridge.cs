@@ -10,6 +10,8 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
@@ -109,9 +111,11 @@ internal static class NativeV111PassiveBridge
         var player = combat.Players[0];
         if (player.PlayerCombatState?.Phase != PlayerTurnPhase.Play || !player.Creature.IsAlive)
             return false;
-        // Awaiting a nested prompt is a distinct decision boundary. The initial
-        // capture adapter does not yet prove its readiness or enumerate choices.
-        return true;
+        // Native input readiness includes the actual hand interaction mode,
+        // which distinguishes play from a card-selection prompt.
+        var hand = NCombatRoom.Instance?.Ui?.Hand;
+        return hand is not null && !hand.InCardPlay &&
+            hand.CurrentMode == NPlayerHand.Mode.Play;
     }
 
     private static void OpenCombat(CombatState combat)
@@ -417,7 +421,11 @@ internal sealed class NativeCombatAdapter(
         var missing = new[] { "$.combat.pending_choice", "$.combat.rng_state",
             "$.inventory.relics", "$.inventory.potions", "$.combat.move_history",
             "$.combat.hidden_card_state" };
-        var unsupported = new List<string> { "NATIVE_V111_PINNED_BUILD_VALIDATION_PENDING" };
+        var unsupported = new List<string>
+        {
+            "NATIVE_V111_PINNED_BUILD_VALIDATION_PENDING",
+            "HUMAN_ACTION_ORIGIN_UNVERIFIED"
+        };
         if (potions) unsupported.Add("POTIONS_NOT_IN_LEGAL_MENU");
         if (exoticTargets) unsupported.Add("ALLY_TARGETING_UNVERIFIED");
         return new CaptureCoverage(
