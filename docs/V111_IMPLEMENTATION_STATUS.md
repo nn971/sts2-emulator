@@ -17,7 +17,8 @@ Leech is integrated in Overgrowth, Underdocks and Hive: Share Knowledge offers
 five Silent cards and requires one selection, while Rip the Leech Off costs
 5 HP and offers three implemented colorless cards.
 Neow's Lead Paperweight now suspends the opening for a one-of-two supported
-Colorless card reward; the full eligible Colorless pool remains unfinished.
+Colorless card reward drawn from all implemented single-player Colorless
+reward cards. Account unlock filtering and native reward RNG remain open.
 Silver Crucible now consumes its first three group charges on supported custom
 event card rewards as well as combat rewards.
 Silken Tress now persists its one-shot Glam enchantment through the first

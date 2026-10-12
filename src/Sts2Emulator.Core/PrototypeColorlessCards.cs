@@ -750,6 +750,21 @@ public static class PrototypeColorlessCards
     public static string[] ImplementedShopPool { get; } =
         Implemented.Select(c => c.Id).ToArray();
 
+    // Card-reward offers use the implemented, solo-eligible reward pool.
+    // This is broader than ImplementedCombatGenerationPool: epoch-gated
+    // cards can appear in rewards even though synthetic combat generation
+    // still excludes them until unlock state is modeled.
+    public static string[] ImplementedRewardPool { get; } =
+        NativePoolIds.Where(id => Implemented.Any(card =>
+            card.Id == id
+            && card.MechanicsImplemented
+            && !card.MultiplayerOnly
+            && card.RewardEligible
+            && card.Rarity is PrototypeCardRarity.Common
+                or PrototypeCardRarity.Uncommon
+                or PrototypeCardRarity.Rare))
+        .ToArray();
+
     // Native Colorless1..5Epoch.Cards (pinned v0.111.0).
     // Until unlock state is available, combat generation deliberately
     // uses the conservative base-pool subset. This does not reproduce a

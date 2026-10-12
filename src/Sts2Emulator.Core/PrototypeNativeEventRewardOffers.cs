@@ -168,12 +168,11 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeRunEffectKind.OfferTwoColorlessCards:
             {
-                var pool = PrototypeColorlessCards
-                    .ImplementedCombatGenerationPool;
+                var pool = PrototypeColorlessCards.ImplementedRewardPool;
                 if (pool.Length < 2)
                 {
                     throw new InvalidOperationException(
-                        "Lead Paperweight requires two implemented Colorless cards.");
+                        "Lead Paperweight requires two implemented reward-eligible Colorless cards.");
                 }
 
                 return new RewardState(
