@@ -3,7 +3,16 @@
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>Sts2ReferenceMod</AssemblyName>
     <IsPackable>false</IsPackable>
+    <!-- The Godot .NET editor can leave auto-generated AssemblyInfo.cs and
+         TargetFrameworkAttribute.cs in .godot/mono/temp/obj. The SDK's
+         default **/*.cs glob would compile these alongside obj/, causing
+         duplicate assembly attribute errors on subsequent native builds. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);.godot/**;**/.godot/**</DefaultItemExcludes>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Defense in depth for any additional SDK or imported compile globs. -->
+    <Compile Remove=".godot/**/*.cs" />
+  </ItemGroup>
   <!-- The native game loader probes the mod's principal DLL but does not
        necessarily resolve its sibling project-reference DLLs. For native
        builds embed our audited Core/Trace protocol sources into the mod DLL.
