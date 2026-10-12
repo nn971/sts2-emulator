@@ -161,7 +161,9 @@ public sealed class NativeEngineFidelityV111Tests
             post_state = Snapshot(true)
         });
         var report = NativeEngineFidelityV111.Compare(fixture);
-        Assert.Equal("CORE_ENGINE_CHECKPOINT_CONSISTENT", report.Status);
+        Assert.True(report.Status == "CORE_ENGINE_CHECKPOINT_CONSISTENT",
+            report.Status + ": " + (report.EngineFailure ??
+                string.Join(", ", report.Blockers)) + "; mismatch=" + report.FirstMismatchPath);
         Assert.True(report.ExecutedActualEngineStep, report.EngineFailure ??
             string.Join(", ", report.Blockers));
         Assert.Equal("NOT_TESTED", report.NativeGameParity);
