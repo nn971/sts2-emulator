@@ -11118,7 +11118,7 @@
         "page/LINGER9/EXIT_BATHS",
         "page/LINGER9/LINGER"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

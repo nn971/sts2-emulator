@@ -16,6 +16,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeDenseVegetation.EventId
             or "proto.native.underdocks.waterlogged_scriptorium"
             or PrototypeNativeUnderdocksTrashHeap.EventId
+            or "proto.native.underdocks.abyssal_baths"
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
@@ -33,7 +34,9 @@ public static class PrototypeNativeEventCompletionPages
     public static int TerminalChoicePageIndex(string eventId) =>
         eventId is PrototypeNativeHiveEvents.ColossalFlowerId
             or PrototypeNativeDenseVegetation.EventId ? 3
-            : eventId == PrototypeNativeGloryEvents.RoundTeaPartyId ? 2 : 1;
+            : eventId == PrototypeNativeGloryEvents.RoundTeaPartyId ? 2
+            : eventId == "proto.native.underdocks.abyssal_baths"
+                ? int.MaxValue : 1;
 
     public static bool HasTerminalChoice(
         string eventId, string? choiceId) =>
@@ -63,6 +66,8 @@ public static class PrototypeNativeEventCompletionPages
                 or "prickly_sponge"
         || eventId == PrototypeNativeUnderdocksTrashHeap.EventId
             && choiceId is "dive" or "grab"
+        || eventId == "proto.native.underdocks.abyssal_baths"
+            && choiceId is "abstain" or "exit"
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId

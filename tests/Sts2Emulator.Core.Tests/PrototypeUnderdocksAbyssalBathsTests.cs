@@ -118,7 +118,17 @@ public sealed class PrototypeUnderdocksAbyssalBathsTests
         var action = engine.GetLegalActions(state).Single(item =>
             item.Kind == "event_choice"
             && item.Payload.GetProperty("ChoiceId").GetString() == choice);
-        return engine.Step(state, action).State;
+        var result = engine.Step(state, action).State;
+        if (result.Phase == RunPhase.Event
+            && result.World?.Event is { } eventState
+            && eventState.EventId == EventId
+            && eventState.NativePageIndex == int.MaxValue)
+        {
+            var continueEvent = engine.GetLegalActions(result).Single(item =>
+                item.Kind == "continue_event");
+            result = engine.Step(result, continueEvent).State;
+        }
+        return result;
     }
 
     private static RunState FindBaths(PrototypeGameEngine engine)

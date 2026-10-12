@@ -41,14 +41,15 @@ public sealed partial class PrototypeGameEngine
             var healed = choice == "abstain"
                 ? Math.Min(state.Player.MaxHp, state.Player.Hp + 10)
                 : state.Player.Hp;
-            return AdvanceEventContinuations(state with
+            var result = state with
             {
                 Player = state.Player with { Hp = healed },
                 World = world with
                 {
                     Event = evt with { ChosenChoiceId = choice }
                 }
-            });
+            };
+            return PreserveNativeEventCompletionPage(result, choice);
         }
 
         if (choice != (isInitial ? "immerse" : "linger"))

@@ -229,6 +229,11 @@ public static class V111Coverage
                 PrototypeNativeUnderdocksTrashHeap.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ABYSSAL_BATHS" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.underdocks.abyssal_baths",
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
