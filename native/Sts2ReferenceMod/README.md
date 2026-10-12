@@ -161,6 +161,38 @@ human-origin attribution, and nested card selections. The bridge does not
 inject player actions or modify RNG. The Step/Pause/Resume/Stop coordinator is
 implemented independently and awaits audited native action dispatch.
 
+## First local trace files confirmed (2026-10-12)
+
+The user supplied native Windows `godot.log` proving the game finds the
+PCK, loads the DLL, calls `Plugin.Initialize`, enables capture, and passes
+the SHA-256 pin. It also logs multiple
+`Recording (passive): D:\SteamLibrary\sts2-inspector-traces\passive-*.jsonl`
+and `Passive combat trace completed` messages. This establishes that
+combat sessions **were opened and closed**, but not that they contain valid
+decision/action/transition lifecycles. First inspect actual files via
+`/mnt/d/SteamLibrary/sts2-inspector-traces` in WSL and audit the JSONL.
+
+An accompanying log line noted:
+`mod_manifest.json looks like a mod manifest but is missing the 'id' field`.
+This is a **loose legacy manifest** mistakenly copied by the old installer.
+The PCK still needs an internal `res://mod_manifest.json`; the native
+game's modern loose manifest is `Sts2ReferenceMod.json` with `id`.
+The packaging script now removes `mods/Sts2ReferenceMod/mod_manifest.json`
+from the installed folder and includes it only in the PCK, while retaining
+`Sts2ReferenceMod.json` and the matching DLL/PCK. This warning does not
+invalidate the already observed bridge startup.
+
+```fish
+set traces /mnt/d/SteamLibrary/sts2-inspector-traces
+ls -lah "$traces"
+set trace (find "$traces" -maxdepth 1 -type f -name 'passive-*.jsonl' | sort | tail -n 1)
+python tools/native_trace_audit.py "$trace" --out ~/projects/sts2-inspector-stage/capture-audit.json
+```
+
+Short or incomplete files are useful diagnostic evidence, especially if a
+combat was interrupted or the recording prematurely closed. Retain them
+rather than claiming native parity.
+
 ## Diagnostics when game launches but produces no native trace
 
 The main-menu smoke test validates that a PCK/DLL can load; it does not
