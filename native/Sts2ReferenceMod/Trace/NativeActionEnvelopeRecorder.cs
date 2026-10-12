@@ -22,6 +22,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     private long _nextActionId;
     private bool _incomplete;
     private bool _closed;
+    private long _frameIndex;
+    private string? _lastFrameStateHash;
 
     public NativeActionEnvelopeRecorder(
         string path, string gameBuild, string runId, int queueCapacity = 8192)
@@ -42,6 +44,29 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     }
 
     public bool IsIncomplete => _incomplete;
+
+    /// <summary>
+    /// At most one full snapshot per changed canonical state. Frames can
+    /// observe UI-driven nested selections even when no executor action
+    /// starts. Sampling never establishes sub-frame hook ordering.
+    /// </summary>
+    public void ObserveFrame(JsonElement state)
+    {
+        if (_closed) return;
+        ++_frameIndex;
+        string hash = CanonicalJson.Sha256(state);
+        if (hash == _lastFrameStateHash) return;
+        _lastFrameStateHash = hash;
+        Write(new NativeActionEnvelopeRecord(
+            "frame_state", Next(), State: Snapshot(state),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                frame_index = _frameIndex,
+                state_hash = hash,
+                capture_basis = "rendered_frame_poll",
+                semantic_hook_order_verified = false
+            })));
+    }
 
     public void HistoryBaseline(int existingEntryCount)
     {
