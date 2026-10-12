@@ -1,5 +1,7 @@
 # Native reference bridge
 
+**Current implementation plan:** [Native Reference Mod and Fidelity Inspector](NATIVE_FIDELITY_INSPECTOR_PLAN.md). The first application is passive capture and deterministic native-versus-emulator parity; interactive controls follow the initial recorder/importer/comparator milestones.
+
 The first implementation sprint should build a small instrumentation mod whose job is to turn the live game into a semantic oracle.
 
 ## Responsibilities
