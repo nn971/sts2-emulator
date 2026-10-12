@@ -6,11 +6,12 @@ using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2Emulator.Core;
@@ -390,7 +391,7 @@ internal sealed class NativeCombatAdapter(
     private static object[] Cards(CardPile pile) => pile.Cards
         .Select(c => (object)new
         {
-            instance_id = (long)c.CombatCardIndex,
+            instance_id = (long)NetCombatCard.FromModel(c).CombatCardIndex,
             model_id = c.Id.Entry,
             upgrades = c.CurrentUpgradeLevel,
             target_type = c.TargetType.ToString(),
@@ -424,7 +425,7 @@ internal sealed class NativeCombatAdapter(
     private static CanonicalAction PlayCard(CardModel card, string? target) =>
         new("play_card", JsonSerializer.SerializeToElement(new
         {
-            card_instance_id = (long)card.CombatCardIndex,
+            card_instance_id = (long)NetCombatCard.FromModel(card).CombatCardIndex,
             target_id = target
         }));
 
