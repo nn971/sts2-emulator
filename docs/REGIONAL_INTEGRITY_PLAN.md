@@ -29,7 +29,7 @@ matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
 event category now reports 40 of 66 event paths integrated into a regional or
-forced quest route, nine with complete branch inventories, and zero
+forced quest route, ten with complete branch inventories, and zero
 native-validated. The ten special/event fights are
 not counted as ordinary queue integration. These classifications are
 conservative and do not replace branch-level review, but they confirm that
@@ -97,8 +97,8 @@ direct branch tests and a complete inventory in
 [the Amalgamator ledger](reference-builds/v0.111.0-hive-amalgamator.md). The
 coverage report now honors `branch_inventory_complete`; Amalgamator, Lost Wisp,
 Spirit Grafter, Colossal Flower, Doors of Light and Dark, Drowning Beacon,
-Sunken Treasury, Sunken Statue, and Field of Man-Sized Holes are nine of 66
-event inventories marked complete. Lost
+Sunken Treasury, Sunken Statue, Field of Man-Sized Holes, and Reflections are
+ten of 66 event inventories marked complete. Lost
 Wisp now keeps its source result page after Claim/Search, with stored gold and
 no extra result draw. See [the Lost Wisp ledger](reference-builds/v0.111.0-hive-lost-wisp.md).
 Spirit Grafter now retains its result page after Let It In or Rejection,
@@ -119,6 +119,8 @@ stored gold-and-damage outcome. See [the Statue ledger](reference-builds/v0.111.
 Field of Man-Sized Holes now retains the Resist result after the two-card
 removal and Normality grant, and the Perfect Fit result after enchantment.
 See [the Field ledger](reference-builds/v0.111.0-hive-field-of-man-sized-holes.md).
+Glory's Reflections now preserves the Touch a Mirror or Shatter result page
+after its deck changes and Bad Luck grant. See [the Reflections ledger](reference-builds/v0.111.0-glory-reflections.md).
 The other event inventories still require source audits.
 Prepared Hive/Glory boss selection now applies each act's source
 `BossDiscoveryOrder` using `SimulationProfile.SeenBossEncounters`, while still

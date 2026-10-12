@@ -2,6 +2,37 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
+    private static RunState PreserveNativeEventCompletionPage(
+        RunState state, string choiceId)
+    {
+        var world = RequireWorld(state);
+        var eventState = world.Event
+            ?? throw new InvalidOperationException(
+                "A native event result page requires an active event.");
+        if (!PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventState.EventId)
+            || !PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                eventState.EventId, choiceId))
+        {
+            throw new InvalidOperationException(
+                $"Event '{eventState.EventId}' has no finished page for '{choiceId}'.");
+        }
+
+        return state with
+        {
+            World = world with
+            {
+                Event = eventState with
+                {
+                    NativePageIndex =
+                        PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                            eventState.EventId),
+                    ChosenChoiceId = choiceId
+                }
+            }
+        };
+    }
+
     /// <summary>
     /// Resume event rewards in a stable order: outstanding potions, then
     /// acquisition-driven relic deck choices, then the event's own deck choice.

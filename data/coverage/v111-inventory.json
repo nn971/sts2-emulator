@@ -11833,7 +11833,7 @@
         "page/SHATTER",
         "page/TOUCH_A_MIRROR"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

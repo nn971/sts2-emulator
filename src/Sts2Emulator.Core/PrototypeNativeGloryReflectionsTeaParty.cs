@@ -62,7 +62,8 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
-            return CompleteRoomToMap(state with { Player = player });
+            return PreserveNativeEventCompletionPage(
+                state with { Player = player }, choice);
         }
 
         if (choice != "shatter")
@@ -89,11 +90,11 @@ public sealed partial class PrototypeGameEngine
 
         player = AppendCard(player, nextId++,
             PrototypeNativeGloryEvents.BadLuckId, state.Rng);
-        return CompleteRoomToMap(state with
+        return PreserveNativeEventCompletionPage(state with
         {
             Player = player,
             World = world with { NextCardInstanceId = nextId }
-        });
+        }, choice);
     }
 
     private static IReadOnlyList<GameAction>

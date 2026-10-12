@@ -94,7 +94,8 @@ public sealed class V111FoundationsTests
             && item.MissingBranches.Length == 0);
         Assert.Contains(report.Items, item => item.Kind == "events"
             && item.NativeId == "REFLECTIONS"
-            && item.Integration == "integrated");
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
         Assert.Contains(report.Items, item => item.Kind == "events"
             && item.NativeId == "VAKUU"
             && item.Implementation == "partial"

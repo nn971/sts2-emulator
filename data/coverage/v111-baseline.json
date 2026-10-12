@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "b355ca6021e23b5d7fc7c8f119d710bd6bdebfcaac12dac38ed654f53732b848",
+  "inventory_file_sha256": "261e8e3165d3a2b1a0ebf70eaee725171c7c695a017941dc246be03dd2a2a0d9",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "f081a219e16adcbab2a754d93f3c53ba8afb753a3f4f5e86f1b8f4a859e3400d",
+    "inventory_hash": "af81976cb2333297cd916d56c6fbcaeb3c4381ea0c056f86b9a0559862d04fe0",
     "items": [
       {
         "catalogued": true,
@@ -15828,15 +15828,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/SHATTER",
-          "initial/TOUCH_A_MIRROR",
-          "page/INITIAL",
-          "page/INITIAL/SHATTER",
-          "page/INITIAL/TOUCH_A_MIRROR",
-          "page/SHATTER",
-          "page/TOUCH_A_MIRROR"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "REFLECTIONS",
         "registered": true,

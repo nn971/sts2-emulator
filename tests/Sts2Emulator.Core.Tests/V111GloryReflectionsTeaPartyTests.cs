@@ -53,7 +53,9 @@ public sealed class V111GloryReflectionsTeaPartyTests
         };
         var initialHash = CanonicalJson.Sha256(start);
         var result = Choose(start, "touch_mirror");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        Assert.Equal("touch_mirror", result.World.Event.ChosenChoiceId);
         Assert.Equal(deck.Length, result.Player.Deck.Length);
         Assert.Equal(4, result.Player.Deck.Count(c => c.UpgradeLevel == 1));
         Assert.Equal(result.Player.Deck.Select(c => c.InstanceId),
@@ -61,7 +63,11 @@ public sealed class V111GloryReflectionsTeaPartyTests
         Assert.Equal(initialHash, CanonicalJson.Sha256(start));
         Assert.Equal(CanonicalJson.Sha256(result),
             CanonicalJson.Sha256(Choose(start.Fork(), "touch_mirror")));
+        Assert.Equal(CanonicalJson.Sha256(result), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(result))));
         PrototypeStateInvariants.Validate(result);
+        result = Continue(result);
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
     }
 
     [Fact]
@@ -115,7 +121,9 @@ public sealed class V111GloryReflectionsTeaPartyTests
         var initialHash = CanonicalJson.Sha256(start);
         var next = start.World!.NextCardInstanceId;
         var result = Choose(start, "shatter");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        Assert.Equal("shatter", result.World.Event.ChosenChoiceId);
         Assert.Equal(2 * before.Length + 1, result.Player.Deck.Length);
         Assert.Equal(next + before.Length + 1,
             result.World!.NextCardInstanceId);
@@ -140,7 +148,11 @@ public sealed class V111GloryReflectionsTeaPartyTests
         Assert.Equal(initialHash, CanonicalJson.Sha256(start));
         Assert.Equal(CanonicalJson.Sha256(result),
             CanonicalJson.Sha256(Choose(start.Fork(), "shatter")));
+        Assert.Equal(CanonicalJson.Sha256(result), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(result))));
         PrototypeStateInvariants.Validate(result);
+        result = Continue(result);
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
     }
 
     [Fact]
@@ -288,6 +300,9 @@ public sealed class V111GloryReflectionsTeaPartyTests
     private static RunState Choose(RunState state, string id) =>
         Engine.Step(state, GameAction.Create("event_choice",
             new EventChoicePayload(id))).State;
+
+    private static RunState Continue(RunState state) =>
+        Engine.Step(state, GameAction.Empty("continue_event")).State;
 
     private static string[] EventChoices(RunState state) =>
         Engine.GetLegalActions(state)
