@@ -1147,6 +1147,14 @@ public sealed partial class PrototypeGameEngine
             return StepNativeColossalFlower(state, action);
         }
 
+        if (eventState.EventId ==
+            "proto.native.underdocks.doors_of_light_and_dark"
+            && action.Kind == "event_choice"
+            && action.ReadPayload<EventChoicePayload>().ChoiceId == "light")
+        {
+            return StepNativeDoorsLight(state, action);
+        }
+
         if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
         {
             return StepEndlessConveyor(state, action);

@@ -73,6 +73,10 @@ public sealed class V111FoundationsTests
             && item.Integration == "integrated"
             && item.MissingBranches.Length == 0);
         Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "DOORS_OF_LIGHT_AND_DARK"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
             && item.NativeId == "REFLECTIONS"
             && item.Integration == "integrated");
         Assert.Contains(report.Items, item => item.Kind == "events"

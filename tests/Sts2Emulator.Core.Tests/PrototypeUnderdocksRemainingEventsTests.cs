@@ -556,7 +556,8 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             null, null, false));
         var hash = CanonicalJson.Sha256(state);
         var done = Choose(engine, state, "light");
-        Assert.Equal(RunPhase.MapChoice, done.Phase);
+        Assert.Equal(RunPhase.Event, done.Phase);
+        Assert.Equal(1, done.World!.Event!.NativePageIndex);
         Assert.All(upgradeable, id =>
             Assert.Equal(1, done.Player.Deck.Single(card =>
                 card.InstanceId == id).UpgradeLevel));
@@ -564,6 +565,9 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             card.InstanceId == invalidId);
         Assert.Equal("proto.native.neow.injury", injury.CardId);
         Assert.Equal(0, injury.UpgradeLevel);
+        done = engine.Step(done,
+            GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, done.Phase);
         Assert.Equal(hash, CanonicalJson.Sha256(state));
     }
 

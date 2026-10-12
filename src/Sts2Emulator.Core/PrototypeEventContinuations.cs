@@ -188,7 +188,7 @@ public sealed partial class PrototypeGameEngine
                 && PrototypeNativeHiveEvents.HasTerminalChoice(
                     eventState.EventId, eventState.ChosenChoiceId))
             {
-                // These Hive events call SetEventFinished after their effects
+                // These events call SetEventFinished after their effects
                 // resolve. Keep the native completion page resumable.
                 return state with
                 {

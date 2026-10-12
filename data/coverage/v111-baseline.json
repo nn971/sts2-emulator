@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "0b0c286e637a11d270d8520af9aea3847a0a03f74286d09e74e5fd16dc31c3fb",
+  "inventory_file_sha256": "b5288da29b1df007ed519e16c46e04e0b2a6b358677ec361180dfefb33df12ea",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "f355b38b7ed621b25e6f76dc35551799a8e724827473d905158dcf5165d3ac19",
+    "inventory_hash": "2524bd1ae08c7bb7d7b7d560c64bcbd5992a6b9eeb5bd2a5616e5a52adee7964",
     "items": [
       {
         "catalogued": true,
@@ -15328,15 +15328,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/DARK",
-          "initial/LIGHT",
-          "page/DARK",
-          "page/INITIAL",
-          "page/INITIAL/DARK",
-          "page/INITIAL/LIGHT",
-          "page/LIGHT"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "DOORS_OF_LIGHT_AND_DARK",
         "registered": true,

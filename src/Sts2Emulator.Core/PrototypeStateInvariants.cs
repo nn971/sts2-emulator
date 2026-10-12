@@ -785,7 +785,7 @@ public static class PrototypeStateInvariants
                 || eventState.DeferredGoldLoss != 0
                 || eventState.DeferredCardId is not null)
                 throw new InvalidOperationException(
-                    "Hive event completion page has unresolved or invalid state.");
+                    "Native event completion page has unresolved or invalid state.");
             return;
         }
 

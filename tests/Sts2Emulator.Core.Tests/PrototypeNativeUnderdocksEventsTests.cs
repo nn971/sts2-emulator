@@ -86,14 +86,74 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             var upgraded = light.Player.Deck.Count(card =>
                 card.UpgradeLevel > original[card.InstanceId]);
             Assert.Equal(2, upgraded);
+            Assert.Equal(RunPhase.Event, light.Phase);
+            Assert.Equal(1, light.World!.Event!.NativePageIndex);
+            Assert.Equal("continue_event",
+                Assert.Single(engine.GetLegalActions(light)).Kind);
+            light = engine.Step(light,
+                GameAction.Empty("continue_event")).State;
+            Assert.Equal(RunPhase.MapChoice, light.Phase);
 
             var dark = Select(engine, state, "dark");
             Assert.NotNull(dark.World!.Event?.PendingDeckChoice);
             Assert.Equal(PrototypePersistentDeckChoiceKind.Remove,
                 dark.World.Event!.PendingDeckChoice!.Kind);
+            var removedId = engine.GetLegalActions(dark).First(action =>
+                action.Kind == "choose_event_deck_card")
+                .ReadPayload<ChooseEventDeckCardPayload>().CardInstanceId;
+            dark = engine.Step(dark, engine.GetLegalActions(dark).Single(
+                action => action.Kind == "choose_event_deck_card"
+                    && action.ReadPayload<ChooseEventDeckCardPayload>()
+                        .CardInstanceId == removedId)).State;
+            Assert.DoesNotContain(dark.Player.Deck,
+                card => card.InstanceId == removedId);
+            Assert.Equal(RunPhase.Event, dark.Phase);
+            Assert.Equal(1, dark.World!.Event!.NativePageIndex);
+            dark = engine.Step(dark,
+                GameAction.Empty("continue_event")).State;
+            Assert.Equal(RunPhase.MapChoice, dark.Phase);
             return;
         }
         throw new InvalidOperationException("Doors never drawn.");
+    }
+
+    [Fact]
+    public void DoorsLightFinishesWhenNoCardCanBeUpgraded()
+    {
+        var engine = new PrototypeGameEngine();
+        RunState? state = null;
+        for (var i = 0; i < 128; i++)
+        {
+            var candidate = StartUnderdocksEvent(engine,
+                "doors-no-upgrades-" + i);
+            if (candidate.World!.Event!.EventId
+                == "proto.native.underdocks.doors_of_light_and_dark")
+            {
+                state = candidate;
+                break;
+            }
+        }
+        Assert.NotNull(state);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Select(card => card with
+                {
+                    UpgradeLevel = PrototypeContent.Card(card.CardId)
+                        .MaxUpgradeLevel
+                }).ToArray()
+            }
+        };
+        var deck = state.Player.Deck;
+        var result = Select(engine, state, "light");
+        Assert.Equal(deck, result.Player.Deck);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        Assert.Equal("light", result.World.Event.ChosenChoiceId);
+        result = engine.Step(result,
+            GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
     }
 
     [Fact]
