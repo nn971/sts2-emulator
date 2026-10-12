@@ -56,7 +56,9 @@ def summarize_trace(path: Path) -> tuple[dict, list[tuple[int, dict]]]:
             "card_instance_id": card_id,
             "target_id": payload.get("target_id"),
             "accepted": record.get("accepted"),
-            "origin": record.get("origin"),
+            # NativeActionRecord uses Source, while NativeEventRecord
+            # uses Origin; don't confuse the two in triage summaries.
+            "source": record.get("source"),
         })
     if audited["status"] == "STRUCTURALLY_VALID":
         steps = transition_data(records)
