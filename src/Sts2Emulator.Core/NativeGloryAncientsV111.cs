@@ -15,7 +15,11 @@ public static class NativeGloryAncientsV111
         new(DiamondDiademId, "Diamond Diadem", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
-                [new(PrototypeCombatEffectKind.GainPlayerBlock, 20)])
+                [
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 20),
+                    new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                        PowerId: "proto.power.blur")
+                ], TurnEquals: 1)
         ]),
         new(LoomingFruitId, "Looming Fruit", RunTriggers:
         [

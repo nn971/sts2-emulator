@@ -93,7 +93,7 @@ public sealed class V111GloryAncientRelicTests
     }
 
     [Fact]
-    public void DiamondDiademGrants20BlockAtEachPlayerSideTurnStart()
+    public void DiamondDiademGrantsOpeningBlockAndCarriesItThroughOneTurn()
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeGameFactory.Create("glory-diamond-diadem");
@@ -120,12 +120,17 @@ public sealed class V111GloryAncientRelicTests
         state = engine.Step(state, GameAction.Create("choose_map_node",
             new ChooseMapNodePayload("diadem-combat"))).State;
         Assert.Equal(20, state.World!.Combat!.PlayerBlock);
+        Assert.Contains(state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.blur");
 
         state = engine.Step(state, engine.GetLegalActions(state)
             .Single(action => action.Kind == "end_turn")).State;
 
         Assert.Equal(2, state.World!.Combat!.Turn);
-        Assert.Equal(20, state.World.Combat.PlayerBlock);
+        Assert.True(state.World.Combat.PlayerBlock > 0,
+            "Blur should preserve leftover Diadem Block through the next turn start.");
+        Assert.DoesNotContain(state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.blur");
     }
 
     [Fact]
