@@ -159,6 +159,55 @@ human-origin attribution, and nested card selections. The bridge does not
 inject player actions or modify RNG. The Step/Pause/Resume/Stop coordinator is
 implemented independently and awaits audited native action dispatch.
 
+## Diagnostics when game launches but produces no native trace
+
+The main-menu smoke test validates that a PCK/DLL can load; it does not
+prove the capture hook was enabled. Search the Windows game log:
+
+```powershell
+$log = Join-Path $env:APPDATA 'SlayTheSpire2\logs\godot.log'
+Select-String -Path $log -Pattern 'Sts2ReferenceMod|CAPTURE_STATUS|INCOMPLETE_CAPTURE|Exception' |
+  Select-Object -Last 60
+```
+
+New game-local log breadcrumbs:
+
+- `CAPTURE_STATUS=MOD_INITIALIZED`: the game's mod loader invoked our
+  initializer. The log also records whether the capture environment variable
+  was present.
+- `CAPTURE_STATUS=PIN_REJECTED`: exact SHA-256 check failed; compare the
+  expected value from Steam's environment against the game runtime assembly
+  SHA-256 printed in the log. Do not bypass the check.
+- `CAPTURE_STATUS=HOOK_ENABLED`: Godot frame hook registered, with the
+  actual trace output directory printed.
+- `CAPTURE_STATUS=WAITING_FOR_COMBAT`: hook active but no native combat
+  detected yet.
+- `CAPTURE_STATUS=COMBAT_STATE_UNAVAILABLE` or
+  `UNSUPPORTED_PLAYER_COUNT`: native combat is active but the state
+  cannot be captured under this adapter's scope.
+- `CAPTURE_STATUS=RECORDING_STARTED`: the JSONL writer opened its file;
+  use the logged path, not a guessed location.
+- `CAPTURE_STATUS=WAITING_FOR_DECISION:<reason>`: the adapter is waiting for
+  a player-choice boundary; the reason identifies the failing gate
+  (action executor, hand UI, overlay, phase, etc.).
+- `CAPTURE_STATUS=DECISION_CAPTURED:<id>`: snapshot captured.
+- `CAPTURE_STATUS=CAPTURE_EXCEPTION`: native adapter threw; fail closed
+  for that encounter instead of endlessly reopening files.
+
+Messages are emitted on status transitions, not every frame. A file opened
+without decisions is not a fidelity success; inspect the partial JSONL
+and capture audit. If no `MOD_INITIALIZED` message appears, first inspect
+whether the game actually enabled/loaded our PCK, Steam Workshop mod
+conflicts, or a duplicate mod package. Environment variables set for
+Windows **user** scope require a complete Steam restart; setting values
+in WSL does not change the Windows Steam process.
+
+For the first realistic differential check, first capture native
+Strike/Defend decision-boundary states and transitions. Feed the native
+expectation fixture to an independent emulator continuation. A structurally
+valid JSONL, or replaying recorded post-state as expected output, is
+**not** emulator parity.
+
 ## Inspect a captured trace
 
 ```fish
