@@ -14,12 +14,14 @@ public sealed partial class PrototypeGameEngine
         UsesNativeActOneSystems(world)
         || (world.RulesetId == V111Build.RulesetId
             && world.Act is 2 or 3
-            && world.Map.GenerationProfileId
-                == PrototypeNativeLaterActMap.ProfileId(world.Act));
+            && (world.Map.GenerationProfileId
+                == PrototypeNativeLaterActMap.ProfileId(world.Act)
+                || world.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId));
 
     private static PrototypeRoomType ResolveUnknownMapRoom(
         ref RunWorldState world,
-        RngBundle rng)
+        RngBundle rng,
+        bool eventOnly = false)
     {
         if (!UsesNativeRegionalSystems(world))
         {
@@ -31,6 +33,11 @@ public sealed partial class PrototypeGameEngine
             ?? new PrototypeUnknownRoomOddsState();
         var roll = PrototypeRng.NextInt(
             rng, "event", PrototypeUnknownRoomOddsState.Scale);
+
+        // UnknownMapPointOdds.Roll consumes NextFloat even when a map
+        // modifier permits only Event. Disallowed non-event odds do not grow.
+        if (eventOnly)
+            return PrototypeRoomType.Event;
 
         PrototypeRoomType selected;
         if (roll < odds.MonsterWeight)

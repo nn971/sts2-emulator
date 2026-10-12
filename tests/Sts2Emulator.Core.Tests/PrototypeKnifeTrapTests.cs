@@ -26,6 +26,7 @@ public sealed class PrototypeKnifeTrapTests
         Assert.Contains(4L, combat.ExhaustPile);
         Assert.Contains(1L, combat.DiscardPile);
         Assert.Equal(3, combat.CounterState.CardsPlayedThisTurn);
+        Assert.Equal(1, combat.CounterState.ManualCardsPlayedThisTurn);
         Assert.Equal(2, combat.CounterState.AttacksPlayedThisTurn);
         Assert.Equal(1, combat.CounterState.SkillsPlayedThisTurn);
     }

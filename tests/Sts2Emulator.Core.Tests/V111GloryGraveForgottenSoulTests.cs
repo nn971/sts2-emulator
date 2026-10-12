@@ -34,6 +34,26 @@ public sealed class V111GloryGraveForgottenSoulTests
     }
 
     [Fact]
+    public void GloryEventEligibilityAppliesSourceHpAndSoulsPowerConditions()
+    {
+        var grave = PrototypeContent.Event(Grave);
+        var party = PrototypeContent.Event(
+            PrototypeNativeGloryEvents.RoundTeaPartyId);
+        var player = Glory("glory-event-eligibility").Player;
+
+        Assert.False(PrototypeNativeGloryEvents.IsEligible(grave, player));
+        Assert.False(PrototypeNativeGloryEvents.IsEligible(party,
+            player with { Hp = 11 }));
+        Assert.True(PrototypeNativeGloryEvents.IsEligible(party,
+            player with { Hp = 12 }));
+
+        var withExhaust = WithCard(Glory("glory-event-exhaust"),
+            "proto.silent.blade_dance").Player;
+        Assert.True(PrototypeNativeGloryEvents.IsEligible(grave,
+            withExhaust));
+    }
+
+    [Fact]
     public void GraveConfrontIsLockedWhenNoExhaustCardCanBeEnchanted()
     {
         var state = Glory("grave-locked");

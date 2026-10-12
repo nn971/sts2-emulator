@@ -7,6 +7,15 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    internal static bool CanSelectRelicDeckCard(
+        CardInstance card,
+        PrototypeRelicDeckChoiceSpec spec) =>
+        (spec.RequiredCardType is null
+            || PrototypeContent.Card(card.CardId).Type
+                == spec.RequiredCardType.Value)
+        && CanSelectEventDeckCard(card, spec.Kind, null,
+            spec.EnchantmentKind, false);
+
     internal static bool CanSelectEventDeckCard(
         CardInstance card,
         PrototypePersistentDeckChoiceKind kind,
@@ -24,7 +33,7 @@ public sealed partial class PrototypeGameEngine
         {
             PrototypePersistentDeckChoiceKind.Remove
                 or PrototypePersistentDeckChoiceKind.Transform =>
-                    !definition.Eternal,
+                    !PrototypeCardRules.IsEternal(card),
             PrototypePersistentDeckChoiceKind.Upgrade =>
                 card.UpgradeLevel < definition.MaxUpgradeLevel,
             PrototypePersistentDeckChoiceKind.Enchant =>
@@ -53,6 +62,9 @@ public sealed partial class PrototypeGameEngine
                 // tags. Other basic cards (e.g., Neutralize/Survivor)
                 // are deliberately excluded.
                 && (enchantmentKind
+                    != PrototypeCardEnchantmentKind.Goopy
+                    || definition.Tags?.Contains("Defend", StringComparer.Ordinal) == true)
+                && (enchantmentKind
                     != PrototypeCardEnchantmentKind.Spiral
                     || definition.Rarity == PrototypeCardRarity.Basic
                     && (definition.Tags?.Contains(
@@ -67,6 +79,9 @@ public sealed partial class PrototypeGameEngine
         PlayerState player, long instanceId, string resultId)
     {
         _ = PrototypeContent.Card(resultId);
+        var original = player.Deck.Single(card => card.InstanceId == instanceId);
+        if (PrototypeCardRules.IsEternal(original))
+            throw new InvalidOperationException("Eternal deck cards cannot be transformed.");
         return player with
         {
             Deck = player.Deck.Select(card =>
@@ -82,14 +97,14 @@ public sealed partial class PrototypeGameEngine
 
     private static PlayerState ApplyEventEnchantment(
         PlayerState player, long instanceId,
-        PrototypeCardEnchantmentKind kind) =>
+        PrototypeCardEnchantmentKind kind, int amount = 1) =>
         player with
         {
             Deck = player.Deck.Select(card =>
                 card.InstanceId == instanceId
                     ? card with
                     {
-                        Enchantment = new PrototypeCardEnchantment(kind, 1)
+                        Enchantment = new PrototypeCardEnchantment(kind, amount)
                     }
                     : card).ToArray()
         };

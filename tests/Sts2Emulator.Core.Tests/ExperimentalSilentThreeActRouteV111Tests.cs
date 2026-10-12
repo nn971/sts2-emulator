@@ -75,9 +75,9 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
             CanonicalJson.Sha256(hive.Player));
         Assert.Equal(CanonicalJson.Sha256(actOne.NativeRunRng),
             CanonicalJson.Sha256(hive.NativeRunRng));
-        // Act-entry boss choice now belongs to an advancing encounter
-        // stream. All original cursors are fork-safe, not unchanged.
-        Assert.NotEqual(CanonicalJson.Sha256(actOne.Rng),
+        // Encounter identities were prepared before map traversal; entry
+        // consumes their persisted history without another selection draw.
+        Assert.Equal(CanonicalJson.Sha256(actOne.Rng),
             CanonicalJson.Sha256(hive.Rng));
         Assert.Equal(originalHash, CanonicalJson.Sha256(actOne));
         PrototypeStateInvariants.Validate(hive);
@@ -99,6 +99,41 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
         PrototypeStateInvariants.Validate(glory);
         Assert.Equal(CanonicalJson.Sha256(glory),
             CanonicalJson.Sha256(Transition(hive.Fork())));
+    }
+
+    [Theory]
+    [InlineData(NativePaelRewardsV111.PaelId)]
+    [InlineData(NativeAncientRewardsV111.TezcataraId)]
+    public void AssignedHiveAncientOpensBeforeMapChoice(string ancientId)
+    {
+        var state = ActOneMap("silent-assigned-ancient-" + ancientId);
+        var world = state.World!;
+        var prepared = world.PreparedLaterActEncounterBags!
+            .Select(bag => bag.Act == 2
+                ? bag with { AssignedAncientId = ancientId }
+                : bag.Fork())
+            .ToArray();
+        state = state with
+        {
+            World = world with { PreparedLaterActEncounterBags = prepared }
+        };
+
+        var hive = Transition(state);
+        Assert.Equal(RunPhase.Event, hive.Phase);
+        Assert.Equal(2, hive.World!.Act);
+        Assert.Equal(0, hive.World.Floor);
+        Assert.Equal(ancientId, hive.World.Event!.EventId);
+        Assert.Equal(ancientId,
+            hive.World.LaterActEncounterBag!.AssignedAncientId);
+        Assert.NotEmpty(Engine.GetLegalActions(hive));
+        PrototypeStateInvariants.Validate(hive);
+
+        var restored = JsonSerializer.Deserialize<RunState>(
+            JsonSerializer.Serialize(hive))!;
+        Assert.Equal(CanonicalJson.Sha256(hive),
+            CanonicalJson.Sha256(restored));
+        Assert.Equal(CanonicalJson.Sha256(hive),
+            CanonicalJson.Sha256(Transition(state.Fork())));
     }
 
     [Theory]
@@ -174,6 +209,50 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
         Assert.NotEmpty(Engine.GetLegalActions(started));
         Assert.Equal(CanonicalJson.Sha256(started),
             CanonicalJson.Sha256(Engine.Step(state.Fork(), action).State));
+    }
+
+    [Fact]
+    public void GloryUnknownEventSelectionExcludesIneligibleEvents()
+    {
+        for (var index = 0; index < 96; index++)
+        {
+            var state = Transition(ActOneMap(
+                "glory-event-eligibility-route-" + index));
+            state = Transition(state);
+            var world = state.World!;
+            var nodes = world.Map.Nodes.ToDictionary(
+                node => node.NodeId, StringComparer.Ordinal);
+            var entry = world.Map.Nodes
+                .SelectMany(parent => (parent.NextNodeIds ?? [])
+                    .Select(next => (Parent: parent, Child: nodes[next])))
+                .First(pair => pair.Child.RoomType
+                    == PrototypeRoomType.Unknown);
+            state = state with
+            {
+                Player = state.Player with { Hp = 11 },
+                World = world with
+                {
+                    Floor = entry.Parent.Floor,
+                    UnknownRoomOdds = new(0, 0, 0),
+                    Map = world.Map with
+                    {
+                        CurrentNodeId = entry.Parent.NodeId
+                    }
+                }
+            };
+            var action = Engine.GetLegalActions(state).Single(option =>
+                option.Kind == "choose_map_node"
+                && option.ReadPayload<ChooseMapNodePayload>().NodeId
+                    == entry.Child.NodeId);
+            var started = Engine.Step(state, action).State;
+            Assert.Equal(RunPhase.Event, started.Phase);
+            Assert.DoesNotContain(started.World!.Event!.EventId,
+                new[]
+                {
+                    PrototypeNativeGloryEvents.RoundTeaPartyId,
+                    PrototypeNativeGloryEvents.GraveOfTheForgottenId
+                });
+        }
     }
 
     [Fact]

@@ -5,6 +5,75 @@ Pin: v0.111.0 / 41cef1ea and the fingerprint in
 [the reference manifest](../data/reference_builds/v0.111.0-41cef1ea.json).
 This is an intermediate implementation. Final release gates remain open.
 
+Tezcatara now has ten executable reward dependencies behind explicit named
+fixtures: Very Hot Cocoa, Yummy Cookie, Toasty Mittens, Seal of Gold, Pumpkin
+Candle, Storybook, Biiig Hug, Nutritious Soup, Golden Compass and Toy Box. Shared
+side-turn, acquisition, map, shuffle and choice continuations provide their effects.
+Toy Box uses the current restricted relic bag and persists wax/melted lifecycle
+state. Full Ancient selection remains gated on complete pool, acquisition and
+hook-order audits. A specifically assigned Tezcatara opening now samples all
+three complete pools using an owned native event RNG context. Its three draws
+and ordered offers persist through snapshots. Opening Mittens/Gambling Chip
+callbacks use a separate resumable post-draw stage. Toolbox suspends before
+the opening draw. Storybook grants its card through shared relic acquisition,
+and Toy Box's wax offers resume the acquiring event, shop or parent reward;
+see [Tezcatara dependency audit](reference-builds/v0.111.0-tezcatara-reward-dependencies.md).
+
+Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
+cards through shared acquisition; Flesh modifies energy reset from turn three;
+Blood modifies every hand draw, and Tears carries leftover energy into the next
+side-start bonus. Wing sacrifices card rewards for every-second front-bag relic
+obtains. Claw enchants eligible Defends with Goopy, including persistent growth
+after each play. Growth marks a card for the repeatable Clone rest action. Tooth
+removes five upgradable cards, stores their complete instances, and returns one
+random card upgraded after each surviving combat. Eye exhausts the hand when a
+turn has no manual plays and grants one enemy-skipping extra turn per combat;
+autoplay is tracked separately. Legion saves one of four skins and its combat
+pet identity, doubles positive player card block while ready, then cools down
+for two player turns. Pael's act-entry fixture now builds the three ordered
+source pools, applies the deck and event-pet eligibility rules, samples with
+three persisted native event-context draws, and validates the exact offers and
+cursor after snapshot/fork. This does not yet select Pael as Hive's normal
+Ancient or establish live RNG parity. Pael's conditional Legion offer and
+Overgrowth's Byrdonis Nest now use the same source `HasEventPet` rule. See the
+[Pael dependency audit](reference-builds/v0.111.0-pael-reward-dependencies.md).
+
+Latest regional preparation work moves the existing Hive/Glory encounter
+histories to run initialization and persists untouched future-act queues.
+Act entry transfers them without selection draws. See
+[run-start regional history](reference-builds/v0.111.0-upfront-regional-history.md)
+for verification, experimental snapshot compatibility and remaining native
+upfront/Ancient/RNG gaps. Earlier act-entry queue descriptions are historical.
+
+The experimental route now enters both later acts and uses pre-generated
+encounter histories, supported regional events, and map/room dispatch. Current
+event sampling applies audited Hive eligibility plus Glory's Round Tea Party
+HP and Grave of the Forgotten deck predicates. Specific event and encounter
+documents below may describe earlier fixture-only milestones; the
+[regional integration audit](reference-builds/v0.111.0-regional-integration-bags.md)
+and [regional integrity plan](REGIONAL_INTEGRITY_PLAN.md) carry current status.
+Normal Ancient assignment, Colorful Philosophers and foreign card pools,
+remaining event eligibility, RNG parity, natural full-run victories and live
+oracle traces are still open.
+Orobas is the remaining unimplemented Hive Ancient; its three-offer generation
+and ten relic dependencies are pinned in the
+[Orobas dependency audit](reference-builds/v0.111.0-hive-orobas-ancient.md).
+Seven Orobas dependencies have executable effects for Silent: Electric
+Shrymp/Imbued, Radiant Pearl/Luminesce, Sand Castle, Touch of Orobas/Ring of
+the Drake, Archaic Tooth/Suppress, Driftwood's per-group card reroll, and Glass
+Eye's five independently selectable rarity-specific card reward groups.
+Electric Shrymp now suspends acquisition for one eligible Skill, applies
+Imbued to the selected persistent card, and auto-plays it through the opening
+turn pipeline in each combat. Radiant Pearl creates a retained, exhaust-on-play
+Luminesce in each combat;
+Sand Castle upgrades up to six eligible deck instances; Touch replaces Silent's
+starter relic and adds two draws through turn three; Archaic Tooth transforms
+Neutralize while preserving its card-instance data. Alchemical Coffer partially
+adds four potion slots and fills those new slots from the implemented pool,
+respecting Sozu. Its complete pool and offer continuation remain open. Native
+reward/RNG ownership, native acquisition timing and other-character mappings
+remain open.
+
 ## Delivered
 
 - Imported the existing `prototype/full-run-silent` implementation: all 20
@@ -208,7 +277,10 @@ This is an intermediate implementation. Final release gates remain open.
   Neow continuations preserve pre-map history. Trash Heap preserves duplicate
   relic rolls as separate instances; duplicate Dream Catchers offer independently
   selectable rest rewards using the shared rarity lifecycle, and fresh Maw Banks
-  retain independent purchase state.
+  retain independent purchase state. Fresnel Lens exposes Nimble +2 on
+  reward/shop card offer previews using the same acquisition hook, including
+  Colorless Fisticuffs' attack-result Block; regressions compare previews with
+  acquired card state and its combat Block result.
 - Corrected v111 Endless Conveyor continuation ordering: the next dish is
   rolled after Jelly Liver deck transformation or Suspicious Condiment potion
   reward resolution. The visible dish ID/number are now exported to consumers;
@@ -291,8 +363,9 @@ This is an intermediate implementation. Final release gates remain open.
   only and stuns on the fifth unblocked hit. The special return is exposed
   as typed reward metadata without giving a duplicate persistent card.
   All four fights remain **gated from real Hive route generation**;
-  their legacy weights are zero. Native CombatCardGeneration RNG,
-  Imbued-card priority and exact reward UI timing remain unverified.
+  their legacy weights are zero. Native CombatCardGeneration RNG and exact
+  reward UI timing remain unverified; Imbued Skills use the source's lowest
+  theft priority class.
   Source details are recorded in the Hive/Glory first-slice audit note.
 - Added **four gated Hive normal encounters** with source-backed
   formations and combat moves: Bowlbugs Normal (Rock plus two different
@@ -360,8 +433,10 @@ This is an intermediate implementation. Final release gates remain open.
   split between randomly inserted draw/discard, five-move loop, and
   Frantic Escape increasing Sandpit and its own cost). Source HP,
   Ascension damage breaks and boss formations have synthetic tests.
-  All three remain gated; live-game parity and native enemy-choice
-  prompts still need implementation/audit.
+  Knowledge Demon's mandatory curse selection is a typed, resumable
+  enemy-origin prompt with source-defined option sets and debuff effects.
+  All three remain gated from generic pools; regional route selection,
+  combat RNG parity and live-game validation remain open.
 - Two **gated Glory normal encounters** are now source-backed isolated
   combat models: Frog Knight (Plating, Tongue Lash/Frail, Strike,
   Queen buff, one conditional Beetle Charge) and Slimed Berserker
@@ -561,9 +636,10 @@ This is an intermediate implementation. Final release gates remain open.
   The initial choice consumes one Key; in solo runs with further
   Keys the opposite option is offered after rewards, then removes
   all remaining Keys. Cage sets the persistent FreedRepy flag and
-  obtains the event-only History Course relic. Chest gives two
-  optional potion/relic reward pairs with all four values pre-rolled
-  and fork-safe. Native one-screen chest UI, actual reward pools,
+  obtains the event-only History Course relic. Chest presents two
+  potions and two distinct relics together; each offer can be taken
+  or skipped independently, with pre-rolled values and resolution
+  state preserved through snapshots. Prototype pool selection and
   native live trace parity remain explicitly unverified.
   History Course now auto-plays the last non-dupe Attack completed on
   the previous turn at the start of turn 2+, with normal targeting,
@@ -715,6 +791,26 @@ invariants: enemy-owned card afflictions (Galvanized/Tainted) must not be
 validated as player-power afflictions, and relics obtained directly from
 events must be removed from remaining native relic queues. Neither change
 claims real-game source parity for these systems.
+
+The experimental route now represents Glory's Ascension 10+ Double Boss rule:
+a distinct second boss is persisted in the preselected encounter history, the
+map has a mandatory second boss node, and the first boss reward continues to
+that node. A synthetic A10 route completes both boss combats and reaches
+victory. Boss-selection draw ownership/order and live reward parity remain
+open; see the [double-boss source audit](reference-builds/v0.111.0-glory-double-boss.md).
+
+Eight route integration cases now traverse Act 1 from both Overgrowth and
+Underdocks through their generated maps, encounters, events, rewards and boss
+boundaries before continuing through Hive and Glory. They cover three A0 seeds
+per starting region and one A10 seed per region, including Glory's double boss.
+Synthetic combat finishers keep this a progression/persistence check; it does
+not establish unassisted victory rates, exhaustive event branches or native RNG
+parity.
+
+Underdocks' complete ten-entry normal encounter bag now refills to support the
+native twelve-normal history, and its three-entry elite bag refills for longer
+elite sequences. Selection avoids an immediate repeat when alternatives remain;
+native pre-generated queue order, tag filtering and RNG parity are still open.
 
 **This is expanded implementation access, not completion certification.**
 Knowledge Demon's compulsory curse selection now suspends and resumes the

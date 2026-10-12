@@ -1,0 +1,98 @@
+namespace Sts2Emulator.Core;
+
+public sealed partial class PrototypeGameEngine
+{
+    /// <summary>
+    /// Opening side/draw/player-start stages reuse the ordinary dispatch and
+    /// choice kernel. Their saved cursor does not change end-turn indices.
+    /// Legacy CombatStarted subscribers still need a complete source-stage audit.
+    /// </summary>
+    private static RunState ResumeOpeningCombat(RunState state, PrototypeOpeningCombatStage start)
+    {
+        for (var stage = start; stage < PrototypeOpeningCombatStage.Complete; stage++)
+        {
+            var world = RequireWorld(state);
+            var combat = world.Combat ?? throw new InvalidOperationException("Opening combat disappeared.");
+            if (AllEnemiesDefeated(combat))
+                return EnterCombatReward(state);
+            var eventKind = stage switch
+            {
+                PrototypeOpeningCombatStage.PlayerSideStart => PrototypeCombatEventKind.PlayerSideTurnStarted,
+                PrototypeOpeningCombatStage.BeforeHandDraw => PrototypeCombatEventKind.BeforeHandDraw,
+                PrototypeOpeningCombatStage.CombatStarted => PrototypeCombatEventKind.CombatStarted,
+                PrototypeOpeningCombatStage.PlayerTurnStarted => PrototypeCombatEventKind.OpeningPlayerTurnStarted,
+                PrototypeOpeningCombatStage.AutoPrePlay => PrototypeCombatEventKind.AutoPrePlayPhaseEntered,
+                _ => (PrototypeCombatEventKind?)null
+            };
+            if (eventKind is { } kind)
+            {
+                var dispatched = DispatchCombatEvent(state.Player, combat,
+                    new PrototypeCombatEvent(kind), state.Rng, allowSuspension: true);
+                state = state with { Player = dispatched.Player, World = world with { Combat = dispatched.Combat } };
+                if (kind == PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
+                    state = ResolveHistoryCourseAutoPlay(state);
+            }
+            else if (stage == PrototypeOpeningCombatStage.ImbuedAutoPlay)
+                state = ResolveImbuedAutoPlay(state);
+            else if (stage == PrototypeOpeningCombatStage.DrawHand)
+                state = DrawOpeningHand(state);
+            else if (stage == PrototypeOpeningCombatStage.AfterHandDraw)
+                state = state with { World = world with { Combat = RemovePlayerPowers(
+                    combat, definition => definition.RemoveAfterHandDraw) } };
+
+            world = RequireWorld(state);
+            combat = world.Combat!;
+            if (combat.PendingChoice is not null)
+                return state with { World = world with { Combat = combat with
+                {
+                    AutomaticPipelineContinuation = new(
+                        PrototypeContent.Rules.EndTurnPipeline.Length, OpeningStage: stage + 1)
+                } } };
+        }
+        var finishedWorld = RequireWorld(state);
+        if (finishedWorld.Combat is { } finishedCombat
+            && AllEnemiesDefeated(finishedCombat))
+            return EnterCombatReward(state);
+        return state with { World = finishedWorld with { Combat = finishedWorld.Combat! with
+        { AutomaticPipelineContinuation = null } } };
+    }
+
+    private static RunState DrawOpeningHand(RunState state)
+    {
+        var world = RequireWorld(state);
+        var combat = world.Combat!;
+        var pollinous = ApplyPollinousCoreHandDraw(state.Player);
+        var player = pollinous.Player;
+        var conch = world.ActiveRoom == PrototypeRoomType.Elite && player.ActiveRelics.Any(relic =>
+            relic.RelicId == PrototypeNativeOvergrowthEvents.NeowRelicId("BoomingConch"));
+        var target = PrototypeContent.Rules.HandSize + (conch ? 2 : 0)
+            + FirstTurnDrawBonus(player) + pollinous.Bonus
+            + PrototypeNativeOrobasRelics.HandDrawBonusForTurn(
+                player, combat.Turn)
+            + combat.PlayerPowers.Sum(power => PrototypeContent.Power(power.PowerId).HandDrawBonusPerStack * power.Stacks);
+        // This engine already places persistent Innate cards in hand at entry.
+        // BeforeHandDraw-generated cards are additional and do not reduce draw.
+        var innateAlreadyDealt = combat.Hand.Count(id =>
+        {
+            var card = RequireCombatCard(combat, id);
+            return !card.IsTemporary && IsInnate(card);
+        });
+        var drawn = DrawCards(player, combat, Math.Max(0, target - innateAlreadyDealt),
+            state.Rng, fromHandDraw: true);
+        player = drawn.Player;
+        combat = drawn.Combat;
+        if (drawn.ShuffleSelectionPending)
+        {
+            var operations = new Queue<PrototypeQueuedOperation>(
+            [
+                StratagemChoiceOperation(combat),
+                new(PrototypeCombatEffectKind.DrawCards, drawn.RemainingCount, FromHandDraw: true)
+            ]);
+            var resolved = ResolveOperations(player, combat, operations, state.Rng,
+                moveSourceCardOnCompletion: false);
+            player = resolved.Player;
+            combat = resolved.Combat;
+        }
+        return state with { Player = player, World = world with { Combat = combat } };
+    }
+}

@@ -77,6 +77,51 @@ public sealed class V111HiveThievingHopperTests
     }
 
     [Fact]
+    public void ImbuedSkillUsesTheLowestNativeTheftPriority()
+    {
+        var state = State("hopper-imbued-priority",
+            [
+                ("proto.silent.strike", 0),
+                ("proto.silent.defend", 0)
+            ]);
+        var imbued = new PrototypeCardEnchantment(
+            PrototypeCardEnchantmentKind.Imbued);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Select(card =>
+                    card.InstanceId == 2
+                        ? card with { Enchantment = imbued }
+                        : card).ToArray()
+            },
+            World = state.World! with
+            {
+                Combat = state.World.Combat! with
+                {
+                    Cards = state.World.Combat.Cards.Select(card =>
+                        card.InstanceId == 2
+                            ? card with { Enchantment = imbued }
+                            : card).ToArray()
+                }
+            }
+        };
+
+        state = EndTurn(new PrototypeGameEngine(), state);
+
+        var stolen = Assert.Single(
+            Assert.Single(state.World!.Combat!.Enemies).StolenCards!);
+        Assert.Equal(1, stolen.InstanceId);
+        Assert.Equal("proto.silent.strike", stolen.CardId);
+        Assert.DoesNotContain(state.Player.Deck, card =>
+            card.InstanceId == 1);
+        Assert.Contains(state.Player.Deck, card =>
+            card.InstanceId == 2
+            && card.Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.Imbued);
+    }
+
+    [Fact]
     public void KillingThiefReturnsOriginalPersistentInstanceExactlyOnce()
     {
         var engine = new PrototypeGameEngine();

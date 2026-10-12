@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// v0.111.0 Glory event content, explicitly gated from random selection
-/// until the complete regional event bag is implemented.
+/// v0.111.0 Glory event content for the experimental regional route.
+/// Default runs remain gated until native later-act policy and RNG parity
+/// are complete.
 /// Source: HungryForMushrooms, BigMushroom, FragrantMushroom.
 /// </summary>
 public static class PrototypeNativeGloryEvents
@@ -53,6 +54,22 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.battleworn_dummy_event_v2_encounter";
     public const string BattlewornV3EncounterId =
         "proto.native.glory.battleworn_dummy_event_v3_encounter";
+
+    /// <summary>
+    /// Source IsAllowed predicates applied before a Glory event enters the
+    /// experimental route's event draw. Round Tea Party checks current HP;
+    /// Grave of the Forgotten needs a card that can receive Souls Power.
+    /// Other currently registered Glory events have no audited
+    /// player-state eligibility predicate.
+    /// </summary>
+    public static bool IsEligible(PrototypeEventDefinition evt,
+        PlayerState player) =>
+        (evt.Id != RoundTeaPartyId || player.Hp >= 12)
+        && (evt.Id != GraveOfTheForgottenId
+            || player.Deck.Any(card =>
+                PrototypeGameEngine.CanSelectEventDeckCard(card,
+                    PrototypePersistentDeckChoiceKind.Enchant, null,
+                    PrototypeCardEnchantmentKind.SoulsPower, false)));
 
 
     public static PrototypeCardDefinition[] Cards { get; } =

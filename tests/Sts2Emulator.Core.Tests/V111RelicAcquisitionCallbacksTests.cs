@@ -117,6 +117,110 @@ public sealed class V111RelicAcquisitionCallbacksTests
             .Enchantment);
     }
 
+    [Fact]
+    public void FresnelLensPreviewsNimbleOnShopAndRewardCardOffers()
+    {
+        const string lensId = "proto.native.underdocks.fresnel_lens";
+        var initial = PrototypeNativeUnderdocksRunFactory.Create(
+            "fresnel-offer-preview");
+        var player = initial.Player with
+        {
+            Relics = [Relic(lensId)]
+        };
+        var world = initial.World!;
+        var engine = new PrototypeGameEngine();
+        var environment = new PrototypeAiEnvironment();
+
+        var shopState = initial with
+        {
+            Phase = RunPhase.Shop,
+            Player = player,
+            World = world with
+            {
+                ActiveRoom = PrototypeRoomType.Shop,
+                Shop = new ShopState(
+                [
+                    new(1, "proto.silent.defend", 30, false),
+                    new(2, "proto.silent.strike", 30, false),
+                    new(3, "proto.colorless.fisticuffs", 30, false)
+                ], null, null)
+            }
+        };
+        var shopStateHash = CanonicalJson.Sha256(shopState);
+        var shopRngHash = CanonicalJson.Sha256(shopState.Rng);
+        var shopView = environment.Observe(shopState)
+            .Observation.Shop!;
+        Assert.Equal(shopStateHash, CanonicalJson.Sha256(shopState));
+        Assert.Equal(shopRngHash, CanonicalJson.Sha256(shopState.Rng));
+        var shopPreviews = shopView.CardOfferPreviews!;
+        Assert.Equal(PrototypeCardEnchantmentKind.Nimble,
+            shopPreviews.Single(item => item.OfferId == 1)
+                .Card.Enchantment!.Kind);
+        Assert.Equal(2,
+            shopPreviews.Single(item => item.OfferId == 1)
+                .Card.Enchantment!.Amount);
+        Assert.Null(shopPreviews.Single(item => item.OfferId == 2)
+            .Card.Enchantment);
+        Assert.Equal(PrototypeCardEnchantmentKind.Nimble,
+            shopPreviews.Single(item => item.OfferId == 3)
+                .Card.Enchantment!.Kind);
+        var expectedPreview = shopPreviews.Single(item =>
+            item.OfferId == 1).Card;
+        var buyDefend = engine.GetLegalActions(shopState).Single(action =>
+            action.Kind == "buy_card"
+            && action.ReadPayload<BuyOfferPayload>().OfferId == 1);
+        var bought = engine.Step(shopState, buyDefend).State;
+        var acquired = bought.Player.Deck.Last();
+        Assert.Equal(expectedPreview.UpgradeLevel, acquired.UpgradeLevel);
+        Assert.Equal(expectedPreview.Enchantment, acquired.Enchantment);
+        var fisticuffsPreview = shopPreviews.Single(item =>
+            item.OfferId == 3).Card;
+        var buyFisticuffs = engine.GetLegalActions(shopState).Single(action =>
+            action.Kind == "buy_card"
+            && action.ReadPayload<BuyOfferPayload>().OfferId == 3);
+        var boughtFisticuffs = engine.Step(shopState, buyFisticuffs).State;
+        var acquiredFisticuffs = boughtFisticuffs.Player.Deck.Last();
+        Assert.Equal(fisticuffsPreview.Enchantment,
+            acquiredFisticuffs.Enchantment);
+
+        var rewardState = initial with
+        {
+            Phase = RunPhase.Reward,
+            Player = player,
+            World = world with
+            {
+                ActiveRoom = null,
+                Shop = null,
+                Reward = new RewardState(
+                    "Combat",
+                    ["proto.silent.defend", "proto.silent.strike",
+                     "proto.colorless.fisticuffs"],
+                    null, null,
+                    CardResolved: false,
+                    PotionResolved: true,
+                    RelicResolved: true,
+                    EndsAct: false,
+                    CardOptionUpgradeFlags: [true, false, false])
+            }
+        };
+        var rewardView = environment.Observe(rewardState)
+            .Observation.Reward!;
+        var rewardPreviews = rewardView.CardOptionPreviews!;
+        Assert.Equal(PrototypeCardEnchantmentKind.Nimble,
+            rewardPreviews[0].Enchantment!.Kind);
+        Assert.Equal(1, rewardPreviews[0].UpgradeLevel);
+        Assert.Null(rewardPreviews[1].Enchantment);
+        Assert.Equal(PrototypeCardEnchantmentKind.Nimble,
+            rewardPreviews[2].Enchantment!.Kind);
+
+        var noLens = shopState with
+        {
+            Player = shopState.Player with { Relics = [] }
+        };
+        Assert.Null(environment.Observe(noLens)
+            .Observation.Shop!.CardOfferPreviews);
+    }
+
     private static CardInstance ApplyNewCardEnchantments(
         PlayerState player, CardInstance card)
     {
@@ -139,6 +243,6 @@ public sealed class V111RelicAcquisitionCallbacksTests
                 BindingFlags.Static);
         Assert.NotNull(method);
         return (PlayerState)method!.Invoke(null,
-            [player, kind, null, acquired, null, null])!;
+            [player, kind, null, acquired, null, null, null])!;
     }
 }

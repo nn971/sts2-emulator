@@ -134,6 +134,12 @@ public sealed class PrototypeNativeByrdpipTests
         Assert.True(PrototypeNativeOvergrowthEvents.IsEligible(nest, empty));
         Assert.False(PrototypeNativeOvergrowthEvents.IsEligible(nest, egg));
         Assert.False(PrototypeNativeOvergrowthEvents.IsEligible(nest, pet));
+        var otherPet = empty with
+        {
+            Relics = [new RelicInstance(NativePaelRewardsV111.LegionId,
+                PrototypeJson.EmptyObject())]
+        };
+        Assert.False(PrototypeNativeOvergrowthEvents.IsEligible(nest, otherPet));
     }
 
     [Fact]

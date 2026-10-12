@@ -8,14 +8,28 @@ namespace Sts2Emulator.Core;
 public sealed partial class PrototypeGameEngine
 {
     private static RewardState CreateDeferredEventReward(
+        RunState state, PrototypeRunEffectKind kind, PlayerState player, string eventId)
+    {
+        var world = RequireWorld(state);
+        if (kind == PrototypeRunEffectKind.OfferWaxRelics)
+            throw new InvalidOperationException("Wax reward construction requires retained bag updates.");
+        return CreateDeferredEventReward(state, kind, player, eventId, ref world);
+    }
+
+    private static RewardState CreateDeferredEventReward(
         RunState state,
         PrototypeRunEffectKind kind,
         PlayerState player,
-        string eventId)
+        string eventId,
+        ref RunWorldState world)
     {
         var prefix = "Event:" + eventId;
         switch (kind)
         {
+            case PrototypeRunEffectKind.OfferWaxRelics:
+            {
+                return CreateWaxRelicReward(state, player, prefix, ref world);
+            }
             case PrototypeRunEffectKind.OfferThreeRareCards:
             {
                 var rarePool = PrototypeContent.RewardCardPool
@@ -33,7 +47,11 @@ public sealed partial class PrototypeGameEngine
                     PotionResolved: true,
                     RelicResolved: true,
                     EndsAct: false,
-                    AddCardAfterReward: "proto.native.neow.injury");
+                    AddCardAfterReward: "proto.native.neow.injury",
+                    CardRewardGenerators:
+                    [new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RarePool,
+                        world.Act)]);
             }
 
             case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
@@ -53,7 +71,11 @@ public sealed partial class PrototypeGameEngine
                     CardResolved: false,
                     PotionResolved: potion is null,
                     RelicResolved: true,
-                    EndsAct: false);
+                    EndsAct: false,
+                    CardRewardGenerators:
+                    [new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RewardPool,
+                        world.Act)]);
             }
 
             case PrototypeRunEffectKind.OfferCardBundles:

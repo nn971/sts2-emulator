@@ -27,14 +27,26 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 $"Card instance {cardInstanceId} is missing.");
 
-        if (PrototypeContent.Card(selected.CardId).Eternal)
+        if (choice.Kind is PrototypePersistentDeckChoiceKind.Remove
+                or PrototypePersistentDeckChoiceKind.Transform
+            && PrototypeCardRules.IsEternal(selected))
         {
             throw new InvalidOperationException(
                 $"Eternal card {cardInstanceId} cannot be changed by this relic.");
         }
 
+        if (choice.Kind == PrototypePersistentDeckChoiceKind.Remove
+            && PrototypeContent.Relic(choice.SourceRelicId).AcquisitionDeckChoice?.RequiresUpgradable == true
+            && selected.UpgradeLevel >= PrototypeContent.Card(selected.CardId).MaxUpgradeLevel)
+            throw new InvalidOperationException("Selected card is not upgradable.");
+
+        if (choice.Kind == PrototypePersistentDeckChoiceKind.Remove)
+            player = NativePaelRewardsV111.RememberToothRemoval(player, choice.SourceRelicId, selected);
+
         player = choice.Kind switch
         {
+            PrototypePersistentDeckChoiceKind.Enchant =>
+                ApplyRelicDeckEnchantment(player, choice.SourceRelicId, selected, rng),
             PrototypePersistentDeckChoiceKind.Remove =>
                 player with
                 {
@@ -78,5 +90,14 @@ public sealed partial class PrototypeGameEngine
                     CandidateCardInstanceIds = candidates
                 }
                 : null);
+    }
+
+    private static PlayerState ApplyRelicDeckEnchantment(PlayerState player, string relicId, CardInstance card, RngBundle rng)
+    {
+        var spec = PrototypeContent.Relic(relicId).AcquisitionDeckChoice!;
+        if (!CanSelectRelicDeckCard(card, spec)
+            || spec.EnchantmentAmount <= 0)
+            throw new InvalidOperationException("Card is no longer eligible for the relic enchantment.");
+        return ApplyEventEnchantment(player, card.InstanceId, spec.EnchantmentKind!.Value, spec.EnchantmentAmount);
     }
 }

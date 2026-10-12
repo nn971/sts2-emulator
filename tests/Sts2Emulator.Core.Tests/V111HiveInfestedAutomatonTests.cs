@@ -23,6 +23,9 @@ public sealed class V111HiveInfestedAutomatonTests
             evt.Choices.Select(option => option.Id));
         Assert.Equal(0, PrototypeContent.Event(
             PrototypeNativeLaterActs.HiveBugslayerId).Weight);
+        Assert.All(ExperimentalSilentThreeActRouteV111.HiveEvents,
+            eventId => Assert.True(
+                PrototypeNativeHiveEvents.IsNativeEvent(eventId), eventId));
     }
 
     [Theory]

@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Pinned v0.111.0 Hive event inventory and the first additional executable
-/// Hive event. Later-act random event selection is intentionally gated.
+/// Pinned v0.111.0 Hive event inventory and executable event models.
+/// The experimental three-act route opts in to supported Hive events;
+/// default run selection remains gated pending native parity.
 /// Source: Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20,
 /// Hive.cs and InfestedAutomaton.cs.
 /// </summary>
@@ -11,8 +12,9 @@ public static class PrototypeNativeHiveEvents
     public const string InfestedAutomatonId =
         "proto.native.hive.infested_automaton";
 
-    // The ten native Hive.AllEvents entries, in source order.
-    // Only Bugslayer and Infested Automaton have executable options here.
+    // The ten native Hive.AllEvents entries, in source order. The opted-in
+    // regional pool excludes Colorful Philosophers until its foreign card
+    // pools and acquisition mechanics are implemented.
     public static string[] NativeEventNames { get; } =
     [
         "Amalgamator", "Bugslayer", "ColorfulPhilosophers",
@@ -58,7 +60,8 @@ public static class PrototypeNativeHiveEvents
     public static bool IsNativeEvent(string id) =>
         id is LanternKeyEventId or FieldOfManSizedHolesId or AmalgamatorId
             or InfestedAutomatonId or LostWispId or ZenWeaverId
-            or ColossalFlowerId or SpiritGrafterId;
+            or ColossalFlowerId or SpiritGrafterId
+            or PrototypeNativeLaterActs.HiveBugslayerId;
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         eventId is SpiritGrafterId or FieldOfManSizedHolesId;
@@ -78,7 +81,7 @@ public static class PrototypeNativeHiveEvents
 
     private static int CountBasic(PlayerState player, string tag) =>
         player.Deck.Count(card =>
-            !PrototypeContent.Card(card.CardId).Eternal
+            !PrototypeCardRules.IsEternal(card)
             && PrototypeContent.Card(card.CardId).Rarity
                 == PrototypeCardRarity.Basic
             && (PrototypeContent.Card(card.CardId).Tags?.Contains(

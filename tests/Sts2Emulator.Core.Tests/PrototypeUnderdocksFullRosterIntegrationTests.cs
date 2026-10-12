@@ -47,6 +47,19 @@ public sealed class PrototypeUnderdocksFullRosterIntegrationTests
             normals.OrderBy(id => id, StringComparer.Ordinal));
         Assert.Empty(state.World!.ActOneEncounterPool!
             .RemainingNormalEncounterIds!);
+        var previousNormal = state.World.EncounterIds[^1];
+        for (var floor = 14; floor <= 15; floor++)
+        {
+            state = StartRoom(engine, state, PrototypeRoomType.Combat, floor);
+            var encounterId = state.World!.EncounterIds[^1];
+            Assert.NotEqual(previousNormal, encounterId);
+            Assert.Contains(encounterId,
+                PrototypeNativeUnderdocks.SupportedNormalEncounterIds);
+            AssertFormation(state, encounterId, ascension);
+            previousNormal = encounterId;
+        }
+        Assert.Equal(8, state.World!.ActOneEncounterPool!
+            .RemainingNormalEncounterIds!.Length);
 
         var elites = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < 3; i++)
@@ -64,10 +77,15 @@ public sealed class PrototypeUnderdocksFullRosterIntegrationTests
             elites.OrderBy(id => id, StringComparer.Ordinal));
         Assert.Empty(state.World!.ActOneEncounterPool!
             .RemainingEliteEncounterIds!);
-        var hash = CanonicalJson.Sha256(state);
-        Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, state, PrototypeRoomType.Elite, 15));
-        Assert.Equal(hash, CanonicalJson.Sha256(state));
+        var refilledElite = StartRoom(
+            engine, state, PrototypeRoomType.Elite, 15);
+        var refilledId = refilledElite.World!.EncounterIds[^1];
+        Assert.Contains(refilledId,
+            PrototypeNativeUnderdocks.SupportedEliteEncounterIds);
+        Assert.NotEqual(state.World.EncounterIds[^1], refilledId);
+        AssertFormation(refilledElite, refilledId, ascension);
+        Assert.Equal(2, refilledElite.World.ActOneEncounterPool!
+            .RemainingEliteEncounterIds!.Length);
     }
 
     [Theory]

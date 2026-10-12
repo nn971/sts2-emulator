@@ -185,6 +185,13 @@ public sealed partial class PrototypeGameEngine
             if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
                 return ContinueNativeWarHistorianRepy(state);
 
+            if (NativeAncientRewardsV111.IsOpeningEvent(world))
+                return state with
+                {
+                    World = world with { Event = null },
+                    Phase = RunPhase.MapChoice
+                };
+
             if (StringComparer.Ordinal.Equals(
                     eventState.EventId,
                     PrototypeNativeOvergrowthEvents.NeowEventId)
@@ -239,7 +246,10 @@ public sealed partial class PrototypeGameEngine
                 requested.BasicCardsOnly)
                 && (requested.RequiredCardTag is null
                     || PrototypeContent.Card(card.CardId).Tags?.Contains(
-                        requested.RequiredCardTag, StringComparer.Ordinal) == true))
+                        requested.RequiredCardTag, StringComparer.Ordinal) == true)
+                && (!requested.RequiresUpgradable
+                    || card.UpgradeLevel < PrototypeContent.Card(card.CardId).MaxUpgradeLevel))
+            .OrderBy(card => requested.RequiresUpgradable ? card.CardId : string.Empty, StringComparer.Ordinal)
             .Select(card => card.InstanceId)
             .ToArray();
         var selections = Math.Min(

@@ -2,9 +2,9 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// v0.111.0 Underdocks single-player Act 1 content inventory.
-/// All four native weak encounters and a restricted normal-encounter
-/// subset are playable. Other normals, elites and bosses remain gated
-/// rather than replaced with Overgrowth content.
+/// All 20 native encounter registrations are supported by the experimental
+/// Underdocks selector. Native pre-generated queue ordering, encounter-tag
+/// filtering and RNG draw parity remain separate fidelity work.
 /// </summary>
 public static class PrototypeNativeUnderdocks
 {
@@ -56,8 +56,8 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.toadpoles_weak"
     ];
 
-    // Initial native-shaped normal slice. This is *not* the full ten-
-    // encounter normal distribution; unsupported entries remain cataloged.
+    // Full source registration set. The Act 1 route schedules 12 normal
+    // selections, so this bag refills after its ten distinct encounters.
     public static string[] SupportedNormalEncounterIds { get; } =
     [
         "proto.encounter.corpse_slugs_normal",

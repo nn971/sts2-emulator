@@ -81,6 +81,47 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
     }
 
     [Fact]
+    public void FriedEelAddsFromTheCompleteImplementedSoloColorlessPool()
+    {
+        var engine = new PrototypeGameEngine();
+        var entered = FindEvent(engine,
+            PrototypeNativeEndlessConveyor.EventId,
+            "conveyor-fried-eel-colorless", gold: 400);
+        var forced = entered with
+        {
+            World = entered.World! with
+            {
+                Event = entered.World.Event! with
+                {
+                    NativeDishId = "FRIED_EEL",
+                    NativeLastDishId = "FRIED_EEL"
+                }
+            }
+        };
+        var predictedRng = entered.Rng.Fork();
+        var pool = PrototypeColorlessCards.Implemented
+            .Where(card => card.MechanicsImplemented
+                && !card.MultiplayerOnly)
+            .Select(card => card.Id).ToArray();
+        Assert.Equal(53, pool.Length);
+        var cardId = pool[PrototypeRng.NextInt(
+            predictedRng, "event", pool.Length)];
+        _ = PrototypeNativeEndlessConveyor.RollNextDish(
+            forced.World.Event, forced.Player, predictedRng);
+
+        var resolved = Choose(engine, forced, "grab");
+        Assert.Equal(cardId, resolved.Player.Deck.Last().CardId);
+        Assert.Equal(entered.Player.Gold - 40, resolved.Player.Gold);
+        Assert.Equal(CanonicalJson.Sha256(predictedRng),
+            CanonicalJson.Sha256(resolved.Rng));
+        var card = PrototypeContent.Card(cardId);
+        Assert.True(card.MechanicsImplemented);
+        Assert.False(card.MultiplayerOnly);
+        Assert.Equal(RunPhase.Event, resolved.Phase);
+        Assert.Equal(2, resolved.World!.Event!.NativeDishCount);
+    }
+
+    [Fact]
     public void ConveyorFourGrabsLeadToFifthGuaranteedFeedingFrenzyDish()
     {
         var engine = new PrototypeGameEngine();

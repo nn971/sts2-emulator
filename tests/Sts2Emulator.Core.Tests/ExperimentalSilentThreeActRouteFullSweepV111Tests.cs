@@ -3,18 +3,20 @@ using Sts2Emulator.Core;
 namespace Sts2Emulator.Core.Tests;
 
 /// <summary>
-/// Exercise actual engine room/reward/transition plumbing from Hive entry
-/// through Glory victory, with explicitly synthetic combat finishers.
-/// This tests route reachability and persistence, NOT unassisted combat
-/// victories or native game parity. The Act 1 boss boundary is injected.
+/// Exercise actual engine room/reward/transition plumbing from either Act 1
+/// starting region through Glory victory, with explicitly synthetic combat
+/// finishers. This tests route reachability and persistence, NOT unassisted
+/// combat victories or native game parity.
 /// </summary>
 public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
 {
     private static readonly PrototypeGameEngine Engine = new();
 
-    private static RunState HiveEntry(string seed)
+    private static RunState NewRun(
+        string seed, ActIdentity firstAct, int ascension = 0)
     {
-        var config = RunConfiguration.Create() with
+        var config = RunConfiguration.Create(
+            firstAct: firstAct, ascension: ascension) with
         {
             FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
         };
@@ -25,10 +27,7 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
             && state.Phase is RunPhase.Event or RunPhase.Reward; i++)
             state = Engine.Step(state, Engine.GetLegalActions(state)[0]).State;
         Assert.Equal(RunPhase.MapChoice, state.Phase);
-        // The Act 1 boss is outside this route integration regression.
-        state = state with { Phase = RunPhase.ActTransition };
-        return Engine.Step(
-            state, GameAction.Empty("continue_act")).State;
+        return state;
     }
 
     private static RunState FinishFightWithSyntheticAllEnemyCard(
@@ -72,23 +71,39 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
         return Engine.Step(prepared, action).State;
     }
 
-    [Theory]
-    [InlineData("silent-route-full-synthetic-one")]
-    [InlineData("silent-route-full-synthetic-two")]
-    [InlineData("silent-route-full-synthetic-three")]
-    [InlineData("silent-route-full-synthetic-four")]
-    [InlineData("silent-route-full-synthetic-five")]
-    [InlineData("silent-route-full-synthetic-six")]
-    [InlineData("silent-route-full-synthetic-seven")]
-    [InlineData("silent-route-full-synthetic-eight")]
-    [InlineData("silent-route-full-synthetic-nine")]
-    [InlineData("silent-route-full-synthetic-ten")]
-    public void SyntheticCombatFinishersExerciseBothLaterActsToVictory(
-        string seed)
+    private static GameAction ChooseEventAction(
+        RunState state, IReadOnlyList<GameAction> actions)
     {
-        var state = HiveEntry(seed);
+        // This route probe should preserve the run while exercising event
+        // dispatch. Abyssal Baths exposes legal, potentially fatal repeated
+        // immersions, so take the safe exit on each page.
+        if (state.World?.Event is { } evt
+            && evt.EventId == "proto.native.underdocks.abyssal_baths")
+        {
+            var preferred = evt.NativePageIndex == 0 ? "abstain" : "exit";
+            return actions.Single(action =>
+                action.ReadPayload<EventChoicePayload>().ChoiceId == preferred);
+        }
+
+        return actions[0];
+    }
+
+    [Theory]
+    [InlineData("silent-overgrowth-route-one", ActIdentity.Overgrowth, 0)]
+    [InlineData("silent-overgrowth-route-two", ActIdentity.Overgrowth, 0)]
+    [InlineData("silent-overgrowth-route-three", ActIdentity.Overgrowth, 0)]
+    [InlineData("silent-underdocks-route-one", ActIdentity.Underdocks, 0)]
+    [InlineData("silent-underdocks-route-two", ActIdentity.Underdocks, 0)]
+    [InlineData("silent-underdocks-route-three", ActIdentity.Underdocks, 0)]
+    [InlineData("silent-overgrowth-route-a10-double-boss", ActIdentity.Overgrowth, 10)]
+    [InlineData("silent-underdocks-route-a10-double-boss", ActIdentity.Underdocks, 10)]
+    public void SyntheticCombatFinishersExerciseBothActOneRoutesThroughGloryVictory(
+        string seed, ActIdentity firstAct, int ascension)
+    {
+        var state = NewRun(seed, firstAct, ascension);
         var route = new List<int> { state.World!.Act };
         var encounters = new Dictionary<int, int>();
+        var bossEncounters = new List<string>();
         var decisions = 0;
         var consecutiveCombatFinishers = 0;
         while (state.Phase != RunPhase.Terminal && decisions++ < 750)
@@ -121,6 +136,8 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
                             e.EnemyId + ":" + e.Hp + "/" + e.MaxHp))}.");
                     encounters[state.World.Act] =
                         encounters.GetValueOrDefault(state.World.Act) + 1;
+                    if (state.World.ActiveRoom == PrototypeRoomType.Boss)
+                        bossEncounters.Add(state.World.EncounterIds.Last());
                     state = FinishFightWithSyntheticAllEnemyCard(state);
                     break;
                 case RunPhase.Reward:
@@ -141,6 +158,9 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
                             a.Kind == "leave_shop") ?? actions[0]).State;
                     break;
                 case RunPhase.Event:
+                    state = Engine.Step(state,
+                        ChooseEventAction(state, actions)).State;
+                    break;
                 case RunPhase.Rest:
                     state = Engine.Step(state, actions[0]).State;
                     break;
@@ -161,7 +181,10 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
                                     .LaterActEncounterBag! with
                                 {
                                     BossEncounterId =
-                                        PrototypeNativeGloryBosses.QueenEncounterId
+                                        PrototypeNativeGloryBosses.QueenEncounterId,
+                                    SecondBossEncounterId = ascension >= 10
+                                        ? PrototypeNativeGloryBosses.AeonglassEncounterId
+                                        : null
                                 }
                             }
                         };
@@ -175,13 +198,28 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
 
         Assert.True(decisions < 750, "The whole-route smoke exceeded the decision budget.");
         Assert.Equal(RunPhase.Terminal, state.Phase);
-        Assert.Equal("victory", state.World!.TerminalOutcome);
-        Assert.Equal(new[] { 2, 3 }, route);
+        Assert.True(state.World!.TerminalOutcome == "victory",
+            $"{firstAct} route ended as {state.World.TerminalOutcome} at " +
+            $"act {state.World.Act}, floor {state.World.Floor}, " +
+            $"HP {state.Player.Hp}/{state.Player.MaxHp}; " +
+            $"events={string.Join(",", state.World.EventIds)}; " +
+            $"rooms={state.World.CompletedRooms.Length}.");
+        Assert.Equal(new[] { 1, 2, 3 }, route);
+        Assert.True(encounters.ContainsKey(1));
         Assert.True(encounters.ContainsKey(2));
         Assert.True(encounters.ContainsKey(3));
         Assert.Equal(PrototypeNativeLaterActMap.RoomRows(2) + 1,
             state.World.CompletedRooms.Count(r => r.Act == 2));
         Assert.Equal(PrototypeNativeLaterActMap.RoomRows(3) + 1,
-            state.World.CompletedRooms.Count(r => r.Act == 3));
+            state.World.CompletedRooms.Count(r => r.Act == 3)
+                - (ascension >= 10 ? 1 : 0));
+        var gloryBossEncounters = bossEncounters.Where(id =>
+            ExperimentalSilentThreeActRouteV111.GloryBosses
+                .Contains(id, StringComparer.Ordinal)).ToArray();
+        Assert.Equal(ascension >= 10
+                ? new[] { PrototypeNativeGloryBosses.QueenEncounterId,
+                    PrototypeNativeGloryBosses.AeonglassEncounterId }
+                : [PrototypeNativeGloryBosses.QueenEncounterId],
+            gloryBossEncounters);
     }
 }

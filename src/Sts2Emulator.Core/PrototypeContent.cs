@@ -1906,6 +1906,9 @@ public static class PrototypeContent
             .Concat(PrototypeNativeHiveKnowledgeDemonChoice.Cards)
             .Concat(PrototypeNativeGloryElites.Cards)
             .Concat(PrototypeNativeGloryBosses.Cards)
+            .Concat(NativeAncientRewardsV111.Cards)
+            .Concat(NativePaelRewardsV111.Cards)
+            .Concat(PrototypeNativeOrobasRelics.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -2561,7 +2564,8 @@ public static class PrototypeContent
                 EnchantNewBlockCardsNimble: 2),
             new PrototypeRelicDefinition(
                 "proto.native.event.byrdpip",
-                "Byrdpip"),
+                "Byrdpip",
+                AddsPet: true),
             new PrototypeRelicDefinition(
                 "proto.native.event.sword_of_stone",
                 "Sword of Stone"),
@@ -2935,12 +2939,12 @@ public static class PrototypeContent
                 Triggers:
                 [
                     new PrototypeRelicTriggerSpec(
-                        PrototypeCombatEventKind.CombatStarted,
+                        PrototypeCombatEventKind.BeforeHandDraw,
                         [new(
                             PrototypeCombatEffectKind.ChooseGeneratedCards,
                             3,
                             GeneratedChoiceCardsFreeThisTurn:
-                                false)])
+                                false)], TurnEquals: 1)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.gambling_chip",
@@ -2948,7 +2952,7 @@ public static class PrototypeContent
                 Triggers:
                 [
                     new PrototypeRelicTriggerSpec(
-                        PrototypeCombatEventKind.CombatStarted,
+                        PrototypeCombatEventKind.OpeningPlayerTurnStarted,
                         [
                             new(
                                 PrototypeCombatEffectKind.ChooseCards,
@@ -2966,6 +2970,9 @@ public static class PrototypeContent
             .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .Concat(PrototypeNativeHiveEvents.Relics)
             .Concat(PrototypeNativeGloryEvents.Relics)
+            .Concat(NativeAncientRewardsV111.Relics)
+            .Concat(NativePaelRewardsV111.Relics)
+            .Concat(PrototypeNativeOrobasRelics.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -6421,6 +6428,8 @@ public static class PrototypeContent
             .Concat(PrototypeNativeHiveEvents.Definitions)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
+            .Append(NativeAncientRewardsV111.TezcataraRewardDefinition)
+            .Append(NativePaelRewardsV111.RewardDefinition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
     public static string[] OvergrowthWeakEncounterPool { get; } =

@@ -196,6 +196,8 @@ reachable under its proper conditions and directly testable.
 
 ## 9. Exact native RNG and replay parity
 
+**Desired RNG implementation:** follow [DESIRED_RNG_IMPLEMENTATION.md](DESIRED_RNG_IMPLEMENTATION.md) for the provider-independent mechanics/chance interface, native RNG adapter, controlled Nature resolution, serialized continuations, migration order, and separate mechanical/native/probability validation gates. This is a proposed target architecture; existing RNG implementation and release requirements remain unchanged until the corresponding patches land.
+
 Continuous during expansion; mandatory for the final release.
 
 - [ ] Integrate 12 native run streams, three player streams and context-specific

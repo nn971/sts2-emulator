@@ -62,6 +62,49 @@ public sealed class PrototypeColorlessEighthBatchTests
         PrototypeStateInvariants.Validate(state);
     }
 
+    [Fact]
+    public void FisticuffsReceivesNimbleBeforeCardBlockModifiers()
+    {
+        Assert.True(PrototypeCardRules.GainsBlock(
+            PrototypeContent.Card("proto.colorless.fisticuffs")));
+        Assert.False(PrototypeCardRules.GainsBlock(
+            PrototypeContent.Card("proto.colorless.bolas")));
+        var state = Setup("fisticuffs-nimble",
+            ["proto.colorless.fisticuffs"], [1], []);
+        var combat = state.World!.Combat!;
+        var cards = combat.Cards.Select(card => card.InstanceId == 1
+            ? card with
+            {
+                Enchantment = new(
+                    PrototypeCardEnchantmentKind.Nimble, 2)
+            }
+            : card).ToArray();
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Select(card =>
+                    card.InstanceId == 1
+                        ? card with
+                        {
+                            Enchantment = new(
+                                PrototypeCardEnchantmentKind.Nimble, 2)
+                        }
+                        : card).ToArray()
+            },
+            World = state.World with
+            {
+                Combat = combat with { Cards = cards }
+            }
+        };
+
+        state = Play(state, 1, 1);
+
+        Assert.Equal(9, state.World!.Combat!.PlayerBlock);
+        Assert.Equal(93, state.World.Combat.Enemies[0].Hp);
+        PrototypeStateInvariants.Validate(state);
+    }
+
     [Theory]
     [InlineData("proto.colorless.bolas", 0, 3, 3)]
     [InlineData("proto.colorless.bolas", 1, 4, 3)]

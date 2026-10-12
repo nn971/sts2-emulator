@@ -21,12 +21,13 @@ public sealed partial class PrototypeGameEngine
             option => StringComparer.Ordinal.Equals(option.NodeId, payload.NodeId))
             ?? throw new InvalidOperationException($"Unknown map node '{payload.NodeId}'.");
 
-        // Native Hive/Glory geometry may be inspected independently,
-        // but regional encounter/event/reward bags are not yet complete.
-        // Never silently substitute the six-floor prototype content.
+        // Later-act maps execute only under the explicit experimental
+        // three-act profile while Ancient assignment and native fidelity
+        // remain incomplete. Never fall back to the six-floor prototype.
         var nativeLaterMap = world.Map.GenerationProfileId is
             PrototypeNativeLaterActMap.HiveProfileId
-            or PrototypeNativeLaterActMap.GloryProfileId;
+            or PrototypeNativeLaterActMap.GloryProfileId
+            or PrototypeGoldenPathMapV111.ProfileId;
         var forceRepy = ShouldForceWarHistorianRepy(world, state.Player);
         var experimentalLaterRoute = nativeLaterMap
             && state.Configuration?.UsesExperimentalSilentThreeActRoute == true;
@@ -42,7 +43,9 @@ public sealed partial class PrototypeGameEngine
         // Native LanternKey converts Glory '?' rooms into Event rooms.
         // Its event replacement also applies to existing Event nodes.
         var room = node.RoomType == PrototypeRoomType.Unknown
-            ? forceRepy ? PrototypeRoomType.Event
+            ? PrototypeGoldenPathMapV111.IsActive(state.Player, world.Act)
+                ? ResolveUnknownMapRoom(ref world, state.Rng, eventOnly: true)
+                : forceRepy ? PrototypeRoomType.Event
                 : ResolveUnknownMapRoom(ref world, state.Rng)
             : node.RoomType;
 
@@ -679,6 +682,8 @@ public sealed partial class PrototypeGameEngine
                         evt, world))
                 && (!laterRoute || world.Act != 2
                     || PrototypeNativeHiveEvents.IsEligible(evt, state.Player))
+                && (!laterRoute || world.Act != 3
+                    || PrototypeNativeGloryEvents.IsEligible(evt, state.Player))
                 && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
                 && (laterRoute || evt.Weight > 0)
@@ -889,7 +894,12 @@ public sealed partial class PrototypeGameEngine
             PrototypeContent.Event(
                 eventState.EventId);
 
-        return definition.Choices
+        var choices = eventState.EventId is NativeAncientRewardsV111.TezcataraId
+                or NativePaelRewardsV111.PaelId
+                && eventState.OfferedChoiceIds is { } offeredIds
+            ? offeredIds.Select(id => definition.Choices.Single(choice => choice.Id == id))
+            : definition.Choices.AsEnumerable();
+        return choices
             .Where(choice =>
                 (eventState.OfferedChoiceIds is null
                     || eventState.OfferedChoiceIds.Contains(
@@ -1359,6 +1369,7 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.OfferCardBundles:
                 case PrototypeRunEffectKind.OfferNeowsBonesRelics:
                 case PrototypeRunEffectKind.OfferRandomRelic:
+                case PrototypeRunEffectKind.OfferWaxRelics:
                     if (deferredReward is not null)
                     {
                         throw new InvalidOperationException(
@@ -1368,7 +1379,7 @@ public sealed partial class PrototypeGameEngine
                         state,
                         effect.Kind,
                         player,
-                        eventState.EventId);
+                        eventState.EventId, ref world);
                     break;
 
                 case PrototypeRunEffectKind.GainPotionSlots:
@@ -1464,7 +1475,15 @@ public sealed partial class PrototypeGameEngine
                         player,
                         PrototypeRunEventKind.RelicAcquired,
                         acquiredRelicId: relicId,
-                        rng: state.Rng);
+                        rng: state.Rng, allocateCardId: () => nextId++);
+
+                    if (relicId == NativeAncientRewardsV111.ToyBoxId)
+                    {
+                        if (deferredReward is not null)
+                            throw new InvalidOperationException("Toy Box acquisition already has a custom reward.");
+                        deferredReward = CreateDeferredEventReward(state,
+                            PrototypeRunEffectKind.OfferWaxRelics, player, eventState.EventId, ref world);
+                    }
 
                     var relicChoice =
                         CreateRelicEventDeckChoice(
@@ -1844,7 +1863,9 @@ public sealed partial class PrototypeGameEngine
                 spec.Selections,
                 Array.Empty<long>(),
                 spec.UpgradeTransformedCards,
-                SourceRelicId: relic.Id);
+                SourceRelicId: relic.Id,
+                EnchantmentKind: spec.EnchantmentKind,
+                RequiresUpgradable: spec.RequiresUpgradable);
     }
 
     private static PrototypePendingEventDeckChoiceState?
@@ -1875,6 +1896,11 @@ public sealed partial class PrototypeGameEngine
         var selected = player.Deck.Single(
             card => card.InstanceId
                 == cardInstanceId);
+        if (pending.RequiresUpgradable
+            && selected.UpgradeLevel >= PrototypeContent.Card(selected.CardId).MaxUpgradeLevel)
+            throw new InvalidOperationException("Selected card is not upgradable.");
+        if (pending.Kind == PrototypePersistentDeckChoiceKind.Remove)
+            player = NativePaelRewardsV111.RememberToothRemoval(player, pending.SourceRelicId, selected);
 
         return pending.Kind switch
         {
@@ -1917,7 +1943,9 @@ public sealed partial class PrototypeGameEngine
                     selected.InstanceId,
                     pending.EnchantmentKind
                         ?? throw new InvalidOperationException(
-                            "Event enchant selection is missing its type.")),
+                            "Event enchant selection is missing its type."),
+                    pending.SourceRelicId is { } enchantRelic
+                        ? PrototypeContent.Relic(enchantRelic).AcquisitionDeckChoice!.EnchantmentAmount : 1),
             _ => throw new ArgumentOutOfRangeException()
         };
     }
@@ -2223,7 +2251,7 @@ public sealed partial class PrototypeGameEngine
         {
             actions.AddRange(
                 state.Player.Deck
-                    .Where(card => !PrototypeContent.Card(card.CardId).Eternal)
+                    .Where(card => !PrototypeCardRules.IsEternal(card))
                     .Select(card => GameAction.Create(
                         "remove_card",
                         new RemoveCardPayload(card.InstanceId))));
@@ -2288,7 +2316,7 @@ public sealed partial class PrototypeGameEngine
                 ?? throw new InvalidOperationException(
                     $"Card instance {payload.CardInstanceId} is missing.");
 
-            if (PrototypeContent.Card(cardToRemove.CardId).Eternal)
+            if (PrototypeCardRules.IsEternal(cardToRemove))
             {
                 throw new InvalidOperationException(
                     $"Eternal card {payload.CardInstanceId} cannot be removed from the deck.");
@@ -2419,7 +2447,7 @@ public sealed partial class PrototypeGameEngine
                 player,
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: offer.ItemId,
-                rng: state.Rng);
+                rng: state.Rng, allocateCardId: () => nextId++);
             shop = UpdateRelicOffer(
                 shop,
                 offer with { Sold = true });
@@ -2585,6 +2613,10 @@ public sealed partial class PrototypeGameEngine
         {
             actions.Add(GameAction.Empty("rest_hatch"));
         }
+        if (state.Player.Relics.Any(relic => relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId))
+            actions.Add(GameAction.Empty("rest_kindle"));
+        if (state.Player.ActiveRelics.Any(relic => relic.RelicId == NativePaelRewardsV111.GrowthId))
+            actions.Add(GameAction.Empty("rest_clone"));
         if (CanRestHeal(state.Player))
         {
             actions.Add(GameAction.Empty("rest_heal"));
@@ -2611,6 +2643,19 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepRest(RunState state, GameAction action)
     {
+        if (action.Kind == "rest_clone")
+            return ClonePaelRestCards(state);
+        if (action.Kind == "rest_kindle")
+        {
+            var index = Array.FindIndex(state.Player.Relics,
+                relic => relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId);
+            if (index < 0)
+                throw new InvalidOperationException("Kindle requires Pumpkin Candle.");
+            return CompleteRoomToMap(state with
+            {
+                Player = NativeAncientRewardsV111.Rekindle(state.Player, index)
+            });
+        }
         if (StringComparer.Ordinal.Equals(action.Kind, "rest_hatch"))
         {
             if (!CanHatchByrdonisEgg(state.Player))
@@ -2706,6 +2751,16 @@ public sealed partial class PrototypeGameEngine
 
     private static IReadOnlyList<GameAction> GetRewardActions(RunState state)
     {
+        var actions = GetRewardActionsCore(state);
+        if (!state.Player.ActiveRelics.Any(relic => relic.RelicId == NativePaelRewardsV111.WingId))
+            return actions;
+        return actions.Concat(actions.Where(action => action.Kind is "skip_reward_card" or "skip_reward_card_group")
+            .Select(action => action with { Kind = action.Kind == "skip_reward_card"
+                ? "sacrifice_reward_card" : "sacrifice_reward_card_group" })).ToArray();
+    }
+
+    private static IReadOnlyList<GameAction> GetRewardActionsCore(RunState state)
+    {
         var reward = RequireWorld(state).Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
 
@@ -2732,6 +2787,11 @@ public sealed partial class PrototypeGameEngine
                         "take_reward_card",
                         new ChooseCardPayload(index))));
             actions.Add(GameAction.Empty("skip_reward_card"));
+            var currentGroup = reward.CardResolved
+                ? firstExtraCard + 1 : 0;
+            if (CreateDriftwoodRerollAction(
+                    state.Player, reward, currentGroup) is { } reroll)
+                actions.Add(reroll);
         }
 
         // Every other extra offer gets an explicit stable group ID.
@@ -2753,6 +2813,9 @@ public sealed partial class PrototypeGameEngine
             actions.Add(GameAction.Create(
                 "skip_reward_card_group",
                 new ChooseRewardCardGroupPayload(i + 1, -1)));
+            if (CreateDriftwoodRerollAction(
+                    state.Player, reward, i + 1) is { } reroll)
+                actions.Add(reroll);
         }
 
         if (!reward.PotionResolved)
@@ -2782,6 +2845,34 @@ public sealed partial class PrototypeGameEngine
             actions.Add(GameAction.Empty("skip_reward_potion"));
         }
 
+        for (var i = 0; i < (reward.ExtraPotionOptions?.Length ?? 0); i++)
+        {
+            if (reward.IsExtraPotionGroupResolved(i))
+                continue;
+            if (CanAcquirePotion(state.Player))
+            {
+                var freeSlot = Array.IndexOf(state.Player.PotionSlots, null);
+                if (freeSlot >= 0)
+                {
+                    actions.Add(GameAction.Create(
+                        "take_reward_extra_potion",
+                        new ChooseExtraPotionRewardPayload(i)));
+                }
+                else
+                {
+                    actions.AddRange(state.Player.PotionSlots
+                        .Select((potion, slot) => (Potion: potion, Slot: slot))
+                        .Where(item => item.Potion is not null)
+                        .Select(item => GameAction.Create(
+                            "replace_reward_extra_potion",
+                            new ChooseExtraPotionRewardPayload(i, item.Slot))));
+                }
+            }
+            actions.Add(GameAction.Create(
+                "skip_reward_extra_potion",
+                new ChooseExtraPotionRewardPayload(i)));
+        }
+
         if (!reward.RelicResolved)
         {
             var relics = reward.CurrentRelicOptions;
@@ -2794,6 +2885,8 @@ public sealed partial class PrototypeGameEngine
                 GameAction.Create(
                     "take_reward_relic",
                     new ChooseRelicPayload(index))));
+            if (reward.IndependentSelection)
+                actions.Add(GameAction.Empty("skip_reward_relic"));
         }
         var firstExtraRelic = reward.FirstPendingExtraRelicGroupIndex;
         for (var i = 0; i < (reward.ExtraRelicRewardIds?.Length ?? 0); i++)
@@ -2813,6 +2906,8 @@ public sealed partial class PrototypeGameEngine
                 actions.Add(GameAction.Create(
                     "take_reward_extra_relic", new ChooseRelicPayload(i)));
             }
+            actions.Add(GameAction.Create(
+                "skip_reward_extra_relic", new ChooseRelicPayload(i)));
         }
 
         if (reward.GoldOption is not null && !reward.GoldResolved)
@@ -2868,6 +2963,9 @@ public sealed partial class PrototypeGameEngine
                     new ChooseCardPayload(index)))
                 .ToList();
             actions.Add(GameAction.Empty("skip_reward_card"));
+            if (CreateDriftwoodRerollAction(
+                    state.Player, reward, 0) is { } reroll)
+                actions.Add(reroll);
             return actions;
         }
 
@@ -2887,6 +2985,10 @@ public sealed partial class PrototypeGameEngine
                 .ToList();
             actions.Add(
                 GameAction.Empty("skip_reward_card"));
+            if (CreateDriftwoodRerollAction(
+                    state.Player, reward,
+                    1 + reward.ExtraCardRewardsResolved) is { } reroll)
+                actions.Add(reroll);
             return actions;
         }
 
@@ -2953,6 +3055,11 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepReward(RunState state, GameAction action)
     {
+        if (action.Kind is "sacrifice_reward_card" or "sacrifice_reward_card_group")
+            return SacrificePaelCardReward(state, action);
+        if (action.Kind == "reroll_reward_card")
+            return RerollRewardCardGroup(state,
+                action.ReadPayload<RerollRewardCardPayload>().GroupIndex);
         var world = RequireWorld(state);
         var reward = world.Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
@@ -2970,6 +3077,59 @@ public sealed partial class PrototypeGameEngine
             var resolved = (bool[])reward.ExtraGoldGroupsResolved!.Clone();
             resolved[index] = true;
             reward = reward with { ExtraGoldGroupsResolved = resolved };
+        }
+        else if (reward.IndependentSelection
+            && reward.PendingDeckChoice is null
+            && (reward.CardResolved || reward.CardBundles is null)
+            && action.Kind is "take_reward_extra_potion"
+                or "replace_reward_extra_potion"
+                or "skip_reward_extra_potion")
+        {
+            var payload = action.ReadPayload<ChooseExtraPotionRewardPayload>();
+            var options = reward.ExtraPotionOptions
+                ?? throw new InvalidOperationException(
+                    "Extra potion reward groups are missing.");
+            if ((uint)payload.GroupIndex >= (uint)options.Length
+                || reward.IsExtraPotionGroupResolved(payload.GroupIndex))
+                throw new InvalidOperationException(
+                    "Extra potion reward group is unavailable.");
+
+            if (action.Kind == "take_reward_extra_potion")
+            {
+                if (!CanAcquirePotion(player))
+                    throw new InvalidOperationException(
+                        "Player cannot acquire potions.");
+                var slot = Array.IndexOf(player.PotionSlots, null);
+                if (slot < 0)
+                    throw new InvalidOperationException(
+                        "No potion slot is available for the extra reward.");
+                var slots = (PotionInstance?[])player.PotionSlots.Clone();
+                slots[slot] = new PotionInstance(options[payload.GroupIndex],
+                    PrototypeJson.EmptyObject());
+                player = player with { PotionSlots = slots };
+            }
+            else if (action.Kind == "replace_reward_extra_potion")
+            {
+                if (!CanAcquirePotion(player)
+                    || Array.IndexOf(player.PotionSlots, null) >= 0
+                    || payload.Slot < 0
+                    || payload.Slot >= player.PotionSlots.Length
+                    || player.PotionSlots[payload.Slot] is null)
+                    throw new InvalidOperationException(
+                        "Extra potion replacement slot is unavailable.");
+                player = player with
+                {
+                    PotionSlots = ReplacePotionSlot(player.PotionSlots,
+                        payload.Slot, options[payload.GroupIndex])
+                };
+            }
+            else if (payload.Slot != -1)
+            {
+                throw new InvalidOperationException(
+                    "Skipped extra potion reward must not name a slot.");
+            }
+
+            reward = reward.ResolveExtraPotionGroup(payload.GroupIndex);
         }
         else if (reward.GoldOption is { } goldOffer
             && reward.PendingDeckChoice is null
@@ -3099,15 +3259,27 @@ public sealed partial class PrototypeGameEngine
             {
                 Relics = player.Relics.Append(
                     new RelicInstance(relicId,
-                        PrototypeJson.EmptyObject())).ToArray()
+                        PrototypeJson.EmptyObject(),
+                        IsWax: reward.ExtraRelicWaxFlags?[payload.Index] == true)).ToArray()
             };
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Rng);
+                acquiredRelicId: relicId, rng: state.Rng, allocateCardId: () => nextId++);
             reward = reward.ResolveExtraRelicGroup(payload.Index) with
             {
                 PendingDeckChoice = CreateRelicDeckChoice(player, relicId)
             };
+        }
+        else if (reward.IndependentSelection
+                 && action.Kind == "skip_reward_extra_relic")
+        {
+            var payload = action.ReadPayload<ChooseRelicPayload>();
+            if (payload.Index < 0
+                || payload.Index >= (reward.ExtraRelicRewardIds?.Length ?? 0)
+                || reward.IsExtraRelicGroupResolved(payload.Index))
+                throw new InvalidOperationException(
+                    "Extra relic reward group is unavailable.");
+            reward = reward.ResolveExtraRelicGroup(payload.Index);
         }
         else if (!reward.CardResolved
                  && (!reward.IndependentSelection
@@ -3295,7 +3467,7 @@ public sealed partial class PrototypeGameEngine
                 player,
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId,
-                rng: state.Rng);
+                rng: state.Rng, allocateCardId: () => nextId++);
             var acquisitionDeckChoice =
                 CreateRelicDeckChoice(
                     player,
@@ -3306,6 +3478,12 @@ public sealed partial class PrototypeGameEngine
                 PendingDeckChoice =
                     acquisitionDeckChoice
             };
+        }
+        else if (reward.IndependentSelection
+                 && !reward.RelicResolved
+                 && action.Kind == "skip_reward_relic")
+        {
+            reward = reward with { RelicResolved = true };
         }
         else if (reward.FirstPendingExtraRelicGroupIndex >= 0
                  && (!reward.IndependentSelection
@@ -3332,11 +3510,12 @@ public sealed partial class PrototypeGameEngine
             {
                 Relics = player.Relics.Append(
                     new RelicInstance(relicId,
-                        PrototypeJson.EmptyObject())).ToArray()
+                        PrototypeJson.EmptyObject(),
+                        IsWax: reward.ExtraRelicWaxFlags?[extraRelicGroupIndex] == true)).ToArray()
             };
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Rng);
+                acquiredRelicId: relicId, rng: state.Rng, allocateCardId: () => nextId++);
             reward = reward.ResolveExtraRelicGroup(extraRelicGroupIndex) with
             {
                 PendingDeckChoice = CreateRelicDeckChoice(player, relicId)
@@ -3414,7 +3593,7 @@ public sealed partial class PrototypeGameEngine
         var nativePotionOffered = false;
         if (nativeOvergrowth)
         {
-            var forced = state.Player.Relics.Any(relic =>
+            var forced = state.Player.ActiveRelics.Any(relic =>
                 PrototypeContent.Relic(relic.RelicId)
                     .ForceCombatPotionReward);
             var (offered, nextOdds) = PrototypeNativePotionRewardOdds.Roll(
@@ -3612,7 +3791,10 @@ public sealed partial class PrototypeGameEngine
                 relic is null
                 && (relicOptions is null
                     || relicOptions.Length == 0),
-            EndsAct: room == PrototypeRoomType.Boss,
+            EndsAct: room == PrototypeRoomType.Boss
+                && !(world.Act == 3
+                    && world.LaterActEncounterBag?.SecondBossEncounterId is not null
+                    && world.Floor == PrototypeNativeLaterActMap.RoomRows(3) + 1),
             ExtraCardOptions: extraCardOptions,
             RelicOptions: relicOptions,
             CardOptionsUpgraded: silverCrucible.UpgradeGroups[0],
@@ -3633,7 +3815,16 @@ public sealed partial class PrototypeGameEngine
             ExtraGoldOptions: nativeOvergrowth && recoveredGold > 0 ? [recoveredGold] : null,
             ExtraGoldGroupsResolved: nativeOvergrowth && recoveredGold > 0 ? [false] : null,
             ReturnedStolenCards: returnedCards.Length == 0
-                ? null : returnedCards);
+                ? null : returnedCards,
+            CardRewardGenerators: Enumerable.Repeat<PrototypeCardRewardGenerator?>(
+                nativeOvergrowth
+                    ? new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.Encounter,
+                        world.Act, room)
+                    : new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RewardPool,
+                        world.Act),
+                1 + extraCardOptions.Length).ToArray());
 
         world = world with
         {
@@ -3659,6 +3850,13 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var reward = world.Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
+
+        if (world.CustomRewardReturn is { } returnState)
+            return state with
+            {
+                Phase = returnState.Phase,
+                World = world with { Reward = returnState.Reward, CustomRewardReturn = returnState.Parent }
+            };
 
         if (reward.SourceRoom.StartsWith("Event:", StringComparison.Ordinal))
         {
@@ -3902,9 +4100,10 @@ public sealed partial class PrototypeGameEngine
 
         var candidates = player.Deck
             .Where(card =>
-                !PrototypeContent.Card(card.CardId).Eternal
-                && (spec.Kind != PrototypePersistentDeckChoiceKind.Upgrade
-                    || card.UpgradeLevel == 0))
+                PrototypeGameEngine.CanSelectRelicDeckCard(card, spec)
+                && (!spec.RequiresUpgradable
+                    || card.UpgradeLevel < PrototypeContent.Card(card.CardId).MaxUpgradeLevel))
+            .OrderBy(card => spec.RequiresUpgradable ? card.CardId : string.Empty, StringComparer.Ordinal)
             .Select(card => card.InstanceId)
             .ToArray();
         var selections =
@@ -3928,6 +4127,8 @@ public sealed partial class PrototypeGameEngine
         var original = player.Deck
             .Single(card =>
                 card.InstanceId == cardInstanceId);
+        if (PrototypeCardRules.IsEternal(original))
+            throw new InvalidOperationException("Eternal deck cards cannot be transformed.");
         var pool = PrototypeContent.RewardCardPool
             .Where(cardId =>
                 !StringComparer.Ordinal.Equals(

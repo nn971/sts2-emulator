@@ -19,7 +19,7 @@ public sealed partial class PrototypeGameEngine
 
     private static PlayerState ApplyRelicRoomEntryGold(PlayerState player)
     {
-        var bonus = player.Relics.Sum(relic =>
+        var bonus = player.ActiveRelics.Sum(relic =>
         {
             var definition = PrototypeContent.Relic(relic.RelicId);
             return !IsPurchaseExhausted(relic)
@@ -44,6 +44,7 @@ public sealed partial class PrototypeGameEngine
             {
                 var definition = PrototypeContent.Relic(relic.RelicId);
                 return definition.GoldOnRoomEntryUntilPurchase > 0
+                    && !relic.IsMelted
                     && !IsPurchaseExhausted(relic)
                     ? relic with
                     {
@@ -56,7 +57,7 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static int MinimumPoweredAttackHpLoss(PlayerState player) =>
-        player.Relics
+        player.ActiveRelics
             .Select(relic => PrototypeContent.Relic(relic.RelicId)
                 .MinPoweredAttackHpLoss)
             .DefaultIfEmpty(0).Max();
@@ -64,7 +65,7 @@ public sealed partial class PrototypeGameEngine
     private static RunState EnterRestHealRelicReward(RunState state)
     {
         var world = RequireWorld(state);
-        var rewardCounts = state.Player.Relics
+        var rewardCounts = state.Player.ActiveRelics
             .Select(relic => PrototypeContent.Relic(relic.RelicId)
                 .RestHealCardRewardCount)
             .Where(count => count > 0).ToArray();
@@ -109,7 +110,14 @@ public sealed partial class PrototypeGameEngine
             ExtraCardOptionUpgradeFlags: native ? upgrades.Skip(1).ToArray() : null,
             IndependentSelection: native,
             ExtraCardGroupsResolved: native ? new bool[groups.Count - 1] : null,
-            ExtraRelicGroupsResolved: native ? [] : null);
+            ExtraRelicGroupsResolved: native ? [] : null,
+            CardRewardGenerators: groups.Select(_ =>
+                (PrototypeCardRewardGenerator?)new(
+                    native
+                        ? PrototypeCardRewardGeneratorKind.Encounter
+                        : PrototypeCardRewardGeneratorKind.RewardPool,
+                    world.Act,
+                    native ? PrototypeRoomType.Combat : null)).ToArray());
 
         return state with
         {

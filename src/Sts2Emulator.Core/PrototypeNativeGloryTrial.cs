@@ -167,7 +167,15 @@ public sealed partial class PrototypeGameEngine
                     PotionResolved: true,
                     RelicResolved: true,
                     EndsAct: false,
-                    ExtraCardOptions: [cards1, cards2]);
+                    ExtraCardOptions: [cards1, cards2],
+                    CardRewardGenerators:
+                    [null,
+                        new PrototypeCardRewardGenerator(
+                            PrototypeCardRewardGeneratorKind.DistinctRewardPool,
+                            world.Act),
+                        new PrototypeCardRewardGenerator(
+                            PrototypeCardRewardGeneratorKind.DistinctRewardPool,
+                            world.Act)]);
                 break;
             }
 

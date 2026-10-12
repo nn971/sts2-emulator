@@ -10,6 +10,81 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class V111PregeneratedRegionalEncounterTests
 {
     [Theory]
+    [InlineData(PrototypeActOneRegion.Overgrowth)]
+    [InlineData(PrototypeActOneRegion.Underdocks)]
+    public void FutureHistoriesArePreparedBeforeTraversalAndIndependentOfEarlierDraws(
+        PrototypeActOneRegion region)
+    {
+        var engine = new PrototypeGameEngine();
+        var config = RunConfiguration.Create(firstAct:
+            region == PrototypeActOneRegion.Overgrowth
+                ? ActIdentity.Overgrowth : ActIdentity.Underdocks) with
+        {
+            FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
+        };
+        var state = engine.Step(V111RunFactory.Create("upfront-history-" + region, config),
+            GameAction.Empty("start_run")).State;
+        while (state.Phase is RunPhase.Event or RunPhase.Reward)
+            state = engine.Step(state, engine.GetLegalActions(state)[0]).State;
+        var prepared = state.World!.PreparedLaterActEncounterBags!;
+        Assert.Equal(new[] { 2, 3 }, prepared.Select(bag => bag.Act));
+        var hiveHash = CanonicalJson.Sha256(prepared[0]);
+        var gloryHash = CanonicalJson.Sha256(prepared[1]);
+        PrototypeStateInvariants.Validate(state);
+
+        var branch = RunSnapshot.Load(RunSnapshot.Save(state));
+        // Simulate distinct earlier stochastic histories. These draws may
+        // affect subsequent mechanics but must not change prepared regions.
+        for (var i = 0; i < 37; i++)
+            _ = PrototypeRng.NextInt(branch.Rng, "combat", 1000);
+        var cursor = CanonicalJson.Sha256(branch.Rng);
+        var hive = engine.Step(branch with { Phase = RunPhase.ActTransition },
+            GameAction.Empty("continue_act")).State;
+        Assert.Equal(hiveHash, CanonicalJson.Sha256(hive.World!.LaterActEncounterBag));
+        Assert.Equal(cursor, CanonicalJson.Sha256(hive.Rng));
+        Assert.Equal(3, Assert.Single(hive.World.PreparedLaterActEncounterBags!).Act);
+        var glory = engine.Step(hive with { Phase = RunPhase.ActTransition },
+            GameAction.Empty("continue_act")).State;
+        Assert.Equal(gloryHash, CanonicalJson.Sha256(glory.World!.LaterActEncounterBag));
+        Assert.Empty(glory.World.PreparedLaterActEncounterBags!);
+        Assert.Equal(cursor, CanonicalJson.Sha256(glory.Rng));
+        PrototypeStateInvariants.Validate(glory);
+
+        // Taking a queue and mutating a fork must not alias its stored parent.
+        var child = hive.Fork();
+        child.World!.LaterActEncounterBag!.RemainingWeak[0] = "invalid-child-id";
+        child.World.PreparedLaterActEncounterBags![0].RemainingWeak[0] = "invalid-future-id";
+        Assert.Equal(hiveHash, CanonicalJson.Sha256(prepared[0]));
+        Assert.Equal(gloryHash, CanonicalJson.Sha256(prepared[1]));
+        Assert.Equal(hiveHash, CanonicalJson.Sha256(hive.World.LaterActEncounterBag));
+        Assert.Equal(gloryHash, CanonicalJson.Sha256(hive.World.PreparedLaterActEncounterBags![0]));
+    }
+
+    [Fact]
+    public void PreparedHistoryRejectsMissingForeignOrConsumedFutureAct()
+    {
+        var engine = new PrototypeGameEngine();
+        var config = RunConfiguration.Create() with
+        {
+            FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
+        };
+        var state = engine.Step(V111RunFactory.Create("invalid-upfront-history", config),
+            GameAction.Empty("start_run")).State;
+        var histories = state.World!.PreparedLaterActEncounterBags!;
+        foreach (var corrupt in new PrototypeLaterActEncounterBagV111[]?[]
+        {
+            null, [], [histories[1], histories[0]],
+            [histories[0] with { OrdinaryCombatsStarted = 1 }, histories[1]],
+            [histories[0], histories[1] with { RemainingElite = [] }]
+        })
+            Assert.Throws<InvalidOperationException>(() =>
+                PrototypeStateInvariants.Validate(state with
+                {
+                    World = state.World with { PreparedLaterActEncounterBags = corrupt }
+                }));
+    }
+
+    [Theory]
     [InlineData(2, 14)]
     [InlineData(3, 13)]
     public void PregeneratedQueuesHavePinnedNativeLengthsAndRefillShape(
@@ -148,5 +223,26 @@ public sealed class V111PregeneratedRegionalEncounterTests
         };
         Assert.Throws<InvalidOperationException>(() =>
             PrototypeStateInvariants.Validate(broken));
+    }
+
+    [Fact]
+    public void OnlyA10PlusGloryGetsADistinctPreselectedSecondBoss()
+    {
+        var belowThreshold = ExperimentalSilentThreeActRouteV111.InitialBag(
+            3, PrototypeRng.CreateBundle("glory-double-boss-a9"), ascension: 9);
+        Assert.Null(belowThreshold.SecondBossEncounterId);
+
+        var atThreshold = ExperimentalSilentThreeActRouteV111.InitialBag(
+            3, PrototypeRng.CreateBundle("glory-double-boss-a10"), ascension: 10);
+        Assert.Contains(atThreshold.BossEncounterId,
+            ExperimentalSilentThreeActRouteV111.GloryBosses);
+        Assert.Contains(atThreshold.SecondBossEncounterId,
+            ExperimentalSilentThreeActRouteV111.GloryBosses);
+        Assert.NotEqual(atThreshold.BossEncounterId,
+            atThreshold.SecondBossEncounterId);
+
+        var hive = ExperimentalSilentThreeActRouteV111.InitialBag(
+            2, PrototypeRng.CreateBundle("hive-double-boss-a10"), ascension: 10);
+        Assert.Null(hive.SecondBossEncounterId);
     }
 }

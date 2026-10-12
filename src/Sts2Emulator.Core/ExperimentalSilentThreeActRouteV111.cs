@@ -192,7 +192,7 @@ public static class ExperimentalSilentThreeActRouteV111
     }
 
     public static PrototypeLaterActEncounterBagV111 InitialBag(
-        int act, RngBundle rng)
+        int act, RngBundle rng, int ascension = 0)
     {
         var rooms = OrdinaryRoomCount(act);
         var history = new List<string>(rooms);
@@ -207,9 +207,17 @@ public static class ExperimentalSilentThreeActRouteV111
             Pool(act, PrototypeRoomType.Elite, false), 15, rng,
             new List<string>(15));
         var bosses = Pool(act, PrototypeRoomType.Boss, false);
+        var boss = bosses[PrototypeRng.NextInt(rng, "combat", bosses.Length)];
+        string? secondBoss = null;
+        if (act == 3 && ascension >= 10)
+        {
+            var alternatives = bosses.Where(id => id != boss).ToArray();
+            secondBoss = alternatives[PrototypeRng.NextInt(
+                rng, "combat", alternatives.Length)];
+        }
         return new PrototypeLaterActEncounterBagV111(
             act, 0, weak, normal, elite,
-            bosses[PrototypeRng.NextInt(rng, "combat", bosses.Length)]);
+            boss, secondBoss);
     }
 
     public static RunState ContinueAct(RunState state)
@@ -224,6 +232,12 @@ public static class ExperimentalSilentThreeActRouteV111
                 "Three-act continuation requires a completed configured Silent boss reward.");
 
         var nextAct = world.Act + 1;
+        var prepared = world.PreparedLaterActEncounterBags
+            ?? throw new InvalidOperationException(
+                "Three-act continuation requires run-start encounter histories; regenerate old experimental snapshots.");
+        var nextBag = prepared.SingleOrDefault(bag => bag.Act == nextAct)
+            ?? throw new InvalidOperationException(
+                "The next act has no prepared encounter history.");
         var map = PrototypeNativeLaterActMap.GenerateNative(
             state.RunSeed, nextAct, state.Ascension);
         var nextWorld = world with
@@ -234,10 +248,35 @@ public static class ExperimentalSilentThreeActRouteV111
             ActiveRoom = null, Combat = null, Reward = null,
             Shop = null, Event = null, Map = map,
             ActOneRegion = null, ActOneEncounterPool = null,
-            LaterActEncounterBag = InitialBag(nextAct, state.Rng),
+            LaterActEncounterBag = nextBag.Fork(),
+            PreparedLaterActEncounterBags = prepared
+                .Where(bag => bag.Act != nextAct).Select(bag => bag.Fork()).ToArray(),
             UnknownRoomOdds = null
         };
-        return state with { World = nextWorld, Phase = RunPhase.MapChoice };
+        var continued = state with
+        {
+            World = nextWorld,
+            Phase = RunPhase.MapChoice
+        };
+
+        // The source-selected Ancient is part of the prepared run history.
+        // Assignment policy and UpFront RNG are still unresolved, but once a
+        // supported Ancient has been assigned, entering Hive must execute its
+        // opening event before the player chooses a map node.
+        if (nextAct == 2 && nextBag.AssignedAncientId is { } ancientId)
+        {
+            return ancientId switch
+            {
+                NativePaelRewardsV111.PaelId =>
+                    NativePaelRewardsV111.BeginPaelOpening(continued),
+                NativeAncientRewardsV111.TezcataraId =>
+                    NativeAncientRewardsV111.BeginTezcataraOpening(continued),
+                _ => throw new NotSupportedException(
+                    $"Assigned Hive Ancient '{ancientId}' is not implemented.")
+            };
+        }
+
+        return continued;
     }
 
     /// <summary>
@@ -257,7 +296,15 @@ public static class ExperimentalSilentThreeActRouteV111
             throw new InvalidOperationException(
                 "Later-act encounter bag belongs to a different act.");
         if (room == PrototypeRoomType.Boss)
-            return (PrototypeContent.Encounter(bag.BossEncounterId), bag);
+        {
+            var firstBossFloor = PrototypeNativeLaterActMap.RoomRows(world.Act) + 1;
+            var encounterId = world.Act == 3
+                && bag.SecondBossEncounterId is not null
+                && world.Floor == firstBossFloor + 1
+                ? bag.SecondBossEncounterId
+                : bag.BossEncounterId;
+            return (PrototypeContent.Encounter(encounterId), bag);
+        }
         if (room is not (PrototypeRoomType.Combat or PrototypeRoomType.Elite))
             throw new ArgumentOutOfRangeException(nameof(room));
 
@@ -303,7 +350,9 @@ public sealed record PrototypeLaterActEncounterBagV111(
     string[] RemainingWeak,
     string[] RemainingNormal,
     string[] RemainingElite,
-    string BossEncounterId)
+    string BossEncounterId,
+    string? SecondBossEncounterId = null,
+    string? AssignedAncientId = null)
 {
     public PrototypeLaterActEncounterBagV111 Fork() => this with
     {

@@ -107,8 +107,10 @@ public sealed record RunConfiguration(
                 if (initialized.ActOneRegion is not null
                     || initialized.ActOneEncounterPool is not null
                     || initialized.LaterActEncounterBag?.Act != initialized.Act
-                    || initialized.Map.GenerationProfileId !=
-                        PrototypeNativeLaterActMap.ProfileId(initialized.Act))
+                    || (initialized.Map.GenerationProfileId !=
+                        PrototypeNativeLaterActMap.ProfileId(initialized.Act)
+                        && !(initialized.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId
+                            && PrototypeGoldenPathMapV111.IsActive(state.Player, initialized.Act))))
                     throw new InvalidDataException(
                         "Later-act route must own its native map profile without Act 1 encounter bags.");
             }
@@ -207,7 +209,16 @@ public static class V111RunFactory
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = input.NativeRunRng?.Fork()
                 ?? NativeRngV111.CreateBundle(input.RunSeed),
-            World = opening.World! with { RulesetId = config.RulesetId, ActIdentity = config.Acts[0] }
+            World = opening.World! with
+            {
+                RulesetId = config.RulesetId,
+                ActIdentity = config.Acts[0],
+                PreparedLaterActEncounterBags = config.UsesExperimentalSilentThreeActRoute
+                    ? new[] { 2, 3 }.Select(act =>
+                        ExperimentalSilentThreeActRouteV111.InitialBag(
+                            act, opening.Rng, config.Ascension)).ToArray()
+                    : null
+            }
         };
     }
 }
