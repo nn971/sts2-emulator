@@ -3190,6 +3190,7 @@ public static class PrototypeContent
             .Concat(NativeAncientRewardsV111.Relics)
             .Concat(NativePaelRewardsV111.Relics)
             .Concat(PrototypeNativeOrobasRelics.Relics)
+            .Concat(NativeGloryAncientsV111.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =

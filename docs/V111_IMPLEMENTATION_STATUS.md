@@ -76,6 +76,14 @@ ownership remain open. Colorless Potion and Orobic Acid use restricted
 implemented-card candidate pools; native acquisition timing and other-character
 mappings remain open.
 
+Glory Ancient source offers and their current gates are tracked in the
+[Glory Ancient ledger](reference-builds/v0.111.0-glory-ancients.md). Signet
+Ring is registered as an Ancient relic and grants 888 gold through the shared
+newly-acquired-relic trigger; duplicate-instance and registration tests pass.
+This is a dependency slice only: Nonupeipe, Tanx and Vakuu remain unavailable
+until their full offer pools, relic effects, Ancient assignment and branch
+continuations are implemented.
+
 ## Delivered
 
 - Imported the existing `prototype/full-run-silent` implementation: all 20

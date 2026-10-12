@@ -160,6 +160,10 @@ regional entry/branch has direct integration and semantic coverage.
   card-instance mutation and cleanup.
 - Close all regional events and Ancient options, including Lantern Key/Repy
   carryover, event-only content and timed Battleworn Dummy fights.
+- Glory's Signet Ring dependency is now registered and its +888 gold
+  acquisition effect is covered by a duplicate-instance test. This does not
+  expose or complete Nonupeipe; all three Glory Ancients remain gated. See the
+  [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.
 
