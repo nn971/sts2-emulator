@@ -98,7 +98,7 @@ public sealed class NativeRecordingSession : IAsyncDisposable
         {
             bool complete = terminalState.HasValue && _actionRecorded;
             Enqueue(new NativeTransitionRecord("transition", _current.DecisionId,
-                _current.StateHash, complete ? CanonicalJson.Sha256(terminalState.Value) : null,
+                _current.StateHash, complete ? CanonicalJson.Sha256(terminalState.GetValueOrDefault()) : null,
                 _current.EventSeq + 1, _journal.LastSequence,
                 complete ? "COMPLETE" : "INCOMPLETE_CAPTURE"));
             if (!complete) _incomplete = true;
