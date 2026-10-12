@@ -29,12 +29,12 @@ retain their result pages after potion and card continuations. Waterlogged
 Scriptorium now keeps its result page after each optional Steady selection;
 Trash Heap retains its result page after either successful reward, and
 Endless Conveyor retains its Observe Chef/Leave results. The coverage report
-records 50 integrated event paths, seventeen complete event implementations,
-and 30 events with complete branch inventories. Sapphire Seed and Unrest Site
+records 50 integrated event paths, eighteen complete event implementations,
+and 31 events with complete branch inventories. Sapphire Seed and Unrest Site
 now retain their choice-specific result pages after their effects resolve.
-Punch Off also retains its Nab result page after the relic reward resolves. Native
-validation remains
-unverified.
+Tablet of Truth now retains its Smash, Give Up, or fifth-Decipher result page;
+Punch Off retains its Nab result page after the relic reward resolves. Native
+validation remains unverified.
 
 # v111 implementation status
 

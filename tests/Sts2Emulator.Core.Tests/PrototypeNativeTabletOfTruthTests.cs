@@ -83,6 +83,15 @@ public sealed class PrototypeNativeTabletOfTruthTests
             && a.ReadPayload<EventChoicePayload>().ChoiceId == choiceId);
         state = engine.Step(state, action).State;
         PrototypeStateInvariants.Validate(state);
+        while (state.Phase == RunPhase.Event)
+        {
+            var continuation = engine.GetLegalActions(state)
+                .SingleOrDefault(item => item.Kind == "continue_event");
+            if (continuation is null)
+                break;
+            state = engine.Step(state, continuation).State;
+            PrototypeStateInvariants.Validate(state);
+        }
         return state;
     }
 

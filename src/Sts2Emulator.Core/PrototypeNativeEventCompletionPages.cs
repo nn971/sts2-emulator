@@ -17,6 +17,7 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.event.sapphire_seed"
             or "proto.native.event.unrest_site"
             or PrototypeNativeDenseVegetation.EventId
+            or PrototypeNativeTabletOfTruth.EventId
             or "proto.native.underdocks.waterlogged_scriptorium"
             or PrototypeNativeUnderdocksTrashHeap.EventId
             or "proto.native.underdocks.abyssal_baths"
@@ -43,6 +44,7 @@ public static class PrototypeNativeEventCompletionPages
             : eventId is "proto.native.underdocks.abyssal_baths"
                 or PrototypeNativeEndlessConveyor.EventId
                 or PrototypeNativePunchOff.EventId
+                or PrototypeNativeTabletOfTruth.EventId
                 ? int.MaxValue : 1;
 
     public static bool HasTerminalChoice(
@@ -74,6 +76,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "rest" or "kill"
         || eventId == PrototypeNativeDenseVegetation.EventId
             && choiceId is "trudge"
+        || eventId == PrototypeNativeTabletOfTruth.EventId
+            && choiceId is "smash" or "give_up" or "decipher"
         || eventId == "proto.native.underdocks.waterlogged_scriptorium"
             && choiceId is "bloody_ink" or "tentacle_quill"
                 or "prickly_sponge"

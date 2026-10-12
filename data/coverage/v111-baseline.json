@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "4bc66ec0582247e6f4f3ed348980913c8aa330f943f771efa3df5d299fa6dc85",
+  "inventory_file_sha256": "c1bc2ffdd557db67833046ecb99830a30ab4a85b2012b8a95fe36b7e679bec28",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "d236037ebef533f95ca527cdad2c9224f8420f760b811939570af366527f46c5",
+    "inventory_hash": "d0f2f0b7c4190f4ea90f3a23053edd7317e02a86889d5b0f772a30f671cc3824",
     "items": [
       {
         "catalogued": true,
@@ -15978,29 +15978,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TabletOfTruth.cs#75b20df028a330c6e52116565777ea4107c182e8e6a6651fa8380e448224c67d"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/DECIPHER_1",
-          "initial/SMASH",
-          "page/DECIPHER",
-          "page/DECIPHER/GIVE_UP",
-          "page/DECIPHER_1",
-          "page/DECIPHER_1/DECIPHER",
-          "page/DECIPHER_2",
-          "page/DECIPHER_2/DECIPHER",
-          "page/DECIPHER_3",
-          "page/DECIPHER_3/DECIPHER",
-          "page/DECIPHER_4",
-          "page/DECIPHER_4/DECIPHER",
-          "page/DECIPHER_5",
-          "page/GIVE_UP",
-          "page/INITIAL",
-          "page/INITIAL/DECIPHER_1",
-          "page/INITIAL/SMASH",
-          "page/SMASH"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "TABLET_OF_TRUTH",
         "registered": true,
@@ -29611,7 +29592,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 17,
+        "implemented": 18,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,

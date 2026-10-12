@@ -31,7 +31,7 @@ passed on the prior baseline.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
 event category now reports 50 of 66 event paths integrated into a regional or
-forced quest route, thirty with complete branch inventories, and zero
+forced quest route, thirty-one with complete branch inventories, and zero
 native-validated. The ten special/event fights are
 not counted as ordinary queue integration. These classifications are
 conservative and do not replace branch-level review, but they confirm that
@@ -114,10 +114,10 @@ coverage report now honors `branch_inventory_complete`; Amalgamator, Lost Wisp,
 Spirit Grafter, Colossal Flower, Doors of Light and Dark, Drowning Beacon,
 Sunken Treasury, Sunken Statue, Field of Man-Sized Holes, Reflections, Round
 Tea Party, Hungry for Mushrooms, Tinker Time, Grave of the Forgotten,
-Luminous Choir, Sapphire Seed, and Unrest Site are seventeen of 66 event
-inventories marked complete. Tinker Time's type/rider offers and all nine Mad
-Science effects have source-shaped event/card tests; native stream parity
-remains unverified. Lost
+Luminous Choir, Sapphire Seed, Unrest Site, and Tablet of Truth are eighteen
+of 66 event inventories marked complete. Tinker Time's type/rider offers and
+all nine Mad Science effects have source-shaped event/card tests; native stream
+parity remains unverified. Lost
 Wisp now keeps its source result page after Claim/Search, with stored gold and
 no extra result draw. See [the Lost Wisp ledger](reference-builds/v0.111.0-hive-lost-wisp.md).
 Spirit Grafter now retains its result page after Let It In or Rejection,

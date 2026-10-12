@@ -52,19 +52,19 @@ public sealed partial class PrototypeGameEngine
             && current.NativePageIndex == 0)
         {
             var player = state.Player;
-            return CompleteRoomToMap(state with
+            return PreserveNativeEventCompletionPage(state with
             {
                 Player = player with
                 {
                     Hp = Math.Min(player.MaxHp, player.Hp + 20)
                 }
-            });
+            }, "smash");
         }
 
         if (payload.ChoiceId == "give_up"
             && current.NativePageIndex > 0)
         {
-            return CompleteRoomToMap(state);
+            return PreserveNativeEventCompletionPage(state, "give_up");
         }
 
         if (payload.ChoiceId != "decipher")
@@ -124,10 +124,10 @@ public sealed partial class PrototypeGameEngine
                         ? card with { UpgradeLevel = 1 }
                         : card).ToArray()
             };
-            return CompleteRoomToMap(state with
+            return PreserveNativeEventCompletionPage(state with
             {
                 Player = playerAfterCost
-            });
+            }, "decipher");
         }
 
         if (eligible.Length > 0)

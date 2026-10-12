@@ -727,6 +727,9 @@ public static class PrototypeStateInvariants
             || (eventState.EventId ==
                     PrototypeNativeTabletOfTruth.EventId
                 ? eventState.NativePageIndex > 4
+                    && eventState.NativePageIndex !=
+                        PrototypeNativeEventCompletionPages
+                            .TerminalChoicePageIndex(eventState.EventId)
                 : eventState.EventId ==
                     PrototypeNativeHiveEvents.WarHistorianRepyId
                     ? eventState.NativePageIndex > 2

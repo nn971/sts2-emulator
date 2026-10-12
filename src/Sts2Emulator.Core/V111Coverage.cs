@@ -227,6 +227,11 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TABLET_OF_TRUTH" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeTabletOfTruth.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "DENSE_VEGETATION" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeDenseVegetation.EventId,
                 StringComparer.Ordinal))
