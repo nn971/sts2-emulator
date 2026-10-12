@@ -12523,8 +12523,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/AeonglassBoss.cs#f1f77c0e9d69517fa4d959fb6bb977b780b22b928c5a6f5eca05162dff6096bb"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12541,8 +12541,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/AxebotsNormal.cs#47a929a289636fa31d1de6493053b25d5f075c786f9c3f4480b23e43d8cb8851"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12629,8 +12629,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BowlbugsNormal.cs#e8e6647c7860c830cd9903745e2acf1387869be04ee465b57c27f1c2f3bbfc66"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12647,8 +12647,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BowlbugsWeak.cs#a85930445dd51e876118d9f11be20e5c3dfcf45e875b56d7c8a43f84e727166d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12719,8 +12719,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ChompersNormal.cs#a1027877093a989662a0b062522054baf57d9e4088e8634ac132fbeb8c681b69"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12737,8 +12737,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ConstructMenagerieNormal.cs#7b7743d07b2feec8c76fa0edf13d638ff018f49352b15e36d04d84a9ff95af58"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12827,8 +12827,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/DecimillipedeElite.cs#d75edaf36e6f5c62da7df61703931e8a23ee84afaf2f8a7dc1c59896eef1830b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12861,8 +12861,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/DevotedSculptorWeak.cs#e46cf3766ebe52ea3552d73a748b9d2c4fc9d7d2b21c4f080f16243f7e7cb3c4"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12879,8 +12879,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/EntomancerElite.cs#8eef25337d28e09287760e716c6f4b75783c70a3cd70d0bdf1bf66acafad350e"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12897,8 +12897,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ExoskeletonsNormal.cs#8ac232af7ce1d9de9d51ce0a06639444861fcc6b9802999289b8199a2ede486d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12915,8 +12915,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ExoskeletonsWeak.cs#bed0b356088f3123345aeea6edbba32bbd00aace7fa583e4cf21fbe8c81d2cf2"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -12933,8 +12933,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/FabricatorNormal.cs#fa62a116ba3cc8338da0e81b67a72b8016bffb73af57c6f907cd517d68a0ba7a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13021,8 +13021,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/FrogKnightNormal.cs#9ddf922b3ffaca28a735e8a5da691bbaeda8eddd740c8450f41a536516bc3a69"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13057,8 +13057,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/GlobeHeadNormal.cs#682ad913b9b7cb8679453b14dd3cafc3bcbaecb484492cac3ebcddb2eb6ecbd2"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13111,8 +13111,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/HunterKillerNormal.cs#391ef1ab9e2b9f4822afc39159584e21123eb385f7a75996ebdbb22fd3ceba58"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13129,8 +13129,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/InfestedPrismsElite.cs#2b5cffeb7afd6f227ca133ec3c2e7785012062aa1133909bf8b5ef24a020dcbc"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13165,8 +13165,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/KaiserCrabBoss.cs#ae7dd42fc140d71625060190996d74b9541d4a11e6b39feda76fb8869937055c"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13183,8 +13183,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/KnightsElite.cs#59ccd1ec5cddfbf3fb5310e1d43fed93ab08110e0e4c8f15d8f5a5fa88f785b6"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13201,8 +13201,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/KnowledgeDemonBoss.cs#af36f7819898f8cc3b6550478c9b7d4ef71723cfe56ce4d8b09e725604d63c99"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13255,8 +13255,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/LouseProgenitorNormal.cs#4af07974b384c17388a0c14b235e122e9c0a8cb468617d238a1fc842bcebc910"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13291,8 +13291,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/MechaKnightElite.cs#b28383e224ffd976b9179321b6be5c66f5ce42726aa604466c3cd257a05da6ad"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13327,8 +13327,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/MytesNormal.cs#a692069de3319666bc1703ffa7260ac5bf7019aacfdc727b54a747cb30cd7594"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13399,8 +13399,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/OvicopterNormal.cs#47d9dbf8600e0e1f7d0a89d1131080a41d9aa1f10e6afa3359d3b7c2c7ddef4d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13417,8 +13417,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/OwlMagistrateNormal.cs#63c7192897207c82b73fbc3a1d640defe32efec6f5b2f23c7636e0a7da0c9503"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13505,8 +13505,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/QueenBoss.cs#0d42c95c7b046d9ad5e706ea6c1e6f8993f5402685419fa4c087b8ff02786c0f"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13541,8 +13541,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ScrollsOfBitingNormal.cs#a6b35af7e55980d1b6886fe48fbb92dd8b7fd7ca27f70c4766a0025add70b9d6"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13559,8 +13559,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ScrollsOfBitingWeak.cs#fc0972a52008d577df97e1c32942d8e2b0beb1e8d2977b73e19caa2630a2b8f3"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13667,8 +13667,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/SlimedBerserkerNormal.cs#ef4d6411758e7e71c6c6f0533305cf2cbfad0862a2bea76957a870ba5810fe9e"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13757,8 +13757,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/SlumberingBeetleNormal.cs#f52261d1c01808baa3baf9cef2caf76996711493212b04eccd31aa530a3ade70"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13811,8 +13811,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/SoulNexusElite.cs#2cbd4b0d80faa7420d68f29ceb0d4b000aa2b129a9ca629193657729b1e6d0d5"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13829,8 +13829,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/SpinyToadNormal.cs#85277c6c254f66adc39e1b1e7217e18f72737e5d4ccf3ab57ea09fbcc751259d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13865,8 +13865,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TestSubjectBoss.cs#2b79aee0c4e2dc5af23b39aecddd9c808c0954c26347d6080366fc54fad96c4f"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13899,8 +13899,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TheInsatiableBoss.cs#5bdd9681c16c487693aaed27923323b95e70a9197da82130cb38260bfd9cbf92"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13935,8 +13935,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TheLostAndForgottenNormal.cs#7aef08948cdba811e42407947615cae984bb6c5d9ca11ca3e463f277c6f778cc"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13953,8 +13953,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TheObscuraNormal.cs#634ac3c9cf1739374efbfc4a69250f20522ee20c36a5109380e03878384d7e06"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -13971,8 +13971,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/ThievingHopperWeak.cs#29fe27a4ae1c320d0397c7a82f49a8e6c84baf242f2907f943e5462cbba50b33"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -14025,8 +14025,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TunnelerWeak.cs#8cab10e102ac91b8aeb2e01a2051ec03d76beb6c4010a54c8d85bb3563cb16f4"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -14043,8 +14043,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TurretOperatorWeak.cs#998337f7118b974fd5ed537d4743e7f5e8ad01d25e3885f3fd99a29b24fc5d7b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -19010,17 +19010,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.beetle_juice"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/BeetleJuice.cs#53c71ca25af8eb3d5cf71410eebd8f70d2b1b39a4fe43bed10d028352d880254"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BEETLE_JUICE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19096,49 +19098,55 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.bottled_potential"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/BottledPotential.cs#b33d62737643543772c7313a7b8a99fc6302d7d6224843af8993dea853dc6ffc"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BOTTLED_POTENTIAL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.clarity"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/Clarity.cs#1b0dfabd142d9fd5d73a008e1cdfe22a1986f6911930019c80b33219a1f68d9b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CLARITY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.colorless"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/ColorlessPotion.cs#75d7adbc3684dd92dce7975dccc66a03819f80db7ee19a4c3f14d595fe1a14f5"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "COLORLESS_POTION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19160,17 +19168,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.cunning"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/CunningPotion.cs#5ab5515ce125964592181461cb8c0d3f9d607a93c72080523be023e5b6e8db9d"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CUNNING_POTION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19230,17 +19240,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.droplet_of_precognition"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/DropletOfPrecognition.cs#8c8980be3664b2f966787818247ecbeb3b937a63930180c9e45c0bd3681fff1a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DROPLET_OF_PRECOGNITION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19316,17 +19328,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.explosive_ampoule"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/ExplosiveAmpoule.cs#a7662917b58fc3918e208494aebf029d55fdcb05e6eda2195a66a867a3ba01e5"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "EXPLOSIVE_AMPOULE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19454,17 +19468,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.fysh_oil"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/FyshOil.cs#f5b3a13806026b5b0f4911824d4b92c692e84a9bb9cad4055cdd459af4e5a266"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FYSH_OIL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19506,17 +19522,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.gigantification"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/GigantificationPotion.cs#8bdc58a35c79edf462f4723a953a7c31a7d57c2d250c3a899255ffba038ebf00"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "GIGANTIFICATION_POTION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19540,17 +19558,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.heart_of_iron"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/HeartOfIron.cs#12c271642fcf66b45431263962d631c92893af9ebd4a446708c3d662840d404b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "HEART_OF_IRON",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19608,49 +19628,55 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.lucky_tonic"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/LuckyTonic.cs#437f845d51020ef01a72e69eedb764d48aecbb92b18435f8fe8138b42c642849"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "LUCKY_TONIC",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.mazaleths_gift"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/MazalethsGift.cs#d422c35de5c3afc21a3917081fb6565490e933401856af8ac0bfff68e384266b"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MAZALETHS_GIFT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.orobic_acid"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/OrobicAcid.cs#9d91f0124435368f7dc2744e0326ee7ad6aa75abe9d1ab85c928d4edf3fa2879"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "OROBIC_ACID",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19674,17 +19700,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.binding"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/PotionOfBinding.cs#61cbf688a03ddaaf616bdec4e7da9310cc51787f0ec75c1230507e69ab0c8f47"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "POTION_OF_BINDING",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19754,17 +19782,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.powdered_demise"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/PowderedDemise.cs#e778c3da95db369db6683ed8e1d06ef1a092578dbdbf7d11f07035da2f231f65"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "POWDERED_DEMISE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19788,17 +19818,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.radiant_tincture"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/RadiantTincture.cs#45e36e3668f5b54a6d7a4195bdeac8981ed5cc49ea055599e29d33035dd6911a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "RADIANT_TINCTURE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19822,33 +19854,37 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.shackling"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/ShacklingPotion.cs#53e86052e754b0aec57e2c4d45c17f690d434e7f97ec8e0a7ab7cd4f4a599953"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SHACKLING_POTION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.ship_in_a_bottle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/ShipInABottle.cs#e7186ac626546066a14ff28bb488ad79d4ad4d2bbd1d0f8512a5e56581a8c5a0"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SHIP_IN_A_BOTTLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -20408,17 +20444,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.power.buffer"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/BufferPower.cs#bf95bf58bf220b5e5dfe112a32834d857be8f9ce44c0ebbebb69a6caef805231"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BUFFER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -20560,17 +20598,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.power.clarity"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/ClarityPower.cs#5bdcc464468e318c2e4f196e093b44318a3a7b3a001a5febb4a0d9d336b34034"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CLARITY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -20991,17 +21031,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.power.demise"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/DemisePower.cs#be71652f4440d981f36b1bb0509cea5693ce8810cbe3e972293e42e9f1289348"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DEMISE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -21663,17 +21705,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.power.gigantification"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/GigantificationPower.cs#8101edb97133e204284e6a8e27bf3b917dad3a04de0209668fefe46cdabb1451"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "GIGANTIFICATION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -22948,17 +22992,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.power.radiance"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/RadiancePower.cs#c62191ff61c078fe096901da2a272b884468c12aea287c65bf5ed6037e30a364"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "RADIANCE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -23322,17 +23368,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.power.shackling_potion"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/ShacklingPotionPower.cs#ac5cbfd82e17796ed9de5193492bd84b7f3f4870597039ebcaa57db64011838e"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SHACKLING_POTION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -28064,17 +28112,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.prismatic_gem"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PrismaticGem.cs#2c193ea0f0b91f85cb29a94fe432a777ffaef686f50957341ec7b5f873ad0f79"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PRISMATIC_GEM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29769,8 +29819,8 @@
         "catalogued": 90,
         "eligible": 90,
         "excluded": 0,
-        "implemented": 42,
-        "integrated": 42,
+        "implemented": 80,
+        "integrated": 80,
         "kind": "encounters",
         "scope_review_required": 0,
         "validated": 0

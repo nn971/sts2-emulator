@@ -26,11 +26,13 @@ all-character roadmap track.
 
 Current validation: 1,754 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
-The current v111 coverage report classifies 42 of 90 encounters as implemented
-and integrated, with zero native-validated; its event category reports zero
-complete entries. These classifications are conservative and do not replace
-branch-level review, but they confirm that registered rosters and the synthetic
-route are not regional completion evidence.
+The current v111 coverage report classifies 80 of 90 encounters as implemented
+and integrated into regional encounter queues, with zero native-validated; its
+event category reports zero complete entries. The ten special/event fights are
+not counted as ordinary queue integration. These classifications are
+conservative and do not replace branch-level review, but they confirm that
+registered rosters and the synthetic route are not regional completion
+evidence.
 Existing branches already deliver all ordinary encounter registrations, regional
 experimental routing and Knowledge Demon enemy-side choices. Those implementations
 are reused. Hive/Glory queues now prepare at initialization rather than act entry.
