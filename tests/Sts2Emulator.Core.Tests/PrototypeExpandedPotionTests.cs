@@ -114,6 +114,25 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void FyshOilAppliesStrengthThenDexterity()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.strike")],
+            hand: [1],
+            potionId: "proto.potion.fysh_oil");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var powers = state.World!.Combat!.PlayerPowers;
+        Assert.Equal(1, Assert.Single(powers,
+            power => power.PowerId == "proto.power.strength").Stacks);
+        Assert.Equal(1, Assert.Single(powers,
+            power => power.PowerId == "proto.power.dexterity").Stacks);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

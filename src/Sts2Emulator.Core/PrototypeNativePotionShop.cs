@@ -37,6 +37,7 @@ public static class PrototypeNativePotionShop
 
             ["proto.potion.regen"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.cunning"] = PrototypeNativePotionRarity.Uncommon,
+            ["proto.potion.fysh_oil"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.duplicator"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.blessing_of_the_forge"] =
                 PrototypeNativePotionRarity.Uncommon,

@@ -2092,6 +2092,16 @@ public static class PrototypeContent
                         PowerId: "proto.power.dexterity")
                 ]),
             new PrototypePotionDefinition(
+                "proto.potion.fysh_oil",
+                "Fysh Oil",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                        PowerId: "proto.power.strength"),
+                    new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                        PowerId: "proto.power.dexterity")
+                ]),
+            new PrototypePotionDefinition(
                 "proto.potion.explosive",
                 "Explosive Potion",
                 PrototypeCardTarget.None,
