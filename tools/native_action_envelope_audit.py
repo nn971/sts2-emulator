@@ -146,7 +146,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             info = record.get("data") or {}
             idx, state_hash = info.get("frame_index"), info.get("state_hash")
             if (type(idx) is not int or idx <= last_frame_index or not isinstance(
-                    record.get("state"), dict) or not isinstance(state_hash, str) or not state_hash:
+                    record.get("state"), dict) or not isinstance(state_hash, str) or not state_hash):
                 report["reason"] = f"Invalid changed-frame snapshot at ordinal {ordinal}"
                 return report
             if last_frame_hash == state_hash:
