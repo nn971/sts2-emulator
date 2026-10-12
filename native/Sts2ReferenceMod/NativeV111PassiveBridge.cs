@@ -282,6 +282,12 @@ internal static class NativeV111PassiveBridge
 
     private static void BeforeAction(NativeGameAction action)
     {
+        try { ObserveBeforeAction(action); }
+        catch (Exception error) { CaptureCallbackFailure("before_action", error); }
+    }
+
+    private static void ObserveBeforeAction(NativeGameAction action)
+    {
         // This callback runs for every executor action, including monster and
         // automatic actions which have no matching human legal-menu item.
         // A distinct timeline protects their evidence from strict-trace gaps.
@@ -319,19 +325,49 @@ internal static class NativeV111PassiveBridge
 
     private static void AfterAction(NativeGameAction action)
     {
-        _actionEnvelopes?.Complete(action, TryActionSnapshot("after_action"));
-        action.BeforePausedForPlayerChoice -= OnNestedChoice;
+        try
+        {
+            _actionEnvelopes?.Complete(action, TryActionSnapshot("after_action"));
+        }
+        catch (Exception error) { CaptureCallbackFailure("after_action", error); }
+        finally
+        {
+            try { action.BeforePausedForPlayerChoice -= OnNestedChoice; }
+            catch (Exception error) { CaptureCallbackFailure("detach_choice", error); }
+        }
         // AfterAction is an executor callback, not necessarily a settled
         // semantic input boundary. The sidecar records it as such.
     }
 
     private static void OnNestedChoice(NativeGameAction action)
     {
-        _actionEnvelopes?.ChoicePause(
-            action, TryActionSnapshot("nested_choice_pause"));
-        _choiceInterrupted = true;
-        StopStrictCapture("UNSUPPORTED: nested native player choice within " + action.GetType().Name);
+        try
+        {
+            _actionEnvelopes?.ChoicePause(
+                action, TryActionSnapshot("nested_choice_pause"));
+            _choiceInterrupted = true;
+            StopStrictCapture("UNSUPPORTED: nested native player choice within " + action.GetType().Name);
+        }
+        catch (Exception error) { CaptureCallbackFailure("nested_choice", error); }
         // Keep executor and history subscriptions active for the sidecar.
+    }
+
+    private static void CaptureCallbackFailure(string stage, Exception error)
+    {
+        // Passive event handlers execute inside native game callbacks.
+        // Never propagate an Inspector exception into the game's action
+        // executor; mark incomplete and leave the underlying action alone.
+        try { _actionEnvelopes?.ObservationFailure(stage, error.GetType().Name); }
+        catch (Exception) { }
+        try
+        {
+            _choiceInterrupted = true;
+            StopStrictCapture("INCOMPLETE_CAPTURE: observer failure at " + stage);
+        }
+        catch (Exception) { _recording = null; }
+        try { Godot.GD.PushError("[Sts2ReferenceMod] Observer callback " + stage +
+                                 " failed: " + error.GetType().Name); }
+        catch (Exception) { }
     }
 
     private static void StopStrictCapture(string reason)
@@ -340,8 +376,13 @@ internal static class NativeV111PassiveBridge
         if (recording is null) return;
         _recording = null;
         JsonElement? state = TryActionSnapshot("strict_trace_terminal");
-        recording.OnTerminal("INCOMPLETE_CAPTURE", reason, state);
-        _ = FinishAsync(recording);
+        try { recording.OnTerminal("INCOMPLETE_CAPTURE", reason, state); }
+        catch (Exception error)
+        {
+            _actionEnvelopes?.ObservationFailure(
+                "strict_trace_terminal", error.GetType().Name);
+        }
+        finally { _ = FinishAsync(recording); }
         ReportGate("STRICT_TRACE_STOPPED_ACTION_SIDECAR_CONTINUES");
     }
 
