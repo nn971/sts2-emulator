@@ -6,7 +6,8 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeEventCompletionPages
 {
     public static bool HasTerminalChoicePage(string eventId) =>
-        eventId is PrototypeNativeHiveEvents.AmalgamatorId
+        eventId is "proto.native.event.aroma_of_chaos"
+            or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
             or PrototypeNativeHiveEvents.FieldOfManSizedHolesId
@@ -26,7 +27,9 @@ public static class PrototypeNativeEventCompletionPages
 
     public static bool HasTerminalChoice(
         string eventId, string? choiceId) =>
-        eventId == PrototypeNativeHiveEvents.AmalgamatorId
+        eventId == "proto.native.event.aroma_of_chaos"
+            && choiceId is "let_go" or "maintain_control"
+        || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId
             && choiceId is "claim" or "search"

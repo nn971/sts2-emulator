@@ -176,6 +176,11 @@ public static class V111Coverage
             && engineIds.Contains(NativeDarvEventV111.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "AROMA_OF_CHAOS" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.aroma_of_chaos",
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {

@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "3e41d5f3a5fb5ee6b69f1cd0b4d71fdac9b03e37ddf744f96b27f6e39394ea12",
+  "inventory_file_sha256": "09cac6c7fb0b2de8c319725b2fa0b4aa02f65985769dad9032f2fc7b9deb4f17",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "aeb8e98d5a690f00a2c7a38ee73511ce69aa9e760a9d6086f5e56d9322345861",
+    "inventory_hash": "958c58ace381099821463871e9bf43f1e551441d7b2b9187a62db90d89196003",
     "items": [
       {
         "catalogued": true,
@@ -15037,18 +15037,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/AromaOfChaos.cs#663a6eb3c9fc090ff451a0e9ec7d6844ec2efb48d15d14d54914c76c6481090e"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/LET_GO",
-          "initial/MAINTAIN_CONTROL",
-          "page/INITIAL",
-          "page/INITIAL/LET_GO",
-          "page/INITIAL/MAINTAIN_CONTROL",
-          "page/LET_GO",
-          "page/MAINTAIN_CONTROL"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "AROMA_OF_CHAOS",
         "registered": true,
@@ -29798,7 +29790,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 1,
+        "implemented": 2,
         "integrated": 47,
         "kind": "events",
         "scope_review_required": 0,

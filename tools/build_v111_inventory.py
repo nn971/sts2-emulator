@@ -14,6 +14,14 @@ import subprocess
 CORPUS_COMMIT = "b59c6f96043051afee8683237d04f943309ced35"
 SOURCE_COMMIT = "706ef1c9fa2219220065849fd5265328607ece20"
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+BRANCH_COMPLETE_EVENTS = {
+    "AMALGAMATOR", "AROMA_OF_CHAOS", "COLOSSAL_FLOWER",
+    "DOORS_OF_LIGHT_AND_DARK", "DROWNING_BEACON",
+    "FIELD_OF_MAN_SIZED_HOLES", "GRAVE_OF_THE_FORGOTTEN",
+    "HUNGRY_FOR_MUSHROOMS", "LOST_WISP", "REFLECTIONS",
+    "ROUND_TEA_PARTY", "SPIRIT_GRAFTER", "SUNKEN_STATUE",
+    "SUNKEN_TREASURY", "TINKER_TIME",
+}
 KINDS = {
     "acts": "Acts", "afflictions": "Afflictions", "ascensions": None,
     "cards": "Cards", "characters": "Characters", "enchantments": "Enchantments",
@@ -130,7 +138,7 @@ def compile_inventory(corpus, source):
                     if relic in relic_scope and relic_path not in exclusions:
                         branches.add("relic/" + relic)
                 item["branches"] = sorted(branches)
-                item["branch_inventory_complete"] = False  # dynamic/source-only branches require auditing
+                item["branch_inventory_complete"] = key in BRANCH_COMPLETE_EVENTS
 
     return {"schema": "sts2-v111-inventory-v1", "game_version": "v0.111.0",
             "game_commit": "41cef1ea", "build_fingerprint": "3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
