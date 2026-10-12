@@ -11489,7 +11489,7 @@
         "page/INITIAL/RESIST",
         "page/RESIST"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

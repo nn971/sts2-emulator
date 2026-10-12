@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "920d9756558a14b9271198e998161e5a449ef5247aa71788d2997d3eeb4ff54f",
+  "inventory_file_sha256": "b355ca6021e23b5d7fc7c8f119d710bd6bdebfcaac12dac38ed654f53732b848",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "c4451fe537631b33093f7c99067ea12f76ca83dea5ef41a474b26d6ce32fe666",
+    "inventory_hash": "f081a219e16adcbab2a754d93f3c53ba8afb753a3f4f5e86f1b8f4a859e3400d",
     "items": [
       {
         "catalogued": true,
@@ -15416,15 +15416,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/ENTER_YOUR_HOLE",
-          "initial/RESIST",
-          "page/ENTER_YOUR_HOLE",
-          "page/INITIAL",
-          "page/INITIAL/ENTER_YOUR_HOLE",
-          "page/INITIAL/RESIST",
-          "page/RESIST"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "FIELD_OF_MAN_SIZED_HOLES",
         "registered": true,
