@@ -43,6 +43,18 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
 
     public bool IsIncomplete => _incomplete;
 
+    public void HistoryBaseline(int existingEntryCount)
+    {
+        if (_closed) return;
+        Write(new NativeActionEnvelopeRecord(
+            "history_baseline", Next(),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                existing_entry_count = existingEntryCount,
+                note = "Entries before observer attachment have no recorded order"
+            })));
+    }
+
     public void ObservationFailure(string stage, string exceptionType)
     {
         if (_closed) return;
