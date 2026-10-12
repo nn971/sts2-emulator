@@ -7037,9 +7037,36 @@ public sealed partial class PrototypeGameEngine
             _ => 0
         };
 
+        var relicIndices = Enumerable.Range(0, combat.RelicStates.Length)
+            .Where(index =>
+            {
+                var relic = combat.RelicStates[index];
+                return !relic.IsMelted
+                    && !relic.UsedFirstCardPlayModifierThisCombat
+                    && PrototypeContent.Relic(relic.RelicId)
+                        .AdditionalCardPlayCountOncePerCombat > 0;
+            }).ToArray();
+        var relicReplay = relicIndices.Sum(index =>
+            PrototypeContent.Relic(combat.RelicStates[index].RelicId)
+                .AdditionalCardPlayCountOncePerCombat);
+        if (relicIndices.Length > 0)
+        {
+            var relics = combat.RelicStates
+                .Select(relic => relic.Fork()).ToArray();
+            foreach (var relicIndex in relicIndices)
+            {
+                relics[relicIndex] = relics[relicIndex] with
+                {
+                    UsedFirstCardPlayModifierThisCombat = true
+                };
+            }
+            combat = combat with { Relics = relics };
+        }
+
         var playCount = 1
             + Math.Max(0, card.ReplayCount)
             + enchantmentReplay
+            + relicReplay
             + modifiers.Sum(power =>
                 PrototypeContent.Power(power.PowerId).AdditionalPlayCount);
 

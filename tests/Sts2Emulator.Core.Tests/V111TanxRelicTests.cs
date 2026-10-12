@@ -8,7 +8,8 @@ public sealed class V111TanxRelicTests
     [Fact]
     public void IronClubDrawsEveryFourthCardAndPersistsItsCounter()
     {
-        var (engine, state) = StartCombat(cardsPlayed: 0);
+        var (engine, state) = StartCombat(
+            NativeGloryAncientsV111.IronClubId, cardsPlayed: 0);
         var initialHandCount = state.World!.Combat!.Hand.Length;
 
         for (var cardNumber = 1; cardNumber <= 3; cardNumber++)
@@ -43,7 +44,8 @@ public sealed class V111TanxRelicTests
     [Fact]
     public void IronClubRestoresItsCounterWhenTheNextCombatStarts()
     {
-        var (engine, state) = StartCombat(cardsPlayed: 3);
+        var (engine, state) = StartCombat(
+            NativeGloryAncientsV111.IronClubId, cardsPlayed: 3);
         var initialHandCount = state.World!.Combat!.Hand.Length;
         state = RunSnapshot.Load(RunSnapshot.Save(state));
         var cardId = state.World!.Combat!.Hand[0];
@@ -60,8 +62,38 @@ public sealed class V111TanxRelicTests
             .GetInt32());
     }
 
+    [Fact]
+    public void ThrowingAxeRepeatsOnlyTheFirstCardOfEachCombat()
+    {
+        var (engine, state) = StartCombat(
+            NativeGloryAncientsV111.ThrowingAxeId);
+        var firstCardId = state.World!.Combat!.Hand[0];
+        var firstPlay = engine.GetLegalActions(state).First(item =>
+            item.Kind == "play_card"
+            && item.ReadPayload<PlayCardPayload>().CardInstanceId
+                == firstCardId);
+
+        state = engine.Step(state, firstPlay).State;
+
+        Assert.Equal(2,
+            state.World!.Combat!.CounterState.CardsPlayedThisCombat);
+        var throwingAxe = Assert.Single(state.World.Combat.RelicStates,
+            relic => relic.RelicId == NativeGloryAncientsV111.ThrowingAxeId);
+        Assert.True(throwingAxe.UsedFirstCardPlayModifierThisCombat);
+
+        var nextCardId = state.World.Combat.Hand[0];
+        var secondPlay = engine.GetLegalActions(state).First(item =>
+            item.Kind == "play_card"
+            && item.ReadPayload<PlayCardPayload>().CardInstanceId
+                == nextCardId);
+        state = engine.Step(state, secondPlay).State;
+        Assert.Equal(3,
+            state.World!.Combat!.CounterState.CardsPlayedThisCombat);
+    }
+
     private static (PrototypeGameEngine Engine, RunState State) StartCombat(
-        int cardsPlayed)
+        string relicId,
+        int cardsPlayed = 0)
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeGameFactory.Create(
@@ -77,9 +109,11 @@ public sealed class V111TanxRelicTests
                     .Select(id => new CardInstance(id,
                         "proto.silent.shiv", 0, empty)).ToArray(),
                 Relics = [..state.Player.Relics,
-                    new RelicInstance(NativeGloryAncientsV111.IronClubId,
-                        JsonSerializer.SerializeToElement(
-                            new { CardsPlayed = cardsPlayed }))]
+                    new RelicInstance(relicId,
+                        relicId == NativeGloryAncientsV111.IronClubId
+                            ? JsonSerializer.SerializeToElement(
+                                new { CardsPlayed = cardsPlayed })
+                            : empty)]
             },
             World = state.World! with
             {

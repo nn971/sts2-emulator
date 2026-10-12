@@ -91,6 +91,8 @@ its counter in persistent relic state across combats; a combat test verifies
 the trigger cadence, saved counter and snapshot restoration. The Tanx Ancient
 remains unavailable until its full offer pool and remaining relic effects are
 integrated.
+Throwing Axe repeats the first card played each combat; direct combat coverage
+checks the replay and confirms later cards play once.
 Nonupeipe, Tanx and Vakuu remain unavailable until their full offer pools,
 relic effects, Ancient assignment and branch continuations are implemented.
 

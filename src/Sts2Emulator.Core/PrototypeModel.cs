@@ -801,7 +801,8 @@ public sealed record PrototypeRelicDefinition(
     bool AddsCombatPet = false,
     bool AddsPet = false,
     int PowerCardEnergyCostIncrease = 0,
-    string? PersistentTriggerCountProperty = null);
+    string? PersistentTriggerCountProperty = null,
+    int AdditionalCardPlayCountOncePerCombat = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1664,7 +1665,9 @@ public sealed record CombatRelicState(
     bool PaelsEyeUsedThisCombat = false,
     int PaelsLegionCooldown = 0,
     bool PaelsLegionTriggeredBlockLastTurn = false,
-    long? PaelsLegionAffectedCardPlaySourceId = null)
+    long? PaelsLegionAffectedCardPlaySourceId = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool UsedFirstCardPlayModifierThisCombat = false)
 {
     public CombatRelicState Fork() => this with
     {

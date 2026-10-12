@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,764 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,765 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -164,8 +164,9 @@ regional entry/branch has direct integration and semantic coverage.
   Diamond Diadem (20 opening Block plus Blur), Sai (7 Block per player-side
   turn start), Spiked Gauntlets (+1 energy and +1 Power cost), Crossbow
   (one free generated Attack at each player-side turn start), and Iron Club
-  (draw a card every fourth card played) dependencies are implemented and
-  tested through reward/combat resolution.
+  (draw a card every fourth card played) and Throwing Axe (repeat the first
+  card each combat) dependencies are implemented and tested through
+  reward/combat resolution.
   This does not expose or complete Nonupeipe, Tanx or Vakuu. See the
   [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
