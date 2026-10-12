@@ -1997,10 +1997,17 @@ public static class PrototypeStateInvariants
 
             if (deckChoice.RemainingSelections < 0
                 || (deckChoice.RemainingSelections == 0
-                    && deckChoice.CardIdAfterChoices is null))
+                    && deckChoice.CardIdAfterChoices is null
+                    && deckChoice.HpLossAfterChoices <= 0))
             {
                 throw new InvalidOperationException(
                     "Pending relic deck choice has no remaining selections.");
+            }
+
+            if (deckChoice.HpLossAfterChoices < 0)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice has a negative HP loss.");
             }
 
             if (deckChoice.MinimumSelectionsRemaining < 0

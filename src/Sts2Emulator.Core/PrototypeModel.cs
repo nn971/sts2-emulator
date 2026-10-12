@@ -814,6 +814,7 @@ public sealed record PrototypeRelicDefinition(
     int MaxCardsPlayablePerTurn = 0,
     bool HideEnemyIntents = false,
     PrototypeRelicDeckChoiceSpec? AcquisitionDeckChoice = null,
+    int AcquisitionHpLossAfterDeckChoices = 0,
     bool PreventsHandDiscard = false,
     int XValueBonus = 0,
     int HandDrawBonus = 0,
@@ -1964,6 +1965,7 @@ public sealed record PrototypePendingDeckChoiceState(
 {
     public int MinimumSelectionsRemaining { get; init; } = RemainingSelections;
     public string? CardIdAfterChoices { get; init; }
+    public int HpLossAfterChoices { get; init; }
 
     public PrototypePendingDeckChoiceState Fork() => this with
     {
@@ -1988,6 +1990,9 @@ public sealed record RewardState(
     bool CardOptionsUpgraded = false,
     bool[]? ExtraCardOptionsUpgraded = null,
     string? AddCardAfterReward = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string[]? AddCardsAfterReward = null,
     string[][]? CardBundles = null,
     string[]? ExtraRelicRewardIds = null,
     int ExtraRelicsResolved = 0,
@@ -2021,6 +2026,10 @@ public sealed record RewardState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeCardEnchantment?[][]? ExtraCardOptionEnchantments = null)
 {
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? ExtraRelicGroupsSkippable { get; init; }
+
     /// <summary>
     /// Native rewards resolve each extra offer by its stable original
     /// group index. The legacy integer counters remain a count of
@@ -2035,6 +2044,9 @@ public sealed record RewardState(
         ExtraRelicGroupsResolved is { } flags
             ? flags[index]
             : index < ExtraRelicsResolved;
+
+    public bool IsExtraRelicGroupSkippable(int index) =>
+        ExtraRelicGroupsSkippable != false;
 
     public bool IsExtraPotionGroupResolved(int index) =>
         ExtraPotionGroupsResolved is { } flags && flags[index];
@@ -2220,6 +2232,9 @@ public sealed record RewardState(
         CardBundles = CardBundles is null
             ? null
             : CardBundles.Select(bundle => (string[])bundle.Clone()).ToArray(),
+        AddCardsAfterReward = AddCardsAfterReward is null
+            ? null
+            : (string[])AddCardsAfterReward.Clone(),
         ExtraRelicRewardIds = ExtraRelicRewardIds is null
             ? null
             : (string[])ExtraRelicRewardIds.Clone(),

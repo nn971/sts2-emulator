@@ -3515,8 +3515,11 @@ public sealed partial class PrototypeGameEngine
                 actions.Add(GameAction.Create(
                     "take_reward_extra_relic", new ChooseRelicPayload(i)));
             }
-            actions.Add(GameAction.Create(
-                "skip_reward_extra_relic", new ChooseRelicPayload(i)));
+            if (reward.IsExtraRelicGroupSkippable(i))
+            {
+                actions.Add(GameAction.Create(
+                    "skip_reward_extra_relic", new ChooseRelicPayload(i)));
+            }
         }
 
         if (reward.GoldOption is not null && !reward.GoldResolved)
@@ -3827,6 +3830,31 @@ public sealed partial class PrototypeGameEngine
                 player = AppendCard(
                     player, nextId++, afterChoicesCardId, state.Rng);
             }
+
+            if (reward.PendingDeckChoice is null
+                && deckChoice.HpLossAfterChoices > 0)
+            {
+                player = player with
+                {
+                    Hp = Math.Max(
+                        0,
+                        player.Hp - deckChoice.HpLossAfterChoices)
+                };
+                if (player.Hp == 0)
+                {
+                    world = world with
+                    {
+                        Reward = reward,
+                        NextCardInstanceId = nextId
+                    };
+                    return EndRun(state with
+                    {
+                        Player = player,
+                        NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                        World = world
+                    }, "defeat");
+                }
+            }
         }
         else if (!reward.CardResolved && reward.CardBundles is { } bundles)
         {
@@ -3926,6 +3954,9 @@ public sealed partial class PrototypeGameEngine
                 || reward.IsExtraRelicGroupResolved(payload.Index))
                 throw new InvalidOperationException(
                     "Extra relic reward group is unavailable.");
+            if (!reward.IsExtraRelicGroupSkippable(payload.Index))
+                throw new InvalidOperationException(
+                    "This extra relic reward cannot be skipped.");
             reward = reward.ResolveExtraRelicGroup(payload.Index);
         }
         else if (!reward.CardResolved
@@ -4540,11 +4571,33 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
 
         if (world.CustomRewardReturn is { } returnState)
+        {
+            var player = state.Player;
+            var nextId = world.NextCardInstanceId;
+            if (reward.AddCardAfterReward is { } afterRewardCardId)
+            {
+                player = AppendCard(
+                    player, nextId++, afterRewardCardId, state.Rng);
+            }
+            foreach (var extraCardAfterRewardId in
+                     reward.AddCardsAfterReward ?? Array.Empty<string>())
+            {
+                player = AppendCard(
+                    player, nextId++, extraCardAfterRewardId, state.Rng);
+            }
+
             return state with
             {
+                Player = player,
                 Phase = returnState.Phase,
-                World = world with { Reward = returnState.Reward, CustomRewardReturn = returnState.Parent }
+                World = world with
+                {
+                    NextCardInstanceId = nextId,
+                    Reward = returnState.Reward,
+                    CustomRewardReturn = returnState.Parent
+                }
             };
+        }
 
         if (reward.SourceRoom.StartsWith("Event:", StringComparison.Ordinal))
         {
@@ -4575,6 +4628,12 @@ public sealed partial class PrototypeGameEngine
             {
                 player = AppendCard(
                     player, nextId++, additionalCardId, state.Rng);
+            }
+            foreach (var additionalCardAfterRewardId in
+                     reward.AddCardsAfterReward ?? Array.Empty<string>())
+            {
+                player = AppendCard(
+                    player, nextId++, additionalCardAfterRewardId, state.Rng);
             }
 
             return AdvanceEventContinuations(state with
@@ -4822,7 +4881,8 @@ public sealed partial class PrototypeGameEngine
         var afterChoicesCardId =
             relic.CardIdAfterAcquisitionDeckChoices;
         if ((spec is null || spec.Selections <= 0)
-            && afterChoicesCardId is null)
+            && afterChoicesCardId is null
+            && relic.AcquisitionHpLossAfterDeckChoices <= 0)
         {
             return null;
         }
@@ -4852,7 +4912,9 @@ public sealed partial class PrototypeGameEngine
                 MinimumSelectionsRemaining = Math.Min(
                     spec?.MinimumSelections ?? spec?.Selections ?? 0,
                     selections),
-                CardIdAfterChoices = afterChoicesCardId
+                CardIdAfterChoices = afterChoicesCardId,
+                HpLossAfterChoices =
+                    relic.AcquisitionHpLossAfterDeckChoices
             };
     }
 

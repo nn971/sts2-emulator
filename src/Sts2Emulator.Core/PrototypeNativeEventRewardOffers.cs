@@ -225,21 +225,11 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeRunEffectKind.OfferNeowsBonesRelics:
             {
-                // Several Neow relics still need their custom pickup
-                // continuations in the general relic-reward path. Keep
-                // this pool to relics whose full acquisition behavior is
-                // executable there.
-                string[] supportedNativeNames =
-                [
-                    "ArcaneScroll", "BoomingConch", "CursedPearl",
-                    "DowsingRod", "FishingRod", "GoldenPearl",
-                    "LeafyPoultice", "NeowsSacrifice", "NeowsTorment",
-                    "PhialHolster",
-                    "LavaRock", "NutritiousOyster", "StoneHumidifier",
-                    "NeowsTalisman", "Pomander", "PreciseScissors",
-                    "NewLeaf", "SilverCrucible", "SilkenTress"
-                ];
-                var available = supportedNativeNames
+                // Pickup continuations are handled after every Neow relic
+                // reward. Kaleidoscope's foreign card pools and multiplayer
+                // Massive Scroll remain outside this Silent profile.
+                var available = PrototypeNativeOvergrowthEvents
+                    .NeowBonesSupportedRelicNames
                     .Select(PrototypeNativeOvergrowthEvents.NeowRelicId)
                     .Where(id => !player.Relics.Any(relic =>
                         StringComparer.Ordinal.Equals(relic.RelicId, id)))
@@ -265,7 +255,10 @@ public sealed partial class PrototypeGameEngine
                     ExtraRelicRewardIds: chosen,
                     // Injury is the sole ordinary standalone Curse
                     // implemented in the current Silent prototype.
-                    AddCardAfterReward: "proto.native.neow.injury");
+                    AddCardAfterReward: "proto.native.neow.injury")
+                {
+                    ExtraRelicGroupsSkippable = false
+                };
             }
 
             case PrototypeRunEffectKind.OfferRandomRelic:
@@ -273,6 +266,10 @@ public sealed partial class PrototypeGameEngine
                 var available = PrototypeContent.RelicPool
                     .Where(id => !player.Relics.Any(relic =>
                         StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                    .Where(id => eventId
+                            != PrototypeNativeOvergrowthEvents.NeowEventId
+                        || id != PrototypeNativeOvergrowthEvents.NeowRelicId(
+                            "LargeCapsule"))
                     .ToArray();
                 if (available.Length == 0)
                 {

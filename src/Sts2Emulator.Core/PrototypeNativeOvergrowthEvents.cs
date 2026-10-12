@@ -46,6 +46,11 @@ public static class PrototypeNativeOvergrowthEvents
                 or "NeowsBones"))
             .ToArray();
 
+    public static string[] NeowBonesSupportedRelicNames { get; } =
+        NeowCoveredChoiceRelicNames
+            .Where(name => name != "LargeCapsule")
+            .ToArray();
+
     public static string NeowRelicId(string nativeClass) =>
         "proto.native.neow." + nativeClass.ToLowerInvariant();
 
@@ -69,6 +74,8 @@ public static class PrototypeNativeOvergrowthEvents
                         PrototypePersistentDeckChoiceKind.Remove, 2),
                     _ => null
                 },
+                AcquisitionHpLossAfterDeckChoices:
+                    name == "PrecariousShears" ? 16 : 0,
                 RunTriggers: name switch
                 {
                     "SilkenTress" =>
