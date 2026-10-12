@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_parity import compare, load_trace
 from native_scenario_import import import_manifest
+from inspector_html import render
 
 
 def sample():
@@ -97,6 +98,15 @@ class NativeParityContractTests(unittest.TestCase):
             path.write_text("\n".join(map(json.dumps, records)) + "\n", encoding="utf-8")
             _, error = load_trace(path)
             self.assertIn("event_seq", error)
+
+    def test_inspector_html_is_standalone_and_escapes_trace_content(self):
+        trace = sample()
+        trace[0]["run_id"] = "</script><script>evil()</script>"
+        html = render(trace, copy.deepcopy(trace))
+        self.assertIn("STS2 Native Fidelity Inspector", html)
+        self.assertNotIn("</script><script>evil()", html)
+        self.assertIn("Next decision", html)
+        self.assertIn("native-events", html)
 
     def test_partial_jsonl_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
