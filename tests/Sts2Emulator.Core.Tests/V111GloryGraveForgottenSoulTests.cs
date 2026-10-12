@@ -103,7 +103,9 @@ public sealed class V111GloryGraveForgottenSoulTests
         PrototypeStateInvariants.Validate(choosing);
 
         var completed = Select(choosing, sourceId);
-        Assert.Equal(RunPhase.MapChoice, completed.Phase);
+        Assert.Equal(RunPhase.Event, completed.Phase);
+        Assert.Equal(1, completed.World!.Event!.NativePageIndex);
+        Assert.Equal("confront", completed.World.Event.ChosenChoiceId);
         var enchanted = completed.Player.Deck.Single(c =>
             c.InstanceId == sourceId);
         Assert.Equal(new PrototypeCardEnchantment(
@@ -115,6 +117,7 @@ public sealed class V111GloryGraveForgottenSoulTests
             CanonicalJson.Sha256(Select(Choice(state.Fork(),
                 "confront"), sourceId)));
         PrototypeStateInvariants.Validate(completed);
+        AssertResultContinuation(completed);
     }
 
     [Fact]
@@ -148,14 +151,16 @@ public sealed class V111GloryGraveForgottenSoulTests
         var state = Glory("grave-accept");
         var previous = CanonicalJson.Sha256(state);
         var result = Choice(state, "accept");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        Assert.Equal("accept", result.World.Event.ChosenChoiceId);
         Assert.Single(result.Player.Relics, relic =>
             relic.RelicId == Soul);
-        Assert.Null(result.World!.Event);
         Assert.Equal(previous, CanonicalJson.Sha256(state));
         Assert.Equal(CanonicalJson.Sha256(result),
             CanonicalJson.Sha256(Choice(state.Fork(), "accept")));
         PrototypeStateInvariants.Validate(result);
+        AssertResultContinuation(result);
     }
 
     [Fact]
@@ -250,6 +255,25 @@ public sealed class V111GloryGraveForgottenSoulTests
         Assert.Equal(endWithout.Player.Hp - 2, endWith.Player.Hp);
         Assert.Equal(CanonicalJson.Sha256(endWith),
             CanonicalJson.Sha256(End(with.Fork())));
+    }
+
+    private static void AssertResultContinuation(RunState result)
+    {
+        Assert.Equal("continue_event", Assert.Single(
+            Engine.GetLegalActions(result)).Kind);
+        var restored = RunSnapshot.Load(RunSnapshot.Save(result));
+        Assert.Equal(CanonicalJson.Sha256(result),
+            CanonicalJson.Sha256(restored));
+        var next = Engine.Step(result,
+            GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, next.Phase);
+        Assert.Null(next.World!.Event);
+        Assert.Equal(result.Player.Deck, next.Player.Deck);
+        Assert.Equal(result.Player.Relics, next.Player.Relics);
+        Assert.Equal(CanonicalJson.Sha256(next), CanonicalJson.Sha256(
+            Engine.Step(restored.Fork(),
+                GameAction.Empty("continue_event")).State));
+        PrototypeStateInvariants.Validate(next);
     }
 
     private static RunState Glory(string seed) =>

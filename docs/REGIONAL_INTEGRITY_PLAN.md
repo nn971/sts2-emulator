@@ -29,7 +29,7 @@ matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
 event category now reports 40 of 66 event paths integrated into a regional or
-forced quest route, thirteen with complete branch inventories, and zero
+forced quest route, fourteen with complete branch inventories, and zero
 native-validated. The ten special/event fights are
 not counted as ordinary queue integration. These classifications are
 conservative and do not replace branch-level review, but they confirm that
@@ -98,7 +98,8 @@ direct branch tests and a complete inventory in
 coverage report now honors `branch_inventory_complete`; Amalgamator, Lost Wisp,
 Spirit Grafter, Colossal Flower, Doors of Light and Dark, Drowning Beacon,
 Sunken Treasury, Sunken Statue, Field of Man-Sized Holes, Reflections, Round
-Tea Party, Hungry for Mushrooms, and Tinker Time are thirteen of 66 event
+Tea Party, Hungry for Mushrooms, Tinker Time, and Grave of the Forgotten are
+fourteen of 66 event
 inventories marked complete. Tinker Time's type/rider offers and all nine Mad
 Science effects have source-shaped event/card tests; native stream parity
 remains unverified. Lost
@@ -299,3 +300,8 @@ implementation/integration completion separately from live-game fidelity.
 The final native release corpus and performance gates in the full roadmap remain
 in force. Missing real-game evidence prevents native certification, not completion
 of the authorized regional implementation work.
+
+Grave of the Forgotten now retains both result pages after its existing curse,
+enchantment or relic effects. Its nine source paths are audited, with locked
+selection, snapshot/fork and explicit continuation coverage. See the
+[Grave ledger](reference-builds/v0.111.0-glory-grave-of-forgotten.md).

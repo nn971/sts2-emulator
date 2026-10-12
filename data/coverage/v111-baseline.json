@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "6dd8680a04f4ba791be67521163ebf3e7d4e22fdd14cfdf9118fcb81a0c74740",
+  "inventory_file_sha256": "3e41d5f3a5fb5ee6b69f1cd0b4d71fdac9b03e37ddf744f96b27f6e39394ea12",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "5438f60ead17e3bdf907dc8f22ed3d0aba5e47622428683d54b53e5ce548eb8a",
+    "inventory_hash": "aeb8e98d5a690f00a2c7a38ee73511ce69aa9e760a9d6086f5e56d9322345861",
     "items": [
       {
         "catalogued": true,
@@ -15434,17 +15434,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/ACCEPT",
-          "initial/CONFRONT",
-          "initial/CONFRONT_LOCKED",
-          "page/ACCEPT",
-          "page/CONFRONT",
-          "page/INITIAL",
-          "page/INITIAL/ACCEPT",
-          "page/INITIAL/CONFRONT",
-          "page/INITIAL/CONFRONT_LOCKED"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "GRAVE_OF_THE_FORGOTTEN",
         "registered": true,
@@ -16378,26 +16368,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/CHOOSE_CARD_TYPE",
-          "page/CHOOSE_CARD_TYPE",
-          "page/CHOOSE_CARD_TYPE/ATTACK",
-          "page/CHOOSE_CARD_TYPE/POWER",
-          "page/CHOOSE_CARD_TYPE/SKILL",
-          "page/CHOOSE_RIDER",
-          "page/CHOOSE_RIDER/CHAOS",
-          "page/CHOOSE_RIDER/CHOKING",
-          "page/CHOOSE_RIDER/CURIOUS",
-          "page/CHOOSE_RIDER/ENERGIZED",
-          "page/CHOOSE_RIDER/EXPERTISE",
-          "page/CHOOSE_RIDER/IMPROVEMENT",
-          "page/CHOOSE_RIDER/SAPPING",
-          "page/CHOOSE_RIDER/VIOLENCE",
-          "page/CHOOSE_RIDER/WISDOM",
-          "page/DONE",
-          "page/INITIAL",
-          "page/INITIAL/CHOOSE_CARD_TYPE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "TINKER_TIME",
         "registered": true,
