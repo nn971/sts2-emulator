@@ -165,6 +165,8 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
     all_asteps, all_bsteps = asteps, bsteps
     if decision_limit is not None:
         asteps = {i: v for i, v in asteps.items() if i <= decision_limit}
+    if not asteps:
+        return report("INVALID_SETUP", "Requested decision limit precedes trace")
     last_coverage = None
     for decision_id, a in asteps.items():
         prefix_end = next((idx + 1 for idx, record in enumerate(native)
@@ -196,6 +198,9 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
             "emulator_unsupported": bcov.get("unsupported_mechanics", []),
         }
         last_coverage = manifest
+        if not fields:
+            return report("UNSUPPORTED", "No shared verified semantic fields",
+                          decision_id=decision_id, coverage=manifest, native_prefix=prefix)
         left_required = set(acov.get("required_preconditions") or [])
         right_required = set(bcov.get("required_preconditions") or [])
         manifest["required_preconditions"] = sorted(left_required | right_required)
@@ -207,9 +212,6 @@ def compare(native: list[dict[str, Any]], emulator: list[dict[str, Any]],
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)
         if ad.get("phase") != bd.get("phase"):
             return report("INVALID_SETUP", "Different phases at decision",
-                          decision_id=decision_id, coverage=manifest, native_prefix=prefix)
-        if not fields:
-            return report("UNSUPPORTED", "No shared verified semantic fields",
                           decision_id=decision_id, coverage=manifest, native_prefix=prefix)
         for path in fields:
             try:
