@@ -18,7 +18,8 @@ public sealed record ControlledIntentStateV111(
     int NextEnemyIndex,
     RandomIndexDecisionV111[] Transcript,
     RandomIndexRequestV111? Pending,
-    string Mode = "controlled-v111-committed-intent-v1")
+    string Mode = "controlled-v111-committed-intent-v1",
+    RandomIndexDecisionV111[]? PriorHpTranscript = null)
 {
     [JsonIgnore]
     public bool Complete => Pending is null;
@@ -32,6 +33,13 @@ public sealed record ControlledIntentStateV111(
         Combat = Combat.Fork(),
         Formation = Formation.Fork(),
         ReferenceStreams = ReferenceStreams.Fork(),
+        PriorHpTranscript = PriorHpTranscript?.Select(d => d with
+        {
+            Request = d.Request with
+            {
+                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
+            }
+        }).ToArray(),
         Transcript = Transcript.Select(d => d with
         {
             Request = d.Request with
@@ -54,10 +62,46 @@ public static class ControlledIntentsV111
         NativeCombatRngEntryV111.Validate(nativePrepared);
         var native = nativePrepared.NativeRng ??
             throw new InvalidOperationException("Intent boundary requires a native-owned combat source.");
-        var baseline = nativePrepared.Fork() with { NativeRng = null };
+        return BeginPrepared(nativePrepared.Fork() with { NativeRng = null },
+            native.Formation, native.RunStreams, null);
+    }
+
+    /// <summary>
+    /// Compose the actual completed controlled HP results into the next
+    /// source-shaped intent commitment. No native HP draws are rerun and
+    /// the controlled HP transcript remains inside the persisted child.
+    /// </summary>
+    public static ControlledIntentStateV111 BeginAfterControlledHp(
+        ControlledInitialHpStateV111 hp)
+    {
+        ArgumentNullException.ThrowIfNull(hp);
+        var verified = ControlledInitialHpV111.Restore(
+            ControlledInitialHpV111.Save(hp));
+        if (!verified.Complete)
+            throw new InvalidOperationException(
+                "Finish all pending HP decisions before committing intents.");
+        return BeginPrepared(verified.Combat, verified.Formation,
+            verified.ReferenceStreams, verified.Transcript);
+    }
+
+    private static ControlledIntentStateV111 BeginPrepared(
+        CombatState combat, NativeEncounterFormationV111 formation,
+        RngBundle referenceStreams, RandomIndexDecisionV111[]? priorHp)
+    {
+        if (combat.NativeRng is not null)
+            throw new InvalidOperationException(
+                "Controlled intent baseline cannot own a fake native RNG cursor.");
+        var baseline = combat.Fork();
         var start = new ControlledIntentStateV111(
-            baseline.Fork(), baseline, native.Formation.Fork(),
-            native.RunStreams.Fork(), 0, [], null);
+            baseline.Fork(), baseline, formation.Fork(),
+            referenceStreams.Fork(), 0, [], null,
+            PriorHpTranscript: priorHp?.Select(d => d with
+            {
+                Request = d.Request with
+                {
+                    OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
+                }
+            }).ToArray());
         return AdvanceToBoundary(start);
     }
 
@@ -187,6 +231,35 @@ public static class ControlledIntentsV111
         _ = NativeRngV111.ToSnapshot(intent);
         if (state.BaselineCombat.Enemies.Length != state.Combat.Enemies.Length)
             throw new InvalidDataException("Intent baseline enemy count differs.");
+        // The source-eligible prior HP history must agree with the actual
+        // initial HP values in the completed controlled-entry baseline.
+        // Intent choices alone do not erase Nature's earlier decisions.
+        if (state.PriorHpTranscript is { } earlier)
+        {
+            if (earlier.Length != state.BaselineCombat.Enemies.Length)
+                throw new InvalidDataException("Incomplete HP provenance before intent stage.");
+            var usedHp = new HashSet<int>();
+            for (int i = 0; i < earlier.Length; i++)
+            {
+                var enemy = state.BaselineCombat.Enemies[i];
+                var context = state.Formation.MonsterContexts[i];
+                var expectedRequest = new RandomIndexRequestV111(
+                    "combat.initial_unique_hp", "run.niche",
+                    "creature:" + context.CombatId, i,
+                    NativeCombatRngEntryV111.InitialHpPool(
+                        state.BaselineCombat, enemy, usedHp));
+                var decision = earlier[i];
+                decision.Validate();
+                if (!SameRequest(expectedRequest, decision.Request) ||
+                    decision.ProviderMode != "controlled-v111" ||
+                    decision.NativeCursorBefore is not null ||
+                    decision.NativeCursorAfter is not null ||
+                    enemy.Hp != decision.SelectedValue ||
+                    enemy.MaxHp != decision.SelectedValue)
+                    throw new InvalidDataException("HP-to-intent provenance is not source-reachable.");
+                usedHp.Add(decision.SelectedValue);
+            }
+        }
         for (int i = 0; i < state.Combat.Enemies.Length; i++)
         {
             var original = state.BaselineCombat.Enemies[i];
