@@ -745,7 +745,8 @@ public sealed record PrototypePotionDefinition(
     bool UsableOutsideCombat = false,
     PrototypeRunEffectSpec[]? RunEffects = null,
     bool AutomaticUsage = false,
-    int DeathPreventionHealPercent = 0);
+    int DeathPreventionHealPercent = 0,
+    bool GrantsExtraTurn = false);
 
 public sealed record PrototypeRelicTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1887,7 +1888,8 @@ public sealed record CombatState(
     bool PaelsEyeExtraTurnPending = false,
     PrototypeCombatPetState[]? Pets = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    string? CurrentMapNodeId = null)
+    string? CurrentMapNodeId = null,
+    int PotionExtraTurnsPending = 0)
 {
     public CombatState Fork() => this with
     {

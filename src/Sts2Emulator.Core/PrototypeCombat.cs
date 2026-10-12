@@ -1154,6 +1154,14 @@ public sealed partial class PrototypeGameEngine
             ]);
         playerAfterPotion = resolved.Player;
         combatAfterPotion = resolved.Combat;
+        if (definition.GrantsExtraTurn)
+        {
+            combatAfterPotion = combatAfterPotion with
+            {
+                PotionExtraTurnsPending =
+                    combatAfterPotion.PotionExtraTurnsPending + 1
+            };
+        }
 
         state = state with
         {
@@ -1579,22 +1587,32 @@ public sealed partial class PrototypeGameEngine
 
         if (eventKind == PrototypeCombatEventKind.PlayerTurnEnded)
         {
-            var eyeWorld = RequireWorld(state);
-            var eyeCombat = eyeWorld.Combat
+            var turnWorld = RequireWorld(state);
+            var turnCombat = turnWorld.Combat
                 ?? throw new InvalidOperationException("Combat unexpectedly disappeared.");
-            if (!eyeCombat.PaelsEyeExtraTurnPending)
+            var eyeExtraTurn = turnCombat.PaelsEyeExtraTurnPending;
+            if (!eyeExtraTurn && turnCombat.PotionExtraTurnsPending <= 0)
                 return state;
 
-            var eyeIndex = Array.FindIndex(eyeCombat.RelicStates, relic =>
-                relic.RelicId == NativePaelRewardsV111.EyeId && !relic.IsMelted);
-            if (eyeIndex < 0)
-                throw new InvalidOperationException("Pael's Eye turn continuation has no active relic.");
-            var relics = (CombatRelicState[])eyeCombat.RelicStates.Clone();
-            relics[eyeIndex] = relics[eyeIndex] with { PaelsEyeUsedThisCombat = true };
-            eyeCombat = eyeCombat with
+            var relics = turnCombat.RelicStates;
+            if (eyeExtraTurn)
+            {
+                var eyeIndex = Array.FindIndex(relics, relic =>
+                    relic.RelicId == NativePaelRewardsV111.EyeId
+                    && !relic.IsMelted);
+                if (eyeIndex < 0)
+                    throw new InvalidOperationException("Pael's Eye turn continuation has no active relic.");
+                relics = (CombatRelicState[])relics.Clone();
+                relics[eyeIndex] = relics[eyeIndex] with
+                { PaelsEyeUsedThisCombat = true };
+            }
+            turnCombat = turnCombat with
             {
                 Relics = relics,
                 PaelsEyeExtraTurnPending = false,
+                PotionExtraTurnsPending = Math.Max(
+                    0, turnCombat.PotionExtraTurnsPending
+                        - (eyeExtraTurn ? 0 : 1)),
                 AutomaticPipelineContinuation = null
             };
             var resetBlockIndex = Array.FindIndex(PrototypeContent.Rules.EndTurnPipeline,
@@ -1603,16 +1621,16 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidOperationException("Turn pipeline has no player block reset stage.");
             // An extra player turn skips the enemy turn, so do not run the
             // normal AdvanceTurn intent commitment (or consume its RNG).
-            eyeCombat = eyeCombat with
+            turnCombat = turnCombat with
             {
-                Turn = eyeCombat.Turn + 1,
-                PlayerPowers = eyeCombat.PlayerPowers.Select(power =>
+                Turn = turnCombat.Turn + 1,
+                PlayerPowers = turnCombat.PlayerPowers.Select(power =>
                     PrototypeContent.Power(power.PowerId).SnapshotGenerationStacksAtTurnStart
                         ? power with { StoredValue = power.Stacks } : power).ToArray(),
-                Counters = AdvanceTurnCounters(eyeCombat.CounterState)
+                Counters = AdvanceTurnCounters(turnCombat.CounterState)
             };
             return ResumeAutomaticPipeline(state with
-            { World = eyeWorld with { Combat = eyeCombat } }, resetBlockIndex);
+            { World = turnWorld with { Combat = turnCombat } }, resetBlockIndex);
         }
 
         if (eventKind != PrototypeCombatEventKind.PlayerTurnStarted)

@@ -2099,6 +2099,9 @@ public static class PrototypeStateInvariants
         if (combat.CounterState.ManualCardsPlayedThisTurn < 0
             || combat.CounterState.ManualCardsPlayedThisTurn > combat.CounterState.CardsPlayedThisTurn)
             throw new InvalidOperationException("Manual card-play counter is inconsistent with total plays.");
+        if (combat.PotionExtraTurnsPending < 0)
+            throw new InvalidOperationException(
+                "Pending potion extra turns cannot be negative.");
         if (combat.PaelsEyeExtraTurnPending
             && !combat.RelicStates.Any(relic => relic.RelicId == NativePaelRewardsV111.EyeId
                 && !relic.IsMelted && !relic.PaelsEyeUsedThisCombat))

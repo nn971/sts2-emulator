@@ -2067,9 +2067,8 @@ public static class PrototypeContent
     public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
         new[]
         {
-            // Neow's Sacrifice grants this event-only potion. The
-            // out-of-combat 50% max-HP heal is supported; its in-combat
-            // extra-turn power requires dedicated turn scheduling.
+            // Neow's Sacrifice grants this event-only potion. Its combat
+            // heal and queued extra player turn use the shared turn pipeline.
             // Native Drowning Beacon event potion: exhaust the whole
             // current hand, then draw ten through the common draw pipeline.
             new PrototypePotionDefinition(
@@ -2087,7 +2086,8 @@ public static class PrototypeContent
                 [],
                 UsableOutsideCombat: true,
                 RunEffects: [new(
-                    PrototypeRunEffectKind.HealPercentMaxHp, 50)]),
+                    PrototypeRunEffectKind.HealPercentMaxHp, 50)],
+                GrantsExtraTurn: true),
             PrototypeNativePotionCourier.FoulPotion,
             // Silent unlock potion: create three upgraded Shivs in hand.
             new PrototypePotionDefinition(
