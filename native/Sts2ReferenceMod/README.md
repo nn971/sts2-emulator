@@ -242,6 +242,44 @@ expectation fixture to an independent emulator continuation. A structurally
 valid JSONL, or replaying recorded post-state as expected output, is
 **not** emulator parity.
 
+## First authentic Strike decision selected (2026-10-12)
+
+The first recorded native action suitable for a parity fixture is decision 1
+of `passive-20261012-124318892-31fed163df2f4f03b417a53da0bb9428.jsonl`:
+`STRIKE_SILENT` card instance 0, target `creature:1`.
+The full trace passed the native lifecycle audit with 2 decisions,
+2 accepted actions and 8 diagnostic events. Decision 2 plays `SURVIVOR`,
+which is outside the first Strike/Defend continuation slice.
+Another clean recording at 12:44:33 (2 actions, 12 events) starts with
+`end_turn` and then `SURVIVOR`, so no extra current fixture.
+
+Many incomplete sessions contain accepted actions before an unresolved final
+transition; these are potential future prefix evidence, **not** whole-trace
+validations. One header/terminal-only recording was previously labeled
+`STRUCTURALLY_VALID` by the triage tool despite the authoritative audit
+reporting `No native decision boundary recorded`. Triage now delegates
+the complete-capture verdict to `native_trace_audit.audit`.
+
+The action summary previously displayed `origin=None` even for human actions
+because it inspected an event field. Native action records call it `source`;
+triage now displays `source`. That field is declarative, however: the
+native human-action hook origin still needs independent auditing.
+
+Run triage again to obtain corrected verdicts and native checkpoint deltas:
+
+```fish
+python tools/native_trace_triage.py /mnt/d/SteamLibrary/sts2-inspector-traces \
+  --out ~/projects/sts2-inspector-stage/reports/triage.json \
+  --fixture-dir ~/projects/sts2-inspector-stage/reports/native-fixtures
+python tools/native_observed_delta.py \
+  ~/projects/sts2-inspector-stage/reports/native-fixtures/passive-20261012-124318892-31fed163df2f4f03b417a53da0bb9428-decision-1.json \
+  --out ~/projects/sts2-inspector-stage/reports/first-strike-delta.json
+```
+
+The delta tool reports measured changes between native checkpoints only.
+It does not apply Strike logic, prove causality, or run an independent emulator
+step. Native parity remains `NOT_TESTED`.
+
 ## Inspect a captured trace
 
 ```fish
