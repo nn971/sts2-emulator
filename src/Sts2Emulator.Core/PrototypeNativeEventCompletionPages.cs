@@ -16,6 +16,8 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.event.luminous_choir"
             or "proto.native.event.sapphire_seed"
             or "proto.native.event.unrest_site"
+            or "proto.native.event.byrdonis_nest"
+            or "proto.native.event.wood_carvings"
             or PrototypeNativeDenseVegetation.EventId
             or PrototypeNativeTabletOfTruth.EventId
             or "proto.native.underdocks.waterlogged_scriptorium"
@@ -74,6 +76,10 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "eat" or "plant"
         || eventId == "proto.native.event.unrest_site"
             && choiceId is "rest" or "kill"
+        || eventId == "proto.native.event.byrdonis_nest"
+            && choiceId is "eat" or "take"
+        || eventId == "proto.native.event.wood_carvings"
+            && choiceId is "bird" or "snake" or "torus"
         || eventId == PrototypeNativeDenseVegetation.EventId
             && choiceId is "trudge"
         || eventId == PrototypeNativeTabletOfTruth.EventId

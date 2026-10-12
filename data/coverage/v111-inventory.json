@@ -11241,7 +11241,7 @@
         "page/INITIAL/TAKE",
         "page/TAKE"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
@@ -12579,7 +12579,7 @@
         "page/SNAKE",
         "page/TORUS"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

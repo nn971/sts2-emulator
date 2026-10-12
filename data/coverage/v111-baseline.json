@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "c1bc2ffdd557db67833046ecb99830a30ab4a85b2012b8a95fe36b7e679bec28",
+  "inventory_file_sha256": "206b319d78a3e88857395c8fc8097d4be5dc0a229d420c0be85c23906823267a",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "d0f2f0b7c4190f4ea90f3a23053edd7317e02a86889d5b0f772a30f671cc3824",
+    "inventory_hash": "bac1ae38ceb11d76914dc5e9335e4322987cf0737550a060d16946177e7492ae",
     "items": [
       {
         "catalogued": true,
@@ -15086,18 +15086,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ByrdonisNest.cs#82f879d42393f8199548d815ea4c2c4d79c389c716c3653caa81d01d1b2bf130"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/EAT",
-          "initial/TAKE",
-          "page/EAT",
-          "page/INITIAL",
-          "page/INITIAL/EAT",
-          "page/INITIAL/TAKE",
-          "page/TAKE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "BYRDONIS_NEST",
         "registered": true,
@@ -16440,23 +16432,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WoodCarvings.cs#d20954b51973fbe71cea76b6175bc5f52e224cf3d44bb4206cf3c4e5e64f0ea3"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/BIRD",
-          "initial/SNAKE",
-          "initial/SNAKE_LOCKED",
-          "initial/TORUS",
-          "page/BIRD",
-          "page/INITIAL",
-          "page/INITIAL/BIRD",
-          "page/INITIAL/SNAKE",
-          "page/INITIAL/SNAKE_LOCKED",
-          "page/INITIAL/TORUS",
-          "page/SNAKE",
-          "page/TORUS"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "WOOD_CARVINGS",
         "registered": true,
@@ -29592,7 +29571,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 18,
+        "implemented": 20,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,
