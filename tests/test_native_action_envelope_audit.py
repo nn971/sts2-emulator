@@ -162,6 +162,22 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual("UNOBSERVED", indicators["potion_history_entry"]["status"])
         self.assertEqual("NOT_TESTED", result["native_source_hook_order"])
 
+    def test_action_and_frame_deltas_are_not_double_counted(self):
+        records = sample()
+        state1 = {"player": {"hp": 50}, "combat": {"energy": 3}}
+        state2 = {"player": {"hp": 50}, "combat": {"energy": 2}}
+        records.insert(-1, {"type": "frame_state", "state": state1,
+                            "data": {"frame_index": 1, "state_hash": "a"}})
+        records.insert(-1, {"type": "frame_state", "state": state2,
+                            "data": {"frame_index": 2, "state_hash": "b"}})
+        for i, entry in enumerate(records):
+            entry["ordinal"] = i + 1
+        result = audit(records)
+        energy = result["observed_mechanic_indicators"]["energy_change"]
+        self.assertEqual(1, energy["count"])
+        self.assertEqual(1, energy["counts_by_observer"]["action"])
+        self.assertEqual(1, energy["counts_by_observer"]["frame"])
+
     def test_effect_delta_is_independent_of_native_rng_seed(self):
         pre = {"player": {"hp": 50}, "combat": {"energy": 3, "creatures": [],
                "hand": [], "draw_pile": [], "discard_pile": [],
