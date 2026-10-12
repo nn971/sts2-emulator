@@ -54,7 +54,9 @@ documents below may describe earlier fixture-only milestones; the
 and [regional integrity plan](REGIONAL_INTEGRITY_PLAN.md) carry current status.
 Normal Ancient assignment, Colorful Philosophers and foreign card pools,
 remaining event eligibility, RNG parity, natural full-run victories and live
-oracle traces are still open.
+oracle traces are still open. The source Ancient assignment call order is
+audited in the [Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md);
+its normal run-start integration remains gated on complete Ancient branches.
 Orobas is the remaining unimplemented Hive Ancient; its three-offer generation
 and ten relic dependencies are pinned in the
 [Orobas dependency audit](reference-builds/v0.111.0-hive-orobas-ancient.md).

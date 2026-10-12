@@ -124,8 +124,11 @@ Overgrowth, with no regional fallback or reachable unsupported behavior.
   reward/pity/removal counters, history and RNG ownership across act transitions.
 - Implement regional act-entry/Ancient assignment and boss reward ordering from
   pinned source, including route-specific and difficulty-dependent endings.
-  Supported Pael/Tezcatara opening execution is integrated once assigned; the
-  run-start assignment pool/RNG and remaining Hive Ancient are still open.
+  Supported Pael/Tezcatara opening execution is integrated once assigned. The
+  source assignment call order is audited in
+  [the Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md),
+  but run-start UpFront integration and the remaining Hive Ancient are still
+  open.
 - Remove Hive/Glory initialization rejection only after supported regional
   policies exist. Keep unfinished paths explicitly gated during development.
 - Establish an explicit deterministic test route through Act 1 → Hive → Glory
