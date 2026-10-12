@@ -237,6 +237,7 @@ internal static class NativeV111PassiveBridge
         _actionEnvelopes = new NativeActionEnvelopeRecorder(
             _currentFile[..^".jsonl".Length] + ".actions.jsonl",
             BuildId, runId);
+        _actionEnvelopes.HistoryBaseline(_historyIndex);
         _panel?.UseSession(_recording, _currentFile);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
