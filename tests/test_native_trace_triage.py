@@ -57,6 +57,19 @@ class TriageTests(unittest.TestCase):
             self.assertEqual("NOT_TESTED", fixture["emulator_parity"])
             self.assertFalse(fixture["ready_for_emulator_step"])
 
+    def test_ignores_action_sidecar_with_overlapping_passive_glob(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / "passive-example.jsonl").write_text(
+                "\n".join(json.dumps(item) for item in valid_trace()) + "\n")
+            (folder / "passive-example.actions.jsonl").write_text(
+                json.dumps({"type": "header",
+                            "data": {"schema": "native-action-envelope-v1"}}) + "\n")
+            report = triage(folder)
+            self.assertEqual(1, report["trace_count"])
+            self.assertEqual("passive-example.jsonl",
+                             report["traces"][0]["file"])
+
     def test_header_terminal_without_decision_is_not_structurally_valid(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
