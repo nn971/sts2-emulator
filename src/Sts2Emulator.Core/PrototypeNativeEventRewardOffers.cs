@@ -225,11 +225,10 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeRunEffectKind.OfferNeowsBonesRelics:
             {
-                // The pinned native Neow's Bones samples from all
-                // allowed Neow relics except Bones itself. Until the
-                // remaining special acquisition hooks are implemented,
-                // restrict this generator to already-functional
-                // single-player Silent relic acquisition paths.
+                // Several Neow relics still need their custom pickup
+                // continuations in the general relic-reward path. Keep
+                // this pool to relics whose full acquisition behavior is
+                // executable there.
                 string[] supportedNativeNames =
                 [
                     "BoomingConch", "FishingRod", "GoldenPearl",

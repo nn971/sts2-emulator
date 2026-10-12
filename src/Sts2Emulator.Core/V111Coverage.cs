@@ -926,6 +926,18 @@ public static class V111Coverage
 
     private static string[] MissingBranches(V111InventoryItem item)
     {
+        if (item.Kind == "events" && item.Id == "NEOW")
+        {
+            var supported = PrototypeNativeOvergrowthEvents
+                .NeowCoveredChoiceRelicNames
+                .Select(PrototypeNativeOvergrowthEvents.NeowRelicId)
+                .Select(id => Normalize(id.Split('.').Last()))
+                .ToHashSet(StringComparer.Ordinal);
+            return (item.Branches ?? [])
+                .Where(branch => !supported.Contains(
+                    Normalize(branch.Split('/').Last())))
+                .ToArray();
+        }
         if (item.Kind == "events" && item.Id == "OROBAS")
         {
             var supported = NativeOrobasEventV111.Definition.Choices

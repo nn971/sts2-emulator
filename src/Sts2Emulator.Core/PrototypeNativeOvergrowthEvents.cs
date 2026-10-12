@@ -38,6 +38,14 @@ public static class PrototypeNativeOvergrowthEvents
         "StoneHumidifier", "NeowsTalisman", "Pomander"
     ];
 
+    public static string[] NeowCoveredChoiceRelicNames { get; } =
+        NeowPositiveRelicNames
+            .Concat(NeowConditionalPositiveRelicNames)
+            .Concat(NeowCursedRelicNames)
+            .Where(name => name is not ("Kaleidoscope" or "MassiveScroll"
+                or "NeowsBones"))
+            .ToArray();
+
     public static string NeowRelicId(string nativeClass) =>
         "proto.native.neow." + nativeClass.ToLowerInvariant();
 
