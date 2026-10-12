@@ -1,10 +1,12 @@
 # STS2 native fidelity inspector — passive combat slice
 
 This directory now has a **source-audited, opt-in passive v0.111 combat adapter**,
-a read-only F8 timeline panel, and development packaging. The native hook
-implementation **has not been compiled or run against the user's pinned game
-install**; gameplay compatibility and passive/no-perturbation remain acceptance
-gates. No real native trace or emulator parity success is claimed.
+a read-only F8 timeline panel, and development packaging. On 2026-10-12 the
+user confirmed native compilation, a packaged DLL/PCK, and successful game
+startup with the installed inspector. **Passive capture has not yet produced
+a trace**; whether the initializer, SHA pin, frame hook, and stable-decision
+gate run correctly remains an explicit acceptance test. No native trace,
+passive no-perturbation, or emulator parity success is claimed.
 
 The .NET 9 / Python contracts are tested without game assets. STS2-specific
 code is compiled only with `Sts2DataDir` set. In a native build the
