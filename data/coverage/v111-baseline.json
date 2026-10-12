@@ -15244,7 +15244,6 @@
         "missing_branches": [
           "relic/CALLING_BELL",
           "relic/DUSTY_TOME",
-          "relic/ECTOPLASM",
           "relic/PANDORAS_BOX"
         ],
         "missing_variants": [],
@@ -25664,17 +25663,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.ectoplasm"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Ectoplasm.cs#064fca6868e0ff78c19ed523f448fd0307df40625f431b1bed43c74025635815"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ECTOPLASM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29843,8 +29844,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 1,
-        "integrated": 1,
+        "implemented": 2,
+        "integrated": 2,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

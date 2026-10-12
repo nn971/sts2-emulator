@@ -26,7 +26,7 @@ public sealed partial class PrototypeGameEngine
                 ? definition.GoldOnRoomEntryUntilPurchase : 0;
         });
         return bonus > 0
-            ? player with { Gold = checked(player.Gold + bonus) }
+            ? player with { Gold = GoldAfterGain(player, bonus) }
             : player;
     }
 

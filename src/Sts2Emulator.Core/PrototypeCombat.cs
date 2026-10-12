@@ -4852,7 +4852,8 @@ public sealed partial class PrototypeGameEngine
                             {
                                 player = player with
                                 {
-                                    Gold = checked(player.Gold + operation.GoldOnFatal)
+                                    Gold = GoldAfterGain(
+                                        player, operation.GoldOnFatal)
                                 };
                             }
 

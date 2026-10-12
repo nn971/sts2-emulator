@@ -52,7 +52,7 @@ public sealed partial class PrototypeGameEngine
                     Player = state.Player with
                     {
                         Hp = hpAfter,
-                        Gold = state.Player.Gold + gold
+                        Gold = GoldAfterGain(state.Player, gold)
                     }
                 });
             }

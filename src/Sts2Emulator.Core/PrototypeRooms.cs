@@ -1308,9 +1308,9 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeRunEffectKind.GainGold:
                     player = player with
                     {
-                        Gold =
-                            player.Gold + ResolveEventGoldAmount(
-                                eventState, choice.Id, effect)
+                        Gold = GoldAfterGain(player,
+                            ResolveEventGoldAmount(
+                                eventState, choice.Id, effect))
                     };
                     break;
 
@@ -3486,7 +3486,10 @@ public sealed partial class PrototypeGameEngine
             if (index < 0 || index >= (reward.ExtraGoldOptions?.Length ?? 0)
                 || reward.ExtraGoldGroupsResolved![index])
                 throw new InvalidOperationException("Extra gold reward group is unavailable.");
-            player = player with { Gold = checked(player.Gold + reward.ExtraGoldOptions![index]) };
+            player = player with
+            {
+                Gold = GoldAfterGain(player, reward.ExtraGoldOptions![index])
+            };
             var resolved = (bool[])reward.ExtraGoldGroupsResolved!.Clone();
             resolved[index] = true;
             reward = reward with { ExtraGoldGroupsResolved = resolved };
@@ -3558,7 +3561,7 @@ public sealed partial class PrototypeGameEngine
 
             player = player with
             {
-                Gold = checked(player.Gold + goldOffer)
+                Gold = GoldAfterGain(player, goldOffer)
             };
             reward = reward with { GoldResolved = true };
         }
@@ -4050,18 +4053,23 @@ public sealed partial class PrototypeGameEngine
 
         // GoldReward.Populate is the first reward population RNG draw.
         // Its amount is only credited if the player claims the offer.
-        var nativeGold = nativeOvergrowth
+        var preventsGoldGain = PreventsGoldGain(state.Player);
+        var nativeGold = nativeOvergrowth && !preventsGoldGain
             ? PrototypeNativeCombatGoldReward.Roll(
                 room, state.Ascension, state.Rng)
             : null;
-        var gold = nativeOvergrowth
-            ? nativeGold ?? 0
-            : room switch
-            {
-                PrototypeRoomType.Elite => 40 + (world.Act * 5),
-                PrototypeRoomType.Boss => 60 + (world.Act * 5),
-                _ => 20 + (world.Act * 5)
-            };
+        var gold = 0;
+        if (!preventsGoldGain)
+        {
+            gold = nativeOvergrowth
+                ? nativeGold ?? 0
+                : room switch
+                {
+                    PrototypeRoomType.Elite => 40 + (world.Act * 5),
+                    PrototypeRoomType.Boss => 60 + (world.Act * 5),
+                    _ => 20 + (world.Act * 5)
+                };
+        }
 
         // Source-backed escaped-enemy reward proportions, independently
         // of the existing prototype reward amount approximation.
@@ -4077,11 +4085,12 @@ public sealed partial class PrototypeGameEngine
             gold = (int)Math.Round(gold * proportion);
         }
 
-        var recoveredGold = combat.Enemies
-            .Where(enemy => enemy.Hp <= 0 && !enemy.Escaped
-                && PrototypeContent.Enemy(enemy.EnemyId)
-                    .RecoverCarriedGoldOnDeath)
-            .Sum(enemy => enemy.StolenGold);
+        var recoveredGold = preventsGoldGain ? 0
+            : combat.Enemies
+                .Where(enemy => enemy.Hp <= 0 && !enemy.Escaped
+                    && PrototypeContent.Enemy(enemy.EnemyId)
+                        .RecoverCarriedGoldOnDeath)
+                .Sum(enemy => enemy.StolenGold);
 
         // PotionReward.Populate precedes CardReward.Populate.
         string? potion = nativeOvergrowth

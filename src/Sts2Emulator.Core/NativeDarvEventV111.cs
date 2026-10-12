@@ -2,7 +2,7 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Silent's executable shared Ancient offer. Cross-character cards are not
-/// used by this event; the eight choices use implemented Silent mechanics.
+/// used by this event; the nine choices use implemented Silent mechanics.
 /// </summary>
 public static class NativeDarvEventV111
 {
@@ -17,6 +17,7 @@ public static class NativeDarvEventV111
         "proto.relic.empty_cage",
         "proto.relic.runic_pyramid",
         "proto.relic.snecko_eye",
+        "proto.relic.ectoplasm",
         "proto.relic.sozu",
         "proto.relic.philosophers_stone",
         "proto.relic.velvet_choker"
@@ -37,7 +38,8 @@ public static class NativeDarvEventV111
         if (act is not (2 or 3))
             throw new ArgumentOutOfRangeException(nameof(act));
         return SupportedRelicIds.Where(id =>
-            id != "proto.relic.sozu" || act == 2).ToArray();
+            (id != "proto.relic.sozu"
+                && id != "proto.relic.ectoplasm") || act == 2).ToArray();
     }
 
     private static string RelicName(string id) => id switch
@@ -47,6 +49,7 @@ public static class NativeDarvEventV111
         "proto.relic.empty_cage" => "Empty Cage",
         "proto.relic.runic_pyramid" => "Runic Pyramid",
         "proto.relic.snecko_eye" => "Snecko Eye",
+        "proto.relic.ectoplasm" => "Ectoplasm",
         "proto.relic.sozu" => "Sozu",
         "proto.relic.philosophers_stone" => "Philosopher's Stone",
         "proto.relic.velvet_choker" => "Velvet Choker",

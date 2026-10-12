@@ -24,8 +24,8 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Before the Darv, Philosopher's Stone and Black Star slices, 1,847 C# tests
-passed. The latest solution build and coverage-baseline check pass; the new
+Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C#
+tests passed. The latest solution build and coverage-baseline check pass; the new
 paths were not tested in these updates. Python snapshot/batch/replay checks
 passed on the prior baseline.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
@@ -64,10 +64,10 @@ reused. Orobas executes its eight Silent relic options with a locked third
 pool when both starter dependencies are absent. Cross-character Sea Glass and
 Prismatic Gem offers, plus Colorful Philosophers, are explicitly postponed by
 the current user scope. Shared Darv now participates in revealed-profile
-assignment and offers eight modeled relics. Philosopher's Stone adds one energy
+assignment and offers nine modeled relics. Philosopher's Stone adds one energy
 per turn and gives living enemies one Strength at combat start. Black Star adds
-one relic to elite rewards. Four Darv branches remain open. Assignment uses
-prototype event randomness;
+one relic to elite rewards. Hive-only Ectoplasm adds one energy and blocks gold
+gains. Three Darv branches remain open. Assignment uses prototype event randomness;
 native UpFront scheduling and source offer parity are left for the RNG pass.
 See [the assignment ledger](reference-builds/v0.111.0-ancient-assignment.md).
 Seven

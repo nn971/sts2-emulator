@@ -145,7 +145,10 @@ public sealed partial class PrototypeGameEngine
             case "noble_innocent":
                 player = AppendCard(player, nextId++,
                     PrototypeNativeGloryEvents.RegretId, state.Rng);
-                player = player with { Gold = checked(player.Gold + 300) };
+                player = player with
+                {
+                    Gold = GoldAfterGain(player, 300)
+                };
                 break;
 
             case "nondescript_guilty":

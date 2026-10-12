@@ -157,7 +157,7 @@ public sealed partial class PrototypeGameEngine
                         PrototypeNativeUnderdocksTrashHeap.CardIds.Length)];
                 var player = state.Player with
                 {
-                    Gold = checked(state.Player.Gold + 100)
+                    Gold = GoldAfterGain(state.Player, 100)
                 };
                 player = AppendCard(
                     player, world.NextCardInstanceId, chosen, state.Rng);

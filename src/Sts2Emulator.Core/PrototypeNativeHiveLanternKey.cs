@@ -33,7 +33,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     Player = state.Player with
                     {
-                        Gold = checked(state.Player.Gold + 100)
+                        Gold = GoldAfterGain(state.Player, 100)
                     }
                 });
             }

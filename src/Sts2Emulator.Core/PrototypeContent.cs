@@ -2731,6 +2731,11 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypeRelicDefinition(
+                "proto.relic.ectoplasm",
+                "Ectoplasm",
+                EnergyPerTurnBonus: 1,
+                PreventGoldGain: true),
+            new PrototypeRelicDefinition(
                 "proto.relic.blood_vial",
                 "Blood Vial",
                 Triggers:
@@ -7541,6 +7546,7 @@ public static class PrototypeContent
         "proto.relic.empty_cage",
         "proto.relic.astrolabe",
         "proto.relic.coffee_dripper",
+        "proto.relic.ectoplasm",
         "proto.relic.fusion_hammer",
         "proto.relic.velvet_choker",
         "proto.relic.runic_dome",

@@ -828,7 +828,8 @@ public sealed record PrototypeRelicDefinition(
     int? FreeCardAtManualCardPlayCount = null,
     bool ProcureRandomPotionsBeforeCombat = false,
     string? CardIdAfterAcquisitionDeckChoices = null,
-    int ExtraEliteRelicRewardCount = 0);
+    int ExtraEliteRelicRewardCount = 0,
+    bool PreventGoldGain = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

@@ -162,10 +162,15 @@ public static class V111Coverage
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);
-                return relic.ExtraEliteRelicRewardCount > 0
+                var blackStarIntegrated = relic.ExtraEliteRelicRewardCount > 0
                     && PrototypeContent.RelicPool.Contains(id,
                         StringComparer.Ordinal)
                     && PrototypeNativeRelicGrabBag.TryGetRarity(id, out _);
+                var ectoplasmIntegrated = relic.PreventGoldGain
+                    && relic.EnergyPerTurnBonus > 0
+                    && PrototypeContent.BossRelicPool.Contains(id,
+                        StringComparer.Ordinal);
+                return blackStarIntegrated || ectoplasmIntegrated;
             }))
         {
             implementation = "implemented";

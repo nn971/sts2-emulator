@@ -226,7 +226,7 @@ public sealed partial class PrototypeGameEngine
             case "GOLDEN_FYSH":
                 playerAfter = playerAfter with
                 {
-                    Gold = playerAfter.Gold + 75
+                    Gold = GoldAfterGain(playerAfter, 75)
                 };
                 break;
 

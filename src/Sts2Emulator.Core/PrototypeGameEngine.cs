@@ -325,8 +325,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 case PrototypeRunEffectKind.GainGold:
                     player = player with
                     {
-                        Gold =
-                            player.Gold + effect.Amount
+                        Gold = GoldAfterGain(player, effect.Amount)
                     };
                     break;
 
@@ -681,6 +680,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     private static CardInstance RequireCard(PlayerState player, long instanceId) =>
         player.Deck.FirstOrDefault(card => card.InstanceId == instanceId)
         ?? throw new InvalidOperationException($"Card instance {instanceId} is missing.");
+
+    private static bool PreventsGoldGain(PlayerState player) =>
+        player.ActiveRelics.Any(relic => PrototypeContent.Relic(relic.RelicId)
+            .PreventGoldGain);
+
+    private static int GoldAfterGain(PlayerState player, int amount) =>
+        amount <= 0 || PreventsGoldGain(player)
+            ? player.Gold
+            : checked(player.Gold + amount);
 
     private static int EnergyPerTurn(PlayerState player, int turn = 1) =>
         PrototypeContent.Rules.BaseEnergy
