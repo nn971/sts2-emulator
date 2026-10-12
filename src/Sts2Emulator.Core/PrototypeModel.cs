@@ -800,7 +800,8 @@ public sealed record PrototypeRelicDefinition(
     int EnergyBonusMinTurn = 1,
     bool AddsCombatPet = false,
     bool AddsPet = false,
-    int PowerCardEnergyCostIncrease = 0);
+    int PowerCardEnergyCostIncrease = 0,
+    string? PersistentTriggerCountProperty = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

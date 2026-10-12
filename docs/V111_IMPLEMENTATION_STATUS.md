@@ -86,7 +86,11 @@ adds one energy and raises Power-card cost by one. These effects are covered
 through reward resolution and combat turns. Crossbow generates a free Attack
 at each player-side turn start through the shared generated-card pipeline.
 Its source-owned pool order and RNG draws remain unverified. This is a
-dependency slice only:
+dependency slice only. Iron Club draws on every fourth card played and stores
+its counter in persistent relic state across combats; a combat test verifies
+the trigger cadence, saved counter and snapshot restoration. The Tanx Ancient
+remains unavailable until its full offer pool and remaining relic effects are
+integrated.
 Nonupeipe, Tanx and Vakuu remain unavailable until their full offer pools,
 relic effects, Ancient assignment and branch continuations are implemented.
 

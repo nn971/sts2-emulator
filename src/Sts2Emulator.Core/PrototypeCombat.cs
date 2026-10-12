@@ -122,7 +122,7 @@ public sealed partial class PrototypeGameEngine
                     PersistentIndex: index,
                     RelicId: relic.RelicId,
                     ApplicationOrder: index + 1L,
-                    TriggerCounts: new int[(definition.Triggers ?? Array.Empty<PrototypeRelicTriggerSpec>()).Length],
+                    TriggerCounts: CreateRelicTriggerCounts(relic, definition),
                     IsMelted: relic.IsMelted);
             })
             .ToArray();
@@ -9478,6 +9478,59 @@ public sealed partial class PrototypeGameEngine
         return (combat with { Relics = relics }, counts[triggerIndex]);
     }
 
+    private static int[] CreateRelicTriggerCounts(
+        RelicInstance relic,
+        PrototypeRelicDefinition definition)
+    {
+        var counts = new int[(definition.Triggers
+            ?? Array.Empty<PrototypeRelicTriggerSpec>()).Length];
+        if (definition.PersistentTriggerCountProperty is not { } property
+            || counts.Length == 0
+            || relic.PersistentState.ValueKind !=
+                System.Text.Json.JsonValueKind.Object
+            || !relic.PersistentState.TryGetProperty(property, out var count)
+            || count.ValueKind != System.Text.Json.JsonValueKind.Number)
+        {
+            return counts;
+        }
+
+        counts[0] = Math.Max(0, count.GetInt32());
+        return counts;
+    }
+
+    private static PlayerState PersistRelicTriggerCount(
+        PlayerState player,
+        CombatRelicState relicState,
+        int triggerIndex,
+        int count)
+    {
+        var property = PrototypeContent.Relic(relicState.RelicId)
+            .PersistentTriggerCountProperty;
+        if (property is null || triggerIndex != 0
+            || relicState.PersistentIndex < 0
+            || relicState.PersistentIndex >= player.Relics.Length)
+        {
+            return player;
+        }
+
+        var relics = (RelicInstance[])player.Relics.Clone();
+        var relic = relics[relicState.PersistentIndex];
+        var persistent = relic.PersistentState.ValueKind ==
+                System.Text.Json.JsonValueKind.Object
+            ? System.Text.Json.Nodes.JsonNode.Parse(
+                relic.PersistentState.GetRawText()) as
+                    System.Text.Json.Nodes.JsonObject
+                ?? new System.Text.Json.Nodes.JsonObject()
+            : new System.Text.Json.Nodes.JsonObject();
+        persistent[property] = count;
+        relics[relicState.PersistentIndex] = relic with
+        {
+            PersistentState = System.Text.Json.JsonSerializer
+                .SerializeToElement(persistent)
+        };
+        return player with { Relics = relics };
+    }
+
     // This is keyed by power application order, so multiple Panaches or
     // separate countdowns remain independent and fork deterministically.
     private static (CombatState Combat, bool ShouldTrigger)
@@ -10212,6 +10265,11 @@ public sealed partial class PrototypeGameEngine
                     subscriber.RelicStateIndex.Value,
                     subscriber.RelicTriggerIndex.Value);
                 combat = incremented.Combat;
+                player = PersistRelicTriggerCount(
+                    player,
+                    combat.RelicStates[subscriber.RelicStateIndex.Value],
+                    subscriber.RelicTriggerIndex.Value,
+                    incremented.Count);
                 if (subscriber.MaxTriggersPerCounterWindow is
                         { } maxTriggers
                     && incremented.Count > maxTriggers)
@@ -10349,6 +10407,11 @@ public sealed partial class PrototypeGameEngine
                     subscriber.RelicStateIndex.Value,
                     subscriber.RelicTriggerIndex.Value);
                 combat = incremented.Combat;
+                player = PersistRelicTriggerCount(
+                    player,
+                    combat.RelicStates[subscriber.RelicStateIndex.Value],
+                    subscriber.RelicTriggerIndex.Value,
+                    incremented.Count);
                 if (subscriber.MaxTriggersPerCounterWindow is
                         { } maxTriggers
                     && incremented.Count > maxTriggers)

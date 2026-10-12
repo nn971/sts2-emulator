@@ -7,6 +7,7 @@ public static class NativeGloryAncientsV111
 {
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
     public const string CrossbowId = "proto.native.ancient.crossbow";
+    public const string IronClubId = "proto.native.ancient.iron_club";
     public const string LoomingFruitId = "proto.native.ancient.looming_fruit";
     public const string SaiId = "proto.native.ancient.sai";
     public const string SpikedGauntletsId = "proto.native.ancient.spiked_gauntlets";
@@ -20,6 +21,12 @@ public static class NativeGloryAncientsV111
                 [new(PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand,
                     1, GeneratedCharacterCardsFreeThisTurn: true)])
         ]),
+        new(IronClubId, "Iron Club", Triggers:
+        [
+            new(PrototypeCombatEventKind.CardPlayed,
+                [new(PrototypeCombatEffectKind.DrawCards, 1)],
+                EveryNth: 4)
+        ], PersistentTriggerCountProperty: "CardsPlayed"),
         new(DiamondDiademId, "Diamond Diadem", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,
