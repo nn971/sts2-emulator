@@ -31,15 +31,22 @@ public sealed class V111GloryHungryForMushroomsTests
         var initial = Fixture("v111-glory-big");
         var initialHash = CanonicalJson.Sha256(initial);
         var result = Choose(initial, "big_mushroom");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        Assert.Equal("big_mushroom", result.World.Event.ChosenChoiceId);
         Assert.Equal(initial.Player.MaxHp + 20, result.Player.MaxHp);
         Assert.Equal(initial.Player.Hp + 20, result.Player.Hp);
         Assert.Single(result.Player.Relics, r => r.RelicId == Big);
-        Assert.Null(result.World!.Event);
-        Assert.Equal(initialHash, CanonicalJson.Sha256(initial));
+        PrototypeStateInvariants.Validate(result);
+        Assert.Equal(CanonicalJson.Sha256(result), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(result))));
         Assert.Equal(CanonicalJson.Sha256(result),
             CanonicalJson.Sha256(Choose(initial.Fork(),
                 "big_mushroom")));
+        result = Continue(result);
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Null(result.World!.Event);
+        Assert.Equal(initialHash, CanonicalJson.Sha256(initial));
         PrototypeStateInvariants.Validate(result);
     }
 
@@ -55,7 +62,9 @@ public sealed class V111GloryHungryForMushroomsTests
         var startHash = CanonicalJson.Sha256(initial);
 
         var result = Choose(initial, "fragrant_mushroom");
-        Assert.Equal(RunPhase.MapChoice, result.Phase);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        Assert.Equal("fragrant_mushroom", result.World.Event.ChosenChoiceId);
         Assert.Equal(initial.Player.Hp - 15, result.Player.Hp);
         Assert.Equal(initial.Player.MaxHp, result.Player.MaxHp);
         Assert.Single(result.Player.Relics, r => r.RelicId == Fragrant);
@@ -70,6 +79,10 @@ public sealed class V111GloryHungryForMushroomsTests
             CanonicalJson.Sha256(Choose(initial.Fork(),
                 "fragrant_mushroom")));
         PrototypeStateInvariants.Validate(result);
+        Assert.Equal(CanonicalJson.Sha256(result), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(result))));
+        result = Continue(result);
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
     }
 
     [Fact]
@@ -124,6 +137,9 @@ public sealed class V111GloryHungryForMushroomsTests
                 && a.ReadPayload<EventChoicePayload>().ChoiceId == id)
             ?? GameAction.Create("event_choice",
                 new EventChoicePayload(id))).State;
+
+    private static RunState Continue(RunState state) =>
+        Engine.Step(state, GameAction.Empty("continue_event")).State;
 
     private static RunState BattleFixture(bool withBig)
     {

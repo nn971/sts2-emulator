@@ -304,6 +304,7 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        return CompleteRoomToMap(state with { Player = player });
+        return PreserveNativeEventCompletionPage(
+            state with { Player = player }, choice);
     }
 }

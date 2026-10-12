@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "5081acc0958531b3bd9011e6bba5173cb4034973db8638c5fbcd9c63a2a71ec6",
+  "inventory_file_sha256": "858078dd78ae91f6696c60cc911bbd85a5bf2e35208b9d3935254ebfd36b3b47",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "3d40b247e229e2cb3095eeef8a560dd0f5ab74ab5a5d5291bb21dbc4637ffaef",
+    "inventory_hash": "5438f60ead17e3bdf907dc8f22ed3d0aba5e47622428683d54b53e5ce548eb8a",
     "items": [
       {
         "catalogued": true,
@@ -15462,16 +15462,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/BIG_MUSHROOM",
-          "initial/FRAGRANT_MUSHROOM",
-          "page/BIG_MUSHROOM",
-          "page/FRAGRANT_MUSHROOM",
-          "page/INITIAL",
-          "page/INITIAL/BIG_MUSHROOM",
-          "page/INITIAL/FRAGRANT_MUSHROOM",
-          "page/MEDLEY"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "HUNGRY_FOR_MUSHROOMS",
         "registered": true,

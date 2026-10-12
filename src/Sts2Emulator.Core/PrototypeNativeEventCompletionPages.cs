@@ -13,6 +13,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeHiveEvents.ColossalFlowerId
             or PrototypeNativeGloryEvents.ReflectionsId
             or PrototypeNativeGloryEvents.RoundTeaPartyId
+            or PrototypeNativeGloryEvents.HungryForMushroomsId
             or "proto.native.underdocks.doors_of_light_and_dark"
             or "proto.native.underdocks.drowning_beacon"
             or "proto.native.underdocks.sunken_treasury"
@@ -38,6 +39,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "touch_mirror" or "shatter"
         || eventId == PrototypeNativeGloryEvents.RoundTeaPartyId
             && choiceId is "enjoy_tea" or "continue_fight"
+        || eventId == PrototypeNativeGloryEvents.HungryForMushroomsId
+            && choiceId is "big_mushroom" or "fragrant_mushroom"
         || eventId == "proto.native.underdocks.doors_of_light_and_dark"
             && choiceId is "light" or "dark"
         || eventId == "proto.native.underdocks.drowning_beacon"

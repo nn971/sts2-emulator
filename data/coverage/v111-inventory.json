@@ -11529,10 +11529,9 @@
         "page/FRAGRANT_MUSHROOM",
         "page/INITIAL",
         "page/INITIAL/BIG_MUSHROOM",
-        "page/INITIAL/FRAGRANT_MUSHROOM",
-        "page/MEDLEY"
+        "page/INITIAL/FRAGRANT_MUSHROOM"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

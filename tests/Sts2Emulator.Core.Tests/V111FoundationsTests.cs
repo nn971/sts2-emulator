@@ -101,6 +101,10 @@ public sealed class V111FoundationsTests
             && item.Integration == "integrated"
             && item.MissingBranches.Length == 0);
         Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "HUNGRY_FOR_MUSHROOMS"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
             && item.NativeId == "VAKUU"
             && item.Implementation == "partial"
             && item.Integration == "missing");
