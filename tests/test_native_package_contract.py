@@ -45,6 +45,15 @@ class NativePackageContractTests(unittest.TestCase):
         self.assertIn('rm -f "$dest/Sts2Emulator.Trace.dll" "$dest/Sts2Emulator.Core.dll"', script)
         self.assertNotIn("for dll in Sts2ReferenceMod.dll Sts2Emulator.Trace.dll", script)
 
+    def test_godot_export_uses_temporary_source_free_project(self):
+        script = BUILDER.read_text(encoding="utf-8")
+        self.assertIn('mktemp -d "$root/.inspector-pack-XXXXXXXX"', script)
+        self.assertIn('cp "$project/mod_manifest.json" "$pack_project/mod_manifest.json"', script)
+        self.assertIn('cp "$project/export_presets.cfg" "$pack_project/export_presets.cfg"', script)
+        self.assertIn('"$godot" --headless --path "$pack_project" --import', script)
+        self.assertNotIn('pushd "$project"', script)
+        self.assertNotIn('"$godot" --headless --path . --export-pack', script)
+
     def test_manifest_pck_name_is_consistent(self):
         import json
         manifest = json.loads(
