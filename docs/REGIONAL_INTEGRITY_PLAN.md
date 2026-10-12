@@ -170,9 +170,10 @@ regional entry/branch has direct integration and semantic coverage.
   (enchant three Attacks with Instinct, doubling powered attack damage), and
   Claws (transform up to six chosen deck cards into escalating two-hit Mauls),
   and War Hammer (upgrade up to four random cards after Elite victories)
-  dependencies are
-  implemented and tested through reward/combat resolution.
-  This does not expose or complete Nonupeipe, Tanx or Vakuu. See the
+  dependencies are implemented and tested through reward/combat resolution.
+  Tanx's offer generation and all ten relic branches run through a named
+  Ancient fixture; ordinary Glory Ancient assignment remains gated. This
+  does not add Nonupeipe or Vakuu, or complete normal Tanx run integration. See the
   [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.

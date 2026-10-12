@@ -88,9 +88,9 @@ at each player-side turn start through the shared generated-card pipeline.
 Its source-owned pool order and RNG draws remain unverified. This is a
 dependency slice only. Iron Club draws on every fourth card played and stores
 its counter in persistent relic state across combats; a combat test verifies
-the trigger cadence, saved counter and snapshot restoration. The Tanx Ancient
-remains unavailable until its full offer pool and remaining relic effects are
-integrated.
+the trigger cadence, saved counter and snapshot restoration. Tanx's offer
+pool and event branches are now integrated through a named Ancient fixture;
+normal Glory Ancient assignment remains gated.
 Throwing Axe repeats the first card played each combat; direct combat coverage
 checks the replay and confirms later cards play once.
 Meat Cleaver adds Cook to rest sites when at least two removable deck cards
