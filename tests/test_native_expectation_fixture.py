@@ -11,6 +11,7 @@ from test_native_parity import sample
 
 def fixture():
     data = sample()
+    data[0]["capture_mode"] = "passive"
     card = {"instance_id": 7, "model_id": "strike_silent", "upgrades": 0}
     data[1]["state"]["combat"]["hand"] = [card]
     data[5]["state"]["combat"]["hand"] = []
