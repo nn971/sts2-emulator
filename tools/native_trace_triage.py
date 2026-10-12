@@ -11,16 +11,20 @@ import json
 from pathlib import Path
 
 from native_expectation_fixture import extract
+from native_trace_audit import audit
 from native_parity import load_trace, transition_data
 
 
 def summarize_trace(path: Path) -> tuple[dict, list[tuple[int, dict]]]:
     records, error = load_trace(path)
+    audited = audit(records, error)
     result = {
         "file": path.name,
         "bytes": path.stat().st_size,
-        "capture_integrity": "INCOMPLETE_CAPTURE" if error else "STRUCTURALLY_VALID",
-        "reason": error,
+        "capture_integrity": audited["status"],
+        "reason": audited["reason"],
+        "counts_as_complete_capture": audited["status"] == "STRUCTURALLY_VALID",
+        "audit_schema": audited["audit_schema"],
         "counts": {kind: sum(r.get("type") == kind for r in records)
                    for kind in ("header", "decision", "action", "event", "transition", "terminal")},
         "terminal": [
@@ -53,7 +57,7 @@ def summarize_trace(path: Path) -> tuple[dict, list[tuple[int, dict]]]:
             "accepted": record.get("accepted"),
             "origin": record.get("origin"),
         })
-    if not error:
+    if audited["status"] == "STRUCTURALLY_VALID":
         steps = transition_data(records)
         for decision_id in sorted(steps):
             candidate = extract(records, decision_id)
