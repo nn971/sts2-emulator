@@ -16,6 +16,7 @@ public sealed class NativeRecordingSession : IAsyncDisposable
     private readonly EventJournal _journal;
     private readonly DecisionCoordinator _coordinator = new();
     private NativeDecisionRecord? _current;
+    private readonly List<NativeDecisionRecord> _uiDecisions = new();
     private bool _actionRecorded;
     private bool _terminal;
     private bool _incomplete;
@@ -32,6 +33,8 @@ public sealed class NativeRecordingSession : IAsyncDisposable
     }
 
     public EventJournal Journal => _journal;
+    /// <summary>Bounded in-memory viewer window; the durable JSONL has the full trace.</summary>
+    public IReadOnlyList<NativeDecisionRecord> RecordedDecisions => _uiDecisions;
     public DecisionCoordinator Controller => _coordinator;
     public bool IsIncomplete => _incomplete;
 
@@ -58,6 +61,8 @@ public sealed class NativeRecordingSession : IAsyncDisposable
             state, hash, actions, adapter.ObservationHash, boundary.Revision,
             adapter.GetCoverage(), _journal.LastSequence);
         _current = decision;
+        _uiDecisions.Add(decision);
+        if (_uiDecisions.Count > 250) _uiDecisions.RemoveAt(0);
         _actionRecorded = false;
         Enqueue(decision);
         return decision;
