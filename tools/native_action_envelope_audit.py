@@ -84,7 +84,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         report["reason"] = "Missing terminal record"
         return report
     allowed = {
-        "header", "action_started", "action_completed", "stable_decision",
+        "header", "history_baseline", "action_started", "action_completed", "stable_decision",
         "nested_choice_pause", "history_entry", "history_reset", "anomaly",
         "observation_failure", "terminal",
     }
