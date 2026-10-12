@@ -1920,7 +1920,8 @@ public sealed partial class PrototypeGameEngine
 
                 combat = ResolveEnemyStatusStage(
                     combat,
-                    automaticStep.Stage.Value);
+                    automaticStep.Stage.Value,
+                    state.Rng);
                 if (automaticStep.Stage.Value
                     == PrototypeTurnStage.EnemyTurnEnd)
                 {
@@ -2230,7 +2231,8 @@ public sealed partial class PrototypeGameEngine
 
     private static CombatState ResolveEnemyStatusStage(
         CombatState combat,
-        PrototypeTurnStage stage)
+        PrototypeTurnStage stage,
+        RngBundle rng)
     {
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
 
@@ -2455,6 +2457,35 @@ public sealed partial class PrototypeGameEngine
                 enemies = combat.Enemies
                     .Select(item => item.Fork())
                     .ToArray();
+            }
+
+            if (stage == PrototypeTurnStage.EnemyTurnEnd
+                && enemies[enemyIndex].Hp > 0)
+            {
+                var demiseHpLoss = enemies[enemyIndex].PowerStates.Sum(
+                    power => Math.Max(0, power.Stacks)
+                        * PrototypeContent.Power(power.PowerId)
+                            .EnemyHpLossAtSideTurnEndPerStack);
+                if (demiseHpLoss > 0)
+                {
+                    var lost = LoseEnemyHp(
+                        combat with { Enemies = enemies },
+                        enemies[enemyIndex].InstanceId,
+                        demiseHpLoss);
+                    combat = lost.Combat;
+                    enemies = combat.Enemies
+                        .Select(item => item.Fork())
+                        .ToArray();
+                    if (lost.Defeated)
+                    {
+                        combat = CleanupSourceBoundPowersForDefeatedEnemies(
+                            combat);
+                        combat = ResolveEnemyDeathSummons(combat, rng);
+                        enemies = combat.Enemies
+                            .Select(item => item.Fork())
+                            .ToArray();
+                    }
+                }
             }
         }
 

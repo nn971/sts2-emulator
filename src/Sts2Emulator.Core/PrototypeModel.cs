@@ -953,7 +953,8 @@ public sealed record PrototypePowerDefinition(
     int PlayerAttackDamageMultiplierWhileActiveDenominator = 1,
     bool RemoveAfterFirstPoweredAttack = false,
     int HandDrawBonusWhileActive = 0,
-    bool DecrementAfterHandDraw = false);
+    bool DecrementAfterHandDraw = false,
+    int EnemyHpLossAtSideTurnEndPerStack = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

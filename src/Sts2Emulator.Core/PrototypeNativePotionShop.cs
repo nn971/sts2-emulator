@@ -42,6 +42,8 @@ public static class PrototypeNativePotionShop
             ["proto.potion.binding"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.clarity"] = PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.colorless"] = PrototypeNativePotionRarity.Common,
+            ["proto.potion.powdered_demise"] =
+                PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.heart_of_iron"] =
                 PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.radiant_tincture"] =

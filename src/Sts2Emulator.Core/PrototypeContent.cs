@@ -2191,6 +2191,16 @@ public static class PrototypeContent
                     3,
                     GeneratedChoiceCardsFreeThisTurn: true,
                     GeneratedChoiceMustPick: false)]),
+            // Shared Uncommon potion: deal nine unblockable HP loss after
+            // each target enemy turn until that enemy is defeated.
+            new PrototypePotionDefinition(
+                "proto.potion.powdered_demise",
+                "Powdered Demise",
+                PrototypeCardTarget.Enemy,
+                [new(
+                    PrototypeCombatEffectKind.ApplyEnemyPower,
+                    9,
+                    PowerId: "proto.power.demise")]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -3370,6 +3380,13 @@ public static class PrototypeContent
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 HandDrawBonusWhileActive: 1,
                 DecrementAfterHandDraw: true),
+            new PrototypePowerDefinition(
+                "proto.power.demise",
+                "Demise",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                EnemyHpLossAtSideTurnEndPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.duplication",
                 "Duplication",

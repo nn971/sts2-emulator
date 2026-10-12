@@ -572,6 +572,35 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void PowderedDemiseDealsNineUnblockableHpLossAtEnemyTurnEnd()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.powdered_demise",
+            enemyHp: 20,
+            enemyBlock: 100);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var enemy = Assert.Single(state.World!.Combat!.Enemies);
+        Assert.Equal(20, enemy.Hp);
+        Assert.Equal(100, enemy.Block);
+        Assert.Equal(9, Assert.Single(
+            enemy.PowerStates,
+            power => power.PowerId == "proto.power.demise").Stacks);
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        enemy = Assert.Single(state.World!.Combat!.Enemies);
+        Assert.Equal(11, enemy.Hp);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(
@@ -758,7 +787,8 @@ public sealed class PrototypeExpandedPotionTests
         int playerHp = 70,
         int additionalEnemies = 0,
         long[]? drawPile = null,
-        int enemyStrength = 0)
+        int enemyStrength = 0,
+        int enemyBlock = 0)
     {
         var empty = PrototypeJson.EmptyObject();
         var persistent = cards
@@ -792,7 +822,7 @@ public sealed class PrototypeExpandedPotionTests
                     index + 1,
                     "proto.enemy.crawler",
                     enemyHp,
-                    0,
+                    enemyBlock,
                     0,
                     new Dictionary<string, int>(StringComparer.Ordinal),
                     Powers: enemyStrength == 0
