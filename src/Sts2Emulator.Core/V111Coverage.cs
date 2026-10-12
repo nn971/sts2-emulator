@@ -98,7 +98,11 @@ public static class V111Coverage
             "monsters" => PrototypeContent.Enemies.Values
                 .Where(enemy => Matches(item, enemy.Id, enemy.Name)).Select(enemy => enemy.Id).ToArray(),
             "encounters" => PrototypeContent.Encounters
-                .Where(encounter => Normalize(encounter.Id.Split('.').Last()) == normalized)
+                .Where(encounter =>
+                    Normalize(encounter.Id.Split('.').Last()) == normalized
+                    || (item.Id == "PUNCH_OFF_EVENT_ENCOUNTER"
+                        && encounter.Id
+                            == PrototypeNativePunchOff.EncounterId))
                 .Select(encounter => encounter.Id).ToArray(),
             "events" => PrototypeContent.Events.Values
                 .Where(evt => Matches(item, evt.Id, evt.Name)).Select(evt => evt.Id).ToArray(),
@@ -158,6 +162,21 @@ public static class V111Coverage
                 .Concat(ExperimentalSilentThreeActRouteV111.GloryBosses)
                 .ToHashSet(StringComparer.Ordinal);
             if (engineIds.Any(pools.Contains))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "PUNCH_OFF_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativePunchOff.EncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeNativeUnderdocksEvents.IsSupported(
+                    PrototypeNativePunchOff.EventId)
+                && PrototypeNativePunchOff.Encounter.Weight == 0
+                && PrototypeNativePunchOff.Encounter.EnemyIds.SequenceEqual(
+                    ["proto.enemy.punch_construct",
+                     "proto.enemy.punch_construct"],
+                    StringComparer.Ordinal))
             {
                 implementation = "implemented";
                 integration = "integrated";

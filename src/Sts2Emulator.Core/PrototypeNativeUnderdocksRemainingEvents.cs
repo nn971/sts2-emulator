@@ -106,7 +106,8 @@ public static class PrototypeNativePunchOff
         PrototypeRoomType.Combat,
         ["proto.enemy.punch_construct", "proto.enemy.punch_construct"],
         MinAct: 1,
-        MaxAct: 1);
+        MaxAct: 1,
+        Weight: 0);
 }
 
 public sealed partial class PrototypeGameEngine

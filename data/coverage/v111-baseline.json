@@ -13511,17 +13511,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.encounter.punch_off_event"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/PunchOffEventEncounter.cs#89b7198f96c26ae07a220b300937637fa2f2cf0c99119825c6fbc26ae7de3e7d"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PUNCH_OFF_EVENT_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29544,8 +29546,8 @@
         "catalogued": 90,
         "eligible": 90,
         "excluded": 0,
-        "implemented": 80,
-        "integrated": 80,
+        "implemented": 81,
+        "integrated": 81,
         "kind": "encounters",
         "scope_review_required": 0,
         "validated": 0

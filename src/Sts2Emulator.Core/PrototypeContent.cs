@@ -6816,6 +6816,9 @@ public static class PrototypeContent
 
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
+        // Punch Off starts this event-only fight directly. Keep its native
+        // encounter discoverable without making it an ordinary room offer.
+        PrototypeNativePunchOff.Encounter,
         // Event-only combat: four non-stunned Wrigglers. Never included
         // in normal map-combat selection (Weight=0).
         new(
