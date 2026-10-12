@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "a92733efd027724f38035e2064e05a9fead81189747d442b2d7d9f310916b184",
+  "inventory_file_sha256": "94bf4d4663bc565a3f2910a6bfcd8335e188a1ce5a724de79e6e7ad325082ebe",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "bb40528331545ff3071e658e3f71f445c5140688ebb3729180eca01370340d8c",
+    "inventory_hash": "cb2f46ccc7b53279396a0872278d8d00a31016367c1875a42fc7408a5603ad94",
     "items": [
       {
         "catalogued": true,
@@ -15699,25 +15699,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.potion_courier"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/PotionCourier.cs#af833f2f25684a2b869748cfbaf1a96e54a10d03d17fadfc33d996dadf61c832"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/GRAB_POTIONS",
-          "initial/RANSACK",
-          "page/GRAB_POTIONS",
-          "page/INITIAL",
-          "page/INITIAL/GRAB_POTIONS",
-          "page/INITIAL/RANSACK",
-          "page/RANSACK"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "POTION_COURIER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -19291,17 +19285,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.foul_potion"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/FoulPotion.cs#6382c3e32e5fe1183e3e2ed85435c25a205629a74c2d23d4c877f0423230fc1a"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FOUL_POTION",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29768,8 +29764,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 4,
-        "integrated": 49,
+        "implemented": 5,
+        "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

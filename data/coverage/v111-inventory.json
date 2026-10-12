@@ -11764,7 +11764,7 @@
         "page/INITIAL/RANSACK",
         "page/RANSACK"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

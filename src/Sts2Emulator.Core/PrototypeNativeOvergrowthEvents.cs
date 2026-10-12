@@ -502,7 +502,8 @@ public static class PrototypeNativeOvergrowthEvents
 
     public static bool UsesNativePotionOffer(string eventId) =>
         eventId is "proto.native.event.wellspring"
-            or "proto.native.event.whispering_hollow";
+            or "proto.native.event.whispering_hollow"
+            or PrototypeNativePotionCourier.EventId;
 
     public static bool IsNativeRegionEvent(string id) =>
         RegionEventIds.Contains(id, StringComparer.Ordinal);

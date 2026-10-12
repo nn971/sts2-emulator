@@ -92,6 +92,7 @@ public static class ExperimentalSilentThreeActRouteV111
     [
         PrototypeNativeBrainLeech.EventId,
         PrototypeNativeSelfHelpBook.EventId,
+        PrototypeNativePotionCourier.EventId,
         PrototypeNativeHiveEvents.AmalgamatorId,
         PrototypeNativeLaterActs.HiveBugslayerId,
         PrototypeNativeHiveEvents.ColossalFlowerId,
@@ -105,6 +106,7 @@ public static class ExperimentalSilentThreeActRouteV111
     public static readonly string[] GloryEvents =
     [
         PrototypeNativeSelfHelpBook.EventId,
+        PrototypeNativePotionCourier.EventId,
         PrototypeNativeGloryEvents.HungryForMushroomsId,
         PrototypeNativeGloryEvents.ReflectionsId,
         PrototypeNativeGloryEvents.RoundTeaPartyId,

@@ -2088,6 +2088,7 @@ public static class PrototypeContent
                 UsableOutsideCombat: true,
                 RunEffects: [new(
                     PrototypeRunEffectKind.HealPercentMaxHp, 50)]),
+            PrototypeNativePotionCourier.FoulPotion,
             // Silent unlock potion: create three upgraded Shivs in hand.
             new PrototypePotionDefinition(
                 "proto.potion.cunning",
@@ -6762,6 +6763,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeLaterActs.Events)
             .Append(PrototypeNativeBrainLeech.Definition)
             .Append(PrototypeNativeSelfHelpBook.Definition)
+            .Append(PrototypeNativePotionCourier.Definition)
             .Concat(PrototypeNativeHiveEvents.Definitions)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
@@ -7487,6 +7489,7 @@ public static class PrototypeContent
     public static string[] PotionPool { get; } = Potions.Keys
         .Where(id => id != "proto.native.neow.ambergris"
             && id != "proto.native.underdocks.glowwater_potion"
+            && id != PrototypeNativePotionCourier.FoulPotionId
             && id != "proto.potion.blood"
             && id != "proto.potion.explosive")
         .Order(StringComparer.Ordinal).ToArray();

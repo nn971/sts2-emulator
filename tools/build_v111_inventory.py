@@ -21,6 +21,7 @@ BRANCH_COMPLETE_EVENTS = {
     "HUNGRY_FOR_MUSHROOMS", "LOST_WISP", "REFLECTIONS",
     "ROUND_TEA_PARTY", "SPIRIT_GRAFTER", "SUNKEN_STATUE",
     "SUNKEN_TREASURY", "SELF_HELP_BOOK", "TINKER_TIME",
+    "POTION_COURIER",
 }
 KINDS = {
     "acts": "Acts", "afflictions": "Afflictions", "ascensions": None,

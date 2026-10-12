@@ -9,6 +9,7 @@ public static class PrototypeNativeEventCompletionPages
         eventId is "proto.native.event.aroma_of_chaos"
             or PrototypeNativeBrainLeech.EventId
             or PrototypeNativeSelfHelpBook.EventId
+            or PrototypeNativePotionCourier.EventId
             or PrototypeNativeHiveEvents.AmalgamatorId
             or PrototypeNativeHiveEvents.LostWispId
             or PrototypeNativeHiveEvents.SpiritGrafterId
@@ -39,6 +40,9 @@ public static class PrototypeNativeEventCompletionPages
                 or PrototypeNativeSelfHelpBook.NimbleChoiceId
                 or PrototypeNativeSelfHelpBook.SwiftChoiceId
                 or PrototypeNativeSelfHelpBook.NoOptionsChoiceId
+        || eventId == PrototypeNativePotionCourier.EventId
+            && choiceId is PrototypeNativePotionCourier.GrabPotionsChoiceId
+                or PrototypeNativePotionCourier.RansackChoiceId
         || eventId == PrototypeNativeHiveEvents.AmalgamatorId
             && choiceId is "combine_strikes" or "combine_defends"
         || eventId == PrototypeNativeHiveEvents.LostWispId

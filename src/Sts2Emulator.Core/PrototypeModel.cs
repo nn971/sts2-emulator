@@ -453,6 +453,7 @@ public enum PrototypeRunEffectKind
     LoseAllGold,
     GainRandomRelic,
     GainRandomPotion,
+    GainRandomUncommonPotion,
     UpgradeRandomCard,
     UpgradeAllCards,
     UpgradeLastCardOfId,

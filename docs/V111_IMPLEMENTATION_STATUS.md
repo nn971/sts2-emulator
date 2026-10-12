@@ -23,9 +23,11 @@ enchantment amount to each powered Attack hit.
 Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C# tests
 passed, including the eight synthetic full-route cases and Ancient
 acquisition/assignment coverage. The latest solution build and coverage-baseline
-check pass; the event paths in this update were not tested. The coverage report
-records 49 integrated event paths and four complete event implementations;
-native validation remains unverified.
+check pass. Potion Courier is now integrated into Hive and Glory, with both
+event branches represented in the complete branch inventory. The coverage
+report records 50 integrated event paths, five complete event implementations,
+and 18 events with complete branch inventories. Native validation remains
+unverified.
 
 # v111 implementation status
 

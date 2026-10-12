@@ -1616,10 +1616,14 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeRunEffectKind.GainPotion:
                 case PrototypeRunEffectKind.GainRandomPotion:
+                case PrototypeRunEffectKind.GainRandomUncommonPotion:
                 {
                     var nativeOvergrowth = UsesNativeRegionalSystems(world);
                     var potionId = effect.Kind
-                        == PrototypeRunEffectKind.GainRandomPotion
+                        == PrototypeRunEffectKind.GainRandomUncommonPotion
+                        ? PrototypeNativePotionCourier.PickRandomUncommonPotion(
+                            state.Rng, "event")
+                        : effect.Kind == PrototypeRunEffectKind.GainRandomPotion
                         ? nativeOvergrowth && eventState.EventId
                             == "proto.native.event.wellspring"
                             ? PrototypeNativePotionShop.PickUniform(
@@ -1924,7 +1928,8 @@ public sealed partial class PrototypeGameEngine
         {
             if (effect.Kind is
                 PrototypeRunEffectKind.GainPotion
-                or PrototypeRunEffectKind.GainRandomPotion)
+                or PrototypeRunEffectKind.GainRandomPotion
+                or PrototypeRunEffectKind.GainRandomUncommonPotion)
             {
                 if (effect.Kind == PrototypeRunEffectKind.GainPotion)
                 {
@@ -1935,6 +1940,13 @@ public sealed partial class PrototypeGameEngine
                     }
 
                     _ = PrototypeContent.Potion(effect.PotionId);
+                }
+                if (effect.Kind
+                        == PrototypeRunEffectKind.GainRandomUncommonPotion
+                    && PrototypeNativePotionCourier
+                        .ImplementedUncommonPotionPool.Length == 0)
+                {
+                    return false;
                 }
                 if (!canAcquirePotions)
                 {
@@ -2389,6 +2401,14 @@ public sealed partial class PrototypeGameEngine
 
         var actions = new List<GameAction>();
 
+        actions.AddRange(state.Player.PotionSlots
+            .Select((potion, slot) => (Potion: potion, Slot: slot))
+            .Where(item => item.Potion?.PotionId
+                == PrototypeNativePotionCourier.FoulPotionId)
+            .Select(item => GameAction.Create(
+                "throw_foul_potion_at_merchant",
+                new UsePotionPayload(item.Slot, null))));
+
         foreach (var offer in shop.CardOffers.Where(offer => !offer.Sold && offer.Price <= state.Player.Gold))
         {
             actions.Add(GameAction.Create("buy_card", new BuyOfferPayload(offer.OfferId)));
@@ -2535,7 +2555,28 @@ public sealed partial class PrototypeGameEngine
         var goldBeforePurchase = player.Gold;
         var nextId = world.NextCardInstanceId;
 
-        if (StringComparer.Ordinal.Equals(action.Kind, "remove_card"))
+        if (StringComparer.Ordinal.Equals(
+                action.Kind, "throw_foul_potion_at_merchant"))
+        {
+            var payload = action.ReadPayload<UsePotionPayload>();
+            if (payload.Slot < 0
+                || payload.Slot >= player.PotionSlots.Length
+                || player.PotionSlots[payload.Slot]?.PotionId
+                    != PrototypeNativePotionCourier.FoulPotionId)
+            {
+                throw new InvalidOperationException(
+                    "The selected slot does not contain a Foul Potion.");
+            }
+
+            var potionSlots = (PotionInstance?[])player.PotionSlots.Clone();
+            potionSlots[payload.Slot] = null;
+            player = player with
+            {
+                Gold = GoldAfterGain(player, 100),
+                PotionSlots = potionSlots
+            };
+        }
+        else if (StringComparer.Ordinal.Equals(action.Kind, "remove_card"))
         {
             var freeParasolRemoval =
                 shop.LordsParasolRemovalChoicePending;

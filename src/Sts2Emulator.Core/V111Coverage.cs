@@ -191,6 +191,11 @@ public static class V111Coverage
             && engineIds.Contains(PrototypeNativeSelfHelpBook.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "POTION_COURIER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativePotionCourier.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
