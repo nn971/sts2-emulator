@@ -328,6 +328,20 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.NotNull(reward.PotionOption);
         Assert.False(reward.RelicResolved);
         Assert.False(reward.PotionResolved);
+
+        state = engine.Step(state, engine.GetLegalActions(state).Single(action =>
+            action.Kind == "take_reward_relic")).State;
+        Assert.True(state.World!.Reward!.RelicResolved);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == reward.RelicOption);
+        state = engine.Step(state, engine.GetLegalActions(state).Single(action =>
+            action.Kind == "skip_reward_potion")).State;
+        Assert.True(state.World!.Reward!.PotionResolved);
+        state = engine.Step(state, engine.GetLegalActions(state).Single(action =>
+            action.Kind == "leave_reward")).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Null(state.World!.Reward);
+        Assert.Null(state.World.Event);
     }
 
 
