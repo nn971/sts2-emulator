@@ -11571,7 +11571,7 @@
         "page/JOIN_FORCES",
         "page/SOLO_QUEST"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

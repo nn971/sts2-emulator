@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "206b319d78a3e88857395c8fc8097d4be5dc0a229d420c0be85c23906823267a",
+  "inventory_file_sha256": "cc67a349aa37bf9d09ddc333069ae312fe02f239a6c7710c5ead8d0eb7949cab",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "bac1ae38ceb11d76914dc5e9335e4322987cf0737550a060d16946177e7492ae",
+    "inventory_hash": "4db46395091dcb131bd6d028e83065412118a8850aaa956c2a65995f1799418c",
     "items": [
       {
         "catalogued": true,
@@ -15393,18 +15393,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/JungleMazeAdventure.cs#a56722a6f47b1c57cbfe81e340c686e504272fd8546fbd5659fe5a0ac857d1b3"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/JOIN_FORCES",
-          "initial/SOLO_QUEST",
-          "page/INITIAL",
-          "page/INITIAL/JOIN_FORCES",
-          "page/INITIAL/SOLO_QUEST",
-          "page/JOIN_FORCES",
-          "page/SOLO_QUEST"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "JUNGLE_MAZE_ADVENTURE",
         "registered": true,
@@ -29571,7 +29563,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 34,
+        "implemented": 35,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,
