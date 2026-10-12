@@ -93,6 +93,9 @@ remains unavailable until its full offer pool and remaining relic effects are
 integrated.
 Throwing Axe repeats the first card played each combat; direct combat coverage
 checks the replay and confirms later cards play once.
+Meat Cleaver adds Cook to rest sites when at least two removable deck cards
+remain. Cooking removes the selected pair and adds 5 current and maximum HP;
+tests cover eligibility and the complete rest-site action.
 Nonupeipe, Tanx and Vakuu remain unavailable until their full offer pools,
 relic effects, Ancient assignment and branch continuations are implemented.
 

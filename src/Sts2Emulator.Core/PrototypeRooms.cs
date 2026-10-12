@@ -2622,6 +2622,25 @@ public sealed partial class PrototypeGameEngine
             actions.Add(GameAction.Empty("rest_heal"));
         }
 
+        var cookableCards = CanRestCook(state.Player)
+            ? state.Player.Deck
+                .Where(card => !PrototypeCardRules.IsEternal(card))
+                .Select(card => card.InstanceId)
+                .ToArray()
+            : Array.Empty<long>();
+        for (var first = 0; first < cookableCards.Length; first++)
+        {
+            for (var second = first + 1;
+                 second < cookableCards.Length;
+                 second++)
+            {
+                actions.Add(GameAction.Create(
+                    "rest_cook",
+                    new SelectCardsPayload(
+                        [cookableCards[first], cookableCards[second]])));
+            }
+        }
+
         if (PrototypeContent.Rules.RestTrainMaxHp > 0)
         {
             actions.Add(GameAction.Empty("rest_train"));
@@ -2668,6 +2687,43 @@ public sealed partial class PrototypeGameEngine
             {
                 Player = HatchByrdonisEgg(state.Player, state.Rng)
             });
+        }
+
+        if (StringComparer.Ordinal.Equals(action.Kind, "rest_cook"))
+        {
+            if (!CanRestCook(state.Player))
+            {
+                throw new InvalidOperationException(
+                    "Cooking requires Meat Cleaver and two removable cards.");
+            }
+
+            var ids = action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds;
+            if (ids.Length != 2 || ids.Distinct().Count() != 2)
+            {
+                throw new InvalidOperationException(
+                    "Cooking must remove two distinct deck cards.");
+            }
+
+            var selected = state.Player.Deck
+                .Where(card => ids.Contains(card.InstanceId))
+                .ToArray();
+            if (selected.Length != 2
+                || selected.Any(PrototypeCardRules.IsEternal))
+            {
+                throw new InvalidOperationException(
+                    "Cooking can remove only removable deck cards.");
+            }
+
+            var player = state.Player with
+            {
+                Deck = state.Player.Deck
+                    .Where(card => !ids.Contains(card.InstanceId))
+                    .ToArray(),
+                MaxHp = state.Player.MaxHp + 5,
+                Hp = state.Player.Hp + 5
+            };
+            return CompleteRoomToMap(state with { Player = player });
         }
 
         if (StringComparer.Ordinal.Equals(action.Kind, "rest_heal"))

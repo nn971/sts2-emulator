@@ -682,6 +682,12 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             PrototypeContent.Relic(relic.RelicId)
                 .PreventRestHealing);
 
+    private static bool CanRestCook(PlayerState player) =>
+        player.ActiveRelics.Any(relic =>
+            relic.RelicId == NativeGloryAncientsV111.MeatCleaverId)
+        && player.Deck.Count(card =>
+            !PrototypeCardRules.IsEternal(card)) >= 2;
+
     private static bool CanRestUpgrade(PlayerState player) =>
         !player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId)
