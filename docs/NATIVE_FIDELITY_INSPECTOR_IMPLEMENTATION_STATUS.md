@@ -59,3 +59,23 @@ See Issue #122 and PR #121 for active tracking.
 - Archived v0.1xx API references confirm `NPlayerHand` lives in
   `MegaCrit.Sts2.Core.Nodes.Combat` and combat card identity is resolved via
   `NetCombatCard`. The user's pinned v0.111 build remains untested.
+
+## First installed-game crash diagnosis (2026-10-12)
+
+- The native mod was successfully compiled against the user's local game
+  and its `NativeV111PassiveBridge.OnFrame` callback ran.
+- The observed crash log repeatedly reported
+  `FileNotFoundException: Sts2Emulator.Trace, Version=1.0.0.0`.
+  The game's mod loader does not reliably probe the sibling protocol DLLs.
+- Native builds now compile all Core/Trace protocol `.cs` sources directly
+  into `Sts2ReferenceMod.dll` while game-independent builds retain
+  ordinary project references; staging removes stale companion DLLs.
+- The game also reported a separate
+  `UndoAndRedoForkCode` / `NInputManager.remappableKeyboardInputs`
+  missing field from another mod. Test with that mod disabled separately.
+- The loader scans PCKs, not DLLs: correct game installation must include
+  `Sts2ReferenceMod.pck` with root-level `mod_manifest.json`, plus
+  `Sts2ReferenceMod.dll`.
+- **Pending:** rebuild this revision against the user's installed DLL,
+  then retry native load and passive capture. Do not claim crash
+  resolved until the new local smoke test succeeds.
