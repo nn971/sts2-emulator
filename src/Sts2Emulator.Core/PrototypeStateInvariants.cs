@@ -1755,6 +1755,25 @@ public static class PrototypeStateInvariants
                 "Extra reward upgrade flags disagree with the options.");
         }
 
+        if (reward.CardOptionEnchantments is { } enchantments
+            && enchantments.Length != reward.CardOptions.Length)
+        {
+            throw new InvalidOperationException(
+                "Card-option enchantments disagree with the options.");
+        }
+
+        if (reward.ExtraCardOptionEnchantments is { } extraEnchantments
+            && (extraEnchantments.Length !=
+                    (reward.ExtraCardOptions?.Length ?? 0)
+                || extraEnchantments.Where((group, index) =>
+                    group is null
+                    || group.Length != reward.ExtraCardOptions![index].Length)
+                    .Any()))
+        {
+            throw new InvalidOperationException(
+                "Extra reward enchantments disagree with the options.");
+        }
+
         if (reward.CardBundles is { } bundles)
         {
             if (reward.CardOptions.Length > 0

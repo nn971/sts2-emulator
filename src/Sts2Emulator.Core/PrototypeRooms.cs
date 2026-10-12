@@ -3353,7 +3353,8 @@ public sealed partial class PrototypeGameEngine
                 player = AppendNativeCardReward(
                     player, nextId++, options[payload.Index],
                     reward.CardUpgradeFlagsForGroup(groupIndex + 1)[payload.Index],
-                    state.Rng);
+                    state.Rng,
+                    reward.CardEnchantmentsForGroup(groupIndex + 1)[payload.Index]);
             }
             else if (payload.Index != -1)
             {
@@ -3426,7 +3427,8 @@ public sealed partial class PrototypeGameEngine
                     nextId++,
                     reward.CardOptions[payload.Index],
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
-                    state.Rng);
+                    state.Rng,
+                    reward.CurrentCardOptionEnchantments[payload.Index]);
             }
             else
             {
@@ -3464,7 +3466,8 @@ public sealed partial class PrototypeGameEngine
                     nextId++,
                     currentOptions[payload.Index],
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
-                    state.Rng);
+                    state.Rng,
+                    reward.CurrentCardOptionEnchantments[payload.Index]);
             }
             else
             {
@@ -3888,6 +3891,14 @@ public sealed partial class PrototypeGameEngine
 
         var silverCrucible = ApplySilverCrucibleToCardRewardGeneration(
             state.Player, 1 + extraCardOptions.Length);
+        var hasGlitter = state.Player.ActiveRelics.Any(relic =>
+            relic.RelicId == NativeGloryAncientsV111.GlitterId);
+        var cardOptionEnchantments = hasGlitter
+            ? ApplyGlitterToCardRewardOptions(cardOptions)
+            : null;
+        var extraCardOptionEnchantments = hasGlitter
+            ? extraCardOptions.Select(ApplyGlitterToCardRewardOptions).ToArray()
+            : null;
 
         var relicOptions =
             room == PrototypeRoomType.Boss
@@ -3931,6 +3942,8 @@ public sealed partial class PrototypeGameEngine
             ExtraRelicRewardIds: lavaRock.AdditionalRelicIds,
             CardOptionUpgradeFlags: cardUpgradeFlags,
             ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
+            CardOptionEnchantments: cardOptionEnchantments,
+            ExtraCardOptionEnchantments: extraCardOptionEnchantments,
             GoldOption: nativeOvergrowth ? nativeGold : recoveredGold > 0 ? recoveredGold : null,
             GoldResolved: nativeOvergrowth ? nativeGold is null : recoveredGold == 0,
             IndependentSelection: nativeOvergrowth || recoveredGold > 0,
@@ -4211,6 +4224,25 @@ public sealed partial class PrototypeGameEngine
         }
 
         return selected.ToArray();
+    }
+
+    private static PrototypeCardEnchantment?[] ApplyGlitterToCardRewardOptions(
+        string[] cardIds)
+    {
+        return cardIds.Select(cardId =>
+        {
+            var candidate = new CardInstance(
+                0, cardId, 0, PrototypeJson.EmptyObject());
+            return PrototypeGameEngine.CanSelectEventDeckCard(
+                candidate,
+                PrototypePersistentDeckChoiceKind.Enchant,
+                transformToCardId: null,
+                enchantmentKind: PrototypeCardEnchantmentKind.Glam,
+                basicCardsOnly: false)
+                ? new PrototypeCardEnchantment(
+                    PrototypeCardEnchantmentKind.Glam)
+                : null;
+        }).ToArray();
     }
 
     private static PrototypePendingDeckChoiceState?

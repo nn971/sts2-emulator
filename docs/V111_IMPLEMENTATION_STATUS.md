@@ -124,8 +124,11 @@ the Innate, Exhaust Apotheosis card; playing Apotheosis upgrades all other
 upgradable combat cards. Brilliant Scarf's fifth manual card play now costs
 zero energy, using the turn-scoped manual-play counter. Blessed Antler adds
 one energy and inserts three Dazed at random draw-pile positions before the
-first hand draw. The other Nonupeipe branches and its event offer sequence
-remain gated. Delicate Frond now
+first hand draw. Glitter applies Glam to eligible cards in normal and extra
+combat reward groups; its saved option enchantments survive restore and card
+acquisition. Event-owned reward surfaces and native hook order remain gated.
+The other Nonupeipe branches and its event offer sequence remain gated.
+Delicate Frond now
 generates and procures potions before combat until the slots fill, using
 `run.combat_potion_generation`; Sozu blocks procurement after one generated
 potion. Full native potion-pool and cursor parity remain unverified.

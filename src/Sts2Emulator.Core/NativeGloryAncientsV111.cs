@@ -20,6 +20,7 @@ public static class NativeGloryAncientsV111
     public const string JewelryBoxId = "proto.native.ancient.jewelry_box";
     public const string BrilliantScarfId = "proto.native.ancient.brilliant_scarf";
     public const string DelicateFrondId = "proto.native.ancient.delicate_frond";
+    public const string GlitterId = "proto.native.ancient.glitter";
     public const string ApotheosisCardId = "proto.native.ancient.apotheosis";
     public const string TriBoomerangId = "proto.native.ancient.tri_boomerang";
     public const string ClawsId = "proto.native.ancient.claws";
@@ -107,7 +108,8 @@ public static class NativeGloryAncientsV111
         new(BrilliantScarfId, "Brilliant Scarf",
             FreeCardAtManualCardPlayCount: 4),
         new(DelicateFrondId, "Delicate Frond",
-            ProcureRandomPotionsBeforeCombat: true)
+            ProcureRandomPotionsBeforeCombat: true),
+        new(GlitterId, "Glitter")
     ];
 
     public static PrototypeCardDefinition[] Cards { get; } =

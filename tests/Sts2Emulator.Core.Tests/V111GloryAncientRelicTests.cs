@@ -1,9 +1,89 @@
 using Sts2Emulator.Core;
+using System.Reflection;
 
 namespace Sts2Emulator.Core.Tests;
 
 public sealed class V111GloryAncientRelicTests
 {
+    [Fact]
+    public void GlitterEnchantsCombatRewardChoicesAndPersistsOnSelection()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-glitter-reward");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = [..state.Player.Relics,
+                    Relic(NativeGloryAncientsV111.GlitterId)]
+            }
+        };
+        var combatNode = state.World!.Map.AvailableNodes().First(node =>
+            node.RoomType == PrototypeRoomType.Combat);
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload(combatNode.NodeId))).State;
+        var combat = state.World!.Combat!;
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    ExtraCardRewardsEarned = 1,
+                    Enemies = combat.Enemies.Select(enemy =>
+                        enemy with { Hp = 0, Block = 0 }).ToArray()
+                }
+            }
+        };
+        var enterReward = typeof(PrototypeGameEngine).GetMethod(
+            "EnterCombatReward", BindingFlags.NonPublic | BindingFlags.Static)!;
+        state = (RunState)enterReward.Invoke(null, [state])!;
+
+        var reward = state.World!.Reward!;
+        Assert.Equal(reward.CardOptions.Length,
+            reward.CardOptionEnchantments!.Length);
+        Assert.Single(reward.ExtraCardOptions!);
+        Assert.Equal(reward.ExtraCardOptions![0].Length,
+            reward.ExtraCardOptionEnchantments![0].Length);
+        Assert.All(reward.CardOptions.Select((cardId, index) =>
+                (cardId, enchantment: reward.CardOptionEnchantments[index])),
+            option => Assert.Equal(
+                PrototypeGameEngine.CanSelectEventDeckCard(
+                    new CardInstance(0, option.cardId, 0,
+                        PrototypeJson.EmptyObject()),
+                    PrototypePersistentDeckChoiceKind.Enchant, null,
+                    PrototypeCardEnchantmentKind.Glam, false),
+                option.enchantment is
+                    { Kind: PrototypeCardEnchantmentKind.Glam }));
+
+        var restored = RunSnapshot.Load(RunSnapshot.Save(state));
+        var take = engine.GetLegalActions(restored).First(action =>
+            action.Kind == "take_reward_card");
+        var selectedId = restored.World!.Reward!.CardOptions[
+            take.ReadPayload<ChooseCardPayload>().Index];
+        var selectedEnchantment = restored.World.Reward
+            .CurrentCardOptionEnchantments[
+                take.ReadPayload<ChooseCardPayload>().Index];
+        restored = engine.Step(restored, take).State;
+        var extraTake = engine.GetLegalActions(restored).First(action =>
+            action.Kind == "take_reward_card");
+        var extraIndex = extraTake.ReadPayload<ChooseCardPayload>().Index;
+        var extraSelectedId = restored.World!.Reward!.ExtraCardOptions![0][
+            extraIndex];
+        var extraEnchantment = restored.World.Reward
+            .CurrentCardOptionEnchantments[extraIndex];
+        restored = engine.Step(restored, extraTake).State;
+
+        var acquired = Assert.Single(restored.Player.Deck,
+            card => card.CardId == selectedId);
+        Assert.Equal(selectedEnchantment, acquired.Enchantment);
+        var extraAcquired = Assert.Single(restored.Player.Deck,
+            card => card.CardId == extraSelectedId);
+        Assert.Equal(extraEnchantment, extraAcquired.Enchantment);
+    }
+
     [Fact]
     public void BlessedAntlerAddsEnergyAndThreeDazedBeforeOpeningDraw()
     {

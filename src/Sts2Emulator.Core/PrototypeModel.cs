@@ -1979,7 +1979,11 @@ public sealed record RewardState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string[]? ExtraPotionOptions = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    bool[]? ExtraPotionGroupsResolved = null)
+    bool[]? ExtraPotionGroupsResolved = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardEnchantment?[]? CardOptionEnchantments = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardEnchantment?[][]? ExtraCardOptionEnchantments = null)
 {
     /// <summary>
     /// Native rewards resolve each extra offer by its stable original
@@ -2109,6 +2113,23 @@ public sealed record RewardState(
             .ToArray();
     }
 
+    public PrototypeCardEnchantment?[] CardEnchantmentsForGroup(
+        int groupIndex)
+    {
+        if (groupIndex == 0)
+        {
+            return CardOptionEnchantments is { } enchantments
+                ? (PrototypeCardEnchantment?[])enchantments.Clone()
+                : new PrototypeCardEnchantment?[CardOptions.Length];
+        }
+
+        var extraIndex = groupIndex - 1;
+        var options = ExtraCardOptions![extraIndex];
+        return ExtraCardOptionEnchantments is { } extras
+            ? (PrototypeCardEnchantment?[])extras[extraIndex].Clone()
+            : new PrototypeCardEnchantment?[options.Length];
+    }
+
     public string[] CurrentCardOptions =>
         !CardResolved
             ? CardOptions
@@ -2123,6 +2144,13 @@ public sealed record RewardState(
             : FirstPendingExtraCardGroupIndex is var index && index >= 0
                 ? CardUpgradeFlagsForGroup(index + 1)
                 : Array.Empty<bool>();
+
+    public PrototypeCardEnchantment?[] CurrentCardOptionEnchantments =>
+        !CardResolved
+            ? CardEnchantmentsForGroup(0)
+            : FirstPendingExtraCardGroupIndex is var index && index >= 0
+                ? CardEnchantmentsForGroup(index + 1)
+                : Array.Empty<PrototypeCardEnchantment?>();
 
     public string[] CurrentRelicOptions =>
         RelicOptions is { Length: > 0 }
@@ -2173,6 +2201,16 @@ public sealed record RewardState(
         ExtraGoldGroupsResolved = ExtraGoldGroupsResolved is null ? null : (bool[])ExtraGoldGroupsResolved.Clone(),
         ExtraPotionOptions = ExtraPotionOptions is null ? null : (string[])ExtraPotionOptions.Clone(),
         ExtraPotionGroupsResolved = ExtraPotionGroupsResolved is null ? null : (bool[])ExtraPotionGroupsResolved.Clone(),
+        CardOptionEnchantments = CardOptionEnchantments is null
+            ? null
+            : CardOptionEnchantments.Select(enchantment =>
+                enchantment is null ? null : enchantment with { }).ToArray(),
+        ExtraCardOptionEnchantments = ExtraCardOptionEnchantments is null
+            ? null
+            : ExtraCardOptionEnchantments.Select(group => group.Select(
+                enchantment => enchantment is null
+                    ? null
+                    : enchantment with { }).ToArray()).ToArray(),
         PendingDeckChoice = PendingDeckChoice?.Fork(),
         ReturnedStolenCards = ReturnedStolenCards is null
             ? null
