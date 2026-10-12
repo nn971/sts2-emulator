@@ -17,6 +17,10 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     private readonly Dictionary<object, long> _running =
         new(ReferenceEqualityComparer.Instance);
     private readonly List<long> _activeOrder = [];
+    // The native executor may invoke BeforeActionExecuted again on the same
+    // action instance after resuming a player-choice suspension.
+    private readonly HashSet<object> _pendingResumption =
+        new(ReferenceEqualityComparer.Instance);
     private readonly string _gameBuild;
     private long _sequence;
     private long _nextActionId;
@@ -98,11 +102,23 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     {
         if (_closed) return;
         ArgumentNullException.ThrowIfNull(action);
-        if (_running.ContainsKey(action))
+        if (_running.TryGetValue(action, out long existingId))
         {
+            if (_pendingResumption.Remove(action))
+            {
+                if (state is null)
+                    ObservationFailure("action_resume_snapshot", "STATE_UNAVAILABLE");
+                Write(new NativeActionEnvelopeRecord(
+                    "action_resumed", Next(), existingId,
+                    NativeType: type, State: Snapshot(state),
+                    Data: Data("native_executor_before_action_after_choice", type)));
+                return;
+            }
             _incomplete = true;
             Write(new NativeActionEnvelopeRecord(
-                "anomaly", Next(), Data: Data("duplicate_action_start", type)));
+                "anomaly", Next(), existingId,
+                NativeType: type,
+                Data: Data("duplicate_action_start_without_choice", type)));
             return;
         }
         if (state is null) ObservationFailure("action_start_snapshot", "STATE_UNAVAILABLE");
@@ -128,6 +144,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 State: Snapshot(state)));
             return;
         }
+        _pendingResumption.Remove(action);
         if (state is null) ObservationFailure("action_complete_snapshot", "STATE_UNAVAILABLE");
         int index = _activeOrder.LastIndexOf(id);
         if (index >= 0) _activeOrder.RemoveAt(index);
@@ -141,6 +158,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     {
         if (_closed) return;
         long? actionId = _running.TryGetValue(action, out long id) ? id : null;
+        if (actionId.HasValue) _pendingResumption.Add(action);
+        else _incomplete = true;
         Write(new NativeActionEnvelopeRecord(
             "nested_choice_pause", Next(), actionId,
             NativeType: action.GetType().FullName ?? action.GetType().Name,
@@ -179,7 +198,10 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     public void HistoryReset(long previouslyObserved, long newLength)
     {
         if (_closed) return;
-        _incomplete = true;
+        // The native game clears CombatHistory when an encounter ends.
+        // Whether a reset is benign depends on the following callbacks;
+        // the auditor only accepts a final reset directly before terminal.
+        if (_activeOrder.Count > 0) _incomplete = true;
         Write(new NativeActionEnvelopeRecord(
             "history_reset", Next(),
             Data: JsonSerializer.SerializeToElement(new
