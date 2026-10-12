@@ -28,6 +28,17 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
             state = Engine.Step(
                 state, Engine.GetLegalActions(state)[0]).State;
         Assert.Equal(RunPhase.MapChoice, state.Phase);
+        // These fixtures isolate transfer/room behavior; explicit assignment
+        // tests below and whole-route sweeps exercise the opening events.
+        if (state.World!.PreparedLaterActEncounterBags is { } prepared)
+            state = state with
+            {
+                World = state.World with
+                {
+                    PreparedLaterActEncounterBags = prepared.Select(bag =>
+                        bag with { AssignedAncientId = null }).ToArray()
+                }
+            };
         return state;
     }
 
@@ -104,6 +115,7 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
     [Theory]
     [InlineData(NativePaelRewardsV111.PaelId)]
     [InlineData(NativeAncientRewardsV111.TezcataraId)]
+    [InlineData(NativeOrobasEventV111.EventId)]
     public void AssignedHiveAncientOpensBeforeMapChoice(string ancientId)
     {
         var state = ActOneMap("silent-assigned-ancient-" + ancientId);
@@ -134,6 +146,74 @@ public sealed class ExperimentalSilentThreeActRouteV111Tests
             CanonicalJson.Sha256(restored));
         Assert.Equal(CanonicalJson.Sha256(hive),
             CanonicalJson.Sha256(Transition(state.Fork())));
+    }
+
+    [Fact]
+    public void ConfiguredRunsPrepareEverySupportedActLocalAncientAtRunStart()
+    {
+        var seen = new Dictionary<int, HashSet<string>>
+        {
+            [2] = new(StringComparer.Ordinal),
+            [3] = new(StringComparer.Ordinal)
+        };
+        for (var index = 0; index < 48; index++)
+        {
+            var configuration = RunConfiguration.Create() with
+            {
+                FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
+            };
+            var initial = V111RunFactory.Create("assigned-run-start-" + index, configuration);
+            var before = CanonicalJson.Sha256(initial);
+            var started = Engine.Step(initial, GameAction.Empty("start_run")).State;
+            var prepared = started.World!.PreparedLaterActEncounterBags!;
+            Assert.Equal(new[] { 2, 3 }, prepared.Select(bag => bag.Act));
+            foreach (var bag in prepared)
+                seen[bag.Act].Add(Assert.IsType<string>(bag.AssignedAncientId));
+            PrototypeStateInvariants.Validate(started);
+            Assert.Equal(before, CanonicalJson.Sha256(initial));
+            Assert.Equal(CanonicalJson.Sha256(started), CanonicalJson.Sha256(
+                Engine.Step(initial.Fork(), GameAction.Empty("start_run")).State));
+            Assert.Equal(CanonicalJson.Sha256(prepared), CanonicalJson.Sha256(
+                RunSnapshot.Load(RunSnapshot.Save(started))
+                    .World!.PreparedLaterActEncounterBags));
+        }
+        Assert.True(seen[2].SetEquals(new[] { NativeOrobasEventV111.EventId,
+            NativePaelRewardsV111.PaelId, NativeAncientRewardsV111.TezcataraId }));
+        Assert.True(seen[3].SetEquals(new[] { NativeNonupeipeEventV111.EventId,
+            NativeTanxEventV111.EventId, NativeVakuuEventV111.EventId }));
+    }
+
+    [Theory]
+    [InlineData(NativeTanxEventV111.EventId)]
+    [InlineData(NativeVakuuEventV111.EventId)]
+    [InlineData(NativeNonupeipeEventV111.EventId)]
+    public void AssignedGloryAncientOpensBeforeMapChoice(string ancientId)
+    {
+        var state = ActOneMap("glory-assigned-" + ancientId);
+        state = state with
+        {
+            World = state.World! with
+            {
+                PreparedLaterActEncounterBags = state.World.PreparedLaterActEncounterBags!
+                    .Select(bag => bag.Act == 3
+                        ? bag with { AssignedAncientId = ancientId } : bag.Fork())
+                    .ToArray()
+            }
+        };
+        PrototypeStateInvariants.Validate(state);
+        var hive = Transition(state);
+        var glory = Transition(hive);
+        Assert.Equal(RunPhase.Event, glory.Phase);
+        Assert.Equal(3, glory.World!.Act);
+        Assert.Equal(0, glory.World.Floor);
+        Assert.Equal(ancientId, glory.World.Event!.EventId);
+        Assert.Equal(ancientId, glory.World.LaterActEncounterBag!.AssignedAncientId);
+        Assert.NotEmpty(Engine.GetLegalActions(glory));
+        PrototypeStateInvariants.Validate(glory);
+        Assert.Equal(CanonicalJson.Sha256(glory), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(glory))));
+        Assert.Equal(CanonicalJson.Sha256(glory), CanonicalJson.Sha256(
+            Transition(hive.Fork())));
     }
 
     [Theory]

@@ -2,7 +2,7 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Source-backed Nonupeipe offer generation at Glory's Ancient boundary.
-/// Normal run-start Ancient assignment remains owned by the regional route.
+/// Run-start act-local Ancient assignment is owned by the regional route.
 /// Source: STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class NativeNonupeipeEventV111

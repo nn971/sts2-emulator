@@ -6738,6 +6738,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .Append(NativeAncientRewardsV111.TezcataraRewardDefinition)
             .Append(NativePaelRewardsV111.RewardDefinition)
+            .Append(NativeOrobasEventV111.Definition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
     public static string[] OvergrowthWeakEncounterPool { get; } =

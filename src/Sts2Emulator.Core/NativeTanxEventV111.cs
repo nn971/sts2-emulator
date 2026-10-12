@@ -2,7 +2,7 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Source-backed Tanx Ancient offer generation and its named Act 3 entry
-/// fixture. Normal Ancient assignment remains owned by the later-act route.
+/// fixture. The later-act route prepares normal act-local Ancient assignment.
 /// Source: STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class NativeTanxEventV111

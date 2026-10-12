@@ -61,6 +61,11 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
             option.Kind == "play_card"
             && option.ReadPayload<PlayCardPayload>().CardInstanceId
                 == instanceId);
+        // Opening Ancient autoplays can consume the held Normality or relic
+        // play limit before this synthetic card is inserted. Advance the real
+        // turn to reset those limits and try the finisher on the next pass.
+        if (action is null && allActions.Any(option => option.Kind == "end_turn"))
+            return Engine.Step(state, GameAction.Empty("end_turn")).State;
         if (action is null)
             throw new InvalidOperationException(
                 $"Synthetic finisher unavailable on act {prepared.World!.Act} " +
@@ -125,6 +130,20 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
                     if (state.World!.Combat!.PendingChoice is not null)
                     {
                         state = Engine.Step(state, actions[0]).State;
+                        break;
+                    }
+                    // Blood-Soaked Rose can put Enthralled in the hand.
+                    // Its compulsory play must settle before another manual
+                    // card, including this fixture's synthetic finisher.
+                    var compulsory = actions.FirstOrDefault(action =>
+                        action.Kind == "play_card"
+                        && PrototypeContent.Card(state.World.Combat.Cards.Single(card =>
+                            card.InstanceId == action.ReadPayload<PlayCardPayload>()
+                                .CardInstanceId).CardId)
+                            .PreventsOtherManualCardPlaysWhileInHand);
+                    if (compulsory is not null)
+                    {
+                        state = Engine.Step(state, compulsory).State;
                         break;
                     }
                     consecutiveCombatFinishers++;

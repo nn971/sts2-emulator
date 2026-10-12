@@ -231,7 +231,7 @@ public static class V111RunFactory
                     ? new[] { 2, 3 }.Select(act =>
                         ExperimentalSilentThreeActRouteV111.InitialBag(
                             act, opening.Rng, config.Ascension,
-                            config.Profile)).ToArray()
+                            config.Profile, assignAncient: true)).ToArray()
                     : null
             }
         };

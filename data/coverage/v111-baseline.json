@@ -15640,7 +15640,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Nonupeipe.cs#beaf1b558150881c7072e07b7481d1671b52489d79a4eccb2f409c5c3b9c8d0f"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "relic/BEAUTIFUL_BRACELET",
@@ -15662,12 +15662,14 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.orobas"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Orobas.cs#570fb013195b4369939db8728dae9516e46505cd552b5440e8c9386f82920ebb"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "partial",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "relic/ALCHEMICAL_COFFER",
@@ -15683,7 +15685,7 @@
         ],
         "missing_variants": [],
         "native_id": "OROBAS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15696,7 +15698,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Pael.cs#786e42c9c20f1c2e2da81ee7d7996af01857f14535fe81d5c1d74b1edf3c5fc0"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "relic/PAELS_BLOOD",
@@ -16165,7 +16167,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Tanx.cs#d2b62cb767fa7d510f0ae4900a29bd22df0fbb933fcdaebebbd13da6c1475c56"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "relic/CLAWS",
@@ -16224,7 +16226,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Tezcatara.cs#8e21358e973e2720151c88cfec7486eb7dcd9cbdfb84a912e65b14394e100abf"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "relic/BIIIG_HUG",
@@ -16478,7 +16480,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Vakuu.cs#f889c0428921f664bc52c119574ef8978a910f85a5cfffac70f71e1fc690a84b"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
           "relic/BLOOD_SOAKED_ROSE",
@@ -29794,7 +29796,7 @@
         "eligible": 66,
         "excluded": 0,
         "implemented": 0,
-        "integrated": 40,
+        "integrated": 46,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

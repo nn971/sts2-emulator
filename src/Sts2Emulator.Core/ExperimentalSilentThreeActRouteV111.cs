@@ -208,7 +208,7 @@ public static class ExperimentalSilentThreeActRouteV111
 
     public static PrototypeLaterActEncounterBagV111 InitialBag(
         int act, RngBundle rng, int ascension = 0,
-        SimulationProfile? profile = null)
+        SimulationProfile? profile = null, bool assignAncient = false)
     {
         var rooms = OrdinaryRoomCount(act);
         var history = new List<string>(rooms);
@@ -244,7 +244,28 @@ public static class ExperimentalSilentThreeActRouteV111
         }
         return new PrototypeLaterActEncounterBagV111(
             act, 0, weak, normal, elite,
-            boss, secondBoss);
+            boss, secondBoss,
+            AssignedAncientId: assignAncient ? SelectAncient(act, rng) : null);
+    }
+
+    /// <summary>
+    /// Executable act-local Ancient assignment. Shared Darv partitioning and
+    /// native UpFront draw order remain separate implementation work.
+    /// Cross-character Orobas offers are deferred in its event profile.
+    /// </summary>
+    public static string[] AncientPool(int act) => act switch
+        {
+            2 => [NativeOrobasEventV111.EventId, NativePaelRewardsV111.PaelId,
+                NativeAncientRewardsV111.TezcataraId],
+            3 => [NativeNonupeipeEventV111.EventId, NativeTanxEventV111.EventId,
+                NativeVakuuEventV111.EventId],
+            _ => throw new ArgumentOutOfRangeException(nameof(act))
+        };
+
+    private static string SelectAncient(int act, RngBundle rng)
+    {
+        var pool = AncientPool(act);
+        return pool[PrototypeRng.NextInt(rng, "event", pool.Length)];
     }
 
     public static RunState ContinueAct(RunState state)
@@ -286,20 +307,26 @@ public static class ExperimentalSilentThreeActRouteV111
             Phase = RunPhase.MapChoice
         };
 
-        // The source-selected Ancient is part of the prepared run history.
-        // Assignment policy and UpFront RNG are still unresolved, but once a
-        // supported Ancient has been assigned, entering Hive must execute its
-        // opening event before the player chooses a map node.
-        if (nextAct == 2 && nextBag.AssignedAncientId is { } ancientId)
+        // An assigned Ancient executes at the act boundary before map choice.
+        // Run-start assignment and its RNG policy remain separate.
+        if (nextBag.AssignedAncientId is { } ancientId)
         {
-            return ancientId switch
+            return (nextAct, ancientId) switch
             {
-                NativePaelRewardsV111.PaelId =>
+                (2, NativePaelRewardsV111.PaelId) =>
                     NativePaelRewardsV111.BeginPaelOpening(continued),
-                NativeAncientRewardsV111.TezcataraId =>
+                (2, NativeAncientRewardsV111.TezcataraId) =>
                     NativeAncientRewardsV111.BeginTezcataraOpening(continued),
+                (2, NativeOrobasEventV111.EventId) =>
+                    NativeOrobasEventV111.BeginOpening(continued),
+                (3, NativeTanxEventV111.EventId) =>
+                    NativeTanxEventV111.BeginOpening(continued),
+                (3, NativeVakuuEventV111.EventId) =>
+                    NativeVakuuEventV111.BeginOpening(continued),
+                (3, NativeNonupeipeEventV111.EventId) =>
+                    NativeNonupeipeEventV111.BeginOpening(continued),
                 _ => throw new NotSupportedException(
-                    $"Assigned Hive Ancient '{ancientId}' is not implemented.")
+                    $"Assigned Act {nextAct} Ancient '{ancientId}' is not implemented.")
             };
         }
 

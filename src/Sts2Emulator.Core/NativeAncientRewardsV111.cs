@@ -88,7 +88,8 @@ public static class NativeAncientRewardsV111
 
     public static bool IsOpeningEvent(RunWorldState world) =>
         world.Act == 2 && world.Floor == 0 && world.Map.CurrentNodeId is null
-        && world.Event?.EventId is TezcataraId or NativePaelRewardsV111.PaelId;
+        && world.Event?.EventId is TezcataraId or NativePaelRewardsV111.PaelId
+            or NativeOrobasEventV111.EventId;
 
     private static string[][] CompleteTezcataraPools() =>
     [
@@ -108,13 +109,17 @@ public static class NativeAncientRewardsV111
 
     internal static void ValidateEventContext(RunState state)
     {
+        NativeOrobasEventV111.ValidateEventContext(state);
         if (state.World is { } world
-            && IsOpeningEvent(world)
+            && (IsOpeningEvent(world)
+                || NativeTanxEventV111.IsOpeningEvent(world)
+                || NativeVakuuEventV111.IsOpeningEvent(world)
+                || NativeNonupeipeEventV111.IsOpeningEvent(world))
             && world.LaterActEncounterBag?.AssignedAncientId is { } assigned
             && !StringComparer.Ordinal.Equals(
                 assigned, world.Event!.EventId))
             throw new InvalidOperationException(
-                "Hive opening Ancient disagrees with the prepared assignment.");
+                "Opening Ancient disagrees with the prepared assignment.");
 
         if (state.World?.Event is { EventId: NativeTanxEventV111.EventId,
                 NativeEventRng: null })
@@ -130,6 +135,8 @@ public static class NativeAncientRewardsV111
                 "Nonupeipe requires its persisted native event RNG context.");
 
         if (state.World?.Event is not { NativeEventRng: { } stream } evt)
+            return;
+        if (evt.EventId == NativeOrobasEventV111.EventId)
             return;
         if (evt.EventId == NativePaelRewardsV111.PaelId)
         {

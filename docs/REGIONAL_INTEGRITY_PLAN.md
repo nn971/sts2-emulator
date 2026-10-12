@@ -24,11 +24,11 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-13): 1,839 C# tests pass, executable coverage
+Current validation (2026-10-13): 1,847 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
-event category now reports 40 of 66 event paths integrated into a regional or
+event category now reports 46 of 66 event paths integrated into a regional or
 forced quest route, fourteen with complete branch inventories, and zero
 native-validated. The ten special/event fights are
 not counted as ordinary queue integration. These classifications are
@@ -55,11 +55,16 @@ and repeating the sweep reproduced all terminal hashes. This improves natural
 later-act exercise but does not establish Hive completion or an unassisted
 three-act victory. See the [natural-run sweep
 ledger](reference-builds/v0.111.0-unassisted-silent-run-sweep.md).
-When the prepared Hive history contains an assigned Pael or Tezcatara Ancient,
-Act 1→Hive now opens that Ancient before map choice. The persisted assignment,
-offer generation, event context and snapshot restore are covered. Run-start
-Ancient selection, Orobas's event and exact `run.up_front` assignment draws
-remain unimplemented; this does not enable normal Ancient assignment. Seven
+Configured Silent runs now prepare all six act-local Ancient assignments at
+run start. Hive opens Orobas, Pael or Tezcatara; Glory opens Nonupeipe, Tanx or
+Vakuu before map choice. Existing acquisition and reward continuations are
+reused. Orobas executes its eight Silent relic options with a locked third
+pool when both starter dependencies are absent. Cross-character Sea Glass and
+Prismatic Gem offers, plus Colorful Philosophers, are explicitly postponed by
+the current user scope. Shared Darv remains unimplemented. Assignment currently
+uses prototype event randomness; native UpFront scheduling is left for the RNG
+pass. See [the assignment ledger](reference-builds/v0.111.0-ancient-assignment.md).
+Seven
 Orobas relic dependencies now have executable effects for Silent: Radiant
 Pearl's temporary Luminesce, Sand Castle's six-card upgrade, Touch of Orobas's
 starter replacement, Archaic Tooth's Neutralize-to-Suppress transformation,
@@ -82,7 +87,7 @@ effects for the newly covered entries. Remaining potion gaps are unlock-filter
 coverage, live native cursor validation, and Colorless Potion/Orobic Acid
 candidate card pools, which still use currently implemented cards. Prismatic
 Gem now implements its persistent +1 energy component, but its foreign
-card-pool effect is still missing; Sea Glass remains unimplemented. See
+card-pool effect and Sea Glass are deferred cross-character mechanics. See
 [the Orobas dependency ledger](reference-builds/v0.111.0-hive-orobas-ancient.md).
 Native-shaped Silent card reward and merchant generators now retain the pinned
 Silent card-pool order while the legacy prototype reward pool remains sorted.
@@ -186,8 +191,8 @@ Overgrowth, with no regional fallback or reachable unsupported behavior.
   Supported Pael/Tezcatara opening execution is integrated once assigned. The
   source assignment call order is audited in
   [the Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md),
-  but run-start UpFront integration and the remaining Hive Ancient are still
-  open.
+  with all three Hive act-local Ancients now executable. Shared Darv and
+  run-start UpFront integration remain open; the latter is deferred to RNG work.
 - Remove Hive/Glory initialization rejection only after supported regional
   policies exist. Keep unfinished paths explicitly gated during development.
 - Establish an explicit deterministic test route through Act 1 → Hive → Glory
@@ -234,20 +239,19 @@ regional entry/branch has direct integration and semantic coverage.
   and War Hammer (upgrade up to four random cards after Elite victories)
   dependencies are implemented and tested through reward/combat resolution.
   Tanx's offer generation and all ten relic branches run through a named
-  Ancient fixture; ordinary Glory Ancient assignment remains gated. This
-  does not complete normal Tanx run integration. Individual Nonupeipe
+  Ancient fixture and now also through normal act-local assignment.
+  Native RNG scheduling remains deferred. Individual Nonupeipe
   dependencies now include Blessed Antler, Beautiful Bracelet, Fur Coat,
   Glitter, Jewelry Box/Apotheosis, Brilliant Scarf and Delicate Frond.
   Nonupeipe's conditional offer sequence and all ten relic branches execute
-  through a named Glory Ancient fixture; ordinary Ancient assignment remains
-  gated. Fiddle's opening hand bonus and player-turn extra-draw suppression,
+  through a named Glory Ancient fixture and normal act-local assignment. Fiddle's opening hand bonus and player-turn extra-draw suppression,
   Blood-Soaked Rose's energy and Enthralled acquisition, Whispering Earring's
   first-turn paid autoplay, and Sere Talon's Max HP loss plus Wish cards are
   implemented as dependencies. Vakuu now samples one relic from each of its
   three source pools using the native event stream, and Lord's Parasol runs
   free shop purchases through existing acquisition hooks before offering a
   potion replacement or forced card-removal choice. These branches use a
-  named Ancient fixture; ordinary Ancient assignment remains gated. Preserved
+  named Ancient fixture and normal act-local assignment. Preserved
   Fog now removes up to
   three selected cards before adding its Innate, Ethereal, Eternal Folly curse
   through reward, shop and event deck-choice continuations. Music Box also
@@ -262,7 +266,7 @@ regional entry/branch has direct integration and semantic coverage.
   source-eligible curses are modeled; its reward test checks selected curse
   IDs and the native stream cursor. Vakuu's three-pool event, native offer
   stream, and Lord's Parasol shop continuation are implemented through the
-  named Ancient fixture; ordinary Ancient assignment remains gated.
+  named Ancient fixture and normal act-local assignment.
   [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.
@@ -280,8 +284,7 @@ through supported configured execution, with all regional branches reachable.
 - Extend native entry beyond Act 1 weak/normal encounters as audited content
   requires it. Do not equate native PRNG use with end-to-end seed parity.
 - Add live reference fixtures when a pinned installation/capture corpus becomes
-  available. Until then, keep native validation unverified and continue source
-  implementation and integration work.
+  available. Native validation is deferred; continue implementation and integration work.
 
 ## Verification and delivery
 

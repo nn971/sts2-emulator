@@ -1,8 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Implemented dependencies for Orobas's pinned Ancient offers. The full
-/// Ancient remains gated until its other offered relics are implemented.
+/// Implemented dependencies for Orobas's Silent Ancient offers. Foreign-card
+/// Sea Glass and Prismatic Gem mechanics are deferred separately.
 /// </summary>
 public static class PrototypeNativeOrobasRelics
 {
@@ -26,7 +26,7 @@ public static class PrototypeNativeOrobasRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
-        new(AlchemicalCofferId, "Alchemical Coffer"),
+        new(AlchemicalCofferId, "Alchemical Coffer", ExtraPotionSlots: 4),
         new(DriftwoodId, "Driftwood"),
         new(GlassEyeId, "Glass Eye"),
         new(ElectricShrympId, "Electric Shrymp",

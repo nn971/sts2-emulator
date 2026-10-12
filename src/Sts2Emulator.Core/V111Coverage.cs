@@ -197,10 +197,16 @@ public static class V111Coverage
         if (eventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
             return true;
 
-        // Ancient models execute through named opening fixtures, but are not
-        // integrated into normal run assignment until every Ancient pool can
-        // resolve all its visible branches.
-        return false;
+        // Configured three-act runs prepare these act-local assignments and
+        // execute the existing opening handlers at each transition. Orobas's
+        // foreign-card options are explicitly deferred; implementation and
+        // branch-completeness claims remain separate from this routing claim.
+        return eventId is NativePaelRewardsV111.PaelId
+            or NativeAncientRewardsV111.TezcataraId
+            or NativeOrobasEventV111.EventId
+            or NativeTanxEventV111.EventId
+            or NativeVakuuEventV111.EventId
+            or NativeNonupeipeEventV111.EventId;
     }
 
     private static string Normalize(string value) =>

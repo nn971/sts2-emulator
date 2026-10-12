@@ -111,7 +111,7 @@ public sealed class V111FoundationsTests
         Assert.Contains(report.Items, item => item.Kind == "events"
             && item.NativeId == "VAKUU"
             && item.Implementation == "partial"
-            && item.Integration == "missing");
+            && item.Integration == "integrated");
         Assert.Contains(report.Items, item => item.Kind == "events"
             && item.NativeId == "COLORFUL_PHILOSOPHERS"
             && item.Implementation == "missing"

@@ -481,11 +481,10 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException(
                 "Regional preselected boss is not eligible for this act.");
         if (bag.AssignedAncientId is { } ancientId
-            && (world.Act != 2
-                || ancientId is not (NativePaelRewardsV111.PaelId
-                    or NativeAncientRewardsV111.TezcataraId)))
+            && !ExperimentalSilentThreeActRouteV111.AncientPool(world.Act)
+                .Contains(ancientId, StringComparer.Ordinal))
             throw new InvalidOperationException(
-                "Prepared Hive Ancient assignment is unsupported or belongs to another act.");
+                "Prepared Ancient assignment is unsupported or belongs to another act.");
         var requiresSecondBoss = world.Act == 3 && ascension >= 10;
         if (requiresSecondBoss != (bag.SecondBossEncounterId is not null)
             || bag.SecondBossEncounterId is { } secondBoss

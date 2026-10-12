@@ -910,6 +910,7 @@ public sealed partial class PrototypeGameEngine
                 or NativeTanxEventV111.EventId
                 or NativeVakuuEventV111.EventId
                 or NativeNonupeipeEventV111.EventId
+                or NativeOrobasEventV111.EventId
                 && eventState.OfferedChoiceIds is { } offeredIds
             ? offeredIds.Select(id => definition.Choices.Single(choice => choice.Id == id))
             : definition.Choices.AsEnumerable();
@@ -1780,13 +1781,19 @@ public sealed partial class PrototypeGameEngine
                 relic.Id == relicId))
         || (eventId == NativeNonupeipeEventV111.EventId
             && NativeGloryAncientsV111.Relics.Any(relic =>
-                relic.Id == relicId));
+                relic.Id == relicId))
+        || (eventId == NativeOrobasEventV111.EventId
+            && NativeOrobasEventV111.Definition.Choices.Any(choice =>
+                choice.Effects.Any(effect => effect.RelicId == relicId)));
 
     private static bool CanTakeEventChoice(
         PlayerState player,
         PrototypeEventChoiceDefinition choice,
         RunWorldState world)
     {
+        if (world.Event?.EventId == NativeOrobasEventV111.EventId
+            && !NativeOrobasEventV111.IsChoiceEligible(player, choice.Id))
+            return false;
         // Native Grave.IsAllowed gates the event on at least one
         // exhaustible deck card. Its Confront option is additionally
         // displayed as locked when no such card exists.

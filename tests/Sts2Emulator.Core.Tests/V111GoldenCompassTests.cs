@@ -18,6 +18,18 @@ public sealed class V111GoldenCompassTests
         for (var i = 0; i < 30 && state.Phase is RunPhase.Event or RunPhase.Reward; i++)
             state = Engine.Step(state, Engine.GetLegalActions(state).First()).State;
         Assert.Equal(RunPhase.MapChoice, state.Phase);
+        // This named fixture deliberately assigns Tezcatara rather than the
+        // seed's normally sampled Ancient.
+        state = state with
+        {
+            World = state.World! with
+            {
+                PreparedLaterActEncounterBags = state.World.PreparedLaterActEncounterBags!
+                    .Select(bag => bag.Act == 2
+                        ? bag with { AssignedAncientId = NativeAncientRewardsV111.TezcataraId }
+                        : bag.Fork()).ToArray()
+            }
+        };
         state = state with { Phase = RunPhase.ActTransition };
         state = Engine.Step(state, GameAction.Empty("continue_act")).State;
         return state with
@@ -27,7 +39,7 @@ public sealed class V111GoldenCompassTests
             {
                 Event = new EventState(NativeAncientRewardsV111.TezcataraId,
                     OfferedChoiceIds: ["take_" + NativeAncientRewardsV111.GoldenCompassId]),
-                EventHistory = state.World.EventIds.Append(NativeAncientRewardsV111.TezcataraId).ToArray()
+                EventHistory = state.World.EventIds
             }
         };
     }
