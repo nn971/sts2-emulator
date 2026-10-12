@@ -54,7 +54,7 @@ public sealed partial class PrototypeGameEngine
                 break;
             case PrototypeCardRewardGeneratorKind.RarePool:
             {
-                var rarePool = PrototypeContent.RewardCardPool
+                var rarePool = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity
                         == PrototypeCardRarity.Rare)
                     .ToArray();
@@ -67,7 +67,7 @@ public sealed partial class PrototypeGameEngine
             }
             case PrototypeCardRewardGeneratorKind.DistinctRewardPool:
                 oldOptions = PickDistinct(
-                    PrototypeContent.RewardCardPool,
+                    PrototypeContent.NativeSilentRewardCardPool,
                     oldOptions.Length, state.Rng, "reward");
                 break;
             case PrototypeCardRewardGeneratorKind.RarityPool:
@@ -75,7 +75,7 @@ public sealed partial class PrototypeGameEngine
                 var rarity = generator.Rarity
                     ?? throw new InvalidOperationException(
                         "Rarity card reward generator has no rarity.");
-                var pool = PrototypeContent.RewardCardPool
+                var pool = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity == rarity)
                     .ToArray();
                 if (pool.Length < oldOptions.Length)

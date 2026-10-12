@@ -155,9 +155,11 @@ public sealed partial class PrototypeGameEngine
                 // Native presents two independently selectable
                 // three-card rewards from the character's pool.
                 var cards1 = PickDistinct(
-                    PrototypeContent.RewardCardPool, 3, state.Rng, "reward");
+                    PrototypeContent.NativeSilentRewardCardPool, 3,
+                    state.Rng, "reward");
                 var cards2 = PickDistinct(
-                    PrototypeContent.RewardCardPool, 3, state.Rng, "reward");
+                    PrototypeContent.NativeSilentRewardCardPool, 3,
+                    state.Rng, "reward");
                 reward = new RewardState(
                     SourceRoom: "Event:" + evt.EventId,
                     CardOptions: [],

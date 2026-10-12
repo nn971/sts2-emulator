@@ -33,7 +33,7 @@ public sealed partial class PrototypeGameEngine
             };
             var groups = rarities.Select(rarity =>
             {
-                var pool = PrototypeContent.RewardCardPool
+                var pool = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity == rarity)
                     .ToArray();
                 if (pool.Length < 3)

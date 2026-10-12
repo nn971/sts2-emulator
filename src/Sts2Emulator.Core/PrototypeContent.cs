@@ -7394,6 +7394,22 @@ public static class PrototypeContent
         .Order(StringComparer.Ordinal)
         .ToArray();
 
+    // Source-ordered equivalent for native-shaped CardFactory generation.
+    // Keep RewardCardPool sorted for the legacy prototype compatibility path.
+    public static string[] NativeSilentRewardCardPool { get; } =
+        NativeSilentCardPool
+            .Where(id =>
+            {
+                var card = Cards[id];
+                return card.MechanicsImplemented
+                    && !card.MultiplayerOnly
+                    && card.RewardEligible
+                    && card.Rarity is PrototypeCardRarity.Common
+                        or PrototypeCardRarity.Uncommon
+                        or PrototypeCardRarity.Rare;
+            })
+            .ToArray();
+
     public static (PrototypeCardRarity Rarity, int Weight)[] RewardRarityWeights(int act) =>
         act switch
         {

@@ -32,7 +32,7 @@ public sealed partial class PrototypeGameEngine
             }
             case PrototypeRunEffectKind.OfferThreeRareCards:
             {
-                var rarePool = PrototypeContent.RewardCardPool
+                var rarePool = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity
                         == PrototypeCardRarity.Rare)
                     .ToArray();
@@ -80,11 +80,11 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeRunEffectKind.OfferCardBundles:
             {
-                var commons = PrototypeContent.RewardCardPool
+                var commons = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity ==
                         PrototypeCardRarity.Common)
                     .ToArray();
-                var uncommons = PrototypeContent.RewardCardPool
+                var uncommons = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity ==
                         PrototypeCardRarity.Uncommon)
                     .ToArray();

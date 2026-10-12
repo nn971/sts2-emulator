@@ -320,7 +320,7 @@ public sealed partial class PrototypeGameEngine
         // restrict this routed event to the implemented, solo-safe Silent
         // reward pool. This is a deliberate approximation of the
         // selection distribution, not of either eligibility predicate.
-        var eligible = PrototypeContent.RewardCardPool
+        var eligible = PrototypeContent.NativeSilentRewardCardPool
             .Where(id =>
             {
                 var card = PrototypeContent.Card(id);

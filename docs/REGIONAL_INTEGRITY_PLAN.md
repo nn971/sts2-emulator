@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-13): 1,826 C# tests pass, executable coverage
+Current validation (2026-10-13): 1,831 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -68,22 +68,24 @@ Driftwood's once-per-generated-card-group reroll. Glass Eye also suspends its
 acquisition reward and offers five independently selectable or skippable,
 rarity-specific groups before returning to the interrupted reward.
 Ring of the Drake's two-card draw bonus is exercised through combat turns 1–4.
-Alchemical Coffer also has a partial acquisition hook: it adds four potion slots
-and generates four distinct potions into those slots, while preserving existing
-inventory and honoring Sozu. The supported Silent pool includes Cunning
+Alchemical Coffer adds four potion slots and generates four distinct potions
+into those slots, while preserving existing inventory and honoring Sozu. The
+full-unlock Silent/shared pool follows its source order through native
+`NextFloat`/`NextItem` draws. The supported Silent pool includes Cunning
 Potion, Fysh Oil, Potion of Binding, Ship in a Bottle, Droplet of Precognition,
 Explosive Ampoule, Bottled Potential, Heart of Iron, Shackling Potion,
 Mazaleth's Gift, Radiant Tincture, Beetle Juice, Gigantification Potion,
 Clarity, Colorless Potion, Powdered Demise, Lucky Tonic and Orobic Acid, and
 excludes Ironclad-only Blood Potion and the off-pool legacy Explosive Potion;
 all 48 pinned Silent/shared pool entries are now registered, with executable
-effects for the newly covered entries. The remaining potion gaps are the
-Alchemical Coffer's source acquisition/offer flow and RNG parity; Colorless
-Potion and Orobic Acid also draw only from currently implemented card
-catalogues. Prismatic Gem now implements
-its persistent +1 energy component, but its foreign card-pool effect is still
-missing; Sea Glass remains unimplemented. See [the Orobas
-dependency ledger](reference-builds/v0.111.0-hive-orobas-ancient.md).
+effects for the newly covered entries. Remaining potion gaps are unlock-filter
+coverage, live native cursor validation, and Colorless Potion/Orobic Acid
+candidate card pools, which still use currently implemented cards. Prismatic
+Gem now implements its persistent +1 energy component, but its foreign
+card-pool effect is still missing; Sea Glass remains unimplemented. See
+[the Orobas dependency ledger](reference-builds/v0.111.0-hive-orobas-ancient.md).
+Native-shaped Silent card reward and merchant generators now retain the pinned
+Silent card-pool order while the legacy prototype reward pool remains sorted.
 The desired RNG architecture is recorded in DESIRED_RNG_IMPLEMENTATION.md.
 The experimental Glory event draw now filters Round Tea Party below 12 HP and
 Grave of the Forgotten when no deck card can receive Souls Power. Boundary tests
