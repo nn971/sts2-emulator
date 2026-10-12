@@ -52,6 +52,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeSharedEvents.ThisOrThatId
             or "proto.native.underdocks.doors_of_light_and_dark"
             or "proto.native.underdocks.drowning_beacon"
+            or "proto.native.underdocks.spiraling_whirlpool"
             or "proto.native.underdocks.sunken_treasury"
             or "proto.native.event.sunken_statue"
             or "proto.native.underdocks.sunken_statue";
@@ -159,6 +160,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "light" or "dark"
         || eventId == "proto.native.underdocks.drowning_beacon"
             && choiceId is "bottle" or "climb"
+        || eventId == "proto.native.underdocks.spiraling_whirlpool"
+            && choiceId is "observe" or "drink"
         || eventId == "proto.native.underdocks.sunken_treasury"
             && choiceId is "first_chest" or "second_chest"
         || eventId == "proto.native.event.sunken_statue"

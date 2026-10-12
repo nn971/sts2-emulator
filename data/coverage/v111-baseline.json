@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "5223345c7280ece663b523785293cede4978d6141b790674469685f0883b4052",
+  "inventory_file_sha256": "c8c6c8ebb6cd896cbf5b462f87681d42ee33d778e9b425a30cc3d77d96dfbe7b",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "db0afe52428df5393d6b9551ed48aa27c6e1404f71ee19f7e8de7d7e3ea884ac",
+    "inventory_hash": "af20dd1ddc65b4f032cc4ff4b9bd7ad4c114f419a3bb64f1a1a324699ed5df21",
     "items": [
       {
         "catalogued": true,
@@ -15780,18 +15780,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SpiralingWhirlpool.cs#61b5a6b6e49499ea69bc5c404ee71477ca62aead047ff721723e79c822ceb2a2"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/DRINK",
-          "initial/OBSERVE",
-          "page/DRINK",
-          "page/INITIAL",
-          "page/INITIAL/DRINK",
-          "page/INITIAL/OBSERVE",
-          "page/OBSERVE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "SPIRALING_WHIRLPOOL",
         "registered": true,
@@ -29446,7 +29438,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 50,
+        "implemented": 51,
         "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,

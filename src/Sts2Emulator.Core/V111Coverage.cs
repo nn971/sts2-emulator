@@ -599,6 +599,41 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SPIRALING_WHIRLPOOL"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                "proto.native.underdocks.spiraling_whirlpool",
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksEvents.IsSupported(
+                "proto.native.underdocks.spiraling_whirlpool")
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                "proto.native.underdocks.spiraling_whirlpool")
+            && PrototypeNativeUnderdocksEvents.IsEligible(
+                PrototypeContent.Event(
+                    "proto.native.underdocks.spiraling_whirlpool"),
+                new PlayerState(1, 1, 0,
+                    [new CardInstance(1, "proto.silent.strike", 0,
+                        PrototypeJson.EmptyObject())], [], []))
+            && PrototypeContent.Event(
+                "proto.native.underdocks.spiraling_whirlpool").Choices
+                .Any(choice => choice.Id == "observe"
+                    && choice.DeckChoice is
+                    {
+                        Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                        Selections: 1,
+                        EnchantmentKind:
+                            PrototypeCardEnchantmentKind.Spiral,
+                        BasicCardsOnly: true
+                    })
+            && PrototypeContent.Event(
+                "proto.native.underdocks.spiraling_whirlpool").Choices
+                .Any(choice => choice.Id == "drink"
+                    && choice.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeRunEffectKind.HealPercentMaxHp
+                        && effect.Amount == 33)))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "TRASH_HEAP" && missingBranches.Length == 0
             && engineIds.Contains(
                 PrototypeNativeUnderdocksTrashHeap.EventId,
