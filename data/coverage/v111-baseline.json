@@ -28953,17 +28953,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.twisted_funnel"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/TwistedFunnel.cs#eaae5c8f9234e708ef44e0d4c7f8fe106e4d7a0e9dd86572bb24c5520c0b3651"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TWISTED_FUNNEL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29604,8 +29606,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 6,
-        "integrated": 6,
+        "implemented": 7,
+        "integrated": 7,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

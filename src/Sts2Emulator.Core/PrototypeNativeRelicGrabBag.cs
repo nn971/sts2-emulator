@@ -51,6 +51,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.lucky_fysh"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.gremlin_horn"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.mercury_hourglass"] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSilentRelics.TwistedFunnelId] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.orichalcum"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.horn_cleat"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.tingsha"] = PrototypeRelicRarity.Uncommon,

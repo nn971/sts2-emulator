@@ -3262,6 +3262,7 @@ public static class PrototypeContent
                         ])
                 ])
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
+            .Concat(PrototypeNativeSilentRelics.Relics)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .Concat(PrototypeNativeHiveEvents.Relics)
             .Concat(PrototypeNativeGloryEvents.Relics)
@@ -7522,6 +7523,7 @@ public static class PrototypeContent
         "proto.relic.bag_of_marbles",
         "proto.relic.gremlin_horn",
         "proto.relic.mercury_hourglass",
+        "proto.relic.twisted_funnel",
         "proto.relic.orichalcum",
         "proto.relic.horn_cleat",
         "proto.relic.captains_wheel",

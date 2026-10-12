@@ -411,6 +411,20 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TWISTED_FUNNEL"
+            && engineIds.Contains(PrototypeNativeSilentRelics.TwistedFunnelId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.TwistedFunnelId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.TwistedFunnelId, out var rarity)
+            && rarity == PrototypeRelicRarity.Uncommon)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "multiplayer-only")
         {
             implementation = "excluded";

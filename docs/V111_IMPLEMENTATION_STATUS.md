@@ -1024,3 +1024,11 @@ semantics. No choice is silently selected and choice-only status
 cards do not enter normal rewards. See
 [the source audit](reference-builds/v0.111.0-knowledge-demon-player-choices.md).
 RNG/call-order parity with the real game remains unverified.
+
+## Silent relic: Twisted Funnel
+
+Added the pinned Silent uncommon **Twisted Funnel** to the ordinary relic
+pool. It applies 4 Poison to every living enemy at combat start, matching the
+source's first-player-turn application at the mechanics level. The combat
+event ordering and native trigger timing remain for the later fidelity pass.
+Source: [TwistedFunnel.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/TwistedFunnel.cs).
