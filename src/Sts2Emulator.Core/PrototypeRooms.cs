@@ -840,7 +840,9 @@ public sealed partial class PrototypeGameEngine
 
         if (PrototypeNativeHiveEvents.HasTerminalChoicePage(
                 eventState.EventId)
-            && eventState.NativePageIndex == 1)
+            && eventState.NativePageIndex ==
+                PrototypeNativeHiveEvents.TerminalChoicePageIndex(
+                    eventState.EventId))
             return [GameAction.Empty("continue_event")];
 
         if (eventState.EventId == PrototypeNativeGloryEvents.RoundTeaPartyId)
@@ -940,7 +942,9 @@ public sealed partial class PrototypeGameEngine
 
         if (PrototypeNativeHiveEvents.HasTerminalChoicePage(
                 eventState.EventId)
-            && eventState.NativePageIndex == 1)
+            && eventState.NativePageIndex ==
+                PrototypeNativeHiveEvents.TerminalChoicePageIndex(
+                    eventState.EventId))
         {
             RequireKind(action, "continue_event");
             return CompleteRoomToMap(state);

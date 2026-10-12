@@ -741,7 +741,9 @@ public static class PrototypeStateInvariants
                             ? eventState.NativePageIndex > 2
                             : PrototypeNativeHiveEvents.HasTerminalChoicePage(
                                 eventState.EventId)
-                                ? eventState.NativePageIndex > 1
+                                ? eventState.NativePageIndex >
+                                    PrototypeNativeHiveEvents.TerminalChoicePageIndex(
+                                        eventState.EventId)
                                 : eventState.EventId ==
                                 "proto.native.underdocks.abyssal_baths"
                                 ? false
@@ -768,7 +770,9 @@ public static class PrototypeStateInvariants
 
         if (PrototypeNativeHiveEvents.HasTerminalChoicePage(
                 eventState.EventId)
-            && eventState.NativePageIndex == 1)
+            && eventState.NativePageIndex ==
+                PrototypeNativeHiveEvents.TerminalChoicePageIndex(
+                    eventState.EventId))
         {
             if (!PrototypeNativeHiveEvents.HasTerminalChoice(
                     eventState.EventId, eventState.ChosenChoiceId)

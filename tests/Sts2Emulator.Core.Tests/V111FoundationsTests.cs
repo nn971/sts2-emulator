@@ -69,6 +69,10 @@ public sealed class V111FoundationsTests
             && item.Integration == "integrated"
             && item.MissingBranches.Length == 0);
         Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "COLOSSAL_FLOWER"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
             && item.NativeId == "REFLECTIONS"
             && item.Integration == "integrated");
         Assert.Contains(report.Items, item => item.Kind == "events"

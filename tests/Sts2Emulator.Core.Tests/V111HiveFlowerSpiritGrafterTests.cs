@@ -55,11 +55,20 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         var resultingHp = 70 - (digs >= 1 ? 5 : 0)
             - (digs >= 2 ? 6 : 0);
         var selected = Select(state, "extract");
-        Assert.Equal(RunPhase.MapChoice, selected.Phase);
+        Assert.Equal(RunPhase.Event, selected.Phase);
+        Assert.Equal(3, selected.World!.Event!.NativePageIndex);
+        PrototypeStateInvariants.Validate(selected);
+        Assert.Equal(CanonicalJson.Sha256(selected), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(selected))));
+        Assert.Equal("continue_event",
+            Assert.Single(Engine.GetLegalActions(selected)).Kind);
         Assert.Equal(resultingHp, selected.Player.Hp);
         Assert.Equal(40 + payout, selected.Player.Gold);
         Assert.DoesNotContain(selected.Player.Relics, r =>
             r.RelicId == PrototypeNativeHiveEvents.PollinousCoreId);
+        selected = Engine.Step(selected,
+            GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, selected.Phase);
     }
 
     [Fact]
@@ -77,19 +86,33 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         Assert.Throws<InvalidOperationException>(() => Select(state, "dig"));
         Assert.Equal(invalidHash, CanonicalJson.Sha256(state));
         var payout = Select(state, "extract");
+        Assert.Equal(RunPhase.Event, payout.Phase);
+        Assert.Equal(3, payout.World!.Event!.NativePageIndex);
         Assert.Equal(235, payout.Player.Gold);
         Assert.Equal(8, payout.Player.Hp);
+        payout = Engine.Step(payout,
+            GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, payout.Phase);
 
         var relic = Select(state, "relic");
-        Assert.Equal(RunPhase.MapChoice, relic.Phase);
+        Assert.Equal(RunPhase.Event, relic.Phase);
+        Assert.Equal(3, relic.World!.Event!.NativePageIndex);
+        PrototypeStateInvariants.Validate(relic);
+        Assert.Equal(CanonicalJson.Sha256(relic), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(relic))));
         Assert.Equal(1, relic.Player.Hp);
         Assert.Equal(100, relic.Player.Gold);
         Assert.Contains(relic.Player.Relics, r =>
             r.RelicId == PrototypeNativeHiveEvents.PollinousCoreId);
+        relic = Engine.Step(relic,
+            GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, relic.Phase);
         Assert.Equal(CanonicalJson.Sha256(original),
             CanonicalJson.Sha256(original.Fork()));
+        var replay = Engine.Step(Select(state.Fork(), "relic"),
+            GameAction.Empty("continue_event")).State;
         Assert.Equal(CanonicalJson.Sha256(relic),
-            CanonicalJson.Sha256(Select(state.Fork(), "relic")));
+            CanonicalJson.Sha256(replay));
     }
 
     [Fact]

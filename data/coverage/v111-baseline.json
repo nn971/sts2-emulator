@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "fcbed051968edbf43cd9f58e83c9b3b563ff0871b6bc95d5ffd7086eb47f88f6",
+  "inventory_file_sha256": "0b0c286e637a11d270d8520af9aea3847a0a03f74286d09e74e5fd16dc31c3fb",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "a02a095f1fab09bed7444b19edcbba9f5599602d8e70cee65c082e57c602a65a",
+    "inventory_hash": "f355b38b7ed621b25e6f76dc35551799a8e724827473d905158dcf5165d3ac19",
     "items": [
       {
         "catalogued": true,
@@ -15198,22 +15198,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/EXTRACT_CURRENT_PRIZE_1",
-          "initial/REACH_DEEPER_1",
-          "page/EXTRACT_CURRENT_PRIZE",
-          "page/EXTRACT_INSTEAD",
-          "page/INITIAL",
-          "page/INITIAL/EXTRACT_CURRENT_PRIZE_1",
-          "page/INITIAL/REACH_DEEPER_1",
-          "page/POLLINOUS_CORE",
-          "page/REACH_DEEPER_1",
-          "page/REACH_DEEPER_1/EXTRACT_CURRENT_PRIZE_2",
-          "page/REACH_DEEPER_1/REACH_DEEPER_2",
-          "page/REACH_DEEPER_2",
-          "page/REACH_DEEPER_2/EXTRACT_INSTEAD",
-          "page/REACH_DEEPER_2/POLLINOUS_CORE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "COLOSSAL_FLOWER",
         "registered": true,

@@ -64,7 +64,11 @@ public static class PrototypeNativeHiveEvents
             or PrototypeNativeLaterActs.HiveBugslayerId;
 
     public static bool HasTerminalChoicePage(string eventId) =>
-        eventId is AmalgamatorId or LostWispId or SpiritGrafterId;
+        eventId is AmalgamatorId or LostWispId or SpiritGrafterId
+            or ColossalFlowerId;
+
+    public static int TerminalChoicePageIndex(string eventId) =>
+        eventId == ColossalFlowerId ? 3 : 1;
 
     public static bool HasTerminalChoice(string eventId, string? choiceId) =>
         eventId == AmalgamatorId
@@ -72,7 +76,9 @@ public static class PrototypeNativeHiveEvents
         || eventId == LostWispId
             && choiceId is "claim" or "search"
         || eventId == SpiritGrafterId
-            && choiceId is "let_it_in" or "rejection";
+            && choiceId is "let_it_in" or "rejection"
+        || eventId == ColossalFlowerId
+            && choiceId is "extract" or "relic";
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         eventId is SpiritGrafterId or FieldOfManSizedHolesId;

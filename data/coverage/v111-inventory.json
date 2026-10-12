@@ -11293,7 +11293,7 @@
         "page/REACH_DEEPER_2/EXTRACT_INSTEAD",
         "page/REACH_DEEPER_2/POLLINOUS_CORE"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",
