@@ -20,6 +20,7 @@ public static class NativeGloryAncientsV111
     public const string MusicBoxId = "proto.native.ancient.music_box";
     public const string JeweledMaskId = "proto.native.ancient.jeweled_mask";
     public const string ChoicesParadoxId = "proto.native.ancient.choices_paradox";
+    public const string DistinguishedCapeId = "proto.native.ancient.distinguished_cape";
     public const string BloodSoakedRoseId = "proto.native.ancient.blood_soaked_rose";
     public const string EnthralledCardId = "proto.native.ancient.enthralled";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
@@ -42,6 +43,26 @@ public static class NativeGloryAncientsV111
     public const string ClawsId = "proto.native.ancient.claws";
     public const string WarHammerId = "proto.native.ancient.war_hammer";
     public const string MaulCardId = "proto.native.ancient.maul";
+    public const string ApparitionCardId = "proto.native.ancient.apparition";
+    public const string ClumsyCardId = "proto.native.shared.clumsy";
+    public const string DebtCardId = "proto.native.shared.debt";
+    public const string WritheCardId = "proto.native.shared.writhe";
+
+    // CurseCardPool entries with CanBeGeneratedByModifiers, ordered by the
+    // source ModelId order used by Distinguished Cape's sorted pool.
+    public static string[] ModifierGeneratedCurseIds { get; } =
+    [
+        ClumsyCardId,
+        DebtCardId,
+        PrototypeNativeHiveEvents.DecayId,
+        PrototypeNativeGloryEvents.DoubtId,
+        "proto.native.event.guilty",
+        "proto.native.neow.injury",
+        PrototypeNativeHiveEvents.NormalityId,
+        PrototypeNativeGloryEvents.RegretId,
+        PrototypeNativeGloryEvents.ShameId,
+        WritheCardId
+    ];
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
@@ -79,6 +100,7 @@ public static class NativeGloryAncientsV111
                     GeneratedChoiceUsesNativeCardGenerationRng: true)],
                 TurnEquals: 1)
         ]),
+        new(DistinguishedCapeId, "Distinguished Cape"),
         new(BlessedAntlerId, "Blessed Antler",
             EnergyPerTurnBonus: 1,
             Triggers:
@@ -318,6 +340,40 @@ public static class NativeGloryAncientsV111
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        new(ApparitionCardId, "Apparition", 1,
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.intangible")],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Ancient,
+            Ethereal: true,
+            RewardEligible: false,
+            Type: PrototypeCardType.Skill,
+            LoseEtherealOnUpgrade: true),
+        new(ClumsyCardId, "Clumsy", -1,
+            PrototypeCardTarget.None, [],
+            Ethereal: true,
+            Unplayable: true,
+            RewardEligible: false,
+            Rarity: PrototypeCardRarity.Curse,
+            Type: PrototypeCardType.Curse,
+            MaxUpgradeLevel: 0),
+        new(DebtCardId, "Debt", -1,
+            PrototypeCardTarget.None, [],
+            Unplayable: true,
+            RewardEligible: false,
+            Rarity: PrototypeCardRarity.Curse,
+            Type: PrototypeCardType.Curse,
+            EndTurnGoldLossIfInHand: 10,
+            MaxUpgradeLevel: 0),
+        new(WritheCardId, "Writhe", -1,
+            PrototypeCardTarget.None, [],
+            Innate: true,
+            Unplayable: true,
+            RewardEligible: false,
+            Rarity: PrototypeCardRarity.Curse,
+            Type: PrototypeCardType.Curse,
+            MaxUpgradeLevel: 0),
         new(ApotheosisCardId, "Apotheosis", new(
             PrototypeCardCostKind.Fixed, 2, UpgradeDelta: -1),
             PrototypeCardTarget.None,

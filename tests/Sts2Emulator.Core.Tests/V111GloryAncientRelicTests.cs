@@ -658,6 +658,87 @@ public sealed class V111GloryAncientRelicTests
     }
 
     [Fact]
+    public void DistinguishedCapeAddsTwoDistinctNicheCursesThenThreeApparitions()
+    {
+        const string seed = "distinguished-cape-reward-acquisition";
+        var initial = PrototypeNativeUnderdocksRunFactory.Create(seed);
+        var nativeRng = NativeRngV111.CreateBundle(seed);
+        var expectedRng = nativeRng.Fork();
+        var curses = NativeGloryAncientsV111.ModifierGeneratedCurseIds
+            .ToList();
+        var expectedCurses = new string[2];
+        for (var i = 0; i < expectedCurses.Length; i++)
+        {
+            var index = NativeRngV111.NextInt(expectedRng,
+                "run.niche", curses.Count);
+            expectedCurses[i] = curses[index];
+            curses.RemoveAt(index);
+        }
+        var state = initial with
+        {
+            Phase = RunPhase.Reward,
+            NativeRunRng = nativeRng,
+            World = initial.World! with
+            {
+                Floor = 1,
+                Map = new MapState([]),
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = null,
+                Reward = new RewardState("Combat", [], null,
+                    NativeGloryAncientsV111.DistinguishedCapeId,
+                    CardResolved: true, PotionResolved: true,
+                    RelicResolved: false, EndsAct: false)
+            }
+        };
+
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(state).Single(item =>
+            item.Kind == "take_reward_relic");
+        state = engine.Step(state, action).State;
+
+        var added = state.Player.Deck
+            .Skip(initial.Player.Deck.Length).ToArray();
+        Assert.Equal(expectedCurses.Concat(Enumerable.Repeat(
+            NativeGloryAncientsV111.ApparitionCardId, 3)),
+            added.Select(card => card.CardId));
+        Assert.Equal(2, added.Take(2).Select(card => card.CardId)
+            .Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(NativeRngV111.ToSnapshot(expectedRng.Streams.Single(
+                stream => stream.StreamId == "run.niche")),
+            NativeRngV111.ToSnapshot(state.NativeRunRng!.Streams.Single(
+                stream => stream.StreamId == "run.niche")));
+    }
+
+    [Fact]
+    public void DistinguishedCapePoolContainsOnlyImplementedModifierCurses()
+    {
+        Assert.Equal(new[]
+        {
+            NativeGloryAncientsV111.ClumsyCardId,
+            NativeGloryAncientsV111.DebtCardId,
+            PrototypeNativeHiveEvents.DecayId,
+            PrototypeNativeGloryEvents.DoubtId,
+            "proto.native.event.guilty",
+            "proto.native.neow.injury",
+            PrototypeNativeHiveEvents.NormalityId,
+            PrototypeNativeGloryEvents.RegretId,
+            PrototypeNativeGloryEvents.ShameId,
+            NativeGloryAncientsV111.WritheCardId
+        }, NativeGloryAncientsV111.ModifierGeneratedCurseIds);
+        foreach (var id in NativeGloryAncientsV111.ModifierGeneratedCurseIds)
+        {
+            var card = PrototypeContent.Card(id);
+            Assert.Equal(PrototypeCardType.Curse, card.Type);
+            Assert.Equal(PrototypeCardRarity.Curse, card.Rarity);
+            Assert.True(card.MechanicsImplemented);
+            Assert.False(card.RewardEligible);
+            Assert.True(card.CanBeGeneratedInCombat);
+        }
+        Assert.Contains(NativeGloryAncientsV111.ApparitionCardId,
+            NativeGloryAncientsV111.Cards.Select(card => card.Id));
+    }
+
+    [Fact]
     public void LoomingFruitAdds31CurrentAndMaximumHpWhenAcquired()
     {
         var initial = PrototypeNativeUnderdocksRunFactory.Create(

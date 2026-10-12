@@ -724,9 +724,11 @@ public sealed record PrototypeCardDefinition(
     string[]? Tags = null,
     int EndTurnDamageIfInHand = 0,
     bool EndTurnDamageUnblockable = false,
+    int EndTurnGoldLossIfInHand = 0,
     bool MechanicsImplemented = true,
     bool MultiplayerOnly = false,
     bool RetainOnUpgrade = false,
+    bool LoseEtherealOnUpgrade = false,
     bool CanBeGeneratedInCombat = true,
     int MaxUpgradeLevel = 1,
     bool PreventsOtherManualCardPlaysWhileInHand = false);

@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,815 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,821 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -202,7 +202,12 @@ regional entry/branch has direct integration and semantic coverage.
   moves a non-Innate Power from draw pile to hand before the opening draw and
   makes it free for the turn. Choices Paradox now offers five distinct Retain
   cards on the opening player turn, with a snapshot-safe choice; its current
-  candidate pool is limited to implemented Silent card mechanics. See the
+  candidate pool is limited to implemented Silent card mechanics.
+  Distinguished Cape now adds two distinct modifier-eligible curses using the
+  native `run.niche` stream, then adds three Apparitions. All ten
+  source-eligible curses are modeled; its reward test checks selected curse
+  IDs and the native stream cursor. Vakuu remains gated on its three-pool
+  offer sequence and Lord's Parasol.
   [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.

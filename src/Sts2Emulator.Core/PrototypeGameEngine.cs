@@ -420,6 +420,35 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         "Beautiful Bracelet acquisition requires RNG context."),
                     nativeRunRng);
             if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeGloryAncientsV111.DistinguishedCapeId)
+            {
+                var acquisitionRng = rng
+                    ?? throw new InvalidOperationException(
+                        "Distinguished Cape acquisition requires RNG context.");
+                var allocate = allocateCardId
+                    ?? throw new InvalidOperationException(
+                        "Distinguished Cape acquisition requires card IDs.");
+                var curseIds = NativeGloryAncientsV111
+                    .ModifierGeneratedCurseIds.ToList();
+                for (var i = 0; i < 2; i++)
+                {
+                    var selectedIndex = nativeRunRng is null
+                        ? PrototypeRng.NextInt(acquisitionRng, "event",
+                            curseIds.Count)
+                        : NativeRngV111.NextInt(nativeRunRng,
+                            "run.niche", curseIds.Count);
+                    var curseId = curseIds[selectedIndex];
+                    curseIds.RemoveAt(selectedIndex);
+                    player = AppendCard(player, allocate(), curseId,
+                        acquisitionRng);
+                }
+
+                for (var i = 0; i < 3; i++)
+                    player = AppendCard(player, allocate(),
+                        NativeGloryAncientsV111.ApparitionCardId,
+                        acquisitionRng);
+            }
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
                 && relic.RelicId == NativePaelRewardsV111.ClawId)
                 player = NativePaelRewardsV111.EnchantClawDefends(player);
             if (eventKind == PrototypeRunEventKind.RelicAcquired

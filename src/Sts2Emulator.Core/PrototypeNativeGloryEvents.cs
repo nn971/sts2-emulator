@@ -86,21 +86,21 @@ public static class PrototypeNativeGloryEvents
         // unblockable damage and Shame/Doubt's turn-end debuffs.
         new(RegretId, "Regret", -1, PrototypeCardTarget.None, [],
             Unplayable: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
         new(ShameId, "Shame", -1, PrototypeCardTarget.None, [],
             Unplayable: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
         new(DoubtId, "Doubt", -1, PrototypeCardTarget.None, [],
             Unplayable: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
         // Native BadLuck: unplayable Eternal Curse, 13 unblockable
         // damage while in hand when the player ends their turn.
         new(BadLuckId, "Bad Luck", -1, PrototypeCardTarget.None, [],
             Unplayable: true, Eternal: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse,
             EndTurnDamageIfInHand: 13, EndTurnDamageUnblockable: true)
     ];

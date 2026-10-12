@@ -143,8 +143,10 @@ Box copies the first Attack each player turn as Ethereal while preserving the
 played card's instance data. Their acquisition and turn-scoped behavior have
 direct tests. Jeweled Mask moves a preferred non-Innate Power from draw pile
 to hand before turn-one draw and makes it free through end of turn; its native
-combat path consumes `run.combat_card_selection`. Vakuu's event and three
-remaining relic dependencies stay gated. Fur Coat marks
+combat path consumes `run.combat_card_selection`. Distinguished Cape adds its
+two source-eligible modifier curses and three Apparitions through relic
+acquisition, consuming `run.niche` when native RNG ownership is active.
+Vakuu's offer event and Lord's Parasol remain gated. Fur Coat marks
 up to eight current-act Monster/Elite rooms and reduces initial and summoned
 enemies there to 1 HP while persisting its map selection and content RNG
 snapshot. Delicate Frond now

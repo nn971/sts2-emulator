@@ -1711,6 +1711,14 @@ public sealed partial class PrototypeGameEngine
                         instanceId);
                     var definition =
                         PrototypeContent.Card(card.CardId);
+                    if (definition.EndTurnGoldLossIfInHand > 0)
+                    {
+                        player = player with
+                        {
+                            Gold = Math.Max(0, player.Gold
+                                - definition.EndTurnGoldLossIfInHand)
+                        };
+                    }
                     // Trial Shame/Doubt apply one debuff while in hand.
                     // Newly created Weak/Frail survives the imminent
                     // PlayerTurnEnded power-decrement stage, following
@@ -8541,7 +8549,10 @@ public sealed partial class PrototypeGameEngine
             PrototypeCardKeyword.Sly =>
                 PrototypeContent.Card(card.CardId).Sly,
             PrototypeCardKeyword.Ethereal =>
-                PrototypeContent.Card(card.CardId).Ethereal,
+                PrototypeContent.Card(card.CardId).Ethereal
+                && !(card.UpgradeLevel > 0
+                    && PrototypeContent.Card(card.CardId)
+                        .LoseEtherealOnUpgrade),
             _ => throw new ArgumentOutOfRangeException(nameof(keyword))
         };
 

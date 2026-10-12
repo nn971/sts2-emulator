@@ -2331,6 +2331,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var shop = world.Shop
             ?? throw new InvalidOperationException("Shop phase has no shop state.");
+        var nativeRunRng = state.NativeRunRng?.Fork();
 
         if (shop.PendingDeckChoice is { } pending)
         {
@@ -2368,6 +2369,7 @@ public sealed partial class PrototypeGameEngine
             return state with
             {
                 Player = resolvedPlayer,
+                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
                 World = world with
                 {
                     Shop = shop with
@@ -2537,7 +2539,8 @@ public sealed partial class PrototypeGameEngine
                 player,
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: offer.ItemId,
-                rng: state.Rng, allocateCardId: () => nextId++);
+                rng: state.Rng, allocateCardId: () => nextId++,
+                nativeRunRng: nativeRunRng);
             shop = UpdateRelicOffer(
                 shop,
                 offer with { Sold = true });
@@ -2570,6 +2573,7 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Player = player,
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world
         };
     }
