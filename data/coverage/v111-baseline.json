@@ -13339,8 +13339,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/MysteriousKnightEventEncounter.cs#1a52b0b1b121fe2033471bb2d4d93941ac0dee5f2bb2dae8b7a5eadde2c6d07a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
@@ -29548,8 +29548,8 @@
         "catalogued": 90,
         "eligible": 90,
         "excluded": 0,
-        "implemented": 82,
-        "integrated": 82,
+        "implemented": 83,
+        "integrated": 83,
         "kind": "encounters",
         "scope_review_required": 0,
         "validated": 0

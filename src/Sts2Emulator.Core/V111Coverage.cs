@@ -202,6 +202,24 @@ public static class V111Coverage
                 implementation = "implemented";
                 integration = "integrated";
             }
+            if (item.Id == "MYSTERIOUS_KNIGHT_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativeHiveEvents.MysteriousKnightEncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeNativeHiveEvents.IsNativeEvent(
+                    PrototypeNativeHiveEvents.LanternKeyEventId)
+                && PrototypeContent.Encounter(
+                    PrototypeNativeHiveEvents.MysteriousKnightEncounterId)
+                    .Weight == 0
+                && PrototypeContent.Encounter(
+                    PrototypeNativeHiveEvents.MysteriousKnightEncounterId)
+                    .EnemyIds.SequenceEqual(
+                        [PrototypeNativeHiveEvents.MysteriousKnightId],
+                        StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
         }
         if (item.Scope == "single-player" && item.Kind == "events"
             && engineIds.Length > 0)

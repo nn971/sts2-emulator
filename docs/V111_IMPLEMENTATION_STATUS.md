@@ -227,10 +227,10 @@ potion. Full native potion-pool and cursor parity remain unverified.
   include ten special/event encounters outside ordinary act pools. Cards have
   base/upgrade variant IDs; events have known page/option/Ancient IDs. Dynamic
   event branch completeness is explicitly false and requires source auditing.
-  Punch Off's two-Construct and Dense Vegetation's four-Wriggler event fights
-  are registered at zero ordinary-map weight and connected to their event
-  paths; coverage reports their native event encounter IDs as integrated
-  without treating them as map-pool encounters.
+  Punch Off's two-Construct, Dense Vegetation's four-Wriggler, and Hive Lantern
+  Key's Mysterious Knight event fights are registered at zero ordinary-map
+  weight and connected to their event paths; coverage reports their native
+  event encounter IDs as integrated without treating them as map-pool fights.
 - Added reproducible coverage by native ID with separate registration,
   implementation, integration and validation dimensions. Metadata registration
   never establishes implementation. Claims derive from typed executable
