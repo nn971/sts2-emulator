@@ -100,6 +100,76 @@ public sealed class NativeEngineFidelityV111Tests
     }
 
     [Fact]
+    public void FullSevenCardNativeShapedSludgeSpinnerStrikeRunsActualEngine()
+    {
+        static object Card(long id, string model, int cost, string target) =>
+            new { instance_id = id, model_id = model, cost,
+                upgrades = 0, target_type = target };
+        object[] hand =
+        [
+            Card(0, "STRIKE_SILENT", 1, "AnyEnemy"),
+            Card(1, "SURVIVOR", 1, "Self"),
+            Card(2, "DEFEND_SILENT", 1, "Self"),
+            Card(3, "DEFEND_SILENT", 1, "Self"),
+            Card(4, "DEFEND_SILENT", 1, "Self"),
+            Card(5, "DEFEND_SILENT", 1, "Self"),
+            Card(6, "DEFEND_SILENT", 1, "Self")
+        ];
+        object[] draw =
+        [
+            Card(7, "NEUTRALIZE", 0, "AnyEnemy"),
+            Card(8, "ASCENDERS_BANE", 0, "None"),
+            Card(9, "STRIKE_SILENT", 1, "AnyEnemy"),
+            Card(10, "STRIKE_SILENT", 1, "AnyEnemy"),
+            Card(11, "STRIKE_SILENT", 1, "AnyEnemy"),
+            Card(12, "STRIKE_SILENT", 1, "AnyEnemy")
+        ];
+        object Snapshot(bool post) => new
+        {
+            player = new { hp = 56, max_hp = 70, gold = 99, block = 0,
+                powers = Array.Empty<object>() },
+            combat = new
+            {
+                energy = post ? 2 : 3,
+                turn = 1,
+                creatures = new[]
+                {
+                    new { id = "creature:0", model_id = "SILENT", hp = 56,
+                        max_hp = 70, block = 0, alive = true,
+                        powers = Array.Empty<object>() },
+                    new { id = "creature:1", model_id = "SLUDGE_SPINNER",
+                        hp = post ? 35 : 41, max_hp = 41, block = 0,
+                        alive = true, powers = Array.Empty<object>() }
+                },
+                hand = post ? hand.Skip(1).ToArray() : hand,
+                draw_pile = draw,
+                discard_pile = post ? new[] { hand[0] } : Array.Empty<object>(),
+                exhaust_pile = Array.Empty<object>()
+            }
+        };
+        var fixture = JsonSerializer.SerializeToElement(new
+        {
+            fixture_schema = "native-expectation-v1",
+            status = "RECORDED_NATIVE_EXPECTATION",
+            native_trace_header = new { game_build = "synthetic-shaped-like-captured-strike" },
+            selected_action = new
+            {
+                kind = "play_card",
+                payload = new { card_instance_id = 0L, target_id = "creature:1" }
+            },
+            pre_state = Snapshot(false),
+            post_state = Snapshot(true)
+        });
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.Equal("CORE_ENGINE_CHECKPOINT_CONSISTENT", report.Status);
+        Assert.True(report.ExecutedActualEngineStep, report.EngineFailure ??
+            string.Join(", ", report.Blockers));
+        Assert.Equal("NOT_TESTED", report.NativeGameParity);
+        Assert.Null(report.FirstMismatchPath);
+        Assert.True(report.CheckedFields.Length >= 25);
+    }
+
+    [Fact]
     public void UnknownNativeCardNeverReplacedByAnotherImplementation()
     {
         var report = NativeEngineFidelityV111.Compare(Fixture(card: "MAGIC_STRIKE_NOT_EXIST"));
