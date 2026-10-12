@@ -145,6 +145,28 @@ public sealed class RandomIndexProvidersV111Tests
     }
 
     [Fact]
+    public void LargeBoundedTicketIsCompactAndSingletonStillConsumesNativeDraw()
+    {
+        var streams = NativeRngV111.CreateBundle("large-weight-space");
+        var request = new RandomIndexRequestV111(
+            "combat.committed_intent.index_draw",
+            "run.monster_ai", "creature:42", 0, [],
+            OperationKind: "bounded_integer", BoundedCount: int.MaxValue);
+        Assert.Equal(int.MaxValue, request.SupportCount);
+        Assert.Empty(request.OrderedCandidates);
+        var sampled = new NativeRandomIndexProviderV111().Resolve(request, streams);
+        Assert.InRange(sampled.SelectedIndex, 0, int.MaxValue - 1);
+        Assert.Equal(sampled.SelectedIndex, sampled.SelectedValue);
+        Assert.Equal(1, sampled.NativeCursorAfter!.Counter);
+        var singleton = request with { Ordinal = 1, BoundedCount = 1 };
+        var chosen = new NativeRandomIndexProviderV111().Resolve(singleton, streams);
+        Assert.Equal(0, chosen.SelectedIndex);
+        Assert.Equal(2, chosen.NativeCursorAfter!.Counter);
+        Assert.Throws<ArgumentException>(() =>
+            new ControlledRandomIndexProviderV111(1).Resolve(singleton, streams));
+    }
+
+    [Fact]
     public void InvalidRequestsFailBeforeConsumingRng()
     {
         var streams = NativeRngV111.CreateBundle("invalid-zero-chance");
