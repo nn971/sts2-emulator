@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,814 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,815 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
