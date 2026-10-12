@@ -2210,6 +2210,29 @@ public static class PrototypeContent
                     PrototypeCombatEffectKind.ApplyPlayerPower,
                     1,
                     PowerId: "proto.power.buffer")]),
+            // Shared Rare potion: generate one random Attack, Skill and Power
+            // from Silent's implemented solo pools, free this turn.
+            new PrototypePotionDefinition(
+                "proto.potion.orobic_acid",
+                "Orobic Acid",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterAttackCardsInHand,
+                        1,
+                        GeneratedCharacterCardsFreeThisTurn: true),
+                    new(
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterSkillCardsInHand,
+                        1,
+                        GeneratedCharacterCardsFreeThisTurn: true),
+                    new(
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterPowerCardsInHand,
+                        1,
+                        GeneratedCharacterCardsFreeThisTurn: true)
+                ]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",

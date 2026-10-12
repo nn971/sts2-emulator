@@ -649,6 +649,40 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void OrobicAcidCreatesFreeAttackSkillAndPowerCards()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.orobic_acid");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var generated = state.World!.Combat!.Cards
+            .Where(card => card.IsTemporary
+                && card.InstanceId != 1)
+            .ToArray();
+        Assert.Equal(3, generated.Length);
+        Assert.Equal(
+            new[]
+            {
+                PrototypeCardType.Attack,
+                PrototypeCardType.Skill,
+                PrototypeCardType.Power
+            }.Order(),
+            generated.Select(card =>
+                PrototypeContent.Card(card.CardId).Type)
+                .Order());
+        Assert.All(generated, card =>
+        {
+            Assert.Contains(card.InstanceId, state.World.Combat.Hand);
+            Assert.Equal(0, card.TemporaryEnergyCost!.Cost);
+        });
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

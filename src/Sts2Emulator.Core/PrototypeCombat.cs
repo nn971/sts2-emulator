@@ -4450,6 +4450,8 @@ public sealed partial class PrototypeGameEngine
                     SourcePowerApplicationOrder:
                         sourcePowerApplicationOrder,
                     PlayerGoldCost: effect.PlayerGoldCost,
+                    GeneratedCharacterCardsFreeThisTurn:
+                        effect.GeneratedCharacterCardsFreeThisTurn,
                     PowerStoredValue:
                         effect.PowerStoredValue
                         + (effect.PowerStoredValueUpgradeDelta * upgradeLevel),
@@ -5964,13 +5966,29 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand:
                 case PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand:
+                case PrototypeCombatEffectKind.CreateRandomCharacterPowerCardsInHand:
                 {
-                    var skills = operation.Kind == PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand;
-                    var sourcePool = skills ? PrototypeContent.NativeSilentCardPool : PrototypeContent.RewardCardPool;
+                    var cardType = operation.Kind switch
+                    {
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterAttackCardsInHand =>
+                            PrototypeCardType.Attack,
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterSkillCardsInHand =>
+                            PrototypeCardType.Skill,
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterPowerCardsInHand =>
+                            PrototypeCardType.Power,
+                        _ => throw new ArgumentOutOfRangeException()
+                    };
+                    var skills = cardType == PrototypeCardType.Skill;
+                    var sourcePool = cardType == PrototypeCardType.Attack
+                        ? PrototypeContent.RewardCardPool
+                        : PrototypeContent.NativeSilentCardPool;
                     var pool = sourcePool.Where(id =>
                     {
                         var definition = PrototypeContent.Card(id);
-                        return definition.Type == (skills ? PrototypeCardType.Skill : PrototypeCardType.Attack)
+                        return definition.Type == cardType
                             && definition.MechanicsImplemented
                             && definition.CanBeGeneratedInCombat
                             && definition.Rarity is PrototypeCardRarity.Common
@@ -5989,7 +6007,9 @@ public sealed partial class PrototypeGameEngine
                         combat = AddGeneratedCardCopies(combat,
                             new PrototypeCombatCardSnapshot(
                                 id, 0, PrototypeJson.EmptyObject(),
-                                TemporaryEnergyCost: skills
+                                TemporaryEnergyCost:
+                                    skills
+                                    || operation.GeneratedCharacterCardsFreeThisTurn
                                     ? new(0, PrototypeTemporaryCardCostExpiry.EndOfTurn)
                                     : null), 1);
                     }

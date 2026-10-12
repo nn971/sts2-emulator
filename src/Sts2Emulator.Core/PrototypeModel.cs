@@ -128,7 +128,8 @@ public enum PrototypeCombatEffectKind
     GainEnergyForGold,
     LosePlayerMaxHp,
     ReturnHandToDrawAndShuffle,
-    ChooseGeneratedColorlessCards
+    ChooseGeneratedColorlessCards,
+    CreateRandomCharacterPowerCardsInHand
 }
 
 public enum PrototypeCardKeyword
@@ -621,7 +622,8 @@ public sealed record PrototypeCombatEffectSpec(
     PrototypeCardType? AutoPlayRequiredCardType = null,
     bool AutoPlayFallbackToUnplayable = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    int PlayerGoldCost = 0)
+    int PlayerGoldCost = 0,
+    bool GeneratedCharacterCardsFreeThisTurn = false)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -675,7 +677,8 @@ public sealed record PrototypeQueuedOperation(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     int PlayerGoldCost = 0,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool FromHandDraw = false);
+    bool FromHandDraw = false,
+    bool GeneratedCharacterCardsFreeThisTurn = false);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -955,7 +958,8 @@ public sealed record PrototypePowerDefinition(
     int HandDrawBonusWhileActive = 0,
     bool DecrementAfterHandDraw = false,
     int EnemyHpLossAtSideTurnEndPerStack = 0,
-    bool PreventsNextHpLoss = false);
+    bool PreventsNextHpLoss = false,
+    bool GeneratedCharacterCardsFreeThisTurn = false);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

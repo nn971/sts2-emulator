@@ -45,6 +45,7 @@ public static class PrototypeNativePotionShop
             ["proto.potion.powdered_demise"] =
                 PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.lucky_tonic"] = PrototypeNativePotionRarity.Rare,
+            ["proto.potion.orobic_acid"] = PrototypeNativePotionRarity.Rare,
             ["proto.potion.heart_of_iron"] =
                 PrototypeNativePotionRarity.Uncommon,
             ["proto.potion.radiant_tincture"] =
