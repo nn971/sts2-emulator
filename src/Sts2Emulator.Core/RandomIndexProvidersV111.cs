@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -13,6 +15,7 @@ public sealed record RandomIndexRequestV111(
     int? BoundedCount = null)
 {
     // A bounded integer ticket is compact even for very large ranges.
+    [JsonIgnore]
     public int SupportCount => OperationKind == "bounded_integer"
         ? BoundedCount ?? 0 : OrderedCandidates.Length;
 
@@ -44,6 +47,7 @@ public sealed record RandomIndexDecisionV111(
     NativeRngSnapshot? NativeCursorAfter = null,
     string ProbabilityStatus = "UNVERIFIED")
 {
+    [JsonIgnore]
     public int SelectedValue => Request.OperationKind == "bounded_integer"
         ? SelectedIndex : Request.OrderedCandidates[SelectedIndex];
 
