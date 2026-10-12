@@ -44,6 +44,9 @@ public sealed partial class PrototypeGameEngine
                     PrototypeCardType.Status
                     and not PrototypeCardType.Curse
                     and not PrototypeCardType.Quest
+                && (enchantmentKind
+                    != PrototypeCardEnchantmentKind.Instinct
+                    || definition.Type == PrototypeCardType.Attack)
                 // Souls Power can only remove a LOCAL Exhaust keyword.
                 // Ordinary ExhaustOnUse is the canonical local keyword
                 // in the typed card registry; upgraded cards that have

@@ -99,8 +99,12 @@ tests cover eligibility and the complete rest-site action.
 Tanx's Whistle adds an Ancient attack to the deck. Whistle costs 2, deals 33
 damage (44 upgraded), exhausts and stuns a surviving target for one turn while
 preserving its committed follow-up move. Acquisition, combat, upgrade,
-snapshot and stun-resume cases are covered. The Tanx event remains gated until
-its offer and remaining relic branches are complete.
+snapshot and stun-resume cases are covered. Tri Boomerang now starts an
+acquisition choice for three eligible Attack instances and applies Instinct's
+2x powered-attack damage effect. Acquisition eligibility, snapshot restore,
+and combat damage are covered. Claws and War Hammer remain the unimplemented
+Tanx relic effects; the Tanx event remains gated until its full offer and
+remaining relic branches are integrated.
 Nonupeipe, Tanx and Vakuu remain unavailable until their full offer pools,
 relic effects, Ancient assignment and branch continuations are implemented.
 

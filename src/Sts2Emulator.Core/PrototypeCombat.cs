@@ -8574,6 +8574,14 @@ public sealed partial class PrototypeGameEngine
             return modified;
         }
 
+        // Source: Instinct multiplies powered Attack damage by two.
+        // This method is only used by powered-attack operations.
+        if (sourceCard.Enchantment?.Kind
+            == PrototypeCardEnchantmentKind.Instinct)
+        {
+            modified = checked(modified * 2);
+        }
+
         return ModifyPlayerOutgoingAttackDamage(
             combat,
             modified);

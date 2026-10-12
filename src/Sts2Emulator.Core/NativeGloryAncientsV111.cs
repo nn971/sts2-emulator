@@ -16,6 +16,7 @@ public static class NativeGloryAncientsV111
     public const string SaiId = "proto.native.ancient.sai";
     public const string SpikedGauntletsId = "proto.native.ancient.spiked_gauntlets";
     public const string SignetRingId = "proto.native.ancient.signet_ring";
+    public const string TriBoomerangId = "proto.native.ancient.tri_boomerang";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
@@ -40,6 +41,11 @@ public static class NativeGloryAncientsV111
                 [new(PrototypeRunEffectKind.AddCard,
                     CardId: WhistleCardId)])
         ]),
+        new(TriBoomerangId, "Tri Boomerang",
+            AcquisitionDeckChoice: new(
+                PrototypePersistentDeckChoiceKind.Enchant, 3,
+                EnchantmentKind: PrototypeCardEnchantmentKind.Instinct,
+                RequiredCardType: PrototypeCardType.Attack)),
         new(DiamondDiademId, "Diamond Diadem", Triggers:
         [
             new(PrototypeCombatEventKind.PlayerSideTurnStarted,

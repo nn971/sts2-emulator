@@ -126,6 +126,125 @@ public sealed class V111TanxRelicTests
             relic.RelicId == NativeGloryAncientsV111.TanxsWhistleId);
     }
 
+    [Fact]
+    public void TriBoomerangEnchantsThreeAttackCardsAndPersistsTheChoice()
+    {
+        var engine = new PrototypeGameEngine();
+        var initial = PrototypeNativeUnderdocksRunFactory.Create(
+            "tri-boomerang-acquisition");
+        var deck = new[]
+        {
+            new CardInstance(1, "proto.silent.strike", 0,
+                PrototypeJson.EmptyObject()),
+            new CardInstance(2, "proto.silent.defend", 0,
+                PrototypeJson.EmptyObject()),
+            new CardInstance(3, "proto.silent.shiv", 0,
+                PrototypeJson.EmptyObject()),
+            new CardInstance(4, "proto.silent.shiv", 0,
+                PrototypeJson.EmptyObject()),
+            new CardInstance(5, "proto.silent.shiv", 0,
+                PrototypeJson.EmptyObject())
+        };
+        var state = initial with
+        {
+            Phase = RunPhase.Reward,
+            Player = initial.Player with { Deck = deck },
+            World = initial.World! with
+            {
+                Floor = 1,
+                NextCardInstanceId = 6,
+                Map = new MapState([]),
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = null,
+                Shop = null,
+                Event = null,
+                Reward = new RewardState("Combat", [], null,
+                    NativeGloryAncientsV111.TriBoomerangId,
+                    CardResolved: true, PotionResolved: true,
+                    RelicResolved: false, EndsAct: false)
+            }
+        };
+        var acquire = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "take_reward_relic");
+
+        state = engine.Step(state, acquire).State;
+
+        var pending = state.World!.Reward!.PendingDeckChoice!;
+        Assert.Equal(PrototypeCardEnchantmentKind.Instinct,
+            PrototypeContent.Relic(pending.SourceRelicId)
+                .AcquisitionDeckChoice!.EnchantmentKind);
+        Assert.Equal(3, pending.RemainingSelections);
+        Assert.Equal(new long[] { 1, 3, 4, 5 }, pending.CandidateCardInstanceIds);
+        Assert.Equal(new long[] { 1, 3, 4, 5 }, engine.GetLegalActions(state)
+            .Where(action => action.Kind == "choose_relic_deck_card")
+            .Select(action => action.ReadPayload<ChooseDeckCardPayload>()
+                .CardInstanceId)
+            .Order()
+            .ToArray());
+
+        var snapshotHash = CanonicalJson.Sha256(state);
+        state = RunSnapshot.Load(RunSnapshot.Save(state));
+        Assert.Equal(snapshotHash, CanonicalJson.Sha256(state));
+        foreach (var instanceId in new long[] { 1, 3, 4 })
+        {
+            var action = engine.GetLegalActions(state).Single(item =>
+                item.Kind == "choose_relic_deck_card"
+                && item.ReadPayload<ChooseDeckCardPayload>()
+                    .CardInstanceId == instanceId);
+            state = engine.Step(state, action).State;
+            PrototypeStateInvariants.Validate(state);
+        }
+
+        Assert.Null(state.World!.Reward!.PendingDeckChoice);
+        foreach (var instanceId in new long[] { 1, 3, 4 })
+        {
+            Assert.Equal(PrototypeCardEnchantmentKind.Instinct,
+                state.Player.Deck.Single(card =>
+                    card.InstanceId == instanceId).Enchantment?.Kind);
+        }
+        Assert.Null(state.Player.Deck.Single(card =>
+            card.InstanceId == 2).Enchantment);
+        Assert.Null(state.Player.Deck.Single(card =>
+            card.InstanceId == 5).Enchantment);
+    }
+
+    [Fact]
+    public void InstinctDoublesPoweredAttackDamage()
+    {
+        var (engine, state) = StartCombat(
+            relicId: null,
+            firstCardId: "proto.silent.strike",
+            firstCardEnchantment: new(
+                PrototypeCardEnchantmentKind.Instinct));
+        var combat = state.World!.Combat!;
+        var target = combat.Enemies[0];
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Enemies = combat.Enemies.Select(enemy => enemy with
+                    {
+                        Hp = 100,
+                        MaxHp = 100,
+                        Block = 0
+                    }).ToArray()
+                }
+            }
+        };
+        var play = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1
+            && action.ReadPayload<PlayCardPayload>().TargetEnemyId
+                == target.InstanceId);
+
+        state = engine.Step(state, play).State;
+
+        Assert.Equal(88, Assert.Single(state.World!.Combat!.Enemies,
+            enemy => enemy.InstanceId == target.InstanceId).Hp);
+    }
+
     [Theory]
     [InlineData(0, 33)]
     [InlineData(1, 44)]
@@ -194,7 +313,8 @@ public sealed class V111TanxRelicTests
         string? relicId,
         int cardsPlayed = 0,
         string firstCardId = "proto.silent.shiv",
-        int firstCardUpgradeLevel = 0)
+        int firstCardUpgradeLevel = 0,
+        PrototypeCardEnchantment? firstCardEnchantment = null)
     {
         var engine = new PrototypeGameEngine();
         var state = PrototypeGameFactory.Create(
@@ -210,7 +330,8 @@ public sealed class V111TanxRelicTests
                     .Select(id => new CardInstance(id,
                         id == 1 ? firstCardId : "proto.silent.shiv",
                         id == 1 ? firstCardUpgradeLevel : 0,
-                        empty)).ToArray(),
+                        empty,
+                        id == 1 ? firstCardEnchantment : null)).ToArray(),
                 Relics = relicId is null
                     ? state.Player.Relics
                     : [..state.Player.Relics,

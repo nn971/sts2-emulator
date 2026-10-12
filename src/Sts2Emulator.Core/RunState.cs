@@ -16,7 +16,8 @@ public enum PrototypeCardEnchantmentKind
     TezcatarasEmber,
     Goopy,
     Clone,
-    Imbued
+    Imbued,
+    Instinct
 }
 
 public sealed record PrototypeCardEnchantment(
