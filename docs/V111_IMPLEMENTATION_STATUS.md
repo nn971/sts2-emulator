@@ -119,6 +119,10 @@ executable through a named Glory Ancient opening fixture. Normal Ancient
 assignment remains gated; the fixture does not make Tanx a random event.
 Nonupeipe and Vakuu remain unavailable until their full offer pools, relic
 effects, Ancient assignment and branch continuations are implemented.
+Nonupeipe's Jewelry Box branch now follows its persistent acquisition through
+the Innate, Exhaust Apotheosis card; playing Apotheosis upgrades all other
+upgradable combat cards. The other Nonupeipe branches and its event offer
+sequence remain gated.
 
 ## Delivered
 

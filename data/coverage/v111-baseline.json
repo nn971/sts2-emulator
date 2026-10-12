@@ -683,11 +683,13 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.apotheosis"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Apotheosis.cs#c16c21079f8aea484f03a473d9f6214947de2cf20f1b6468d47830f4052df2dd"
         ],
-        "implementation": "missing",
+        "implementation": "implemented",
         "integration": "missing",
         "kind": "cards",
         "missing_branches": [],
@@ -696,7 +698,7 @@
           "upgraded"
         ],
         "native_id": "APOTHEOSIS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26620,17 +26622,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.ancient.jewelry_box"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/JewelryBox.cs#2046dc5ff02c3adaa595cdc2944c4a514b90cd71161ae03995378fd3451fc8dd"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "JEWELRY_BOX",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29823,7 +29827,7 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 194,
+        "implemented": 195,
         "integrated": 137,
         "kind": "cards",
         "scope_review_required": 0,

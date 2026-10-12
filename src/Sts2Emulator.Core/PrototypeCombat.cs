@@ -5772,6 +5772,39 @@ public sealed partial class PrototypeGameEngine
                     };
                     break;
 
+                case PrototypeCombatEffectKind.UpgradeAllCards:
+                    combat = combat with
+                    {
+                        Cards = combat.Cards
+                            .Select(card =>
+                            {
+                                if (card.InstanceId
+                                    == sourceCardInstanceId
+                                    || card.UpgradeLevel
+                                        >= PrototypeContent.Card(card.CardId)
+                                            .MaxUpgradeLevel)
+                                {
+                                    return card;
+                                }
+
+                                var definition =
+                                    PrototypeContent.Card(card.CardId);
+                                if (definition.Type is
+                                    PrototypeCardType.Status
+                                    or PrototypeCardType.Curse)
+                                {
+                                    return card;
+                                }
+
+                                return card with
+                                {
+                                    UpgradeLevel = card.UpgradeLevel + 1
+                                };
+                            })
+                            .ToArray()
+                    };
+                    break;
+
                 case PrototypeCombatEffectKind.DamagePlayer:
                 {
                     var incoming =

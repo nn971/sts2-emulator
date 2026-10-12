@@ -54,6 +54,111 @@ public sealed class V111GloryAncientRelicTests
     }
 
     [Fact]
+    public void JewelryBoxAddsInnateApotheosisAndItUpgradesOtherCombatCards()
+    {
+        var initial = PrototypeNativeUnderdocksRunFactory.Create(
+            "glory-jewelry-box-acquisition");
+        var state = initial with
+        {
+            Phase = RunPhase.Reward,
+            World = initial.World! with
+            {
+                Floor = 1,
+                Map = new MapState(
+                    [new MapNodeState("apotheosis-combat", 1, 1,
+                        PrototypeRoomType.Combat, [])],
+                    EntryNodeIds: ["apotheosis-combat"]),
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = null,
+                Shop = null,
+                Event = null,
+                Reward = new RewardState("Combat", [], null,
+                    NativeGloryAncientsV111.JewelryBoxId,
+                    CardResolved: true, PotionResolved: true,
+                    RelicResolved: false, EndsAct: false)
+            }
+        };
+        var engine = new PrototypeGameEngine();
+        var acquire = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "take_reward_relic");
+        state = engine.Step(state, acquire).State;
+
+        var apotheosis = Assert.Single(state.Player.Deck,
+            card => card.CardId
+                == NativeGloryAncientsV111.ApotheosisCardId);
+        var apotheosisDefinition = PrototypeContent.Card(apotheosis.CardId);
+        Assert.True(apotheosisDefinition.Innate);
+        Assert.True(apotheosisDefinition.ExhaustOnUse);
+        Assert.Equal(2, apotheosisDefinition.Cost.AmountAt(0));
+        Assert.Equal(1, apotheosisDefinition.Cost.AmountAt(1));
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.Kind == "leave_reward")).State;
+
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    apotheosis with { InstanceId = 1 },
+                    new(2, "proto.silent.strike", 0,
+                        PrototypeJson.EmptyObject()),
+                    new(3, "proto.silent.footwork", 0,
+                        PrototypeJson.EmptyObject()),
+                    new(4, "proto.status.dazed", 0,
+                        PrototypeJson.EmptyObject())
+                ]
+            },
+            World = state.World! with
+            {
+                NextCardInstanceId = 5,
+                Map = new MapState(
+                    [new MapNodeState("apotheosis-combat", 1, 1,
+                        PrototypeRoomType.Combat, [])],
+                    EntryNodeIds: ["apotheosis-combat"])
+            }
+        };
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload("apotheosis-combat"))).State;
+        var combat = state.World!.Combat!;
+        var combatApotheosis = Assert.Single(combat.Cards, card =>
+            card.CardId == NativeGloryAncientsV111.ApotheosisCardId);
+        combat = combat with
+        {
+            Hand = [combatApotheosis.InstanceId],
+            DrawPile = combat.Cards
+                .Where(card => card.InstanceId
+                    != combatApotheosis.InstanceId)
+                .Select(card => card.InstanceId)
+                .ToArray(),
+            DiscardPile = [],
+            ExhaustPile = []
+        };
+        state = state with
+        {
+            World = state.World with { Combat = combat }
+        };
+
+        var play = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == combatApotheosis.InstanceId);
+        state = engine.Step(state, play).State;
+        combat = state.World!.Combat!;
+
+        Assert.Equal(1, combat.Cards.Single(card => card.CardId
+            == "proto.silent.strike").UpgradeLevel);
+        Assert.Equal(1, combat.Cards.Single(card => card.CardId
+            == "proto.silent.footwork").UpgradeLevel);
+        Assert.Equal(0, combat.Cards.Single(card => card.CardId
+            == "proto.status.dazed").UpgradeLevel);
+        Assert.Equal(0, combat.Cards.Single(card => card.CardId
+            == NativeGloryAncientsV111.ApotheosisCardId).UpgradeLevel);
+        Assert.Contains(combat.ExhaustPile, id =>
+            id == combatApotheosis.InstanceId);
+    }
+
+    [Fact]
     public void LoomingFruitAdds31CurrentAndMaximumHpWhenAcquired()
     {
         var initial = PrototypeNativeUnderdocksRunFactory.Create(

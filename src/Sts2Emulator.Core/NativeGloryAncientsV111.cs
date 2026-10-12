@@ -16,6 +16,8 @@ public static class NativeGloryAncientsV111
     public const string SaiId = "proto.native.ancient.sai";
     public const string SpikedGauntletsId = "proto.native.ancient.spiked_gauntlets";
     public const string SignetRingId = "proto.native.ancient.signet_ring";
+    public const string JewelryBoxId = "proto.native.ancient.jewelry_box";
+    public const string ApotheosisCardId = "proto.native.ancient.apotheosis";
     public const string TriBoomerangId = "proto.native.ancient.tri_boomerang";
     public const string ClawsId = "proto.native.ancient.claws";
     public const string WarHammerId = "proto.native.ancient.war_hammer";
@@ -83,11 +85,27 @@ public static class NativeGloryAncientsV111
         [
             new(PrototypeRunEventKind.RelicAcquired,
                 [new(PrototypeRunEffectKind.GainGold, 888)])
+        ]),
+        new(JewelryBoxId, "Jewelry Box", RunTriggers:
+        [
+            new(PrototypeRunEventKind.RelicAcquired,
+                [new(PrototypeRunEffectKind.AddCard,
+                    CardId: ApotheosisCardId)])
         ])
     ];
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
+        new(ApotheosisCardId, "Apotheosis", new(
+            PrototypeCardCostKind.Fixed, 2, UpgradeDelta: -1),
+            PrototypeCardTarget.None,
+            [new(PrototypeCombatEffectKind.UpgradeAllCards, 0)],
+            ExhaustOnUse: true,
+            Rarity: PrototypeCardRarity.Ancient,
+            Innate: true,
+            RewardEligible: false,
+            Type: PrototypeCardType.Skill,
+            CanBeGeneratedInCombat: false),
         new(MaulCardId, "Maul", new(
             PrototypeCardCostKind.Fixed, 1),
             PrototypeCardTarget.Enemy,
