@@ -46,6 +46,31 @@ uses editor export. Do not install into the live game directory until the
 staged PCK and matching DLL are both present and any incompatible mods are
 disabled.
 
+## Clean Godot export (no .NET solution required)
+
+The prior two-argument Godot exporter ran from `native/Sts2ReferenceMod`,
+which contains `.cs` files but no Godot-specific `.sln`. The Godot .NET
+export plugin produced repeated `This project contains C# files but no
+solution file was found` errors and a warning-filled PCK. This was an
+export configuration failure even though the native C# compiler had succeeded.
+
+The build script now copies only `mod_manifest.json` and the export preset
+into a temporary resource-only Godot project and exports **that** project.
+C# sources are already compiled into `Sts2ReferenceMod.dll` by `dotnet
+build`; they are not PCK assets. Either the one-argument Python packer
+or two-argument clean Godot exporter produces a manifest-containing PCK.
+The edited Godot path still needs an installed-game smoke test.
+
+```fish
+cd ~/projects/sts2-inspector-test
+git fetch origin feature/native-fidelity-inspector-foundation
+git switch --detach origin/feature/native-fidelity-inspector-foundation
+fish scripts/build-native-inspector.fish \
+  ~/projects/sts2-inspector-stage "$STS2_GODOT"
+```
+
+Do not install any warning-filled older PCK from the previous exporter.
+
 ## Build and pin a native installation (fish / WSL)
 
 Run these commands from the emulator repository root. Provide a real MegaDot
