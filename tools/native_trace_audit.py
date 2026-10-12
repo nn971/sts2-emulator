@@ -11,7 +11,7 @@ import json
 import re
 from pathlib import Path
 
-from native_parity import load_trace, transition_data
+from native_parity import load_trace, transition_data, validate_lifecycle
 
 HEX64 = re.compile(r"^[0-9a-fA-F]{64}$")
 
@@ -33,6 +33,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "rng_alignment": "RNG_UNAUDITED",
     }
     if error or not records:
+        return result
+    lifecycle_error = validate_lifecycle(records)
+    if lifecycle_error:
+        result["status"] = "INCOMPLETE_CAPTURE"
+        result["reason"] = lifecycle_error
         return result
     header = records[0]
     if header.get("trace_schema") != "0.2" or header.get("capture_mode") != "passive":
