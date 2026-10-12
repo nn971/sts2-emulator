@@ -4,8 +4,19 @@
     <AssemblyName>Sts2ReferenceMod</AssemblyName>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-  <ItemGroup>
+  <!-- The native game loader probes the mod's principal DLL but does not
+       necessarily resolve its sibling project-reference DLLs. For native
+       builds embed our audited Core/Trace protocol sources into the mod DLL.
+       This avoids per-frame FileNotFoundException in Godot callbacks.
+       The standalone contract/test build retains the normal project reference. -->
+  <ItemGroup Condition="'$(Sts2DataDir)' == ''">
     <ProjectReference Include="../../src/Sts2Emulator.Trace/Sts2Emulator.Trace.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Sts2DataDir)' != ''">
+    <Compile Include="../../src/Sts2Emulator.Core/*.cs"
+             Link="EmbeddedCore/%(Filename)%(Extension)" />
+    <Compile Include="../../src/Sts2Emulator.Trace/*.cs"
+             Link="EmbeddedTrace/%(Filename)%(Extension)" />
   </ItemGroup>
   <!-- The native entrypoint is compiled only when explicitly supplied with a
        verified game installation; the standalone runtime needs no game files. -->
