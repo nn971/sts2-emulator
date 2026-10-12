@@ -19,6 +19,7 @@ public static class NativeGloryAncientsV111
     public const string FollyCardId = "proto.native.ancient.folly";
     public const string MusicBoxId = "proto.native.ancient.music_box";
     public const string JeweledMaskId = "proto.native.ancient.jeweled_mask";
+    public const string ChoicesParadoxId = "proto.native.ancient.choices_paradox";
     public const string BloodSoakedRoseId = "proto.native.ancient.blood_soaked_rose";
     public const string EnthralledCardId = "proto.native.ancient.enthralled";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
@@ -65,6 +66,17 @@ public static class NativeGloryAncientsV111
             new(PrototypeCombatEventKind.BeforeHandDraw,
                 [new(PrototypeCombatEffectKind.MoveRandomPowerDrawCardToHandFree,
                     1)],
+                TurnEquals: 1)
+        ]),
+        new(ChoicesParadoxId, "Choices Paradox", Triggers:
+        [
+            new(PrototypeCombatEventKind.OpeningPlayerTurnStarted,
+                [new(PrototypeCombatEffectKind.ChooseGeneratedCards,
+                    5,
+                    GeneratedChoiceMustPick: true,
+                    GeneratedChoiceCharacterCards: true,
+                    GeneratedChoiceCardsRetain: true,
+                    GeneratedChoiceUsesNativeCardGenerationRng: true)],
                 TurnEquals: 1)
         ]),
         new(BlessedAntlerId, "Blessed Antler",

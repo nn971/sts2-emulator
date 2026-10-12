@@ -601,6 +601,63 @@ public sealed class V111GloryAncientRelicTests
     }
 
     [Fact]
+    public void ChoicesParadoxOffersFiveDistinctRetainedCardsAndAddsOneToHand()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-choices-paradox");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var empty = PrototypeJson.EmptyObject();
+        var combatNode = state.World!.Map.AvailableNodes()
+            .First(node => node.RoomType == PrototypeRoomType.Combat);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Relics = [..state.Player.Relics,
+                    new RelicInstance(
+                        NativeGloryAncientsV111.ChoicesParadoxId, empty)]
+            }
+        };
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload(combatNode.NodeId))).State;
+
+        var pending = state.World!.Combat!.PendingChoice!;
+        Assert.Equal("select_cards", pending.ChoiceId);
+        Assert.Equal(1, pending.Selection.MinSelections);
+        Assert.Equal(1, pending.Selection.MaxSelections);
+        Assert.Equal(5, pending.CandidateCardInstanceIds.Length);
+        var offered = pending.CandidateCardInstanceIds
+            .Select(id => state.World.Combat.Cards.Single(card =>
+                card.InstanceId == id)).ToArray();
+        Assert.Equal(5, offered.Select(card => card.CardId)
+            .Distinct(StringComparer.Ordinal).Count());
+        Assert.All(offered, card =>
+        {
+            Assert.Contains(card.CardId,
+                PrototypeContent.NativeSilentCardPool);
+            Assert.Contains(card.KeywordOverrides ?? [], item =>
+                item.Keyword == PrototypeCardKeyword.Retain
+                && item.Enabled);
+        });
+
+        state = RunSnapshot.Load(RunSnapshot.Save(state));
+        var selectedId = state.World!.Combat!.PendingChoice!
+            .CandidateCardInstanceIds[0];
+        state = engine.Step(state, GameAction.Create("select_cards",
+            new SelectCardsPayload([selectedId]))).State;
+
+        var combat = state.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Contains(selectedId, combat.Hand);
+        Assert.DoesNotContain(combat.ChoiceCardIds, id => id != selectedId);
+        Assert.Contains(combat.Cards.Single(card =>
+                card.InstanceId == selectedId).KeywordOverrides ?? [], item =>
+            item.Keyword == PrototypeCardKeyword.Retain
+            && item.Enabled);
+    }
+
+    [Fact]
     public void LoomingFruitAdds31CurrentAndMaximumHpWhenAcquired()
     {
         var initial = PrototypeNativeUnderdocksRunFactory.Create(

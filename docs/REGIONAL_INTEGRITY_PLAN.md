@@ -200,8 +200,10 @@ regional entry/branch has direct integration and semantic coverage.
   copies the first Attack played each player turn into hand as Ethereal and
   resets its once-per-turn guard at the next player-turn start. Jeweled Mask
   moves a non-Innate Power from draw pile to hand before the opening draw and
-  makes it free for the turn. See the [Glory Ancient source
-  ledger](reference-builds/v0.111.0-glory-ancients.md).
+  makes it free for the turn. Choices Paradox now offers five distinct Retain
+  cards on the opening player turn, with a snapshot-safe choice; its current
+  candidate pool is limited to implemented Silent card mechanics. See the
+  [Glory Ancient source ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.
 

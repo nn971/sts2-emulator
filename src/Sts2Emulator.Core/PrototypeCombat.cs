@@ -4510,6 +4510,12 @@ public sealed partial class PrototypeGameEngine
                             && upgradeLevel > 0),
                     GeneratedChoiceMustPick:
                         effect.GeneratedChoiceMustPick,
+                    GeneratedChoiceCharacterCards:
+                        effect.GeneratedChoiceCharacterCards,
+                    GeneratedChoiceCardsRetain:
+                        effect.GeneratedChoiceCardsRetain,
+                    GeneratedChoiceUsesNativeCardGenerationRng:
+                        effect.GeneratedChoiceUsesNativeCardGenerationRng,
                     SelectedCardTemporaryCost:
                         effect.SelectedCardTemporaryCost is null
                             ? null
@@ -5391,7 +5397,12 @@ public sealed partial class PrototypeGameEngine
                                 .ChooseGeneratedColorlessCards
                             ? PrototypeColorlessCards
                                 .ImplementedCombatGenerationPool
-                            : null);
+                            : operation.GeneratedChoiceCharacterCards
+                                ? PrototypeContent.NativeSilentCardPool
+                                : null,
+                        operation.GeneratedChoiceCharacterCards,
+                        operation.GeneratedChoiceCardsRetain,
+                        operation.GeneratedChoiceUsesNativeCardGenerationRng);
                     combat = generated.Combat;
                     if (generated.CardInstanceIds.Length == 0)
                     {
@@ -7195,7 +7206,10 @@ public sealed partial class PrototypeGameEngine
         bool freeThisTurn,
         bool upgraded,
         RngBundle rng,
-        IEnumerable<string>? sourcePool = null)
+        IEnumerable<string>? sourcePool = null,
+        bool characterCombatPool = false,
+        bool retain = false,
+        bool useNativeCardGenerationRng = false)
     {
         var candidates = (sourcePool ?? PrototypeContent.RewardCardPool)
             .Where(cardId =>
@@ -7204,6 +7218,11 @@ public sealed partial class PrototypeGameEngine
                 return (cardType is null
                         || definition.Type == cardType.Value)
                     && definition.CanBeGeneratedInCombat
+                    && (!characterCombatPool
+                        || definition.Rarity is not
+                            (PrototypeCardRarity.Basic
+                             or PrototypeCardRarity.Ancient
+                             or PrototypeCardRarity.Event))
                     && definition.MechanicsImplemented
                     && !definition.MultiplayerOnly;
             })
@@ -7215,10 +7234,25 @@ public sealed partial class PrototypeGameEngine
                 Array.Empty<long>());
         }
 
-        PrototypeRng.Shuffle(rng, "combat", candidates);
-        var selectedIds = candidates
-            .Take(Math.Min(count, candidates.Length))
-            .ToArray();
+        var selectedCount = Math.Min(count, candidates.Length);
+        var nativeRunStreams = useNativeCardGenerationRng
+            ? combat.NativeRng?.RunStreams.Fork()
+            : null;
+        // GetDistinctForCombat delegates to TakeRandom, which shuffles the
+        // full filtered pool before taking a prefix. Preserve that RNG call
+        // count even when the effect asks for only a few cards.
+        if (nativeRunStreams is null)
+        {
+            PrototypeRng.Shuffle(rng, "combat", candidates);
+        }
+        else
+        {
+            NativeRngV111.Shuffle(
+                nativeRunStreams,
+                "run.combat_card_generation",
+                candidates);
+        }
+        var selectedIds = candidates.Take(selectedCount).ToArray();
         var generatedIds = new List<long>(
             selectedIds.Length);
         foreach (var cardId in selectedIds)
@@ -7236,7 +7270,13 @@ public sealed partial class PrototypeGameEngine
                             0,
                             PrototypeTemporaryCardCostExpiry.EndOfTurn
                             | PrototypeTemporaryCardCostExpiry.WhenPlayed)
-                        : null);
+                        : null,
+                KeywordOverrides: retain
+                    ? [new PrototypeCardKeywordOverride(
+                        PrototypeCardKeyword.Retain,
+                        true,
+                        PrototypeCardKeywordOverrideExpiry.None)]
+                    : null);
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat,
                 instance);
@@ -7253,9 +7293,18 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        return new PrototypeGeneratedChoiceResult(
-            combat,
-            generatedIds.ToArray());
+        if (nativeRunStreams is not null)
+        {
+            combat = combat with
+            {
+                NativeRng = combat.NativeRng! with
+                {
+                    RunStreams = nativeRunStreams
+                }
+            };
+        }
+
+        return new PrototypeGeneratedChoiceResult(combat, generatedIds.ToArray());
     }
 
     private static CombatState AddGeneratedCardCopies(
