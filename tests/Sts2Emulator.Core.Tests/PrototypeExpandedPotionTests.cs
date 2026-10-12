@@ -237,6 +237,34 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void BottledPotentialReturnsHandShufflesAndDrawsFive()
+    {
+        var cards = Enumerable.Range(1, 6)
+            .Select(id => Card(
+                id,
+                id % 2 == 0
+                    ? "proto.silent.defend"
+                    : "proto.silent.strike"))
+            .ToArray();
+        var state = CombatStateWith(
+            cards,
+            hand: [1, 2],
+            potionId: "proto.potion.bottled_potential",
+            drawPile: [3, 4, 5, 6]);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(5, combat.Hand.Length);
+        Assert.Single(combat.DrawPile);
+        Assert.Equal(
+            new long[] { 1, 2, 3, 4, 5, 6 }.Order(),
+            combat.Hand.Concat(combat.DrawPile).Order());
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(

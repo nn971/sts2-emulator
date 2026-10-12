@@ -2091,6 +2091,18 @@ public static class PrototypeContent
                         1,
                         1,
                         PrototypeCardSelectionResolutionKind.MoveToHand))]),
+            // Shared Rare potion: put the current hand into the draw pile,
+            // shuffle, then draw five through the standard draw pipeline.
+            new PrototypePotionDefinition(
+                "proto.potion.bottled_potential",
+                "Bottled Potential",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle,
+                        0),
+                    new(PrototypeCombatEffectKind.DrawCards, 5)
+                ]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",

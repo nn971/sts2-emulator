@@ -5086,6 +5086,25 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle:
+                {
+                    var shuffled = combat.DrawPile
+                        .Concat(combat.Hand)
+                        .ToArray();
+                    combat = combat with
+                    {
+                        Hand = Array.Empty<long>()
+                    };
+                    PrototypeRng.Shuffle(rng, "combat", shuffled);
+                    combat = combat with
+                    {
+                        DrawPile = ApplyPerfectFitShuffleOrder(
+                            combat, shuffled)
+                    };
+                    combat = ApplyRelicAfterShuffleCards(combat, rng);
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.ApplyEnemyStatus:
                     if (targetEnemyId is null || operation.StatusId is null)
                     {

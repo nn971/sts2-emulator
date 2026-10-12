@@ -126,7 +126,8 @@ public enum PrototypeCombatEffectKind
     CreateDistinctCharacterCommonCardsInHand,
     CreateRandomFreeCharacterCardInHand,
     GainEnergyForGold,
-    LosePlayerMaxHp
+    LosePlayerMaxHp,
+    ReturnHandToDrawAndShuffle
 }
 
 public enum PrototypeCardKeyword

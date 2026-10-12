@@ -60,6 +60,8 @@ public static class PrototypeNativePotionShop
             ["proto.potion.distilled_chaos"] = PrototypeNativePotionRarity.Rare,
             ["proto.potion.ship_in_a_bottle"] = PrototypeNativePotionRarity.Rare,
             ["proto.potion.droplet_of_precognition"] =
+                PrototypeNativePotionRarity.Rare,
+            ["proto.potion.bottled_potential"] =
                 PrototypeNativePotionRarity.Rare
         };
 
