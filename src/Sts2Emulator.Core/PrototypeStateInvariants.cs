@@ -757,6 +757,10 @@ public static class PrototypeStateInvariants
                         : eventState.EventId ==
                             PrototypeNativePunchOff.EventId
                             ? eventState.NativePageIndex > 2
+                                && eventState.NativePageIndex !=
+                                    PrototypeNativeEventCompletionPages
+                                        .TerminalChoicePageIndex(
+                                            eventState.EventId)
                             : PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                                 eventState.EventId)
                                 ? eventState.NativePageIndex >

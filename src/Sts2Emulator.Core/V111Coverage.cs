@@ -240,6 +240,11 @@ public static class V111Coverage
             && engineIds.Contains(PrototypeNativeEndlessConveyor.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "PUNCH_OFF" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativePunchOff.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {

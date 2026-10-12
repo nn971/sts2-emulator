@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "e3b0c4c229a4777ca5a4dbc1f64728cd483f86b6167aeec387219e7abfaa2ea9",
+  "inventory_file_sha256": "76d6b88b43d94b58db84651dd260fae6fcfa590201c8861cdecad060f63780f8",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "84ff8c434b93817a0da1b86677e7916f1dab8f2fc47af9e7a75164a791d9e5db",
+    "inventory_hash": "8820e3a14ac19d6f410b7acb4bf391afde61b9ee6baa32f5fec302023b8b5bed",
     "items": [
       {
         "catalogued": true,
@@ -15644,19 +15644,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/PunchOff.cs#2599f3342e85dbc82a7fefb8fbfccab7b998f2b8842385862bb3009bced32ae3"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/I_CAN_TAKE_THEM",
-          "initial/NAB",
-          "page/INITIAL",
-          "page/INITIAL/I_CAN_TAKE_THEM",
-          "page/INITIAL/NAB",
-          "page/I_CAN_TAKE_THEM",
-          "page/I_CAN_TAKE_THEM/FIGHT",
-          "page/NAB"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "PUNCH_OFF",
         "registered": true,
@@ -29646,7 +29637,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 13,
+        "implemented": 14,
         "integrated": 50,
         "kind": "events",
         "scope_review_required": 0,

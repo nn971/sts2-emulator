@@ -11785,7 +11785,7 @@
         "page/I_CAN_TAKE_THEM/FIGHT",
         "page/NAB"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "events",

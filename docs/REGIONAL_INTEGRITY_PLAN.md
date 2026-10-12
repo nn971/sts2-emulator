@@ -31,7 +31,7 @@ passed on the prior baseline.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
 event category now reports 50 of 66 event paths integrated into a regional or
-forced quest route, twenty-six with complete branch inventories, and zero
+forced quest route, twenty-seven with complete branch inventories, and zero
 native-validated. The ten special/event fights are
 not counted as ordinary queue integration. These classifications are
 conservative and do not replace branch-level review, but they confirm that

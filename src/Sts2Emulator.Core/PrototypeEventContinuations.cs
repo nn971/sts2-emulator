@@ -225,7 +225,12 @@ public sealed partial class PrototypeGameEngine
                 {
                     World = world with
                     {
-                        Event = eventState with { NativePageIndex = 1 }
+                        Event = eventState with
+                        {
+                            NativePageIndex =
+                                PrototypeNativeEventCompletionPages
+                                    .TerminalChoicePageIndex(eventState.EventId)
+                        }
                     }
                 };
             }
