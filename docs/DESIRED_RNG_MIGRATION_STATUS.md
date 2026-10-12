@@ -35,9 +35,12 @@ specifically, `NextInt(1)` is **not skipped**.
 
 Request identity includes `SiteId`, `StreamId`, `OwnerId` (stable CombatId),
 `Ordinal` (creation order), `OrderedCandidates`, `OperationKind`, and `SourceVersion`.
-The HP site uses `choose_index`; the committed-intent callback uses
-`bounded_integer` because the sampled integer may represent a ticket within
-weighted legal AI branches. Both use the pinned primitive `NextInt`.
+The HP site uses `choose_index` with an ordered candidate array; the
+committed-intent callback uses **compact** `bounded_integer` plus a positive
+`BoundedCount`, because the sampled integer may represent a ticket within
+weighted legal AI branches. Unlike an enumerated array, this supports even
+large integer ranges without allocating the full support. Both use the
+pinned primitive `NextInt`.
 A transcript records selected index, provider provenance and, in native mode,
 exact pre/post xoshiro counter and state words. Outcomes are **not** assigned
 reference probabilities. The native attachment returns the unchanged
@@ -58,7 +61,8 @@ The intent engine's eligibility logic (source move state, weighted
 branches, anti-repeat, opening sequence and per-creature commit order)
 remains inside `PrototypeGameEngine.SelectEnemyMove`. The callback
 to its existing `nextIndex(maxExclusive)` asks for an ordered index
-`[0,...,maxExclusive-1]` after the eligibility checks.
+`[0,...,maxExclusive-1]` after the eligibility checks. The legal primitive range is
+represented by `BoundedCount=maxExclusive`, not an allocated integer array.
 It records a per-enemy CombatId owner and global per-transition
 occurrence sequence. `CommitIntentsWithAudit` is opt-in and returns
 the selected indices and exact pre/post native stream words/counters.
