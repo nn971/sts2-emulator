@@ -417,10 +417,15 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             }
         };
         Assert.Contains(null, forced.Player.PotionSlots);
+        var expectedRng = forced.Rng.Fork();
+        var expectedPotion = PrototypeNativePotionShop.PickUniform(
+            expectedRng, "reward");
         var pending = Choose(engine, forced, "grab");
         Assert.Equal(RunPhase.Event, pending.Phase);
         Assert.True(pending.World!.Event!.NativeDishRollPending);
         Assert.NotNull(pending.World.Event.PendingPotionReplacement);
+        Assert.Equal(expectedPotion,
+            pending.World.Event.PendingPotionReplacement!.PotionId);
         Assert.Equal(1, pending.World.Event.NativeDishCount);
         Assert.Equal("SUSPICIOUS_CONDIMENT",
             pending.World.Event.NativeDishId);

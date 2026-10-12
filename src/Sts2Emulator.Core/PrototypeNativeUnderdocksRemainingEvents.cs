@@ -204,16 +204,15 @@ public sealed partial class PrototypeGameEngine
             }
 
             case "SUSPICIOUS_CONDIMENT":
-                if (PrototypeContent.PotionPool.Length == 0)
+                if (PrototypeNativePotionShop.NativePotionPoolOrder.Count == 0)
                 {
                     throw new NotSupportedException(
                         "Suspicious Condiment has no supported potions.");
                 }
                 pendingPotions =
                 [
-                    PrototypeContent.PotionPool[PrototypeRng.NextInt(
-                        state.Rng, "reward",
-                        PrototypeContent.PotionPool.Length)]
+                    PrototypeNativePotionShop.PickUniform(
+                        state.Rng, "reward")
                 ];
                 break;
 

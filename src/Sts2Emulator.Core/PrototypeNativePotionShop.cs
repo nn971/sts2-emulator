@@ -248,13 +248,13 @@ public static class PrototypeNativePotionShop
     }
 
     /// <summary>
-    /// Wellspring.Bottle uses Rewards.NextItem over the complete
-    /// character/shared potion pool, with no rarity weighting.
+    /// Source uniform selection over the full-unlock character/shared potion
+    /// pool, with no rarity weighting. Used by Wellspring and event offers.
     /// </summary>
     public static string PickUniform(RngBundle rng, string streamId)
     {
-        var pool = PrototypeContent.PotionPool;
-        return pool[PrototypeRng.NextInt(rng, streamId, pool.Length)];
+        return NativePotionPoolOrder[PrototypeRng.NextInt(
+            rng, streamId, NativePotionPoolOrder.Count)];
     }
 
     /// <summary>

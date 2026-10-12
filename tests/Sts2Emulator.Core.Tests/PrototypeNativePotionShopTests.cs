@@ -48,9 +48,10 @@ public sealed class PrototypeNativePotionShopTests
         var right = left.Fork();
         var fromHelper = PrototypeNativePotionShop.PickUniform(
             left, "reward");
-        var expected = PrototypeContent.PotionPool[
+        var expected = PrototypeNativePotionShop.NativePotionPoolOrder[
             PrototypeRng.NextInt(
-                right, "reward", PrototypeContent.PotionPool.Length)];
+                right, "reward",
+                PrototypeNativePotionShop.NativePotionPoolOrder.Count)];
         Assert.Equal(expected, fromHelper);
     }
 
