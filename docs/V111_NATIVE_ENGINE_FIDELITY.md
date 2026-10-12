@@ -87,6 +87,28 @@ pending choice, earlier move history and pre-boundary hooks. An isolated
 engine state built from visible data cannot settle these. The generated
 prototype RNG from the sandbox is not the original run's native RNG.
 
+## Strict creature identity checks
+
+The fixture importer requires the pre-state's `creature:0` to be the
+Silent player, with the same HP, max HP, block and alive flag as the
+corresponding `player` fields. The selected card must occur in the
+original hand. Invalid or ambiguous pre-states are reported as
+`UNSUPPORTED_NATIVE_STATE` before executing the engine.
+
+After a successful engine step, the comparison checks the complete
+**multiset** of creature instance IDs (independent of presentation
+order), the native species/model identity of each retained instance,
+and its HP/max HP/block/alive status. Missing, duplicated or invented
+post-state creatures produce `CORE_ENGINE_CHECKPOINT_MISMATCH`, even if
+all remaining scalar fields happen to agree. An unrecognized creature
+never aliases the player's state.
+
+These checks are stricter about the **recorded visible snapshot**;
+they still do not establish native hook ordering, hidden state fidelity,
+or complete game parity. Diagnostic event types in the original
+Inspector trace remain observations rather than a validated full
+source-hook execution journal.
+
 ## Next gates for Inspector and emulator
 
 - Expose trustworthy battle/encounter identity, actual act/ascension,
