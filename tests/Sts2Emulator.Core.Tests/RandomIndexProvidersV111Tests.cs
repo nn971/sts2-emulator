@@ -37,6 +37,21 @@ public sealed class RandomIndexProvidersV111Tests
             Assert.Equal(bare.Enemies.Length, audit.Choices.Length);
             Assert.Equal(0, NativeRngV111.ToSnapshot(
                 fresh.Streams.Single(s => s.StreamId == "run.niche")).Counter);
+            // Primitive oracle independent of the new request/provider:
+            // run the original pinned NextInt sequentially from a fresh
+            // native stream and require identical selected indices and
+            // post-call *complete* xoshiro state.
+            var primitiveOracle = NativeRngV111.CreateBundle(seed);
+            foreach (var choice in audit.Choices)
+            {
+                int legacySelection = NativeRngV111.NextInt(
+                    primitiveOracle, "run.niche",
+                    choice.Request.OrderedCandidates.Length);
+                Assert.Equal(legacySelection, choice.SelectedIndex);
+            }
+            Assert.Equal(CanonicalJson.Sha256(primitiveOracle),
+                CanonicalJson.Sha256(audit.Combat.NativeRng!.RunStreams));
+
             foreach (var (choice, index) in audit.Choices.Select((v, i) => (v, i)))
             {
                 Assert.Equal(index, choice.Request.Ordinal);
