@@ -66,8 +66,9 @@ Prismatic Gem offers, plus Colorful Philosophers, are explicitly postponed by
 the current user scope. Shared Darv now participates in revealed-profile
 assignment and offers nine modeled relics. Philosopher's Stone adds one energy
 per turn and gives living enemies one Strength at combat start. Black Star adds
-one relic to elite rewards. Hive-only Ectoplasm adds one energy and blocks gold
-gains. Three Darv branches remain open. Assignment uses prototype event randomness;
+one relic to elite rewards. Darv offers Ectoplasm only in Hive; it adds one
+energy and blocks gold gains. Three Darv branches remain open. Assignment uses
+prototype event randomness;
 native UpFront scheduling and source offer parity are left for the RNG pass.
 See [the assignment ledger](reference-builds/v0.111.0-ancient-assignment.md).
 Seven
