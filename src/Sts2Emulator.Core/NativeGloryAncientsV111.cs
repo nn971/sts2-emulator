@@ -18,6 +18,7 @@ public static class NativeGloryAncientsV111
     public const string PreservedFogId = "proto.native.ancient.preserved_fog";
     public const string FollyCardId = "proto.native.ancient.folly";
     public const string MusicBoxId = "proto.native.ancient.music_box";
+    public const string JeweledMaskId = "proto.native.ancient.jeweled_mask";
     public const string BloodSoakedRoseId = "proto.native.ancient.blood_soaked_rose";
     public const string EnthralledCardId = "proto.native.ancient.enthralled";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
@@ -58,6 +59,13 @@ public static class NativeGloryAncientsV111
                 RequiredSourceCardType: PrototypeCardType.Attack,
                 ResetCounterEachTurn: true,
                 MaxTriggersPerCounterWindow: 1)
+        ]),
+        new(JeweledMaskId, "Jeweled Mask", Triggers:
+        [
+            new(PrototypeCombatEventKind.BeforeHandDraw,
+                [new(PrototypeCombatEffectKind.MoveRandomPowerDrawCardToHandFree,
+                    1)],
+                TurnEquals: 1)
         ]),
         new(BlessedAntlerId, "Blessed Antler",
             EnergyPerTurnBonus: 1,

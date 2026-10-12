@@ -89,6 +89,7 @@ public enum PrototypeCombatEffectKind
     MultiplyPlayerBlock,
     DrawCards,
     MoveRandomRareDrawCardsToHand,
+    MoveRandomPowerDrawCardToHandFree,
     AddRandomZeroCostCardsToHand,
     EmpowerRandomDrawCardReplay,
     AcquireRandomCombatPotion,

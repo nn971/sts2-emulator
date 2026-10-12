@@ -24,7 +24,7 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-12): 1,813 C# tests pass, executable coverage
+Current validation (2026-10-12): 1,814 C# tests pass, executable coverage
 matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
@@ -198,7 +198,9 @@ regional entry/branch has direct integration and semantic coverage.
   three selected cards before adding its Innate, Ethereal, Eternal Folly curse
   through reward, shop and event deck-choice continuations. Music Box also
   copies the first Attack played each player turn into hand as Ethereal and
-  resets its once-per-turn guard at the next player-turn start. See the [Glory Ancient source
+  resets its once-per-turn guard at the next player-turn start. Jeweled Mask
+  moves a non-Innate Power from draw pile to hand before the opening draw and
+  makes it free for the turn. See the [Glory Ancient source
   ledger](reference-builds/v0.111.0-glory-ancients.md).
 - Integrate regional bags, map routing, rewards and difficulty-dependent boss
   sequence/terminal rules from source.

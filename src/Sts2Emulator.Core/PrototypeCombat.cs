@@ -5570,6 +5570,61 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.MoveRandomPowerDrawCardToHandFree:
+                {
+                    var powers = combat.DrawPile
+                        .Where(id => RuntimeCardDefinition(
+                            RequireCombatCard(combat, id)).Type
+                            == PrototypeCardType.Power)
+                        .ToArray();
+                    var nonInnatePowers = powers
+                        .Where(id => !IsInnate(
+                            RequireCombatCard(combat, id)))
+                        .ToArray();
+                    var candidates = nonInnatePowers.Length > 0
+                        ? nonInnatePowers
+                        : powers;
+                    if (candidates.Length == 0)
+                        break;
+
+                    var nativeRunStreams = combat.NativeRng?.RunStreams.Fork();
+                    var selectedIndex = nativeRunStreams is null
+                        ? PrototypeRng.NextInt(
+                            rng, "combat", candidates.Length)
+                        : NativeRngV111.NextInt(
+                            nativeRunStreams,
+                            "run.combat_card_selection",
+                            candidates.Length);
+                    var selectedId = candidates[selectedIndex];
+                    combat = SetCardTemporaryEnergyCost(
+                        combat,
+                        selectedId,
+                        new PrototypeTemporaryCardCost(
+                            0,
+                            PrototypeTemporaryCardCostExpiry.EndOfTurn
+                            | PrototypeTemporaryCardCostExpiry.WhenPlayed));
+                    var handHasSpace = combat.Hand.Length < 10;
+                    combat = combat with
+                    {
+                        DrawPile = combat.DrawPile
+                            .Where(id => id != selectedId)
+                            .ToArray(),
+                        Hand = handHasSpace
+                            ? combat.Hand.Append(selectedId).ToArray()
+                            : combat.Hand,
+                        DiscardPile = handHasSpace
+                            ? combat.DiscardPile
+                            : combat.DiscardPile.Append(selectedId).ToArray(),
+                        NativeRng = nativeRunStreams is null
+                            ? combat.NativeRng
+                            : combat.NativeRng! with
+                            {
+                                RunStreams = nativeRunStreams
+                            }
+                    };
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.ChooseCards:
                 {
                     var selection = operation.Selection

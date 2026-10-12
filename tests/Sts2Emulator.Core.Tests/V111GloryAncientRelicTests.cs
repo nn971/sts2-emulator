@@ -548,6 +548,59 @@ public sealed class V111GloryAncientRelicTests
     }
 
     [Fact]
+    public void JeweledMaskMovesOneDrawPilePowerToHandAndFreesItForTurnOne()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = PrototypeGameFactory.Create("glory-jeweled-mask");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var empty = PrototypeJson.EmptyObject();
+        var combatNode = state.World!.Map.AvailableNodes()
+            .First(node => node.RoomType == PrototypeRoomType.Combat);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new(1, "proto.silent.footwork", 0, empty),
+                    new(2, "proto.silent.snakebite", 0, empty),
+                    new(3, "proto.silent.strike", 0, empty)
+                ],
+                Relics = [..state.Player.Relics,
+                    new RelicInstance(
+                        NativeGloryAncientsV111.JeweledMaskId, empty)]
+            },
+            World = state.World! with { NextCardInstanceId = 4 }
+        };
+        state = engine.Step(state, GameAction.Create("choose_map_node",
+            new ChooseMapNodePayload(combatNode.NodeId))).State;
+
+        var combat = state.World!.Combat!;
+        var powers = combat.Cards.Where(card =>
+            card.PersistentCardInstanceId is 1 or 2).ToArray();
+        Assert.Equal(2, powers.Length);
+        Assert.All(powers, card => Assert.Contains(
+            card.InstanceId, combat.Hand));
+        var freed = Assert.Single(powers, card =>
+            card.TemporaryEnergyCost is
+                { Cost: 0, Expiry: var expiry }
+                && expiry.HasFlag(
+                    PrototypeTemporaryCardCostExpiry.EndOfTurn)
+                && expiry.HasFlag(
+                    PrototypeTemporaryCardCostExpiry.WhenPlayed));
+        Assert.Contains(freed.InstanceId, combat.Hand);
+
+        state = engine.Step(state, engine.GetLegalActions(state).Single(
+            action => action.Kind == "end_turn")).State;
+        combat = state.World!.Combat!;
+        Assert.DoesNotContain(combat.Cards.Where(card =>
+                card.PersistentCardInstanceId is 1 or 2),
+            card => card.TemporaryEnergyCost is not null);
+        Assert.Equal(2, combat.Turn);
+    }
+
+    [Fact]
     public void LoomingFruitAdds31CurrentAndMaximumHpWhenAcquired()
     {
         var initial = PrototypeNativeUnderdocksRunFactory.Create(
