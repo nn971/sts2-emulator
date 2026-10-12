@@ -179,9 +179,22 @@ public static class PrototypeStateInvariants
         ValidateActOneEncounterPool(world);
         if (state.Configuration?.UsesExperimentalSilentThreeActRoute == true)
         {
-            ValidatePreparedLaterActEncounterBags(world, state.Ascension);
+            var darvRevealed = state.Configuration.Profile.RevealedEpochs.Contains(
+                NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+            ValidatePreparedLaterActEncounterBags(
+                world, state.Ascension, darvRevealed);
             if (world.Act > 1)
-                ValidateLaterActEncounterBag(world, state.Ascension);
+                ValidateLaterActEncounterBag(
+                    world, state.Ascension, darvRevealed);
+            var darvAssignments = (world.LaterActEncounterBag is { } activeBag
+                    ? new[] { activeBag.AssignedAncientId }
+                    : Array.Empty<string?>())
+                .Concat((world.PreparedLaterActEncounterBags ?? [])
+                    .Select(bag => bag.AssignedAncientId))
+                .Count(id => id == NativeDarvEventV111.EventId);
+            if (darvAssignments > 1)
+                throw new InvalidOperationException(
+                    "The shared Darv Ancient cannot be assigned to multiple acts.");
         }
         ValidateEncounterHistory(world);
         ValidateEventHistory(world);
@@ -408,7 +421,7 @@ public static class PrototypeStateInvariants
     }
 
     private static void ValidatePreparedLaterActEncounterBags(
-        RunWorldState world, int ascension)
+        RunWorldState world, int ascension, bool darvRevealed)
     {
         var prepared = world.PreparedLaterActEncounterBags
             ?? throw new InvalidOperationException(
@@ -424,12 +437,13 @@ public static class PrototypeStateInvariants
                 throw new InvalidOperationException(
                     "An unvisited act's prepared encounter history has already been consumed.");
             ValidateLaterActEncounterBag(
-                world with { Act = bag.Act, LaterActEncounterBag = bag }, ascension);
+                world with { Act = bag.Act, LaterActEncounterBag = bag },
+                ascension, darvRevealed);
         }
     }
 
     private static void ValidateLaterActEncounterBag(
-        RunWorldState world, int ascension)
+        RunWorldState world, int ascension, bool darvRevealed)
     {
         var bag = world.LaterActEncounterBag
             ?? throw new InvalidOperationException(
@@ -481,7 +495,8 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException(
                 "Regional preselected boss is not eligible for this act.");
         if (bag.AssignedAncientId is { } ancientId
-            && !ExperimentalSilentThreeActRouteV111.AncientPool(world.Act)
+            && !ExperimentalSilentThreeActRouteV111.AncientPool(world.Act,
+                includeDarv: darvRevealed)
                 .Contains(ancientId, StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "Prepared Ancient assignment is unsupported or belongs to another act.");

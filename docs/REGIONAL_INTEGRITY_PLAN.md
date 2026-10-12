@@ -24,11 +24,12 @@ all-character roadmap track.
 
 ## 1. Establish the executable baseline
 
-Current validation (2026-10-13): 1,847 C# tests pass, executable coverage
-matches its reviewed baseline, and Python snapshot/batch/replay checks pass.
+Before the current Darv slice, 1,847 C# tests passed; the latest solution build
+and coverage-baseline check pass. Darv tests are present but were not executed
+in this update. Python snapshot/batch/replay checks passed on the prior baseline.
 The current v111 coverage report classifies 80 of 90 encounters as implemented
 and integrated into regional encounter queues, with zero native-validated; its
-event category now reports 46 of 66 event paths integrated into a regional or
+event category now reports 47 of 66 event paths integrated into a regional or
 forced quest route, fourteen with complete branch inventories, and zero
 native-validated. The ten special/event fights are
 not counted as ordinary queue integration. These classifications are
@@ -61,9 +62,11 @@ Vakuu before map choice. Existing acquisition and reward continuations are
 reused. Orobas executes its eight Silent relic options with a locked third
 pool when both starter dependencies are absent. Cross-character Sea Glass and
 Prismatic Gem offers, plus Colorful Philosophers, are explicitly postponed by
-the current user scope. Shared Darv remains unimplemented. Assignment currently
-uses prototype event randomness; native UpFront scheduling is left for the RNG
-pass. See [the assignment ledger](reference-builds/v0.111.0-ancient-assignment.md).
+the current user scope. Shared Darv now participates in revealed-profile
+assignment and offers six already-modeled relics. Its other relic options and
+Dusty Tome path remain open. Assignment uses prototype event randomness;
+native UpFront scheduling and source offer parity are left for the RNG pass.
+See [the assignment ledger](reference-builds/v0.111.0-ancient-assignment.md).
 Seven
 Orobas relic dependencies now have executable effects for Silent: Radiant
 Pearl's temporary Luminesce, Sand Castle's six-card upgrade, Touch of Orobas's
@@ -191,8 +194,9 @@ Overgrowth, with no regional fallback or reachable unsupported behavior.
   Supported Pael/Tezcatara opening execution is integrated once assigned. The
   source assignment call order is audited in
   [the Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md),
-  with all three Hive act-local Ancients now executable. Shared Darv and
-  run-start UpFront integration remain open; the latter is deferred to RNG work.
+  with all three Hive act-local Ancients now executable. Shared Darv assignment
+  and six Silent relic choices are integrated; its remaining options and
+  run-start UpFront integration remain open, with the latter deferred to RNG work.
 - Remove Hive/Glory initialization rejection only after supported regional
   policies exist. Keep unfinished paths explicitly gated during development.
 - Establish an explicit deterministic test route through Act 1 → Hive → Glory

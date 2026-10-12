@@ -228,12 +228,24 @@ public static class V111RunFactory
                 RulesetId = config.RulesetId,
                 ActIdentity = config.Acts[0],
                 PreparedLaterActEncounterBags = config.UsesExperimentalSilentThreeActRoute
-                    ? new[] { 2, 3 }.Select(act =>
-                        ExperimentalSilentThreeActRouteV111.InitialBag(
-                            act, opening.Rng, config.Ascension,
-                            config.Profile, assignAncient: true)).ToArray()
+                    ? BuildPreparedLaterActBags(opening.Rng, config)
                     : null
             }
         };
+    }
+
+    private static PrototypeLaterActEncounterBagV111[] BuildPreparedLaterActBags(
+        RngBundle rng, RunConfiguration configuration)
+    {
+        var assigned = ExperimentalSilentThreeActRouteV111
+            .PrepareAncientAssignments(rng, configuration.Ascension,
+                configuration.Profile);
+        return new[] { 2, 3 }.Select((act, index) =>
+            ExperimentalSilentThreeActRouteV111.InitialBag(
+                act, rng, configuration.Ascension, configuration.Profile,
+                assignAncient: false) with
+            {
+                AssignedAncientId = assigned[index]
+            }).ToArray();
     }
 }

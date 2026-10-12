@@ -1784,6 +1784,9 @@ public sealed partial class PrototypeGameEngine
                 relic.Id == relicId))
         || (eventId == NativeOrobasEventV111.EventId
             && NativeOrobasEventV111.Definition.Choices.Any(choice =>
+                choice.Effects.Any(effect => effect.RelicId == relicId)))
+        || (eventId == NativeDarvEventV111.EventId
+            && NativeDarvEventV111.Definition.Choices.Any(choice =>
                 choice.Effects.Any(effect => effect.RelicId == relicId)));
 
     private static bool CanTakeEventChoice(

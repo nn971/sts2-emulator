@@ -1,15 +1,19 @@
 ## Current Silent regional execution update (2026-10-13)
 
-Configured three-act runs now persist act-local Hive and Glory Ancient
-assignments at run start and dispatch all six implemented opening events at
-act entry. Orobas's eight Silent relic offers reuse the existing acquisition
+Configured three-act runs now persist Hive and Glory Ancient assignments at
+run start and dispatch all six act-local Ancient openings at act entry.
+Orobas's eight Silent relic offers reuse the existing acquisition
 handlers and continuations. Coffer capacity metadata now records its four
 added potion slots. Cross-character card mechanics (including Sea Glass,
 Prismatic Gem's foreign pools and Colorful Philosophers) are postponed by user
-scope. Shared Darv remains outstanding. Exact RNG and fidelity inspection are
-follow-up work; the current assignment still uses prototype event randomness.
-All 1,847 C# tests pass, including the eight synthetic full-route cases and
-new Ancient acquisition/assignment coverage. The coverage report records 46
+scope. Shared Darv now has revealed-profile assignment and six executable
+Silent relic choices; its other relics and Dusty Tome path remain outstanding.
+Exact RNG and fidelity inspection are follow-up work; the current assignment
+still uses prototype event randomness.
+Before the current Darv slice, 1,847 C# tests passed, including the eight
+synthetic full-route cases and Ancient acquisition/assignment coverage. The
+latest solution build and coverage-baseline check pass; Darv tests are present
+but were not executed in this update. The coverage report records 47
 integrated event paths, with native validation unverified.
 
 # v111 implementation status
@@ -66,13 +70,13 @@ HP and Grave of the Forgotten deck predicates. Specific event and encounter
 documents below may describe earlier fixture-only milestones; the
 [regional integration audit](reference-builds/v0.111.0-regional-integration-bags.md)
 and [regional integrity plan](REGIONAL_INTEGRITY_PLAN.md) carry current status.
-Normal Ancient assignment, Colorful Philosophers and foreign card pools,
+Colorful Philosophers and foreign card pools,
 remaining event eligibility, RNG parity, natural full-run victories and live
 oracle traces are still open. The source Ancient assignment call order is
-audited in the [Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md);
-its normal run-start integration remains gated on complete Ancient branches.
-Orobas is the remaining unimplemented Hive Ancient; its three-offer generation
-and ten relic dependencies are pinned in the
+audited and partially integrated in the [Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md);
+its native UpFront call schedule remains open.
+Orobas remains the least complete Hive Ancient; its three-offer generation and
+ten relic dependencies are pinned in the
 [Orobas dependency audit](reference-builds/v0.111.0-hive-orobas-ancient.md).
 Seven Orobas dependencies have executable effects for Silent: Electric
 Shrymp/Imbued, Radiant Pearl/Luminesce, Sand Castle, Touch of Orobas/Ring of
@@ -108,8 +112,9 @@ Its source-owned pool order and RNG draws remain unverified. This is a
 dependency slice only. Iron Club draws on every fourth card played and stores
 its counter in persistent relic state across combats; a combat test verifies
 the trigger cadence, saved counter and snapshot restoration. Tanx's offer
-pool and event branches are now integrated through a named Ancient fixture;
-normal Glory Ancient assignment remains gated.
+pool and event branches are integrated through a named Ancient fixture; the
+configured route now also includes Tanx in normal assignment, with its native
+assignment RNG still pending.
 Throwing Axe repeats the first card played each combat; direct combat coverage
 checks the replay and confirms later cards play once.
 Meat Cleaver adds Cook to rest sites when at least two removable deck cards
@@ -131,15 +136,17 @@ after Elite victories using run.niche when native RNG ownership is enabled;
 native stream selection and snapshot cursor tests are covered. All ten Tanx
 relic effects now have executable dependencies. Tanx's conditional offer pool,
 native event shuffle, persisted RNG cursor and relic-choice branches are
-executable through a named Glory Ancient opening fixture. Normal Ancient
-assignment remains gated; the fixture does not make Tanx a random event.
+executable through a named Glory Ancient opening fixture. The configured route
+can assign Tanx at act entry; Tanx remains a forced Ancient opening rather than
+a weighted map event.
 Nonupeipe's conditional offer shuffle and all ten relic branches now execute
-through a named Glory Ancient opening fixture; normal run-start assignment
-remains gated. Vakuu's three source-owned offer pools and native event shuffle
+through a named Glory Ancient opening fixture; the configured route now
+includes it in run-start assignment. Vakuu's three source-owned offer pools and native event shuffle
 now run through a named Ancient opening fixture. Lord's Parasol free-purchase
 flow reuses existing card, relic and potion acquisition paths, persists its
 potion-replacement and forced-removal choices, and is covered by a full shop
-entry test. Normal Ancient assignment and route integration remain gated.
+entry test. The configured route now includes Vakuu in run-start assignment;
+native assignment RNG remains open.
 Nonupeipe's Jewelry Box branch now follows its persistent acquisition through
 the Innate, Exhaust Apotheosis card; playing Apotheosis upgrades all other
 upgradable combat cards. Brilliant Scarf's fifth manual card play now costs
@@ -166,7 +173,7 @@ combat path consumes `run.combat_card_selection`. Distinguished Cape adds its
 two source-eligible modifier curses and three Apparitions through relic
 acquisition, consuming `run.niche` when native RNG ownership is active.
 Vakuu's offer event and Lord's Parasol shop flow are implemented through the
-named Ancient fixture; ordinary Ancient assignment remains gated. Fur Coat marks
+named Ancient fixture and normal configured assignment. Fur Coat marks
 up to eight current-act Monster/Elite rooms and reduces initial and summoned
 enemies there to 1 HP while persisting its map selection and content RNG
 snapshot. Delicate Frond now

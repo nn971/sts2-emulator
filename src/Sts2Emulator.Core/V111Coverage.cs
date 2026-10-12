@@ -166,8 +166,21 @@ public static class V111Coverage
         return new V111CoverageItem(item.Kind, item.Id, item.Scope, engineIds,
             true, engineIds.Length > 0, implementation, integration, "unverified",
             item.Variants ?? [],
-            item.BranchInventoryComplete ? [] : item.Branches ?? [],
+            MissingBranches(item),
             item.Source is null ? [] : [$"{V111Build.SourceCommit}:{item.Source}#{item.SourceSha256}"]);
+    }
+
+    private static string[] MissingBranches(V111InventoryItem item)
+    {
+        if (item.Kind == "events" && item.Id == "DARV")
+        {
+            var supported = NativeDarvEventV111.SupportedRelicIds
+                .Select(id => $"relic/{id.Split('.').Last().ToUpperInvariant()}")
+                .ToHashSet(StringComparer.Ordinal);
+            return (item.Branches ?? []).Where(branch => !supported.Contains(branch))
+                .ToArray();
+        }
+        return item.BranchInventoryComplete ? [] : item.Branches ?? [];
     }
 
     private static bool Matches(V111InventoryItem item, string engineId, string name)
@@ -204,6 +217,7 @@ public static class V111Coverage
         return eventId is NativePaelRewardsV111.PaelId
             or NativeAncientRewardsV111.TezcataraId
             or NativeOrobasEventV111.EventId
+            or NativeDarvEventV111.EventId
             or NativeTanxEventV111.EventId
             or NativeVakuuEventV111.EventId
             or NativeNonupeipeEventV111.EventId;

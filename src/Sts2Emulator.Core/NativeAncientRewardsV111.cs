@@ -89,7 +89,8 @@ public static class NativeAncientRewardsV111
     public static bool IsOpeningEvent(RunWorldState world) =>
         world.Act == 2 && world.Floor == 0 && world.Map.CurrentNodeId is null
         && world.Event?.EventId is TezcataraId or NativePaelRewardsV111.PaelId
-            or NativeOrobasEventV111.EventId;
+            or NativeOrobasEventV111.EventId
+        || NativeDarvEventV111.IsOpeningEvent(world);
 
     private static string[][] CompleteTezcataraPools() =>
     [
@@ -110,11 +111,13 @@ public static class NativeAncientRewardsV111
     internal static void ValidateEventContext(RunState state)
     {
         NativeOrobasEventV111.ValidateEventContext(state);
+        NativeDarvEventV111.ValidateEventContext(state);
         if (state.World is { } world
             && (IsOpeningEvent(world)
                 || NativeTanxEventV111.IsOpeningEvent(world)
                 || NativeVakuuEventV111.IsOpeningEvent(world)
-                || NativeNonupeipeEventV111.IsOpeningEvent(world))
+                || NativeNonupeipeEventV111.IsOpeningEvent(world)
+                || NativeDarvEventV111.IsOpeningEvent(world))
             && world.LaterActEncounterBag?.AssignedAncientId is { } assigned
             && !StringComparer.Ordinal.Equals(
                 assigned, world.Event!.EventId))
@@ -137,6 +140,8 @@ public static class NativeAncientRewardsV111
         if (state.World?.Event is not { NativeEventRng: { } stream } evt)
             return;
         if (evt.EventId == NativeOrobasEventV111.EventId)
+            return;
+        if (evt.EventId == NativeDarvEventV111.EventId)
             return;
         if (evt.EventId == NativePaelRewardsV111.PaelId)
         {

@@ -208,7 +208,8 @@ public static class ExperimentalSilentThreeActRouteV111
 
     public static PrototypeLaterActEncounterBagV111 InitialBag(
         int act, RngBundle rng, int ascension = 0,
-        SimulationProfile? profile = null, bool assignAncient = false)
+        SimulationProfile? profile = null, bool assignAncient = false,
+        bool assignDarv = false)
     {
         var rooms = OrdinaryRoomCount(act);
         var history = new List<string>(rooms);
@@ -245,7 +246,8 @@ public static class ExperimentalSilentThreeActRouteV111
         return new PrototypeLaterActEncounterBagV111(
             act, 0, weak, normal, elite,
             boss, secondBoss,
-            AssignedAncientId: assignAncient ? SelectAncient(act, rng) : null);
+            AssignedAncientId: assignAncient
+                ? SelectAncient(act, rng, assignDarv) : null);
     }
 
     /// <summary>
@@ -253,7 +255,12 @@ public static class ExperimentalSilentThreeActRouteV111
     /// native UpFront draw order remain separate implementation work.
     /// Cross-character Orobas offers are deferred in its event profile.
     /// </summary>
-    public static string[] AncientPool(int act) => act switch
+    public static string[] AncientPool(int act, bool includeDarv = false) =>
+        ConcatAncientPool(act, includeDarv);
+
+    private static string[] ConcatAncientPool(int act, bool includeDarv)
+    {
+        string[] pool = act switch
         {
             2 => [NativeOrobasEventV111.EventId, NativePaelRewardsV111.PaelId,
                 NativeAncientRewardsV111.TezcataraId],
@@ -261,10 +268,38 @@ public static class ExperimentalSilentThreeActRouteV111
                 NativeVakuuEventV111.EventId],
             _ => throw new ArgumentOutOfRangeException(nameof(act))
         };
+        return includeDarv
+            ? pool.Append(NativeDarvEventV111.EventId).ToArray()
+            : pool;
+    }
 
-    private static string SelectAncient(int act, RngBundle rng)
+    public static string[] PrepareAncientAssignments(
+        RngBundle rng, int ascension, SimulationProfile profile)
     {
-        var pool = AncientPool(act);
+        var hasDarv = profile.RevealedEpochs.Contains(
+            NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+        if (!hasDarv)
+            return [SelectAncient(2, rng), SelectAncient(3, rng)];
+
+        // Darv is shared between later acts. Each act takes a random count
+        // from the remaining shared pool, so the relic may be assigned to
+        // Hive, Glory or neither. This uses the existing prototype stream;
+        // the native UpFront schedule is a later RNG pass.
+        var hiveReceivesDarv = PrototypeRng.NextInt(rng, "event", 2) == 1;
+        // RunManager draws a count for Glory even if Hive removed the only
+        // shared Ancient; that call is a bound-one draw in that case.
+        var gloryReceivesDarv = PrototypeRng.NextInt(
+            rng, "event", hiveReceivesDarv ? 1 : 2) == 1;
+        var sharedAncientAct = hiveReceivesDarv ? 2
+            : gloryReceivesDarv ? 3 : -1;
+        return [SelectAncient(2, rng, sharedAncientAct == 2),
+            SelectAncient(3, rng, sharedAncientAct == 3)];
+    }
+
+    private static string SelectAncient(int act, RngBundle rng,
+        bool includeDarv = false)
+    {
+        var pool = AncientPool(act, includeDarv);
         return pool[PrototypeRng.NextInt(rng, "event", pool.Length)];
     }
 
@@ -319,6 +354,8 @@ public static class ExperimentalSilentThreeActRouteV111
                     NativeAncientRewardsV111.BeginTezcataraOpening(continued),
                 (2, NativeOrobasEventV111.EventId) =>
                     NativeOrobasEventV111.BeginOpening(continued),
+                (2 or 3, NativeDarvEventV111.EventId) =>
+                    NativeDarvEventV111.BeginOpening(continued),
                 (3, NativeTanxEventV111.EventId) =>
                     NativeTanxEventV111.BeginOpening(continued),
                 (3, NativeVakuuEventV111.EventId) =>

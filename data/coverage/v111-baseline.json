@@ -15232,30 +15232,26 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.shared.darv"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Darv.cs#fdf4833d35d438893902dd4627ea3f89cbcfa22b924a6c8e6327c45ef4f87722"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "partial",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [
-          "relic/ASTROLABE",
           "relic/BLACK_STAR",
           "relic/CALLING_BELL",
           "relic/DUSTY_TOME",
           "relic/ECTOPLASM",
-          "relic/EMPTY_CAGE",
           "relic/PANDORAS_BOX",
-          "relic/PHILOSOPHERS_STONE",
-          "relic/RUNIC_PYRAMID",
-          "relic/SNECKO_EYE",
-          "relic/SOZU",
-          "relic/VELVET_CHOKER"
+          "relic/PHILOSOPHERS_STONE"
         ],
         "missing_variants": [],
         "native_id": "DARV",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29796,7 +29792,7 @@
         "eligible": 66,
         "excluded": 0,
         "implemented": 0,
-        "integrated": 46,
+        "integrated": 47,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
