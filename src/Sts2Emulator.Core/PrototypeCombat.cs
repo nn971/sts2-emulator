@@ -2369,55 +2369,8 @@ public sealed partial class PrototypeGameEngine
         for (var index = 0; index < formation.Length; index++)
         {
             var enemy = formation[index];
-            var definition = PrototypeContent.Enemy(enemy.EnemyId);
-            if (enemy.Hp <= 0
-                || enemy.SkipNextEnemyAction
-                || enemy.EnemyActionSkipsRemaining > 0
-                || definition.Moves.Length == 0)
-            {
-                formation[index] = enemy with
-                {
-                    PlannedMoveIndex = null,
-                    PlannedNextAiStateId = null
-                };
-                continue;
-            }
-
-            // InkletsNormal sets MiddleInklet explicitly despite null
-            // native slot names. TheKinBoss sets StartsWithDance=true
-            // only on its FIRST KinFollower (slot1). Evaluate their
-            // prototype slot-based conditional AI through transient
-            // aliases, without mutating native source slot identity.
-            var nativeEntry = ownedNative?.Formation.NativeEncounterEntry;
-            var evaluating = nativeEntry == "InkletsNormal"
-                && enemy.EnemyId == "proto.enemy.inklet"
-                && enemy.SlotName is null
-                    ? enemy with
-                    {
-                        SlotName = enemy.FormationPosition switch
-                        {
-                            0 => "left",
-                            1 => "middle",
-                            2 => "right",
-                            _ => null
-                        }
-                    }
-                    : nativeEntry == "TheKinBoss"
-                        && enemy.EnemyId == "proto.enemy.kin_follower"
-                        ? enemy with
-                        {
-                            SlotName = enemy.SlotName switch
-                            {
-                                "slot1" => "dance",
-                                "slot2" => "quick",
-                                _ => throw new InvalidOperationException(
-                                    "Unknown native KinFollower starting slot.")
-                            }
-                        }
-                        : enemy;
-            // The AI state machine / anti-repeat checks construct eligibility
-            // BEFORE invoking this callback. Keep the source move-selection
-            // logic unchanged and only substitute the random-number source.
+            // The AI selector below is pure: it computes eligibility and
+            // returns a move without mutating the combat or executing hooks.
             Func<int, int> nextIndex = ownedNative is null
                 ? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)
                 : maxExclusive =>
@@ -2434,18 +2387,12 @@ public sealed partial class PrototypeGameEngine
                     occurrence++;
                     return chosen.SelectedIndex;
                 };
-            var selected = SelectEnemyMove(
-                definition, evaluating, formation, nextIndex);
-            var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
-            if (selectedIndex < 0)
-            {
-                throw new InvalidOperationException(
-                    $"Enemy '{enemy.EnemyId}' selected an unknown move.");
-            }
-
+            var selected = EvaluateEnemyIntentChoice(
+                formation, index, ownedNative?.Formation.NativeEncounterEntry,
+                nextIndex);
             formation[index] = enemy with
             {
-                PlannedMoveIndex = selectedIndex,
+                PlannedMoveIndex = selected.MoveIndex,
                 PlannedNextAiStateId = selected.NextAiStateId
             };
         }
@@ -2455,6 +2402,61 @@ public sealed partial class PrototypeGameEngine
             Enemies = formation,
             NativeRng = ownedNative
         };
+    }
+
+    /// <summary>
+    /// Pure per-enemy intent evaluator shared between native commitment and
+    /// controlled suspended intention. The callback is invoked only after
+    /// source legal branch / move eligibility has been computed. It is safe
+    /// to re-evaluate an unfinished enemy with a verified RNG-ticket prefix:
+    /// no game state changes or hooks occur here.
+    /// </summary>
+    internal static (int? MoveIndex, string? NextAiStateId) EvaluateEnemyIntentChoice(
+        IReadOnlyList<EnemyCombatState> formation, int index,
+        string? nativeEntry, Func<int, int> nextIndex)
+    {
+        var enemy = formation[index];
+        var definition = PrototypeContent.Enemy(enemy.EnemyId);
+        if (enemy.Hp <= 0
+            || enemy.SkipNextEnemyAction
+            || enemy.EnemyActionSkipsRemaining > 0
+            || definition.Moves.Length == 0)
+            return (null, null);
+
+        // Native slot aliases are evaluation-only, never committed state.
+        var evaluating = nativeEntry == "InkletsNormal"
+            && enemy.EnemyId == "proto.enemy.inklet"
+            && enemy.SlotName is null
+                ? enemy with
+                {
+                    SlotName = enemy.FormationPosition switch
+                    {
+                        0 => "left",
+                        1 => "middle",
+                        2 => "right",
+                        _ => null
+                    }
+                }
+                : nativeEntry == "TheKinBoss"
+                    && enemy.EnemyId == "proto.enemy.kin_follower"
+                    ? enemy with
+                    {
+                        SlotName = enemy.SlotName switch
+                        {
+                            "slot1" => "dance",
+                            "slot2" => "quick",
+                            _ => throw new InvalidOperationException(
+                                "Unknown native KinFollower starting slot.")
+                        }
+                    }
+                    : enemy;
+        var selected = SelectEnemyMove(
+            definition, evaluating, formation, nextIndex);
+        var moveIndex = Array.IndexOf(definition.Moves, selected.Move);
+        if (moveIndex < 0)
+            throw new InvalidOperationException(
+                $"Enemy '{enemy.EnemyId}' selected an unknown move.");
+        return (moveIndex, selected.NextAiStateId);
     }
 
     private static (
