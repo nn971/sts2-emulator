@@ -12604,7 +12604,7 @@
         "page/INITIAL/EMOTIONAL_AWARENESS",
         "page/INITIAL/LOCKED"
       ],
-      "branch_inventory_complete": false
+      "branch_inventory_complete": true
     },
     {
       "kind": "monsters",

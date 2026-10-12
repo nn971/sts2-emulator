@@ -537,6 +537,24 @@ public static class V111Coverage
                 .IsSupersetOf(["return_key", "keep_key"]))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ZEN_WEAVER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.ZenWeaverId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeHiveEvents.ZenWeaverId, 2)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                PrototypeNativeHiveEvents.ZenWeaverId)
+            && PrototypeNativeHiveEvents.IsEligible(
+                PrototypeContent.Event(
+                    PrototypeNativeHiveEvents.ZenWeaverId),
+                new PlayerState(1, 1, 125, [], [], []))
+            && PrototypeContent.Event(
+                PrototypeNativeHiveEvents.ZenWeaverId).Choices
+                .Select(choice => choice.Id)
+                .ToHashSet(StringComparer.Ordinal)
+                .IsSupersetOf(["breathing", "emotional", "arachnid"]))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "TINKER_TIME" && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeGloryEvents.TinkerTimeId,
                 StringComparer.Ordinal))

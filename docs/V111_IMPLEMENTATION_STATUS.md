@@ -44,6 +44,8 @@ Power and Touch Core adds one eligible zero cost card when the card generator
 returns one; both choices retain their result page even when no card is added.
 The Lantern Key now retains its return result page and exits to the map after
 the optional quest card reward from its fight.
+Zen Weaver retains its selected result page after the breathing-technique
+reward or after each requested card removal and gold payment completes.
 Battleworn Dummy now retains its Victory or Defeat result page after the
 selected training combat and any setting reward resolve.
 Trial now retains the selected court's outcome page after its curse, relic,

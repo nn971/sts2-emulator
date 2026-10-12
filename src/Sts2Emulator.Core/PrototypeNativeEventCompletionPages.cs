@@ -41,6 +41,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeGloryEvents.HungryForMushroomsId
             or PrototypeNativeGloryEvents.GraveOfTheForgottenId
             or PrototypeNativeHiveEvents.LanternKeyEventId
+            or PrototypeNativeHiveEvents.ZenWeaverId
             or PrototypeNativeSharedEvents.ThisOrThatId
             or "proto.native.underdocks.doors_of_light_and_dark"
             or "proto.native.underdocks.drowning_beacon"
@@ -138,6 +139,8 @@ public static class PrototypeNativeEventCompletionPages
                 or "nondescript_guilty" or "nondescript_innocent"
         || eventId == PrototypeNativeHiveEvents.LanternKeyEventId
             && choiceId is "return_key"
+        || eventId == PrototypeNativeHiveEvents.ZenWeaverId
+            && choiceId is "breathing" or "emotional" or "arachnid"
         || eventId == PrototypeNativeGloryEvents.HungryForMushroomsId
             && choiceId is "big_mushroom" or "fragrant_mushroom"
         || eventId == PrototypeNativeGloryEvents.GraveOfTheForgottenId

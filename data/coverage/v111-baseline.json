@@ -1,9 +1,9 @@
 {
-  "inventory_file_sha256": "e729eee90adc7d03a987b0c0d61d3bb923f2b43faa9efc9cb8af6c9ee7612248",
+  "inventory_file_sha256": "75b7c1cb1953bea50e5e338032acb3a48d160046597c16da58b4dfa9c8b2920b",
   "report": {
     "corpus_commit": "b59c6f96043051afee8683237d04f943309ced35",
     "game_build": "v0.111.0/41cef1ea/3bb5598a35f7763c9de22078643ac2777190994b2be85ebd4ebf5c9d154aa45e",
-    "inventory_hash": "ca30b3e0818dcb822840cd834e7b17c09e3c10bf84bbfc677f82280a641e5e88",
+    "inventory_hash": "b0e9e9c529665714d4a0e155ae334ea30af519d6e2c4ceb0dc260f2f8552ceb9",
     "items": [
       {
         "catalogued": true,
@@ -16363,23 +16363,10 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/ZenWeaver.cs#7cf5ba4e7c71eb4ba0537312fc1dc1339ce9f98f2633a2d1fff53269ff4181b3"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/ARACHNID_ACUPUNCTURE",
-          "initial/BREATHING_TECHNIQUES",
-          "initial/EMOTIONAL_AWARENESS",
-          "initial/LOCKED",
-          "page/ARACHNID_ACUPUNCTURE",
-          "page/BREATHING_TECHNIQUES",
-          "page/EMOTIONAL_AWARENESS",
-          "page/INITIAL",
-          "page/INITIAL/ARACHNID_ACUPUNCTURE",
-          "page/INITIAL/BREATHING_TECHNIQUES",
-          "page/INITIAL/EMOTIONAL_AWARENESS",
-          "page/INITIAL/LOCKED"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "ZEN_WEAVER",
         "registered": true,
@@ -29522,7 +29509,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 44,
+        "implemented": 45,
         "integrated": 54,
         "kind": "events",
         "scope_review_required": 0,
