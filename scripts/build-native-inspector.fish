@@ -52,14 +52,25 @@ rm -f "$dest/Sts2Emulator.Trace.dll" "$dest/Sts2Emulator.Core.dll"
 cp "$project/Sts2ReferenceMod.json" "$dest/"
 cp "$project/mod_manifest.json" "$dest/"
 if test -n "$godot"
-    pushd "$project"
-    "$godot" --headless --path . --import
+    # Do not export from the C# project itself: the .NET editor export plugin
+    # attempts to rebuild every .cs and demands a Godot .sln. Our binary code
+    # has already been compiled by dotnet; this PCK needs only mod_manifest.json.
+    set -l pack_project (mktemp -d "$root/.inspector-pack-XXXXXXXX")
     or exit 1
-    "$godot" --headless --path . --export-pack BasicExport "$dest/Sts2ReferenceMod.pck"
+    cp "$project/mod_manifest.json" "$pack_project/mod_manifest.json"
+    cp "$project/export_presets.cfg" "$pack_project/export_presets.cfg"
+    printf '%s\\n' 'config_version=5' '' '[application]' 'config/name="Sts2ReferenceModPackOnly"' 'config/features=PackedStringArray("4.5")' > "$pack_project/project.godot"
+    "$godot" --headless --path "$pack_project" --import
     set -l result $status
-    popd
+    if test $result -eq 0
+        "$godot" --headless --path "$pack_project" \\
+            --export-pack BasicExport "$dest/Sts2ReferenceMod.pck"
+        set result $status
+    end
+    # A generated staging project contains nothing from the user's game.
+    rm -rf "$pack_project"
     if test $result -ne 0
-        echo "Godot PCK export failed; staging package may be incomplete: $dest" >&2
+        echo "Godot pack-only export failed; do not install the incomplete package: $dest" >&2
         exit 1
     end
 else
