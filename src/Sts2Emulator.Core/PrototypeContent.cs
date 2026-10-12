@@ -232,6 +232,24 @@ public static class PrototypeContent
                 Type: PrototypeCardType.Curse,
                 MaxUpgradeLevel: 0,
                 PreventsOtherManualCardPlaysWhileInHand: true),
+            // Sere Talon adds three copies of Wish. Each exhausts after
+            // returning one selected draw-pile card to hand; upgraded
+            // copies retain instead.
+            new PrototypeCardDefinition(
+                NativeGloryAncientsV111.WishCardId,
+                "Wish",
+                0,
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.DrawPile, 1, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand))],
+                ExhaustOnUse: true,
+                RetainOnUpgrade: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Ancient,
+                Type: PrototypeCardType.Skill,
+                MaxUpgradeLevel: 1),
             // Neow's Cursed Pearl grants Greed: a permanent Eternal,
             // unplayable curse, not eligible for ordinary card rewards.
             new PrototypeCardDefinition(

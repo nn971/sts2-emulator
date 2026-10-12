@@ -354,6 +354,86 @@ public sealed class V111PaelRewardTests
             combat.DiscardPile);
     }
 
+    [Fact]
+    public void SereTalonLosesMaxHpAddsThreeWishesAndWishResumesSavedSelection()
+    {
+        var initial = PrototypeNativeLaterActFixture.Create(
+            "sere-talon-acquisition", 2);
+        var state = initial with
+        {
+            Phase = RunPhase.Reward,
+            World = initial.World! with
+            {
+                Floor = 1,
+                Map = new MapState([], GenerationProfileId:
+                    PrototypeNativeLaterActMap.HiveProfileId),
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = null,
+                Event = null,
+                Reward = new RewardState("Combat", [], null,
+                    NativeGloryAncientsV111.SereTalonId,
+                    CardResolved: true, PotionResolved: true,
+                    RelicResolved: false, EndsAct: false)
+            }
+        };
+        var maxHpBefore = state.Player.MaxHp;
+        var hpBefore = state.Player.Hp;
+        var acquire = Engine.GetLegalActions(state).Single(action =>
+            action.Kind == "take_reward_relic");
+        var acquired = Engine.Step(state, acquire).State;
+        Assert.Equal(maxHpBefore - 9, acquired.Player.MaxHp);
+        Assert.Equal(Math.Min(hpBefore, maxHpBefore - 9),
+            acquired.Player.Hp);
+        Assert.Equal(3, acquired.Player.Deck.Count(card =>
+            card.CardId == NativeGloryAncientsV111.WishCardId));
+        Assert.Equal(CanonicalJson.Sha256(acquired), CanonicalJson.Sha256(
+            Engine.Step(RunSnapshot.Load(RunSnapshot.Save(state)), acquire)
+                .State));
+
+        state = Combat(acquired);
+        var combat = state.World!.Combat!;
+        var wish = combat.Cards.First(card =>
+            card.CardId == NativeGloryAncientsV111.WishCardId);
+        var chosenCard = combat.Cards.First(card =>
+            card.CardId == "proto.silent.strike");
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    Hand = [wish.InstanceId],
+                    DrawPile = [chosenCard.InstanceId],
+                    DiscardPile = combat.Cards.Where(card =>
+                            card.InstanceId != wish.InstanceId
+                            && card.InstanceId != chosenCard.InstanceId)
+                        .Select(card => card.InstanceId).ToArray(),
+                    ExhaustPile = [],
+                    Energy = 3
+                }
+            }
+        };
+
+        var play = Engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId
+                == wish.InstanceId);
+        state = Engine.Step(state, play).State;
+        Assert.NotNull(state.World!.Combat!.PendingChoice);
+        var pendingSnapshot = RunSnapshot.Load(RunSnapshot.Save(state));
+        var chooseCard = Engine.GetLegalActions(state).Single(action =>
+            action.Kind == "select_cards");
+        var resolved = Engine.Step(state, chooseCard).State;
+        var replayed = Engine.Step(pendingSnapshot, chooseCard).State;
+        Assert.Equal(CanonicalJson.Sha256(resolved),
+            CanonicalJson.Sha256(replayed));
+        combat = resolved.World!.Combat!;
+        Assert.Null(combat.PendingChoice);
+        Assert.Contains(wish.InstanceId, combat.ExhaustPile);
+        Assert.Contains(chosenCard.InstanceId, combat.Hand);
+        PrototypeStateInvariants.Validate(resolved);
+    }
+
     [Theory]
     [InlineData(0, false, 3)]
     [InlineData(1, false, 5)]

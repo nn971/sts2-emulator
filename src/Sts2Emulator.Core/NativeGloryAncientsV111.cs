@@ -13,6 +13,8 @@ public static class NativeGloryAncientsV111
     public const string FiddleId = "proto.native.ancient.fiddle";
     public const string WhisperingEarringId = "proto.native.ancient.whispering_earring";
     public const int WhisperingEarringMaxCards = 13;
+    public const string SereTalonId = "proto.native.ancient.sere_talon";
+    public const string WishCardId = "proto.native.ancient.wish";
     public const string BloodSoakedRoseId = "proto.native.ancient.blood_soaked_rose";
     public const string EnthralledCardId = "proto.native.ancient.enthralled";
     public const string DiamondDiademId = "proto.native.ancient.diamond_diadem";
@@ -59,6 +61,17 @@ public static class NativeGloryAncientsV111
                 new(PrototypeRunEventKind.RelicAcquired,
                     [new(PrototypeRunEffectKind.AddCard,
                         CardId: EnthralledCardId)])
+            ]),
+        new(SereTalonId, "Sere Talon",
+            RunTriggers:
+            [
+                new(PrototypeRunEventKind.RelicAcquired,
+                [
+                    new(PrototypeRunEffectKind.LoseMaxHp, 9),
+                    new(PrototypeRunEffectKind.AddCard, CardId: WishCardId),
+                    new(PrototypeRunEffectKind.AddCard, CardId: WishCardId),
+                    new(PrototypeRunEffectKind.AddCard, CardId: WishCardId)
+                ])
             ]),
         new(CrossbowId, "Crossbow", Triggers:
         [
