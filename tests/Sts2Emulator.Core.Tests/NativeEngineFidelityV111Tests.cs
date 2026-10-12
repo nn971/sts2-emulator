@@ -77,13 +77,13 @@ public sealed class NativeEngineFidelityV111Tests
             result.EmulatorEventJournal);
         Assert.Equal(Enumerable.Range(1, journal.Length),
             journal.Select(entry => entry.Sequence));
-        var energy = Assert.Single(journal.Where(entry =>
-            entry.Kind == "energy_spent"));
-        var damage = Assert.Single(journal.Where(entry =>
-            entry.Kind == "enemy_damage"));
-        var cardPlayed = Assert.Single(journal.Where(entry =>
+        var energy = Assert.Single(journal, entry =>
+            entry.Kind == "energy_spent");
+        var damage = Assert.Single(journal, entry =>
+            entry.Kind == "enemy_damage");
+        var cardPlayed = Assert.Single(journal, entry =>
             entry.Stage == "combat_event_dispatch" &&
-            entry.Kind == "CardPlayed"));
+            entry.Kind == "CardPlayed");
         Assert.Equal(1, energy.Amount);
         Assert.Equal(6, damage.Amount);
         Assert.True(energy.Sequence < damage.Sequence);
