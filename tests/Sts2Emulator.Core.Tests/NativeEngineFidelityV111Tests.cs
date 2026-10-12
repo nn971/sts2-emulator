@@ -70,6 +70,28 @@ public sealed class NativeEngineFidelityV111Tests
     }
 
     [Fact]
+    public void RealEngineJournalCapturesStrikeExecutionOrder()
+    {
+        var result = NativeEngineFidelityV111.Compare(Fixture(monster: "SLUDGE_SPINNER"));
+        var journal = Assert.IsType<NativeEngineJournalEntryV111[]>(
+            result.EmulatorEventJournal);
+        Assert.Equal(Enumerable.Range(1, journal.Length),
+            journal.Select(entry => entry.Sequence));
+        var energy = Assert.Single(journal.Where(entry =>
+            entry.Kind == "energy_spent"));
+        var damage = Assert.Single(journal.Where(entry =>
+            entry.Kind == "enemy_damage"));
+        var cardPlayed = Assert.Single(journal.Where(entry =>
+            entry.Stage == "combat_event_dispatch" &&
+            entry.Kind == "CardPlayed"));
+        Assert.Equal(1, energy.Amount);
+        Assert.Equal(6, damage.Amount);
+        Assert.True(energy.Sequence < damage.Sequence);
+        Assert.True(damage.Sequence < cardPlayed.Sequence);
+        Assert.Equal("NOT_TESTED", result.NativeGameParity);
+    }
+
+    [Fact]
     public void RealNativeSludgeSpinnerIdentityMapsToSourceBackedEngineAndSteps()
     {
         // SLUDGE_SPINNER is registered in the executable v111 content,
