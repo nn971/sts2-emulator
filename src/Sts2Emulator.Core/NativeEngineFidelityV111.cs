@@ -47,6 +47,7 @@ public static class NativeEngineFidelityV111
         "$.combat.move_history",
         "$.combat.hidden_card_state",
         "UNVERIFIED_COMBAT_ENTRY_AND_PRIOR_HOOKS",
+        "UNVERIFIED_NATIVE_V111_BUILD_ALIGNMENT",
         "UNVERIFIED_NATIVE_EVENT_ORDER"
     ];
 
