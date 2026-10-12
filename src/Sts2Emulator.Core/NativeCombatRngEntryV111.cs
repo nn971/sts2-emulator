@@ -94,26 +94,9 @@ public static class NativeCombatRngEntryV111
             var context = monsters[index];
             var spec = formation.Enemies[index];
 
-            if (enemy.EnemyId != spec.EnemyId
-                || enemy.FormationPosition != spec.FormationPosition
-                || enemy.SlotName != spec.SlotName
-                || context.Enemy != spec
-                || context.CombatId < 0)
-            {
-                throw new InvalidOperationException(
-                    "Native combat RNG and existing enemy formation disagree.");
-            }
-            _ = NativeRngV111.ToSnapshot(context.Rng);
-            var range = PrototypeContent.Enemy(enemy.EnemyId)
-                .HpRangeAt(combat.Act, combat.Ascension);
-            var possible = Enumerable.Range(
-                    range.Min, checked(range.Max - range.Min + 1))
-                .Where(hp => !usedHp.Contains(hp))
-                .ToArray();
-            var pool = possible.Length > 0
-                ? possible
-                : Enumerable.Range(
-                    range.Min, checked(range.Max - range.Min + 1)).ToArray();
+            ValidateInitialHpEnemyBinding(enemy, spec, context);
+            var pool = InitialHpCandidatePool(
+                combat, enemy, usedHp);
             // Candidate eligibility and creation order are owned by mechanics.
             // The native provider consumes the same NextInt as before,
             // including a singleton pool. Outcome identity is an INDEX into
@@ -124,7 +107,7 @@ public static class NativeCombatRngEntryV111
             var choice = chooser.Resolve(request, fresh.RunStreams);
             choices.Add(choice);
             var hp = choice.SelectedValue;
-            enemies[index] = enemy with { Hp = hp, MaxHp = hp };
+            enemies[index] = ApplyInitialHp(enemy, hp);
             usedHp.Add(hp);
         }
 
@@ -132,6 +115,36 @@ public static class NativeCombatRngEntryV111
         Validate(attached);
         return new NativeInitialHpAuditV111(
             attached, choices.ToArray(), chooser.Mode);
+    }
+
+    // The same eligibility and effect operations are used by native seeded
+    // entry and the controlled, resumable initial-HP continuation.
+    // The shape/order here follows the pinned Creature.SetUniqueMonsterHpValue.
+    internal static int[] InitialHpCandidatePool(
+        CombatState combat, EnemyCombatState enemy, IReadOnlySet<int> usedHp)
+    {
+        var range = PrototypeContent.Enemy(enemy.EnemyId)
+            .HpRangeAt(combat.Act, combat.Ascension);
+        var all = Enumerable.Range(
+            range.Min, checked(range.Max - range.Min + 1)).ToArray();
+        var available = all.Where(hp => !usedHp.Contains(hp)).ToArray();
+        return available.Length != 0 ? available : all;
+    }
+
+    internal static EnemyCombatState ApplyInitialHp(EnemyCombatState enemy, int hp) =>
+        enemy with { Hp = hp, MaxHp = hp };
+
+    internal static void ValidateInitialHpEnemyBinding(
+        EnemyCombatState enemy, PrototypeEncounterEnemySpec spec,
+        NativeEncounterMonsterContextV111 context)
+    {
+        if (enemy.EnemyId != spec.EnemyId
+            || enemy.FormationPosition != spec.FormationPosition
+            || enemy.SlotName != spec.SlotName
+            || context.Enemy != spec || context.CombatId < 0)
+            throw new InvalidOperationException(
+                "Native combat RNG and existing enemy formation disagree.");
+        _ = NativeRngV111.ToSnapshot(context.Rng);
     }
 
     /// <summary>
