@@ -242,6 +242,46 @@ expectation fixture to an independent emulator continuation. A structurally
 valid JSONL, or replaying recorded post-state as expected output, is
 **not** emulator parity.
 
+## Restricted full-visible-snapshot step (2026-10-13)
+
+The user supplied `first-strike-expectation.json` and its basic-rule
+check. The check reports all **seven** rule-level fields agreeing
+(`RULE_PROJECTION_CONSISTENT`); native `STRIKE_SILENT` card instance 0
+cost 1 energy, moved from hand to discard, and reduced
+`SLUDGE_SPINNER` HP 41 to 35 with no observed other state changes.
+
+Added a stricter *independent* and *restricted* C# visible-state step under
+`Sts2Emulator.Core.NativeBasicVisibleStepper`. It deep-copies the native
+**pre-state**, applies only basic Strike/Defend effects (energy, creature
+HP/block, card zone movement), preserves every other captured field and
+compares the resulting recorded-state JSON to the separately observed
+post-state. It uses the existing fail-closed basic-rule guard and has
+synthetic tests for matching Strike, Defend, rejected powers and a deliberately
+tampered native result. **It does not consult the post-state to compute
+the step.**
+
+To run it on the user's already exported genuine fixture, without launching
+or rebuilding the game/mod:
+
+```fish
+cd ~/projects/sts2-inspector-test
+git fetch origin feature/native-fidelity-inspector-foundation
+git switch --detach origin/feature/native-fidelity-inspector-foundation
+set reports ~/projects/sts2-inspector-stage/reports
+dotnet run -c Release --project src/Sts2Emulator.Cli -- \
+  native-visible-step "$reports/first-strike-expectation.json" \
+  --out "$reports/first-strike-visible-step.json"
+```
+
+The result is `VISIBLE_SLICE_CONSISTENT`, `VISIBLE_SLICE_MISMATCH` (with a
+specific first JSON path), or `UNSUPPORTED`. The report includes the
+independently predicted visible post-state. Even on consistency, its
+`emulator_parity` remains **`NOT_TESTED`**: absence of powers is
+observable, but card enchantments, relic/potion effects, hidden continuation,
+pending effects and RNG streams were not captured. This does not implement
+a general `IDeterministicEngine.Step` and cannot establish complete
+Slay the Spire 2 combat fidelity or hook order.
+
 ## Independent basic-card rule projection (2026-10-13)
 
 After the user uploaded `first-strike-delta.json` and `triage.json`, the first
