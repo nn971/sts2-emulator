@@ -17,8 +17,17 @@
       <HintPath>$(Sts2DataDir)/sts2.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(Sts2DataDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GodotSharp">
+      <HintPath>$(Sts2DataDir)/GodotSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
   <Target Name="ValidateNativeFiles" BeforeTargets="ResolveReferences" Condition="'$(Sts2DataDir)' != ''">
     <Error Condition="!Exists('$(Sts2DataDir)/sts2.dll')" Text="Pinned sts2.dll was not found in Sts2DataDir." />
+    <Error Condition="!Exists('$(Sts2DataDir)/GodotSharp.dll')" Text="GodotSharp.dll was not found in Sts2DataDir." />
   </Target>
 </Project>
