@@ -64,6 +64,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         next = ApplyToyBoxAcquisitionReward(state, next);
         next = ApplyGlassEyeAcquisitionReward(state, next);
         next = ApplyCauldronAcquisitionReward(state, next);
+        next = ApplyOrreryAcquisitionReward(state, next);
         next = ApplyNeowRelicPickupRewards(state, next);
         next = PrototypeGoldenPathMapV111.ApplyAcquisition(state, next);
         next = NativePaelRewardsV111.SynchronizeLegionPet(next);

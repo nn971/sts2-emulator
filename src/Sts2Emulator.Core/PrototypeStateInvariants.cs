@@ -247,11 +247,15 @@ public static class PrototypeStateInvariants
         if (world.Reward?.SourceRoom == PrototypeGameEngine.CauldronRewardSource
             && world.CustomRewardReturn is null)
             throw new InvalidOperationException("Cauldron custom rewards have no return continuation.");
+        if (world.Reward?.SourceRoom == PrototypeGameEngine.OrreryRewardSource
+            && world.CustomRewardReturn is null)
+            throw new InvalidOperationException("Orrery custom rewards have no return continuation.");
         if (world.CustomRewardReturn is { } customReturn)
         {
             if (state.Phase != RunPhase.Reward
                 || world.Reward?.SourceRoom is not ("Relic:ToyBox" or "Relic:GlassEye")
-                    && world.Reward?.SourceRoom != PrototypeGameEngine.CauldronRewardSource)
+                    && world.Reward?.SourceRoom != PrototypeGameEngine.CauldronRewardSource
+                    && world.Reward?.SourceRoom != PrototypeGameEngine.OrreryRewardSource)
                 throw new InvalidOperationException("Custom relic rewards require an active reward continuation.");
             if (world.Reward.SourceRoom == "Relic:ToyBox")
             {
@@ -282,6 +286,26 @@ public static class PrototypeStateInvariants
                     || world.Reward.EndsAct))
             {
                 throw new InvalidOperationException("Cauldron custom rewards require five independent potion groups.");
+            }
+            else if (world.Reward.SourceRoom == PrototypeGameEngine.OrreryRewardSource
+                && (!state.Player.Relics.Any(relic =>
+                        relic.RelicId == PrototypeNativeSharedRelics.OrreryId)
+                    || !world.Reward.IndependentSelection
+                    || world.Reward.CardOptions.Length != 3
+                    || world.Reward.ExtraCardOptions?.Length != 4
+                    || world.Reward.ExtraCardOptions!.Any(
+                        group => group.Length != 3)
+                    || world.Reward.ExtraCardGroupsResolved?.Length != 4
+                    || world.Reward.ExtraCardGroupsResolved!.Any(
+                        resolved => resolved)
+                    || world.Reward.CardRewardGenerators?.Length != 5
+                    || world.Reward.CardRewardGenerators!.Any(generator =>
+                        generator is not
+                            { Kind: PrototypeCardRewardGeneratorKind.Encounter,
+                                Room: PrototypeRoomType.Combat })
+                    || world.Reward.EndsAct))
+            {
+                throw new InvalidOperationException("Orrery custom rewards require five independent three-card groups.");
             }
             for (var saved = customReturn; saved is not null; saved = saved.Parent)
             {
@@ -2078,10 +2102,12 @@ public static class PrototypeStateInvariants
         // CompleteReward/ValidatePhaseState rather than the source name.
         var registeredRelicReward = reward.SourceRoom is
                 "Relic:ToyBox" or "Relic:GlassEye"
-            || reward.SourceRoom == PrototypeGameEngine.CauldronRewardSource;
+            || reward.SourceRoom == PrototypeGameEngine.CauldronRewardSource
+            || reward.SourceRoom == PrototypeGameEngine.OrreryRewardSource;
         if (reward.IndependentSelection
             && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest" or "Relic:ToyBox")
             && reward.SourceRoom != PrototypeGameEngine.CauldronRewardSource
+            && reward.SourceRoom != PrototypeGameEngine.OrreryRewardSource
             && !registeredEventReward && !registeredRelicReward)
         {
             throw new InvalidOperationException(

@@ -27044,17 +27044,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.orrery"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Orrery.cs#1e14f14c3db789ac56b47053661019f25cf20ab2cde218a9ddbab2083ccfd88f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ORRERY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29519,8 +29521,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 186,
-        "integrated": 187,
+        "implemented": 187,
+        "integrated": 188,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

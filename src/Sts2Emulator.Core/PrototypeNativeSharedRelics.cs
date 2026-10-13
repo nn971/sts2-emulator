@@ -45,6 +45,7 @@ public static class PrototypeNativeSharedRelics
     public const string BeltBuckleId = "proto.relic.belt_buckle";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string CauldronId = "proto.relic.cauldron";
+    public const string OrreryId = "proto.relic.orrery";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
@@ -228,6 +229,9 @@ public static class PrototypeNativeSharedRelics
         // Cauldron offers five independently resolved random potions on pickup.
         new(CauldronId, "Cauldron",
             AcquisitionPotionRewardCount: 5),
+        // Orrery offers five independent three-card rewards on pickup.
+        new(OrreryId, "Orrery",
+            AcquisitionCardRewardGroupCount: 5),
         // Beating Remnant caps the owner's HP loss at 20 per combat turn.
         new(BeatingRemnantId, "Beating Remnant",
             PlayerHpLossLimitPerTurn: 20),

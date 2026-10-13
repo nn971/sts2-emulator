@@ -643,6 +643,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "ORRERY"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.OrreryId,
+                StringComparer.Ordinal)
+            && HasOrreryPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -7972,6 +7982,140 @@ public static class V111Coverage
             && state.World?.Reward is null
             && state.World?.CustomRewardReturn is null
             && state.Player.PotionSlots.All(potion => potion is not null);
+    }
+
+    private static bool HasOrreryPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.OrreryId;
+        var definition = PrototypeContent.Relic(relicId);
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            || rarity != PrototypeRelicRarity.Shop
+            || definition.AcquisitionCardRewardGroupCount != 5)
+        {
+            return false;
+        }
+
+        var engine = new PrototypeGameEngine();
+        var fixture = PrototypeNativeLaterActFixture.Create(
+            "coverage-orrery-acquisition", 2);
+        var outerReward = new RewardState(
+            SourceRoom: "Combat",
+            CardOptions: [],
+            PotionOption: null,
+            RelicOption: relicId,
+            CardResolved: true,
+            PotionResolved: true,
+            RelicResolved: false,
+            EndsAct: false);
+        var before = fixture with
+        {
+            Phase = RunPhase.Reward,
+            World = fixture.World! with { Reward = outerReward }
+        };
+        var takeRelic = GameAction.Create(
+            "take_reward_relic", new ChooseRelicPayload(0));
+        var opened = engine.Step(before, takeRelic).State;
+        var reward = opened.World?.Reward;
+        if (opened.Phase != RunPhase.Reward
+            || reward is not
+                { SourceRoom: PrototypeGameEngine.OrreryRewardSource,
+                    CardOptions.Length: 3,
+                    ExtraCardOptions.Length: 4,
+                    ExtraCardGroupsResolved.Length: 4,
+                    CardOptionUpgradeFlags.Length: 3,
+                    ExtraCardOptionUpgradeFlags.Length: 4,
+                    CardRewardGenerators.Length: 5,
+                    IndependentSelection: true,
+                    EndsAct: false }
+            || reward.ExtraCardGroupsResolved.Any(resolved => resolved)
+            || reward.ExtraCardOptions.Any(group => group.Length != 3)
+            || reward.ExtraCardOptionUpgradeFlags.Any(flags =>
+                flags.Length != 3)
+            || reward.CardRewardGenerators.Any(generator =>
+                generator is not
+                    { Kind: PrototypeCardRewardGeneratorKind.Encounter,
+                        Act: 2, Room: PrototypeRoomType.Combat })
+            || !new[] { reward.CardOptions }
+                .Concat(reward.ExtraCardOptions!)
+                .All(group => group.Distinct(StringComparer.Ordinal).Count()
+                        == 3
+                    && group.All(id =>
+                        PrototypeContent.NativeSilentRewardCardPool.Contains(
+                            id, StringComparer.Ordinal)))
+            || opened.World?.CustomRewardReturn is not
+                { Phase: RunPhase.Reward,
+                    Reward.SourceRoom: "Combat",
+                    Reward.RelicResolved: true,
+                    Parent: null }
+            || PrototypeNativeRelicTrader.IsTradable(
+                new RelicInstance(relicId, PrototypeJson.EmptyObject())))
+        {
+            return false;
+        }
+
+        var actions = engine.GetLegalActions(opened);
+        if (!actions.Any(action => action.Kind == "take_reward_card")
+            || !actions.Any(action => action.Kind == "skip_reward_card")
+            || Enumerable.Range(1, 4).Any(groupIndex =>
+                !actions.Any(action =>
+                    action.Kind == "take_reward_card_group"
+                    && action.ReadPayload<ChooseRewardCardGroupPayload>()
+                        is { GroupIndex: var group, Index: 0 }
+                    && group == groupIndex)
+                || !actions.Any(action =>
+                    action.Kind == "skip_reward_card_group"
+                    && action.ReadPayload<ChooseRewardCardGroupPayload>()
+                        is { GroupIndex: var group, Index: -1 }
+                    && group == groupIndex)))
+        {
+            return false;
+        }
+
+        var startingDeckSize = opened.Player.Deck.Length;
+        var state = engine.Step(opened, GameAction.Create(
+            "take_reward_card", new ChooseCardPayload(0))).State;
+        state = engine.Step(state, GameAction.Create(
+            "take_reward_card_group",
+            new ChooseRewardCardGroupPayload(1, 0))).State;
+        state = engine.Step(state, GameAction.Create(
+            "skip_reward_card_group",
+            new ChooseRewardCardGroupPayload(2, -1))).State;
+        state = engine.Step(state, GameAction.Create(
+            "take_reward_card_group",
+            new ChooseRewardCardGroupPayload(3, 0))).State;
+        state = engine.Step(state, GameAction.Create(
+            "take_reward_card_group",
+            new ChooseRewardCardGroupPayload(4, 0))).State;
+        var rewardAfterChoices = state.World?.Reward;
+        if (rewardAfterChoices is not
+                { CardResolved: true,
+                    ExtraCardGroupsResolved: { Length: 4 } allResolved }
+            || allResolved.Any(resolved => !resolved)
+            || state.Player.Deck.Length != startingDeckSize + 4)
+        {
+            return false;
+        }
+
+        var leave = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "leave_reward");
+        state = engine.Step(state, leave).State;
+        if (state.Phase != RunPhase.Reward
+            || state.World?.Reward?.SourceRoom != "Combat"
+            || state.World.CustomRewardReturn is not null)
+        {
+            return false;
+        }
+
+        var leaveOuterReward = engine.GetLegalActions(state).Single(
+            action => action.Kind == "leave_reward");
+        state = engine.Step(state, leaveOuterReward).State;
+        return state.Phase == RunPhase.MapChoice
+            && state.World?.Reward is null
+            && state.World?.CustomRewardReturn is null
+            && state.Player.Deck.Length == startingDeckSize + 4;
     }
 
     private static bool HasToyBoxPath()

@@ -47,6 +47,7 @@ public static class PrototypeNativeRelicTrader
         return definition.AcquisitionDeckChoice is null
             && definition.AcquisitionHpLossAfterDeckChoices == 0
             && definition.AcquisitionPotionRewardCount == 0
+            && definition.AcquisitionCardRewardGroupCount == 0
             && definition.CardIdAfterAcquisitionDeckChoices is null
             && definition.UpgradeAddedCardType is null
             && definition.ExtraPotionSlots == 0

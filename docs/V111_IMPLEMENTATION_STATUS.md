@@ -1435,3 +1435,7 @@ Cauldron is now in the shared Shop relic pool and offers five independently
 resolved potion rewards when acquired. The pickup suspends and restores its
 prior room or reward, and Cauldron is excluded from relic trading. See
 [mechanics gap 138](reference-builds/v0.111.0-mechanics-gap-138.md).
+Orrery now offers five independent three-card Silent reward groups on pickup.
+The groups retain per-card upgrade outcomes and resume the interrupted
+reward after taking or skipping cards. See
+[mechanics gap 139](reference-builds/v0.111.0-mechanics-gap-139.md).
