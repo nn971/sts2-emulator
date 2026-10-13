@@ -1,6 +1,6 @@
 # Project status
 
-**Active implementation plan:** [Full v111 single-player roadmap](docs/FULL_IMPLEMENTATION_ROADMAP.md).
+**Active implementation plan:** [Full v111 single-player roadmap](../FULL_IMPLEMENTATION_ROADMAP.md).
 The target now includes both Act 1 variants, Hive, Glory and all five characters,
 with exhaustive eligible content and native-parity release gates. Earlier
 Overgrowth-only or deferred-Underdocks priorities below are historical context.
