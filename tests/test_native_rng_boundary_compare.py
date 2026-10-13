@@ -148,6 +148,24 @@ class NativeRngBoundaryCompareTests(unittest.TestCase):
         self.assertEqual(1, result["native_stream_gap_count"])
         self.assertEqual(1, result["compared"])
 
+    def test_scalar_source_call_must_not_be_ignored_during_action_pairing(self):
+        single = row()
+        scalar = row()
+        scalar["type"] = "native_rng_scalar_boundary"
+        scalar["data"]["operation_kind"] = "boolean"
+        scalar["data"]["selected_double"] = None
+        scalar["data"]["selected_bool"] = False
+        scalar["data"].pop("bounded_count")
+        scalar["data"].pop("selected_index")
+        # Reuse an independent source stream to avoid cross-call overlap.
+        scalar["data"]["stream_id"] = "player.rewards"
+        scalar["data"]["selected_bool"] = (
+            int(((RANDOM64 >> 11) * (1 / (1 << 53))) * 2) == 0)
+        result = compare_native_emulator([single, scalar], engine(), 4)
+        self.assertEqual("UNSUPPORTED_NATIVE_RNG_OPERATION",
+                         result["status"])
+        self.assertEqual(2, result["native_call_count"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_rng_stream_audit import MASK, advance, initial_state, rotate
-from native_rng_boundary_verify import verify_call, audit
+from native_rng_boundary_verify import verify_call, verify_scalar_call, audit
 
 
 def sample(bound=7):
@@ -179,6 +179,92 @@ class NativeRngBoundaryVerifyTests(unittest.TestCase):
             {"type": "native_rng_boundary", "data": b}])
         self.assertEqual(0, report["stream_pairs_checked"])
         self.assertEqual(0, report["stream_conflict_count"])
+
+    def test_real_source_unit_double_and_boolean_match_xoshiro(self):
+        data = sample()
+        words = initial_state(971)
+        random64 = (rotate((words[1] * 5) & MASK, 7) * 9) & MASK
+        unit = (random64 >> 11) * (1 / (1 << 53))
+        data.update(operation_kind="unit_double", selected_double=unit,
+                    selected_bool=None, stream_id="run.monster_ai")
+        data.pop("bounded_count")
+        data.pop("selected_index")
+        self.assertIsNone(verify_scalar_call(data))
+        data.update(operation_kind="boolean", selected_double=None,
+                    selected_bool=(int(unit * 2) == 0))
+        self.assertIsNone(verify_scalar_call(data))
+
+    def test_scalar_result_mutation_and_provenance_fail(self):
+        data = sample()
+        words = initial_state(971)
+        unit = ((rotate((words[1] * 5) & MASK, 7) * 9 & MASK) >> 11) * (
+            1 / (1 << 53))
+        data.update(operation_kind="unit_double", selected_double=unit + 0.01,
+                    selected_bool=None)
+        self.assertEqual("SCALAR_DOUBLE_RESULT_MISMATCH",
+                         verify_scalar_call(data))
+        data["origin"] = "frame_cursor_difference"
+        self.assertEqual("UNVERIFIED_SCALAR_SOURCE_OR_OPERATION",
+                         verify_scalar_call(data))
+        data["origin"] = "source_primitive_hook"
+        data.update(operation_kind="boolean", selected_double=None,
+                    selected_bool=not (int(unit * 2) == 0))
+        self.assertEqual("SCALAR_BOOL_RESULT_MISMATCH",
+                         verify_scalar_call(data))
+
+    def test_mixed_integer_and_scalar_source_calls_share_one_stream(self):
+        first = sample()
+        first["stream_id"] = "run.monster_ai"
+        next_words = advance(initial_state(971))
+        number = (rotate((next_words[1] * 5) & MASK, 7) * 9) & MASK
+        unit = (number >> 11) * (1 / (1 << 53))
+        second = {
+            "origin": "source_primitive_hook",
+            "source_version": "v0.111.0",
+            "source_hook_observed": True,
+            "operation_kind": "unit_double",
+            "stream_id": "run.monster_ai",
+            "selected_double": unit,
+            "selected_bool": None,
+            "cursor_before": {"Counter": 16, **{
+                "State" + str(i): x for i, x in enumerate(next_words)}},
+            "cursor_after": {"Counter": 17, **{
+                "State" + str(i): x for i, x in
+                enumerate(advance(next_words))}},
+        }
+        first_event = {"type": "native_rng_boundary", "data": first}
+        second_event = {"type": "native_rng_scalar_boundary", "data": second}
+        report = audit([first_event, second_event])
+        self.assertEqual("OBSERVED_NATIVE_RNG_PRIMITIVES_VALID",
+                         report["status"])
+        self.assertEqual(2, report["source_calls"])
+        self.assertEqual(1, report["scalar_calls"])
+        self.assertEqual(1, report["stream_pairs_contiguous"])
+        self.assertEqual(0, report["stream_gap_count"])
+        # A corrupted post-state must break the chain and fail independently.
+        second["cursor_after"]["State0"] ^= 1
+        corrupted = audit([first_event, second_event])
+        self.assertEqual("NATIVE_RNG_PRIMITIVE_MISMATCH",
+                         corrupted["status"])
+        self.assertEqual(1, corrupted["primitive_error_count"])
+
+    def test_scalar_unknown_and_known_streams_are_not_confused(self):
+        first = sample()
+        first["stream_id"] = "run.niche"
+        another = sample()
+        another.update(operation_kind="unit_double",
+                       selected_double=0.0, selected_bool=None,
+                       stream_id="UNATTRIBUTED")
+        # Primitive result validity is independent of source owner.
+        words = initial_state(971)
+        number = (rotate((words[1] * 5) & MASK, 7) * 9) & MASK
+        another["selected_double"] = (number >> 11) * (1 / (1 << 53))
+        report = audit([
+            {"type": "native_rng_boundary", "data": first},
+            {"type": "native_rng_scalar_boundary", "data": another}])
+        self.assertEqual(0, report["stream_pairs_checked"])
+        self.assertEqual("OBSERVED_NATIVE_RNG_PRIMITIVES_VALID",
+                         report["status"])
 
 
 if __name__ == "__main__":

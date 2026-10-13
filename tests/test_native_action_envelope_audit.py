@@ -236,6 +236,43 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual({"energy": {"before": 3, "after": 2}},
                          diff_scalars(pre, post))
 
+    def test_observed_scalar_source_call_is_typed_and_audited(self):
+        records = sample()
+        records[0]["data"].update(
+            native_rng_hook_installed=True,
+            native_rng_double_hook_installed=True,
+            native_rng_bool_hook_installed=True)
+        records.insert(-1, {"type": "native_rng_scalar_boundary",
+            "action_id": None,
+            "data": {
+                "site_id": "UNATTRIBUTED", "stream_id": "run.monster_ai",
+                "owner_id": "run", "call_ordinal": 0,
+                "operation_kind": "unit_double",
+                "selected_double": 0.25, "selected_bool": None,
+                "cursor_before": {"Counter": 4},
+                "cursor_after": {"Counter": 5},
+                "source_version": "v0.111.0",
+                "origin": "source_primitive_hook",
+                "attributed": False,
+                "source_hook_observed": True
+            }})
+        for i, record in enumerate(records):
+            record["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, result["native_rng_source_calls"])
+        self.assertEqual(1, result["native_rng_scalar_source_calls"])
+        self.assertTrue(result["native_rng_double_hook_installed"])
+        self.assertTrue(result["native_rng_bool_hook_installed"])
+
+    def test_frame_derived_scalar_source_is_rejected(self):
+        records = sample()
+        records.insert(-1, {"type": "native_rng_scalar_boundary",
+            "data": {"origin": "frame_cursor_difference"}})
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(records)["status"])
+
 
 if __name__ == "__main__":
     unittest.main()
