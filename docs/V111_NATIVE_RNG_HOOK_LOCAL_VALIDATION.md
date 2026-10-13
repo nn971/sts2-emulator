@@ -66,6 +66,23 @@ jq '{
 }' "$trace/native-rng-hook-corpus.json"
 ```
 
+For every new source-capturing sidecar, run the independent offline
+xoshiro-state and bounded-result verifier:
+
+```fish
+for sidecar in /mnt/d/SteamLibrary/sts2-inspector-traces/*.actions.jsonl
+    python tools/native_rng_boundary_verify.py "$sidecar" \\
+        --out "$sidecar.rng-verification.json"
+end
+```
+
+The corpus audit reports `native_rng_primitive_validated_calls` and
+`native_rng_primitive_errors` automatically. A nonzero error count makes
+the unified checker return `NATIVE_RNG_PRIMITIVE_MISMATCH`, including
+when the corresponding emulator step is unsupported. Verified source calls
+establish only the **observed primitive transition**, not complete source
+hook coverage, semantic eligibility or original probability laws.
+
 If a sidecar has `native_rng_hook_installed=true` but zero events, the audit says `HOOK_INSTALLED_NO_SOURCE_CALLS_OBSERVED`; this is **not** proof of no RNG consumption. Old sidecars remain auditable and should say `SOURCE_RNG_UNINSTRUMENTED`.
 
 ## No-perturbation and source fidelity checks
