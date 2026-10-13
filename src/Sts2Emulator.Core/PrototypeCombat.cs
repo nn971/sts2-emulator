@@ -2669,10 +2669,12 @@ public sealed partial class PrototypeGameEngine
             {
                 PlannedMoveIndex = chosen.MoveIndex,
                 PlannedNextAiStateId = chosen.NextAiStateId,
-                StunFollowUpMoveIndex = enemy.StunFollowUpMoveIndex.HasValue
-                    ? null : enemy.StunFollowUpMoveIndex,
-                StunFollowUpAiStateId = enemy.StunFollowUpMoveIndex.HasValue
-                    ? null : enemy.StunFollowUpAiStateId
+                StunFollowUpMoveIndex =
+                    chosen.MoveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
+                        ? null : enemy.StunFollowUpMoveIndex,
+                StunFollowUpAiStateId =
+                    chosen.MoveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
+                        ? null : enemy.StunFollowUpAiStateId
             };
         }
         return combat with { Enemies = formation, NativeRng = ownedNative };
