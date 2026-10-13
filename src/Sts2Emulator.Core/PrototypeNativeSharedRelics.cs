@@ -18,6 +18,7 @@ public static class PrototypeNativeSharedRelics
     public const string MysticLighterId = "proto.relic.mystic_lighter";
     public const string PenNibId = "proto.relic.pen_nib";
     public const string GnarledHammerId = "proto.relic.gnarled_hammer";
+    public const string KusarigamaId = "proto.relic.kusarigama";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -106,6 +107,19 @@ public static class PrototypeNativeSharedRelics
                 EnchantmentKind: PrototypeCardEnchantmentKind.Sharp,
                 EnchantmentAmount: 3,
                 MinimumSelections: 0)),
+        // Kusarigama deals 6 unpowered damage after every third owner Attack
+        // in a turn, then resets its counter at the next player turn.
+        new(KusarigamaId, "Kusarigama",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CardPlayed,
+                    [new(PrototypeCombatEffectKind.DamageEnemy, 6,
+                        Target: PrototypeEffectTarget.RandomEnemy)],
+                    RequiresPlayerSide: true,
+                    RequiredSourceCardType: PrototypeCardType.Attack,
+                    EveryNth: 3,
+                    ResetCounterEachTurn: true)
+            ]),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

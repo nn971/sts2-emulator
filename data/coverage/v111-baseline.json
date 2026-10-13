@@ -26177,17 +26177,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.kusarigama"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Kusarigama.cs#ab44d98b0e24bf3ff1b80628f075835f7c3101c718b99d417d170909f9af05ea"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "KUSARIGAMA",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29478,8 +29480,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 161,
-        "integrated": 162,
+        "implemented": 162,
+        "integrated": 163,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

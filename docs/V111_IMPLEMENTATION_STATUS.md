@@ -1341,3 +1341,7 @@ owner-played Attacks, and the tenth Attack deals double powered damage. See
 Gnarled Hammer is now a Shop relic. It offers up to three eligible Attacks
 for Sharp +3 at acquisition, with optional completion. See
 [mechanics gap 110](reference-builds/v0.111.0-mechanics-gap-110.md).
+Kusarigama is now an Uncommon shared relic. Every third owner-played Attack
+deals 6 unpowered damage to a random living enemy, then the counter resets
+next turn. See
+[mechanics gap 111](reference-builds/v0.111.0-mechanics-gap-111.md).

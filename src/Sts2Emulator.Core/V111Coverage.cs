@@ -1779,6 +1779,38 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "KUSARIGAMA"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.KusarigamaId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.KusarigamaId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.KusarigamaId,
+                out var kusarigamaRarity)
+            && kusarigamaRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.KusarigamaId).Triggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeCombatEventKind.CardPlayed
+                    && trigger.RequiredSourceCardType
+                        == PrototypeCardType.Attack
+                    && trigger.RequiresPlayerSide
+                    && trigger.EveryNth == 3
+                    && trigger.ResetCounterEachTurn
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeCombatEffectKind.DamageEnemy
+                        && effect.Amount == 6
+                        && effect.Target
+                            == PrototypeEffectTarget.RandomEnemy)) == true
+            && HasKusarigamaPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -3387,6 +3419,95 @@ public static class V111Coverage
                 })
             && third.Player.Deck.Skip(3).All(card =>
                 card.Enchantment is null);
+    }
+
+    private static bool HasKusarigamaPath()
+    {
+        const long attackId = 1;
+        const string relicId = PrototypeNativeSharedRelics.KusarigamaId;
+        const string strikeId = "proto.silent.strike";
+        var player = new PlayerState(30, 30, 0,
+            [new CardInstance(1, strikeId, 0,
+                PrototypeJson.EmptyObject())],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [attackId],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies:
+            [
+                new EnemyCombatState(3, "proto.enemy.wriggler", 30,
+                    0, 0, new Dictionary<string, int>(StringComparer.Ordinal)),
+                new EnemyCombatState(4, "proto.enemy.wriggler", 30,
+                    0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 2,
+            Cards:
+            [
+                new CombatCardInstance(attackId, 1, strikeId, 0,
+                    false, PrototypeJson.EmptyObject())
+            ],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Relics: [new CombatRelicState(0, relicId, 1, [0])],
+            Act: 2,
+            PlayPile: []);
+        var rng = PrototypeRng.CreateBundle("coverage-kusarigama");
+
+        (PlayerState Player, CombatState Combat) PlayAttack(
+            PlayerState currentPlayer, CombatState currentCombat) =>
+            PrototypeGameEngine.DispatchCombatEvent(
+                currentPlayer,
+                currentCombat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardPlayed,
+                    SourceCardInstanceId: attackId,
+                    CardId: strikeId,
+                    IsPoweredAttack: true),
+                rng);
+
+        var first = PlayAttack(player, combat);
+        var second = PlayAttack(first.Player, first.Combat);
+        if (second.Combat.Enemies.Sum(enemy => enemy.Hp) != 60)
+        {
+            return false;
+        }
+
+        var third = PlayAttack(second.Player, second.Combat);
+        if (third.Combat.Enemies.Sum(enemy => enemy.Hp) != 54
+            || third.Combat.RelicStates[0].TriggerCounts[0] != 3)
+        {
+            return false;
+        }
+
+        var nextTurn = PrototypeGameEngine.DispatchCombatEvent(
+            third.Player,
+            third.Combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerTurnStarted),
+            rng);
+        if (nextTurn.Combat.RelicStates[0].TriggerCounts[0] != 0)
+        {
+            return false;
+        }
+
+        var fourth = PlayAttack(nextTurn.Player, nextTurn.Combat);
+        var fifth = PlayAttack(fourth.Player, fourth.Combat);
+        var sixth = PlayAttack(fifth.Player, fifth.Combat);
+        var melted = combat with
+        {
+            Relics = [combat.RelicStates[0] with { IsMelted = true }]
+        };
+        var meltedFirst = PlayAttack(player, melted);
+        var meltedSecond = PlayAttack(meltedFirst.Player, meltedFirst.Combat);
+        var meltedThird = PlayAttack(meltedSecond.Player, meltedSecond.Combat);
+
+        return sixth.Combat.Enemies.Sum(enemy => enemy.Hp) == 48
+            && meltedThird.Combat.Enemies.Sum(enemy => enemy.Hp) == 60;
     }
 
     private static bool HasSlingOfCouragePath()
