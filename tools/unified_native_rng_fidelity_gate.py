@@ -28,7 +28,9 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
         captures > 0 and corpus.get("status") == "CALLBACK_CORPUS_CONSISTENT"
         and strict.get("structurally_valid_count", 0) == strict.get("trace_count", 0)
     )
-    if engine_error:
+    if corpus.get("native_rng_primitive_errors", 0) > 0:
+        status = "NATIVE_RNG_PRIMITIVE_MISMATCH"
+    elif engine_error:
         status = "ENGINE_EXECUTION_UNAVAILABLE"
     elif captures == 0 and strict.get("trace_count", 0) == 0:
         status = "NO_CAPTURE_EVIDENCE"
@@ -58,6 +60,10 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
         "capture": {
             "sidecar_files": captures,
             "native_rng_source_calls": corpus.get("native_rng_source_calls", 0),
+            "native_rng_primitive_validated_calls":
+                corpus.get("native_rng_primitive_validated_calls", 0),
+            "native_rng_primitive_errors":
+                corpus.get("native_rng_primitive_errors", 0),
             "native_rng_unattributed_calls": corpus.get("native_rng_unattributed_calls", 0),
             "strict_trace_files": strict.get("trace_count", 0),
             "strict_traces_complete": strict.get("structurally_valid_count", 0),
@@ -145,7 +151,8 @@ def main() -> int:
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(output, encoding="utf-8")
-    return 1 if report["status"] == "REAL_ENGINE_CHECKPOINT_MISMATCH" else (
+    return 1 if report["status"] in (
+        "REAL_ENGINE_CHECKPOINT_MISMATCH", "NATIVE_RNG_PRIMITIVE_MISMATCH") else (
         2 if report["status"] != "SUPPORTED_CHECKPOINTS_AGREE_NOT_FULL_GAME_PARITY"
         else 0)
 
