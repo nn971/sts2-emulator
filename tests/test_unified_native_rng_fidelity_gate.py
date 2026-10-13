@@ -84,6 +84,21 @@ class UnifiedFidelityGateTests(unittest.TestCase):
         self.assertEqual(4, result["capture"]["native_rng_source_calls"])
         self.assertEqual("NOT_TESTED", result["native_source_hook_order_parity"])
 
+    def test_checkpoint_consistency_errors_fail_before_engine_status(self):
+        c = corpus()
+        c["native_rng_checkpoint_errors"] = 1
+        r = combine(c, strict(), prefixes(), engine())
+        self.assertEqual("NATIVE_RNG_STREAM_CHECKPOINT_MISMATCH", r["status"])
+        self.assertEqual(1, r["capture"]["native_rng_checkpoint_errors"])
+
+    def test_unobserved_checkpoint_advances_keep_engine_agreement_partial(self):
+        c = corpus()
+        c["native_rng_checkpoint_count"] = 2
+        c["native_rng_checkpoint_unobserved_advances"] = 9
+        r = combine(c, strict(), prefixes(), engine())
+        self.assertEqual("NATIVE_RNG_STREAM_GAPS_REQUIRE_REVIEW", r["status"])
+        self.assertEqual(9, r["capture"]["native_rng_checkpoint_unobserved_advances"])
+
     def test_engine_not_run_or_missing_dll_cannot_pass(self):
         r = combine(corpus(), strict(), prefixes(), None)
         self.assertEqual("ENGINE_COMPARISON_NOT_COMPLETED", r["status"])
