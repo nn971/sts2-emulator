@@ -5475,7 +5475,7 @@ public sealed partial class PrototypeGameEngine
                         DrawPile = ApplyPerfectFitShuffleOrder(
                             combat, shuffled)
                     };
-                    combat = ApplyRelicAfterShuffleCards(combat, rng);
+                    combat = ApplyRelicAfterShuffleEffects(combat, rng);
                     break;
                 }
 
@@ -6830,7 +6830,7 @@ public sealed partial class PrototypeGameEngine
                             draw.AddRange(ApplyPerfectFitShuffleOrder(
                                 combat, shuffled));
                             discard.Clear();
-                            combat = ApplyRelicAfterShuffleCards(combat with
+                            combat = ApplyRelicAfterShuffleEffects(combat with
                             {
                                 DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
                             }, rng);
@@ -7381,11 +7381,24 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
-    private static CombatState ApplyRelicAfterShuffleCards(CombatState combat, RngBundle rng)
+    private static CombatState ApplyRelicAfterShuffleEffects(CombatState combat, RngBundle rng)
     {
         foreach (var relic in combat.RelicStates.Where(relic => !relic.IsMelted).OrderBy(relic => relic.ApplicationOrder))
         {
-            var cardId = PrototypeContent.Relic(relic.RelicId).AfterShuffleGeneratedCardId;
+            var definition = PrototypeContent.Relic(relic.RelicId);
+            if (definition.PlayerBlockAfterDrawPileShuffle > 0)
+            {
+                combat = combat with
+                {
+                    PlayerBlock = combat.PlayerBlock
+                        + Math.Max(0, ModifyPlayerBlockGain(
+                            combat,
+                            definition.PlayerBlockAfterDrawPileShuffle,
+                            fromCard: false))
+                };
+            }
+
+            var cardId = definition.AfterShuffleGeneratedCardId;
             if (cardId is null)
                 continue;
             var instanceId = combat.NextCardInstanceId;
@@ -13538,7 +13551,7 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRng.Shuffle(rng, "combat", recycled);
                 draw.AddRange(ApplyPerfectFitShuffleOrder(
                     combat, recycled));
-                combat = ApplyRelicAfterShuffleCards(combat with
+                combat = ApplyRelicAfterShuffleEffects(combat with
                 {
                     DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
                 }, rng);

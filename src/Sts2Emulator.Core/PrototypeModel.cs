@@ -866,7 +866,8 @@ public sealed record PrototypeRelicDefinition(
     string? RelicIdAfterEliteWins = null,
     int EliteWinsToTransform = 0,
     int ConditionalHandDrawBonus = 0,
-    int ConditionalHandDrawMaxCardsPlayedLastTurn = 0);
+    int ConditionalHandDrawMaxCardsPlayedLastTurn = 0,
+    int PlayerBlockAfterDrawPileShuffle = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

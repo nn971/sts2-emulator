@@ -1881,6 +1881,7 @@ public static class V111Coverage
                 StringComparer.Ordinal)
             && PrototypeNativeRelicGrabBag.TryGetRarity(engineIds[0], out _)
             && (item.Id != "POCKETWATCH" || HasPocketwatchPath())
+            && (item.Id != "THE_ABACUS" || HasTheAbacusPath())
             && HasExecutableRelicBehavior(PrototypeContent.Relic(engineIds[0])))
         {
             implementation = "implemented";
@@ -1912,6 +1913,18 @@ public static class V111Coverage
         return HasOrdinaryRareRelic(relicId)
             && definition.ConditionalHandDrawBonus == 3
             && definition.ConditionalHandDrawMaxCardsPlayedLastTurn == 3;
+    }
+
+    private static bool HasTheAbacusPath()
+    {
+        const string relicId = "proto.relic.the_abacus";
+        return PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            && rarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(relicId)
+                .PlayerBlockAfterDrawPileShuffle == 6;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

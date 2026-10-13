@@ -3221,6 +3221,10 @@ public static class PrototypeContent
                 ConditionalHandDrawBonus: 3,
                 ConditionalHandDrawMaxCardsPlayedLastTurn: 3),
             new PrototypeRelicDefinition(
+                "proto.relic.the_abacus",
+                "The Abacus",
+                PlayerBlockAfterDrawPileShuffle: 6),
+            new PrototypeRelicDefinition(
                 "proto.relic.charons_ashes",
                 "Charon's Ashes",
                 Triggers:
@@ -7626,6 +7630,7 @@ public static class PrototypeContent
         "proto.relic.white_beast_statue",
         "proto.relic.membership_card",
         "proto.relic.chemical_x",
+        "proto.relic.the_abacus",
         "proto.relic.ninja_scroll",
         "proto.relic.smiling_mask",
         "proto.relic.art_of_war",

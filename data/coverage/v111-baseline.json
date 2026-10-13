@@ -28514,17 +28514,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.the_abacus"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/TheAbacus.cs#b2dd1a5e9fd38919053e754dfd981245a009d622bfd95f9b817ff3156519e0b1"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "THE_ABACUS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29449,8 +29451,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 108,
-        "integrated": 109,
+        "implemented": 109,
+        "integrated": 110,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

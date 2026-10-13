@@ -46,6 +46,9 @@ cards on the preceding turn, it adds three cards to the opening hand from turn
 two onward. The play count persists across turn transitions and resets with
 combat state. See
 [mechanics gap 059](reference-builds/v0.111.0-mechanics-gap-059.md).
+The Abacus is now a Shop relic: each owner draw-pile shuffle grants 6 Block
+through the shared Block modifier path. See
+[mechanics gap 060](reference-builds/v0.111.0-mechanics-gap-060.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).
