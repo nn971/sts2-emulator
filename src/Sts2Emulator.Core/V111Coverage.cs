@@ -996,6 +996,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "FRESNEL_LENS"
+            && engineIds.Contains(
+                "proto.native.underdocks.fresnel_lens",
+                StringComparer.Ordinal)
+            && HasFresnelLensPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "DREAM_CATCHER"
             && engineIds.Contains(
                 "proto.native.trash_heap.dream_catcher",
@@ -1730,6 +1740,20 @@ public static class V111Coverage
             && afterTreasure.MonsterWeight == 250
             && afterTreasure.TreasureWeight == 20
             && afterTreasure.ShopWeight == 60;
+    }
+
+    private static bool HasFresnelLensPath()
+    {
+        const string relicId = "proto.native.underdocks.fresnel_lens";
+        const string eventId = "proto.native.underdocks.drowning_beacon";
+        var climb = PrototypeContent.Event(eventId).Choices
+            .SingleOrDefault(choice => choice.Id == "climb");
+        return PrototypeNativeUnderdocksEvents.IsSupported(eventId)
+            && climb?.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId == relicId) == true
+            && PrototypeContent.Relic(relicId)
+                .EnchantNewBlockCardsNimble == 2;
     }
 
     private static bool HasSpoilsMapPath()

@@ -25622,8 +25622,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FresnelLens.cs#05b7cf19010bdf4beffc4d45a3d374ef160a89f8d8a98739de2609c597880b34"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29481,8 +29481,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 84,
-        "integrated": 85,
+        "implemented": 85,
+        "integrated": 86,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
