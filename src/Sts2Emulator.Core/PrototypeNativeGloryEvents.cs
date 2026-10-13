@@ -127,7 +127,8 @@ public static class PrototypeNativeGloryEvents
         // RoundTeaParty.EnjoyTea grants this relic and heals to full.
         // RoyalPoison.AfterPlayerTurnStart deals 4 unblockable HP
         // damage to its owner on turn one of every combat.
-        new(RoyalPoisonId, "Royal Poison"),
+        new(RoyalPoisonId, "Royal Poison",
+            UnblockableHpLossAtCombatStart: 4),
         new(BoneTeaId, "Bone Tea"),
         new(EmberTeaId, "Ember Tea"),
         new(TeaOfDiscourtesyId, "Tea of Discourtesy")

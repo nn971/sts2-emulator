@@ -1242,6 +1242,21 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "ROYAL_POISON"
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.RoyalPoisonId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Relic(
+                PrototypeNativeGloryEvents.RoyalPoisonId)
+                .UnblockableHpLossAtCombatStart == 4
+            && PrototypeNativeGloryEvents.Events.Any(evt =>
+                evt.Id == PrototypeNativeGloryEvents.RoundTeaPartyId
+                && evt.Choices.Any(choice => choice.Id == "enjoy_tea")))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);

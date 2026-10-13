@@ -194,16 +194,17 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState ApplyOpeningRoyalPoison(RunState state)
     {
-        var count = state.Player.Relics.Count(relic =>
-            relic.RelicId == PrototypeNativeGloryEvents.RoyalPoisonId);
-        if (count == 0)
+        var damage = state.Player.ActiveRelics.Sum(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .UnblockableHpLossAtCombatStart);
+        if (damage <= 0)
             return state;
 
         // Initial combat creation starts directly in player turn one
         // (there is no PlayerTurnStarted pipeline dispatch on turn one).
         // Implement only RoyalPoison's pinned owner-scoped hook here;
         // the native callback is triggered once per relic instance.
-        var hpLoss = ReducePlayerHpLoss(state.Player, checked(4 * count));
+        var hpLoss = ReducePlayerHpLoss(state.Player, damage);
         var player = state.Player with
         {
             Hp = Math.Max(0, state.Player.Hp - hpLoss)

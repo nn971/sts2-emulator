@@ -861,7 +861,8 @@ public sealed record PrototypeRelicDefinition(
     bool ExcludesMonsterRoomsFromUnknownMap = false,
     int HealBeforeBossCombat = 0,
     int MaxHpOnCombatVictory = 0,
-    int PlayerHpLossReduction = 0);
+    int PlayerHpLossReduction = 0,
+    int UnblockableHpLossAtCombatStart = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

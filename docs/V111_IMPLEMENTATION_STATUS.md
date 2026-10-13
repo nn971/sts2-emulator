@@ -29,6 +29,9 @@ Tungsten Rod is implemented as a Rare shared relic: it reduces each owner HP
 loss by one across combat and configured event/run effects. Its pinned
 mechanic is recorded in
 [mechanics gap 051](reference-builds/v0.111.0-mechanics-gap-051.md).
+Royal Poison deals four unblockable HP damage on its owner's first turn of
+each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
+inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).
 
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.

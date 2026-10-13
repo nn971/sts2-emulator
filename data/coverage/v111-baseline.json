@@ -27878,8 +27878,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RoyalPoison.cs#f1016293fd7fdc5439d4f775e0880b67d7669d2f982c6d46207c66a3ca1dbc1e"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29447,8 +29447,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 96,
-        "integrated": 97,
+        "implemented": 97,
+        "integrated": 98,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
