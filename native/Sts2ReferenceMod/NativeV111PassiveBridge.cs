@@ -79,8 +79,9 @@ internal static class NativeV111PassiveBridge
         _actionEnvelopes?.NativeShuffleOperation(evidence);
 
     internal static void NativeInitialHpRoll(
-        NativeInitialHpRollEvidenceV111 evidence) =>
-        _actionEnvelopes?.NativeInitialHpRoll(evidence);
+        NativeInitialHpRollEvidenceV111 evidence,
+        bool bufferedBeforeFirstFrame = false) =>
+        _actionEnvelopes?.NativeInitialHpRoll(evidence, bufferedBeforeFirstFrame);
 
     internal static void NativeRngHookFailure(string exceptionType) =>
         _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
