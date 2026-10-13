@@ -7,7 +7,7 @@ event registration (with Colorful Philosophers still deferred), and the
 act-entry Ancient definitions. It records route integration, not complete
 branch coverage or native parity. War Historian Repy is also recognized as
 implemented across its nine inventoried branches. The overall report currently
-records 62/66 events implemented and 64/66 integrated.
+records 63/66 events implemented and 65/66 integrated.
 
 Lasting Candy is integrated as an Uncommon shared relic. Starting with the
 second combat reward, it adds a Power option to eligible combat card rewards on
