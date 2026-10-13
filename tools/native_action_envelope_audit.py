@@ -188,6 +188,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "raw_terminal_status": None,
         "native_rng_hook_installed": False,
         "native_monster_ai_scope_installed": False,
+        "native_shuffle_source_operations": 0,
         "native_rng_source_calls": 0,
         "native_rng_unattributed_calls": 0,
         "native_rng_source_coverage": "SOURCE_RNG_UNINSTRUMENTED",
@@ -214,7 +215,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     allowed = {
         "header", "history_baseline", "frame_state", "action_started", "action_resumed", "action_completed", "stable_decision",
         "nested_choice_pause", "history_entry", "history_reset", "anomaly",
-        "observation_failure", "native_rng_boundary", "terminal",
+        "observation_failure", "native_rng_boundary",
+        "native_shuffle_operation", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -304,6 +306,19 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 strict_failures.append(f"Nested choice with no active action: {aid}")
             else:
                 awaiting_resume.add(aid)
+        elif typ == "native_shuffle_operation":
+            data = record.get("data") or {}
+            if (data.get("source_version") != "v0.111.0"
+                or data.get("kind") not in ("initial", "recycle")
+                or type(data.get("operation_id")) is not int
+                or not isinstance(data.get("choices"), list)
+                or not isinstance(data.get("ordered_input"), list)
+                or not isinstance(data.get("pre_hook_order"), list)
+                or not isinstance(data.get("post_hook_order"), list)):
+                report["reason"] = (
+                    f"Invalid native shuffle source operation at {ordinal}")
+                return report
+            report["native_shuffle_source_operations"] += 1
         elif typ == "native_rng_boundary":
             data = record.get("data") or {}
             before, after = data.get("cursor_before"), data.get("cursor_after")
