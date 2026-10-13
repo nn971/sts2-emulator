@@ -28,7 +28,9 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
         captures > 0 and corpus.get("status") == "CALLBACK_CORPUS_CONSISTENT"
         and strict.get("structurally_valid_count", 0) == strict.get("trace_count", 0)
     )
-    if corpus.get("native_rng_primitive_errors", 0) > 0:
+    if corpus.get("native_shuffle_errors", 0) > 0:
+        status = "NATIVE_SHUFFLE_SOURCE_MISMATCH"
+    elif corpus.get("native_rng_primitive_errors", 0) > 0:
         status = "NATIVE_RNG_PRIMITIVE_MISMATCH"
     elif engine_error:
         status = "ENGINE_EXECUTION_UNAVAILABLE"
@@ -59,6 +61,11 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
         "verification_boundary": "ISOLATED_SUPPORTED_NATIVE_CHECKPOINTS_ONLY",
         "capture": {
             "sidecar_files": captures,
+            "native_shuffle_source_operations":
+                corpus.get("native_shuffle_source_operations", 0),
+            "native_shuffle_verified_operations":
+                corpus.get("native_shuffle_verified_operations", 0),
+            "native_shuffle_errors": corpus.get("native_shuffle_errors", 0),
             "native_rng_source_calls": corpus.get("native_rng_source_calls", 0),
             "native_rng_primitive_validated_calls":
                 corpus.get("native_rng_primitive_validated_calls", 0),
@@ -152,7 +159,8 @@ def main() -> int:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(output, encoding="utf-8")
     return 1 if report["status"] in (
-        "REAL_ENGINE_CHECKPOINT_MISMATCH", "NATIVE_RNG_PRIMITIVE_MISMATCH") else (
+        "REAL_ENGINE_CHECKPOINT_MISMATCH", "NATIVE_RNG_PRIMITIVE_MISMATCH",
+        "NATIVE_SHUFFLE_SOURCE_MISMATCH") else (
         2 if report["status"] != "SUPPORTED_CHECKPOINTS_AGREE_NOT_FULL_GAME_PARITY"
         else 0)
 
