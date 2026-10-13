@@ -23,6 +23,7 @@ public static class PrototypeNativeSharedRelics
     public const string RippleBasinId = "proto.relic.ripple_basin";
     public const string IntimidatingHelmetId =
         "proto.relic.intimidating_helmet";
+    public const string KifudaId = "proto.relic.kifuda";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -197,6 +198,13 @@ public static class PrototypeNativeSharedRelics
                     RequiresPlayerSide: true,
                     MinEnergySpent: 2)
             ]),
+        // Enchant three deck cards with Adroit +3 Block on card play.
+        new(KifudaId, "Kifuda",
+            AcquisitionDeckChoice: new(
+                PrototypePersistentDeckChoiceKind.Enchant,
+                3,
+                EnchantmentKind: PrototypeCardEnchantmentKind.Adroit,
+                EnchantmentAmount: 3)),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),

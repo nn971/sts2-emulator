@@ -1408,3 +1408,6 @@ owner's side turn when they played no Attacks that turn. See
 Intimidating Helmet is now a Rare relic and grants 4 Block before its owner
 plays a card that spends at least 2 Energy. See
 [mechanics gap 130](reference-builds/v0.111.0-mechanics-gap-130.md).
+Kifuda is now a Shop relic and requires its owner to enchant three deck cards
+with Adroit, which grants 3 Block each time an enchanted card is played. See
+[mechanics gap 131](reference-builds/v0.111.0-mechanics-gap-131.md).

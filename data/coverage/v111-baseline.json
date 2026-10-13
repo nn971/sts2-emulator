@@ -12157,17 +12157,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "Adroit"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/Adroit.cs#17031ea03ed27e9459ceab336f45d10b338ecebef5b86d4b35e8b7bd3dddf95f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ADROIT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26153,17 +26155,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.kifuda"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Kifuda.cs#0b3c5203b4c3f1723b9a1e516152b5c37ef0a335831f1e9fa575d72a69f3f6ae"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "KIFUDA",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29428,8 +29432,8 @@
         "catalogued": 22,
         "eligible": 22,
         "excluded": 0,
-        "implemented": 2,
-        "integrated": 2,
+        "implemented": 3,
+        "integrated": 3,
         "kind": "enchantments",
         "scope_review_required": 0,
         "validated": 0
@@ -29508,8 +29512,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 181,
-        "integrated": 182,
+        "implemented": 182,
+        "integrated": 183,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

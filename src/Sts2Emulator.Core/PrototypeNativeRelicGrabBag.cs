@@ -125,6 +125,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.BeltBuckleId] =
                 PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.KifudaId] =
+                PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.DragonFruitId] =
                 PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.ScreamingFlagonId] =

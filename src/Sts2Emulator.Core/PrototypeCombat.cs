@@ -7937,7 +7937,7 @@ public sealed partial class PrototypeGameEngine
         return new PrototypeCardPlayCountResult(combat, playCount);
     }
 
-    private static (PlayerState Player, CombatState Combat)
+    internal static (PlayerState Player, CombatState Combat)
         ResolveCardPlaySeries(
             PlayerState player,
             CombatState combat,
@@ -8551,6 +8551,16 @@ public sealed partial class PrototypeGameEngine
         int? actionTargetEnemyId,
         CombatState combat)
     {
+        if (card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Adroit } adroit
+            && adroit.Amount > 0)
+        {
+            operations.Enqueue(new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.GainPlayerBlock,
+                adroit.Amount,
+                SourceKind: PrototypeEffectSourceKind.Card));
+        }
+
         if (card.Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Inky } inky
             && inky.Amount > 0)

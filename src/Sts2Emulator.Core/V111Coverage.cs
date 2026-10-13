@@ -675,6 +675,42 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "enchantments"
+            && item.Id == "ADROIT"
+            && engineIds.Contains("Adroit", StringComparer.Ordinal)
+            && HasKifudaPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "KIFUDA"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.KifudaId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.KifudaId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.KifudaId,
+                out var kifudaRarity)
+            && kifudaRarity == PrototypeRelicRarity.Shop
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.KifudaId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.KifudaId)
+                .AcquisitionDeckChoice is
+                { Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    Selections: 3,
+                    EnchantmentKind:
+                        PrototypeCardEnchantmentKind.Adroit,
+                    EnchantmentAmount: 3 }
+            && HasKifudaPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "encounters")
         {
             var pools = PrototypeContent.OvergrowthWeakEncounterPool
@@ -4772,6 +4808,103 @@ public static class V111Coverage
                 })
             && third.Player.Deck.Skip(3).All(card =>
                 card.Enchantment is null);
+    }
+
+    private static bool HasKifudaPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.KifudaId;
+        const string strikeId = "proto.silent.strike";
+        const string defendId = "proto.silent.defend";
+        const string powerId = "proto.silent.footwork";
+        const string woundId = "proto.status.wound";
+        var player = new PlayerState(
+            30,
+            30,
+            0,
+            [
+                new CardInstance(1, strikeId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(2, defendId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(3, powerId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(4, woundId, 0,
+                    PrototypeJson.EmptyObject())
+            ],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())],
+            []);
+        var pending = PrototypeGameEngine.CreateRelicDeckChoice(
+            player,
+            relicId);
+        if (pending is not
+                { Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    RemainingSelections: 3,
+                    MinimumSelectionsRemaining: 3 }
+            || !pending.CandidateCardInstanceIds
+                .Order().SequenceEqual(new long[] { 1, 2, 3 }))
+        {
+            return false;
+        }
+
+        var rng = PrototypeRng.CreateBundle("coverage-kifuda");
+        var first = PrototypeGameEngine.ResolveRelicDeckChoice(
+            player, pending, 1, rng);
+        var second = PrototypeGameEngine.ResolveRelicDeckChoice(
+            first.Player, first.Remaining!, 2, rng);
+        var third = PrototypeGameEngine.ResolveRelicDeckChoice(
+            second.Player, second.Remaining!, 3, rng);
+        if (third.Remaining is not null
+            || !third.Player.Deck.Take(3).All(card =>
+                card.Enchantment is
+                {
+                    Kind: PrototypeCardEnchantmentKind.Adroit,
+                    Amount: 3
+                })
+            || third.Player.Deck[3].Enchantment is not null)
+        {
+            return false;
+        }
+
+        var enchantedDefend = third.Player.Deck[1];
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies: [],
+            NextCardInstanceId: 12,
+            Cards:
+            [
+                new CombatCardInstance(
+                    11,
+                    enchantedDefend.InstanceId,
+                    enchantedDefend.CardId,
+                    enchantedDefend.UpgradeLevel,
+                    false,
+                    enchantedDefend.PersistentState,
+                    Enchantment: enchantedDefend.Enchantment)
+            ],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Act: 1,
+            PlayPile: []);
+        var played = PrototypeGameEngine.ResolveCardPlaySeries(
+            third.Player,
+            combat,
+            rng,
+            new PrototypeCardPlaySeriesState(
+                SourceCardInstanceId: 11,
+                SourceCardDestination: PrototypeCardZone.DiscardPile,
+                TargetEnemyId: null,
+                EnergySpent: 1,
+                PlayCount: 1,
+                NextPlayIndex: 0));
+        return played.Combat.PlayerBlock == 8
+            && played.Player.Deck[1].Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Adroit, Amount: 3 };
     }
 
     private static bool HasKusarigamaPath()

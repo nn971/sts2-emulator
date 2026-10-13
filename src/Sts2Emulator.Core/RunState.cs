@@ -22,7 +22,8 @@ public enum PrototypeCardEnchantmentKind
     Sharp,
     Vigorous,
     Corrupted,
-    RoyallyApproved
+    RoyallyApproved,
+    Adroit
 }
 
 public sealed record PrototypeCardEnchantment(
