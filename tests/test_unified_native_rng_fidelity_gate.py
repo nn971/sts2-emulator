@@ -40,6 +40,16 @@ class UnifiedFidelityGateTests(unittest.TestCase):
         self.assertEqual("NOT_IN_NATIVE_SIDECAR_YET",
                          r["random_boundary_capture"])
 
+    def test_native_rng_primitive_mismatch_precedes_engine_coverage_gaps(self):
+        evidence = corpus("LEGACY_OBSERVER_ARTIFACTS_REVIEWED")
+        evidence["native_rng_source_calls"] = 2
+        evidence["native_rng_primitive_validated_calls"] = 1
+        evidence["native_rng_primitive_errors"] = 1
+        report = combine(evidence, strict(0), prefixes(), None)
+        self.assertEqual("NATIVE_RNG_PRIMITIVE_MISMATCH", report["status"])
+        self.assertEqual(1, report["capture"]["native_rng_primitive_errors"])
+        self.assertEqual("NOT_TESTED", report["native_game_parity"])
+
     def test_actual_engine_mismatch_is_not_hidden_by_capture_gaps(self):
         r = combine(corpus("LEGACY_OBSERVER_ARTIFACTS_REVIEWED"),
                     strict(0), prefixes(), engine(
