@@ -9,6 +9,7 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
     public const string GorgetId = "proto.relic.gorget";
+    public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
     public const string CandelabraId = "proto.relic.candelabra";
@@ -43,6 +44,9 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // White Star adds one separate all-Rare card reward after elites.
+        new(WhiteStarId, "White Star",
+            ExtraEliteRareCardRewardCount: 1),
         // Bread removes 2 Energy on turn one, then grants 1 each later turn.
         new(BreadId, "Bread",
             EnergyPerTurnBonus: 1,

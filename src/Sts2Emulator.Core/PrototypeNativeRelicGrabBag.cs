@@ -115,6 +115,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Rare,
             ["proto.relic.art_of_war"] = PrototypeRelicRarity.Rare,
             ["proto.relic.charons_ashes"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.WhiteStarId] =
+                PrototypeRelicRarity.Rare,
             [PrototypeNativeRestSiteRelics.ShovelId] = PrototypeRelicRarity.Rare,
             [PrototypeNativeRestSiteRelics.GiryaId] = PrototypeRelicRarity.Rare,
             ["proto.relic.gambling_chip"] = PrototypeRelicRarity.Rare,
@@ -311,6 +313,9 @@ public static class PrototypeNativeRelicGrabBag
             {
                 Common = bag.Common.Where(id =>
                     id != PrototypeNativeSharedRelics.AmethystAubergineId)
+                    .ToArray(),
+                Rare = bag.Rare.Where(id =>
+                    id != PrototypeNativeSharedRelics.WhiteStarId)
                     .ToArray()
             };
         }

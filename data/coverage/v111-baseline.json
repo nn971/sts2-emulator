@@ -29053,17 +29053,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.white_star"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/WhiteStar.cs#bca994fd23df8836f549b35fa2d2c2a6039c0a3def7786e223019025c88ab5df"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "WHITE_STAR",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29454,8 +29456,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 150,
-        "integrated": 151,
+        "implemented": 151,
+        "integrated": 152,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

@@ -4637,11 +4637,17 @@ public sealed partial class PrototypeGameEngine
         var prayerWheelGroups = room == PrototypeRoomType.Combat
             ? ExtraNormalCombatCardRewardGroups(state.Player)
             : 0;
+        var whiteStarGroups =
+            PrototypeNativeWhiteStar.AdditionalRareCardRewardGroups(
+                state.Player, room);
         var extraCardRewardGroups =
             Math.Max(
                 0,
                 combat.ExtraCardRewardsEarned)
-            + prayerWheelGroups;
+            + prayerWheelGroups
+            + whiteStarGroups;
+        var normalExtraCardRewardGroups =
+            extraCardRewardGroups - whiteStarGroups;
         string[] cardOptions;
         string[][] extraCardOptions;
         bool[]? cardUpgradeFlags = null;
@@ -4677,7 +4683,7 @@ public sealed partial class PrototypeGameEngine
             cardOptions = PickRewardCards(
                 world.Act, cardChoiceCount, state.Rng);
             extraCardOptions = Enumerable.Range(
-                    0, extraCardRewardGroups)
+                    0, normalExtraCardRewardGroups)
                 .Select(_ => PickRewardCards(
                     world.Act, cardChoiceCount, state.Rng))
                 .ToArray();
@@ -4737,6 +4743,45 @@ public sealed partial class PrototypeGameEngine
             extraCardOptions = extras.ToArray();
             extraCardUpgradeFlags = upgrades.ToArray();
             world = world with { CardRarityOffsetBasisPoints = offset };
+        }
+        if (whiteStarGroups > 0)
+        {
+            var extras = extraCardOptions.ToList();
+            var upgrades = extraCardUpgradeFlags?.ToList();
+            var offset = world.CardRarityOffsetBasisPoints;
+            var rarePool = PrototypeContent.NativeSilentRewardCardPool
+                .Where(id => PrototypeContent.Card(id).Rarity
+                    == PrototypeCardRarity.Rare)
+                .ToArray();
+            for (var i = 0; i < whiteStarGroups; i++)
+            {
+                if (nativeOvergrowth)
+                {
+                    var next =
+                        PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+                            cardChoiceCount, state.Ascension,
+                            PrototypeRoomType.Boss, offset, state.Rng,
+                            act: world.Act);
+                    extras.Add(next.Cards);
+                    upgrades!.Add(next.UpgradeFlags);
+                    offset = next.NextOffsetBasisPoints;
+                }
+                else
+                {
+                    extras.Add(PickDistinct(
+                        rarePool, cardChoiceCount, state.Rng, "reward"));
+                }
+            }
+
+            extraCardOptions = extras.ToArray();
+            if (nativeOvergrowth)
+            {
+                extraCardUpgradeFlags = upgrades!.ToArray();
+                world = world with
+                {
+                    CardRarityOffsetBasisPoints = offset
+                };
+            }
         }
 
         var silkenTress = ConsumeSilkenTressCardReward(
@@ -4841,7 +4886,13 @@ public sealed partial class PrototypeGameEngine
                     : new PrototypeCardRewardGenerator(
                         PrototypeCardRewardGeneratorKind.RewardPool,
                         world.Act),
-                1 + extraCardOptions.Length).ToArray());
+                1 + normalExtraCardRewardGroups)
+                .Concat(Enumerable.Repeat<PrototypeCardRewardGenerator?>(
+                    new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RarePool,
+                        world.Act),
+                    whiteStarGroups))
+                .ToArray());
         world = world with
         {
             Combat = null,

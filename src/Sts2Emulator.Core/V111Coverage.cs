@@ -2112,6 +2112,25 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "WHITE_STAR"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.WhiteStarId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.WhiteStarId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.WhiteStarId,
+                out var whiteStarRarity)
+            && whiteStarRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(PrototypeNativeSharedRelics.WhiteStarId)
+                .ExtraEliteRareCardRewardCount == 1
+            && HasWhiteStarPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BREAD"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BreadId,
@@ -3948,6 +3967,59 @@ public static class V111Coverage
             && PrototypeGameEngine.EnergyPerTurn(active, turn: 3) == 4
             && meltedTurnOne.Combat.Energy == 3
             && PrototypeGameEngine.EnergyPerTurn(melted, turn: 2) == 3;
+    }
+
+    private static bool HasWhiteStarPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.WhiteStarId;
+        var relic = new RelicInstance(
+            relicId, PrototypeJson.EmptyObject());
+        var active = new PlayerState(30, 30, 0, [], [relic], []);
+        var melted = new PlayerState(30, 30, 0, [],
+            [relic with { IsMelted = true }], []);
+        var rareReward = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+            3, 0, PrototypeRoomType.Boss,
+            PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints,
+            PrototypeRng.CreateBundle("coverage-white-star-rare"), act: 2);
+
+        var bag = new PrototypeRelicBagState(
+            [], [], [relicId], []);
+        var beforeTreasureWorld = PrototypeNativeLaterActFixture
+            .Create("coverage-white-star-before-treasure", 3).World! with
+        {
+            Floor = PrototypeNativeLaterActMap.RoomRows(3) + 1 - 8,
+            RelicBag = bag
+        };
+        var treasureWorld = beforeTreasureWorld with
+        {
+            Floor = PrototypeNativeLaterActMap.RoomRows(3) + 1 - 7
+        };
+        var beforeTreasure = PrototypeNativeRelicGrabBag.Draw(
+            beforeTreasureWorld, new PlayerState(30, 30, 0, [], [], []),
+            PrototypeRng.CreateBundle("coverage-white-star-before"),
+            merchant: false, forcedRarity: PrototypeRelicRarity.Rare);
+        var atTreasure = PrototypeNativeRelicGrabBag.Draw(
+            treasureWorld, new PlayerState(30, 30, 0, [], [], []),
+            PrototypeRng.CreateBundle("coverage-white-star-treasure"),
+            merchant: false, forcedRarity: PrototypeRelicRarity.Rare);
+
+        return PrototypeNativeWhiteStar
+                .AdditionalRareCardRewardGroups(
+                    active, PrototypeRoomType.Elite) == 1
+            && PrototypeNativeWhiteStar
+                .AdditionalRareCardRewardGroups(
+                    active, PrototypeRoomType.Combat) == 0
+            && PrototypeNativeWhiteStar
+                .AdditionalRareCardRewardGroups(
+                    active, PrototypeRoomType.Boss) == 0
+            && PrototypeNativeWhiteStar
+                .AdditionalRareCardRewardGroups(
+                    melted, PrototypeRoomType.Elite) == 0
+            && rareReward.Cards.All(card =>
+                PrototypeContent.Card(card).Rarity
+                    == PrototypeCardRarity.Rare)
+            && beforeTreasure.Id == relicId
+            && atTreasure.Id is null;
     }
 
     private static bool HasDiamondDiademPath()
