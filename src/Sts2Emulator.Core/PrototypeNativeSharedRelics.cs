@@ -13,6 +13,7 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.screaming_flagon";
     public const string SparklingRougeId =
         "proto.relic.sparkling_rouge";
+    public const string PermafrostId = "proto.relic.permafrost";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -109,6 +110,16 @@ public static class PrototypeNativeSharedRelics
                             PowerId: "proto.power.dexterity")
                     ],
                     TurnEquals: 3,
+                    RequiresPlayerSide: true)
+            ]),
+        // Gain 7 unpowered Block after the first Power played each combat.
+        new(PermafrostId, "Permafrost",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CardPlayed,
+                    [new(PrototypeCombatEffectKind.GainPlayerBlock, 7)],
+                    MaxTriggersPerCounterWindow: 1,
+                    RequiredSourceCardType: PrototypeCardType.Power,
                     RequiresPlayerSide: true)
             ]),
         // Tiny Mailbox offers two random potions after a Rest heal.

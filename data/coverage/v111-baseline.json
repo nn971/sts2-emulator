@@ -27369,17 +27369,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.permafrost"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Permafrost.cs#15f99b67cc992dd3c88839f8eae79d829528b92ad6a57e71266cbf88897cd585"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PERMAFROST",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29494,8 +29496,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 174,
-        "integrated": 175,
+        "implemented": 175,
+        "integrated": 176,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

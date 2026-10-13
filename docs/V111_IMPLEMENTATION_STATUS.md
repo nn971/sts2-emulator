@@ -1387,3 +1387,6 @@ enemies before the owner's turn ends when their hand is empty. See
 Sparkling Rouge is now an Uncommon relic and grants its owner 1 Strength and
 1 Dexterity at the start of turn three. See
 [mechanics gap 123](reference-builds/v0.111.0-mechanics-gap-123.md).
+Permafrost is now an Uncommon relic and grants 7 Block after the first Power
+card played in each combat. See
+[mechanics gap 124](reference-builds/v0.111.0-mechanics-gap-124.md).

@@ -1923,6 +1923,37 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PERMAFROST"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PermafrostId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PermafrostId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PermafrostId,
+                out var permafrostRarity)
+            && permafrostRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.PermafrostId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.PermafrostId).Triggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeCombatEventKind.CardPlayed
+                    && trigger.RequiredSourceCardType
+                        == PrototypeCardType.Power
+                    && trigger.RequiresPlayerSide
+                    && trigger.MaxTriggersPerCounterWindow == 1
+                    && trigger.Effects.Length == 1
+                    && trigger.Effects[0].Kind
+                        == PrototypeCombatEffectKind.GainPlayerBlock
+                    && trigger.Effects[0].Amount == 7) == true
+            && HasPermafrostPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -3964,6 +3995,76 @@ public static class V111Coverage
                 playerSideActive: true) == (0, 0)
             && Dispatch(turn: 3, melted: false,
                 playerSideActive: false) == (0, 0);
+    }
+
+    private static bool HasPermafrostPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.PermafrostId;
+        const string powerCardId = "proto.silent.footwork";
+        const string attackCardId = "proto.silent.strike";
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Fixture(bool melted)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+            return (player, combat);
+        }
+
+        (PlayerState Player, CombatState Combat) Dispatch(
+            PlayerState player, CombatState combat, string cardId,
+            bool playerSideActive = true) =>
+            PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat with { IsPlayerSideActive = playerSideActive },
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardPlayed,
+                    CardId: cardId),
+                PrototypeRng.CreateBundle(
+                    $"coverage-permafrost-{cardId}-{playerSideActive}-{combat.PlayerBlock}"));
+
+        var firstPowerFixture = Fixture(melted: false);
+        var firstPower = Dispatch(firstPowerFixture.Player,
+            firstPowerFixture.Combat, powerCardId);
+        var secondPower = Dispatch(firstPower.Player,
+            firstPower.Combat, powerCardId);
+        var attackFixture = Fixture(melted: false);
+        var attack = Dispatch(attackFixture.Player,
+            attackFixture.Combat, attackCardId);
+        var meltedFixture = Fixture(melted: true);
+        var meltedPower = Dispatch(meltedFixture.Player,
+            meltedFixture.Combat, powerCardId);
+        var enemySideFixture = Fixture(melted: false);
+        var enemySidePower = Dispatch(enemySideFixture.Player,
+            enemySideFixture.Combat, powerCardId,
+            playerSideActive: false);
+        return firstPower.Combat.PlayerBlock == 7
+            && secondPower.Combat.PlayerBlock == 7
+            && attack.Combat.PlayerBlock == 0
+            && meltedPower.Combat.PlayerBlock == 0
+            && enemySidePower.Combat.PlayerBlock == 0;
     }
 
     private static bool HasGnarledHammerPath()
