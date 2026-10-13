@@ -2399,7 +2399,8 @@ public sealed partial class PrototypeGameEngine
                             var hpLoss =
                                 ModifyEnemyHpLoss(
                                     enemy,
-                                    stacks);
+                                    stacks,
+                                    isDamageEvent: true);
                             enemy = hpLoss.Enemy with
                             {
                                 Hp = Math.Max(
@@ -3355,7 +3356,8 @@ public sealed partial class PrototypeGameEngine
                                     enemy,
                                     Math.Max(
                                         0,
-                                        retaliation - retaliationBlocked));
+                                        retaliation - retaliationBlocked),
+                                    isDamageEvent: true);
                                 enemy = hpLoss.Enemy with
                                 {
                                     Block = enemy.Block - retaliationBlocked,
@@ -12460,7 +12462,8 @@ public sealed partial class PrototypeGameEngine
         var hpLoss = LoseEnemyHp(
             combat,
             enemyId,
-            stacks);
+            stacks,
+            isDamageEvent: true);
         combat = hpLoss.Combat;
 
         if (!hpLoss.Defeated
@@ -12519,7 +12522,8 @@ public sealed partial class PrototypeGameEngine
     private static PrototypeDamageResult LoseEnemyHp(
         CombatState combat,
         int enemyId,
-        int hpLoss)
+        int hpLoss,
+        bool isDamageEvent = false)
     {
         var enemies = combat.Enemies
             .Select(enemy => enemy.Fork())
@@ -12556,7 +12560,8 @@ public sealed partial class PrototypeGameEngine
         var modified = ModifyEnemyHpLoss(
             enemy,
             hpLoss,
-            allowDamageTriggeredThreshold: !nativeDamageOnlyThreshold);
+            allowDamageTriggeredThreshold: !nativeDamageOnlyThreshold,
+            isDamageEvent: isDamageEvent);
         enemy = modified.Enemy;
         var nextHp = Math.Max(
             0,
@@ -12690,7 +12695,8 @@ public sealed partial class PrototypeGameEngine
             enemy,
             unblocked > 0
                 ? Math.Max(unblocked, minPoweredAttackHpLoss)
-                : 0);
+                : 0,
+            isDamageEvent: true);
         enemy = hpDamage.Enemy;
         var nextHp = Math.Max(0, enemy.Hp - hpDamage.HpLoss);
         var damageDealt = enemy.Hp - nextHp;
@@ -13063,7 +13069,8 @@ public sealed partial class PrototypeGameEngine
     private static PrototypeEnemyHpLossResult ModifyEnemyHpLoss(
         EnemyCombatState enemy,
         int requestedHpLoss,
-        bool allowDamageTriggeredThreshold = true)
+        bool allowDamageTriggeredThreshold = true,
+        bool isDamageEvent = false)
     {
         var hpLoss = Math.Max(0, requestedHpLoss);
         if (hpLoss == 0 || enemy.Hp <= 0 || enemy.BossPendingRevival)
@@ -13090,7 +13097,11 @@ public sealed partial class PrototypeGameEngine
                 hpLoss,
                 definition.EnemyHpLossCapPerTrigger);
 
-            if (definition.ConsumeOnEnemyHpLoss)
+            // Slippery modifies every HP-loss amount, but its native
+            // AfterDamageReceived hook consumes a stack only for a damage
+            // event. Direct LoseHp effects therefore receive the cap without
+            // spending one of its charges.
+            if (definition.ConsumeOnEnemyHpLoss && isDamageEvent)
             {
                 var index = powers.FindIndex(power =>
                     power.ApplicationOrder

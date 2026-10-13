@@ -14,6 +14,9 @@ stunned or otherwise skipped action no longer suppresses the gain.
 Native Phrog Parasite deaths also handle Poison at enemy-turn start: the four
 Wrigglers skip the current action pass, then present their source-shaped Stun
 move before their alternating slot openers.
+Vantom's Slippery still caps raw HP loss, but spends a stack only for damage
+events, matching its separate `ModifyHpLostAfterOsty` and `AfterDamageReceived`
+hooks.
 
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.
