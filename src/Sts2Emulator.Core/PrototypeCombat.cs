@@ -6676,13 +6676,11 @@ public sealed partial class PrototypeGameEngine
                             && discard.Count > 0)
                         {
                             var shuffled =
-                                discard.ToArray();
-                            PrototypeRng.Shuffle(
-                                rng,
-                                "combat",
-                                shuffled);
-                            draw.AddRange(ApplyPerfectFitShuffleOrder(
-                                combat, shuffled));
+                                NativeShuffleStepReplayV111.ShuffleRecycle(
+                                    discard.ToArray(), rng);
+                            draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
+                                ApplyPerfectFitShuffleOrder(
+                                    combat, shuffled)));
                             discard.Clear();
                             combat = ApplyRelicAfterShuffleCards(combat with
                             {
@@ -13246,11 +13244,12 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
-                var recycled = discard.ToArray();
+                var recycled = NativeShuffleStepReplayV111.ShuffleRecycle(
+                    discard.ToArray(), rng);
                 discard.Clear();
-                PrototypeRng.Shuffle(rng, "combat", recycled);
-                draw.AddRange(ApplyPerfectFitShuffleOrder(
-                    combat, recycled));
+                draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
+                    ApplyPerfectFitShuffleOrder(
+                        combat, recycled)));
                 combat = ApplyRelicAfterShuffleCards(combat with
                 {
                     DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
