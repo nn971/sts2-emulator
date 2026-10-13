@@ -230,6 +230,20 @@ public sealed class NativeEngineFidelityV111Tests
     }
 
     [Fact]
+    public void MultipleNativeCardPlaysInsideOneActionRequireCausalHookEvidence()
+    {
+        var fixture = ChangedFixture(root =>
+            root["native_events"] = JsonNode.Parse(
+                """[{"kind":"card_play_started"},{"kind":"block_gained"},{"kind":"card_play_started"}]"""));
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.Equal("UNSUPPORTED_NATIVE_STATE", report.Status);
+        Assert.False(report.ExecutedActualEngineStep);
+        Assert.Contains("UNVERIFIED_MULTI_CARD_PLAY_TRIGGER_FROM_NATIVE_HISTORY",
+            report.Blockers);
+        Assert.Equal("NOT_TESTED", report.NativeGameParity);
+    }
+
+    [Fact]
     public void UncheckedVisibleNativePowerCannotBeReportedAsFullyConsistent()
     {
         var fixture = ChangedFixture(root =>
