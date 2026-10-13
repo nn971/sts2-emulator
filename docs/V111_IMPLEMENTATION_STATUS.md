@@ -20,7 +20,9 @@ hooks.
 Trash Heap now grants Dream Catcher, Hand Drill, Maw Bank, and The Boot with
 their canonical relic identities. The event rarity keeps these rewards out of
 ordinary relic drops; The Boot's powered-attack floor reuses its existing
-damage modifier.
+damage modifier. Darkstone Periapt is also wired as a Trash Heap event relic;
+each Curse added to the deck grants 6 Max HP. See
+[mechanics gap 055](reference-builds/v0.111.0-mechanics-gap-055.md).
 Centennial Puzzle is implemented as a common shared relic: the first
 unblocked player damage event in combat draws three cards. See the
 [pinned relic audit](reference-builds/v0.111.0-mechanics-gap-050.md) for the

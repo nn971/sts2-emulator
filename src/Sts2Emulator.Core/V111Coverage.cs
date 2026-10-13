@@ -1142,6 +1142,31 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "DARKSTONE_PERIAPT"
+            && engineIds.Contains(
+                "proto.relic.darkstone_periapt",
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksTrashHeap.RelicIds.Contains(
+                "proto.relic.darkstone_periapt",
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksEvents.IsSupported(
+                PrototypeNativeUnderdocksTrashHeap.EventId)
+            && !PrototypeNativeRelicGrabBag.TryGetRarity(
+                "proto.relic.darkstone_periapt", out _)
+            && PrototypeContent.Relic(
+                "proto.relic.darkstone_periapt").RunTriggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeRunEventKind.CardAdded
+                    && trigger.RequiredCardType
+                        == PrototypeCardType.Curse
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainMaxHp
+                        && effect.Amount == 6)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "HAND_DRILL"
             && engineIds.Contains(
                 PrototypeNativeUnderdocksTrashHeap.HandDrillId,

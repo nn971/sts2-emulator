@@ -24924,8 +24924,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DarkstonePeriapt.cs#0fa9543b7048eaad65a5420c0a2b91df94415a5e6434a8a39ca7d831eb4b112a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29447,8 +29447,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 99,
-        "integrated": 100,
+        "implemented": 100,
+        "integrated": 101,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
