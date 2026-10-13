@@ -97,12 +97,15 @@ internal static class NativeV111RngHook
                 // Preserve primitive capture when the semantic scope differs
                 // in the locally installed hotfix; the log is authoritative.
             }
+            var shuffleScopeInstalled = NativeV111ShuffleHooks.TryInstall(harmony);
             _patches = harmony;
             _rollMoveScopeInstalled = rollMoveScopeInstalled;
             GD.Print("[Sts2ReferenceMod] RNG_HOOK_STATUS=INSTALLED_BOUND_INT_OVERLOADS;" +
                 " owner_attribution=run_and_player;" +
                 " rollmove_source_scope=" +
-                (rollMoveScopeInstalled ? "INSTALLED" : "UNAVAILABLE"));
+                (rollMoveScopeInstalled ? "INSTALLED" : "UNAVAILABLE") +
+                "; shuffle_source_scope=" +
+                (shuffleScopeInstalled ? "INSTALLED" : "UNAVAILABLE"));
         }
         catch (Exception error)
         {
@@ -153,9 +156,11 @@ internal static class NativeV111RngHook
 
     private static CallState Capture(NativeRng rng, int min, int max)
     {
-        if (!_attached || _observationFailed ||
-            System.Environment.CurrentManagedThreadId != _threadId ||
-            max <= min)
+        if ((!_attached && !NativeV111ShuffleHooks.HasActiveSourceScope)
+            || _observationFailed
+            || (_attached
+                && System.Environment.CurrentManagedThreadId != _threadId)
+            || max <= min)
             return default;
         long count = (long)max - min;
         if (count is <= 0 or > int.MaxValue) return default;
@@ -217,10 +222,16 @@ internal static class NativeV111RngHook
 
     private static void Observe(NativeRng rng, int result, CallState state)
     {
-        if (!state.Active || !_attached || _observationFailed) return;
+        if (!state.Active || _observationFailed) return;
         try
         {
             var after = Snapshot(rng);
+            NativeV111ShuffleHooks.ObserveChoice(
+                rng, state.Bound, checked(result - state.Min),
+                state.Before!, after);
+            // Pre-attachment initial shuffles are emitted from a bounded
+            // source evidence buffer after the first combat sidecar opens.
+            if (!_attached) return;
             var (stream, owner, streamOrdinal) = Owners.Next(rng);
             // Only a source-audited synchronous scope can promote primitive
             // NextInt to a mechanic site and creature actor. Random calls
