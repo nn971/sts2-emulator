@@ -21,6 +21,62 @@ public sealed class NativeShuffleStepFidelityV111Tests
     }
 
     [Fact]
+    public void ActualPrototypeGameEngineEndTurnConsumesSourceShuffleInDrawRecycle()
+    {
+        var engine = new PrototypeGameEngine();
+        var start = engine.Step(
+            V111RunFactory.Create("actual-step-shuffle-probe",
+                RunConfiguration.Create(firstAct: ActIdentity.Overgrowth)),
+            GameAction.Empty("start_run")).State;
+        var cards = start.Player.Deck.Select(card => new CombatCardInstance(
+            card.InstanceId, card.InstanceId, card.CardId,
+            card.UpgradeLevel, false, card.PersistentState.Clone())).ToArray();
+        var ids = cards.Select(c => c.InstanceId).ToArray();
+        var combat = new CombatState(
+            Turn: 1, Energy: 3, PlayerBlock: 0,
+            Hand: [], DrawPile: [], DiscardPile: ids,
+            ExhaustPile: [],
+            Enemies: [new EnemyCombatState(
+                InstanceId: 1, EnemyId: "proto.enemy.phrog_parasite",
+                Hp: 120, MaxHp: 120, Block: 0, MoveIndex: 0,
+                Statuses: new Dictionary<string, int>(), Powers: [])],
+            NextCardInstanceId: ids.Max() + 1, Cards: cards,
+            PlayerPowers: [], NextPowerApplicationOrder: 1);
+        var state = start with
+        {
+            Phase = RunPhase.Combat,
+            World = start.World! with
+            {
+                ActiveRoom = PrototypeRoomType.Combat,
+                Combat = combat
+            }
+        };
+        // Synthetic source-observed input: verify identity and stage replay
+        // via an actual end-turn engine step. Native parity remains NOT_TESTED.
+        var sourceInput = cards.OrderBy(c => c.CardId, StringComparer.Ordinal)
+            .ThenBy(c => c.UpgradeLevel)
+            .Select(c => c.InstanceId).ToArray();
+        var native = NativeFisherYatesV111.Execute(
+            sourceInput, NativeRngV111.CreateBundle("actual-step-source"),
+            new NativeRandomIndexProviderV111());
+        var evidence = new NativeShuffleStepExpectationV111(
+            "recycle", native.OrderedInput, native.PreHookOutput,
+            native.PreHookOutput,
+            native.Choices.Select(choice => choice.SelectedIndex).ToArray());
+        var report = NativeShuffleStepFidelityV111.Compare(
+            state, GameAction.Empty("end_turn"),
+            [evidence], NativeRngV111.CreateBundle("scripted-nature"));
+        Assert.True(report.ExecutedActualEngineStep,
+            report.EngineFailure ?? report.FirstMismatchStage);
+        Assert.Equal("SOURCE_SHUFFLE_STEP_STAGES_CONSISTENT", report.Status);
+        Assert.Equal("NOT_TESTED", report.NativeGameParity);
+        Assert.Equal("NOT_TESTED", report.ExactNativeRngParity);
+        Assert.Single(report.Observations);
+        Assert.NotNull(report.EmulatorAfter);
+        Assert.True(report.EmulatorAfter!.DecisionIndex > state.DecisionIndex);
+    }
+
+    [Fact]
     public void StepScopedScriptUsesActualFisherYatesProviderAndChecksPostHook()
     {
         var input = NativeOrdered.Reverse().ToArray();
