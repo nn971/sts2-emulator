@@ -42,6 +42,20 @@ def sample():
 
 
 class EnvelopeAuditTests(unittest.TestCase):
+    def test_disabled_and_installed_rng_hooks_remain_distinct(self):
+        default = audit(sample())
+        self.assertFalse(default["native_rng_hook_installed"])
+        self.assertEqual("SOURCE_RNG_UNINSTRUMENTED",
+                         default["native_rng_source_coverage"])
+        records = sample()
+        records[0]["data"]["native_rng_hook_installed"] = True
+        installed = audit(records)
+        self.assertTrue(installed["native_rng_hook_installed"])
+        self.assertEqual("HOOK_INSTALLED_NO_SOURCE_CALLS_OBSERVED",
+                         installed["native_rng_source_coverage"])
+        self.assertEqual(0, installed["native_rng_source_calls"])
+        self.assertEqual("NOT_TESTED", installed["exact_rng_parity"])
+
     def test_valid_nested_action_window_and_measured_delta(self):
         report = audit(sample())
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
