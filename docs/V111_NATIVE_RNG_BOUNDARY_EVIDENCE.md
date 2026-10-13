@@ -27,8 +27,12 @@ basic source/operation/counter invariants and exposes
 events from **one explicit native action ID** against a real, independently
 executed emulator single-fixture report, including the actual typed
 `emulator_random_boundaries` journal. Site, stream, owner, ordinal,
-operation, eligibility bound, selected index and version are required to
-match in order. Optional `--exact-native-cursors` checks all native cursor
+primitive bound, selected index and version are required to match in
+order. A native `NextInt(n)` matched against an emulator
+`choose_index` request proves **only a matching primitive bound/index**;
+the original ordered candidate set remains `ELIGIBILITY_UNVERIFIED`
+until source-level semantic eligibility is separately captured.
+Optional `--exact-native-cursors` checks all native cursor
 words when both streams should share the exact same seeded state.
 
 Example (once native source hooks and independent pre-state import have been
