@@ -268,7 +268,8 @@ internal static class NativeV111PassiveBridge
             BuildId, runId,
             nativeRngHookInstalled: NativeV111RngHook.IsInstalled,
             nativeMonsterAiScopeInstalled: NativeV111RngHook.HasRollMoveScope,
-            nativeShuffleScopeInstalled: NativeV111ShuffleHooks.IsInstalled);
+            nativeShuffleScopeInstalled: NativeV111ShuffleHooks.IsInstalled,
+            nativeInitialHpScopeInstalled: NativeV111InitialHpHooks.IsInstalled);
         // A source-audited initial shuffle executes before the rendered
         // combat frame. Buffered evidence must precede later RNG requests
         // in this sidecar, with its pre-attachment basis clearly marked.
