@@ -42,6 +42,9 @@ Eye, rerolled, and event-owned CardReward groups.
 See
 [mechanics gap 149](reference-builds/v0.111.0-mechanics-gap-149.md) for the
 source boundary and remaining Colorless-pool and RNG limits.
+Piercing Wail now lowers each living enemy's Strength by 6 (8 upgraded) until
+that enemy completes its side turn, and its Silent rarity is Common. See
+[mechanics gap 005](reference-builds/v0.111.0-mechanics-gap-005.md).
 
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.

@@ -1489,14 +1489,14 @@ public static class PrototypeContent
                 PrototypeCardTarget.None,
                 [
                     new(
-                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        PrototypeCombatEffectKind.ApplyEnemyPower,
+                        6,
                         2,
-                        1,
-                        StatusId: "proto.status.weak",
+                        PowerId: "proto.power.piercing_wail",
                         Target: PrototypeEffectTarget.AllEnemies)
                 ],
                 ExhaustOnUse: true,
-                Rarity: PrototypeCardRarity.Uncommon,
+                Rarity: PrototypeCardRarity.Common,
                 Type: PrototypeCardType.Skill),
             new PrototypeCardDefinition(
                 "proto.silent.crippling_cloud",
@@ -3509,6 +3509,15 @@ public static class PrototypeContent
             new PrototypePowerDefinition(
                 "proto.power.dark_shackles",
                 "Dark Shackles",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                RemoveAtEnemyTurnEnd: true,
+                EnemyStrengthOnApplyPerStack: -1,
+                EnemyStrengthRestoreAtSideTurnEndPerStack: 1),
+            new PrototypePowerDefinition(
+                "proto.power.piercing_wail",
+                "Piercing Wail",
                 BlockBonusPerStack: 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 IsDebuff: true,
