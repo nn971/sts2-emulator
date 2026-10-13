@@ -3187,6 +3187,7 @@ public static class PrototypeContent
                         [new(
                             PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
                             0)],
+                        RequiresPlayerSide: true,
                         RequiredSourceCardType:
                             PrototypeCardType.Power)
                 ]),
@@ -3200,6 +3201,7 @@ public static class PrototypeContent
                         [new(
                             PrototypeCombatEffectKind.DrawCards,
                             1)],
+                        RequiresPlayerSide: true,
                         RequiresEmptyHand: true)
                 ]),
             new PrototypeRelicDefinition(
@@ -7598,11 +7600,13 @@ public static class PrototypeContent
         "proto.relic.captains_wheel",
         "proto.relic.black_star",
         "proto.relic.paper_krane",
+        "proto.relic.mummified_hand",
         "proto.relic.kunai",
         "proto.relic.shuriken",
         "proto.relic.ice_cream",
         "proto.relic.helical_dart",
         "proto.relic.tough_bandages",
+        "proto.relic.unceasing_top",
         "proto.relic.tingsha",
         "proto.relic.hovering_kite",
         "proto.relic.question_card",

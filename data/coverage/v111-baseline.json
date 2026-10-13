@@ -26768,8 +26768,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MummifiedHand.cs#6d42915b26aae3089dc6a389b85eeddc5d1f02ee97d34f0073abec88bebb1907"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28832,8 +28832,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/UnceasingTop.cs#a00ca92b089176e93f9377585333323848fc7f7b50781397621a55ec54e3d323"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29481,8 +29481,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 86,
-        "integrated": 87,
+        "implemented": 88,
+        "integrated": 89,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

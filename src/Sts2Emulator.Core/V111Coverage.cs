@@ -996,6 +996,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "MUMMIFIED_HAND"
+            && engineIds.Contains(
+                "proto.relic.mummified_hand",
+                StringComparer.Ordinal)
+            && HasMummifiedHandPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "UNCEASING_TOP"
+            && engineIds.Contains(
+                "proto.relic.unceasing_top",
+                StringComparer.Ordinal)
+            && HasUnceasingTopPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "EMPTY_CAGE"
             && engineIds.Contains(
                 "proto.relic.empty_cage",
@@ -1780,6 +1800,36 @@ public static class V111Coverage
             && definition.CardIdAfterAcquisitionDeckChoices is null
             && definition.AcquisitionHpLossAfterDeckChoices == 0;
     }
+
+    private static bool HasMummifiedHandPath() =>
+        HasOrdinaryRareRelic("proto.relic.mummified_hand")
+        && PrototypeContent.Relic("proto.relic.mummified_hand")
+            .Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.CardPlayed
+                && trigger.RequiresPlayerSide
+                && trigger.RequiredSourceCardType
+                    == PrototypeCardType.Power
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind
+                        .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed
+                    && effect.Amount == 0)) == true;
+
+    private static bool HasUnceasingTopPath() =>
+        HasOrdinaryRareRelic("proto.relic.unceasing_top")
+        && PrototypeContent.Relic("proto.relic.unceasing_top")
+            .Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.CardPlayed
+                && trigger.RequiresPlayerSide
+                && trigger.RequiresEmptyHand
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.DrawCards
+                    && effect.Amount == 1)) == true;
+
+    private static bool HasOrdinaryRareRelic(string relicId) =>
+        PrototypeContent.RelicPool.Contains(relicId, StringComparer.Ordinal)
+        && PrototypeNativeRelicGrabBag.TryGetRarity(
+            relicId, out var rarity)
+        && rarity == PrototypeRelicRarity.Rare;
 
     private static bool HasSpoilsMapPath()
     {
