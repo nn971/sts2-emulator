@@ -30,8 +30,10 @@ internal static class NativeV111RngHook
     private static bool _attached;
     private static bool _observationFailed;
     private static int _threadId;
+    private static bool _rollMoveScopeInstalled;
 
     internal static bool IsInstalled => _patches is not null;
+    internal static bool HasRollMoveScope => IsInstalled && _rollMoveScopeInstalled;
 
     internal static void TryInstall()
     {
@@ -96,6 +98,7 @@ internal static class NativeV111RngHook
                 // in the locally installed hotfix; the log is authoritative.
             }
             _patches = harmony;
+            _rollMoveScopeInstalled = rollMoveScopeInstalled;
             GD.Print("[Sts2ReferenceMod] RNG_HOOK_STATUS=INSTALLED_BOUND_INT_OVERLOADS;" +
                 " owner_attribution=run_and_player;" +
                 " rollmove_source_scope=" +
@@ -106,6 +109,7 @@ internal static class NativeV111RngHook
             try { harmony?.UnpatchSelf(); }
             catch (Exception) { /* original game must still run */ }
             _patches = null;
+            _rollMoveScopeInstalled = false;
             GD.PushError("[Sts2ReferenceMod] RNG_HOOK_STATUS=INSTALL_FAILED;" +
                 " reason=" + error.GetType().Name + "; exact RNG fidelity NOT_TESTED");
         }
