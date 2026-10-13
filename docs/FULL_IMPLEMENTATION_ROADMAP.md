@@ -1,3 +1,5 @@
+> **Planning status (2026-10-13):** this is the long-range complete single-player roadmap, including other characters. The current execution target is the [frozen Silent all-Act gameplay baseline](SILENT_V111_FROZEN_BASELINE.md), followed by [fidelity and RNG implementation](NEXT_STEPS.md). Native full-run parity and cross-character mechanics are postponed for that milestone.
+
 # Complete single-player STS2 emulator roadmap
 
 Recorded 2026-10-10 for `nn971/sts2-emulator`. Baseline: emulator revision `3e897c8`.
