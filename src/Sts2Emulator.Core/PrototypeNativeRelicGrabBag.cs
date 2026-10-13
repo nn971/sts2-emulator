@@ -94,6 +94,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.SturdyClampId] =
                 PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.GhostSeedId] =
+                PrototypeRelicRarity.Shop,
 
             ["proto.relic.meat_on_the_bone"] = PrototypeRelicRarity.Rare,
             ["proto.relic.old_coin"] = PrototypeRelicRarity.Rare,

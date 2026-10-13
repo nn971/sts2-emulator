@@ -25681,17 +25681,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.ghost_seed"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/GhostSeed.cs#eda050524222785279c87b4b15a5ad0487e37d7f0042a0bb4ce2c147a147b3a4"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "GHOST_SEED",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29466,8 +29468,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 156,
-        "integrated": 157,
+        "implemented": 157,
+        "integrated": 158,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

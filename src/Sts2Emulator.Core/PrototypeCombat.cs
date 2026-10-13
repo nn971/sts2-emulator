@@ -9022,7 +9022,7 @@ public sealed partial class PrototypeGameEngine
         return combat with { Cards = cards };
     }
 
-    private static bool CardHasKeyword(
+    internal static bool CardHasKeyword(
         CombatState combat,
         long cardInstanceId,
         PrototypeCardKeyword keyword)
@@ -9049,6 +9049,15 @@ public sealed partial class PrototypeGameEngine
 
         var definition = PrototypeContent.Card(card.CardId);
         var tags = definition.Tags ?? Array.Empty<string>();
+        var grantedByGhostSeed =
+            keyword == PrototypeCardKeyword.Ethereal
+            && definition.Rarity == PrototypeCardRarity.Basic
+            && (tags.Contains("Strike", StringComparer.Ordinal)
+                || tags.Contains("Defend", StringComparer.Ordinal))
+            && combat.RelicStates.Any(relic =>
+                !relic.IsMelted
+                && PrototypeContent.Relic(relic.RelicId)
+                    .EtherealizesBasicStrikesAndDefends);
         var grantedByAffliction =
             keyword == PrototypeCardKeyword.Ethereal
             && card.Affliction?.Kind
@@ -9076,7 +9085,8 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
         return matching is { Length: > 0 }
             ? matching[^1].Enabled
-            : baseValue || grantedByAffliction || grantedByPower;
+            : baseValue || grantedByGhostSeed
+                || grantedByAffliction || grantedByPower;
     }
 
     private static CombatState ApplyCardKeywordOverride(

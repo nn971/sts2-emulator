@@ -1660,6 +1660,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "GHOST_SEED"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.GhostSeedId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.GhostSeedId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.GhostSeedId,
+                out var ghostSeedRarity)
+            && ghostSeedRarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.GhostSeedId)
+                .EtherealizesBasicStrikesAndDefends
+            && HasGhostSeedPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -2963,6 +2983,62 @@ public static class V111Coverage
         return clamped.PlayerBlock == 10
             && belowLimit.PlayerBlock == 6
             && melted.PlayerBlock == 0;
+    }
+
+    private static bool HasGhostSeedPath()
+    {
+        string[] cardIds =
+        [
+            "proto.silent.strike",
+            "proto.silent.defend",
+            "proto.silent.shiv",
+            "proto.status.wound"
+        ];
+        static CombatState Fixture(bool melted, string[] ids)
+        {
+            const string relicId =
+                PrototypeNativeSharedRelics.GhostSeedId;
+            var triggerCount = PrototypeContent.Relic(relicId)
+                .Triggers?.Length ?? 0;
+            var cards = ids.Select((id, index) =>
+                new CombatCardInstance(index + 1, index + 1, id, 0,
+                    false, PrototypeJson.EmptyObject())).ToArray();
+            return new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [1, 2, 3, 4],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 5,
+                Cards: cards,
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+        }
+
+        var active = Fixture(false, cardIds);
+        var melted = Fixture(true, cardIds);
+        return PrototypeGameEngine.CardHasKeyword(
+                active, 1, PrototypeCardKeyword.Ethereal)
+            && PrototypeGameEngine.CardHasKeyword(
+                active, 2, PrototypeCardKeyword.Ethereal)
+            && !PrototypeGameEngine.CardHasKeyword(
+                active, 3, PrototypeCardKeyword.Ethereal)
+            && !PrototypeGameEngine.CardHasKeyword(
+                active, 4, PrototypeCardKeyword.Ethereal)
+            && !PrototypeGameEngine.CardHasKeyword(
+                melted, 1, PrototypeCardKeyword.Ethereal)
+            && !PrototypeGameEngine.CardHasKeyword(
+                melted, 2, PrototypeCardKeyword.Ethereal);
     }
 
     private static bool HasSlingOfCouragePath()

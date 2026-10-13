@@ -13,6 +13,7 @@ public static class PrototypeNativeSharedRelics
     public const string StoneCrackerId = "proto.relic.stone_cracker";
     public const string StrikeDummyId = "proto.relic.strike_dummy";
     public const string SturdyClampId = "proto.relic.sturdy_clamp";
+    public const string GhostSeedId = "proto.relic.ghost_seed";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -69,6 +70,9 @@ public static class PrototypeNativeSharedRelics
         // Sturdy Clamp retains at most 10 Block when player Block clears.
         new(SturdyClampId, "Sturdy Clamp",
             MaxPlayerBlockRetainedAfterClear: 10),
+        // Ghost Seed makes basic Strikes and Defends Ethereal in combat.
+        new(GhostSeedId, "Ghost Seed",
+            EtherealizesBasicStrikesAndDefends: true),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

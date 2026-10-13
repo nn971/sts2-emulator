@@ -881,7 +881,8 @@ public sealed record PrototypeRelicDefinition(
     int PlayerHpLossLimitPerTurn = 0,
     string? AttackDamageBonusRequiredCardTag = null,
     int AttackDamageBonusPerCardTag = 0,
-    int MaxPlayerBlockRetainedAfterClear = 0);
+    int MaxPlayerBlockRetainedAfterClear = 0,
+    bool EtherealizesBasicStrikesAndDefends = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
