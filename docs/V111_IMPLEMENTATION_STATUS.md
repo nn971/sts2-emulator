@@ -17,6 +17,10 @@ prototype RNG; no executable coverage claim is recorded yet. See
 [mechanics gap 143](reference-builds/v0.111.0-mechanics-gap-143.md) for the
 pinned source boundary and remaining fidelity limits.
 
+Blood Vial now heals 2 HP on turn 1 at the late player-turn-start hook, rather
+than at combat setup. See
+[mechanics gap 144](reference-builds/v0.111.0-mechanics-gap-144.md).
+
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.
 Native Phrog Parasite deaths also handle Poison at enemy-turn start: the four

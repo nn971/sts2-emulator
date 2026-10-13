@@ -2766,12 +2766,13 @@ public static class PrototypeContent
                 Triggers:
                 [
                     new PrototypeRelicTriggerSpec(
-                        PrototypeCombatEventKind.CombatStarted,
+                        PrototypeCombatEventKind.PlayerTurnStarted,
                         [
                             new PrototypeCombatEffectSpec(
                                 PrototypeCombatEffectKind.HealPlayer,
                                 2)
-                        ])
+                        ],
+                        TurnEquals: 1)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.potion_belt",
