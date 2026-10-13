@@ -14,5 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Sts2Emulator.Core/Sts2Emulator.Core.csproj" />
     <ProjectReference Include="../../src/Sts2Emulator.Trace/Sts2Emulator.Trace.csproj" />
+    <ProjectReference Include="../../native/Sts2ReferenceMod/Sts2ReferenceMod.csproj" />
   </ItemGroup>
 </Project>

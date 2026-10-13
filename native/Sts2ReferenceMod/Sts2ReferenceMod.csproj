@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>Sts2ReferenceMod</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <!-- The Godot .NET editor can leave auto-generated AssemblyInfo.cs and
+         TargetFrameworkAttribute.cs in .godot/mono/temp/obj. The SDK's
+         default **/*.cs glob would compile these alongside obj/, causing
+         duplicate assembly attribute errors on subsequent native builds. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);.godot/**;**/.godot/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Defense in depth for any additional SDK or imported compile globs. -->
+    <Compile Remove=".godot/**/*.cs" />
+  </ItemGroup>
+  <!-- The native game loader probes the mod's principal DLL but does not
+       necessarily resolve its sibling project-reference DLLs. For native
+       builds embed our audited Core/Trace protocol sources into the mod DLL.
+       This avoids per-frame FileNotFoundException in Godot callbacks.
+       The standalone contract/test build retains the normal project reference. -->
+  <ItemGroup Condition="'$(Sts2DataDir)' == ''">
+    <ProjectReference Include="../../src/Sts2Emulator.Trace/Sts2Emulator.Trace.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Sts2DataDir)' != ''">
+    <Compile Include="../../src/Sts2Emulator.Core/*.cs"
+             Link="EmbeddedCore/%(Filename)%(Extension)" />
+    <Compile Include="../../src/Sts2Emulator.Trace/*.cs"
+             Link="EmbeddedTrace/%(Filename)%(Extension)" />
+  </ItemGroup>
+  <!-- The native entrypoint is compiled only when explicitly supplied with a
+       verified game installation; the standalone runtime needs no game files. -->
+  <PropertyGroup Condition="'$(Sts2DataDir)' != ''">
+    <DefineConstants>$(DefineConstants);STS2_NATIVE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Sts2DataDir)' != ''">
+    <Reference Include="sts2">
+      <HintPath>$(Sts2DataDir)/sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(Sts2DataDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GodotSharp">
+      <HintPath>$(Sts2DataDir)/GodotSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="ValidateNativeFiles" BeforeTargets="ResolveReferences" Condition="'$(Sts2DataDir)' != ''">
+    <Error Condition="!Exists('$(Sts2DataDir)/sts2.dll')" Text="Pinned sts2.dll was not found in Sts2DataDir." />
+    <Error Condition="!Exists('$(Sts2DataDir)/GodotSharp.dll')" Text="GodotSharp.dll was not found in Sts2DataDir." />
+  </Target>
+</Project>

@@ -25,7 +25,8 @@ public static class NativeEngineFidelityBatchV111
         string[] Blockers,
         string[] UnverifiedPreconditions,
         int RecordedEmulatorEvents,
-        string? EngineFailure);
+        string? EngineFailure,
+        int RecordedRngProviderBoundaries = 0);
 
     public sealed record Report(
         string Schema,
@@ -102,7 +103,8 @@ public static class NativeEngineFidelityBatchV111
                 result.Blockers,
                 result.UnverifiedPreconditions,
                 result.EmulatorEventJournal?.Length ?? 0,
-                result.EngineFailure));
+                result.EngineFailure,
+                result.EmulatorRandomBoundaries?.Length ?? 0));
         }
 
         int matched = entries.Count(e => e.Status == "CORE_ENGINE_CHECKPOINT_CONSISTENT");

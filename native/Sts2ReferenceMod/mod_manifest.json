@@ -1,0 +1,7 @@
+{
+  "pck_name": "Sts2ReferenceMod",
+  "name": "Sts2 Reference Inspector",
+  "author": "sts2-emulator contributors",
+  "description": "Optional passive fidelity inspection foundation; native hooks require pinned-build validation.",
+  "version": "0.1.0"
+}

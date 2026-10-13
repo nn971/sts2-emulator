@@ -1,0 +1,11 @@
+{
+  "id": "Sts2ReferenceMod",
+  "name": "Sts2ReferenceMod",
+  "author": "sts2-emulator contributors",
+  "description": "Opt-in read-only native fidelity traces for single-player STS2.",
+  "version": "v0.2.0",
+  "has_pck": true,
+  "has_dll": true,
+  "dependencies": [],
+  "affects_gameplay": false
+}
