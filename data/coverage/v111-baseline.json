@@ -24272,8 +24272,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BiiigHug.cs#3b936173431b86d6442f7ffa04cb982a354309dc356c642b5c025ec7782ba4d2"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 124,
-        "integrated": 125,
+        "implemented": 125,
+        "integrated": 126,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

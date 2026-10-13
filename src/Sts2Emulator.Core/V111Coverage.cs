@@ -452,6 +452,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BIIIG_HUG"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.BiiigHugId,
+                StringComparer.Ordinal)
+            && HasBiiigHugPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2951,6 +2961,88 @@ public static class V111Coverage
             && laterTurn.PlayerPowers.Length == 0
             && melted.PlayerBlock == 0
             && melted.PlayerPowers.Length == 0;
+    }
+
+    private static bool HasBiiigHugPath()
+    {
+        var relicId = NativeAncientRewardsV111.BiiigHugId;
+        var rewardChoice = "take_" + relicId;
+        var relic = PrototypeContent.Relic(relicId);
+        var acquisition = relic.AcquisitionDeckChoice;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == rewardChoice
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || acquisition is not
+                { Kind: PrototypePersistentDeckChoiceKind.Remove,
+                    Selections: 4 }
+            || relic.AfterShuffleGeneratedCardId
+                != NativeAncientRewardsV111.SootId
+            || PrototypeContent.Card(NativeAncientRewardsV111.SootId)
+                .Type != PrototypeCardType.Status
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        static PrototypeGameEngine.PrototypeDrawCardsResult Draw(bool melted)
+        {
+            var relicId = NativeAncientRewardsV111.BiiigHugId;
+            var source = new CombatCardInstance(
+                1, null, "proto.silent.strike", 0,
+                IsTemporary: true,
+                State: PrototypeJson.EmptyObject());
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: PrototypeContent.Rules.BaseEnergy,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [source.InstanceId],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 2,
+                Cards: [source],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [new CombatRelicState(0, relicId, 1, [],
+                    IsMelted: melted)],
+                Act: 2,
+                PlayPile: []);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            return PrototypeGameEngine.DrawCards(
+                player,
+                combat,
+                1,
+                PrototypeRng.CreateBundle(
+                    $"coverage-biiig-hug-{melted}"),
+                fromHandDraw: true);
+        }
+
+        var active = Draw(melted: false);
+        var melted = Draw(melted: true);
+        var soot = active.Combat.Cards.SingleOrDefault(card =>
+            card.CardId == NativeAncientRewardsV111.SootId);
+        return soot is { IsTemporary: true }
+            && active.Combat.NextCardInstanceId == 3
+            && active.Combat.Hand.Concat(active.Combat.DrawPile)
+                .Concat(active.Combat.DiscardPile)
+                .Concat(active.Combat.ExhaustPile)
+                .Contains(soot.InstanceId)
+            && melted.Combat.Cards.Length == 1
+            && melted.Combat.NextCardInstanceId == 2;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

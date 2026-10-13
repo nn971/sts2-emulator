@@ -281,12 +281,13 @@ state. The configured Tezcatara opening samples all three complete pools,
 including the conditional Soup offer, and all ten relic choices retain their
 finished page after acquisition continuations. The three draws and ordered
 offers persist through snapshots. Native UpFront assignment, unlock-profile
-filtering and RNG cursor parity remain for the fidelity pass. Opening
-Mittens/Gambling Chip
-callbacks use a separate resumable post-draw stage. Toolbox suspends before
+filtering and RNG cursor parity remain for the fidelity pass. Mittens/Gambling
+Chip callbacks use a separate resumable post-draw stage. Toolbox suspends before
 the opening draw. Storybook grants its card through shared relic acquisition,
 and Toy Box's wax offers resume the acquiring event, shop or parent reward;
 see [Tezcatara dependency audit](reference-builds/v0.111.0-tezcatara-reward-dependencies.md).
+Biiig Hug coverage checks its Tezcatara reward, four-card removal selection,
+Soot insertion after discard recycling, and melted-copy behavior.
 
 Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
 cards through shared acquisition; Flesh modifies energy reset from turn three;
