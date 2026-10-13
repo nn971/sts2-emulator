@@ -2112,6 +2112,32 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "GORGET"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.GorgetId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.GorgetId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.GorgetId,
+                out var gorgetRarity)
+            && gorgetRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic(PrototypeNativeSharedRelics.GorgetId)
+                .Triggers?.Any(trigger =>
+                    trigger.EventKind
+                        == PrototypeCombatEventKind.CombatStarted
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeCombatEffectKind.ApplyPlayerPower
+                        && effect.Amount == 4
+                        && effect.PowerId == "proto.power.plating")) == true
+            && HasGorgetPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "AMETHYST_AUBERGINE"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.AmethystAubergineId,
@@ -3789,6 +3815,63 @@ public static class V111Coverage
             && beforeTreasure.Id == relicId
             && atTreasure.Id is null
             && atShop.Id is null;
+    }
+
+    private static bool HasGorgetPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.GorgetId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Start(bool melted)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CombatStarted),
+                PrototypeRng.CreateBundle($"coverage-gorget-start-{melted}"));
+        }
+
+        var started = Start(melted: false);
+        var meltedStart = Start(melted: true);
+        var endTurn = PrototypeGameEngine.DispatchCombatEvent(
+            started.Player,
+            started.Combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerTurnEnded),
+            PrototypeRng.CreateBundle("coverage-gorget-end"));
+        return started.Combat.PlayerPowers.Any(power =>
+                power.PowerId == "proto.power.plating" && power.Stacks == 4)
+            && endTurn.Combat.PlayerBlock == 4
+            && meltedStart.Combat.PlayerPowers.Length == 0;
     }
 
     private static bool HasDiamondDiademPath()

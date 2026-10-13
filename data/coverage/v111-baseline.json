@@ -25815,17 +25815,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.gorget"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Gorget.cs#5a3daa66675fce1767a7e54e59b803cdbf7322c655e2c696def4027d80dc586a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "GORGET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29450,8 +29452,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 148,
-        "integrated": 149,
+        "implemented": 149,
+        "integrated": 150,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

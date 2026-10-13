@@ -7,6 +7,7 @@ public static class PrototypeNativeSharedRelics
 {
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
+    public const string GorgetId = "proto.relic.gorget";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
     public const string CandelabraId = "proto.relic.candelabra";
@@ -41,6 +42,14 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Gorget grants 4 Plating when combat starts.
+        new(GorgetId, "Gorget",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CombatStarted,
+                    [new(PrototypeCombatEffectKind.ApplyPlayerPower, 4,
+                        PowerId: "proto.power.plating")])
+            ]),
         // Amethyst Aubergine adds a separate 15 Gold reward after fights,
         // except for the final Glory boss.
         new(AmethystAubergineId, "Amethyst Aubergine",

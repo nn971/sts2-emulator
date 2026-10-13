@@ -7590,6 +7590,7 @@ public static class PrototypeContent
         .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [
+        PrototypeNativeSharedRelics.GorgetId,
         PrototypeNativeSharedRelics.AmethystAubergineId,
         "proto.relic.lantern",
         "proto.relic.ink_bottle",
