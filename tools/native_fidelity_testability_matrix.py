@@ -70,7 +70,7 @@ def matrix(coverage: dict, corpus: dict | None = None,
         group = by_kind.setdefault(kind, Counter())
         group["eligible"] += bool(eligible)
         group["implemented"] += bool(eligible and implemented)
-        group["integrated"] += bool(eligible and integrated)
+        group["integrated"] += bool(eligible and implemented and integrated)
         group["conditionally_importable"] += state == TESTABLE_STATUS
         group["native_differential_interface_missing"] += (
             state == "NATIVE_DIFFERENTIAL_INTERFACE_NOT_ESTABLISHED")
