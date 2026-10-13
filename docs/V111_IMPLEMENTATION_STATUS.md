@@ -1380,3 +1380,6 @@ remains open. See
 Dragon Fruit is now a Shop relic and grants 1 Max HP, including current HP,
 after each positive owner gold gain. Its late Act 3 pool cutoff remains open.
 See [mechanics gap 121](reference-builds/v0.111.0-mechanics-gap-121.md).
+Screaming Flagon is now a Shop relic and deals 20 unpowered damage to all
+enemies before the owner's turn ends when their hand is empty. See
+[mechanics gap 122](reference-builds/v0.111.0-mechanics-gap-122.md).

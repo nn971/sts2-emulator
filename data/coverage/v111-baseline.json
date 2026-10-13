@@ -28011,17 +28011,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.screaming_flagon"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ScreamingFlagon.cs#14a1510ada948a05db694d43ce856f83d4ef01ad2d280e5f8027d1b81810ea70"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SCREAMING_FLAGON",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29490,8 +29492,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 172,
-        "integrated": 173,
+        "implemented": 173,
+        "integrated": 174,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

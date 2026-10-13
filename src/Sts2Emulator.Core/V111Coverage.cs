@@ -1852,6 +1852,37 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "SCREAMING_FLAGON"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.ScreamingFlagonId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.ScreamingFlagonId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.ScreamingFlagonId,
+                out var screamingFlagonRarity)
+            && screamingFlagonRarity == PrototypeRelicRarity.Shop
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.ScreamingFlagonId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.ScreamingFlagonId).Triggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeCombatEventKind.PlayerTurnEnded
+                    && trigger.RequiresEmptyHand
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Length == 1
+                    && trigger.Effects[0].Kind
+                        == PrototypeCombatEffectKind.DamageEnemy
+                    && trigger.Effects[0].Amount == 20
+                    && trigger.Effects[0].Target
+                        == PrototypeEffectTarget.AllEnemies) == true
+            && HasScreamingFlagonPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -3715,6 +3746,77 @@ public static class V111Coverage
             && meltedGain.Gold == 17
             && meltedGain.Hp == 12
             && meltedGain.MaxHp == 30;
+    }
+
+    private static bool HasScreamingFlagonPath()
+    {
+        const string relicId =
+            PrototypeNativeSharedRelics.ScreamingFlagonId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        EnemyCombatState[] Dispatch(
+            bool handEmpty, bool melted, bool playerSideActive)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            long[] hand = handEmpty ? [] : [1];
+            CombatCardInstance[] cards = handEmpty
+                ? []
+                : new[]
+                {
+                    new CombatCardInstance(1, null,
+                        "proto.silent.strike", 0, false,
+                        PrototypeJson.EmptyObject())
+                };
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: hand,
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 40,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal)),
+                    new EnemyCombatState(2, "proto.enemy.wriggler", 30,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 2,
+                Cards: cards,
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: [],
+                IsPlayerSideActive: playerSideActive);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerTurnEnded),
+                PrototypeRng.CreateBundle(
+                    $"coverage-screaming-flagon-{handEmpty}-{melted}-{playerSideActive}"))
+                .Combat.Enemies;
+        }
+
+        static bool HasHp(EnemyCombatState[] enemies, int first, int second) =>
+            enemies[0].Hp == first && enemies[1].Hp == second;
+        return HasHp(Dispatch(handEmpty: true, melted: false,
+                    playerSideActive: true), 20, 10)
+            && HasHp(Dispatch(handEmpty: false, melted: false,
+                    playerSideActive: true), 40, 30)
+            && HasHp(Dispatch(handEmpty: true, melted: true,
+                    playerSideActive: true), 40, 30)
+            && HasHp(Dispatch(handEmpty: true, melted: false,
+                    playerSideActive: false), 40, 30);
     }
 
     private static bool HasGnarledHammerPath()

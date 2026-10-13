@@ -9,6 +9,8 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.book_of_five_rings";
     public const string BowlerHatId = "proto.relic.bowler_hat";
     public const string DragonFruitId = "proto.relic.dragon_fruit";
+    public const string ScreamingFlagonId =
+        "proto.relic.screaming_flagon";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -81,6 +83,17 @@ public static class PrototypeNativeSharedRelics
             [
                 new(PrototypeRunEventKind.GoldGained,
                     [new(PrototypeRunEffectKind.GainMaxHp, 1)])
+            ]),
+        // Deal 20 unpowered damage to all enemies before the owner's side
+        // ends, if the owner has emptied their hand.
+        new(ScreamingFlagonId, "Screaming Flagon",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerTurnEnded,
+                    [new(PrototypeCombatEffectKind.DamageEnemy, 20,
+                        Target: PrototypeEffectTarget.AllEnemies)],
+                    RequiresEmptyHand: true,
+                    RequiresPlayerSide: true)
             ]),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",

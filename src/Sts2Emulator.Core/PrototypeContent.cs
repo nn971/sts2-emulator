@@ -7697,7 +7697,8 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.MysticLighterId,
         PrototypeNativeSharedRelics.GnarledHammerId,
         PrototypeNativeSharedRelics.BeltBuckleId,
-        PrototypeNativeSharedRelics.DragonFruitId
+        PrototypeNativeSharedRelics.DragonFruitId,
+        PrototypeNativeSharedRelics.ScreamingFlagonId
     ];
 
     public static string[] BossRelicPool { get; } =
