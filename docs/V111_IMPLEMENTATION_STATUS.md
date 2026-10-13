@@ -181,7 +181,10 @@ turn pipeline in each combat. Radiant Pearl creates a retained, exhaust-on-play
 Luminesce in each combat;
 Sand Castle upgrades up to six eligible deck instances; Touch replaces Silent's
 starter relic and adds two draws through turn three; Archaic Tooth transforms
-Neutralize while preserving its card-instance data. Alchemical Coffer adds
+Neutralize while preserving its card-instance data. Coverage now recognizes
+Suppress's base and upgraded effects through that Ancient acquisition path;
+it remains outside ordinary card rewards, with source parity unverified.
+Alchemical Coffer adds
 four slots and generates four distinct potions from the full-unlock
 Silent/shared pool in pinned source order. With native run RNG enabled it uses
 `run.combat_potion_generation`; Sozu blocks procurement after generation, so

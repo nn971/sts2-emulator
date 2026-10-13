@@ -10661,13 +10661,10 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Suppress.cs#b1a79d659df56b08a4f5454f4ac5b3b3c880711b9887565c51b15e6280170791"
         ],
         "implementation": "implemented",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "cards",
         "missing_branches": [],
-        "missing_variants": [
-          "base",
-          "upgraded"
-        ],
+        "missing_variants": [],
         "native_id": "SUPPRESS",
         "registered": true,
         "scope": "single-player",
@@ -29383,7 +29380,7 @@
         "eligible": 558,
         "excluded": 37,
         "implemented": 203,
-        "integrated": 139,
+        "integrated": 140,
         "kind": "cards",
         "scope_review_required": 0,
         "validated": 0

@@ -123,6 +123,11 @@ public static class V111Coverage
         var engineIds = ids.Order(StringComparer.Ordinal).ToArray();
         var implementation = engineIds.Length == 0 ? "missing" : "partial";
         var integration = "missing";
+        var hasSuppressAcquisitionPath = item.Scope == "single-player"
+            && item.Kind == "cards" && item.Id == "SUPPRESS"
+            && engineIds.Contains(PrototypeNativeOrobasRelics.SuppressId,
+                StringComparer.Ordinal)
+            && HasArchaicToothSuppressPath();
         if (item.Scope == "single-player" && item.Kind == "cards")
         {
             if (engineIds.Any(id => PrototypeContent.Card(id).MechanicsImplemented
@@ -147,6 +152,8 @@ public static class V111Coverage
                     NativeDarvEventV111.DustyTomeId, StringComparer.Ordinal)
                 && PrototypeContent.Card(
                     NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel > 0)
+                integration = "integrated";
+            if (hasSuppressAcquisitionPath)
                 integration = "integrated";
         }
         if (item.Scope == "single-player"
@@ -294,6 +301,8 @@ public static class V111Coverage
             if (engineIds.Any(IsIntegratedEvent))
                 integration = "integrated";
         }
+        var missingVariants = hasSuppressAcquisitionPath
+            ? [] : item.Variants ?? [];
         var missingBranches = MissingBranches(item);
         if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "DARV" && missingBranches.Length == 0
@@ -974,7 +983,7 @@ public static class V111Coverage
         }
         return new V111CoverageItem(item.Kind, item.Id, item.Scope, engineIds,
             true, engineIds.Length > 0, implementation, integration, "unverified",
-            item.Variants ?? [],
+            missingVariants,
             missingBranches,
             item.Source is null ? [] : [$"{V111Build.SourceCommit}:{item.Source}#{item.SourceSha256}"]);
     }
@@ -984,6 +993,51 @@ public static class V111Coverage
         var actionId = PrototypeNativeRestSiteActionsV111
             .ForNativeOption(optionId);
         return actionId is null ? [] : [actionId];
+    }
+
+    private static bool HasArchaicToothSuppressPath()
+    {
+        var original = new CardInstance(1,
+            PrototypeNativeOrobasRelics.NeutralizeId, 1,
+            PrototypeJson.EmptyObject(),
+            new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.Sharp, 2));
+        var player = new PlayerState(20, 20, 0, [original],
+            [new RelicInstance(PrototypeNativeOrobasRelics.ArchaicToothId,
+                PrototypeJson.EmptyObject())], []);
+        if (!PrototypeNativeOrobasRelics.IsArchaicToothEligible(player))
+            return false;
+
+        var transformed = PrototypeNativeOrobasRelics
+            .ApplyArchaicToothAcquisition(player, 0).Deck.Single();
+        var offerExists = NativeOrobasEventV111.Definition.Choices.Any(choice =>
+            choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId
+                    == PrototypeNativeOrobasRelics.ArchaicToothId));
+        var definition = PrototypeContent.Card(
+            PrototypeNativeOrobasRelics.SuppressId);
+        var baseDamage = definition.Effects.Any(effect =>
+            effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+            && effect.Amount == 11 && effect.UpgradeDelta == 6);
+        var upgradedWeak = definition.Effects.Any(effect =>
+            effect.Kind == PrototypeCombatEffectKind.ApplyEnemyStatus
+            && effect.StatusId == "proto.status.weak"
+            && effect.Amount == 3 && effect.UpgradeDelta == 2);
+        return offerExists
+            && IsIntegratedEvent(NativeOrobasEventV111.EventId)
+            && definition.Rarity == PrototypeCardRarity.Ancient
+            && definition.Type == PrototypeCardType.Attack
+            && definition.Target == PrototypeCardTarget.Enemy
+            && definition.MechanicsImplemented
+            && definition.MaxUpgradeLevel == 1
+            && baseDamage && upgradedWeak
+            && transformed.CardId == PrototypeNativeOrobasRelics.SuppressId
+            && transformed.InstanceId == original.InstanceId
+            && transformed.UpgradeLevel == original.UpgradeLevel
+            && transformed.PersistentState.GetRawText()
+                == original.PersistentState.GetRawText()
+            && transformed.Enchantment == original.Enchantment;
     }
 
     private static string[] MissingBranches(V111InventoryItem item)
