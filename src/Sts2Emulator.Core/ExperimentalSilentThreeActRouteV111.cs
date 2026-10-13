@@ -105,7 +105,8 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeStoneOfAllTime.EventId,
         PrototypeNativeFakeMerchant.EventId,
         PrototypeNativeSharedEvents.ThisOrThatId,
-        PrototypeNativeFutureOfPotions.EventId
+        PrototypeNativeFutureOfPotions.EventId,
+        PrototypeNativeRelicTrader.EventId
     ];
     public static readonly string[] GloryEvents =
     [
@@ -121,7 +122,8 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeGloryEvents.BattlewornDummyId,
         PrototypeNativeFakeMerchant.EventId,
         PrototypeNativeSharedEvents.ThisOrThatId,
-        PrototypeNativeFutureOfPotions.EventId
+        PrototypeNativeFutureOfPotions.EventId,
+        PrototypeNativeRelicTrader.EventId
     ];
 
     public static string[] Pool(int act, PrototypeRoomType room, bool weak)

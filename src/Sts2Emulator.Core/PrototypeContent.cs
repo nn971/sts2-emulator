@@ -3285,6 +3285,8 @@ public static class PrototypeContent
             .Concat(PrototypeNativeRestSiteRelics.Relics)
             .Concat(NativeGloryAncientsV111.Relics)
             .Concat(NativeDarvEventV111.Relics)
+            .Append(new PrototypeRelicDefinition(
+                "proto.relic.circlet", "Circlet"))
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -6786,6 +6788,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeFakeMerchant.Definition)
             .Append(PrototypeNativeSharedEvents.ThisOrThatDefinition)
             .Append(PrototypeNativeFutureOfPotions.Definition)
+            .Append(PrototypeNativeRelicTrader.Definition)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .Append(NativeAncientRewardsV111.TezcataraRewardDefinition)

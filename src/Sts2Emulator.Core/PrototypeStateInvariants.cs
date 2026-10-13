@@ -756,6 +756,54 @@ public static class PrototypeStateInvariants
                 "Future of Potions offers leaked into another event.");
         }
 
+        if (eventState.EventId == PrototypeNativeRelicTrader.EventId)
+        {
+            if (eventState.NativePageIndex == 0
+                && eventState.ChosenChoiceId is null)
+            {
+                var offers = eventState.NativeRelicTraderOffers;
+                if (!PrototypeNativeRelicTrader.IsEligible(player)
+                    || offers is null
+                    || offers.Length != 3
+                    || !offers.Select(offer => offer.ChoiceId)
+                        .SequenceEqual(["top", "middle", "bottom"])
+                    || offers.Select(offer => offer.OwnedRelicIndex)
+                        .Distinct().Count() != offers.Length
+                    || offers.Where(offer => offer.NewRelicId
+                            != "proto.relic.circlet")
+                        .Select(offer => offer.NewRelicId)
+                        .Distinct(StringComparer.Ordinal).Count()
+                        != offers.Count(offer => offer.NewRelicId
+                            != "proto.relic.circlet")
+                    || offers.Any(offer =>
+                        (uint)offer.OwnedRelicIndex
+                            >= (uint)player.Relics.Length
+                        || player.Relics[offer.OwnedRelicIndex].RelicId
+                            != offer.OwnedRelicId
+                        || !PrototypeNativeRelicTrader.IsTradable(
+                            player.Relics[offer.OwnedRelicIndex])
+                        || offer.NewRelicId != "proto.relic.circlet"
+                            && player.Relics.Any(relic => relic.RelicId
+                                == offer.NewRelicId)
+                        || !PrototypeContent.Relics.ContainsKey(
+                            offer.NewRelicId)))
+                {
+                    throw new InvalidOperationException(
+                        "Relic Trader's opening exchange offers are invalid.");
+                }
+            }
+            else if (eventState.NativeRelicTraderOffers is not null)
+            {
+                throw new InvalidOperationException(
+                    "Relic Trader retained exchange offers after the trade.");
+            }
+        }
+        else if (eventState.NativeRelicTraderOffers is not null)
+        {
+            throw new InvalidOperationException(
+                "Relic Trader offers leaked into another event.");
+        }
+
         if (eventState.OfferedChoiceIds is { } offered
             && (offered.Length == 0
                 || offered.Distinct(StringComparer.Ordinal).Count()

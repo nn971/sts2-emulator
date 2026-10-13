@@ -83,7 +83,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     private static IReadOnlyList<GameAction>
         GetAnyTimePotionActions(RunState state) =>
-        state.Player.PotionSlots
+        IsFutureOfPotionsDisablingPotionUse(state)
+            ? Array.Empty<GameAction>()
+            : state.Player.PotionSlots
             .Select((potion, slot) =>
                 new { Potion = potion, Slot = slot })
             .Where(item =>
@@ -99,10 +101,22 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         null)))
             .ToArray();
 
+    private static bool IsFutureOfPotionsDisablingPotionUse(
+        RunState state) =>
+        state.Phase is RunPhase.Event or RunPhase.Reward
+        && state.World?.Event?.EventId
+            == PrototypeNativeFutureOfPotions.EventId;
+
     private static RunState UsePotionOutsideCombat(
         RunState state,
         UsePotionPayload payload)
     {
+        if (IsFutureOfPotionsDisablingPotionUse(state))
+        {
+            throw new InvalidOperationException(
+                "Potions cannot be used during The Future of Potions.");
+        }
+
         if (payload.TargetEnemyId is not null)
         {
             throw new InvalidOperationException(
@@ -409,6 +423,26 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 continue;
             var definition =
                 PrototypeContent.Relic(relic.RelicId);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && definition.UpgradeAddedCardType is { } upgradedType)
+            {
+                player = player with
+                {
+                    Deck = player.Deck.Select(card =>
+                    {
+                        var cardDefinition = PrototypeContent.Card(
+                            card.CardId);
+                        return cardDefinition.Type == upgradedType
+                            && card.UpgradeLevel
+                                < cardDefinition.MaxUpgradeLevel
+                            ? card with
+                            {
+                                UpgradeLevel = card.UpgradeLevel + 1
+                            }
+                            : card;
+                    }).ToArray()
+                };
+            }
             if (eventKind == PrototypeRunEventKind.RelicAcquired
                 && relic.RelicId == NativeDarvEventV111.CallingBellId)
             {

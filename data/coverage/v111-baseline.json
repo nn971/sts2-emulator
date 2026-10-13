@@ -15601,26 +15601,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.shared.relic_trader"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/RelicTrader.cs#d5aec2da5f9924b5b170dd0542898e2774f7024f7d969ec128219c8ef7076b35"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/BOTTOM",
-          "initial/MIDDLE",
-          "initial/TOP",
-          "page/DONE",
-          "page/INITIAL",
-          "page/INITIAL/BOTTOM",
-          "page/INITIAL/MIDDLE",
-          "page/INITIAL/TOP"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "RELIC_TRADER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24863,17 +24856,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.circlet"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Circlet.cs#418c9acc19086b59ad09a499534d504f1727a2b79c6901257431171acb31b0be"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CIRCLET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29426,8 +29421,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 52,
-        "integrated": 55,
+        "implemented": 53,
+        "integrated": 56,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
@@ -29476,8 +29471,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 72,
-        "integrated": 72,
+        "implemented": 73,
+        "integrated": 73,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

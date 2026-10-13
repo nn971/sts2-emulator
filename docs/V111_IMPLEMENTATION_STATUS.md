@@ -60,9 +60,16 @@ acquisition deck choice, then adds Clumsy.
 The Future of Potions is integrated in Hive and Glory for runs with at least
 two potions. Trading one consumes it and offers three upgraded Silent cards
 with the potion's mapped rarity and event-entry rolled card type. The offer
-and card-reward generator persist through state forks; Driftwood retains the
-same rarity/type filter when rerolling. Source RNG and reward-hook fidelity
-remain unverified. See the [pinned source audit](reference-builds/v0.111.0-future-of-potions.md).
+and card-reward generator persist through state forks; potion use stays
+disabled until the event closes, and Driftwood retains the same rarity/type
+filter when rerolling. Source RNG and reward-hook fidelity remain unverified.
+See the [pinned source audit](reference-builds/v0.111.0-future-of-potions.md).
+Relic Trader is integrated in Hive and Glory when at least five relics pass
+the modeled tradability check. It persists three shuffled owned/replacement
+pairs, then removes the selected relic and applies the replacement's
+acquisition effects. The supported Silent relic bag supplies replacements;
+source rarity and relic pool parity remain unverified. See the
+[Relic Trader audit](reference-builds/v0.111.0-relic-trader.md).
 Stone of All Time is integrated in Hive. Lift discards the potion chosen on
 event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one
 eligible Attack for Vigorous 8. Vigorous adds its amount to powered Attack

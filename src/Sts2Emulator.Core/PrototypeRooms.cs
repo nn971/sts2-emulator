@@ -701,6 +701,9 @@ public sealed partial class PrototypeGameEngine
                 && (evt.Id != PrototypeNativeFutureOfPotions.EventId
                     || laterRoute
                     && PrototypeNativeFutureOfPotions.IsEligible(state.Player))
+                && (evt.Id != PrototypeNativeRelicTrader.EventId
+                    || laterRoute
+                    && PrototypeNativeRelicTrader.IsEligible(state.Player))
                 && (laterRoute || evt.Weight > 0)
                 && (!evt.OncePerRun
                     || !world.EventIds.Contains(evt.Id, StringComparer.Ordinal)))
@@ -832,6 +835,13 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        if (selected.Id == PrototypeNativeRelicTrader.EventId)
+        {
+            var rolled = PrototypeNativeRelicTrader.RollOffers(
+                world, world.Event!, state.Player, state.Rng);
+            world = rolled.World with { Event = rolled.Event };
+        }
+
         return state with
         {
             World = world,
@@ -919,6 +929,16 @@ public sealed partial class PrototypeGameEngine
                 .Select(offer => GameAction.Create(
                     PrototypeNativeFutureOfPotions.TradeAction,
                     new TradeFuturePotionPayload(offer.Slot)))
+                .ToArray();
+        }
+
+        if (eventState.EventId == PrototypeNativeRelicTrader.EventId)
+        {
+            return (eventState.NativeRelicTraderOffers
+                    ?? Array.Empty<PrototypeRelicTraderOffer>())
+                .Select((_, index) => GameAction.Create(
+                    "trade_event_relic",
+                    new TradeEventRelicPayload(index)))
                 .ToArray();
         }
 
@@ -1063,6 +1083,9 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
             return StepNativeFutureOfPotions(state, action);
+
+        if (eventState.EventId == PrototypeNativeRelicTrader.EventId)
+            return StepNativeRelicTrader(state, action);
 
         if (eventState.PendingPotionReplacement is { } potionReplacement)
         {

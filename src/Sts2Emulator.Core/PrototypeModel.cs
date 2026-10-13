@@ -2423,7 +2423,9 @@ public sealed record EventState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool? NativeNonupeipeBraceletEligible = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null)
+    PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeRelicTraderOffer[]? NativeRelicTraderOffers = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -2457,7 +2459,10 @@ public sealed record EventState(
             ? null : (string[])RepyChestRelicIds.Clone(),
         NativeFuturePotionOffers = NativeFuturePotionOffers is null
             ? null
-            : (PrototypeFuturePotionOffer[])NativeFuturePotionOffers.Clone()
+            : (PrototypeFuturePotionOffer[])NativeFuturePotionOffers.Clone(),
+        NativeRelicTraderOffers = NativeRelicTraderOffers is null
+            ? null
+            : (PrototypeRelicTraderOffer[])NativeRelicTraderOffers.Clone()
     };
 }
 
@@ -2466,6 +2471,12 @@ public sealed record PrototypeFuturePotionOffer(
     string PotionId,
     PrototypeCardType CardType,
     PrototypeCardRarity CardRarity);
+
+public sealed record PrototypeRelicTraderOffer(
+    string ChoiceId,
+    int OwnedRelicIndex,
+    string OwnedRelicId,
+    string NewRelicId);
 
 public sealed record PrototypeUnknownRoomOddsState(
     int MonsterWeight = 100,
@@ -2584,6 +2595,7 @@ public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
 public sealed record TradeFuturePotionPayload(int Slot);
+public sealed record TradeEventRelicPayload(int OfferIndex);
 public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceEventPotionPayload(int Slot);
 public sealed record UpgradeCardPayload(long CardInstanceId);

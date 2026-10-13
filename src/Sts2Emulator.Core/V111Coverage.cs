@@ -191,6 +191,16 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "CIRCLET"
+            && engineIds.Contains("proto.relic.circlet",
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeRelicTrader.EventId, 2))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player"
             && item.Kind == "enchantments"
             && item.Id == "VIGOROUS"
@@ -368,6 +378,12 @@ public static class V111Coverage
             && item.Id == "THE_FUTURE_OF_POTIONS"
             && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeFutureOfPotions.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "RELIC_TRADER"
+            && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeRelicTrader.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
@@ -1171,6 +1187,13 @@ public static class V111Coverage
             && item.Id == "THE_FUTURE_OF_POTIONS")
         {
             var supported = PrototypeNativeFutureOfPotions.CoveredBranches
+                .ToHashSet(StringComparer.Ordinal);
+            return (item.Branches ?? [])
+                .Where(branch => !supported.Contains(branch)).ToArray();
+        }
+        if (item.Kind == "events" && item.Id == "RELIC_TRADER")
+        {
+            var supported = PrototypeNativeRelicTrader.CoveredBranches
                 .ToHashSet(StringComparer.Ordinal);
             return (item.Branches ?? [])
                 .Where(branch => !supported.Contains(branch)).ToArray();
