@@ -26674,17 +26674,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.miniature_tent"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MiniatureTent.cs#bff5579ca0489078bed1ab678da853295dd32650e9e62fe3315e56b43907d45f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MINIATURE_TENT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29525,8 +29527,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 189,
-        "integrated": 190,
+        "implemented": 190,
+        "integrated": 191,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

@@ -49,6 +49,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.LavaLampId] =
                 PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.MiniatureTentId] =
+                PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.TheCourierId] =
                 PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.TinyMailboxId] =

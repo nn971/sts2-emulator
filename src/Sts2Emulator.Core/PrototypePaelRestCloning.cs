@@ -26,7 +26,7 @@ public sealed partial class PrototypeGameEngine
                 rng: state.Rng, world: world,
                 allocateCardId: () => nextId++);
         }
-        return CompleteRoomToMap(state with
+        return CompleteRestSiteOption(state with
         { Player = player, World = world with { NextCardInstanceId = nextId } });
     }
 }

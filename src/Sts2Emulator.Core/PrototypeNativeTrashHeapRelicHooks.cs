@@ -151,7 +151,7 @@ public sealed partial class PrototypeGameEngine
             }
         }
         if (cardGroups.Count == 0 && potionOptions.Count == 0)
-            return CompleteRoomToMap(state);
+            return ContinueRestSite(state);
 
         var reward = new RewardState(
             SourceRoom: "Rest",

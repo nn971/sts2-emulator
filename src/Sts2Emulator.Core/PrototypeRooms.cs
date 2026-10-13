@@ -63,7 +63,8 @@ public sealed partial class PrototypeGameEngine
             Combat = null,
             Reward = null,
             Shop = null,
-            Event = null
+            Event = null,
+            RestSiteOptionsUsed = null
         };
         state = state with
         {
@@ -3368,34 +3369,49 @@ public sealed partial class PrototypeGameEngine
     private static IReadOnlyList<GameAction> GetRestActions(RunState state)
     {
         var actions = new List<GameAction>();
-        if (CanHatchByrdonisEgg(state.Player))
+        var used = RequireWorld(state).RestSiteOptionsUsed
+            ?? Array.Empty<string>();
+        bool Available(string option) =>
+            !HasMiniatureTent(state.Player)
+            || !used.Contains(option, StringComparer.Ordinal);
+
+        if (Available(PrototypeNativeRestSiteActionsV111.Hatch)
+            && CanHatchByrdonisEgg(state.Player))
         {
             actions.Add(GameAction.Empty(
                 PrototypeNativeRestSiteActionsV111.Hatch));
         }
-        if (state.Player.Relics.Any(relic => relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId))
+        if (Available(PrototypeNativeRestSiteActionsV111.Kindle)
+            && state.Player.Relics.Any(relic =>
+                relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId))
             actions.Add(GameAction.Empty(
                 PrototypeNativeRestSiteActionsV111.Kindle));
-        if (state.Player.ActiveRelics.Any(relic => relic.RelicId == NativePaelRewardsV111.GrowthId))
+        if (Available(PrototypeNativeRestSiteActionsV111.Clone)
+            && state.Player.ActiveRelics.Any(relic =>
+                relic.RelicId == NativePaelRewardsV111.GrowthId))
             actions.Add(GameAction.Empty(
                 PrototypeNativeRestSiteActionsV111.Clone));
-        if (CanRestHeal(state.Player))
+        if (Available(PrototypeNativeRestSiteActionsV111.Heal)
+            && CanRestHeal(state.Player))
         {
             actions.Add(GameAction.Empty(
                 PrototypeNativeRestSiteActionsV111.Heal));
         }
-        if (PrototypeNativeRestSiteRelics.CanDig(state.Player))
+        if (Available(PrototypeNativeRestSiteActionsV111.Dig)
+            && PrototypeNativeRestSiteRelics.CanDig(state.Player))
         {
             actions.Add(GameAction.Empty(
                 PrototypeNativeRestSiteActionsV111.Dig));
         }
-        if (PrototypeNativeRestSiteRelics.CanLift(state.Player))
+        if (Available(PrototypeNativeRestSiteActionsV111.Lift)
+            && PrototypeNativeRestSiteRelics.CanLift(state.Player))
         {
             actions.Add(GameAction.Empty(
                 PrototypeNativeRestSiteActionsV111.Lift));
         }
 
-        var cookableCards = CanRestCook(state.Player)
+        var cookableCards = Available(PrototypeNativeRestSiteActionsV111.Cook)
+            && CanRestCook(state.Player)
             ? state.Player.Deck
                 .Where(card => !PrototypeCardRules.IsEternal(card))
                 .Select(card => card.InstanceId)
@@ -3414,12 +3430,14 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
-        if (PrototypeContent.Rules.RestTrainMaxHp > 0)
+        if (Available("rest_train")
+            && PrototypeContent.Rules.RestTrainMaxHp > 0)
         {
             actions.Add(GameAction.Empty("rest_train"));
         }
 
-        if (CanRestUpgrade(state.Player))
+        if (Available(PrototypeNativeRestSiteActionsV111.Smith)
+            && CanRestUpgrade(state.Player))
         {
             actions.AddRange(
                 state.Player.Deck
@@ -3433,8 +3451,46 @@ public sealed partial class PrototypeGameEngine
         return actions;
     }
 
+    private static bool HasMiniatureTent(PlayerState player) =>
+        player.ActiveRelics.Any(relic =>
+            relic.RelicId == PrototypeNativeSharedRelics.MiniatureTentId);
+
+    private static RunState CompleteRestSiteOption(RunState state) =>
+        ContinueRestSite(state);
+
+    private static RunState ContinueRestSite(RunState state)
+    {
+        if (!HasMiniatureTent(state.Player))
+            return CompleteRoomToMap(state);
+
+        state = state with { Phase = RunPhase.Rest };
+        return GetRestActions(state).Count == 0
+            ? CompleteRoomToMap(state)
+            : state;
+    }
+
     private static RunState StepRest(RunState state, GameAction action)
     {
+        var option = action.Kind;
+        var used = RequireWorld(state).RestSiteOptionsUsed
+            ?? Array.Empty<string>();
+        if (HasMiniatureTent(state.Player)
+            && used.Contains(option, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Rest-site option '{option}' was already used.");
+        }
+        state = state with
+        {
+            World = RequireWorld(state) with
+            {
+                RestSiteOptionsUsed = used
+                    .Append(option)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray()
+            }
+        };
+
         if (action.Kind == PrototypeNativeRestSiteActionsV111.Clone)
             return ClonePaelRestCards(state);
         if (StringComparer.Ordinal.Equals(action.Kind,
@@ -3449,7 +3505,7 @@ public sealed partial class PrototypeGameEngine
                     "Lifting requires Girya with an unused lift.");
             }
 
-            return CompleteRoomToMap(state with
+            return CompleteRestSiteOption(state with
             {
                 Player = PrototypeNativeRestSiteRelics.Lift(state.Player)
             });
@@ -3460,7 +3516,7 @@ public sealed partial class PrototypeGameEngine
                 relic => relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId);
             if (index < 0)
                 throw new InvalidOperationException("Kindle requires Pumpkin Candle.");
-            return CompleteRoomToMap(state with
+            return CompleteRestSiteOption(state with
             {
                 Player = NativeAncientRewardsV111.Rekindle(state.Player, index)
             });
@@ -3474,7 +3530,7 @@ public sealed partial class PrototypeGameEngine
                     "Hatch requires a Byrdonis Egg and an available pet slot.");
             }
 
-            return CompleteRoomToMap(state with
+            return CompleteRestSiteOption(state with
             {
                 Player = HatchByrdonisEgg(state.Player, state.Rng)
             });
@@ -3515,7 +3571,7 @@ public sealed partial class PrototypeGameEngine
                 MaxHp = state.Player.MaxHp + 5,
                 Hp = state.Player.Hp + 5
             };
-            return CompleteRoomToMap(state with { Player = player });
+            return CompleteRestSiteOption(state with { Player = player });
         }
 
         if (StringComparer.Ordinal.Equals(action.Kind,
@@ -3556,7 +3612,7 @@ public sealed partial class PrototypeGameEngine
                     Hp = state.Player.Hp + gain
                 }
             };
-            return CompleteRoomToMap(state);
+            return CompleteRestSiteOption(state);
         }
 
         RequireKind(action, PrototypeNativeRestSiteActionsV111.Smith);
@@ -3593,7 +3649,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         state = state with { Player = state.Player with { Deck = deck } };
-        return CompleteRoomToMap(state);
+        return CompleteRestSiteOption(state);
     }
 
     private static RunState BeginRestDigReward(RunState state)
@@ -5064,6 +5120,8 @@ public sealed partial class PrototypeGameEngine
 
         if (!reward.EndsAct)
         {
+            if (StringComparer.Ordinal.Equals(reward.SourceRoom, "Rest"))
+                return ContinueRestSite(state);
             return CompleteRoomToMap(state);
         }
 
@@ -5090,7 +5148,8 @@ public sealed partial class PrototypeGameEngine
             Combat = null,
             Reward = null,
             Shop = null,
-            Event = null
+            Event = null,
+            RestSiteOptionsUsed = null
         };
 
         if (world.Map.AvailableNodes().Length == 0)

@@ -1447,3 +1447,6 @@ Lava Lamp is now in the shared Shop relic pool. If its owner takes no combat
 damage, eligible options in the fight's card reward groups are upgraded,
 including after Driftwood rerolls. See
 [mechanics gap 141](reference-builds/v0.111.0-mechanics-gap-141.md).
+Miniature Tent is now in the shared Shop relic pool and lets its owner use each
+remaining rest-site option once before leaving. See
+[mechanics gap 142](reference-builds/v0.111.0-mechanics-gap-142.md).

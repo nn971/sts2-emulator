@@ -673,6 +673,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "MINIATURE_TENT"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.MiniatureTentId,
+                StringComparer.Ordinal)
+            && HasMiniatureTentPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -8353,6 +8363,96 @@ public static class V111Coverage
             player,
             noDamage with { CardOptions = [upgradeableCard] });
         return rerolled.CardUpgradeFlagsForGroup(0)[0];
+    }
+
+    private static bool HasMiniatureTentPath()
+    {
+        const string relicId =
+            PrototypeNativeSharedRelics.MiniatureTentId;
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            || rarity != PrototypeRelicRarity.Shop)
+        {
+            return false;
+        }
+
+        var fixture = PrototypeNativeLaterActFixture.Create(
+            "coverage-miniature-tent", 2);
+        var world = fixture.World!;
+        var restNode = world.Map.Nodes.First(node =>
+            node.RoomType == PrototypeRoomType.Rest
+            && node.NextNodeIds is { Length: > 0 });
+        var upgradeable = fixture.Player.Deck.FirstOrDefault(card =>
+            card.UpgradeLevel
+                < PrototypeContent.Card(card.CardId).MaxUpgradeLevel);
+        if (upgradeable is null)
+            return false;
+
+        var player = fixture.Player with
+        {
+            Hp = fixture.Player.MaxHp - 5,
+            Relics = fixture.Player.Relics.Append(new RelicInstance(
+                relicId, PrototypeJson.EmptyObject())).ToArray()
+        };
+        var state = fixture with
+        {
+            Player = player,
+            World = world with
+            {
+                Floor = restNode.Floor,
+                ActiveRoom = PrototypeRoomType.Rest,
+                Map = world.Map with
+                {
+                    CurrentNodeId = restNode.NodeId
+                },
+                RestSiteOptionsUsed = null
+            },
+            Phase = RunPhase.Rest
+        };
+        var engine = new PrototypeGameEngine();
+        var heal = engine.GetLegalActions(state).FirstOrDefault(action =>
+            action.Kind == PrototypeNativeRestSiteActionsV111.Heal);
+        if (heal is null)
+            return false;
+
+        var afterHeal = engine.Step(state, heal).State;
+        var actionsAfterHeal = engine.GetLegalActions(afterHeal);
+        if (afterHeal.Phase != RunPhase.Rest
+            || actionsAfterHeal.Any(action =>
+                action.Kind == PrototypeNativeRestSiteActionsV111.Heal))
+        {
+            return false;
+        }
+
+        var upgrade = actionsAfterHeal.FirstOrDefault(action =>
+            action.Kind == PrototypeNativeRestSiteActionsV111.Smith
+            && action.ReadPayload<UpgradeCardPayload>()
+                .CardInstanceId == upgradeable.InstanceId);
+        if (upgrade is null)
+            return false;
+
+        var afterUpgrade = engine.Step(afterHeal, upgrade).State;
+        var actionsAfterUpgrade = engine.GetLegalActions(afterUpgrade);
+        var upgradedCard = afterUpgrade.Player.Deck.Single(card =>
+            card.InstanceId == upgradeable.InstanceId);
+        if (afterUpgrade.Phase != RunPhase.Rest
+            || actionsAfterUpgrade.Any(action =>
+                action.Kind == PrototypeNativeRestSiteActionsV111.Smith))
+        {
+            return false;
+        }
+
+        var train = actionsAfterUpgrade.FirstOrDefault(action =>
+            action.Kind == "rest_train");
+        if (train is null)
+            return false;
+
+        var afterTrain = engine.Step(afterUpgrade, train).State;
+        return afterTrain.Phase == RunPhase.MapChoice
+            && afterTrain.World?.ActiveRoom is null
+            && upgradedCard.UpgradeLevel == upgradeable.UpgradeLevel + 1;
     }
 
     private static bool HasToyBoxPath()

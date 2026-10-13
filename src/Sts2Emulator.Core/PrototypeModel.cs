@@ -2666,7 +2666,9 @@ public sealed record RunWorldState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     long? LastCombatEndDecisionIndex = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeCustomRewardReturnState? CustomRewardReturn = null)
+    PrototypeCustomRewardReturnState? CustomRewardReturn = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string[]? RestSiteOptionsUsed = null)
 {
     public RunWorldState Fork() => this with
     {
@@ -2689,7 +2691,10 @@ public sealed record RunWorldState(
         LaterActEncounterBag = LaterActEncounterBag?.Fork(),
         PreparedLaterActEncounterBags = PreparedLaterActEncounterBags?
             .Select(bag => bag.Fork()).ToArray(),
-        RelicBag = RelicBag?.Fork()
+        RelicBag = RelicBag?.Fork(),
+        RestSiteOptionsUsed = RestSiteOptionsUsed is null
+            ? null
+            : (string[])RestSiteOptionsUsed.Clone()
     };
 
     public string[] EncounterIds =>

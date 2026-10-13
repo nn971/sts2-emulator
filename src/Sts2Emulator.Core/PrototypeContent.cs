@@ -7596,6 +7596,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.CauldronId,
         PrototypeNativeSharedRelics.OrreryId,
         PrototypeNativeSharedRelics.LavaLampId,
+        PrototypeNativeSharedRelics.MiniatureTentId,
         PrototypeNativeSharedRelics.TheCourierId,
         PrototypeNativeSharedRelics.WhiteStarId,
         PrototypeNativeSharedRelics.BreadId,
