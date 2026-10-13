@@ -53,6 +53,7 @@ public static class PrototypeNativeEventCompletionPages
             or NativeDarvEventV111.EventId
             or PrototypeNativeSharedEvents.ThisOrThatId
             or PrototypeNativeSharedEvents.SymbioteId
+            or PrototypeNativeSlipperyBridge.EventId
             or PrototypeNativeFutureOfPotions.EventId
             or PrototypeNativeRelicTrader.EventId
             or "proto.native.underdocks.doors_of_light_and_dark"
@@ -112,6 +113,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "bird" or "snake" or "torus"
         || eventId == PrototypeNativeSharedEvents.SymbioteId
             && choiceId is "approach" or "kill_with_fire"
+        || eventId == PrototypeNativeSlipperyBridge.EventId
+            && choiceId == "overcome"
         || eventId == PrototypeNativeDenseVegetation.EventId
             && choiceId is "trudge"
         || eventId == PrototypeNativeTabletOfTruth.EventId

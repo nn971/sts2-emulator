@@ -15707,40 +15707,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.slippery_bridge"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/SlipperyBridge.cs#fde2aa8f227c512622958a84f9efed8740714c8b6b02cfe7c7e31cca410962ef"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/HOLD_ON_0",
-          "initial/OVERCOME",
-          "page/HOLD_ON_0",
-          "page/HOLD_ON_0/HOLD_ON_1",
-          "page/HOLD_ON_1",
-          "page/HOLD_ON_1/HOLD_ON_2",
-          "page/HOLD_ON_2",
-          "page/HOLD_ON_2/HOLD_ON_3",
-          "page/HOLD_ON_3",
-          "page/HOLD_ON_3/HOLD_ON_4",
-          "page/HOLD_ON_4",
-          "page/HOLD_ON_4/HOLD_ON_5",
-          "page/HOLD_ON_5",
-          "page/HOLD_ON_5/HOLD_ON_6",
-          "page/HOLD_ON_6",
-          "page/HOLD_ON_6/HOLD_ON_LOOP",
-          "page/HOLD_ON_LOOP",
-          "page/HOLD_ON_LOOP/HOLD_ON_LOOP",
-          "page/INITIAL",
-          "page/INITIAL/HOLD_ON_0",
-          "page/INITIAL/OVERCOME",
-          "page/OVERCOME"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "SLIPPERY_BRIDGE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29431,8 +29410,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 56,
-        "integrated": 59,
+        "implemented": 57,
+        "integrated": 60,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

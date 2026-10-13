@@ -720,6 +720,21 @@ public static class PrototypeStateInvariants
             PrototypeContent.Event(
                 eventState.EventId);
 
+        if (eventState.EventId
+            == PrototypeNativeSlipperyBridge.EventId)
+        {
+            ValidateSlipperyBridgeEvent(player, eventState);
+            return;
+        }
+        if (eventState.NativeSlipperyBridgeHoldCount != 0
+            || eventState.NativeSlipperyBridgeCardInstanceId is not null
+            || eventState.NativeSlipperyBridgeSkippedCardInstanceIds
+                is not null)
+        {
+            throw new InvalidOperationException(
+                "Slippery Bridge state leaked into another event.");
+        }
+
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
         {
             if (eventState.NativePageIndex == 0
@@ -1441,6 +1456,77 @@ public static class PrototypeStateInvariants
                         $"Pending event potion reward references invalid slot {slot}.");
                 }
             }
+        }
+    }
+
+    private static void ValidateSlipperyBridgeEvent(
+        PlayerState player,
+        EventState eventState)
+    {
+        var skipped = eventState
+            .NativeSlipperyBridgeSkippedCardInstanceIds;
+        var cardInstanceId = eventState
+            .NativeSlipperyBridgeCardInstanceId;
+        if (eventState.NativePageIndex
+                == PrototypeNativeEventCompletionPages
+                    .TerminalChoicePageIndex(
+                        PrototypeNativeSlipperyBridge.EventId))
+        {
+            if (eventState.ChosenChoiceId != "overcome"
+                || cardInstanceId is not null
+                || skipped is null
+                || skipped.Length != 0
+                || eventState.NativeSlipperyBridgeHoldCount < 0
+                || eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null
+                || eventState.RemainingDeckChoices.Length != 0
+                || eventState.RemainingPotionIds.Length != 0
+                || eventState.PendingReward is not null)
+            {
+                throw new InvalidOperationException(
+                    "Slippery Bridge completion page is inconsistent.");
+            }
+
+            return;
+        }
+
+        if (eventState.NativeSlipperyBridgeHoldCount < 0
+            || cardInstanceId is null
+            || skipped is null
+            || skipped.Length != skipped.Distinct().Count()
+            || (eventState.ChosenChoiceId is null
+                ? eventState.NativeSlipperyBridgeHoldCount != 0
+                : eventState.NativeSlipperyBridgeHoldCount == 0
+                    || !StringComparer.Ordinal.Equals(
+                        eventState.ChosenChoiceId,
+                        PrototypeNativeSlipperyBridge.HoldChoiceId(
+                            eventState.NativeSlipperyBridgeHoldCount - 1)))
+            || eventState.PendingDeckChoice is not null
+            || eventState.PendingPotionReplacement is not null
+            || eventState.RemainingDeckChoices.Length != 0
+            || eventState.RemainingPotionIds.Length != 0
+            || eventState.PendingReward is not null)
+        {
+            throw new InvalidOperationException(
+                "Slippery Bridge has invalid choice or card-selection state.");
+        }
+
+        var highlighted = player.Deck.FirstOrDefault(card =>
+            card.InstanceId == cardInstanceId.Value);
+        if (highlighted is null
+            || !PrototypeGameEngine.CanSelectEventDeckCard(
+                highlighted, PrototypePersistentDeckChoiceKind.Remove,
+                transformToCardId: null, enchantmentKind: null,
+                basicCardsOnly: false)
+            || skipped.Any(id => !player.Deck.Any(card =>
+                card.InstanceId == id
+                && PrototypeGameEngine.CanSelectEventDeckCard(
+                    card, PrototypePersistentDeckChoiceKind.Remove,
+                    transformToCardId: null, enchantmentKind: null,
+                    basicCardsOnly: false))))
+        {
+            throw new InvalidOperationException(
+                "Slippery Bridge references a missing or unremovable deck card.");
         }
     }
 

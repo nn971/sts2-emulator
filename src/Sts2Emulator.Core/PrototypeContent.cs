@@ -6815,6 +6815,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeFakeMerchant.Definition)
             .Append(PrototypeNativeSharedEvents.ThisOrThatDefinition)
             .Append(PrototypeNativeSharedEvents.SymbioteDefinition)
+            .Append(PrototypeNativeSlipperyBridge.Definition)
             .Append(PrototypeNativeFutureOfPotions.Definition)
             .Append(PrototypeNativeRelicTrader.Definition)
             .Append(PrototypeNativeArchitectEnding.Definition)

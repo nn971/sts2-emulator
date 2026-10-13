@@ -635,6 +635,16 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SLIPPERY_BRIDGE"
+            && engineIds.Contains(
+                PrototypeNativeSlipperyBridge.EventId,
+                StringComparer.Ordinal)
+            && HasCompleteSlipperyBridgeBranches(item))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "THIS_OR_THAT" && missingBranches.Length == 0
             && engineIds.Contains(
                 PrototypeNativeSharedEvents.ThisOrThatId,
@@ -2028,6 +2038,11 @@ public static class V111Coverage
 
     private static string[] MissingBranches(V111InventoryItem item)
     {
+        if (item.Kind == "events" && item.Id == "SLIPPERY_BRIDGE")
+        {
+            return HasCompleteSlipperyBridgeBranches(item)
+                ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events"
             && item.Id == "THE_LEGENDS_WERE_TRUE")
         {
@@ -2123,6 +2138,57 @@ public static class V111Coverage
                 .Where(branch => !supported.Contains(branch)).ToArray();
         }
         return item.BranchInventoryComplete ? [] : item.Branches ?? [];
+    }
+
+    private static bool HasCompleteSlipperyBridgeBranches(
+        V111InventoryItem item)
+    {
+        var expectedBranches = new List<string>
+        {
+            "initial/OVERCOME",
+            "initial/HOLD_ON_0",
+            "page/INITIAL",
+            "page/INITIAL/OVERCOME",
+            "page/INITIAL/HOLD_ON_0",
+            "page/OVERCOME"
+        };
+        for (var hold = 0; hold < 7; hold++)
+        {
+            var current = $"HOLD_ON_{hold}";
+            var next = hold == 6 ? "HOLD_ON_LOOP" : $"HOLD_ON_{hold + 1}";
+            expectedBranches.Add($"page/{current}");
+            expectedBranches.Add($"page/{current}/{next}");
+        }
+        expectedBranches.Add("page/HOLD_ON_LOOP");
+        expectedBranches.Add("page/HOLD_ON_LOOP/HOLD_ON_LOOP");
+
+        return HasSlipperyBridgePath()
+            && item.Branches is { } branches
+            && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                expectedBranches.Order(StringComparer.Ordinal),
+                StringComparer.Ordinal);
+    }
+
+    private static bool HasSlipperyBridgePath()
+    {
+        var eventId = PrototypeNativeSlipperyBridge.EventId;
+        var definition = PrototypeContent.Event(eventId);
+        var expectedChoices = new[]
+        {
+            "overcome", "hold_on_0", "hold_on_1", "hold_on_2",
+            "hold_on_3", "hold_on_4", "hold_on_5", "hold_on_6",
+            "hold_on_loop"
+        };
+        return definition.Choices.Select(choice => choice.Id)
+                .SequenceEqual(expectedChoices, StringComparer.Ordinal)
+            && PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(eventId)
+            && PrototypeNativeUnderdocksEvents.IsSupported(eventId)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 2)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 3)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventId)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                eventId, "overcome");
     }
 
     private static bool Matches(V111InventoryItem item, string engineId, string name)

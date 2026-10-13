@@ -371,7 +371,8 @@ public static class PrototypeNativeOvergrowthEvents
         "proto.native.event.unrest_site",
         "proto.native.event.wellspring",
         "proto.native.event.whispering_hollow",
-        "proto.native.event.wood_carvings"
+        "proto.native.event.wood_carvings",
+        PrototypeNativeSlipperyBridge.EventId
     ];
 
     public static PrototypeEventDefinition[] Definitions { get; } =

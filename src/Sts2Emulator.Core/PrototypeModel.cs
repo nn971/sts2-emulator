@@ -2414,6 +2414,9 @@ public sealed record EventState(
     RewardState? PendingReward = null,
     int DeferredHpLoss = 0,
     int NativePageIndex = 0,
+    int NativeSlipperyBridgeHoldCount = 0,
+    long? NativeSlipperyBridgeCardInstanceId = null,
+    long[]? NativeSlipperyBridgeSkippedCardInstanceIds = null,
     string? DeferredCardId = null,
     int NativeEventGold = 0,
     int NativeEventSecondaryGold = 0,
@@ -2471,6 +2474,10 @@ public sealed record EventState(
                 ? null
                 : (string[])OfferedChoiceIds.Clone(),
         PendingReward = PendingReward?.Fork(),
+        NativeSlipperyBridgeSkippedCardInstanceIds =
+            NativeSlipperyBridgeSkippedCardInstanceIds is null
+                ? null
+                : (long[])NativeSlipperyBridgeSkippedCardInstanceIds.Clone(),
         RepyChestPotionIds = RepyChestPotionIds is null
             ? null : (string[])RepyChestPotionIds.Clone(),
         RepyChestRelicIds = RepyChestRelicIds is null

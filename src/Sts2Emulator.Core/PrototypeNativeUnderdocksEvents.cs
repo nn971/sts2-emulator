@@ -22,7 +22,8 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.trash_heap",
         "proto.native.underdocks.waterlogged_scriptorium",
         PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
-        PrototypeNativeSharedEvents.ThisOrThatId
+        PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeSlipperyBridge.EventId
     ];
 
     public static string[] SupportedRegionEventIds { get; } =
@@ -40,7 +41,8 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.doors_of_light_and_dark",
         "proto.native.underdocks.sunken_statue",
         PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
-        PrototypeNativeSharedEvents.ThisOrThatId
+        PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeSlipperyBridge.EventId
     ];
 
     /// <summary>

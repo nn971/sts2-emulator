@@ -697,6 +697,9 @@ public sealed partial class PrototypeGameEngine
                     || PrototypeNativeHiveEvents.IsEligible(evt, state.Player))
                 && (!laterRoute || world.Act != 3
                     || PrototypeNativeGloryEvents.IsEligible(evt, state.Player))
+                && (evt.Id != PrototypeNativeSlipperyBridge.EventId
+                    || PrototypeNativeSlipperyBridge.IsEligible(
+                        state.Player, world))
                 && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
                 && (evt.Id != PrototypeNativeFakeMerchant.EventId
@@ -811,6 +814,15 @@ public sealed partial class PrototypeGameEngine
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
+        if (selected.Id == PrototypeNativeSlipperyBridge.EventId)
+        {
+            world = world with
+            {
+                Event = PrototypeNativeSlipperyBridge.Initialize(
+                    world.Event!, state.Player, state.Rng)
+            };
+        }
+
         if (selected.Id == PrototypeNativeFakeMerchant.EventId)
         {
             world = world with
@@ -886,6 +898,18 @@ public sealed partial class PrototypeGameEngine
                     ?? pending.RemainingSelections) == 0)
                 actions.Add(GameAction.Empty("finish_relic_deck_choice"));
             return actions;
+        }
+
+        if (eventState.EventId
+            == PrototypeNativeSlipperyBridge.EventId)
+        {
+            if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                    eventState.EventId)
+                && eventState.NativePageIndex
+                    == PrototypeNativeEventCompletionPages
+                        .TerminalChoicePageIndex(eventState.EventId))
+                return [GameAction.Empty("continue_event")];
+            return GetSlipperyBridgeActions(eventState);
         }
 
         if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
@@ -1052,6 +1076,10 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.EventId == PrototypeNativeFakeMerchant.EventId)
             return StepNativeFakeMerchant(state, action);
+
+        if (eventState.EventId
+            == PrototypeNativeSlipperyBridge.EventId)
+            return StepSlipperyBridge(state, action);
 
         if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                 eventState.EventId)
