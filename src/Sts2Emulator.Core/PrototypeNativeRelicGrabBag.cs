@@ -348,10 +348,17 @@ public static class PrototypeNativeRelicGrabBag
             bag = bag with
             {
                 Common = bag.Common.Where(id =>
-                    id != PrototypeNativeSharedRelics.AmethystAubergineId)
+                    id != PrototypeNativeSharedRelics.AmethystAubergineId
+                    && id != PrototypeNativeSharedRelics.BookOfFiveRingsId)
+                    .ToArray(),
+                Uncommon = bag.Uncommon.Where(id =>
+                    id != PrototypeNativeSharedRelics.BowlerHatId)
                     .ToArray(),
                 Rare = bag.Rare.Where(id =>
                     id != PrototypeNativeSharedRelics.WhiteStarId)
+                    .ToArray(),
+                Shop = bag.Shop.Where(id =>
+                    id != PrototypeNativeSharedRelics.DragonFruitId)
                     .ToArray()
             };
         }

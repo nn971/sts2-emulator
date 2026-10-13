@@ -1819,6 +1819,9 @@ public static class V111Coverage
                     GoldGainMultiplierNumerator: 5,
                     GoldGainMultiplierDenominator: 4
                 }
+            && HasActThreeTreasureCutoff(
+                PrototypeNativeSharedRelics.BowlerHatId,
+                PrototypeRelicRarity.Uncommon)
             && HasBowlerHatPath())
         {
             implementation = "implemented";
@@ -1846,6 +1849,9 @@ public static class V111Coverage
                     && trigger.Effects[0].Kind
                         == PrototypeRunEffectKind.GainMaxHp
                     && trigger.Effects[0].Amount == 1) == true
+            && HasActThreeTreasureCutoff(
+                PrototypeNativeSharedRelics.DragonFruitId,
+                PrototypeRelicRarity.Shop)
             && HasDragonFruitPath())
         {
             implementation = "implemented";
@@ -1928,6 +1934,9 @@ public static class V111Coverage
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
                 out var bookOfFiveRingsRarity)
             && bookOfFiveRingsRarity == PrototypeRelicRarity.Common
+            && HasActThreeTreasureCutoff(
+                PrototypeNativeSharedRelics.BookOfFiveRingsId,
+                PrototypeRelicRarity.Common)
             && HasBookOfFiveRingsPath())
         {
             implementation = "implemented";
@@ -3780,6 +3789,51 @@ public static class V111Coverage
             && meltedGain.Gold == 17
             && meltedGain.Hp == 12
             && meltedGain.MaxHp == 30;
+    }
+
+    private static bool HasActThreeTreasureCutoff(
+        string relicId, PrototypeRelicRarity rarity)
+    {
+        var bag = new PrototypeRelicBagState([], [], [], []) with
+        {
+            Common = rarity == PrototypeRelicRarity.Common
+                ? [relicId] : [],
+            Uncommon = rarity == PrototypeRelicRarity.Uncommon
+                ? [relicId] : [],
+            Rare = rarity == PrototypeRelicRarity.Rare
+                ? [relicId] : [],
+            Shop = rarity == PrototypeRelicRarity.Shop
+                ? [relicId] : []
+        };
+        var player = new PlayerState(30, 30, 0, [], [], []);
+
+        RunWorldState World(int floor) => new(
+            RulesetId: PrototypeContent.RulesetId,
+            CharacterId: PrototypeContent.CharacterId,
+            Act: 3,
+            Floor: floor,
+            NextCardInstanceId: 1,
+            ActiveRoom: null,
+            Map: new MapState([],
+                GenerationProfileId:
+                    PrototypeNativeLaterActMap.GloryProfileId),
+            Combat: null,
+            Reward: null,
+            Shop: null,
+            Event: null,
+            TerminalOutcome: null,
+            RelicBag: bag);
+
+        string? DrawAt(int floor) => PrototypeNativeRelicGrabBag.Draw(
+            World(floor), player,
+            PrototypeRng.CreateBundle(
+                $"coverage-relic-act3-cutoff-{relicId}-{floor}"),
+            merchant: false,
+            forcedRarity: rarity).Id;
+
+        return DrawAt(floor: 6) == relicId
+            && DrawAt(floor: 7) is null
+            && DrawAt(floor: 8) is null;
     }
 
     private static bool HasScreamingFlagonPath()
