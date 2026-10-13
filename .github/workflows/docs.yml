@@ -1,0 +1,27 @@
+name: documentation-links
+
+on:
+  push:
+    paths:
+      - 'README.md'
+      - 'PROJECT_STATUS.md'
+      - 'CONTRIBUTING.md'
+      - 'docs/**'
+      - 'tools/check_docs.py'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'PROJECT_STATUS.md'
+      - 'CONTRIBUTING.md'
+      - 'docs/**'
+      - 'tools/check_docs.py'
+      - '.github/workflows/docs.yml'
+
+jobs:
+  local-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check documentation links
+        run: python3 tools/check_docs.py
