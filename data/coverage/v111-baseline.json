@@ -1654,13 +1654,10 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/BrightestFlame.cs#6d6e736f1aafde8e678f33b7ef5ac4a0797961462206ea2af4f98075fdce422e"
         ],
         "implementation": "implemented",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "cards",
         "missing_branches": [],
-        "missing_variants": [
-          "base",
-          "upgraded"
-        ],
+        "missing_variants": [],
         "native_id": "BRIGHTEST_FLAME",
         "registered": true,
         "scope": "single-player",
@@ -28372,8 +28369,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Storybook.cs#64a98b32fcc5e7ad02d40145e4975e770b7b4ba20cf6d56dcb5668b6a4ed1236"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29364,7 +29361,7 @@
         "eligible": 558,
         "excluded": 37,
         "implemented": 205,
-        "integrated": 143,
+        "integrated": 144,
         "kind": "cards",
         "scope_review_required": 0,
         "validated": 0
@@ -29463,8 +29460,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 126,
-        "integrated": 127,
+        "implemented": 127,
+        "integrated": 128,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

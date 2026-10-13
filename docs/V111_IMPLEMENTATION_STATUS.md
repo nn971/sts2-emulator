@@ -283,8 +283,9 @@ finished page after acquisition continuations. The three draws and ordered
 offers persist through snapshots. Native UpFront assignment, unlock-profile
 filtering and RNG cursor parity remain for the fidelity pass. Mittens/Gambling
 Chip callbacks use a separate resumable post-draw stage. Toolbox suspends before
-the opening draw. Storybook grants its card through shared relic acquisition,
-and Toy Box's wax offers resume the acquiring event, shop or parent reward;
+the opening draw. Storybook grants Brightest Flame through shared relic
+acquisition; coverage checks its upgraded/base card definition and melted-copy
+behavior. Toy Box's wax offers resume the acquiring event, shop or parent reward;
 see [Tezcatara dependency audit](reference-builds/v0.111.0-tezcatara-reward-dependencies.md).
 Biiig Hug coverage checks its Tezcatara reward, four-card removal selection,
 Soot insertion after discard recycling, and melted-copy behavior.

@@ -472,6 +472,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "STORYBOOK"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.StorybookId,
+                StringComparer.Ordinal)
+            && HasStorybookPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "cards"
+            && item.Id == "BRIGHTEST_FLAME"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.BrightestFlameId,
+                StringComparer.Ordinal)
+            && HasStorybookPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -717,6 +737,15 @@ public static class V111Coverage
         }
         var missingVariants = hasSuppressAcquisitionPath
             ? [] : item.Variants ?? [];
+        if (item.Scope == "single-player" && item.Kind == "cards"
+            && item.Id == "BRIGHTEST_FLAME"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.BrightestFlameId,
+                StringComparer.Ordinal)
+            && HasStorybookPath())
+        {
+            missingVariants = [];
+        }
         var missingBranches = MissingBranches(item);
         if (item.Scope == "single-player" && item.Kind == "acts"
             && HasConfiguredActRoute(item))
@@ -3127,6 +3156,72 @@ public static class V111Coverage
         return firstTurn.Energy == PrototypeContent.Rules.BaseEnergy + 4
             && laterTurn.Energy == PrototypeContent.Rules.BaseEnergy
             && melted.Energy == PrototypeContent.Rules.BaseEnergy;
+    }
+
+    private static bool HasStorybookPath()
+    {
+        var relicId = NativeAncientRewardsV111.StorybookId;
+        var cardId = NativeAncientRewardsV111.BrightestFlameId;
+        var choiceId = "take_" + relicId;
+        var relicDefinition = PrototypeContent.Relic(relicId);
+        var cardDefinition = PrototypeContent.Card(cardId);
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || relicDefinition.RunTriggers?.Any(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.RelicAcquired
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.AddCard
+                    && effect.CardId == cardId)) != true
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || cardDefinition.Type != PrototypeCardType.Skill
+            || cardDefinition.Rarity != PrototypeCardRarity.Ancient
+            || cardDefinition.MaxUpgradeLevel != 1
+            || cardDefinition.InnateOnUpgrade
+            || cardDefinition.RewardEligible
+            || cardDefinition.CanBeGeneratedInCombat
+            || !cardDefinition.Effects.Any(effect =>
+                effect.Kind == PrototypeCombatEffectKind.GainEnergy
+                && effect.Amount == 2
+                && effect.UpgradeDelta == 1)
+            || !cardDefinition.Effects.Any(effect =>
+                effect.Kind == PrototypeCombatEffectKind.DrawCards
+                && effect.Amount == 2
+                && effect.UpgradeDelta == 1)
+            || !cardDefinition.Effects.Any(effect =>
+                effect.Kind == PrototypeCombatEffectKind.LosePlayerMaxHp
+                && effect.Amount == 2))
+        {
+            return false;
+        }
+
+        static PlayerState Acquire(bool melted)
+        {
+            var relicId = NativeAncientRewardsV111.StorybookId;
+            var player = new PlayerState(30, 30, 0, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject(),
+                IsMelted: melted)], []);
+            long nextCardId = 1;
+            return PrototypeGameEngine.ApplyRelicRunEvent(
+                player,
+                PrototypeRunEventKind.RelicAcquired,
+                acquiredRelicId: relicId,
+                rng: PrototypeRng.CreateBundle(
+                    $"coverage-storybook-{melted}"),
+                allocateCardId: () => nextCardId++);
+        }
+
+        var active = Acquire(melted: false);
+        var melted = Acquire(melted: true);
+        return active.Deck is
+            [{ InstanceId: 1, CardId: NativeAncientRewardsV111.BrightestFlameId }]
+            && melted.Deck.Length == 0;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)
