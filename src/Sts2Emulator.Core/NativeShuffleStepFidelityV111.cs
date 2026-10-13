@@ -33,6 +33,12 @@ public static class NativeShuffleStepFidelityV111
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(sourceShuffles);
         ArgumentNullException.ThrowIfNull(diagnosticNativeStreams);
+        if (sourceShuffles.Count == 0)
+            return new Report(
+                "NO_NATIVE_SOURCE_SHUFFLE_EVIDENCE", false, "NOT_TESTED",
+                "NOT_TESTED", "NOT_TESTED", 0, 0, null, [], null,
+                ["A source-observed shuffle is required before Step replay."]);
+
         var guards = new[]
         {
             "PRESTATE_IMPORT_PROVENANCE_REQUIRES_INDEPENDENT_VERIFICATION",
