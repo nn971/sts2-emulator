@@ -13,6 +13,7 @@ from pathlib import Path
 
 from native_action_envelope_audit import audit, load
 from native_rng_boundary_verify import audit as verify_native_rng_primitives
+from native_rng_checkpoint_audit import audit as verify_native_rng_checkpoints
 from native_shuffle_operation_verify import audit as verify_native_shuffles
 from native_initial_hp_verify import audit as verify_initial_hp
 
@@ -34,6 +35,7 @@ def collect(directory: Path) -> dict:
         records, error = load(path)
         result = audit(records, error)
         primitive = verify_native_rng_primitives(records)
+        checkpoints = verify_native_rng_checkpoints(records)
         shuffles = verify_native_shuffles(records)
         hp = verify_initial_hp(records)
         statuses[result["status"]] += 1
@@ -57,6 +59,15 @@ def collect(directory: Path) -> dict:
                 result["native_rng_double_hook_installed"],
             "native_rng_bool_hook_installed":
                 result["native_rng_bool_hook_installed"],
+            "native_rng_stream_checkpoints_enabled":
+                result["native_rng_stream_checkpoints_enabled"],
+            "native_rng_checkpoint_status": checkpoints["status"],
+            "native_rng_checkpoint_count": checkpoints["checkpoint_count"],
+            "native_rng_checkpoint_errors": checkpoints["errors"],
+            "native_rng_checkpoint_error_count": checkpoints["error_count"],
+            "native_rng_checkpoint_unobserved_advances":
+                checkpoints["unobserved_rng_advances"],
+            "native_rng_checkpoint_streams": checkpoints["streams"],
             "native_monster_ai_scope_installed":
                 result["native_monster_ai_scope_installed"],
             "native_shuffle_scope_installed":
@@ -121,6 +132,14 @@ def collect(directory: Path) -> dict:
             bool(entry["native_rng_double_hook_installed"]) for entry in traces),
         "native_rng_bool_hook_installed_sidecars": sum(
             bool(entry["native_rng_bool_hook_installed"]) for entry in traces),
+        "native_rng_stream_checkpoints_enabled_sidecars": sum(
+            bool(entry["native_rng_stream_checkpoints_enabled"]) for entry in traces),
+        "native_rng_checkpoint_count": sum(
+            entry["native_rng_checkpoint_count"] for entry in traces),
+        "native_rng_checkpoint_errors": sum(
+            entry["native_rng_checkpoint_error_count"] for entry in traces),
+        "native_rng_checkpoint_unobserved_advances": sum(
+            entry["native_rng_checkpoint_unobserved_advances"] for entry in traces),
         "native_initial_hp_source_rolls": sum(
             entry["native_initial_hp_source_rolls"] for entry in traces),
         "native_initial_hp_validated_rolls": sum(

@@ -189,6 +189,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_rng_hook_installed": False,
         "native_rng_double_hook_installed": False,
         "native_rng_bool_hook_installed": False,
+        "native_rng_stream_checkpoints_enabled": False,
+        "native_rng_stream_checkpoint_count": 0,
         "native_monster_ai_scope_installed": False,
         "native_shuffle_scope_installed": False,
         "native_initial_hp_scope_installed": False,
@@ -214,6 +216,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         records[0].get("data", {}).get("native_rng_double_hook_installed") is True)
     report["native_rng_bool_hook_installed"] = (
         records[0].get("data", {}).get("native_rng_bool_hook_installed") is True)
+    report["native_rng_stream_checkpoints_enabled"] = (
+        records[0].get("data", {}).get("native_rng_stream_checkpoints_enabled") is True)
     report["native_monster_ai_scope_installed"] = (
         records[0].get("data", {}).get("native_monster_ai_scope_installed") is True)
     report["native_shuffle_scope_installed"] = (
@@ -230,7 +234,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "header", "history_baseline", "frame_state", "action_started", "action_resumed", "action_completed", "stable_decision",
         "nested_choice_pause", "history_entry", "history_reset", "anomaly",
         "observation_failure", "native_rng_boundary",
-        "native_rng_scalar_boundary",
+        "native_rng_scalar_boundary", "native_rng_stream_checkpoint",
         "native_shuffle_operation", "native_initial_hp_roll", "terminal",
     }
     running: dict[int, dict] = {}
@@ -345,6 +349,18 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     f"Invalid native shuffle source operation at {ordinal}")
                 return report
             report["native_shuffle_source_operations"] += 1
+        elif typ == "native_rng_stream_checkpoint":
+            # Complete inventory and state arithmetic are verified by the
+            # independent native_rng_checkpoint_audit.py; count here only.
+            details = record.get("data") or {}
+            if (details.get("source") != "native_rng_object_to_serializable"
+                or details.get("rng_draws_performed") != 0
+                or details.get("phase") not in
+                    ("combat_attach", "before_action", "after_action", "combat_end")
+                or not isinstance(details.get("streams"), list)):
+                report["reason"] = "Invalid native RNG checkpoint at ordinal " + str(ordinal)
+                return report
+            report["native_rng_stream_checkpoint_count"] += 1
         elif typ == "native_rng_scalar_boundary":
             data = record.get("data") or {}
             before, after = data.get("cursor_before"), data.get("cursor_after")

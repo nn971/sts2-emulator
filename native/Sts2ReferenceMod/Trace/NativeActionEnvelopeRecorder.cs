@@ -36,7 +36,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeShuffleScopeInstalled = false,
         bool nativeInitialHpScopeInstalled = false,
         bool nativeRngDoubleHookInstalled = false,
-        bool nativeRngBoolHookInstalled = false)
+        bool nativeRngBoolHookInstalled = false,
+        bool nativeRngStreamCheckpointsEnabled = false)
     {
         _gameBuild = gameBuild;
         _writer = new AsyncTraceWriter(path, queueCapacity);
@@ -51,6 +52,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_rng_hook_installed = nativeRngHookInstalled,
                 native_rng_double_hook_installed = nativeRngDoubleHookInstalled,
                 native_rng_bool_hook_installed = nativeRngBoolHookInstalled,
+                native_rng_stream_checkpoints_enabled = nativeRngStreamCheckpointsEnabled,
                 native_monster_ai_scope_installed = nativeMonsterAiScopeInstalled,
                 native_shuffle_scope_installed = nativeShuffleScopeInstalled,
                 native_initial_hp_scope_installed = nativeInitialHpScopeInstalled,
@@ -341,6 +343,36 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 origin = evidence.Origin,
                 attributed = evidence.Attributed,
                 source_hook_observed = true
+            })));
+    }
+
+    /// <summary>
+    /// Read-only snapshot of all native persistent RNG owners. Never call
+    /// this from a synthetic frame cursor reconstruction.
+    /// </summary>
+    public void NativeRngStreamCheckpoint(NativeRngStreamCheckpointV111 evidence)
+    {
+        if (_closed) return;
+        ArgumentNullException.ThrowIfNull(evidence);
+        evidence.Validate();
+        Write(new NativeActionEnvelopeRecord(
+            "native_rng_stream_checkpoint", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            NativeType: "native.persistent_rng_snapshot",
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                phase = evidence.Phase,
+                source = "native_rng_object_to_serializable",
+                rng_draws_performed = 0,
+                scope = "15_persistent_streams_in_observed_combat",
+                streams = evidence.Streams.Select(s => new
+                {
+                    stream_id = s.StreamId,
+                    owner_id = s.OwnerId,
+                    cursor = s.Cursor
+                }).ToArray(),
+                complete_native_rng_inventory = false,
+                exact_rng_parity = "NOT_TESTED"
             })));
     }
 
