@@ -7,7 +7,7 @@ event registration (with Colorful Philosophers still deferred), and the
 act-entry Ancient definitions. It records route integration, not complete
 branch coverage or native parity. War Historian Repy is also recognized as
 implemented across its nine inventoried branches. The overall report currently
-records 61/66 events implemented and 63/66 integrated.
+records 62/66 events implemented and 64/66 integrated.
 
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.
@@ -219,6 +219,13 @@ damages all enemies by the current turn number, and Bing Bong copies each new
 deck card to the bottom of the deck. Doll reward sampling uses prototype RNG;
 native RNG parity remains open. See [mechanics gap
 086](reference-builds/v0.111.0-mechanics-gap-086.md).
+Crystal Sphere is integrated in Hive and Glory for Silent. Uncover Future pays
+the rolled 51–99 gold cost for three divinations; Payment Plan adds Debt and
+grants six. The forkable 11×11 board supports the small and large reveal tools,
+and resolves revealed gold, card, potion, relic and Doubt rewards through the
+normal reward pipeline. Board and reward sampling still use prototype pools
+and RNG. See [mechanics gap
+087](reference-builds/v0.111.0-mechanics-gap-087.md).
 The Lantern Key now retains its return result page and exits to the map after
 the optional quest card reward from its fight.
 Zen Weaver retains its selected result page after the breathing-technique

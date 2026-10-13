@@ -875,6 +875,15 @@ public static class V111Coverage
             && HasDollRoomPath())
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "CRYSTAL_SPHERE" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeCrystalSphere.EventId,
+                StringComparer.Ordinal)
+            && HasCrystalSpherePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "THE_ARCHITECT"
             && missingBranches.Length == 0
             && engineIds.Contains(
@@ -4668,6 +4677,11 @@ public static class V111Coverage
             return HasCompleteDollRoomBranches(item)
                 ? [] : item.Branches ?? [];
         }
+        if (item.Kind == "events" && item.Id == "CRYSTAL_SPHERE")
+        {
+            return HasCompleteCrystalSphereBranches(item)
+                ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events" && item.Id == "SLIPPERY_BRIDGE")
         {
             return HasCompleteSlipperyBridgeBranches(item)
@@ -4994,6 +5008,188 @@ public static class V111Coverage
                 == card.PersistentState.GetRawText()
             && copied.Deck[1].Enchantment == card.Enchantment
             && nextId == fixture.World.NextCardInstanceId + 1;
+    }
+
+    private static bool HasCompleteCrystalSphereBranches(
+        V111InventoryItem item)
+    {
+        var definition = PrototypeNativeCrystalSphere.Definition;
+        return item.Branches is { Length: 8 } branches
+            && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                PrototypeNativeCrystalSphere.CoveredBranches
+                    .Order(StringComparer.Ordinal),
+                StringComparer.Ordinal)
+            && IsIntegratedEvent(PrototypeNativeCrystalSphere.EventId)
+            && definition.MinAct == 2
+            && definition.MaxAct == 3
+            && definition.Choices.Select(choice => choice.Id).SequenceEqual(
+                ["uncover_future", "payment_plan"],
+                StringComparer.Ordinal)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                PrototypeNativeCrystalSphere.EventId)
+            && PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                PrototypeNativeCrystalSphere.EventId) == 2
+            && HasCrystalSpherePath();
+    }
+
+    private static bool HasCrystalSpherePath()
+    {
+        static RunState EventFixture(string seed, int act)
+        {
+            var state = PrototypeNativeLaterActFixture.Create(seed, act);
+            var world = state.World!;
+            var node = world.Map.Nodes.First(item =>
+                item.RoomType == PrototypeRoomType.Unknown
+                && item.NextNodeIds is { Length: > 0 });
+            var eventId = PrototypeNativeCrystalSphere.EventId;
+            return state with
+            {
+                Player = state.Player with { Gold = 300 },
+                Phase = RunPhase.Event,
+                World = world with
+                {
+                    Floor = node.Floor,
+                    ActiveRoom = PrototypeRoomType.Event,
+                    Map = world.Map with { CurrentNodeId = node.NodeId },
+                    Event = new EventState(eventId, NativeEventGold: 80),
+                    EventHistory = world.EventIds.Append(eventId).ToArray()
+                }
+            };
+        }
+
+        static GameAction FindAction(
+            PrototypeGameEngine engine,
+            RunState state,
+            string kind) => engine.GetLegalActions(state)
+                .Single(action => action.Kind == kind);
+
+        static GameAction FindCellAction(
+            PrototypeGameEngine engine,
+            RunState state,
+            int x,
+            int y) => engine.GetLegalActions(state).Single(action =>
+                action.Kind == "crystal_sphere_reveal_cell"
+                && action.ReadPayload<ChooseCrystalSphereCellPayload>()
+                    is { X: var cellX, Y: var cellY }
+                && cellX == x && cellY == y);
+
+        var engine = new PrototypeGameEngine();
+        var uncover = EventFixture("coverage-crystal-sphere-uncover", 2);
+        if (!IsIntegratedEvent(PrototypeNativeCrystalSphere.EventId)
+            || !ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeCrystalSphere.EventId, 2)
+            || !ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeCrystalSphere.EventId, 3)
+            || engine.GetLegalActions(uncover).Count != 2)
+        {
+            return false;
+        }
+
+        var uncoverAction = engine.GetLegalActions(uncover).Single(action =>
+            action.ReadPayload<EventChoicePayload>().ChoiceId
+                == PrototypeNativeCrystalSphere.UncoverFutureChoiceId);
+        var uncovering = engine.Step(uncover, uncoverAction).State;
+        var uncoverBoard = uncovering.World?.Event?.NativeCrystalSphere;
+        if (uncovering.Player.Gold != 220
+            || uncoverBoard is not
+                { DivinationsRemaining: 3, SmallToolSelected: false }
+            || uncoverBoard.Items.Length != 15)
+        {
+            return false;
+        }
+
+        var setSmall = engine.GetLegalActions(uncovering).Single(action =>
+            action.Kind == "crystal_sphere_set_tool"
+            && action.ReadPayload<SetCrystalSphereToolPayload>()
+                .SmallToolSelected);
+        uncovering = engine.Step(uncovering, setSmall).State;
+        var uncoverGold = uncovering.World!.Event!.NativeCrystalSphere!
+            .Items.First(item => item.Kind == "gold_small");
+        for (var pick = 0; pick < 3; pick++)
+        {
+            uncovering = engine.Step(uncovering,
+                FindCellAction(engine, uncovering,
+                    uncoverGold.X, uncoverGold.Y)).State;
+        }
+        if (uncovering.Phase != RunPhase.Reward
+            || uncovering.World?.Reward is not
+                { IndependentSelection: true, GoldOption: 10 }
+            || uncovering.World.Event is not
+                { NativePageIndex: 0, ChosenChoiceId: "uncover_future" })
+        {
+            return false;
+        }
+
+        uncovering = engine.Step(uncovering,
+            FindAction(engine, uncovering, "take_reward_gold")).State;
+        uncovering = engine.Step(uncovering,
+            FindAction(engine, uncovering, "leave_reward")).State;
+        if (uncovering.Phase != RunPhase.Event
+            || uncovering.Player.Gold != 230
+            || uncovering.World?.Event is not
+                { NativePageIndex: 2, ChosenChoiceId: "uncover_future" }
+            || engine.GetLegalActions(uncovering).Single().Kind
+                != "continue_event")
+        {
+            return false;
+        }
+
+        var payment = EventFixture("coverage-crystal-sphere-payment", 3);
+        var paymentChoice = engine.GetLegalActions(payment).Single(action =>
+            action.ReadPayload<EventChoicePayload>().ChoiceId
+                == PrototypeNativeCrystalSphere.PaymentPlanChoiceId);
+        var paying = engine.Step(payment, paymentChoice).State;
+        var paymentBoard = paying.World?.Event?.NativeCrystalSphere;
+        if (paymentBoard is not { DivinationsRemaining: 6 }
+            || !paying.Player.Deck.Any(card =>
+                card.CardId == NativeGloryAncientsV111.DebtCardId))
+        {
+            return false;
+        }
+
+        var smallTool = engine.GetLegalActions(paying).Single(action =>
+            action.Kind == "crystal_sphere_set_tool"
+            && action.ReadPayload<SetCrystalSphereToolPayload>()
+                .SmallToolSelected);
+        paying = engine.Step(paying, smallTool).State;
+        paymentBoard = paying.World!.Event!.NativeCrystalSphere!;
+        var curse = paymentBoard.Items.Single(item => item.Kind == "curse");
+        for (var x = curse.X; x < curse.X + curse.Width; x++)
+        for (var y = curse.Y; y < curse.Y + curse.Height; y++)
+        {
+            paying = engine.Step(paying,
+                FindCellAction(engine, paying, x, y)).State;
+        }
+        if (!paying.Player.Deck.Any(card =>
+                card.CardId == PrototypeNativeGloryEvents.DoubtId))
+        {
+            return false;
+        }
+
+        var paymentGold = paymentBoard.Items.First(item =>
+            item.Kind == "gold_small");
+        for (var pick = 0; pick < 2; pick++)
+        {
+            paying = engine.Step(paying,
+                FindCellAction(engine, paying,
+                    paymentGold.X, paymentGold.Y)).State;
+        }
+        if (paying.Phase != RunPhase.Reward
+            || paying.World?.Reward is not
+                { IndependentSelection: true, GoldOption: 10 }
+            || paying.World.Event is not
+                { NativePageIndex: 0, ChosenChoiceId: "payment_plan" })
+        {
+            return false;
+        }
+
+        paying = engine.Step(paying,
+            FindAction(engine, paying, "leave_reward")).State;
+        return paying.Phase == RunPhase.Event
+            && paying.World?.Event is
+                { NativePageIndex: 2, ChosenChoiceId: "payment_plan" }
+            && engine.GetLegalActions(paying).Single().Kind
+                == "continue_event";
     }
 
     private static bool HasCompleteSlipperyBridgeBranches(

@@ -646,8 +646,22 @@ public sealed class PrototypeAiEnvironment
             return null;
         }
 
+        if (evt.EventId == PrototypeNativeCrystalSphere.EventId
+            && (evt.NativeCrystalSphere is not null
+                || evt.NativePageIndex != 0))
+        {
+            return null;
+        }
+
         return evt.EventId switch
         {
+            PrototypeNativeCrystalSphere.EventId =>
+            [
+                new(PrototypeNativeCrystalSphere.UncoverFutureChoiceId,
+                    GoldCost: evt.NativeEventGold),
+                new(PrototypeNativeCrystalSphere.PaymentPlanChoiceId,
+                    GuaranteedCardId: NativeGloryAncientsV111.DebtCardId)
+            ],
             "proto.native.underdocks.sunken_treasury" =>
             [
                 new("first_chest", GoldGain: evt.NativeEventGold),

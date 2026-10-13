@@ -15138,26 +15138,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.crystal_sphere"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/CrystalSphere.cs#eb7331c7fdbd2d5dbd439450dfdbbe692fd83aa4b725012d1cf239e6d64fd2df"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/PAYMENT_PLAN",
-          "initial/UNCOVER_FUTURE",
-          "page/FINISH",
-          "page/INITIAL",
-          "page/INITIAL/PAYMENT_PLAN",
-          "page/INITIAL/UNCOVER_FUTURE",
-          "page/PAYMENT_PLAN",
-          "page/UNCOVER_FUTURE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "CRYSTAL_SPHERE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29403,8 +29396,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 61,
-        "integrated": 63,
+        "implemented": 62,
+        "integrated": 64,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

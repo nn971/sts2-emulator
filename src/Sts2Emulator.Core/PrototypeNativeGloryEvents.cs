@@ -79,7 +79,9 @@ public static class PrototypeNativeGloryEvents
             || player.Deck.Any(card =>
                 PrototypeGameEngine.CanSelectEventDeckCard(card,
                     PrototypePersistentDeckChoiceKind.Enchant, null,
-                    PrototypeCardEnchantmentKind.SoulsPower, false)));
+                    PrototypeCardEnchantmentKind.SoulsPower, false)))
+        && (evt.Id != PrototypeNativeCrystalSphere.EventId
+            || player.Gold >= 100);
 
 
     public static PrototypeCardDefinition[] Cards { get; } =

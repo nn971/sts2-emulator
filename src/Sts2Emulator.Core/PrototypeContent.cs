@@ -6848,6 +6848,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeFutureOfPotions.Definition)
             .Append(PrototypeNativeRelicTrader.Definition)
             .Append(PrototypeNativeDollRoom.Definition)
+            .Append(PrototypeNativeCrystalSphere.Definition)
             .Append(PrototypeNativeArchitectEnding.Definition)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)

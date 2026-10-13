@@ -2464,7 +2464,9 @@ public sealed record EventState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeRelicTraderOffer[]? NativeRelicTraderOffers = null)
+    PrototypeRelicTraderOffer[]? NativeRelicTraderOffers = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCrystalSphereState? NativeCrystalSphere = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -2505,7 +2507,8 @@ public sealed record EventState(
             : (PrototypeFuturePotionOffer[])NativeFuturePotionOffers.Clone(),
         NativeRelicTraderOffers = NativeRelicTraderOffers is null
             ? null
-            : (PrototypeRelicTraderOffer[])NativeRelicTraderOffers.Clone()
+            : (PrototypeRelicTraderOffer[])NativeRelicTraderOffers.Clone(),
+        NativeCrystalSphere = NativeCrystalSphere?.Fork()
     };
 }
 
@@ -2520,6 +2523,32 @@ public sealed record PrototypeRelicTraderOffer(
     int OwnedRelicIndex,
     string OwnedRelicId,
     string NewRelicId);
+
+public sealed record PrototypeCrystalSphereItemState(
+    string Kind,
+    int X,
+    int Y,
+    int Width,
+    int Height);
+
+public sealed record PrototypeCrystalSphereState(
+    int DivinationsRemaining,
+    bool SmallToolSelected,
+    int[] ItemByCell,
+    bool[] ClearedCells,
+    PrototypeCrystalSphereItemState[] Items,
+    bool[] RevealedItems,
+    int[] RevealedItemOrder)
+{
+    public PrototypeCrystalSphereState Fork() => this with
+    {
+        ItemByCell = (int[])ItemByCell.Clone(),
+        ClearedCells = (bool[])ClearedCells.Clone(),
+        Items = (PrototypeCrystalSphereItemState[])Items.Clone(),
+        RevealedItems = (bool[])RevealedItems.Clone(),
+        RevealedItemOrder = (int[])RevealedItemOrder.Clone()
+    };
+}
 
 public sealed record PrototypeUnknownRoomOddsState(
     int MonsterWeight = 100,
@@ -2643,6 +2672,8 @@ public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
 public sealed record TradeFuturePotionPayload(int Slot);
 public sealed record TradeEventRelicPayload(int OfferIndex);
+public sealed record ChooseCrystalSphereCellPayload(int X, int Y);
+public sealed record SetCrystalSphereToolPayload(bool SmallToolSelected);
 public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceEventPotionPayload(int Slot);
 public sealed record UpgradeCardPayload(long CardInstanceId);

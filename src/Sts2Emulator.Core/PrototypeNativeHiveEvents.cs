@@ -82,7 +82,9 @@ public static class PrototypeNativeHiveEvents
         && (evt.Id != ZenWeaverId || player.Gold >= 125)
         && (evt.Id != ColossalFlowerId || player.Hp >= 19)
         && (evt.Id != StoneOfAllTimeId
-            || player.PotionSlots.Any(potion => potion is not null));
+            || player.PotionSlots.Any(potion => potion is not null))
+        && (evt.Id != PrototypeNativeCrystalSphere.EventId
+            || player.Gold >= 100);
 
     private static int CountBasic(PlayerState player, string tag) =>
         player.Deck.Count(card =>

@@ -800,6 +800,8 @@ public sealed partial class PrototypeGameEngine
                             91 + PrototypeRng.NextInt(state.Rng, "event", 8),
                         PrototypeNativeSharedEvents.ThisOrThatId =>
                             41 + PrototypeRng.NextInt(state.Rng, "event", 28),
+                        PrototypeNativeCrystalSphere.EventId =>
+                            51 + PrototypeRng.NextInt(state.Rng, "event", 49),
                         _ => 0
                     },
                 NativeEventSecondaryGold:
@@ -978,6 +980,9 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == PrototypeNativeDollRoom.EventId)
             return GetNativeDollRoomActions(eventState);
 
+        if (eventState.EventId == PrototypeNativeCrystalSphere.EventId)
+            return GetNativeCrystalSphereActions(eventState);
+
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
         {
             return (eventState.NativeFuturePotionOffers
@@ -1155,6 +1160,9 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.EventId == PrototypeNativeDollRoom.EventId)
             return StepNativeDollRoom(state, action);
+
+        if (eventState.EventId == PrototypeNativeCrystalSphere.EventId)
+            return StepNativeCrystalSphere(state, action);
 
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
             return StepNativeFutureOfPotions(state, action);

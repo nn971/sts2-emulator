@@ -1003,6 +1003,8 @@ public static class PrototypeStateInvariants
                     eventState.NativeEventGold is >= 91 and <= 98,
                 PrototypeNativeSharedEvents.ThisOrThatId =>
                     eventState.NativeEventGold is >= 41 and <= 68,
+                PrototypeNativeCrystalSphere.EventId =>
+                    eventState.NativeEventGold is >= 51 and <= 99,
                 _ => false
             }) == false)
         {
@@ -1993,6 +1995,10 @@ public static class PrototypeStateInvariants
         PlayerState player,
         RewardState reward)
     {
+        var registeredEventReward =
+            reward.SourceRoom.StartsWith("Event:", StringComparison.Ordinal)
+            && PrototypeContent.Events.ContainsKey(
+                reward.SourceRoom["Event:".Length..]);
         if ((reward.ExtraGoldOptions is null) != (reward.ExtraGoldGroupsResolved is null)
             || (reward.ExtraGoldOptions is not null && (!reward.IndependentSelection
                 || reward.ExtraGoldOptions.Length != reward.ExtraGoldGroupsResolved!.Length
@@ -2002,20 +2008,17 @@ public static class PrototypeStateInvariants
         if (reward.GoldOption is < 0
             || (reward.GoldOption is null && !reward.GoldResolved)
             || (reward.GoldOption is not null
-                && reward.SourceRoom is not ("Combat" or "Elite" or "Boss")))
+                && reward.SourceRoom is not ("Combat" or "Elite" or "Boss")
+                && !registeredEventReward))
         {
             throw new InvalidOperationException(
-                "Combat gold offer is invalid or unresolved without an offer.");
+                "Gold offer is invalid or unresolved without an offer.");
         }
 
         // Native custom event rewards (such as Glory's Trial and
         // Battleworn Dummy) may expose independent offers, just like
         // combat rewards. Their event continuation is validated by
         // CompleteReward/ValidatePhaseState rather than the source name.
-        var registeredEventReward =
-            reward.SourceRoom.StartsWith("Event:", StringComparison.Ordinal)
-            && PrototypeContent.Events.ContainsKey(
-                reward.SourceRoom["Event:".Length..]);
         var registeredRelicReward = reward.SourceRoom is
             "Relic:ToyBox" or "Relic:GlassEye";
         if (reward.IndependentSelection
