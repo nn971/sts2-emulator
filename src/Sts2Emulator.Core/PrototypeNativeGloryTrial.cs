@@ -148,10 +148,9 @@ public sealed partial class PrototypeGameEngine
                 player = AppendCard(player, nextId++,
                     PrototypeNativeGloryEvents.RegretId, state.Rng,
                     allocateCardId: () => nextId++);
-                player = player with
-                {
-                    Gold = GoldAfterGain(player, 300)
-                };
+                player = ApplyGoldGain(player, 300, state.Rng, world,
+                    allocateCardId: () => nextId++,
+                    nativeRunRng: state.NativeRunRng);
                 break;
 
             case "nondescript_guilty":

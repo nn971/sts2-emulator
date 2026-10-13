@@ -8,6 +8,7 @@ public static class PrototypeNativeSharedRelics
     public const string BookOfFiveRingsId =
         "proto.relic.book_of_five_rings";
     public const string BowlerHatId = "proto.relic.bowler_hat";
+    public const string DragonFruitId = "proto.relic.dragon_fruit";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -74,6 +75,13 @@ public static class PrototypeNativeSharedRelics
         new(BowlerHatId, "Bowler Hat",
             GoldGainMultiplierNumerator: 5,
             GoldGainMultiplierDenominator: 4),
+        // Gain 1 Max HP after each positive owner gold gain.
+        new(DragonFruitId, "Dragon Fruit",
+            RunTriggers:
+            [
+                new(PrototypeRunEventKind.GoldGained,
+                    [new(PrototypeRunEffectKind.GainMaxHp, 1)])
+            ]),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),

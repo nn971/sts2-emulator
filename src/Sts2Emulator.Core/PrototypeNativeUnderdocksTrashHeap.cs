@@ -158,10 +158,8 @@ public sealed partial class PrototypeGameEngine
                     PrototypeRng.NextInt(
                         state.Rng, "event",
                         PrototypeNativeUnderdocksTrashHeap.CardIds.Length)];
-                var player = state.Player with
-                {
-                    Gold = GoldAfterGain(state.Player, 100)
-                };
+                var player = ApplyGoldGain(state.Player, 100, state.Rng,
+                    world, nativeRunRng: state.NativeRunRng);
                 var nextCardId = world.NextCardInstanceId;
                 player = AppendCard(
                     player, nextCardId++, chosen, state.Rng,

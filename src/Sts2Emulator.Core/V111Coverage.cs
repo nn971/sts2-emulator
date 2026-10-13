@@ -1825,6 +1825,33 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "DRAGON_FRUIT"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.DragonFruitId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.DragonFruitId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.DragonFruitId,
+                out var dragonFruitRarity)
+            && dragonFruitRarity == PrototypeRelicRarity.Shop
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.DragonFruitId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.DragonFruitId).RunTriggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeRunEventKind.GoldGained
+                    && trigger.Effects.Length == 1
+                    && trigger.Effects[0].Kind
+                        == PrototypeRunEffectKind.GainMaxHp
+                    && trigger.Effects[0].Amount == 1) == true
+            && HasDragonFruitPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -3620,7 +3647,7 @@ public static class V111Coverage
         const string relicId = PrototypeNativeSharedRelics.BowlerHatId;
         var bowler = new PlayerState(30, 30, 0, [],
             [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
-        var ectoplasmId = PrototypeContent.RelicPool.SingleOrDefault(id =>
+        var ectoplasmId = PrototypeContent.BossRelicPool.SingleOrDefault(id =>
             PrototypeContent.Relic(id).PreventGoldGain);
         if (ectoplasmId is null)
             return false;
@@ -3646,6 +3673,48 @@ public static class V111Coverage
             && PrototypeGameEngine.GoldAfterGain(bowler, 101) == 126
             && PrototypeGameEngine.GoldAfterGain(blocked, 101) == 17
             && PrototypeGameEngine.GoldAfterGain(melted, 100) == 117;
+    }
+
+    private static bool HasDragonFruitPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.DragonFruitId;
+        var player = new PlayerState(12, 30, 7, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var gained = PrototypeGameEngine.ApplyGoldGain(player, 10);
+        var noGain = PrototypeGameEngine.ApplyGoldGain(player, 0);
+        var ectoplasmId = PrototypeContent.BossRelicPool.SingleOrDefault(id =>
+            PrototypeContent.Relic(id).PreventGoldGain);
+        if (ectoplasmId is null)
+            return false;
+
+        var blocked = player with
+        {
+            Relics =
+            [
+                new RelicInstance(relicId, PrototypeJson.EmptyObject()),
+                new RelicInstance(ectoplasmId, PrototypeJson.EmptyObject())
+            ]
+        };
+        var blockedGain = PrototypeGameEngine.ApplyGoldGain(blocked, 10);
+        var melted = player with
+        {
+            Relics =
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject(),
+                IsMelted: true)]
+        };
+        var meltedGain = PrototypeGameEngine.ApplyGoldGain(melted, 10);
+        return gained.Gold == 17
+            && gained.Hp == 13
+            && gained.MaxHp == 31
+            && noGain.Gold == 7
+            && noGain.Hp == 12
+            && noGain.MaxHp == 30
+            && blockedGain.Gold == 7
+            && blockedGain.Hp == 12
+            && blockedGain.MaxHp == 30
+            && meltedGain.Gold == 17
+            && meltedGain.Hp == 12
+            && meltedGain.MaxHp == 30;
     }
 
     private static bool HasGnarledHammerPath()

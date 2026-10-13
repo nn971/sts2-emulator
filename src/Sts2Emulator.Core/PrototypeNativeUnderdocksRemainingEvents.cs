@@ -241,10 +241,8 @@ public sealed partial class PrototypeGameEngine
                 break;
 
             case "GOLDEN_FYSH":
-                playerAfter = playerAfter with
-                {
-                    Gold = GoldAfterGain(playerAfter, 75)
-                };
+                playerAfter = ApplyGoldGain(playerAfter, 75, state.Rng,
+                    world, nativeRunRng: state.NativeRunRng);
                 break;
 
             case "SEAPUNK_SALAD":

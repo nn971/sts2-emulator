@@ -336,10 +336,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     break;
 
                 case PrototypeRunEffectKind.GainGold:
-                    player = player with
-                    {
-                        Gold = GoldAfterGain(player, effect.Amount)
-                    };
+                    player = ApplyGoldGain(player, effect.Amount, rng);
                     break;
 
                 case PrototypeRunEffectKind.LoseGold:
@@ -1023,6 +1020,28 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         // PlayerCmd.GainGold converts the modified decimal amount to integer
         // gold by truncating toward zero.
         return checked(player.Gold + (int)modifiedAmount);
+    }
+
+    internal static PlayerState ApplyGoldGain(
+        PlayerState player,
+        int amount,
+        RngBundle? rng = null,
+        RunWorldState? world = null,
+        Func<long>? allocateCardId = null,
+        RngBundle? nativeRunRng = null)
+    {
+        var gold = GoldAfterGain(player, amount);
+        if (gold <= player.Gold)
+            return player;
+
+        player = player with { Gold = gold };
+        return ApplyRelicRunEvent(
+            player,
+            PrototypeRunEventKind.GoldGained,
+            rng: rng,
+            world: world,
+            allocateCardId: allocateCardId,
+            nativeRunRng: nativeRunRng);
     }
 
     internal static int EnergyPerTurn(PlayerState player, int turn = 1) =>

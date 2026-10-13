@@ -32,10 +32,12 @@ public sealed partial class PrototypeGameEngine
             {
                 return PreserveNativeEventCompletionPage(state with
                 {
-                    Player = state.Player with
-                    {
-                        Gold = GoldAfterGain(state.Player, 100)
-                    }
+                    Player = ApplyGoldGain(
+                        state.Player,
+                        100,
+                        state.Rng,
+                        world,
+                        nativeRunRng: state.NativeRunRng)
                 }, choice);
             }
 

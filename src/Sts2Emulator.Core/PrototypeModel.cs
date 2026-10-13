@@ -483,7 +483,8 @@ public enum PrototypeRunEventKind
     ShopEntered,
     CardAdded,
     RoomCompleted,
-    RestSiteHealed
+    RestSiteHealed,
+    GoldGained
 }
 
 public sealed record PrototypeCompletedRoomRecord(

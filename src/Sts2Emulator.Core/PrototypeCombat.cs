@@ -5093,11 +5093,10 @@ public sealed partial class PrototypeGameEngine
                         {
                             if (operation.GoldOnFatal > 0)
                             {
-                                player = player with
-                                {
-                                    Gold = GoldAfterGain(
-                                        player, operation.GoldOnFatal)
-                                };
+                                player = ApplyGoldGain(
+                                    player,
+                                    operation.GoldOnFatal,
+                                    rng);
                             }
 
                             if (operation.ExtraCardRewardsOnFatal > 0)

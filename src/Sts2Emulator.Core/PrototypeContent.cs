@@ -7590,6 +7590,7 @@ public static class PrototypeContent
         .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [
+        PrototypeNativeSharedRelics.BookOfFiveRingsId,
         PrototypeNativeSharedRelics.TinyMailboxId,
         PrototypeNativeSharedRelics.WhiteStarId,
         PrototypeNativeSharedRelics.BreadId,
@@ -7677,6 +7678,7 @@ public static class PrototypeContent
         "proto.relic.joss_paper",
         "proto.relic.tuning_fork",
         PrototypeNativeSharedRelics.KusarigamaId,
+        PrototypeNativeSharedRelics.BowlerHatId,
         PrototypeNativeSharedRelics.MiniatureCannonId,
         PrototypeNativeSharedRelics.PenNibId,
         "proto.relic.burning_sticks",
@@ -7694,7 +7696,8 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.RoyalStampId,
         PrototypeNativeSharedRelics.MysticLighterId,
         PrototypeNativeSharedRelics.GnarledHammerId,
-        PrototypeNativeSharedRelics.BeltBuckleId
+        PrototypeNativeSharedRelics.BeltBuckleId,
+        PrototypeNativeSharedRelics.DragonFruitId
     ];
 
     public static string[] BossRelicPool { get; } =

@@ -18,7 +18,11 @@ public sealed partial class PrototypeGameEngine
         && purchased.ValueKind == JsonValueKind.True;
 
     private static PlayerState ApplyRelicRoomEntryEffects(
-        PlayerState player, PrototypeRoomType room)
+        PlayerState player,
+        PrototypeRoomType room,
+        RngBundle? rng = null,
+        RunWorldState? world = null,
+        RngBundle? nativeRunRng = null)
     {
         if (room == PrototypeRoomType.Rest)
         {
@@ -33,7 +37,8 @@ public sealed partial class PrototypeGameEngine
                 ? definition.GoldOnRoomEntryUntilPurchase : 0;
         });
         player = bonus > 0
-            ? player with { Gold = GoldAfterGain(player, bonus) }
+            ? ApplyGoldGain(
+                player, bonus, rng, world, nativeRunRng: nativeRunRng)
             : player;
         if (room != PrototypeRoomType.Rest)
             return player;

@@ -24415,8 +24415,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BookOfFiveRings.cs#6c04d5b94b3814d04454fc6ce981881272500601fbaf1326b42a581eda5be8f6"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24483,8 +24483,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BowlerHat.cs#87159fa44b87c32f66fa4b6c49989d6d8245a08e48d0465d24c3a0505f6729c0"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -25105,17 +25105,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.dragon_fruit"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DragonFruit.cs#582419724356f96b29ebe7e2f17e61a84495890137df14892f77580916a48941"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DRAGON_FRUIT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29488,8 +29490,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 169,
-        "integrated": 170,
+        "implemented": 172,
+        "integrated": 173,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

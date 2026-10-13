@@ -84,13 +84,12 @@ public sealed partial class PrototypeGameEngine
         if (completed.Count == 0)
             return player;
 
-        var gold = player.Gold;
+        var updated = player;
         foreach (var _ in completed)
-            gold = GoldAfterGain(player with { Gold = gold }, 600);
-        return player with
+            updated = ApplyGoldGain(updated, 600);
+        return updated with
         {
-            Gold = gold,
-            Deck = player.Deck.Where(card =>
+            Deck = updated.Deck.Where(card =>
                 !completed.Contains(card.InstanceId)).ToArray()
         };
     }

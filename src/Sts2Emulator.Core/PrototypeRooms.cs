@@ -70,7 +70,11 @@ public sealed partial class PrototypeGameEngine
             World = world,
             Player = CompleteSpoilsMapQuestAtNode(
                 ApplyRelicRoomEntryEffects(
-                    ApplyPersistentCardRoomEntry(playerAfterTravel, node), room),
+                    ApplyPersistentCardRoomEntry(playerAfterTravel, node),
+                    room,
+                    state.Rng,
+                    world,
+                    state.NativeRunRng),
                 node)
         };
 
@@ -1542,12 +1546,13 @@ public sealed partial class PrototypeGameEngine
                     break;
 
                 case PrototypeRunEffectKind.GainGold:
-                    player = player with
-                    {
-                        Gold = GoldAfterGain(player,
-                            ResolveEventGoldAmount(
-                                eventState, choice.Id, effect))
-                    };
+                    player = ApplyGoldGain(
+                        player,
+                        ResolveEventGoldAmount(
+                            eventState, choice.Id, effect),
+                        state.Rng,
+                        world,
+                        nativeRunRng: nativeRunRng);
                     break;
 
                 case PrototypeRunEffectKind.LoseGold:
@@ -2826,9 +2831,9 @@ public sealed partial class PrototypeGameEngine
 
             var potionSlots = (PotionInstance?[])player.PotionSlots.Clone();
             potionSlots[payload.Slot] = null;
-            player = player with
+            player = ApplyGoldGain(player, 100, state.Rng, world,
+                nativeRunRng: nativeRunRng) with
             {
-                Gold = GoldAfterGain(player, 100),
                 PotionSlots = potionSlots
             };
         }
@@ -3960,10 +3965,9 @@ public sealed partial class PrototypeGameEngine
             if (index < 0 || index >= (reward.ExtraGoldOptions?.Length ?? 0)
                 || reward.ExtraGoldGroupsResolved![index])
                 throw new InvalidOperationException("Extra gold reward group is unavailable.");
-            player = player with
-            {
-                Gold = GoldAfterGain(player, reward.ExtraGoldOptions![index])
-            };
+            player = ApplyGoldGain(player,
+                reward.ExtraGoldOptions![index], state.Rng, world,
+                nativeRunRng: nativeRunRng);
             var resolved = (bool[])reward.ExtraGoldGroupsResolved!.Clone();
             resolved[index] = true;
             reward = reward with { ExtraGoldGroupsResolved = resolved };
@@ -4033,10 +4037,8 @@ public sealed partial class PrototypeGameEngine
                     "Combat gold has already been collected.");
             }
 
-            player = player with
-            {
-                Gold = GoldAfterGain(player, goldOffer)
-            };
+            player = ApplyGoldGain(player, goldOffer, state.Rng, world,
+                nativeRunRng: nativeRunRng);
             reward = reward with { GoldResolved = true };
         }
         else if (reward.IndependentSelection
@@ -4899,14 +4901,16 @@ public sealed partial class PrototypeGameEngine
             Reward = reward
         };
 
+        var rewardPlayerAfterGold = nativeOvergrowth
+            ? lavaRock.Player
+            : ApplyGoldGain(lavaRock.Player, gold, state.Rng, world,
+                nativeRunRng: state.NativeRunRng);
+
         return state with
         {
-            Player = lavaRock.Player with
-            {
-                // Legacy prototype combat rewards retain auto-credit.
-                Gold = lavaRock.Player.Gold
-                    + (nativeOvergrowth ? 0 : gold)
-            },
+            // Legacy prototype combat rewards retain auto-credit while
+            // dispatching the ordinary owner gold-gain hooks.
+            Player = rewardPlayerAfterGold,
             World = world,
             Phase = RunPhase.Reward
         };

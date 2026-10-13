@@ -59,10 +59,12 @@ public sealed partial class PrototypeGameEngine
         {
             state = state with
             {
-                Player = state.Player with
-                {
-                    Gold = GoldAfterGain(state.Player, prizes[stage])
-                }
+                Player = ApplyGoldGain(
+                    state.Player,
+                    prizes[stage],
+                    state.Rng,
+                    world,
+                    nativeRunRng: state.NativeRunRng)
             };
             return FinishColossalFlower(state, eventState, choice);
         }

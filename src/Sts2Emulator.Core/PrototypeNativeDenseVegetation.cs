@@ -47,10 +47,8 @@ public sealed partial class PrototypeGameEngine
                         state.Rng, "event", 39);
                 var result = state with
                 {
-                    Player = player with
-                    {
-                        Gold = GoldAfterGain(player, gold)
-                    },
+                    Player = ApplyGoldGain(player, gold, state.Rng, world,
+                        nativeRunRng: state.NativeRunRng),
                     World = world with
                     {
                         Event = current with { ChosenChoiceId = choiceId }

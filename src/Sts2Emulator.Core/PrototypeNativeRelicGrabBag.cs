@@ -113,6 +113,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.BeltBuckleId] =
                 PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.DragonFruitId] =
+                PrototypeRelicRarity.Shop,
 
             ["proto.relic.meat_on_the_bone"] = PrototypeRelicRarity.Rare,
             ["proto.relic.old_coin"] = PrototypeRelicRarity.Rare,
