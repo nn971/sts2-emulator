@@ -191,6 +191,8 @@ jobs:
         run: python tools/local_combat_condition_smoke.py
       - name: Native Inspector strict and sidecar protocol regression checks
         run: python -m unittest discover -s tests -p 'test_native_*.py' -v
+      - name: Unified native RNG fidelity gate regression checks
+        run: python -m unittest discover -s tests -p 'test_unified_native_rng_fidelity_gate.py' -v
       - name: Trace diff self-check
         run: |
           printf '%s\n' '{"type":"header","trace_schema":"0.1","game_build":"test","bridge_version":"test","run_id":"r","run_seed":"1"}' > /tmp/a.jsonl
