@@ -421,10 +421,11 @@ the conditional Nonupeipe offer and four-of-five acquisition. Fiddle adds two
 cards to opening and subsequent hand draws and prevents extra draws during its
 owner's turn; coverage checks both draw boundaries and off-turn behavior.
 Blood-Soaked Rose adds one energy and the Eternal Enthralled curse, which
-blocks other manual card plays while it remains in hand. Whispering Earring
-adds one energy and pays to auto-play the first playable hand cards in order
-on turn one, up to the source cap of 13; it reuses the resumable card-play
-pipeline. Sere Talon loses 9 Max HP and adds three Wish cards; Wish exhausts
+blocks other manual card plays while it remains in hand; coverage checks its
+[Vakuu reward and acquisition trigger](reference-builds/v0.111.0-mechanics-gap-073.md).
+Whispering Earring adds one energy and pays to auto-play the first playable
+hand cards in order on turn one, up to the source cap of 13; it reuses the
+resumable card-play pipeline. Sere Talon loses 9 Max HP and adds three Wish cards; Wish exhausts
 after selecting a draw-pile card into hand, and its upgrade grants Retain.
 Preserved Fog removes up to three chosen cards before adding Folly, and Music
 Box copies the first Attack each player turn as Ethereal while preserving the

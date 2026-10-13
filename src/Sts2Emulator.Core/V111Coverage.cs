@@ -422,6 +422,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BLOOD_SOAKED_ROSE"
+            && engineIds.Contains(
+                NativeGloryAncientsV111.BloodSoakedRoseId,
+                StringComparer.Ordinal)
+            && HasBloodSoakedRosePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2685,6 +2695,59 @@ public static class V111Coverage
             && inTurn.DrawnCardInstanceIds.Length == 0
             && inTurn.Combat.DrawPile.Length == 10
             && otherSideDraw.DrawnCardInstanceIds.Length == 2;
+    }
+
+    private static bool HasBloodSoakedRosePath()
+    {
+        var relicId = NativeGloryAncientsV111.BloodSoakedRoseId;
+        var choiceId = "take_" + relicId;
+        var definition = PrototypeContent.Relic(relicId);
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(3).Contains(
+                NativeVakuuEventV111.EventId, StringComparer.Ordinal)
+            || !HasCompleteAncientRelicBranches(
+                NativeVakuuEventV111.EventId, 10)
+            || !NativeVakuuEventV111.RelicPools[0].Contains(
+                relicId, StringComparer.Ordinal)
+            || !NativeVakuuEventV111.Definition.Choices.Any(choice =>
+                choice.Id == choiceId)
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || definition.EnergyPerTurnBonus != 1
+            || definition.RunTriggers?.Any(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.RelicAcquired
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.AddCard
+                    && effect.CardId
+                        == NativeGloryAncientsV111.EnthralledCardId)) != true)
+        {
+            return false;
+        }
+
+        static PlayerState Acquire(bool melted)
+        {
+            var relicId = NativeGloryAncientsV111.BloodSoakedRoseId;
+            var player = new PlayerState(30, 30, 0, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject(),
+                IsMelted: melted)], []);
+            long nextCardId = 1;
+            return PrototypeGameEngine.ApplyRelicRunEvent(
+                player,
+                PrototypeRunEventKind.RelicAcquired,
+                acquiredRelicId: relicId,
+                rng: PrototypeRng.CreateBundle(
+                    $"coverage-blood-soaked-rose-{melted}"),
+                allocateCardId: () => nextCardId++);
+        }
+
+        var active = Acquire(melted: false);
+        var melted = Acquire(melted: true);
+        return active.Deck is
+            [{ CardId: NativeGloryAncientsV111.EnthralledCardId }]
+            && PrototypeGameEngine.EnergyPerTurn(active) ==
+                PrototypeContent.Rules.BaseEnergy + 1
+            && melted.Deck.Length == 0
+            && PrototypeGameEngine.EnergyPerTurn(melted) ==
+                PrototypeContent.Rules.BaseEnergy;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

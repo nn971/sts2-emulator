@@ -24358,8 +24358,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BloodSoakedRose.cs#6738e21d8bab474b0e1755711d4d2d0df06aaecac02564260c3093d6da4d0bed"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 121,
-        "integrated": 122,
+        "implemented": 122,
+        "integrated": 123,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

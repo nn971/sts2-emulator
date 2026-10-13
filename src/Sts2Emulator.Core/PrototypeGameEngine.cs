@@ -387,7 +387,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         return player;
     }
 
-    private static PlayerState ApplyRelicRunEvent(
+    internal static PlayerState ApplyRelicRunEvent(
         PlayerState player,
         PrototypeRunEventKind eventKind,
         CardInstance? addedCard = null,
