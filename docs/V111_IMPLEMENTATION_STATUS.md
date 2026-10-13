@@ -1368,3 +1368,7 @@ Arcane Scroll's Neow pickup now has executable coverage for adding one Rare
 card from the supported Silent reward pool. Native card-pool ordering and RNG
 parity remain unverified. See
 [mechanics gap 118](reference-builds/v0.111.0-mechanics-gap-118.md).
+Book of Five Rings now heals 20 after each fifth card added to the deck, with
+its saved counter preserved between grants. Its source cutoff at the Act 3
+treasure chest is not yet applied to the relic pool. See
+[mechanics gap 119](reference-builds/v0.111.0-mechanics-gap-119.md).

@@ -788,7 +788,10 @@ public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEffectSpec[] Effects,
     PrototypeCardType? RequiredCardType = null,
     PrototypeRouteConditionSpec? RouteCondition = null,
-    bool CopyAddedCardToDeckBottom = false);
+    bool CopyAddedCardToDeckBottom = false,
+    int EveryNth = 1,
+    string? PersistentEventCountProperty = null,
+    bool RequiresLivingPlayer = false);
 
 public enum PrototypePersistentDeckChoiceKind
 {

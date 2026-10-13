@@ -5,6 +5,8 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class PrototypeNativeSharedRelics
 {
+    public const string BookOfFiveRingsId =
+        "proto.relic.book_of_five_rings";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -57,6 +59,16 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Heal 20 after each fifth card added to the persistent deck.
+        new(BookOfFiveRingsId, "Book of Five Rings",
+            RunTriggers:
+            [
+                new(PrototypeRunEventKind.CardAdded,
+                    [new(PrototypeRunEffectKind.Heal, 20)],
+                    EveryNth: 5,
+                    PersistentEventCountProperty: "CardsAdded",
+                    RequiresLivingPlayer: true)
+            ]),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),

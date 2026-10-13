@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine : IDeterministicEngine
@@ -595,6 +597,45 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     continue;
                 }
 
+                if (trigger.RequiresLivingPlayer && player.Hp <= 0)
+                    continue;
+
+                if (trigger.PersistentEventCountProperty is { } counterName)
+                {
+                    if (trigger.EveryNth <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Persistent run-event trigger cadence must be positive.");
+                    }
+                    if (eventKind == PrototypeRunEventKind.CardAdded
+                        && addedCard is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Persistent card-add counters require the added card.");
+                    }
+
+                    var counter = ReadPersistentEventCounter(
+                        player.Relics[relicIndex].PersistentState,
+                        counterName);
+                    var nextCounter = checked(counter + 1);
+                    var relics = (RelicInstance[])player.Relics.Clone();
+                    relics[relicIndex] = relics[relicIndex] with
+                    {
+                        PersistentState = WithPersistentEventCounter(
+                            relics[relicIndex].PersistentState,
+                            counterName,
+                            nextCounter)
+                    };
+                    player = player with { Relics = relics };
+                    if (nextCounter % trigger.EveryNth != 0)
+                        continue;
+                }
+                else if (trigger.EveryNth != 1)
+                {
+                    throw new InvalidOperationException(
+                        "Run-event trigger cadence requires a persistent counter property.");
+                }
+
                 if (trigger.CopyAddedCardToDeckBottom)
                 {
                     if (eventKind != PrototypeRunEventKind.CardAdded
@@ -635,6 +676,46 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         }
 
         return player;
+    }
+
+    private static int ReadPersistentEventCounter(
+        JsonElement state,
+        string propertyName)
+    {
+        if (state.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+            return 0;
+        if (state.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidOperationException(
+                "Relic persistent event counters require object state.");
+        }
+        if (!state.TryGetProperty(propertyName, out var value))
+            return 0;
+        if (value.ValueKind != JsonValueKind.Number
+            || !value.TryGetInt32(out var count)
+            || count < 0)
+        {
+            throw new InvalidOperationException(
+                $"Relic counter '{propertyName}' must be a nonnegative integer.");
+        }
+
+        return count;
+    }
+
+    private static JsonElement WithPersistentEventCounter(
+        JsonElement state,
+        string propertyName,
+        int value)
+    {
+        var properties = new Dictionary<string, JsonElement>(
+            StringComparer.Ordinal);
+        if (state.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in state.EnumerateObject())
+                properties[property.Name] = property.Value.Clone();
+        }
+        properties[propertyName] = JsonSerializer.SerializeToElement(value);
+        return JsonSerializer.SerializeToElement(properties);
     }
 
     private static PlayerState ApplyRelicAcquisitionRunEffects(

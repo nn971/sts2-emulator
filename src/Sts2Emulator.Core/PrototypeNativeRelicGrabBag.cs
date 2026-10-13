@@ -33,6 +33,8 @@ public static class PrototypeNativeRelicGrabBag
     private static readonly Dictionary<string, PrototypeRelicRarity> Rarities =
         new(StringComparer.Ordinal)
         {
+            [PrototypeNativeSharedRelics.BookOfFiveRingsId] =
+                PrototypeRelicRarity.Common,
             [PrototypeNativeSharedRelics.GorgetId] =
                 PrototypeRelicRarity.Common,
             [PrototypeNativeSharedRelics.StrikeDummyId] =

@@ -1800,6 +1800,23 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BOOK_OF_FIVE_RINGS"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.BookOfFiveRingsId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.BookOfFiveRingsId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.BookOfFiveRingsId,
+                out var bookOfFiveRingsRarity)
+            && bookOfFiveRingsRarity == PrototypeRelicRarity.Common
+            && HasBookOfFiveRingsPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "PEN_NIB"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.PenNibId,
@@ -3492,6 +3509,85 @@ public static class V111Coverage
             && persistedCounter == 0
             && nextAttackDamage == 6
             && meltedAttackDamage == 6;
+    }
+
+    private static bool HasBookOfFiveRingsPath()
+    {
+        const string relicId =
+            PrototypeNativeSharedRelics.BookOfFiveRingsId;
+        const string strikeId = "proto.silent.strike";
+        var trigger = PrototypeContent.Relic(relicId).RunTriggers?
+            .SingleOrDefault(item =>
+                item.EventKind == PrototypeRunEventKind.CardAdded);
+        if (trigger is not
+            {
+                EveryNth: 5,
+                PersistentEventCountProperty: "CardsAdded",
+                RequiresLivingPlayer: true
+            }
+            || trigger.Effects is not
+                [{ Kind: PrototypeRunEffectKind.Heal, Amount: 20 }])
+        {
+            return false;
+        }
+
+        static int SavedCount(PlayerState state) =>
+            state.Relics[0].PersistentState.TryGetProperty(
+                "CardsAdded", out var count)
+            && count.ValueKind == System.Text.Json.JsonValueKind.Number
+            && count.TryGetInt32(out var value)
+                ? value : -1;
+
+        var player = new PlayerState(8, 30, 0, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var rng = PrototypeRng.CreateBundle("coverage-book-of-five-rings");
+        for (var cardIndex = 1; cardIndex <= 10; cardIndex++)
+        {
+            if (cardIndex == 6)
+                player = player with { Hp = 4 };
+            var card = new CardInstance(
+                cardIndex, strikeId, 0, PrototypeJson.EmptyObject());
+            player = player with
+            {
+                Deck = player.Deck.Append(card).ToArray()
+            };
+            player = PrototypeGameEngine.ApplyRelicRunEvent(
+                player,
+                PrototypeRunEventKind.CardAdded,
+                addedCard: card,
+                rng: rng);
+
+            if (cardIndex == 4
+                && (player.Hp != 8 || SavedCount(player) != 4))
+            {
+                return false;
+            }
+            if (cardIndex == 5
+                && (player.Hp != 28 || SavedCount(player) != 5))
+            {
+                return false;
+            }
+            if (cardIndex == 10
+                && (player.Hp != 24 || SavedCount(player) != 10))
+            {
+                return false;
+            }
+        }
+
+        var melted = new PlayerState(10, 30, 0, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject(),
+                IsMelted: true)], []);
+        var meltedCard = new CardInstance(
+            1, strikeId, 0, PrototypeJson.EmptyObject());
+        melted = melted with { Deck = [meltedCard] };
+        melted = PrototypeGameEngine.ApplyRelicRunEvent(
+            melted,
+            PrototypeRunEventKind.CardAdded,
+            addedCard: meltedCard,
+            rng: rng);
+        return melted.Hp == 10
+            && !melted.Relics[0].PersistentState.TryGetProperty(
+                "CardsAdded", out _);
     }
 
     private static bool HasGnarledHammerPath()
