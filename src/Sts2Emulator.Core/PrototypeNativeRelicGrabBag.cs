@@ -47,6 +47,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.oddly_smooth_stone"] = PrototypeRelicRarity.Common,
             ["proto.relic.bag_of_marbles"] = PrototypeRelicRarity.Common,
 
+            [PrototypeNativeSharedRelics.PearId] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.AkabekoId] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.ornamental_fan"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.nunchaku"] = PrototypeRelicRarity.Uncommon,

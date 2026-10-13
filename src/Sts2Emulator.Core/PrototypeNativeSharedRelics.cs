@@ -6,11 +6,19 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeSharedRelics
 {
     public const string AkabekoId = "proto.relic.akabeko";
+    public const string PearId = "proto.relic.pear";
     public const string StrawberryId = "proto.relic.strawberry";
     public const string VigorId = "proto.power.vigor";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Pear.AfterObtained grants ten Max HP.
+        new(PearId, "Pear",
+            RunTriggers:
+            [
+                new(PrototypeRunEventKind.RelicAcquired,
+                    [new(PrototypeRunEffectKind.GainMaxHp, 10)])
+            ]),
         // Strawberry.AfterObtained grants seven Max HP; GainMaxHp also
         // raises current HP by the same amount in the run model.
         new(StrawberryId, "Strawberry",

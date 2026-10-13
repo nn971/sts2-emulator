@@ -27338,17 +27338,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.pear"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Pear.cs#63d529653d676d8430d7c4a8fff9dd9242074ee3248c901db032b149e9504d37"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PEAR",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29465,8 +29467,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 76,
-        "integrated": 77,
+        "implemented": 77,
+        "integrated": 78,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

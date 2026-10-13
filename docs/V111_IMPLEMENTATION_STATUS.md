@@ -55,6 +55,9 @@ Strawberry is integrated as a Common shared relic. Its pickup adds 7 Max HP
 and the emulator includes it in the Silent common relic queue. Relic RNG
 parity remains open; see the
 [pinned Strawberry audit](reference-builds/v0.111.0-strawberry.md).
+Pear is integrated as an Uncommon shared relic; its pickup adds 10 Max HP and
+it enters the Silent uncommon relic queue. Relic RNG parity remains open; see
+the [pinned Pear audit](reference-builds/v0.111.0-pear.md).
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

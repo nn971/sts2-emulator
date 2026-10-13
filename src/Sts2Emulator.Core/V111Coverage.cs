@@ -1076,6 +1076,28 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PEAR"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PearId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PearId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PearId, out var pearRarity)
+            && pearRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.PearId).RunTriggers?.Any(
+                trigger => trigger.EventKind
+                    == PrototypeRunEventKind.RelicAcquired
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainMaxHp
+                        && effect.Amount == 10)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STRAWBERRY"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.StrawberryId,
