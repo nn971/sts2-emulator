@@ -116,6 +116,39 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual(1, result["observed_mechanic_indicators"]
                          ["player_hp_change"]["count"])
 
+    def test_real_native_rng_source_boundary_is_audited(self):
+        records = sample()
+        records.insert(4, {"type": "native_rng_boundary", "action_id": 1,
+            "native_type": "Rng.NextInt",
+            "data": {"site_id": "combat.committed_intent.index_draw",
+                     "stream_id": "run.monster_ai",
+                     "owner_id": "creature:1",
+                     "call_ordinal": 0, "operation_kind": "bounded_integer",
+                     "bounded_count": 2, "selected_index": 1,
+                     "cursor_before": {"Counter": 4},
+                     "cursor_after": {"Counter": 5},
+                     "source_version": "v0.111.0",
+                     "origin": "source_primitive_hook",
+                     "attributed": True,
+                     "source_hook_observed": True}})
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, result["native_rng_source_calls"])
+        self.assertEqual("SOURCE_RNG_CALLS_OBSERVED",
+                         result["native_rng_source_coverage"])
+
+    def test_frame_inferred_rng_call_cannot_masquerade_as_source(self):
+        records = sample()
+        records.insert(-1, {"type": "native_rng_boundary",
+            "data": {"origin": "rendered_frame_poll"}})
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("INCOMPLETE_CAPTURE", result["status"])
+        self.assertIn("Invalid native RNG source call", result["reason"])
+
     def test_missing_action_end_is_fail_closed(self):
         records = sample()
         records.pop(7)
