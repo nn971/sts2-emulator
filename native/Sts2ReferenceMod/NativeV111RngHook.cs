@@ -4,6 +4,8 @@ using HarmonyLib;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Rngs;
+using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Random;
 using Sts2Emulator.Core;
 using Sts2ReferenceMod.Trace;
@@ -66,9 +68,39 @@ internal static class NativeV111RngHook
                 postfix: new HarmonyMethod(postfixOne));
             harmony.Patch(two, prefix: new HarmonyMethod(prefixTwo),
                 postfix: new HarmonyMethod(postfixTwo));
+            // Additional source-level causal identity for enemy intentions.
+            // MonsterModel.RollMove is synchronous and delegates directly to
+            // MoveStateMachine.RollMove(..., RunRng.MonsterAi) in pinned v111.
+            // If this optional method signature changed, the two primitive
+            // hooks still work and all semantic sites stay UNATTRIBUTED.
+            bool rollMoveScopeInstalled = false;
+            try
+            {
+                var target = AccessTools.Method(typeof(MonsterModel),
+                    nameof(MonsterModel.RollMove),
+                    [typeof(IEnumerable<Creature>)]);
+                if (target is not null)
+                {
+                    harmony.Patch(target,
+                        prefix: new HarmonyMethod(typeof(NativeV111RngHook)
+                            .GetMethod(nameof(PrefixRollMove), methods)!),
+                        postfix: new HarmonyMethod(typeof(NativeV111RngHook)
+                            .GetMethod(nameof(PostfixRollMove), methods)!),
+                        finalizer: new HarmonyMethod(typeof(NativeV111RngHook)
+                            .GetMethod(nameof(FinalizerRollMove), methods)!));
+                    rollMoveScopeInstalled = true;
+                }
+            }
+            catch (Exception)
+            {
+                // Preserve primitive capture when the semantic scope differs
+                // in the locally installed hotfix; the log is authoritative.
+            }
             _patches = harmony;
             GD.Print("[Sts2ReferenceMod] RNG_HOOK_STATUS=INSTALLED_BOUND_INT_OVERLOADS;" +
-                " owner_attribution=run_and_player_only; call_site=UNATTRIBUTED");
+                " owner_attribution=run_and_player;" +
+                " rollmove_source_scope=" +
+                (rollMoveScopeInstalled ? "INSTALLED" : "UNAVAILABLE"));
         }
         catch (Exception error)
         {
@@ -144,19 +176,55 @@ internal static class NativeV111RngHook
         NativeRng __instance, int __result, CallState __state) =>
         Observe(__instance, __result, __state);
 
+    private static void PrefixRollMove(
+        MonsterModel __instance, out IDisposable? __state)
+    {
+        __state = null;
+        if (!_attached || _observationFailed ||
+            Environment.CurrentManagedThreadId != _threadId) return;
+        try
+        {
+            var combatId = __instance.Creature.CombatId;
+            var owner = combatId.HasValue
+                ? "creature:" + combatId.Value
+                : "UNATTRIBUTED";
+            __state = NativeRngCallsiteScopesV111.Enter(
+                "combat.committed_intent.index_draw", "run.monster_ai", owner);
+        }
+        catch (Exception error) { ObservationFailure(error); }
+    }
+
+    private static void PostfixRollMove(IDisposable? __state)
+    {
+        try { __state?.Dispose(); }
+        catch (Exception error) { ObservationFailure(error); }
+    }
+
+    private static Exception? FinalizerRollMove(
+        Exception? __exception, IDisposable? __state)
+    {
+        try { __state?.Dispose(); }
+        catch (Exception error) { ObservationFailure(error); }
+        // Preserve native exception semantics exactly.
+        return __exception;
+    }
+
     private static void Observe(NativeRng rng, int result, CallState state)
     {
         if (!state.Active || !_attached || _observationFailed) return;
         try
         {
             var after = Snapshot(rng);
-            var (stream, owner, ordinal) = Owners.Next(rng);
-            // Hook provenance establishes Rng.NextInt's primitive boundary,
-            // not the higher-level rule/eligible candidates or creature actor.
-            // Explicit UNATTRIBUTED is mandatory until a source call-site
-            // instrumentation registry supplies that causal information.
+            var (stream, owner, streamOrdinal) = Owners.Next(rng);
+            // Only a source-audited synchronous scope can promote primitive
+            // NextInt to a mechanic site and creature actor. Random calls
+            // outside RollMove (including context RNGs) remain unattributed.
+            var scoped = NativeRngCallsiteScopesV111.NextFor(stream);
+            var site = scoped?.SiteId ?? "UNATTRIBUTED";
+            var actor = scoped?.OwnerId ?? owner;
+            var ordinal = scoped?.CallOrdinal ?? streamOrdinal;
             var evidence = new NativeRngBoundaryEvidenceV111(
-                "UNATTRIBUTED", stream, owner, ordinal, state.Bound,
+                site, stream, actor, ordinal, state.Bound,
                 checked(result - state.Min), state.Before!, after);
             NativeV111PassiveBridge.NativeRngBoundary(evidence);
         }
