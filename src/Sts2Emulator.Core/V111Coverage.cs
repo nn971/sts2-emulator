@@ -444,6 +444,26 @@ public static class V111Coverage
             if (engineIds.Any(IsIntegratedEvent))
                 integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "monsters"
+            && item.Id == "ARCHITECT"
+            && engineIds.Contains(
+                PrototypeNativeArchitectEnding.ActorId,
+                StringComparer.Ordinal)
+            && IsIntegratedEvent(PrototypeNativeArchitectEnding.EventId)
+            && PrototypeContent.Event(
+                PrototypeNativeArchitectEnding.EventId).CanonicalEncounterId
+                == PrototypeNativeArchitectEnding.EncounterId
+            && PrototypeContent.Encounter(
+                PrototypeNativeArchitectEnding.EncounterId) is
+                { RoomType: PrototypeRoomType.Event, Weight: 0 } encounter
+            && encounter.EnemyIds.SequenceEqual(
+                [PrototypeNativeArchitectEnding.ActorId],
+                StringComparer.Ordinal))
+        {
+            // The route reaches the scene actor, but its animation and
+            // prior-win dialogue variants remain outside the headless model.
+            integration = "integrated";
+        }
         var missingVariants = hasSuppressAcquisitionPath
             ? [] : item.Variants ?? [];
         var missingBranches = MissingBranches(item);

@@ -16296,7 +16296,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/Architect.cs#717b49d7efd3e2040daee855abc4483d0e6b22eb6e681875bd5e15a215118634"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
@@ -29442,7 +29442,7 @@
         "eligible": 115,
         "excluded": 0,
         "implemented": 1,
-        "integrated": 1,
+        "integrated": 2,
         "kind": "monsters",
         "scope_review_required": 0,
         "validated": 0
