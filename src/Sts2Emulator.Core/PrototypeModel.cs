@@ -2115,6 +2115,12 @@ public sealed record RewardState(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool? ExtraRelicGroupsSkippable { get; init; }
 
+    // Event card choices created by CardReward run its late reward hooks;
+    // direct CardFactory selection grids do not.
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CardRewardLateHooksEnabled { get; init; }
+
     /// <summary>
     /// Native rewards resolve each extra offer by its stable original
     /// group index. The legacy integer counters remain a count of
@@ -2370,7 +2376,10 @@ public sealed record PrototypeCardRewardGenerator(
     PrototypeRoomType? Room = null,
     bool Rerolled = false,
     PrototypeCardRarity? Rarity = null,
-    PrototypeCardType? CardType = null);
+    PrototypeCardType? CardType = null,
+    // Retained for rerolls whose original CardReward blocked card pool hooks.
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool NoCardPoolModifications = false);
 
 public sealed record ShopOffer(
     int OfferId,

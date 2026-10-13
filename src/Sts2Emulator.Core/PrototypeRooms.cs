@@ -3900,7 +3900,7 @@ public sealed partial class PrototypeGameEngine
             return actions;
         }
 
-        if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward))
+        if (PrototypeNativeRoomFullOfCheese.IsCheeseSelectionReward(reward))
         {
             var options = !reward.CardResolved
                 ? reward.CardOptions
@@ -4037,7 +4037,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var reward = world.Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
-        if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward)
+        if (PrototypeNativeRoomFullOfCheese.IsCheeseSelectionReward(reward)
             && action.Kind != "take_reward_card")
         {
             throw new InvalidOperationException(
@@ -4347,7 +4347,7 @@ public sealed partial class PrototypeGameEngine
                     state.Rng,
                     () => nextId++,
                     reward.CurrentCardOptionEnchantments[payload.Index]);
-                if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward))
+                if (PrototypeNativeRoomFullOfCheese.IsCheeseSelectionReward(reward))
                 {
                     reward = PrototypeNativeRoomFullOfCheese
                         .RemoveChosenCardOffer(reward, payload.Index);
@@ -4607,7 +4607,7 @@ public sealed partial class PrototypeGameEngine
             World = world
         };
 
-        if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward)
+        if (PrototypeNativeRoomFullOfCheese.IsCheeseSelectionReward(reward)
             && reward.CardResolved
             && reward.FirstPendingExtraCardGroupIndex < 0)
         {
@@ -5324,6 +5324,25 @@ public sealed partial class PrototypeGameEngine
                     PrototypeColorlessCards.ImplementedRewardPool)
                 : PrototypeContent.RewardCardPool);
 
+    private static string[] AddDingyRugCardsToRewardPool(
+        PlayerState player,
+        IEnumerable<string> pool,
+        bool cardPoolModificationsAllowed = true)
+    {
+        var cards = pool.ToArray();
+        if (!cardPoolModificationsAllowed
+            || !player.ActiveRelics.Any(relic =>
+                relic.RelicId == PrototypeNativeSharedRelics.DingyRugId))
+        {
+            return cards;
+        }
+
+        return cards.Concat(
+                PrototypeColorlessCards.ImplementedRewardPool)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
     private static string[] PickRewardCardsFromPool(
         int act,
         int count,
@@ -5397,17 +5416,28 @@ public sealed partial class PrototypeGameEngine
         RunState previous,
         RunState next)
     {
-        if (previous.Phase == RunPhase.Reward
-            || next.Phase != RunPhase.Reward
+        if (next.Phase != RunPhase.Reward
             || next.World?.Reward is not { } reward
-            || !reward.SourceRoom.StartsWith(
-                "Event:", StringComparison.Ordinal)
             || (reward.CardOptions.Length == 0
                 && !(reward.ExtraCardOptions?.Any(group =>
                     group.Length > 0) ?? false)))
         {
             return next;
         }
+
+        var isNewEventReward = previous.Phase != RunPhase.Reward
+            && reward.CardRewardLateHooksEnabled
+            && reward.SourceRoom.StartsWith(
+                "Event:", StringComparison.Ordinal);
+        var isNewGlassEyeReward = reward.SourceRoom
+                == GlassEyeRewardSource
+            && reward.CardRewardLateHooksEnabled
+            && next.Player.Relics.Count(relic =>
+                relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
+                > previous.Player.Relics.Count(relic =>
+                    relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId);
+        if (!isNewEventReward && !isNewGlassEyeReward)
+            return next;
 
         var result = ApplyWingCharmToCardRewardOptions(
             next,

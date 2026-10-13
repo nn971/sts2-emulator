@@ -27,7 +27,7 @@ public static class PrototypeNativeRoomFullOfCheese
             MaxHpOnCombatVictory: 1)
     ];
 
-    public static bool IsCardReward(RewardState reward) =>
+    public static bool IsCheeseSelectionReward(RewardState reward) =>
         StringComparer.Ordinal.Equals(
             reward.SourceRoom, "Event:" + EventId);
 
@@ -43,10 +43,18 @@ public static class PrototypeNativeRoomFullOfCheese
                 "Room Full of Cheese has no implemented Common Silent cards.");
         }
 
-        var cards = Enumerable.Range(0, CardOfferCount)
-            .Select(_ => pool[PrototypeRng.NextInt(
-                rng, "reward", pool.Length)])
-            .ToArray();
+        if (pool.Length < CardOfferCount)
+            throw new InvalidOperationException(
+                "Room Full of Cheese has fewer distinct Common cards than its offer.");
+        var available = pool.ToList();
+        var cards = new string[CardOfferCount];
+        for (var index = 0; index < cards.Length; index++)
+        {
+            var selected = PrototypeRng.NextInt(
+                rng, "reward", available.Count);
+            cards[index] = available[selected];
+            available.RemoveAt(selected);
+        }
         return new RewardState(
             SourceRoom: "Event:" + EventId,
             CardOptions: cards,
@@ -73,10 +81,25 @@ public static class PrototypeNativeRoomFullOfCheese
                 "Room Full of Cheese's selected card offer is invalid.");
         }
 
+        var extraUpgradeFlags =
+            reward.ExtraCardOptionUpgradeFlags is { Length: 1 } upgradeGroups
+                && upgradeGroups[0].Length == groups[0].Length
+            ? [upgradeGroups[0]
+                .Where((_, index) => index != selectedIndex).ToArray()]
+            : reward.ExtraCardOptionUpgradeFlags;
+        var extraEnchantments =
+            reward.ExtraCardOptionEnchantments is { Length: 1 } enchantGroups
+                && enchantGroups[0].Length == groups[0].Length
+            ? [enchantGroups[0]
+                .Where((_, index) => index != selectedIndex).ToArray()]
+            : reward.ExtraCardOptionEnchantments;
+
         return reward with
         {
             ExtraCardOptions =
-            [groups[0].Where((_, index) => index != selectedIndex).ToArray()]
+            [groups[0].Where((_, index) => index != selectedIndex).ToArray()],
+            ExtraCardOptionUpgradeFlags = extraUpgradeFlags,
+            ExtraCardOptionEnchantments = extraEnchantments
         };
     }
 }

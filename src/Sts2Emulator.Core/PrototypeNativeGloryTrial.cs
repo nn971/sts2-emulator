@@ -160,12 +160,12 @@ public sealed partial class PrototypeGameEngine
                     allocateCardId: () => nextId++);
                 // Native presents two independently selectable
                 // three-card rewards from the character's pool.
+                var cardPool = AddDingyRugCardsToRewardPool(
+                    player, PrototypeContent.NativeSilentRewardCardPool);
                 var cards1 = PickDistinct(
-                    PrototypeContent.NativeSilentRewardCardPool, 3,
-                    state.Rng, "reward");
+                    cardPool, 3, state.Rng, "reward");
                 var cards2 = PickDistinct(
-                    PrototypeContent.NativeSilentRewardCardPool, 3,
-                    state.Rng, "reward");
+                    cardPool, 3, state.Rng, "reward");
                 reward = new RewardState(
                     SourceRoom: "Event:" + evt.EventId,
                     CardOptions: [],
@@ -183,7 +183,10 @@ public sealed partial class PrototypeGameEngine
                             world.Act),
                         new PrototypeCardRewardGenerator(
                             PrototypeCardRewardGeneratorKind.DistinctRewardPool,
-                            world.Act)]);
+                            world.Act)])
+                {
+                    CardRewardLateHooksEnabled = true
+                };
                 break;
             }
 

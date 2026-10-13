@@ -167,8 +167,12 @@ public sealed partial class PrototypeGameEngine
                     PrototypeCardRewardGeneratorKind.RarityPool,
                     world.Act,
                     Rarity: offer.CardRarity,
-                    CardType: offer.CardType)
-            ]);
+                    CardType: offer.CardType,
+                    NoCardPoolModifications: true)
+            ])
+        {
+            CardRewardLateHooksEnabled = true
+        };
 
         state = state with
         {

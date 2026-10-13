@@ -37,7 +37,7 @@ public sealed partial class PrototypeGameEngine
         var primaryGroupCount = reward.CardOptions.Length > 0 ? 1 : 0;
         var extraGroupCount = reward.ExtraCardOptions?.Length ?? 0;
         var groupCount = primaryGroupCount + extraGroupCount;
-        if (groupCount == 0)
+        if (groupCount == 0 || !reward.CardRewardLateHooksEnabled)
         {
             return reward;
         }
@@ -66,6 +66,8 @@ public sealed partial class PrototypeGameEngine
         ref RunWorldState world)
     {
         var prefix = "Event:" + eventId;
+        var includeColorless = player.ActiveRelics.Any(relic =>
+            relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
         switch (kind)
         {
             case PrototypeRunEffectKind.OfferWaxRelics:
@@ -89,17 +91,14 @@ public sealed partial class PrototypeGameEngine
                     PotionResolved: true,
                     RelicResolved: true,
                     EndsAct: false,
-                    AddCardAfterReward: "proto.native.neow.injury",
-                    CardRewardGenerators:
-                    [new PrototypeCardRewardGenerator(
-                        PrototypeCardRewardGeneratorKind.RarePool,
-                        world.Act)]);
+                    AddCardAfterReward: "proto.native.neow.injury");
             }
 
             case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
             {
                 var cards = PickRewardCards(
-                    RequireWorld(state).Act, 3, state.Rng);
+                    RequireWorld(state).Act, 3, state.Rng,
+                    includeColorless);
                 var potion = CanAcquirePotion(player)
                     ? PrototypeContent.PotionPool[
                         PrototypeRng.NextInt(state.Rng,
@@ -117,7 +116,10 @@ public sealed partial class PrototypeGameEngine
                     CardRewardGenerators:
                     [new PrototypeCardRewardGenerator(
                         PrototypeCardRewardGeneratorKind.RewardPool,
-                        world.Act)]);
+                        world.Act)])
+                {
+                    CardRewardLateHooksEnabled = true
+                };
             }
 
             case PrototypeRunEffectKind.OfferFiveClassCards:
@@ -137,11 +139,7 @@ public sealed partial class PrototypeGameEngine
                     CardResolved: false,
                     PotionResolved: true,
                     RelicResolved: true,
-                    EndsAct: false,
-                    CardRewardGenerators:
-                    [new PrototypeCardRewardGenerator(
-                        PrototypeCardRewardGeneratorKind.RewardPool,
-                        world.Act)]);
+                    EndsAct: false);
             }
 
             case PrototypeRunEffectKind.OfferThreeColorlessCards:
@@ -166,7 +164,10 @@ public sealed partial class PrototypeGameEngine
                     CardRewardGenerators:
                     [new PrototypeCardRewardGenerator(
                         PrototypeCardRewardGeneratorKind.ColorlessRewardPool,
-                        world.Act)]);
+                        world.Act)])
+                {
+                    CardRewardLateHooksEnabled = true
+                };
             }
 
             case PrototypeRunEffectKind.OfferTwoColorlessCards:

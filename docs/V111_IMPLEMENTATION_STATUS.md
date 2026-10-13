@@ -34,11 +34,11 @@ Dexterity once per turn after an Attack, Skill and Power have all been played.
 See [mechanics gap 148](reference-builds/v0.111.0-mechanics-gap-148.md).
 Vambrace doubles Block from the first card that gains Block in combat through
 that card's completed play. Dingy Rug adds implemented Colorless cards to
-combat, Rest Site heal, and Orrery rewards; its pool also carries into
-Driftwood rerolls and Lasting Candy Power options. Unsettling Lamp doubles
-eligible debuffs from the first card to apply one. Wing Charm gives Swift to a
-random enchantable card in combat, Rest Site heal, Orrery, rerolled, and
-event-owned reward groups.
+combat, Rest Site heal, Orrery, Lost Coffer, Glass Eye, and Glory Trial card
+rewards; its pool carries into eligible Driftwood rerolls. Unsettling Lamp
+doubles eligible debuffs from the first card to apply one. Wing Charm gives
+Swift to a random enchantable card in combat, Rest Site heal, Orrery, Glass
+Eye, rerolled, and event-owned CardReward groups.
 See
 [mechanics gap 149](reference-builds/v0.111.0-mechanics-gap-149.md) for the
 source boundary and remaining Colorless-pool and RNG limits.

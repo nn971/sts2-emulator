@@ -33,7 +33,9 @@ public sealed partial class PrototypeGameEngine
             };
             var groups = rarities.Select(rarity =>
             {
-                var pool = PrototypeContent.NativeSilentRewardCardPool
+                var pool = AddDingyRugCardsToRewardPool(
+                        after.Player,
+                        PrototypeContent.NativeSilentRewardCardPool)
                     .Where(id => PrototypeContent.Card(id).Rarity == rarity)
                     .ToArray();
                 if (pool.Length < 3)
@@ -58,7 +60,10 @@ public sealed partial class PrototypeGameEngine
                 IndependentSelection: true,
                 ExtraCardGroupsResolved: new bool[groups.Length - 1],
                 ExtraRelicGroupsResolved: [],
-                CardRewardGenerators: generators);
+                CardRewardGenerators: generators)
+            {
+                CardRewardLateHooksEnabled = true
+            };
             after = after with
             {
                 Phase = RunPhase.Reward,

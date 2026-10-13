@@ -44,8 +44,9 @@ public sealed partial class PrototypeGameEngine
         var generators = (PrototypeCardRewardGenerator?[])
             reward.CardRewardGenerators!.Clone();
         var generator = generators[groupIndex]!;
-        var includeColorless = state.Player.ActiveRelics.Any(relic =>
-            relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
+        var includeColorless = !generator.NoCardPoolModifications
+            && state.Player.ActiveRelics.Any(relic =>
+                relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
         var oldOptions = reward.CardOptionsForGroup(groupIndex);
         var lastingCandy = reward.LastingCandyRewardActive
             && (generator.Kind is PrototypeCardRewardGeneratorKind.Encounter
@@ -66,7 +67,10 @@ public sealed partial class PrototypeGameEngine
                 break;
             case PrototypeCardRewardGeneratorKind.RarePool:
             {
-                var rarePool = PrototypeContent.NativeSilentRewardCardPool
+                var rarePool = AddDingyRugCardsToRewardPool(
+                        state.Player,
+                        PrototypeContent.NativeSilentRewardCardPool,
+                        !generator.NoCardPoolModifications)
                     .Where(id => PrototypeContent.Card(id).Rarity
                         == PrototypeCardRarity.Rare)
                     .ToArray();
@@ -79,7 +83,10 @@ public sealed partial class PrototypeGameEngine
             }
             case PrototypeCardRewardGeneratorKind.DistinctRewardPool:
                 oldOptions = PickDistinct(
-                    PrototypeContent.NativeSilentRewardCardPool,
+                    AddDingyRugCardsToRewardPool(
+                        state.Player,
+                        PrototypeContent.NativeSilentRewardCardPool,
+                        !generator.NoCardPoolModifications),
                     oldOptions.Length, state.Rng, "reward");
                 break;
             case PrototypeCardRewardGeneratorKind.RarityPool:
@@ -87,7 +94,10 @@ public sealed partial class PrototypeGameEngine
                 var rarity = generator.Rarity
                     ?? throw new InvalidOperationException(
                         "Rarity card reward generator has no rarity.");
-                var pool = PrototypeContent.NativeSilentRewardCardPool
+                var pool = AddDingyRugCardsToRewardPool(
+                        state.Player,
+                        PrototypeContent.NativeSilentRewardCardPool,
+                        !generator.NoCardPoolModifications)
                     .Where(id =>
                     {
                         var card = PrototypeContent.Card(id);
@@ -132,8 +142,7 @@ public sealed partial class PrototypeGameEngine
         {
             var addition = PickPowerOption(
                 oldOptions, generator, state.Ascension,
-                world.CardRarityOffsetBasisPoints, state.Rng,
-                includeColorless);
+                world.CardRarityOffsetBasisPoints, state.Rng);
             if (addition is not null)
             {
                 oldOptions = oldOptions.Append(addition.Value.CardId).ToArray();
