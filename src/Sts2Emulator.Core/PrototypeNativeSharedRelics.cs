@@ -17,6 +17,7 @@ public static class PrototypeNativeSharedRelics
     public const string RoyalStampId = "proto.relic.royal_stamp";
     public const string MysticLighterId = "proto.relic.mystic_lighter";
     public const string PenNibId = "proto.relic.pen_nib";
+    public const string GnarledHammerId = "proto.relic.gnarled_hammer";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -97,6 +98,14 @@ public static class PrototypeNativeSharedRelics
             ],
             PersistentTriggerCountProperty: "AttacksPlayed",
             PersistentTriggerCountModulo: 10),
+        // Gnarled Hammer offers up to three eligible Attacks for Sharp +3.
+        new(GnarledHammerId, "Gnarled Hammer",
+            AcquisitionDeckChoice: new(
+                PrototypePersistentDeckChoiceKind.Enchant,
+                3,
+                EnchantmentKind: PrototypeCardEnchantmentKind.Sharp,
+                EnchantmentAmount: 3,
+                MinimumSelections: 0)),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

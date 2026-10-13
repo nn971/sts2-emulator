@@ -1751,6 +1751,34 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "GNARLED_HAMMER"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.GnarledHammerId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.GnarledHammerId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.GnarledHammerId,
+                out var gnarledHammerRarity)
+            && gnarledHammerRarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.GnarledHammerId)
+                .AcquisitionDeckChoice is
+                {
+                    Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    Selections: 3,
+                    MinimumSelections: 0,
+                    EnchantmentKind:
+                        PrototypeCardEnchantmentKind.Sharp,
+                    EnchantmentAmount: 3
+                }
+            && HasGnarledHammerPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -3310,6 +3338,55 @@ public static class V111Coverage
             && persistedCounter == 0
             && nextAttackDamage == 6
             && meltedAttackDamage == 6;
+    }
+
+    private static bool HasGnarledHammerPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.GnarledHammerId;
+        var player = new PlayerState(
+            30, 30, 0,
+            [
+                new CardInstance(1, "proto.silent.strike", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(2, "proto.silent.neutralize", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(3, "proto.silent.shiv", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(4, "proto.silent.defend", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(5, "proto.status.wound", 0,
+                    PrototypeJson.EmptyObject())
+            ],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())],
+            []);
+        var pending = PrototypeGameEngine.CreateRelicDeckChoice(
+            player, relicId);
+        if (pending is not
+                { Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    RemainingSelections: 3,
+                    MinimumSelectionsRemaining: 0 }
+            || !pending.CandidateCardInstanceIds
+                .Order().SequenceEqual(new long[] { 1, 2, 3 }))
+        {
+            return false;
+        }
+
+        var rng = PrototypeRng.CreateBundle("coverage-gnarled-hammer");
+        var first = PrototypeGameEngine.ResolveRelicDeckChoice(
+            player, pending, 1, rng);
+        var second = PrototypeGameEngine.ResolveRelicDeckChoice(
+            first.Player, first.Remaining!, 2, rng);
+        var third = PrototypeGameEngine.ResolveRelicDeckChoice(
+            second.Player, second.Remaining!, 3, rng);
+        return third.Remaining is null
+            && third.Player.Deck.Take(3).All(card =>
+                card.Enchantment is
+                {
+                    Kind: PrototypeCardEnchantmentKind.Sharp,
+                    Amount: 3
+                })
+            && third.Player.Deck.Skip(3).All(card =>
+                card.Enchantment is null);
     }
 
     private static bool HasSlingOfCouragePath()

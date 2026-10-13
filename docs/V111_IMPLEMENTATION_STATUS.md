@@ -1338,3 +1338,6 @@ remain in their native Uncommon/Rare reward pools. Sources:
 Pen Nib is now an Uncommon shared relic. Its saved counter wraps every ten
 owner-played Attacks, and the tenth Attack deals double powered damage. See
 [mechanics gap 109](reference-builds/v0.111.0-mechanics-gap-109.md).
+Gnarled Hammer is now a Shop relic. It offers up to three eligible Attacks
+for Sharp +3 at acquisition, with optional completion. See
+[mechanics gap 110](reference-builds/v0.111.0-mechanics-gap-110.md).

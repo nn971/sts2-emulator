@@ -25755,17 +25755,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.gnarled_hammer"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/GnarledHammer.cs#0914c857f04b0b0beaa6525f4d26f54d394e51d106cbe3c3532aad58435b6393"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "GNARLED_HAMMER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29476,8 +29478,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 160,
-        "integrated": 161,
+        "implemented": 161,
+        "integrated": 162,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
