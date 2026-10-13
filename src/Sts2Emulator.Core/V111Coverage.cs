@@ -304,6 +304,13 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id is "SWORD_OF_STONE" or "SWORD_OF_JADE"
+            && HasSwordOfStoneJadePath(item.Id))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player"
             && item.Kind == "enchantments"
             && item.Id == "VIGOROUS"
@@ -1888,6 +1895,44 @@ public static class V111Coverage
         var empty = new PrototypeRelicDefinition(string.Empty, string.Empty);
         return definition with { Id = string.Empty, Name = string.Empty }
             != empty;
+    }
+
+    private static bool HasSwordOfStoneJadePath(string nativeId)
+    {
+        const string stoneId = "proto.native.event.sword_of_stone";
+        const string jadeId = "proto.native.event.sword_of_jade";
+        const string overgrowthEventId = "proto.native.event.sunken_statue";
+        const string underdocksEventId = "proto.native.underdocks.sunken_statue";
+        var stone = PrototypeContent.Relic(stoneId);
+        var jade = PrototypeContent.Relic(jadeId);
+
+        bool GrantsSwordOfStone(string eventId, string choiceId) =>
+            PrototypeContent.Event(eventId).Choices.Any(choice =>
+                choice.Id == choiceId
+                && choice.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId == stoneId));
+
+        var jadeTriggerExists = jade.Triggers?.Any(trigger =>
+            trigger.EventKind == PrototypeCombatEventKind.CombatStarted
+            && trigger.Effects.Any(effect =>
+                effect.Kind == PrototypeCombatEffectKind.ApplyPlayerPower
+                && effect.Amount == 3
+                && effect.PowerId == "proto.power.strength")) == true;
+        var routeOffersExist =
+            PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(
+                overgrowthEventId)
+            && PrototypeNativeUnderdocksEvents.IsSupported(underdocksEventId)
+            && GrantsSwordOfStone(overgrowthEventId, "grab")
+            && GrantsSwordOfStone(underdocksEventId, "sword");
+
+        return routeOffersExist
+            && stone.RelicIdAfterEliteWins == jadeId
+            && stone.EliteWinsToTransform == 5
+            && jadeTriggerExists
+            && (nativeId == "SWORD_OF_STONE"
+                ? stone.Id == stoneId
+                : nativeId == "SWORD_OF_JADE" && jade.Id == jadeId);
     }
 
     private static string[] RestSiteOptionEngineIds(string optionId)

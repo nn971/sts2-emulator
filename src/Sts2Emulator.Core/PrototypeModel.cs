@@ -862,7 +862,9 @@ public sealed record PrototypeRelicDefinition(
     int HealBeforeBossCombat = 0,
     int MaxHpOnCombatVictory = 0,
     int PlayerHpLossReduction = 0,
-    int UnblockableHpLossAtCombatStart = 0);
+    int UnblockableHpLossAtCombatStart = 0,
+    string? RelicIdAfterEliteWins = null,
+    int EliteWinsToTransform = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

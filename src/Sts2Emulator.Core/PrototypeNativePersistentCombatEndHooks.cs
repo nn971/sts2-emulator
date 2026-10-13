@@ -40,26 +40,29 @@ public sealed partial class PrototypeGameEngine
 
         player = player with { Deck = deck };
 
-        // Each Sword of Stone is its own native relic instance with its
-        // own persisted elite counter. The fifth elite victory replaces
-        // that instance with Jade while preserving the relic's slot.
+        // Elite-victory transformations retain their count on each relic
+        // instance and replace that instance in place at its configured
+        // threshold.
         if (roomType == PrototypeRoomType.Elite)
         {
-            const string stoneId = "proto.native.event.sword_of_stone";
-            const string jadeId = "proto.native.event.sword_of_jade";
             player = player with
             {
                 Relics = player.Relics.Select(relic =>
                 {
-                    if (relic.RelicId != stoneId || relic.IsMelted)
+                    var definition = PrototypeContent.Relics.GetValueOrDefault(
+                        relic.RelicId);
+                    if (definition is null
+                        || definition.RelicIdAfterEliteWins is not { } targetId
+                        || definition.EliteWinsToTransform <= 0
+                        || relic.IsMelted)
                     {
                         return relic;
                     }
 
                     var defeated = checked(
                         GetNativeElitesDefeated(relic.PersistentState) + 1);
-                    return defeated >= 5
-                        ? new RelicInstance(jadeId, PrototypeJson.EmptyObject())
+                    return defeated >= definition.EliteWinsToTransform
+                        ? new RelicInstance(targetId, PrototypeJson.EmptyObject())
                         : relic with
                         {
                             PersistentState = JsonSerializer.SerializeToElement(

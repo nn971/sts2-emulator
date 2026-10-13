@@ -28430,8 +28430,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/SwordOfJade.cs#26b124fec0f4564ea2ca63918f82bc9a52adaa2f869099d50b425998d63c2f6c"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28448,8 +28448,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/SwordOfStone.cs#11452dd2cd6b4d9abbde417cbd02bf12f33af28c271482fab5c6216866ecfec5"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29447,8 +29447,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 101,
-        "integrated": 102,
+        "implemented": 103,
+        "integrated": 104,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

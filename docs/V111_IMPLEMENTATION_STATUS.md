@@ -31,6 +31,12 @@ Tungsten Rod is implemented as a Rare shared relic: it reduces each owner HP
 loss by one across combat and configured event/run effects. Its pinned
 mechanic is recorded in
 [mechanics gap 051](reference-builds/v0.111.0-mechanics-gap-051.md).
+Sword of Stone now stores its five-elite transformation rule as relic
+metadata. Each active copy becomes Sword of Jade in its relic slot after its
+fifth elite victory; Jade grants 3 Strength at combat start. Coverage links
+both Overgrowth and Underdocks Sunken Statue offers to the transformation and
+combat trigger. See
+[mechanics gap 057](reference-builds/v0.111.0-mechanics-gap-057.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).

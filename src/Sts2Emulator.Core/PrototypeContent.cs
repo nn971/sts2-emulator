@@ -2896,7 +2896,9 @@ public static class PrototypeContent
                 AddsPet: true),
             new PrototypeRelicDefinition(
                 "proto.native.event.sword_of_stone",
-                "Sword of Stone"),
+                "Sword of Stone",
+                RelicIdAfterEliteWins: "proto.native.event.sword_of_jade",
+                EliteWinsToTransform: 5),
             new PrototypeRelicDefinition(
                 "proto.native.event.sword_of_jade",
                 "Sword of Jade",
