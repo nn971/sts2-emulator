@@ -3,7 +3,7 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Native Neow acquisition options that suspend the selected event and
 /// present a normal typed reward phase. Exact native reward RNG and
-/// unlock-state restrictions are deliberately deferred.
+/// restricted-profile unlock filtering are deliberately deferred.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
@@ -146,24 +146,27 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeRunEffectKind.OfferThreeColorlessCards:
             {
-                var pool = PrototypeColorlessCards
-                    .ImplementedCombatGenerationPool;
+                var pool = PrototypeColorlessCards.ImplementedRewardPool;
                 if (pool.Length < 3)
                 {
                     throw new InvalidOperationException(
-                        "Brain Leech requires three implemented colorless cards.");
+                        "Brain Leech requires three reward-eligible Colorless cards.");
                 }
 
                 return new RewardState(
                     SourceRoom: prefix,
-                    CardOptions: PickDistinct(
-                        pool, 3, state.Rng, "reward"),
+                    CardOptions: PickRewardCardsFromPool(
+                        world.Act, 3, state.Rng, pool),
                     PotionOption: null,
                     RelicOption: null,
                     CardResolved: false,
                     PotionResolved: true,
                     RelicResolved: true,
-                    EndsAct: false);
+                    EndsAct: false,
+                    CardRewardGenerators:
+                    [new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.ColorlessRewardPool,
+                        world.Act)]);
             }
 
             case PrototypeRunEffectKind.OfferTwoColorlessCards:
@@ -177,14 +180,18 @@ public sealed partial class PrototypeGameEngine
 
                 return new RewardState(
                     SourceRoom: prefix,
-                    CardOptions: PickDistinct(
-                        pool, 2, state.Rng, "reward"),
+                    CardOptions: PickRewardCardsFromPool(
+                        world.Act, 2, state.Rng, pool),
                     PotionOption: null,
                     RelicOption: null,
                     CardResolved: false,
                     PotionResolved: true,
                     RelicResolved: true,
-                    EndsAct: false);
+                    EndsAct: false,
+                    CardRewardGenerators:
+                    [new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.ColorlessRewardPool,
+                        world.Act)]);
             }
 
             case PrototypeRunEffectKind.OfferCardBundles:

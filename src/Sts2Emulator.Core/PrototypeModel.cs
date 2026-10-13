@@ -2293,7 +2293,8 @@ public enum PrototypeCardRewardGeneratorKind
     RarePool,
     DistinctRewardPool,
     RarityPool,
-    Encounter
+    Encounter,
+    ColorlessRewardPool
 }
 
 public sealed record PrototypeCardRewardGenerator(

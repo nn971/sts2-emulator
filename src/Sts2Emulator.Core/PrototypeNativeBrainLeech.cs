@@ -3,7 +3,8 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Silent-compatible Brain Leech event flow shared by Overgrowth,
 /// Underdocks and Hive. The class-card offer uses the configured player's
-/// card pool; the colorless offer is limited to implemented solo cards.
+/// card pool; the colorless offer uses the configured fully unlocked
+/// single-player Colorless reward pool.
 /// </summary>
 public static class PrototypeNativeBrainLeech
 {

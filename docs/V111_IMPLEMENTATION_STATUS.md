@@ -41,7 +41,8 @@ acquisition path. This records emulator integration only; native relic
 behavior and RNG parity remain unverified.
 Neow's Lead Paperweight now suspends the opening for a one-of-two supported
 Colorless card reward drawn from all implemented single-player Colorless
-reward cards. Account unlock filtering and native reward RNG remain open.
+reward cards. Fully unlocked runs include the epoch-gated cards; restricted
+profiles are unsupported, and native reward RNG remains open.
 Neow now retains the selected positive or cursed option's finished page after
 its relic effect and queued rewards resolve; dismissing the pre-map opening
 returns to map choice without completing a room. Choice generation still

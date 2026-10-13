@@ -5051,9 +5051,17 @@ public sealed partial class PrototypeGameEngine
     private static string[] PickRewardCards(
         int act,
         int count,
-        RngBundle rng)
+        RngBundle rng) =>
+        PickRewardCardsFromPool(
+            act, count, rng, PrototypeContent.RewardCardPool);
+
+    private static string[] PickRewardCardsFromPool(
+        int act,
+        int count,
+        RngBundle rng,
+        IEnumerable<string> pool)
     {
-        var available = PrototypeContent.RewardCardPool.ToList();
+        var available = pool.ToList();
         var selected = new List<string>(Math.Min(count, available.Count));
 
         while (selected.Count < count && available.Count > 0)

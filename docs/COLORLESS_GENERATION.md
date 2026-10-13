@@ -17,6 +17,9 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
 - **Lead Paperweight:** its deferred Neow reward uses the implemented
   single-player Colorless reward pool, including epoch-gated cards. This
   reward pool also includes cards that native combat generation excludes.
+- **Brain Leech:** Rip offers three Colorless reward cards after its 5
+  unblockable damage. The choices use the reward-eligible single-player pool
+  and act rarity odds, not the narrower combat-generation filter.
 - **Seeker Strike:** after its damage, randomly shortlist up to three
   draw-pile cards using `CombatCardSelection`; choose one to hand.
 - **Colorless epochs:** `Colorless1Epoch` through `Colorless5Epoch`

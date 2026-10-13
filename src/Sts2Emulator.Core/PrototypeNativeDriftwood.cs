@@ -52,6 +52,11 @@ public sealed partial class PrototypeGameEngine
                 oldOptions = PickRewardCards(
                     generator.Act, oldOptions.Length, state.Rng);
                 break;
+            case PrototypeCardRewardGeneratorKind.ColorlessRewardPool:
+                oldOptions = PickRewardCardsFromPool(
+                    generator.Act, oldOptions.Length, state.Rng,
+                    PrototypeColorlessCards.ImplementedRewardPool);
+                break;
             case PrototypeCardRewardGeneratorKind.RarePool:
             {
                 var rarePool = PrototypeContent.NativeSilentRewardCardPool
