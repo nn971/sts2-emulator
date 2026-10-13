@@ -39,6 +39,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.anchor"] = PrototypeRelicRarity.Common,
             ["proto.relic.vajra"] = PrototypeRelicRarity.Common,
             ["proto.relic.blood_vial"] = PrototypeRelicRarity.Common,
+            ["proto.relic.potion_belt"] = PrototypeRelicRarity.Common,
             [PrototypeNativeSilentRelics.SneckoSkullId] = PrototypeRelicRarity.Common,
             ["proto.relic.meal_ticket"] = PrototypeRelicRarity.Common,
             ["proto.relic.bronze_scales"] = PrototypeRelicRarity.Common,

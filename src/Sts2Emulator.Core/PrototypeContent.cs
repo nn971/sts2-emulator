@@ -2751,6 +2751,16 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypeRelicDefinition(
+                "proto.relic.potion_belt",
+                "Potion Belt",
+                ExtraPotionSlots: 2,
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.RelicAcquired,
+                        [new(PrototypeRunEffectKind.GainPotionSlots, 2)])
+                ]),
+            new PrototypeRelicDefinition(
                 "proto.relic.meat_on_the_bone",
                 "Meat on the Bone",
                 Triggers:
@@ -7518,6 +7528,7 @@ public static class PrototypeContent
         "proto.relic.anchor",
         "proto.relic.vajra",
         "proto.relic.blood_vial",
+        "proto.relic.potion_belt",
         "proto.relic.snecko_skull",
         "proto.relic.meat_on_the_bone",
         "proto.relic.reptile_trinket",

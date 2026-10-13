@@ -817,6 +817,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "POTION_BELT"
+            && engineIds.Contains("proto.relic.potion_belt",
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                "proto.relic.potion_belt", StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                "proto.relic.potion_belt", out var potionBeltRarity)
+            && potionBeltRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic("proto.relic.potion_belt")
+                is { ExtraPotionSlots: 2 } potionBelt
+            && potionBelt.RunTriggers?.Any(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.RelicAcquired
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainPotionSlots
+                    && effect.Amount == 2)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "PAPER_KRANE"
             && engineIds.Contains(PrototypeNativeSilentRelics.PaperKraneId,
                 StringComparer.Ordinal)

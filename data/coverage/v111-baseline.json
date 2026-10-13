@@ -27556,17 +27556,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.potion_belt"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PotionBelt.cs#7ae0b6d8da2b67ed4ed027502055b847cfc0658977f0bcb43035382261a3fb09"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "POTION_BELT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29461,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 27,
-        "integrated": 27,
+        "implemented": 28,
+        "integrated": 28,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

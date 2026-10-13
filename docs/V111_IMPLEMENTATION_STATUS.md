@@ -7,7 +7,8 @@ after acquisition and queued rewards, then return to map choice without
 counting the opening as a map room.
 Orobas's eight Silent relic offers reuse the existing acquisition
 handlers and continuations. Coffer capacity metadata now records its four
-added potion slots. Cross-character card mechanics (including Sea Glass,
+added potion slots. Potion Belt adds two persistent potion slots on pickup.
+Cross-character card mechanics (including Sea Glass,
 Prismatic Gem's foreign pools and Colorful Philosophers) are postponed by user
 scope. Shared Darv now has revealed-profile assignment and all twelve Silent
 relic branches. Calling Bell adds its Eternal Curse and Common, Uncommon and
