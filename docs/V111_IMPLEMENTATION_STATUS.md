@@ -26,6 +26,9 @@ before hand draw, using the previous turn's attack count. See
 Happy Flower now advances its three-turn counter at player side-turn start and
 grants energy before the hand draw. See
 [mechanics gap 146](reference-builds/v0.111.0-mechanics-gap-146.md).
+Nunchaku now carries its Attack count between combats and grants energy on each
+tenth Attack across the run. See
+[mechanics gap 147](reference-builds/v0.111.0-mechanics-gap-147.md).
 
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.

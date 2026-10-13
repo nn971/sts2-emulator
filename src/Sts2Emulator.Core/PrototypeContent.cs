@@ -2677,7 +2677,9 @@ public static class PrototypeContent
                         EveryNth: 10,
                         RequiredSourceCardType:
                             PrototypeCardType.Attack)
-                ]),
+                ],
+                PersistentTriggerCountProperty: "AttacksPlayed",
+                PersistentTriggerCountModulo: 10),
             new PrototypeRelicDefinition(
                 "proto.relic.letter_opener",
                 "Letter Opener",
