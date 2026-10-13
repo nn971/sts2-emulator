@@ -195,6 +195,39 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             })));
     }
 
+    /// <summary>
+    /// Record a real native RNG source call without generating a number or
+    /// peeking ahead. This method is intentionally NOT called from the
+    /// existing frame/history observer: those callbacks cannot attribute
+    /// a particular primitive RNG operation or exact hook order.
+    /// </summary>
+    public void NativeRngBoundary(NativeRngBoundaryEvidenceV111 evidence)
+    {
+        if (_closed) return;
+        ArgumentNullException.ThrowIfNull(evidence);
+        evidence.Validate();
+        Write(new NativeActionEnvelopeRecord(
+            "native_rng_boundary", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            NativeType: "Rng.NextInt",
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                site_id = evidence.SiteId,
+                stream_id = evidence.StreamId,
+                owner_id = evidence.OwnerId,
+                call_ordinal = evidence.CallOrdinal,
+                operation_kind = "bounded_integer",
+                bounded_count = evidence.BoundedCount,
+                selected_index = evidence.SelectedIndex,
+                cursor_before = evidence.CursorBefore,
+                cursor_after = evidence.CursorAfter,
+                source_version = evidence.SourceVersion,
+                origin = evidence.Origin,
+                attributed = evidence.Attributed,
+                source_hook_observed = true
+            })));
+    }
+
     public void HistoryReset(long previouslyObserved, long newLength)
     {
         if (_closed) return;
