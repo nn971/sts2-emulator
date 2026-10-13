@@ -432,6 +432,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "WHISPERING_EARRING"
+            && engineIds.Contains(
+                NativeGloryAncientsV111.WhisperingEarringId,
+                StringComparer.Ordinal)
+            && HasWhisperingEarringPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2748,6 +2758,110 @@ public static class V111Coverage
             && melted.Deck.Length == 0
             && PrototypeGameEngine.EnergyPerTurn(melted) ==
                 PrototypeContent.Rules.BaseEnergy;
+    }
+
+    private static bool HasWhisperingEarringPath()
+    {
+        var relicId = NativeGloryAncientsV111.WhisperingEarringId;
+        var choiceId = "take_" + relicId;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(3).Contains(
+                NativeVakuuEventV111.EventId, StringComparer.Ordinal)
+            || !HasCompleteAncientRelicBranches(
+                NativeVakuuEventV111.EventId, 10)
+            || !NativeVakuuEventV111.RelicPools[0].Contains(
+                relicId, StringComparer.Ordinal)
+            || !NativeVakuuEventV111.Definition.Choices.Any(choice =>
+                choice.Id == choiceId)
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || PrototypeContent.Relic(relicId).EnergyPerTurnBonus != 1
+            || NativeGloryAncientsV111.WhisperingEarringMaxCards != 13)
+        {
+            return false;
+        }
+
+        static RunState CreateState(int turn, bool melted)
+        {
+            var relicId = NativeGloryAncientsV111.WhisperingEarringId;
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var cards = new[]
+            {
+                new CombatCardInstance(1, null, "proto.silent.strike", 0,
+                    IsTemporary: true,
+                    State: PrototypeJson.EmptyObject()),
+                new CombatCardInstance(2, null, "proto.silent.neutralize", 0,
+                    IsTemporary: true,
+                    State: PrototypeJson.EmptyObject()),
+                new CombatCardInstance(3, null, "proto.silent.defend", 0,
+                    IsTemporary: true,
+                    State: PrototypeJson.EmptyObject())
+            };
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: PrototypeGameEngine.EnergyPerTurn(
+                    new PlayerState(30, 30, 0, [], [relic], []), turn),
+                PlayerBlock: 0,
+                Hand: [1, 2, 3],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 30, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 4,
+                Cards: cards,
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [new CombatRelicState(0, relicId, 1, [],
+                    IsMelted: melted)],
+                Act: 3,
+                PlayPile: []);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var world = new RunWorldState(
+                RulesetId: PrototypeContent.RulesetId,
+                CharacterId: PrototypeContent.CharacterId,
+                Act: 3,
+                Floor: 1,
+                NextCardInstanceId: 4,
+                ActiveRoom: PrototypeRoomType.Combat,
+                Map: new MapState([]),
+                Combat: combat,
+                Reward: null,
+                Shop: null,
+                Event: null,
+                TerminalOutcome: null);
+            return new RunState(
+                GameBuild: V111Build.Id,
+                EmulatorSchema: V111Build.StateSchema,
+                RunId: "coverage-whispering-earring",
+                RunSeed: "coverage-whispering-earring",
+                DecisionIndex: 0,
+                Phase: RunPhase.Combat,
+                Player: player,
+                Rng: PrototypeRng.CreateBundle(
+                    "coverage-whispering-earring"),
+                ExtensionState: PrototypeJson.EmptyObject(),
+                World: world);
+        }
+
+        var opening = PrototypeGameEngine.ResolveWhisperingEarringAutoPlay(
+            CreateState(turn: 1, melted: false));
+        var openingCombat = opening.World?.Combat;
+        var laterTurn = PrototypeGameEngine.ResolveWhisperingEarringAutoPlay(
+            CreateState(turn: 2, melted: false)).World?.Combat;
+        var melted = PrototypeGameEngine.ResolveWhisperingEarringAutoPlay(
+            CreateState(turn: 1, melted: true)).World?.Combat;
+        return openingCombat?.Energy == 2
+            && openingCombat.PlayerBlock == 5
+            && openingCombat.Enemies.Single().Hp == 21
+            && openingCombat.Hand.Length == 0
+            && openingCombat.DiscardPile.Length == 3
+            && laterTurn?.Hand.Length == 3
+            && melted?.Hand.Length == 3;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

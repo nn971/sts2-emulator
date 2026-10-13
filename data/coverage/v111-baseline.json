@@ -29036,8 +29036,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/WhisperingEarring.cs#4d4a67823048a590d8d7984dd328fe44973da1c945277e262c6d722acc564bba"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 122,
-        "integrated": 123,
+        "implemented": 123,
+        "integrated": 124,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

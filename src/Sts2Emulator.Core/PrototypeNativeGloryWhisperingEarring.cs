@@ -7,7 +7,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    private static RunState ResolveWhisperingEarringAutoPlay(RunState state)
+    internal static RunState ResolveWhisperingEarringAutoPlay(RunState state)
     {
         var world = RequireWorld(state);
         var combat = world.Combat
