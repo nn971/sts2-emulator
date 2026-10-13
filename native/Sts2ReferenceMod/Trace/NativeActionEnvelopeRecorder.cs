@@ -216,6 +216,36 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// Fisher-Yates permutation and AFTER-HOOK order. An initial shuffle
     /// may arrive from the pre-first-frame buffer; it has no executor action.
     /// </summary>
+    public void NativeInitialHpRoll(NativeInitialHpRollEvidenceV111 evidence)
+    {
+        if (_closed) return;
+        ArgumentNullException.ThrowIfNull(evidence);
+        evidence.Validate();
+        Write(new NativeActionEnvelopeRecord(
+            "native_initial_hp_roll", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            NativeType: "Creature.SetUniqueMonsterHpValue",
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                creation_ordinal = evidence.CreationOrdinal,
+                monster_model_id = evidence.MonsterModelId,
+                ordered_eligible_hp = evidence.OrderedEligibleHp,
+                selected_index = evidence.SelectedIndex,
+                selected_hp = evidence.SelectedHp,
+                source_eligible_values_exhausted =
+                    evidence.UniqueEligibleValuesExhausted,
+                cursor_before = evidence.CursorBefore,
+                cursor_after = evidence.CursorAfter,
+                source_version = evidence.SourceVersion,
+                native_creature_combat_id = (long?)null,
+                native_creature_combat_id_status =
+                    "PRE_ATTACH_CREATURE_ID_UNVERIFIED",
+                recorded_before_first_frame = true,
+                source_callsite_observed = true,
+                native_to_emulator_creature_identity = "NOT_TESTED"
+            })));
+    }
+
     public void NativeShuffleOperation(NativeShuffleOperationEvidenceV111 evidence)
     {
         if (_closed) return;
