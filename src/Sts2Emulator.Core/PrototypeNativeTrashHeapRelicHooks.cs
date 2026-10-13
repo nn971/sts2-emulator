@@ -17,7 +17,7 @@ public sealed partial class PrototypeGameEngine
             nameof(PurchaseExhaustedState.Purchased), out var purchased)
         && purchased.ValueKind == JsonValueKind.True;
 
-    private static PlayerState ApplyRelicRoomEntryEffects(
+    internal static PlayerState ApplyRelicRoomEntryEffects(
         PlayerState player,
         PrototypeRoomType room,
         RngBundle? rng = null,
@@ -40,6 +40,27 @@ public sealed partial class PrototypeGameEngine
             ? ApplyGoldGain(
                 player, bonus, rng, world, nativeRunRng: nativeRunRng)
             : player;
+        if (world is not null
+            && world.CompletedRooms.Length == 0
+            && world.Map.CurrentNodeId is { } currentNodeId
+            && world.Map.Nodes.Any(node =>
+                node.NodeId == currentNodeId
+                && node.RoomType == PrototypeRoomType.Unknown))
+        {
+            var unknownMapHeal = player.ActiveRelics.Sum(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .HealAtFirstUnknownMapPoint);
+            if (unknownMapHeal > 0)
+            {
+                player = player with
+                {
+                    Hp = Math.Min(
+                        player.MaxHp,
+                        player.Hp + unknownMapHeal)
+                };
+            }
+        }
+
         if (room != PrototypeRoomType.Rest)
             return player;
 

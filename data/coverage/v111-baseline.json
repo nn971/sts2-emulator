@@ -27471,17 +27471,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.planisphere"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Planisphere.cs#0819493520a1e44b3ab00cd87821ebf8833f5941592e1297f0970da65bd7794f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PLANISPHERE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29518,8 +29520,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 184,
-        "integrated": 185,
+        "implemented": 185,
+        "integrated": 186,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

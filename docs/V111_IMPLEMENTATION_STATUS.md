@@ -1423,3 +1423,6 @@ preserving its upgrade, enchantment, and persistent state. See
 Swift now has executable coverage through Glory's Beautiful Bracelet: the
 first play draws two cards, and later plays in that combat do not draw again.
 See [mechanics gap 135](reference-builds/v0.111.0-mechanics-gap-135.md).
+Planisphere now heals 5 HP on the run's first Unknown map point and stops
+appearing at the Act 3 treasure chest. See
+[mechanics gap 136](reference-builds/v0.111.0-mechanics-gap-136.md).

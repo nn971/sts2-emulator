@@ -26,6 +26,7 @@ public static class PrototypeNativeSharedRelics
     public const string KifudaId = "proto.relic.kifuda";
     public const string PunchDaggerId = "proto.relic.punch_dagger";
     public const string DollysMirrorId = "proto.relic.dollys_mirror";
+    public const string PlanisphereId = "proto.relic.planisphere";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -446,6 +447,9 @@ public static class PrototypeNativeSharedRelics
         // unblocked HP loss to 5. The event-rarity relic remains outside the
         // ordinary relic pool and is awarded by Trash Heap.
         new(TheBootId, "The Boot", MinPoweredAttackHpLoss: 5),
+        // Planisphere heals when the run first enters an Unknown map point.
+        new(PlanisphereId, "Planisphere",
+            HealAtFirstUnknownMapPoint: 5),
         new(VenerableTeaSetId, "Venerable Tea Set"),
         new(LizardTailId, "Lizard Tail"),
         new(SlingOfCourageId, "Sling of Courage",

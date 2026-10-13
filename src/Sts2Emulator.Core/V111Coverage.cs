@@ -790,6 +790,26 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PLANISPHERE"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PlanisphereId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PlanisphereId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PlanisphereId,
+                out var planisphereRarity)
+            && planisphereRarity == PrototypeRelicRarity.Uncommon
+            && HasPlanispherePath()
+            && HasActThreeTreasureCutoff(
+                PrototypeNativeSharedRelics.PlanisphereId,
+                PrototypeRelicRarity.Uncommon))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "encounters")
         {
             var pools = PrototypeContent.OvergrowthWeakEncounterPool
@@ -5330,6 +5350,71 @@ public static class V111Coverage
         return second.Combat.Hand.Where(id => id != footworkCombatId).Order()
                 .SequenceEqual(new long[] { 14, 15 })
             && second.Combat.DrawPile.SequenceEqual(new long[] { 12, 13 });
+    }
+
+    private static bool HasPlanispherePath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.PlanisphereId;
+        var player = new PlayerState(
+            29,
+            30,
+            0,
+            [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())],
+            []);
+
+        RunWorldState World(
+            PrototypeRoomType mapPointType,
+            PrototypeCompletedRoomRecord[] completedRooms) => new(
+            RulesetId: PrototypeContent.RulesetId,
+            CharacterId: PrototypeContent.CharacterId,
+            Act: 1,
+            Floor: 1,
+            NextCardInstanceId: 1,
+            ActiveRoom: PrototypeRoomType.Event,
+            Map: new MapState(
+                [new MapNodeState("first", 1, 1, mapPointType)],
+                CurrentNodeId: "first"),
+            Combat: null,
+            Reward: null,
+            Shop: null,
+            Event: null,
+            TerminalOutcome: null,
+            CompletedRoomHistory: completedRooms);
+
+        var unknownFirstRoom = PrototypeGameEngine
+            .ApplyRelicRoomEntryEffects(
+                player,
+                PrototypeRoomType.Event,
+                world: World(PrototypeRoomType.Unknown, []));
+        var knownFirstRoom = PrototypeGameEngine
+            .ApplyRelicRoomEntryEffects(
+                player,
+                PrototypeRoomType.Event,
+                world: World(PrototypeRoomType.Event, []));
+        var laterUnknownRoom = PrototypeGameEngine
+            .ApplyRelicRoomEntryEffects(
+                player,
+                PrototypeRoomType.Event,
+                world: World(
+                    PrototypeRoomType.Unknown,
+                    [new PrototypeCompletedRoomRecord(
+                        1, 1, "prior", PrototypeRoomType.Combat)]));
+        var melted = player with
+        {
+            Relics =
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject(),
+                IsMelted: true)]
+        };
+        var meltedUnknownRoom = PrototypeGameEngine
+            .ApplyRelicRoomEntryEffects(
+                melted,
+                PrototypeRoomType.Event,
+                world: World(PrototypeRoomType.Unknown, []));
+        return unknownFirstRoom.Hp == 30
+            && knownFirstRoom.Hp == 29
+            && laterUnknownRoom.Hp == 29
+            && meltedUnknownRoom.Hp == 29;
     }
 
     private static bool HasKusarigamaPath()
