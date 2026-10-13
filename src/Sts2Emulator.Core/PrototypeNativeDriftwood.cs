@@ -76,11 +76,17 @@ public sealed partial class PrototypeGameEngine
                     ?? throw new InvalidOperationException(
                         "Rarity card reward generator has no rarity.");
                 var pool = PrototypeContent.NativeSilentRewardCardPool
-                    .Where(id => PrototypeContent.Card(id).Rarity == rarity)
+                    .Where(id =>
+                    {
+                        var card = PrototypeContent.Card(id);
+                        return card.Rarity == rarity
+                            && (generator.CardType is null
+                                || card.Type == generator.CardType.Value);
+                    })
                     .ToArray();
                 if (pool.Length < oldOptions.Length)
                     throw new InvalidOperationException(
-                        "Rarity card reward pool is smaller than its offer.");
+                        "Filtered rarity card reward pool is smaller than its offer.");
                 oldOptions = PickDistinct(pool, oldOptions.Length,
                     state.Rng, "reward");
                 break;

@@ -711,6 +711,51 @@ public static class PrototypeStateInvariants
             PrototypeContent.Event(
                 eventState.EventId);
 
+        if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
+        {
+            if (eventState.NativePageIndex == 0
+                && eventState.ChosenChoiceId is null)
+            {
+                var owned = player.PotionSlots
+                    .Select((potion, slot) => (Potion: potion, Slot: slot))
+                    .Where(item => item.Potion is not null)
+                    .ToArray();
+                var expected = owned.Take(3).ToArray();
+                var offers = eventState.NativeFuturePotionOffers;
+                if (owned.Length < 2
+                    || offers is null
+                    || offers.Length != expected.Length
+                    || offers.Select(offer => offer.Slot).Distinct().Count()
+                        != offers.Length
+                    || offers.Where((offer, index) =>
+                        offer.Slot != expected[index].Slot
+                        || offer.PotionId != expected[index].Potion!.PotionId
+                        || !PrototypeNativeFutureOfPotions.TryGetCardRarity(
+                            offer.PotionId, out var rarity)
+                        || offer.CardRarity != rarity
+                        || offer.CardType is not (PrototypeCardType.Attack
+                            or PrototypeCardType.Skill
+                            or PrototypeCardType.Power)
+                        || offer.CardRarity == PrototypeCardRarity.Common
+                            && offer.CardType == PrototypeCardType.Power)
+                        .Any())
+                {
+                    throw new InvalidOperationException(
+                        "The Future of Potions opening offers are invalid.");
+                }
+            }
+            else if (eventState.NativeFuturePotionOffers is not null)
+            {
+                throw new InvalidOperationException(
+                    "The Future of Potions retained offers after the player traded a potion.");
+            }
+        }
+        else if (eventState.NativeFuturePotionOffers is not null)
+        {
+            throw new InvalidOperationException(
+                "Future of Potions offers leaked into another event.");
+        }
+
         if (eventState.OfferedChoiceIds is { } offered
             && (offered.Length == 0
                 || offered.Distinct(StringComparer.Ordinal).Count()
@@ -1811,7 +1856,12 @@ public static class PrototypeStateInvariants
                         ? generator.Rarity is not (PrototypeCardRarity.Common
                             or PrototypeCardRarity.Uncommon
                             or PrototypeCardRarity.Rare)
-                        : generator.Rarity is not null))
+                        : generator.Rarity is not null)
+                    || (generator.CardType is { } cardType
+                        && (generator.Kind != PrototypeCardRewardGeneratorKind.RarityPool
+                            || cardType is not (PrototypeCardType.Attack
+                                or PrototypeCardType.Skill
+                                or PrototypeCardType.Power))))
                     throw new InvalidOperationException(
                         "Card reward generator metadata is invalid.");
                 var options = reward.CardOptionsForGroup(index);
@@ -1825,6 +1875,11 @@ public static class PrototypeStateInvariants
                         != generator.Rarity))
                     throw new InvalidOperationException(
                         "Rarity-pool generator contains an option of another rarity.");
+                if (generator.CardType is { } requiredCardType
+                    && options.Any(id => PrototypeContent.Card(id).Type
+                        != requiredCardType))
+                    throw new InvalidOperationException(
+                        "Filtered card reward generator contains an option of another type.");
             }
         }
         if (reward.ExtraRelicWaxFlags is { } waxFlags && waxFlags.Length != extraRelics.Length)

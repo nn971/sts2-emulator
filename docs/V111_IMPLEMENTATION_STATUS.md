@@ -57,6 +57,12 @@ This or That is registered as a shared event in Overgrowth, Underdocks, Hive,
 and Glory. Its plain choice deals 6 HP damage before awarding the saved 41–68
 gold roll. Its ornate choice obtains a random relic, resolves any relic
 acquisition deck choice, then adds Clumsy.
+The Future of Potions is integrated in Hive and Glory for runs with at least
+two potions. Trading one consumes it and offers three upgraded Silent cards
+with the potion's mapped rarity and event-entry rolled card type. The offer
+and card-reward generator persist through state forks; Driftwood retains the
+same rarity/type filter when rerolling. Source RNG and reward-hook fidelity
+remain unverified. See the [pinned source audit](reference-builds/v0.111.0-future-of-potions.md).
 Stone of All Time is integrated in Hive. Lift discards the potion chosen on
 event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one
 eligible Attack for Vigorous 8. Vigorous adds its amount to powered Attack
