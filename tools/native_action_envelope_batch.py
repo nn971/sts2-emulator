@@ -47,6 +47,8 @@ def collect(directory: Path) -> dict:
             "raw_terminal_status": result["raw_terminal_status"],
             "frame_states": result["frame_states"],
             "native_rng_hook_installed": result["native_rng_hook_installed"],
+            "native_monster_ai_scope_installed":
+                result["native_monster_ai_scope_installed"],
             "native_rng_source_calls": result["native_rng_source_calls"],
             "native_rng_unattributed_calls": result["native_rng_unattributed_calls"],
             "native_rng_source_coverage": result["native_rng_source_coverage"],
@@ -69,6 +71,8 @@ def collect(directory: Path) -> dict:
         "source_hook_order_parity": "NOT_TESTED",
         "exact_rng_parity": "NOT_TESTED",
         "files_checked": len(files),
+        "native_monster_ai_scope_installed_sidecars": sum(
+            bool(entry["native_monster_ai_scope_installed"]) for entry in traces),
         "native_rng_hook_installed_sidecars": sum(
             bool(entry["native_rng_hook_installed"]) for entry in traces),
         "native_rng_source_calls": sum(
