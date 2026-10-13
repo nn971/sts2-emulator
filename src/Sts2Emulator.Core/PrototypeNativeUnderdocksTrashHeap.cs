@@ -8,14 +8,17 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeUnderdocksTrashHeap
 {
     public const string EventId = "proto.native.underdocks.trash_heap";
+    public const string DreamCatcherId = "proto.relic.dream_catcher";
+    public const string HandDrillId = "proto.relic.hand_drill";
+    public const string MawBankId = "proto.relic.maw_bank";
 
     public static string[] RelicIds { get; } =
     [
         "proto.relic.darkstone_periapt",
-        "proto.native.trash_heap.dream_catcher",
-        "proto.native.trash_heap.hand_drill",
-        "proto.native.trash_heap.maw_bank",
-        "proto.native.trash_heap.the_boot"
+        DreamCatcherId,
+        HandDrillId,
+        MawBankId,
+        PrototypeNativeSharedRelics.TheBootId
     ];
 
     public static string[] CardIds { get; } =
@@ -35,14 +38,12 @@ public static class PrototypeNativeUnderdocksTrashHeap
     // Event-only relics remain excluded from ordinary relic bags.
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
-        new("proto.native.trash_heap.dream_catcher", "Dream Catcher",
+        new(DreamCatcherId, "Dream Catcher",
             RestHealCardRewardCount: 3),
-        new("proto.native.trash_heap.hand_drill", "Hand Drill",
+        new(HandDrillId, "Hand Drill",
             EnemyVulnerableOnBlockBroken: 2),
-        new("proto.native.trash_heap.maw_bank", "Maw Bank",
-            GoldOnRoomEntryUntilPurchase: 12),
-        new("proto.native.trash_heap.the_boot", "The Boot",
-            MinPoweredAttackHpLoss: 5)
+        new(MawBankId, "Maw Bank",
+            GoldOnRoomEntryUntilPurchase: 12)
     ];
 
     // Cross-character event acquisitions use the same typed combat kernel.
@@ -141,7 +142,9 @@ public sealed partial class PrototypeGameEngine
     {
         RequireKind(action, "event_choice");
         var world = RequireWorld(state);
-        if (world.Event?.EventId != PrototypeNativeUnderdocksTrashHeap.EventId)
+        var evt = world.Event
+            ?? throw new InvalidOperationException("Trash Heap is not active.");
+        if (evt.EventId != PrototypeNativeUnderdocksTrashHeap.EventId)
         {
             throw new InvalidOperationException("Trash Heap is not active.");
         }
@@ -155,27 +158,26 @@ public sealed partial class PrototypeGameEngine
                     PrototypeRng.NextInt(
                         state.Rng, "event",
                         PrototypeNativeUnderdocksTrashHeap.CardIds.Length)];
-                var player = state.Player with
-                {
-                    Gold = checked(state.Player.Gold + 100)
-                };
+                var player = ApplyGoldGain(state.Player, 100, state.Rng,
+                    world, nativeRunRng: state.NativeRunRng);
+                var nextCardId = world.NextCardInstanceId;
                 player = AppendCard(
-                    player, world.NextCardInstanceId, chosen, state.Rng);
-                return CompleteRoomToMap(state with
+                    player, nextCardId++, chosen, state.Rng,
+                    allocateCardId: () => nextCardId++);
+                var result = state with
                 {
                     Player = player,
                     World = world with
                     {
-                        NextCardInstanceId = world.NextCardInstanceId + 1
+                        NextCardInstanceId = nextCardId
                     }
-                });
+                };
+                return PreserveNativeEventCompletionPage(result, choice);
             }
             case "dive":
             {
-                var player = state.Player with
-                {
-                    Hp = Math.Max(0, state.Player.Hp - 8)
-                };
+                var player = ApplyPlayerHpLossAndDeathPrevention(
+                    state.Player, 8);
                 state = state with { Player = player };
                 if (player.Hp == 0)
                 {
@@ -199,7 +201,12 @@ public sealed partial class PrototypeGameEngine
                 player = ApplyRelicRunEvent(
                     player, PrototypeRunEventKind.RelicAcquired,
                     acquiredRelicId: relicId, rng: state.Rng);
-                return CompleteRoomToMap(state with { Player = player });
+                var result = state with
+                {
+                    Player = player,
+                    World = world with { Event = evt }
+                };
+                return PreserveNativeEventCompletionPage(result, choice);
             }
             default:
                 throw new InvalidOperationException(

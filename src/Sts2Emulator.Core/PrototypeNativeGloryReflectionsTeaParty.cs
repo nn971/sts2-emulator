@@ -62,7 +62,8 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
-            return CompleteRoomToMap(state with { Player = player });
+            return PreserveNativeEventCompletionPage(
+                state with { Player = player }, choice);
         }
 
         if (choice != "shatter")
@@ -84,16 +85,18 @@ public sealed partial class PrototypeGameEngine
             player = player with { Deck = player.Deck.Append(copy).ToArray() };
             player = ApplyRelicRunEvent(player,
                 PrototypeRunEventKind.CardAdded, addedCard: copy,
-                rng: state.Rng);
+                rng: state.Rng, world: world,
+                allocateCardId: () => nextId++);
         }
 
         player = AppendCard(player, nextId++,
-            PrototypeNativeGloryEvents.BadLuckId, state.Rng);
-        return CompleteRoomToMap(state with
+            PrototypeNativeGloryEvents.BadLuckId, state.Rng,
+            allocateCardId: () => nextId++);
+        return PreserveNativeEventCompletionPage(state with
         {
             Player = player,
             World = world with { NextCardInstanceId = nextId }
-        });
+        }, choice);
     }
 
     private static IReadOnlyList<GameAction>
@@ -148,7 +151,8 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId, rng: state.Rng);
             player = player with { Hp = player.MaxHp };
-            return CompleteRoomToMap(state with { Player = player });
+            return PreserveNativeEventCompletionPage(
+                state with { Player = player }, choice);
         }
 
         if (evt.NativePageIndex != 1 || choice != "continue_fight")
@@ -158,10 +162,8 @@ public sealed partial class PrototypeGameEngine
         // The first click only opens a follow-up page. The second
         // causes eleven unblockable, unpowered damage, THEN obtains
         // one relic from the front of the persistent reward grab bag.
-        var playerAfterHit = state.Player with
-        {
-            Hp = Math.Max(0, state.Player.Hp - 11)
-        };
+        var playerAfterHit = ApplyPlayerHpLossAndDeathPrevention(
+            state.Player, 11);
         state = state with { Player = playerAfterHit };
         if (playerAfterHit.Hp == 0)
             return EndRun(state, "defeat");
@@ -182,27 +184,29 @@ public sealed partial class PrototypeGameEngine
                 acquiredRelicId: draw.Id, rng: state.Rng);
         }
 
-        return CompleteRoomToMap(state with
+        return PreserveNativeEventCompletionPage(state with
         {
             Player = playerAfterHit,
             World = world
-        });
+        }, choice);
     }
 
     private static RunState ApplyOpeningRoyalPoison(RunState state)
     {
-        var count = state.Player.Relics.Count(relic =>
-            relic.RelicId == PrototypeNativeGloryEvents.RoyalPoisonId);
-        if (count == 0)
+        var damage = state.Player.ActiveRelics.Sum(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .UnblockableHpLossAtCombatStart);
+        if (damage <= 0)
             return state;
 
         // Initial combat creation starts directly in player turn one
         // (there is no PlayerTurnStarted pipeline dispatch on turn one).
         // Implement only RoyalPoison's pinned owner-scoped hook here;
         // the native callback is triggered once per relic instance.
+        var hpLoss = ReducePlayerHpLoss(state.Player, damage);
         var player = state.Player with
         {
-            Hp = Math.Max(0, state.Player.Hp - checked(4 * count))
+            Hp = Math.Max(0, state.Player.Hp - hpLoss)
         };
         var damaged = state with { Player = player };
         if (player.Hp <= 0)

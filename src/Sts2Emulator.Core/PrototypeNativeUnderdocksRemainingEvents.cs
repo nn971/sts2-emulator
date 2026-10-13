@@ -106,7 +106,8 @@ public static class PrototypeNativePunchOff
         PrototypeRoomType.Combat,
         ["proto.enemy.punch_construct", "proto.enemy.punch_construct"],
         MinAct: 1,
-        MaxAct: 1);
+        MaxAct: 1,
+        Weight: 0);
 }
 
 public sealed partial class PrototypeGameEngine
@@ -138,11 +139,26 @@ public sealed partial class PrototypeGameEngine
         {
             var player = UpgradeRandomEligibleConveyorCard(
                 state.Player, state.Rng);
-            return CompleteRoomToMap(state with { Player = player });
+            var result = state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Event = evt with { ChosenChoiceId = choice }
+                }
+            };
+            return PreserveNativeEventCompletionPage(result, choice);
         }
         if (choice == "leave" && evt.NativeDishCount > 1)
         {
-            return CompleteRoomToMap(state);
+            var result = state with
+            {
+                World = world with
+                {
+                    Event = evt with { ChosenChoiceId = choice }
+                }
+            };
+            return PreserveNativeEventCompletionPage(result, choice);
         }
         if (choice != "grab" || state.Player.Gold < 40)
         {
@@ -199,21 +215,21 @@ public sealed partial class PrototypeGameEngine
                 var id = pool[PrototypeRng.NextInt(
                     state.Rng, "event", pool.Length)];
                 playerAfter = AppendCard(
-                    playerAfter, nextCardId++, id, state.Rng);
+                    playerAfter, nextCardId++, id, state.Rng,
+                    allocateCardId: () => nextCardId++);
                 break;
             }
 
             case "SUSPICIOUS_CONDIMENT":
-                if (PrototypeContent.PotionPool.Length == 0)
+                if (PrototypeNativePotionShop.NativePotionPoolOrder.Count == 0)
                 {
                     throw new NotSupportedException(
                         "Suspicious Condiment has no supported potions.");
                 }
                 pendingPotions =
                 [
-                    PrototypeContent.PotionPool[PrototypeRng.NextInt(
-                        state.Rng, "reward",
-                        PrototypeContent.PotionPool.Length)]
+                    PrototypeNativePotionShop.PickUniform(
+                        state.Rng, "reward")
                 ];
                 break;
 
@@ -225,17 +241,16 @@ public sealed partial class PrototypeGameEngine
                 break;
 
             case "GOLDEN_FYSH":
-                playerAfter = playerAfter with
-                {
-                    Gold = playerAfter.Gold + 75
-                };
+                playerAfter = ApplyGoldGain(playerAfter, 75, state.Rng,
+                    world, nativeRunRng: state.NativeRunRng);
                 break;
 
             case "SEAPUNK_SALAD":
                 playerAfter = AppendCard(
                     playerAfter, nextCardId++,
                     PrototypeNativeEndlessConveyor.FeedingFrenzyId,
-                    state.Rng);
+                    state.Rng,
+                    allocateCardId: () => nextCardId++);
                 break;
 
             default:
@@ -314,9 +329,11 @@ public sealed partial class PrototypeGameEngine
 
         if (evt.NativePageIndex == 0 && choice == "nab")
         {
+            var nextCardId = world.NextCardInstanceId;
             var player = AppendCard(
-                state.Player, world.NextCardInstanceId,
-                "proto.native.neow.injury", state.Rng);
+                state.Player, nextCardId++,
+                "proto.native.neow.injury", state.Rng,
+                allocateCardId: () => nextCardId++);
             var reward = CreateDeferredEventReward(
                 state, PrototypeRunEffectKind.OfferRandomRelic,
                 player, evt.EventId);
@@ -325,7 +342,7 @@ public sealed partial class PrototypeGameEngine
                 Player = player,
                 World = world with
                 {
-                    NextCardInstanceId = world.NextCardInstanceId + 1,
+                    NextCardInstanceId = nextCardId,
                     Event = evt with
                     {
                         ChosenChoiceId = "nab",

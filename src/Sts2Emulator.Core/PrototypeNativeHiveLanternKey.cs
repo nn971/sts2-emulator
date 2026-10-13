@@ -5,7 +5,8 @@ namespace Sts2Emulator.Core;
 /// 100 Gold; keeping it reveals a single Mysterious Knight encounter.
 /// Winning publishes an optional SpecialCardReward for the Lantern Key.
 /// The later Glory War Historian Repy quest is a separate unresolved
-/// progression mechanic and this event remains a gated forced fixture.
+/// progression mechanic. This event is included in the opt-in Hive route;
+/// default v111 event selection remains gated.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
@@ -17,7 +18,8 @@ public sealed partial class PrototypeGameEngine
         var current = world.Event
             ?? throw new InvalidOperationException(
                 "The Lantern Key has no active event.");
-        if (current.EventId != PrototypeNativeHiveEvents.LanternKeyEventId)
+        if (world.Act != 2
+            || current.EventId != PrototypeNativeHiveEvents.LanternKeyEventId)
         {
             throw new InvalidOperationException(
                 "The Lantern Key event handler received another event.");
@@ -28,13 +30,15 @@ public sealed partial class PrototypeGameEngine
         {
             if (choice == "return_key")
             {
-                return CompleteRoomToMap(state with
+                return PreserveNativeEventCompletionPage(state with
                 {
-                    Player = state.Player with
-                    {
-                        Gold = checked(state.Player.Gold + 100)
-                    }
-                });
+                    Player = ApplyGoldGain(
+                        state.Player,
+                        100,
+                        state.Rng,
+                        world,
+                        nativeRunRng: state.NativeRunRng)
+                }, choice);
             }
 
             if (choice == "keep_key")

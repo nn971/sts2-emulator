@@ -9,6 +9,8 @@ public static class PrototypeNativeUnderdocksEvents
 {
     public static string[] NativeRegionEventIds { get; } =
     [
+        PrototypeNativeBrainLeech.EventId,
+        PrototypeNativeSelfHelpBook.EventId,
         "proto.native.underdocks.abyssal_baths",
         "proto.native.underdocks.drowning_beacon",
         "proto.native.underdocks.endless_conveyor",
@@ -18,11 +20,18 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
         "proto.native.underdocks.trash_heap",
-        "proto.native.underdocks.waterlogged_scriptorium"
+        "proto.native.underdocks.waterlogged_scriptorium",
+        PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
+        PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeRoomFullOfCheese.EventId,
+        PrototypeNativeSlipperyBridge.EventId,
+        PrototypeNativeWongos.EventId
     ];
 
     public static string[] SupportedRegionEventIds { get; } =
     [
+        PrototypeNativeBrainLeech.EventId,
+        PrototypeNativeSelfHelpBook.EventId,
         "proto.native.underdocks.abyssal_baths",
         "proto.native.underdocks.drowning_beacon",
         "proto.native.underdocks.endless_conveyor",
@@ -32,7 +41,12 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.spiraling_whirlpool",
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
-        "proto.native.underdocks.sunken_statue"
+        "proto.native.underdocks.sunken_statue",
+        PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
+        PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeRoomFullOfCheese.EventId,
+        PrototypeNativeSlipperyBridge.EventId,
+        PrototypeNativeWongos.EventId
     ];
 
     /// <summary>
@@ -43,6 +57,8 @@ public static class PrototypeNativeUnderdocksEvents
         PrototypeEventDefinition evt, PlayerState player) =>
         evt.Id switch
         {
+            PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId =>
+                player.Deck.Length > 0 && player.Hp >= 10,
             PrototypeNativeEndlessConveyor.EventId =>
                 player.Gold >= 120,
             "proto.native.underdocks.waterlogged_scriptorium" =>
@@ -54,6 +70,8 @@ public static class PrototypeNativeUnderdocksEvents
                     PrototypeGameEngine.CanSelectEventDeckCard(
                         card, PrototypePersistentDeckChoiceKind.Enchant,
                         null, PrototypeCardEnchantmentKind.Spiral, true)),
+            PrototypeNativeWongos.EventId =>
+                player.Gold >= PrototypeNativeWongos.BargainBinCost,
             _ => true
         };
 

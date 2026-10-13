@@ -2,7 +2,7 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Persistent rarity-partitioned relic queues for the restricted
-/// single-player Overgrowth/Silent profile. The native game shuffles
+/// configured single-player Silent profile. The native game shuffles
 /// queues at run creation and draws front for rewards, back for shops.
 /// This class preserves the mechanics, not byte-identical RNG.
 /// </summary>
@@ -33,28 +33,130 @@ public static class PrototypeNativeRelicGrabBag
     private static readonly Dictionary<string, PrototypeRelicRarity> Rarities =
         new(StringComparer.Ordinal)
         {
+            [PrototypeNativeSharedRelics.BookOfFiveRingsId] =
+                PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.PendulumId] =
+                PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.GorgetId] =
+                PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.StrikeDummyId] =
+                PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.BreadId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.CauldronId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.OrreryId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.LavaLampId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.MiniatureTentId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.TheCourierId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.TinyMailboxId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.AmethystAubergineId] =
+                PrototypeRelicRarity.Common,
             ["proto.relic.lantern"] = PrototypeRelicRarity.Common,
             ["proto.relic.bag_of_preparation"] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.JuzuBraceletId] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.StrawberryId] = PrototypeRelicRarity.Common,
             ["proto.relic.happy_flower"] = PrototypeRelicRarity.Common,
             ["proto.relic.anchor"] = PrototypeRelicRarity.Common,
             ["proto.relic.vajra"] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.FestivePopperId] =
+                PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.RegalPillowId] =
+                PrototypeRelicRarity.Common,
             ["proto.relic.blood_vial"] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.CentennialPuzzleId] =
+                PrototypeRelicRarity.Common,
+            ["proto.relic.potion_belt"] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSilentRelics.SneckoSkullId] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.WarPaintId] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.WhetstoneId] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.VenerableTeaSetId] =
+                PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.RedMaskId] =
+                PrototypeRelicRarity.Common,
             ["proto.relic.meal_ticket"] = PrototypeRelicRarity.Common,
             ["proto.relic.bronze_scales"] = PrototypeRelicRarity.Common,
             ["proto.relic.oddly_smooth_stone"] = PrototypeRelicRarity.Common,
             ["proto.relic.bag_of_marbles"] = PrototypeRelicRarity.Common,
 
+            [PrototypeNativeSharedRelics.PearId] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.PantographId] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.PetrifiedToadId] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.AkabekoId] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.EternalFeatherId] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.ornamental_fan"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.nunchaku"] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.KusarigamaId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.BowlerHatId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.SparklingRougeId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.PlanisphereId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.LastingCandyId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.RippleBasinId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.VambraceId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.UnsettlingLampId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.DingyRugId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.WingCharmId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.PermafrostId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.ParryingShieldId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.VexingPuzzleboxId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.MiniatureCannonId] =
+                PrototypeRelicRarity.Uncommon,
             ["proto.relic.letter_opener"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.reptile_trinket"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.lucky_fysh"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.gremlin_horn"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.mercury_hourglass"] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSilentRelics.TwistedFunnelId] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.orichalcum"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.horn_cleat"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.tingsha"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.joss_paper"] = PrototypeRelicRarity.Uncommon,
+            ["proto.relic.tuning_fork"] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.PenNibId] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.CandelabraId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.StoneCrackerId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.SturdyClampId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.GhostSeedId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.RoyalStampId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.MysticLighterId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.GnarledHammerId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.BeltBuckleId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.KifudaId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.PunchDaggerId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.DollysMirrorId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.DragonFruitId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.ScreamingFlagonId] =
+                PrototypeRelicRarity.Shop,
 
             ["proto.relic.meat_on_the_bone"] = PrototypeRelicRarity.Rare,
             ["proto.relic.old_coin"] = PrototypeRelicRarity.Rare,
@@ -63,31 +165,71 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.toxic_egg"] = PrototypeRelicRarity.Rare,
             ["proto.relic.frozen_egg"] = PrototypeRelicRarity.Rare,
             ["proto.relic.captains_wheel"] = PrototypeRelicRarity.Rare,
+            ["proto.relic.black_star"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSilentRelics.PaperKraneId] = PrototypeRelicRarity.Rare,
+            ["proto.relic.mummified_hand"] = PrototypeRelicRarity.Rare,
             ["proto.relic.kunai"] = PrototypeRelicRarity.Rare,
             ["proto.relic.shuriken"] = PrototypeRelicRarity.Rare,
             ["proto.relic.ice_cream"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSilentRelics.HelicalDartId] = PrototypeRelicRarity.Rare,
             ["proto.relic.tough_bandages"] = PrototypeRelicRarity.Rare,
+            ["proto.relic.unceasing_top"] = PrototypeRelicRarity.Rare,
             ["proto.relic.prayer_wheel"] = PrototypeRelicRarity.Rare,
+            ["proto.relic.pocketwatch"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.GamePieceId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.RainbowRingId] =
+                PrototypeRelicRarity.Rare,
             ["proto.relic.white_beast_statue"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.BellowsId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.ChandelierId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.CloakClaspId] =
+                PrototypeRelicRarity.Rare,
             ["proto.relic.art_of_war"] = PrototypeRelicRarity.Rare,
             ["proto.relic.charons_ashes"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.WhiteStarId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.BeatingRemnantId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeRestSiteRelics.ShovelId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeRestSiteRelics.GiryaId] = PrototypeRelicRarity.Rare,
             ["proto.relic.gambling_chip"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.TungstenRodId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.LizardTailId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.StoneCalendarId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.RazorToothId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.IntimidatingHelmetId] =
+                PrototypeRelicRarity.Rare,
 
             ["proto.relic.lees_waffle"] = PrototypeRelicRarity.Shop,
             ["proto.relic.membership_card"] = PrototypeRelicRarity.Shop,
             ["proto.relic.burning_sticks"] = PrototypeRelicRarity.Shop,
-            ["proto.relic.toolbox"] = PrototypeRelicRarity.Shop
+            ["proto.relic.toolbox"] = PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.SlingOfCourageId] =
+                PrototypeRelicRarity.Shop,
+            ["proto.relic.the_abacus"] = PrototypeRelicRarity.Shop,
+            [PrototypeNativeSilentRelics.NinjaScrollId] = PrototypeRelicRarity.Shop,
+            ["proto.relic.chemical_x"] = PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.RingingTriangleId] =
+                PrototypeRelicRarity.Shop
         };
 
     private static readonly HashSet<string> NotSoldInShops =
         new(StringComparer.Ordinal)
         {
+            PrototypeNativeSharedRelics.AmethystAubergineId,
+            PrototypeNativeSharedRelics.BowlerHatId,
             "proto.relic.old_coin",
-            "proto.relic.lucky_fysh"
+            "proto.relic.lucky_fysh",
+            PrototypeNativeSharedRelics.TheCourierId
         };
 
     public static bool TryGetRarity(string id, out PrototypeRelicRarity rarity) =>
         Rarities.TryGetValue(id, out rarity);
+
+    public static bool IsShopEligible(string id) =>
+        !NotSoldInShops.Contains(id);
 
     public static PrototypeRelicBagState Create(
         PlayerState player, RngBundle rng)
@@ -159,7 +301,7 @@ public static class PrototypeNativeRelicGrabBag
 
     public static (PrototypeRelicBagState Bag, string? Id) Pull(
         PrototypeRelicBagState bag, PrototypeRelicRarity rarity,
-        bool merchant, PlayerState player)
+        bool merchant, PlayerState player, bool shopEligible = false)
     {
         // Native empty-queue fallback: Shop -> Common -> Uncommon
         // -> Rare. Rare has no further tier.
@@ -190,7 +332,8 @@ public static class PrototypeNativeRelicGrabBag
             var id = candidates.FirstOrDefault(candidate =>
                 !player.Relics.Any(relic =>
                     StringComparer.Ordinal.Equals(relic.RelicId, candidate))
-                && (!merchant || !NotSoldInShops.Contains(candidate)));
+                && (!(merchant || shopEligible)
+                    || !NotSoldInShops.Contains(candidate)));
             if (id is null)
             {
                 continue;
@@ -238,11 +381,36 @@ public static class PrototypeNativeRelicGrabBag
 
     public static (RunWorldState World, string? Id) Draw(
         RunWorldState world, PlayerState player, RngBundle rng,
-        bool merchant, PrototypeRelicRarity? forcedRarity = null)
+        bool merchant, PrototypeRelicRarity? forcedRarity = null,
+        bool shopEligible = false)
     {
         var bag = world.RelicBag ?? Create(player, rng);
+        if (world.Map.GenerationProfileId ==
+                PrototypeNativeLaterActMap.GloryProfileId
+            && world.Floor >= PrototypeNativeLaterActMap.RoomRows(3) + 1 - 7)
+        {
+            bag = bag with
+            {
+                Common = bag.Common.Where(id =>
+                    id != PrototypeNativeSharedRelics.AmethystAubergineId
+                    && id != PrototypeNativeSharedRelics.BookOfFiveRingsId)
+                    .ToArray(),
+                Uncommon = bag.Uncommon.Where(id =>
+                    id != PrototypeNativeSharedRelics.BowlerHatId
+                    && id != PrototypeNativeSharedRelics.PlanisphereId
+                    && id != PrototypeNativeSharedRelics.LastingCandyId)
+                    .ToArray(),
+                Rare = bag.Rare.Where(id =>
+                    id != PrototypeNativeSharedRelics.WhiteStarId)
+                    .ToArray(),
+                Shop = bag.Shop.Where(id =>
+                    id != PrototypeNativeSharedRelics.DragonFruitId)
+                    .ToArray()
+            };
+        }
         var rarity = forcedRarity ?? RollRarity(rng, merchant);
-        var (remaining, id) = Pull(bag, rarity, merchant, player);
+        var (remaining, id) = Pull(
+            bag, rarity, merchant, player, shopEligible);
         return (world with { RelicBag = remaining }, id);
     }
 }

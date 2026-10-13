@@ -52,17 +52,20 @@ public sealed partial class PrototypeGameEngine
         var evt = world.Event
             ?? throw new InvalidOperationException(
                 "Battleworn event combat has no active event.");
-        if (evt.NativePageIndex is < 1 or > 3)
+        if (evt.NativePageIndex is < 1 or > 3
+            || evt.ChosenChoiceId is not
+                ("setting_1" or "setting_2" or "setting_3"))
             throw new InvalidOperationException(
                 "Battleworn resolution needs a selected setting.");
 
         // Escape is a successful combat termination but loses the
         // event's reward (RanOutOfTime flag in the native encounter).
         if (combat.Enemies.Any(enemy => enemy.Escaped))
-            return CompleteRoomToMap(state with
+            return SetBattlewornResultPage(state with
             {
+                Phase = RunPhase.Event,
                 World = world with { Combat = null }
-            });
+            }, "defeat");
 
         switch (evt.NativePageIndex)
         {
@@ -71,7 +74,7 @@ public sealed partial class PrototypeGameEngine
                 // Native random unlocked potion: optional custom reward.
                 var potionId = PrototypeNativePotionShop.PickWeighted(
                     state.Rng, "reward");
-                return state with
+                var rewardState = state with
                 {
                     World = world with
                     {
@@ -89,6 +92,8 @@ public sealed partial class PrototypeGameEngine
                     },
                     Phase = RunPhase.Reward
                 };
+                return SetBattlewornResultPage(
+                    rewardState, "victory");
             }
             case 2:
             {
@@ -108,11 +113,12 @@ public sealed partial class PrototypeGameEngine
                             ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
                             : card).ToArray()
                 };
-                return CompleteRoomToMap(state with
+                return SetBattlewornResultPage(state with
                 {
                     Player = player,
+                    Phase = RunPhase.Event,
                     World = world with { Combat = null }
-                });
+                }, "victory");
             }
             case 3:
             {
@@ -120,11 +126,12 @@ public sealed partial class PrototypeGameEngine
                 var drawn = PrototypeNativeRelicGrabBag.Draw(
                     world, state.Player, state.Rng, merchant: false);
                 if (drawn.Id is null)
-                    return CompleteRoomToMap(state with
+                    return SetBattlewornResultPage(state with
                     {
+                        Phase = RunPhase.Event,
                         World = drawn.World with { Combat = null }
-                    });
-                return state with
+                    }, "victory");
+                var rewardState = state with
                 {
                     World = drawn.World with
                     {
@@ -142,10 +149,16 @@ public sealed partial class PrototypeGameEngine
                     },
                     Phase = RunPhase.Reward
                 };
+                return SetBattlewornResultPage(
+                    rewardState, "victory");
             }
             default:
                 throw new InvalidOperationException(
                     "Unknown Battleworn Dummy difficulty.");
         }
     }
+
+    private static RunState SetBattlewornResultPage(
+        RunState state, string result) =>
+        PreserveNativeEventCompletionPage(state, result);
 }

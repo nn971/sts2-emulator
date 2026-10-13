@@ -89,11 +89,13 @@ public enum PrototypeCombatEffectKind
     MultiplyPlayerBlock,
     DrawCards,
     MoveRandomRareDrawCardsToHand,
+    MoveRandomPowerDrawCardToHandFree,
     AddRandomZeroCostCardsToHand,
     EmpowerRandomDrawCardReplay,
     AcquireRandomCombatPotion,
     CreateRandomCharacterAttackCardsInHand,
     CreateRandomFreeAttacksInDrawPile,
+    CreateGeneratedCardsAtRandomDrawPositions,
     AutoPlayRandomCardsFromZone,
     IncreaseSourcePowerStacks,
     ApplyEnemyStatus,
@@ -105,11 +107,15 @@ public enum PrototypeCombatEffectKind
     CreateEventSourceCardCopyInHand,
     AutoPlayTaggedCardsFromZone,
     AutoPlayTopDrawCards,
+    AutoPlayPlayableCardsFromHand,
     AutoPlayCombatCard,
     ApplyPlayerPower,
     ApplyEnemyPower,
     HealPlayer,
+    LosePlayerHp,
     UpgradeHandCards,
+    UpgradeRandomDrawPileCards,
+    UpgradeAllCards,
     DamagePlayer,
     GainEnergy,
     MultiplyEnemyStatus,
@@ -124,14 +130,25 @@ public enum PrototypeCombatEffectKind
     GainPlayerBlockFromEnemyStatusTotal,
     CreateRandomCharacterSkillCardsInHand,
     CreateDistinctCharacterCommonCardsInHand,
-    CreateRandomFreeCharacterCardInHand
+    CreateRandomFreeCharacterCardInHand,
+    GainEnergyForGold,
+    LosePlayerMaxHp,
+    ReturnHandToDrawAndShuffle,
+    ChooseGeneratedColorlessCards,
+    CreateRandomCharacterPowerCardsInHand,
+    StunEnemy,
+    BuffMaulDamage,
+    LoseEnergy,
+    UpgradeEventSourceCard,
+    IncreaseMomentumDamageBonus
 }
 
 public enum PrototypeCardKeyword
 {
     Retain,
     Sly,
-    Ethereal
+    Ethereal,
+    Innate
 }
 
 public enum PrototypeCardAfflictionKind
@@ -187,7 +204,10 @@ public sealed record PrototypeCombatCardSnapshot(
     bool EnchantmentTriggeredThisCombat = false,
     PrototypeCardAffliction? Affliction = null,
     int SuppressedUpgradeLevels = 0,
-    int WitherFakeUpgradeLevel = 0)
+    int WitherFakeUpgradeLevel = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int MomentumDamageBonus = 0)
 {
     public PrototypeCombatCardSnapshot Fork() => this with
     {
@@ -260,7 +280,8 @@ public enum PrototypeCombatCountKind
     DrawPileCards,
     PlayerBlock,
     TargetDebuffs,
-    DiscardPileCards
+    DiscardPileCards,
+    TurnNumber
 }
 
 public sealed record PrototypeCombatPredicateSpec(
@@ -295,7 +316,20 @@ public enum PrototypeCombatEventKind
     CardDiscarded,
     CardExhausted,
     EnemyDamaged,
-    EnemyDefeated
+    EnemyDefeated,
+    PlayerSideTurnStarted,
+    OpeningPlayerTurnStarted,
+    PlayerDamaged,
+    BeforeCardPlayed
+}
+
+public enum PrototypeBlockBreakerKind
+{
+    None,
+    Player,
+    PlayerPet,
+    Enemy,
+    Other
 }
 
 public sealed record PrototypeCombatEvent(
@@ -305,7 +339,10 @@ public sealed record PrototypeCombatEvent(
     int? TargetEnemyId = null,
     int Amount = 0,
     long? PowerApplicationOrderCeiling = null,
-    bool FromHandDraw = false);
+    bool FromHandDraw = false,
+    bool IsAutoPlay = false,
+    bool IsPoweredAttack = false,
+    int? EnergySpent = null);
 
 public sealed record PrototypeEventSubscriberState(
     long ApplicationOrder,
@@ -347,9 +384,26 @@ public sealed record PrototypeEventDispatchContinuationState(
     };
 }
 
+public enum PrototypeOpeningCombatStage
+{
+    PlayerSideStart,
+    BeforeHandDraw,
+    DrawHand,
+    AfterHandDraw,
+    CombatStarted,
+    PlayerTurnStarted,
+    AutoPrePlay,
+    ImbuedAutoPlay,
+    LateRelicAutoPlay,
+    Complete,
+    BoneTeaAfterTurnStart
+}
+
 public sealed record PrototypeAutomaticPipelineContinuationState(
     int NextStepIndex,
-    PrototypeCombatEventKind? PendingPostDispatchEventKind = null);
+    PrototypeCombatEventKind? PendingPostDispatchEventKind = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeOpeningCombatStage? OpeningStage = null);
 
 /// <summary>
 /// A source-owned, blocking choice in the enemy-side action pipeline.
@@ -377,7 +431,8 @@ public enum PrototypeAutomaticStepKind
     AdvanceTurn,
     ResetPlayerBlock,
     RefreshPlayerEnergy,
-    DrawPlayerHand
+    DrawPlayerHand,
+    ResolveLateRelicAutoplay
 }
 
 public sealed record PrototypeAutomaticStep(
@@ -408,6 +463,8 @@ public enum PrototypeRunEffectKind
     GainRandomRareCard,
     OfferThreeRareCards,
     OfferThreeCardsAndPotion,
+    OfferFiveClassCards,
+    OfferThreeColorlessCards,
     OfferCardBundles,
     OfferRandomRelic,
     OfferNeowsBonesRelics,
@@ -419,9 +476,12 @@ public enum PrototypeRunEffectKind
     LoseAllGold,
     GainRandomRelic,
     GainRandomPotion,
+    GainRandomUncommonPotion,
     UpgradeRandomCard,
     UpgradeAllCards,
-    UpgradeLastCardOfId
+    UpgradeLastCardOfId,
+    OfferWaxRelics,
+    OfferTwoColorlessCards
 }
 
 public enum PrototypeRunEventKind
@@ -430,7 +490,8 @@ public enum PrototypeRunEventKind
     ShopEntered,
     CardAdded,
     RoomCompleted,
-    RestSiteHealed
+    RestSiteHealed,
+    GoldGained
 }
 
 public sealed record PrototypeCompletedRoomRecord(
@@ -586,6 +647,9 @@ public sealed record PrototypeCombatEffectSpec(
     bool GeneratedChoiceCardsUpgraded = false,
     bool GeneratedChoiceCardsUpgradeWithSource = false,
     bool GeneratedChoiceMustPick = false,
+    bool GeneratedChoiceCharacterCards = false,
+    bool GeneratedChoiceCardsRetain = false,
+    bool GeneratedChoiceUsesNativeCardGenerationRng = false,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     int GoldOnFatal = 0,
     int GoldOnFatalUpgradeDelta = 0,
@@ -595,7 +659,10 @@ public sealed record PrototypeCombatEffectSpec(
     bool GainBlockEqualToAttackDamage = false,
     bool SplashUnpoweredAttackToOtherEnemies = false,
     PrototypeCardType? AutoPlayRequiredCardType = null,
-    bool AutoPlayFallbackToUnplayable = false)
+    bool AutoPlayFallbackToUnplayable = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int PlayerGoldCost = 0,
+    bool GeneratedCharacterCardsFreeThisTurn = false)
 {
     public int AmountAt(int upgradeLevel, int energySpent) =>
         Amount
@@ -637,6 +704,9 @@ public sealed record PrototypeQueuedOperation(
     bool GeneratedChoiceCardsFreeThisTurn = true,
     bool GeneratedChoiceCardsUpgraded = false,
     bool GeneratedChoiceMustPick = false,
+    bool GeneratedChoiceCharacterCards = false,
+    bool GeneratedChoiceCardsRetain = false,
+    bool GeneratedChoiceUsesNativeCardGenerationRng = false,
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     int GoldOnFatal = 0,
     int PowerStoredValue = 0,
@@ -645,7 +715,13 @@ public sealed record PrototypeQueuedOperation(
     bool SplashUnpoweredAttackToOtherEnemies = false,
     PrototypeCardType? AutoPlayRequiredCardType = null,
     bool AutoPlayFallbackToUnplayable = false,
-    long? SourcePowerApplicationOrder = null);
+    long? SourcePowerApplicationOrder = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int PlayerGoldCost = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool FromHandDraw = false,
+    bool GeneratedCharacterCardsFreeThisTurn = false,
+    int? EnergySpent = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -676,11 +752,14 @@ public sealed record PrototypeCardDefinition(
     string[]? Tags = null,
     int EndTurnDamageIfInHand = 0,
     bool EndTurnDamageUnblockable = false,
+    int EndTurnGoldLossIfInHand = 0,
     bool MechanicsImplemented = true,
     bool MultiplayerOnly = false,
     bool RetainOnUpgrade = false,
+    bool LoseEtherealOnUpgrade = false,
     bool CanBeGeneratedInCombat = true,
-    int MaxUpgradeLevel = 1);
+    int MaxUpgradeLevel = 1,
+    bool PreventsOtherManualCardPlaysWhileInHand = false);
 
 public sealed record PrototypePotionDefinition(
     string Id,
@@ -690,7 +769,9 @@ public sealed record PrototypePotionDefinition(
     bool UsableOutsideCombat = false,
     PrototypeRunEffectSpec[]? RunEffects = null,
     bool AutomaticUsage = false,
-    int DeathPreventionHealPercent = 0);
+    int DeathPreventionHealPercent = 0,
+    bool GrantsExtraTurn = false,
+    bool IsToken = false);
 
 public sealed record PrototypeRelicTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -705,26 +786,46 @@ public sealed record PrototypeRelicTriggerSpec(
     bool ResetCounterEachTurn = false,
     int? MaxTriggersPerCounterWindow = null,
     int? MaxAttacksPlayedLastTurn = null,
-    bool RequiresEmptyHand = false);
+    bool RequiresEmptyHand = false,
+    string? RequiredSourceCardTag = null,
+    bool RequiresPlayerSide = false,
+    bool RequiresEmptyPotionSlots = false,
+    int? MinPlayerBlock = null,
+    int? MaxAttacksPlayedThisTurn = null,
+    int? MinEnergySpent = null,
+    PrototypeCardType[]? RequiredCardTypesPlayedThisTurn = null);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
     PrototypeRunEffectSpec[] Effects,
     PrototypeCardType? RequiredCardType = null,
-    PrototypeRouteConditionSpec? RouteCondition = null);
+    PrototypeRouteConditionSpec? RouteCondition = null,
+    bool CopyAddedCardToDeckBottom = false,
+    int EveryNth = 1,
+    string? PersistentEventCountProperty = null,
+    bool RequiresLivingPlayer = false);
 
 public enum PrototypePersistentDeckChoiceKind
 {
     Remove,
     Upgrade,
     Transform,
-    Enchant
+    Enchant,
+    Copy
 }
 
 public sealed record PrototypeRelicDeckChoiceSpec(
     PrototypePersistentDeckChoiceKind Kind,
     int Selections,
-    bool UpgradeTransformedCards = false);
+    bool UpgradeTransformedCards = false,
+    PrototypeCardEnchantmentKind? EnchantmentKind = null,
+    int EnchantmentAmount = 1,
+    bool RequiresUpgradable = false,
+    PrototypeCardType? RequiredCardType = null,
+    string? TransformToCardId = null,
+    bool PreserveUpgradeOnTransformation = false,
+    bool PreserveEnchantmentOnTransformation = false,
+    int? MinimumSelections = null);
 
 public sealed record PrototypeRelicDefinition(
     string Id,
@@ -747,9 +848,11 @@ public sealed record PrototypeRelicDefinition(
     int MaxCardsPlayablePerTurn = 0,
     bool HideEnemyIntents = false,
     PrototypeRelicDeckChoiceSpec? AcquisitionDeckChoice = null,
+    int AcquisitionHpLossAfterDeckChoices = 0,
     bool PreventsHandDiscard = false,
     int XValueBonus = 0,
     int HandDrawBonus = 0,
+    int HandDrawBonusThroughTurn = 0,
     int RandomizeDrawnCardCostMaxExclusive = 0,
     bool ForceCombatPotionReward = false,
     int EnchantNewBlockCardsNimble = 0,
@@ -757,7 +860,57 @@ public sealed record PrototypeRelicDefinition(
     int GoldOnRoomEntryUntilPurchase = 0,
     int RestHealCardRewardCount = 0,
     int MinPoweredAttackHpLoss = 0,
-    int EnemyVulnerableOnBlockBroken = 0);
+    int EnemyVulnerableOnBlockBroken = 0,
+    string? AfterShuffleGeneratedCardId = null,
+    int EnergyBonusMinTurn = 1,
+    bool AddsCombatPet = false,
+    bool AddsPet = false,
+    int PowerCardEnergyCostIncrease = 0,
+    string? PersistentTriggerCountProperty = null,
+    int AdditionalCardPlayCountOncePerCombat = 0,
+    int? FreeCardAtManualCardPlayCount = null,
+    bool ProcureRandomPotionsBeforeCombat = false,
+    string? CardIdAfterAcquisitionDeckChoices = null,
+    int ExtraEliteRelicRewardCount = 0,
+    bool PreventGoldGain = false,
+    string? AppliedEnemyStatusAmountBonusId = null,
+    int AppliedEnemyStatusAmountBonus = 0,
+    int WeakAttackDamageReductionPercent = 0,
+    int UpgradeRandomCardsOnAcquisitionCount = 0,
+    PrototypeCardType? UpgradeRandomCardsOnAcquisitionType = null,
+    int RestSiteHealPerFiveCards = 0,
+    string? PotionIdBeforeCombat = null,
+    bool ExcludesMonsterRoomsFromUnknownMap = false,
+    int HealBeforeBossCombat = 0,
+    int StrengthOnEliteRoomEntry = 0,
+    int MaxHpOnCombatVictory = 0,
+    int PlayerHpLossReduction = 0,
+    int UnblockableHpLossAtCombatStart = 0,
+    string? RelicIdAfterEliteWins = null,
+    int EliteWinsToTransform = 0,
+    int ConditionalHandDrawBonus = 0,
+    int ConditionalHandDrawMaxCardsPlayedLastTurn = 0,
+    int PlayerBlockAfterDrawPileShuffle = 0,
+    int RestSiteHealBonus = 0,
+    bool PreventsFirstTurnHandDiscard = false,
+    int CombatVictoryGoldReward = 0,
+    int ExtraEliteRareCardRewardCount = 0,
+    int RestHealPotionRewardCount = 0,
+    int PlayerHpLossLimitPerTurn = 0,
+    string? AttackDamageBonusRequiredCardTag = null,
+    int AttackDamageBonusPerCardTag = 0,
+    int MaxPlayerBlockRetainedAfterClear = 0,
+    bool EtherealizesBasicStrikesAndDefends = false,
+    int EnchantedAttackDamageBonus = 0,
+    int? PersistentTriggerCountModulo = null,
+    int UpgradedAttackDamageBonus = 0,
+    int GoldGainMultiplierNumerator = 1,
+    int GoldGainMultiplierDenominator = 1,
+    int HealAtFirstUnknownMapPoint = 0,
+    int AcquisitionPotionRewardCount = 0,
+    int AcquisitionCardRewardGroupCount = 0,
+    int FirstCardBlockMultiplierPerCombat = 1,
+    int FirstCardDebuffMultiplierPerCombat = 1);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -904,7 +1057,21 @@ public sealed record PrototypePowerDefinition(
     int EnemyIncomingPoweredAttackNumerator = 1,
     int EnemyIncomingPoweredAttackDenominator = 1,
     // Galvanic: Power cards carry this affliction's damage amount.
-    int GalvanizePowerCardsPerStack = 0);
+    int GalvanizePowerCardsPerStack = 0,
+    int PlayerStrengthAtTurnEndPerStack = 0,
+    int EnergyBonusWhileActive = 0,
+    bool DecrementAfterEnergyReset = false,
+    int EnemyOutgoingPoweredAttackNumerator = 1,
+    int EnemyOutgoingPoweredAttackDenominator = 1,
+    int PlayerAttackDamageMultiplierWhileActiveNumerator = 1,
+    int PlayerAttackDamageMultiplierWhileActiveDenominator = 1,
+    bool RemoveAfterFirstPoweredAttack = false,
+    int HandDrawBonusWhileActive = 0,
+    bool DecrementAfterHandDraw = false,
+    int EnemyHpLossAtSideTurnEndPerStack = 0,
+    bool PreventsNextHpLoss = false,
+    bool GeneratedCharacterCardsFreeThisTurn = false,
+    int EnemyStacksDecayOnUnblockedDamage = 0);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,
@@ -1378,7 +1545,9 @@ public sealed record PrototypeEventDeckChoiceSpec(
     string? TransformToCardId = null,
     PrototypeCardEnchantmentKind? EnchantmentKind = null,
     bool BasicCardsOnly = false,
-    string? RequiredCardTag = null);
+    string? RequiredCardTag = null,
+    PrototypeCardType? RequiredCardType = null,
+    int EnchantmentAmount = 1);
 
 public sealed record PrototypeEventChoiceDefinition(
     string Id,
@@ -1394,7 +1563,8 @@ public sealed record PrototypeEventDefinition(
     int MinAct = 1,
     int MaxAct = int.MaxValue,
     int Weight = 1,
-    bool OncePerRun = true);
+    bool OncePerRun = true,
+    string? CanonicalEncounterId = null);
 
 public sealed record PrototypeMapFloorRule(
     int MinFloor,
@@ -1507,6 +1677,12 @@ public sealed record EnemyCombatState(
     // Committed at combat entry / the player-turn boundary, never on Observe.
     int? PlannedMoveIndex = null,
     string? PlannedNextAiStateId = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? StunFollowUpMoveIndex = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? StunFollowUpAiStateId = null,
     // BowlbugRock.Imbalanced tracks whether its prior attack was fully
     // blocked; survives intent commitment and deterministic snapshots.
     bool IsOffBalance = false,
@@ -1573,7 +1749,10 @@ public sealed record CombatCardInstance(
     int WitherFakeUpgradeLevel = 0,
     // CreateDupe copies (currently History Course). Duplicated attacks
     // are excluded from next-turn History Course history.
-    bool IsHistoryCourseDupe = false)
+    bool IsHistoryCourseDupe = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int MomentumDamageBonus = 0)
 {
     public CombatCardInstance Fork() => this with
     {
@@ -1599,7 +1778,21 @@ public sealed record CombatRelicState(
     int PersistentIndex,
     string RelicId,
     long ApplicationOrder,
-    int[] TriggerCounts)
+    int[] TriggerCounts,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool IsMelted = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool HadLeftoverEnergy = false,
+    bool PaelsEyeUsedThisCombat = false,
+    int PaelsLegionCooldown = 0,
+    bool PaelsLegionTriggeredBlockLastTurn = false,
+    long? PaelsLegionAffectedCardPlaySourceId = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool UsedFirstCardPlayModifierThisCombat = false,
+    long? FirstCardBlockMultiplierTriggeringCardInstanceId = null,
+    bool FirstCardBlockMultiplierUsedThisCombat = false,
+    long? FirstCardDebuffMultiplierTriggeringCardInstanceId = null,
+    bool FirstCardDebuffMultiplierUsedThisCombat = false)
 {
     public CombatRelicState Fork() => this with
     {
@@ -1614,7 +1807,8 @@ public sealed record PrototypeCardPlaySeriesState(
     int EnergySpent,
     int PlayCount,
     int NextPlayIndex,
-    bool RemoveSourceCardOnCompletion = false)
+    bool RemoveSourceCardOnCompletion = false,
+    bool IsAutoPlay = false)
 {
     public bool HasRemainingExecutions => NextPlayIndex < PlayCount;
 }
@@ -1631,7 +1825,8 @@ public sealed record PrototypeChoiceResolutionContinuationState(
     bool RemoveSourceCardOnCompletion = false,
     bool SourceCardAlreadyMoved = false,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
-    PrototypeChoiceResolutionContinuationState? Parent = null)
+    PrototypeChoiceResolutionContinuationState? Parent = null,
+    bool CompletePlayerHandCleanup = false)
 {
     public PrototypeChoiceResolutionContinuationState Fork() => this with
     {
@@ -1693,12 +1888,18 @@ public sealed record PrototypeCombatCounters(
     string[]? PlayedCardTagsThisTurn = null,
     int AttacksPlayedLastTurn = 0,
     int CardsPlayedThisCombat = 0,
+    int ManualCardsPlayedThisTurn = 0,
     long[]? PlayedCardIdsThisTurn = null,
     long[]? PlayedCardIdsLastTurn = null,
     // Captured at the *finished* CardPlayed event; a copy is retained
     // across turn boundaries and through deterministic snapshot forks.
     PrototypeCombatCardSnapshot? LastOriginalAttackThisTurn = null,
-    PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null)
+    PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null,
+    int MaulDamageBonus = 0,
+    int CardsPlayedLastTurn = 0,
+    int HpLostThisTurn = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int PowersPlayedThisTurn = 0)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();
@@ -1723,6 +1924,11 @@ public sealed record PrototypeCombatCounters(
 public sealed record PrototypeToricShield(
     int BlockAmount,
     int ClearsRemaining);
+
+public sealed record PrototypeCombatPetState(
+    string PetId,
+    int SourceRelicIndex,
+    string SkinId);
 
 /// <summary>
 /// Reproducible source-targeted auto-play outcome, kept in the *combat
@@ -1767,7 +1973,14 @@ public sealed record CombatState(
     NativeCombatRngV111? NativeRng = null,
     PrototypeKnowledgeDemonChoiceState? PendingKnowledgeDemonChoice = null,
     int KnowledgeDemonChoiceResolvedTurn = 0,
-    PrototypeAutoPlayTargetRoll[]? AutoPlayTargetRolls = null)
+    PrototypeAutoPlayTargetRoll[]? AutoPlayTargetRolls = null,
+    bool PaelsEyeExtraTurnPending = false,
+    PrototypeCombatPetState[]? Pets = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? CurrentMapNodeId = null,
+    int PotionExtraTurnsPending = 0,
+    bool IsPlayerSideActive = true,
+    bool TookDamageThisCombat = false)
 {
     public CombatState Fork() => this with
     {
@@ -1801,6 +2014,7 @@ public sealed record CombatState(
         PendingKnowledgeDemonChoice = PendingKnowledgeDemonChoice?.Fork(),
         AutoPlayTargetRolls = AutoPlayTargetRolls is null
             ? null : (PrototypeAutoPlayTargetRoll[])AutoPlayTargetRolls.Clone(),
+        Pets = Pets is null ? null : (PrototypeCombatPetState[])Pets.Clone(),
         Counters = Counters?.Fork(),
         AutomaticPipelineContinuation =
             AutomaticPipelineContinuation is null
@@ -1831,6 +2045,10 @@ public sealed record PrototypePendingDeckChoiceState(
     long[] CandidateCardInstanceIds,
     bool UpgradeTransformedCards = false)
 {
+    public int MinimumSelectionsRemaining { get; init; } = RemainingSelections;
+    public string? CardIdAfterChoices { get; init; }
+    public int HpLossAfterChoices { get; init; }
+
     public PrototypePendingDeckChoiceState Fork() => this with
     {
         CandidateCardInstanceIds =
@@ -1873,8 +2091,36 @@ public sealed record RewardState(
     // not be duplicated when this reward is inspected.
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    CardInstance[]? ReturnedStolenCards = null)
+    CardInstance[]? ReturnedStolenCards = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    bool[]? ExtraRelicWaxFlags = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardRewardGenerator?[]? CardRewardGenerators = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string[]? ExtraPotionOptions = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    bool[]? ExtraPotionGroupsResolved = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardEnchantment?[]? CardOptionEnchantments = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardEnchantment?[][]? ExtraCardOptionEnchantments = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool AddRandomCurseAfterReward = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool LavaLampRewardActive = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool LastingCandyRewardActive = false)
 {
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? ExtraRelicGroupsSkippable { get; init; }
+
+    // Event card choices created by CardReward run its late reward hooks;
+    // direct CardFactory selection grids do not.
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CardRewardLateHooksEnabled { get; init; }
+
     /// <summary>
     /// Native rewards resolve each extra offer by its stable original
     /// group index. The legacy integer counters remain a count of
@@ -1889,6 +2135,12 @@ public sealed record RewardState(
         ExtraRelicGroupsResolved is { } flags
             ? flags[index]
             : index < ExtraRelicsResolved;
+
+    public bool IsExtraRelicGroupSkippable(int index) =>
+        ExtraRelicGroupsSkippable != false;
+
+    public bool IsExtraPotionGroupResolved(int index) =>
+        ExtraPotionGroupsResolved is { } flags && flags[index];
 
     public int FirstPendingExtraCardGroupIndex
     {
@@ -1964,6 +2216,16 @@ public sealed record RewardState(
         };
     }
 
+    public RewardState ResolveExtraPotionGroup(int index)
+    {
+        if (IsExtraPotionGroupResolved(index))
+            throw new InvalidOperationException(
+                "Potion reward group has already been resolved.");
+        var flags = (bool[])ExtraPotionGroupsResolved!.Clone();
+        flags[index] = true;
+        return this with { ExtraPotionGroupsResolved = flags };
+    }
+
     public string[] CardOptionsForGroup(int groupIndex) =>
         groupIndex == 0
             ? CardOptions
@@ -1990,6 +2252,23 @@ public sealed record RewardState(
             .ToArray();
     }
 
+    public PrototypeCardEnchantment?[] CardEnchantmentsForGroup(
+        int groupIndex)
+    {
+        if (groupIndex == 0)
+        {
+            return CardOptionEnchantments is { } enchantments
+                ? (PrototypeCardEnchantment?[])enchantments.Clone()
+                : new PrototypeCardEnchantment?[CardOptions.Length];
+        }
+
+        var extraIndex = groupIndex - 1;
+        var options = ExtraCardOptions![extraIndex];
+        return ExtraCardOptionEnchantments is { } extras
+            ? (PrototypeCardEnchantment?[])extras[extraIndex].Clone()
+            : new PrototypeCardEnchantment?[options.Length];
+    }
+
     public string[] CurrentCardOptions =>
         !CardResolved
             ? CardOptions
@@ -2004,6 +2283,13 @@ public sealed record RewardState(
             : FirstPendingExtraCardGroupIndex is var index && index >= 0
                 ? CardUpgradeFlagsForGroup(index + 1)
                 : Array.Empty<bool>();
+
+    public PrototypeCardEnchantment?[] CurrentCardOptionEnchantments =>
+        !CardResolved
+            ? CardEnchantmentsForGroup(0)
+            : FirstPendingExtraCardGroupIndex is var index && index >= 0
+                ? CardEnchantmentsForGroup(index + 1)
+                : Array.Empty<PrototypeCardEnchantment?>();
 
     public string[] CurrentRelicOptions =>
         RelicOptions is { Length: > 0 }
@@ -2046,8 +2332,24 @@ public sealed record RewardState(
         ExtraRelicGroupsResolved = ExtraRelicGroupsResolved is null
             ? null
             : (bool[])ExtraRelicGroupsResolved.Clone(),
+        ExtraRelicWaxFlags = ExtraRelicWaxFlags is null ? null : (bool[])ExtraRelicWaxFlags.Clone(),
+        CardRewardGenerators = CardRewardGenerators is null ? null
+            : CardRewardGenerators.Select(generator => generator is null
+                ? null : generator with { }).ToArray(),
         ExtraGoldOptions = ExtraGoldOptions is null ? null : (int[])ExtraGoldOptions.Clone(),
         ExtraGoldGroupsResolved = ExtraGoldGroupsResolved is null ? null : (bool[])ExtraGoldGroupsResolved.Clone(),
+        ExtraPotionOptions = ExtraPotionOptions is null ? null : (string[])ExtraPotionOptions.Clone(),
+        ExtraPotionGroupsResolved = ExtraPotionGroupsResolved is null ? null : (bool[])ExtraPotionGroupsResolved.Clone(),
+        CardOptionEnchantments = CardOptionEnchantments is null
+            ? null
+            : CardOptionEnchantments.Select(enchantment =>
+                enchantment is null ? null : enchantment with { }).ToArray(),
+        ExtraCardOptionEnchantments = ExtraCardOptionEnchantments is null
+            ? null
+            : ExtraCardOptionEnchantments.Select(group => group.Select(
+                enchantment => enchantment is null
+                    ? null
+                    : enchantment with { }).ToArray()).ToArray(),
         PendingDeckChoice = PendingDeckChoice?.Fork(),
         ReturnedStolenCards = ReturnedStolenCards is null
             ? null
@@ -2057,6 +2359,27 @@ public sealed record RewardState(
             }).ToArray()
     };
 }
+
+public enum PrototypeCardRewardGeneratorKind
+{
+    RewardPool,
+    RarePool,
+    DistinctRewardPool,
+    RarityPool,
+    Encounter,
+    ColorlessRewardPool
+}
+
+public sealed record PrototypeCardRewardGenerator(
+    PrototypeCardRewardGeneratorKind Kind,
+    int Act,
+    PrototypeRoomType? Room = null,
+    bool Rerolled = false,
+    PrototypeCardRarity? Rarity = null,
+    PrototypeCardType? CardType = null,
+    // Retained for rerolls whose original CardReward blocked card pool hooks.
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool NoCardPoolModifications = false);
 
 public sealed record ShopOffer(
     int OfferId,
@@ -2078,7 +2401,11 @@ public sealed record ShopState(
     int? BaseRemovalPrice = null,
     ShopOffer[]? AdditionalPotionOffers = null,
     ShopOffer[]? AdditionalRelicOffers = null,
-    PrototypePendingDeckChoiceState? PendingDeckChoice = null)
+    PrototypePendingDeckChoiceState? PendingDeckChoice = null,
+    bool LordsParasolPurchaseFlowActive = false,
+    int? LordsParasolPendingPotionOfferId = null,
+    bool LordsParasolRemovalChoicePending = false,
+    bool LordsParasolPotionOffersSkipped = false)
 {
     public int UndiscountedRemovalPrice =>
         BaseRemovalPrice ?? RemovalPrice;
@@ -2128,7 +2455,13 @@ public sealed record PrototypePendingEventDeckChoiceState(
     string? TransformToCardId = null,
     PrototypeCardEnchantmentKind? EnchantmentKind = null,
     bool BasicCardsOnly = false,
-    string? RequiredCardTag = null)
+    string? RequiredCardTag = null,
+    PrototypeCardType? RequiredCardType = null,
+    int EnchantmentAmount = 1,
+    bool RequiresUpgradable = false,
+    bool PreserveUpgradeOnTransformation = false,
+    bool PreserveEnchantmentOnTransformation = false,
+    int? MinimumSelectionsRemaining = null)
 {
     public PrototypePendingEventDeckChoiceState Fork() => this with
     {
@@ -2159,9 +2492,19 @@ public sealed record EventState(
     RewardState? PendingReward = null,
     int DeferredHpLoss = 0,
     int NativePageIndex = 0,
+    int NativeSlipperyBridgeHoldCount = 0,
+    long? NativeSlipperyBridgeCardInstanceId = null,
+    long[]? NativeSlipperyBridgeSkippedCardInstanceIds = null,
+    int NativeRanwidPotionSlot = -1,
+    string? NativeRanwidPotionId = null,
+    int NativeRanwidRelicIndex = -1,
+    string? NativeRanwidRelicId = null,
     string? DeferredCardId = null,
     int NativeEventGold = 0,
     int NativeEventSecondaryGold = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? NativeEventPotionSlot = null,
     string? NativeDishId = null,
     string? NativeLastDishId = null,
     int NativeDishCount = 0,
@@ -2175,7 +2518,23 @@ public sealed record EventState(
     int RepyChestGroupsResolved = 0,
     // Glory Tinker Time chooses type and rider on separate pages;
     // the type is persisted independently of the random rider offer.
-    string? NativeTinkerType = null)
+    string? NativeTinkerType = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    RngStreamState? NativeEventRng = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    bool? NativeTanxTriEligible = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    bool? NativeNonupeipeBraceletEligible = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeRelicTraderOffer[]? NativeRelicTraderOffers = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCrystalSphereState? NativeCrystalSphere = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? NativeWongoFeaturedRelicId = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? NativeWongoResultPage = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -2185,6 +2544,7 @@ public sealed record EventState(
 
     public EventState Fork() => this with
     {
+        NativeEventRng = NativeEventRng?.Fork(),
         PendingDeckChoice =
             PendingDeckChoice?.Fork(),
         PendingPotionReplacement =
@@ -2202,10 +2562,59 @@ public sealed record EventState(
                 ? null
                 : (string[])OfferedChoiceIds.Clone(),
         PendingReward = PendingReward?.Fork(),
+        NativeSlipperyBridgeSkippedCardInstanceIds =
+            NativeSlipperyBridgeSkippedCardInstanceIds is null
+                ? null
+                : (long[])NativeSlipperyBridgeSkippedCardInstanceIds.Clone(),
         RepyChestPotionIds = RepyChestPotionIds is null
             ? null : (string[])RepyChestPotionIds.Clone(),
         RepyChestRelicIds = RepyChestRelicIds is null
-            ? null : (string[])RepyChestRelicIds.Clone()
+            ? null : (string[])RepyChestRelicIds.Clone(),
+        NativeFuturePotionOffers = NativeFuturePotionOffers is null
+            ? null
+            : (PrototypeFuturePotionOffer[])NativeFuturePotionOffers.Clone(),
+        NativeRelicTraderOffers = NativeRelicTraderOffers is null
+            ? null
+            : (PrototypeRelicTraderOffer[])NativeRelicTraderOffers.Clone(),
+        NativeCrystalSphere = NativeCrystalSphere?.Fork()
+    };
+}
+
+public sealed record PrototypeFuturePotionOffer(
+    int Slot,
+    string PotionId,
+    PrototypeCardType CardType,
+    PrototypeCardRarity CardRarity);
+
+public sealed record PrototypeRelicTraderOffer(
+    string ChoiceId,
+    int OwnedRelicIndex,
+    string OwnedRelicId,
+    string NewRelicId);
+
+public sealed record PrototypeCrystalSphereItemState(
+    string Kind,
+    int X,
+    int Y,
+    int Width,
+    int Height);
+
+public sealed record PrototypeCrystalSphereState(
+    int DivinationsRemaining,
+    bool SmallToolSelected,
+    int[] ItemByCell,
+    bool[] ClearedCells,
+    PrototypeCrystalSphereItemState[] Items,
+    bool[] RevealedItems,
+    int[] RevealedItemOrder)
+{
+    public PrototypeCrystalSphereState Fork() => this with
+    {
+        ItemByCell = (int[])ItemByCell.Clone(),
+        ClearedCells = (bool[])ClearedCells.Clone(),
+        Items = (PrototypeCrystalSphereItemState[])Items.Clone(),
+        RevealedItems = (bool[])RevealedItems.Clone(),
+        RevealedItemOrder = (int[])RevealedItemOrder.Clone()
     };
 }
 
@@ -2216,16 +2625,29 @@ public sealed record PrototypeUnknownRoomOddsState(
 {
     public const int Scale = 1000;
 
-    public PrototypeUnknownRoomOddsState After(PrototypeRoomType rolled) =>
+    public PrototypeUnknownRoomOddsState After(
+        PrototypeRoomType rolled,
+        bool monsterRoomAvailable = true) =>
         this with
         {
-            MonsterWeight = rolled == PrototypeRoomType.Combat
-                ? 100 : MonsterWeight + 100,
+            MonsterWeight = !monsterRoomAvailable
+                ? MonsterWeight
+                : rolled == PrototypeRoomType.Combat
+                    ? 100 : MonsterWeight + 100,
             TreasureWeight = rolled == PrototypeRoomType.Treasure
                 ? 20 : TreasureWeight + 20,
             ShopWeight = rolled == PrototypeRoomType.Shop
                 ? 30 : ShopWeight + 30
         };
+}
+
+public sealed record PrototypeCustomRewardReturnState(
+    RunPhase Phase,
+    RewardState? Reward,
+    PrototypeCustomRewardReturnState? Parent = null)
+{
+    public PrototypeCustomRewardReturnState Fork() => this with
+    { Reward = Reward?.Fork(), Parent = Parent?.Fork() };
 }
 
 public sealed record RunWorldState(
@@ -2258,13 +2680,22 @@ public sealed record RunWorldState(
     ActIdentity? ActIdentity = null,
     // Native IRunState.ExtraFields.FreedRepy, set by unlocking Repy's cage.
     bool FreedRepy = false,
-    PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null)
+    PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    long? LastCombatEndDecisionIndex = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCustomRewardReturnState? CustomRewardReturn = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string[]? RestSiteOptionsUsed = null)
 {
     public RunWorldState Fork() => this with
     {
         Map = Map.Fork(),
         Combat = Combat?.Fork(),
         Reward = Reward?.Fork(),
+        CustomRewardReturn = CustomRewardReturn?.Fork(),
         Shop = Shop?.Fork(),
         Event = Event?.Fork(),
         EncounterHistory = EncounterHistory is null
@@ -2278,7 +2709,12 @@ public sealed record RunWorldState(
             : (PrototypeCompletedRoomRecord[])CompletedRoomHistory.Clone(),
         ActOneEncounterPool = ActOneEncounterPool?.Fork(),
         LaterActEncounterBag = LaterActEncounterBag?.Fork(),
-        RelicBag = RelicBag?.Fork()
+        PreparedLaterActEncounterBags = PreparedLaterActEncounterBags?
+            .Select(bag => bag.Fork()).ToArray(),
+        RelicBag = RelicBag?.Fork(),
+        RestSiteOptionsUsed = RestSiteOptionsUsed is null
+            ? null
+            : (string[])RestSiteOptionsUsed.Clone()
     };
 
     public string[] EncounterIds =>
@@ -2296,14 +2732,21 @@ public sealed record PlayCardPayload(long CardInstanceId, int? TargetEnemyId);
 public sealed record UsePotionPayload(int Slot, int? TargetEnemyId);
 public sealed record ChooseCardPayload(int Index);
 public sealed record ChooseRewardCardGroupPayload(int GroupIndex, int Index);
+public sealed record RerollRewardCardPayload(int GroupIndex);
 public sealed record ChooseBundlePayload(int Index);
 public sealed record ChooseRelicPayload(int Index);
 public sealed record ChooseGoldRewardPayload(int GroupIndex);
 public sealed record ChooseDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceRewardPotionPayload(int Slot);
+
+public sealed record ChooseExtraPotionRewardPayload(int GroupIndex, int Slot = -1);
 public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
+public sealed record TradeFuturePotionPayload(int Slot);
+public sealed record TradeEventRelicPayload(int OfferIndex);
+public sealed record ChooseCrystalSphereCellPayload(int X, int Y);
+public sealed record SetCrystalSphereToolPayload(bool SmallToolSelected);
 public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceEventPotionPayload(int Slot);
 public sealed record UpgradeCardPayload(long CardInstanceId);

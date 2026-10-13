@@ -37,12 +37,12 @@ assemblies and decompiled source remain local and ignored under the
 | --- | --- | --- |
 | Engine | Whole-run state, independent forks, hashes, resumable choices, ordered combat hooks, maps, rewards, shops, events, transitions | General configuration and remaining semantics/parity |
 | Silent | All 86 single-player entries in the 91-card native pool marked implemented; five multiplayer cards excluded | Variant-aware semantic and integration validation |
-| Colorless | 65-card pool inventoried; first six implemented | Remaining eligible shared cards |
+| Colorless | 53 single-player cards implemented; 12 multiplayer-only entries excluded from execution | Variant validation and remaining shared card families outside the Colorless pool |
 | Overgrowth | All 22 encounters marked implemented for models, formations and pools | Remaining events/run rules, progression conditions and reference validation |
-| Underdocks | 4/4 weak encounters, 2/10 normals, no implemented elites/bosses | Eight normals, three elites, three bosses, regional events and complete integration |
-| Hive / Glory | Prototype later-act flow and some reusable enemy mechanics | Native acts and all their content |
+| Underdocks | All 20 ordinary encounter IDs, ten regional event models, supported shop/reward/rest/treasure flow, and regional route tests | Exhaustive event/branch audit, unassisted full-run evidence, live native validation |
+| Hive / Glory | Supported later-act routes, regional event paths, and all three Glory Ancient branches through named fixtures; the global queue integrates 80/90 catalogued encounters | Hive Orobas dependencies, normal Ancient assignment, remaining special/event branches, full route evidence and live native validation |
 | Other characters | Reusable kernel | Ironclad, Defect, Regent, Necrobinder |
-| RNG | Six prototype streams; native inventory and oracle state-evolution audit | Native integration, ownership and call-order parity |
+| RNG | Native codec and context-specific factories plus selected native-owned gameplay paths; legacy prototype streams remain active | Continue source-shaped content work first, then complete desired RNG ownership/call-order integration and native oracle validation |
 | Interface | Versioned prototype JSONL API, semantic actions, capability IDs | Complete coverage report, save/load, bindings, compatibility |
 
 These are implementation claims, not exact native parity. The archive inventories
@@ -195,6 +195,8 @@ and interactions; acquisition-only tests do not establish completeness.
 reachable under its proper conditions and directly testable.
 
 ## 9. Exact native RNG and replay parity
+
+**Desired RNG implementation:** follow [DESIRED_RNG_IMPLEMENTATION.md](DESIRED_RNG_IMPLEMENTATION.md) for the provider-independent mechanics/chance interface, native RNG adapter, controlled Nature resolution, serialized continuations, migration order, and separate mechanical/native/probability validation gates. This is a proposed target architecture; existing RNG implementation and release requirements remain unchanged until the corresponding patches land.
 
 Continuous during expansion; mandatory for the final release.
 

@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Pinned v0.111.0 Hive event inventory and the first additional executable
-/// Hive event. Later-act random event selection is intentionally gated.
+/// Pinned v0.111.0 Hive event inventory and executable event models.
+/// The experimental three-act route opts in to supported Hive events;
+/// default run selection remains gated pending native parity.
 /// Source: Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20,
 /// Hive.cs and InfestedAutomaton.cs.
 /// </summary>
@@ -10,9 +11,12 @@ public static class PrototypeNativeHiveEvents
 {
     public const string InfestedAutomatonId =
         "proto.native.hive.infested_automaton";
+    public const string StoneOfAllTimeId =
+        PrototypeNativeStoneOfAllTime.EventId;
 
-    // The ten native Hive.AllEvents entries, in source order.
-    // Only Bugslayer and Infested Automaton have executable options here.
+    // The ten native Hive.AllEvents entries, in source order. The opted-in
+    // regional pool excludes Colorful Philosophers until its foreign card
+    // pools and acquisition mechanics are implemented.
     public static string[] NativeEventNames { get; } =
     [
         "Amalgamator", "Bugslayer", "ColorfulPhilosophers",
@@ -58,7 +62,9 @@ public static class PrototypeNativeHiveEvents
     public static bool IsNativeEvent(string id) =>
         id is LanternKeyEventId or FieldOfManSizedHolesId or AmalgamatorId
             or InfestedAutomatonId or LostWispId or ZenWeaverId
-            or ColossalFlowerId or SpiritGrafterId;
+            or ColossalFlowerId or SpiritGrafterId
+            or StoneOfAllTimeId
+            or PrototypeNativeLaterActs.HiveBugslayerId;
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         eventId is SpiritGrafterId or FieldOfManSizedHolesId;
@@ -74,11 +80,15 @@ public static class PrototypeNativeHiveEvents
                     card, PrototypePersistentDeckChoiceKind.Enchant,
                     null, PrototypeCardEnchantmentKind.PerfectFit, false)))
         && (evt.Id != ZenWeaverId || player.Gold >= 125)
-        && (evt.Id != ColossalFlowerId || player.Hp >= 19);
+        && (evt.Id != ColossalFlowerId || player.Hp >= 19)
+        && (evt.Id != StoneOfAllTimeId
+            || player.PotionSlots.Any(potion => potion is not null))
+        && (evt.Id != PrototypeNativeCrystalSphere.EventId
+            || player.Gold >= 100);
 
     private static int CountBasic(PlayerState player, string tag) =>
         player.Deck.Count(card =>
-            !PrototypeContent.Card(card.CardId).Eternal
+            !PrototypeCardRules.IsEternal(card)
             && PrototypeContent.Card(card.CardId).Rarity
                 == PrototypeCardRarity.Basic
             && (PrototypeContent.Card(card.CardId).Tags?.Contains(
@@ -297,11 +307,12 @@ public sealed partial class PrototypeGameEngine
     {
         RequireKind(action, "event_choice");
         var world = RequireWorld(state);
-        if (world.Event?.EventId !=
-            PrototypeNativeHiveEvents.InfestedAutomatonId)
+        if (world.Act != 2 || world.Event?.EventId !=
+                PrototypeNativeHiveEvents.InfestedAutomatonId
+            || world.Event.NativePageIndex != 0)
         {
             throw new InvalidOperationException(
-                "Infested Automaton requires its active event state.");
+                "Infested Automaton requires its initial Hive event page.");
         }
 
         var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
@@ -314,10 +325,10 @@ public sealed partial class PrototypeGameEngine
         // CardFactory in the native game draws from the unlocked character
         // pool using its noncombat rarity odds. Until the remaining
         // character/profile and native card-generation streams land,
-        // restrict this forced-event fixture to the implemented, solo-safe
-        // Silent reward pool. This is a deliberate approximation of the
+        // restrict this routed event to the implemented, solo-safe Silent
+        // reward pool. This is a deliberate approximation of the
         // selection distribution, not of either eligibility predicate.
-        var eligible = PrototypeContent.RewardCardPool
+        var eligible = PrototypeContent.NativeSilentRewardCardPool
             .Where(id =>
             {
                 var card = PrototypeContent.Card(id);
@@ -330,21 +341,22 @@ public sealed partial class PrototypeGameEngine
 
         if (eligible.Length == 0)
         {
-            throw new NotSupportedException(
-                $"Infested Automaton '{choice}' has no implemented eligible character cards.");
+            return PreserveNativeEventCompletionPage(state, choice);
         }
 
         var selected = eligible[
             PrototypeRng.NextInt(state.Rng, "event", eligible.Length)];
+        var nextCardId = world.NextCardInstanceId;
         var player = AppendCard(
-            state.Player, world.NextCardInstanceId, selected, state.Rng);
-        return CompleteRoomToMap(state with
+            state.Player, nextCardId++, selected, state.Rng,
+            allocateCardId: () => nextCardId++);
+        return PreserveNativeEventCompletionPage(state with
         {
             Player = player,
             World = world with
             {
-                NextCardInstanceId = world.NextCardInstanceId + 1
+                NextCardInstanceId = nextCardId
             }
-        });
+        }, choice);
     }
 }

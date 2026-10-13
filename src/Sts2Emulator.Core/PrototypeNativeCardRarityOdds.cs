@@ -78,6 +78,14 @@ public static class PrototypeNativeCardRarityOdds
     }
 
     /// <summary>
+    /// Pinned CardRarityOdds.RollWithBaseOdds: use the room's base rates
+    /// without its current pity offset or changing future odds.
+    /// </summary>
+    public static PrototypeCardRarity RollWithBaseOdds(int ascension,
+        PrototypeNativeCardOddsSource source, RngBundle rng) =>
+        Roll(0, ascension, source, rng).Rarity;
+
+    /// <summary>
     /// CardFactory.GetNextAllowedRarity cycles Common, Uncommon, Rare,
     /// wrapping after Rare. The odds advance according to the original
     /// rolled rarity, before this fallback.
@@ -139,7 +147,7 @@ public static class PrototypeNativeCardRarityOdds
         GenerateEncounterCards(
             int count, int ascension, PrototypeRoomType room,
             int currentOffsetBasisPoints, RngBundle rng,
-            int act = 1)
+            int act = 1, bool includeColorlessCardRewards = false)
     {
         if (count < 0)
         {
@@ -155,7 +163,11 @@ public static class PrototypeNativeCardRarityOdds
                 PrototypeNativeCardOddsSource.BossEncounter,
             _ => throw new ArgumentOutOfRangeException(nameof(room))
         };
-        var pool = PrototypeContent.RewardCardPool.ToList();
+        var pool = PrototypeContent.NativeSilentRewardCardPool.ToList();
+        if (includeColorlessCardRewards)
+        {
+            pool.AddRange(PrototypeColorlessCards.ImplementedRewardPool);
+        }
         var cards = new List<string>(count);
         var upgrades = new List<bool>(count);
         var offset = currentOffsetBasisPoints;
@@ -181,7 +193,8 @@ public static class PrototypeNativeCardRarityOdds
 
     public static string[] GenerateMerchantCards(
         int count, int ascension, PrototypeCardType type,
-        int currentOffsetBasisPoints, RngBundle rng)
+        int currentOffsetBasisPoints, RngBundle rng,
+        IReadOnlyCollection<string>? excluded = null)
     {
         if (count < 0)
         {
@@ -189,9 +202,13 @@ public static class PrototypeNativeCardRarityOdds
         }
         // Merchant cards are individually generated from the same
         // eligible character pool; duplicate models are legal.
-        var pool = PrototypeContent.RewardCardPool
-            .Where(id => PrototypeContent.Card(id).Type == type)
+        var pool = PrototypeContent.NativeSilentRewardCardPool
+            .Where(id => PrototypeContent.Card(id).Type == type
+                && (excluded is null || !excluded.Contains(id)))
             .ToArray();
+        if (pool.Length == 0 && count > 0)
+            throw new InvalidOperationException(
+                $"No available Silent {type} merchant cards remain.");
         var cards = new string[count];
         for (var i = 0; i < count; i++)
         {

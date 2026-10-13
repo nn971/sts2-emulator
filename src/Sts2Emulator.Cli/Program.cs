@@ -9,7 +9,7 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  replay <trace.jsonl>    Replay normalized canonical decisions and stop at first divergence");
     Console.WriteLine("  v111-coverage [--missing] [--check]  Report pinned solo content and evidence gaps");
     Console.WriteLine("  v111-run [seed] [region] [ascension]  Start the explicit v111 mechanics profile");
-    Console.WriteLine("  v111-natural-sweep [runs-per-region] [ascension] [seed-offset] [checkpoint-dir]");
+    Console.WriteLine("  v111-natural-sweep [runs-per-region] [ascension] [seed-offset] [checkpoint-dir] [policy]");
     Console.WriteLine("                          Unassisted legal-action Silent runs in both Act 1 regions; blockers are errors");
     Console.WriteLine("  v111-natural-resume <exact-snapshot.json>");
     Console.WriteLine("                          Resume the same deterministic legal policy from an unmodified saved state");
@@ -17,6 +17,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
     Console.WriteLine("  native-engine-fidelity <native-expectation.json> [Overgrowth|Underdocks] [ascension]");
     Console.WriteLine("                          Actual engine checkpoint diagnostic; strict native ID mappings");
+    Console.WriteLine("  native-engine-fidelity-batch <fixtures-directory> [Overgrowth|Underdocks] [ascension]");
+    Console.WriteLine("                          Compare every native expectation through the real engine; label all blockers");
     Console.WriteLine("  prototype-native-overgrowth-map [seed] [ascension]");
     Console.WriteLine("                          Print source-shaped 15-row Act 1 map (not native RNG-exact)");
     Console.WriteLine("  prototype-native-overgrowth-sweep [n] [ascension]");
@@ -90,9 +92,9 @@ switch (args[0])
     }
     case "v111-natural-sweep":
     {
-        if (args.Length > 5)
+        if (args.Length > 6)
             throw new ArgumentException(
-                "v111-natural-sweep accepts count, ascension, offset and checkpoint dir.");
+                "v111-natural-sweep accepts count, ascension, offset, checkpoint dir and policy.");
         var count = args.Length >= 2
             ? int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture)
             : 8;
@@ -103,8 +105,11 @@ switch (args[0])
             ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture)
             : 0;
         var checkpointDirectory = args.Length >= 5 ? args[4] : null;
+        var policy = args.Length >= 6
+            ? args[5]
+            : V111NaturalRunSweep.BaselinePolicy;
         var report = V111NaturalRunSweep.Run(
-            count, ascension, offset, checkpointDirectory);
+            count, ascension, offset, checkpointDirectory, policy);
         V111NaturalRunSweep.Write(report);
         if (report.Blocked > 0)
             Environment.ExitCode = 1;
@@ -113,13 +118,41 @@ switch (args[0])
 
     case "v111-natural-resume":
     {
-        if (args.Length != 2)
+        if (args.Length is < 2 or > 3)
             throw new ArgumentException(
-                "v111-natural-resume requires one exact snapshot filename.");
-        var result = V111NaturalRunSweep.Resume(args[1]);
+                "v111-natural-resume requires a snapshot filename and optional policy.");
+        var policy = args.Length == 3
+            ? args[2]
+            : V111NaturalRunSweep.BaselinePolicy;
+        var result = V111NaturalRunSweep.Resume(args[1], policy);
         V111NaturalRunSweep.Write(result);
         if (result.Blocker is not null)
             Environment.ExitCode = 1;
+        break;
+    }
+
+    case "native-engine-fidelity-batch":
+    {
+        if (args.Length is < 2 or > 4)
+            throw new ArgumentException(
+                "Usage: native-engine-fidelity-batch <fixtures-directory> [Overgrowth|Underdocks] [ascension]");
+        var region = args.Length >= 3
+            ? Enum.Parse<ActIdentity>(args[2], ignoreCase: true)
+            : ActIdentity.Overgrowth;
+        int ascension = args.Length >= 4
+            ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 0;
+        var report = NativeEngineFidelityBatchV111.CompareDirectory(
+            args[1], region, ascension);
+        Console.WriteLine(JsonSerializer.Serialize(report,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                WriteIndented = true
+            }));
+        if (report.Mismatched > 0)
+            Environment.ExitCode = 1;
+        else if (report.UnsupportedOrInvalid > 0 || report.TotalFixtures == 0)
+            Environment.ExitCode = 2;
         break;
     }
 

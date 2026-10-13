@@ -30,15 +30,24 @@ public static class ExperimentalSilentThreeActRouteV111
     ];
     public static readonly string[] HiveElites =
     [
+        PrototypeNativeHiveElites.DecimillipedeEncounterId,
         PrototypeNativeHiveElites.EntomancerEncounterId,
         PrototypeNativeHiveElites.PrismEncounterId,
-        PrototypeNativeHiveElites.DecimillipedeEncounterId
     ];
     public static readonly string[] HiveBosses =
     [
         PrototypeNativeHiveBosses.KaiserEncounterId,
         PrototypeNativeHiveBosses.KnowledgeEncounterId,
         PrototypeNativeHiveBosses.InsatiableEncounterId
+    ];
+    // ActModel.BossDiscoveryOrder is independent of GenerateAllEncounters()
+    // pool order. The source replaces the randomly preselected boss with the
+    // first entry in this sequence the profile has not discovered yet.
+    public static readonly string[] HiveBossDiscoveryOrder =
+    [
+        PrototypeNativeHiveBosses.InsatiableEncounterId,
+        PrototypeNativeHiveBosses.KnowledgeEncounterId,
+        PrototypeNativeHiveBosses.KaiserEncounterId
     ];
     public static readonly string[] GloryWeak =
     [
@@ -66,6 +75,12 @@ public static class ExperimentalSilentThreeActRouteV111
     ];
     public static readonly string[] GloryBosses =
     [
+        PrototypeNativeGloryBosses.AeonglassEncounterId,
+        PrototypeNativeGloryBosses.QueenEncounterId,
+        PrototypeNativeGloryBosses.TestSubjectEncounterId
+    ];
+    public static readonly string[] GloryBossDiscoveryOrder =
+    [
         PrototypeNativeGloryBosses.QueenEncounterId,
         PrototypeNativeGloryBosses.TestSubjectEncounterId,
         PrototypeNativeGloryBosses.AeonglassEncounterId
@@ -75,6 +90,9 @@ public static class ExperimentalSilentThreeActRouteV111
     // misrepresented as an executable event despite its native ID.
     public static readonly string[] HiveEvents =
     [
+        PrototypeNativeBrainLeech.EventId,
+        PrototypeNativeSelfHelpBook.EventId,
+        PrototypeNativePotionCourier.EventId,
         PrototypeNativeHiveEvents.AmalgamatorId,
         PrototypeNativeLaterActs.HiveBugslayerId,
         PrototypeNativeHiveEvents.ColossalFlowerId,
@@ -83,17 +101,38 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeHiveEvents.LostWispId,
         PrototypeNativeHiveEvents.SpiritGrafterId,
         PrototypeNativeHiveEvents.LanternKeyEventId,
-        PrototypeNativeHiveEvents.ZenWeaverId
+        PrototypeNativeHiveEvents.ZenWeaverId,
+        PrototypeNativeDollRoom.EventId,
+        PrototypeNativeCrystalSphere.EventId,
+        PrototypeNativeStoneOfAllTime.EventId,
+        PrototypeNativeFakeMerchant.EventId,
+        PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeSharedEvents.SymbioteId,
+        PrototypeNativeRanwidTheElder.EventId,
+        PrototypeNativeSlipperyBridge.EventId,
+        PrototypeNativeFutureOfPotions.EventId,
+        PrototypeNativeRelicTrader.EventId
     ];
     public static readonly string[] GloryEvents =
     [
+        PrototypeNativeSelfHelpBook.EventId,
+        PrototypeNativePotionCourier.EventId,
         PrototypeNativeGloryEvents.HungryForMushroomsId,
+        PrototypeNativeCrystalSphere.EventId,
         PrototypeNativeGloryEvents.ReflectionsId,
         PrototypeNativeGloryEvents.RoundTeaPartyId,
+        PrototypeNativeGloryEvents.TeaMasterId,
         PrototypeNativeGloryEvents.GraveOfTheForgottenId,
         PrototypeNativeGloryEvents.TrialId,
         PrototypeNativeGloryEvents.TinkerTimeId,
-        PrototypeNativeGloryEvents.BattlewornDummyId
+        PrototypeNativeGloryEvents.BattlewornDummyId,
+        PrototypeNativeFakeMerchant.EventId,
+        PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeSharedEvents.SymbioteId,
+        PrototypeNativeRanwidTheElder.EventId,
+        PrototypeNativeSlipperyBridge.EventId,
+        PrototypeNativeFutureOfPotions.EventId,
+        PrototypeNativeRelicTrader.EventId
     ];
 
     public static string[] Pool(int act, PrototypeRoomType room, bool weak)
@@ -192,7 +231,9 @@ public static class ExperimentalSilentThreeActRouteV111
     }
 
     public static PrototypeLaterActEncounterBagV111 InitialBag(
-        int act, RngBundle rng)
+        int act, RngBundle rng, int ascension = 0,
+        SimulationProfile? profile = null, bool assignAncient = false,
+        bool assignDarv = false)
     {
         var rooms = OrdinaryRoomCount(act);
         var history = new List<string>(rooms);
@@ -207,9 +248,83 @@ public static class ExperimentalSilentThreeActRouteV111
             Pool(act, PrototypeRoomType.Elite, false), 15, rng,
             new List<string>(15));
         var bosses = Pool(act, PrototypeRoomType.Boss, false);
+        var boss = bosses[PrototypeRng.NextInt(rng, "combat", bosses.Length)];
+        var discoveryOrder = act switch
+        {
+            2 => HiveBossDiscoveryOrder,
+            3 => GloryBossDiscoveryOrder,
+            _ => []
+        };
+        var seenBosses = profile?.SeenBossEncounters ?? [];
+        var firstUndiscoveredBoss = discoveryOrder.FirstOrDefault(id =>
+            !seenBosses.Contains(id, StringComparer.Ordinal));
+        if (firstUndiscoveredBoss is not null)
+            boss = firstUndiscoveredBoss;
+        string? secondBoss = null;
+        if (act == 3 && ascension >= 10)
+        {
+            var alternatives = bosses.Where(id => id != boss).ToArray();
+            secondBoss = alternatives[PrototypeRng.NextInt(
+                rng, "combat", alternatives.Length)];
+        }
         return new PrototypeLaterActEncounterBagV111(
             act, 0, weak, normal, elite,
-            bosses[PrototypeRng.NextInt(rng, "combat", bosses.Length)]);
+            boss, secondBoss,
+            AssignedAncientId: assignAncient
+                ? SelectAncient(act, rng, assignDarv) : null);
+    }
+
+    /// <summary>
+    /// Executable act-local Ancient assignment. Shared Darv partitioning and
+    /// native UpFront draw order remain separate implementation work.
+    /// Cross-character Orobas offers are deferred in its event profile.
+    /// </summary>
+    public static string[] AncientPool(int act, bool includeDarv = false) =>
+        ConcatAncientPool(act, includeDarv);
+
+    private static string[] ConcatAncientPool(int act, bool includeDarv)
+    {
+        string[] pool = act switch
+        {
+            2 => [NativeOrobasEventV111.EventId, NativePaelRewardsV111.PaelId,
+                NativeAncientRewardsV111.TezcataraId],
+            3 => [NativeNonupeipeEventV111.EventId, NativeTanxEventV111.EventId,
+                NativeVakuuEventV111.EventId],
+            _ => throw new ArgumentOutOfRangeException(nameof(act))
+        };
+        return includeDarv
+            ? pool.Append(NativeDarvEventV111.EventId).ToArray()
+            : pool;
+    }
+
+    public static string[] PrepareAncientAssignments(
+        RngBundle rng, int ascension, SimulationProfile profile)
+    {
+        var hasDarv = profile.RevealedEpochs.Contains(
+            NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+        if (!hasDarv)
+            return [SelectAncient(2, rng), SelectAncient(3, rng)];
+
+        // Darv is shared between later acts. Each act takes a random count
+        // from the remaining shared pool, so the relic may be assigned to
+        // Hive, Glory or neither. This uses the existing prototype stream;
+        // the native UpFront schedule is a later RNG pass.
+        var hiveReceivesDarv = PrototypeRng.NextInt(rng, "event", 2) == 1;
+        // RunManager draws a count for Glory even if Hive removed the only
+        // shared Ancient; that call is a bound-one draw in that case.
+        var gloryReceivesDarv = PrototypeRng.NextInt(
+            rng, "event", hiveReceivesDarv ? 1 : 2) == 1;
+        var sharedAncientAct = hiveReceivesDarv ? 2
+            : gloryReceivesDarv ? 3 : -1;
+        return [SelectAncient(2, rng, sharedAncientAct == 2),
+            SelectAncient(3, rng, sharedAncientAct == 3)];
+    }
+
+    private static string SelectAncient(int act, RngBundle rng,
+        bool includeDarv = false)
+    {
+        var pool = AncientPool(act, includeDarv);
+        return pool[PrototypeRng.NextInt(rng, "event", pool.Length)];
     }
 
     public static RunState ContinueAct(RunState state)
@@ -224,20 +339,63 @@ public static class ExperimentalSilentThreeActRouteV111
                 "Three-act continuation requires a completed configured Silent boss reward.");
 
         var nextAct = world.Act + 1;
-        var map = PrototypeNativeLaterActMap.GenerateNative(
+        var prepared = world.PreparedLaterActEncounterBags
+            ?? throw new InvalidOperationException(
+                "Three-act continuation requires run-start encounter histories; regenerate old experimental snapshots.");
+        var nextBag = prepared.SingleOrDefault(bag => bag.Act == nextAct)
+            ?? throw new InvalidOperationException(
+                "The next act has no prepared encounter history.");
+        var generatedMap = PrototypeNativeLaterActMap.GenerateNative(
             state.RunSeed, nextAct, state.Ascension);
+        var spoilsMap = PrototypeGameEngine
+            .AssignSpoilsMapQuestToGeneratedMap(
+                state.Player, generatedMap, nextAct);
         var nextWorld = world with
         {
             Act = nextAct,
             ActIdentity = state.Configuration.Acts[nextAct - 1],
             Floor = 0,
             ActiveRoom = null, Combat = null, Reward = null,
-            Shop = null, Event = null, Map = map,
+            Shop = null, Event = null, Map = spoilsMap.Map,
             ActOneRegion = null, ActOneEncounterPool = null,
-            LaterActEncounterBag = InitialBag(nextAct, state.Rng),
+            LaterActEncounterBag = nextBag.Fork(),
+            PreparedLaterActEncounterBags = prepared
+                .Where(bag => bag.Act != nextAct).Select(bag => bag.Fork()).ToArray(),
             UnknownRoomOdds = null
         };
-        return state with { World = nextWorld, Phase = RunPhase.MapChoice };
+        var continued = state with
+        {
+            Player = spoilsMap.Player,
+            World = nextWorld,
+            Phase = RunPhase.MapChoice
+        };
+
+        // An assigned Ancient executes at the act boundary before map choice.
+        // Run-start assignment and its RNG policy remain separate.
+        if (nextBag.AssignedAncientId is { } ancientId)
+        {
+            return (nextAct, ancientId) switch
+            {
+                (2, NativePaelRewardsV111.PaelId) =>
+                    NativePaelRewardsV111.BeginPaelOpening(continued),
+                (2, NativeAncientRewardsV111.TezcataraId) =>
+                    NativeAncientRewardsV111.BeginTezcataraOpening(continued),
+                (2, NativeOrobasEventV111.EventId) =>
+                    NativeOrobasEventV111.BeginOpening(continued),
+                (2 or 3, NativeDarvEventV111.EventId) =>
+                    NativeDarvEventV111.BeginOpening(continued),
+                (3, NativeTanxEventV111.EventId) =>
+                    NativeTanxEventV111.BeginOpening(continued),
+                (3, NativeVakuuEventV111.EventId) =>
+                    NativeVakuuEventV111.BeginOpening(continued),
+                (3, NativeNonupeipeEventV111.EventId) =>
+                    NativeNonupeipeEventV111.BeginOpening(continued),
+                _ => throw new NotSupportedException(
+                    $"Assigned Act {nextAct} Ancient '{ancientId}' is not implemented.")
+            };
+        }
+
+        return continued;
     }
 
     /// <summary>
@@ -257,7 +415,15 @@ public static class ExperimentalSilentThreeActRouteV111
             throw new InvalidOperationException(
                 "Later-act encounter bag belongs to a different act.");
         if (room == PrototypeRoomType.Boss)
-            return (PrototypeContent.Encounter(bag.BossEncounterId), bag);
+        {
+            var firstBossFloor = PrototypeNativeLaterActMap.RoomRows(world.Act) + 1;
+            var encounterId = world.Act == 3
+                && bag.SecondBossEncounterId is not null
+                && world.Floor == firstBossFloor + 1
+                ? bag.SecondBossEncounterId
+                : bag.BossEncounterId;
+            return (PrototypeContent.Encounter(encounterId), bag);
+        }
         if (room is not (PrototypeRoomType.Combat or PrototypeRoomType.Elite))
             throw new ArgumentOutOfRangeException(nameof(room));
 
@@ -303,7 +469,9 @@ public sealed record PrototypeLaterActEncounterBagV111(
     string[] RemainingWeak,
     string[] RemainingNormal,
     string[] RemainingElite,
-    string BossEncounterId)
+    string BossEncounterId,
+    string? SecondBossEncounterId = null,
+    string? AssignedAncientId = null)
 {
     public PrototypeLaterActEncounterBagV111 Fork() => this with
     {

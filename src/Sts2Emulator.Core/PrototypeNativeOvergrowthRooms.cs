@@ -14,12 +14,15 @@ public sealed partial class PrototypeGameEngine
         UsesNativeActOneSystems(world)
         || (world.RulesetId == V111Build.RulesetId
             && world.Act is 2 or 3
-            && world.Map.GenerationProfileId
-                == PrototypeNativeLaterActMap.ProfileId(world.Act));
+            && (world.Map.GenerationProfileId
+                == PrototypeNativeLaterActMap.ProfileId(world.Act)
+                || world.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId));
 
     private static PrototypeRoomType ResolveUnknownMapRoom(
         ref RunWorldState world,
-        RngBundle rng)
+        RngBundle rng,
+        PlayerState player,
+        bool eventOnly = false)
     {
         if (!UsesNativeRegionalSystems(world))
         {
@@ -29,19 +32,29 @@ public sealed partial class PrototypeGameEngine
 
         var odds = world.UnknownRoomOdds
             ?? new PrototypeUnknownRoomOddsState();
+        var monsterRoomAvailable = !player.ActiveRelics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .ExcludesMonsterRoomsFromUnknownMap);
         var roll = PrototypeRng.NextInt(
             rng, "event", PrototypeUnknownRoomOddsState.Scale);
 
+        // UnknownMapPointOdds.Roll consumes NextFloat even when a map
+        // modifier permits only Event. Disallowed non-event odds do not grow.
+        if (eventOnly)
+            return PrototypeRoomType.Event;
+
         PrototypeRoomType selected;
-        if (roll < odds.MonsterWeight)
+        var monsterWeight = monsterRoomAvailable
+            ? odds.MonsterWeight : 0;
+        if (roll < monsterWeight)
         {
             selected = PrototypeRoomType.Combat;
         }
-        else if (roll < odds.MonsterWeight + odds.TreasureWeight)
+        else if (roll < monsterWeight + odds.TreasureWeight)
         {
             selected = PrototypeRoomType.Treasure;
         }
-        else if (roll < odds.MonsterWeight + odds.TreasureWeight
+        else if (roll < monsterWeight + odds.TreasureWeight
                  + odds.ShopWeight)
         {
             selected = PrototypeRoomType.Shop;
@@ -51,7 +64,10 @@ public sealed partial class PrototypeGameEngine
             selected = PrototypeRoomType.Event;
         }
 
-        world = world with { UnknownRoomOdds = odds.After(selected) };
+        world = world with
+        {
+            UnknownRoomOdds = odds.After(selected, monsterRoomAvailable)
+        };
         return selected;
     }
 

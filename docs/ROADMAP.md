@@ -89,7 +89,7 @@ central dispatch branches.
 - [x] source-backed seventh batch: Volley, Splash, Anointed and Gold Axe; X-cost random attacks, upgraded attack discovery, rare-card draw-pile extraction and combat-wide finished-play counts
 - [x] source-backed eighth batch: Fisticuffs, Bolas, Thrumming Hatchet, Hidden Gem, Rend, Jackpot, Fasten and Prep Time; reusable damage-to-Block, per-instance last-turn recovery, replay, debuff scaling, zero-cost generation and power lifecycle effects
 - [x] source-backed ninth batch: Alchemize, Automation, Beat Down, Calamity, Catastrophe, Eternal Armor, Nostalgia, Omnislice, Rolling Boulder and The Gambit; potion creation, triggered generation, sequential autoplay, turn-end Plating, resolved-card destinations, unpowered splash and lethal guarded downside
-- [x] pinned five colorless epoch-gated unlock inventories, with conservative combat generation filtering pending unlock-state modeling
+- [x] pinned five colorless epoch-gated unlock inventories and include all supported combat-generatable entries in configured fully unlocked runs
 - [x] implement the remaining solo cards Entropy and Stratagem with explicit interactive turn-start transform and shuffle-time draw-pile choices
 - [x] register all 12 native multiplayer-only colorless cards as typed unsupported models (excluded from merchant/reward/combat generation pools)
 - [ ] native oracle differential testing for transformed card candidate distributions, shuffle-specific RNG streams and all earlier colorless card edge cases

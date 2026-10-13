@@ -1,8 +1,13 @@
 # Act 1 combat completeness
 
-This document inventories both native Act 1 regions, but the active completion target is now
-**Overgrowth**. Underdocks remains tracked below so that its work can resume later without losing
-the dependency map.
+**Status update (2026-10-13):** this file's encounter and monster tables are a
+historical Overgrowth-first snapshot. Underdocks is now implemented in the
+executable regional registry: all 20 ordinary encounter IDs are registered,
+its 10 regional events have supported event models, and the route, refill,
+formation and branch checks are tracked in the
+[regional integrity plan](REGIONAL_INTEGRITY_PLAN.md) and
+[implementation status](V111_IMPLEMENTATION_STATUS.md). The tables below do
+not reflect that later work and must not be used as current coverage evidence.
 
 ## Reference boundary
 
@@ -10,7 +15,8 @@ the dependency map.
 - Structured inventory source: `ptrlrd/spire-codex@b59c6f96043051afee8683237d04f943309ced35`.
 - Pinned blobs: `encounters.json` d948d8b6bcbb6b664fe0bd65526310dd4960f1b0; `monsters.json` 5fe2f086b44266fc41e56169f26d13c577ca966d.
 - Inventory scope: both first-act regions, **Overgrowth** and **Underdocks**.
-- Active implementation scope: **Overgrowth only**; Underdocks is deferred.
+- Current regional scope: **Overgrowth and Underdocks**; use the linked status
+  documents above for current implementation and integration evidence.
 - Event-only combats are excluded from this milestone unless they reuse a required Act 1 monster mechanic.
 
 The structured corpus contains **42 Act 1 combat encounters** and **51 distinct monster models**: 22 Overgrowth encounters and 20 Underdocks encounters.

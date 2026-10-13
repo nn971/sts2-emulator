@@ -5,8 +5,9 @@ namespace Sts2Emulator.Core;
 ///
 /// Native LanternKey.ModifyUnknownMapPointRoomTypes converts a Glory '?'
 /// to Event, and ModifyNextEvent selects WarHistorianRepy even though
-/// its own IsAllowed is false. This quest override works on a forced
-/// Glory map fixture without enabling general later-act generation.
+/// its own IsAllowed is false. The override is integrated with the opt-in
+/// Glory map path; general event selection and native RNG parity remain
+/// separate fidelity gates.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
@@ -127,10 +128,8 @@ public sealed partial class PrototypeGameEngine
         else
         {
             // The source offers two PotionReward and two RelicReward
-            // objects together. Our bounded two-step UI presents one
-            // potion/relic pair at a time, with independent take/skip;
-            // pre-rolling all four offers keeps outcomes choice- and
-            // snapshot-invariant. Exact native bags/RNG remain a gap.
+            // objects together. Persist all four choices before showing
+            // their single shared reward screen.
             var potions = PrototypeContent.PotionPool;
             var available = PrototypeContent.RelicPool
                 .Where(id => !player.Relics.Any(relic =>
@@ -172,21 +171,23 @@ public sealed partial class PrototypeGameEngine
 
         if (evt.RepyChestPotionIds is { Length: 2 } potions
             && evt.RepyChestRelicIds is { Length: 2 } relics
-            && evt.RepyChestGroupsResolved < 2)
+            && evt.RepyChestGroupsResolved == 0)
         {
-            var index = evt.RepyChestGroupsResolved;
             var reward = new RewardState(
                 SourceRoom: "Event:" + evt.EventId,
                 CardOptions: [],
-                PotionOption: potions[index],
-                RelicOption: relics[index],
+                PotionOption: potions[0],
+                RelicOption: relics[0],
                 CardResolved: true,
                 PotionResolved: false,
                 RelicResolved: false,
                 EndsAct: false,
                 IndependentSelection: true,
                 ExtraCardGroupsResolved: [],
-                ExtraRelicGroupsResolved: []);
+                ExtraRelicRewardIds: [relics[1]],
+                ExtraRelicGroupsResolved: [false],
+                ExtraPotionOptions: [potions[1]],
+                ExtraPotionGroupsResolved: [false]);
             return state with
             {
                 Phase = RunPhase.Reward,
@@ -194,7 +195,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     Event = evt with
                     {
-                        RepyChestGroupsResolved = index + 1
+                        RepyChestGroupsResolved = 1
                     },
                     Reward = reward
                 }

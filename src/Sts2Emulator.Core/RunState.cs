@@ -12,12 +12,27 @@ public enum PrototypeCardEnchantmentKind
     Nimble,
     Steady,
     PerfectFit,
-    SoulsPower
+    SoulsPower,
+    TezcatarasEmber,
+    Goopy,
+    Clone,
+    Imbued,
+    Instinct,
+    Swift,
+    Sharp,
+    Vigorous,
+    Corrupted,
+    RoyallyApproved,
+    Adroit,
+    Momentum
 }
 
 public sealed record PrototypeCardEnchantment(
     PrototypeCardEnchantmentKind Kind,
-    int Amount = 1);
+    int Amount = 1,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool Disabled = false);
 
 public sealed record CardInstance(
     long InstanceId,
@@ -28,7 +43,11 @@ public sealed record CardInstance(
 
 public sealed record RelicInstance(
     string RelicId,
-    JsonElement PersistentState);
+    JsonElement PersistentState,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool IsWax = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool IsMelted = false);
 
 public sealed record PotionInstance(
     string PotionId,
@@ -44,6 +63,9 @@ public sealed record PlayerState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     CharacterResourceState? Resources = null)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IEnumerable<RelicInstance> ActiveRelics => Relics.Where(relic => !relic.IsMelted);
+
     public PlayerState Fork() => this with
     {
         Deck = (CardInstance[])Deck.Clone(),

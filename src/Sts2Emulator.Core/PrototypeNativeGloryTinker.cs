@@ -98,20 +98,22 @@ public sealed partial class PrototypeGameEngine
             tinkerType = evt.NativeTinkerType,
             tinkerRider = choice
         });
-        var added = new CardInstance(world.NextCardInstanceId,
+        var nextCardInstanceId = world.NextCardInstanceId;
+        var added = new CardInstance(nextCardInstanceId++,
             PrototypeNativeGloryEvents.MadScienceId, 0, payload);
         var player = state.Player with
         {
             Deck = state.Player.Deck.Append(added).ToArray()
         };
         player = ApplyRelicRunEvent(player,
-            PrototypeRunEventKind.CardAdded, addedCard: added, rng: state.Rng);
+            PrototypeRunEventKind.CardAdded, addedCard: added, rng: state.Rng,
+            world: world, allocateCardId: () => nextCardInstanceId++);
         return CompleteRoomToMap(state with
         {
             Player = player,
             World = world with
             {
-                NextCardInstanceId = world.NextCardInstanceId + 1
+                NextCardInstanceId = nextCardInstanceId
             }
         });
     }

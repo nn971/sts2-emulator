@@ -57,19 +57,22 @@ public sealed partial class PrototypeGameEngine
         int[] damages = [5, 6, 7];
         if (choice == "extract")
         {
-            return CompleteRoomToMap(state with
+            state = state with
             {
-                Player = state.Player with
-                {
-                    Gold = state.Player.Gold + prizes[stage]
-                }
-            });
+                Player = ApplyGoldGain(
+                    state.Player,
+                    prizes[stage],
+                    state.Rng,
+                    world,
+                    nativeRunRng: state.NativeRunRng)
+            };
+            return FinishColossalFlower(state, eventState, choice);
         }
 
-        var hp = Math.Max(0, state.Player.Hp - damages[stage]);
-        var player = state.Player with { Hp = hp };
+        var player = ApplyPlayerHpLossAndDeathPrevention(
+            state.Player, damages[stage]);
         state = state with { Player = player };
-        if (hp == 0)
+        if (player.Hp == 0)
         {
             // Native CreatureCmd.Damage is unpowered and unblockable.
             return EndRun(state, "defeat");
@@ -101,8 +104,25 @@ public sealed partial class PrototypeGameEngine
             player, PrototypeRunEventKind.RelicAcquired,
             acquiredRelicId: PrototypeNativeHiveEvents.PollinousCoreId,
             rng: state.Rng);
-        return CompleteRoomToMap(state with { Player = player });
+        return FinishColossalFlower(state with { Player = player },
+            eventState, choice);
     }
+
+    private static RunState FinishColossalFlower(
+        RunState state, EventState eventState, string choice) =>
+        state with
+        {
+            World = RequireWorld(state) with
+            {
+                Event = eventState with
+                {
+                    NativePageIndex =
+                        PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                            eventState.EventId),
+                    ChosenChoiceId = choice
+                }
+            }
+        };
 
     /// <summary>
     /// PollinousCore.BeforeHandDraw increments its saved TurnsSeen
@@ -111,7 +131,7 @@ public sealed partial class PrototypeGameEngine
     /// The saved property intentionally lives in the persistent relic
     /// instance rather than a combat-only trigger count.
     /// </summary>
-    private static (PlayerState Player, int Bonus)
+    internal static (PlayerState Player, int Bonus)
         ApplyPollinousCoreHandDraw(PlayerState player)
     {
         var relics = player.Relics;
@@ -120,7 +140,8 @@ public sealed partial class PrototypeGameEngine
         for (var i = 0; i < relics.Length; i++)
         {
             var relic = relics[i];
-            if (relic.RelicId != PrototypeNativeHiveEvents.PollinousCoreId)
+            if (relic.RelicId != PrototypeNativeHiveEvents.PollinousCoreId
+                || relic.IsMelted)
             {
                 continue;
             }

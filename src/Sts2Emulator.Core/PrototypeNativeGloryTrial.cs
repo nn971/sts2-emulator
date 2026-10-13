@@ -101,7 +101,8 @@ public sealed partial class PrototypeGameEngine
             case "merchant_guilty":
             {
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.RegretId, state.Rng);
+                    PrototypeNativeGloryEvents.RegretId, state.Rng,
+                    allocateCardId: () => nextId++);
                 // Native obtains two front-of-bag relics directly;
                 // each can enqueue an acquisition-driven deck choice.
                 for (var i = 0; i < 2; i++)
@@ -129,7 +130,8 @@ public sealed partial class PrototypeGameEngine
 
             case "merchant_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.ShameId, state.Rng);
+                    PrototypeNativeGloryEvents.ShameId, state.Rng,
+                    allocateCardId: () => nextId++);
                 choices.Add(new PrototypePendingEventDeckChoiceState(
                     choice, PrototypePersistentDeckChoiceKind.Upgrade, 2,
                     Array.Empty<long>()));
@@ -144,20 +146,30 @@ public sealed partial class PrototypeGameEngine
 
             case "noble_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.RegretId, state.Rng);
-                player = player with { Gold = checked(player.Gold + 300) };
+                    PrototypeNativeGloryEvents.RegretId, state.Rng,
+                    allocateCardId: () => nextId++);
+                player = ApplyGoldGain(player, 300, state.Rng, world,
+                    allocateCardId: () => nextId++,
+                    nativeRunRng: state.NativeRunRng);
                 break;
 
             case "nondescript_guilty":
             {
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.DoubtId, state.Rng);
+                    PrototypeNativeGloryEvents.DoubtId, state.Rng,
+                    allocateCardId: () => nextId++);
                 // Native presents two independently selectable
                 // three-card rewards from the character's pool.
+                var cardPool = AddDingyRugCardsToRewardPool(
+                    player, PrototypeContent.NativeSilentRewardCardPool);
                 var cards1 = PickDistinct(
-                    PrototypeContent.RewardCardPool, 3, state.Rng, "reward");
+                    cardPool, 3, state.Rng, "reward");
                 var cards2 = PickDistinct(
-                    PrototypeContent.RewardCardPool, 3, state.Rng, "reward");
+                    cardPool, 3, state.Rng, "reward");
+                var silverCrucible =
+                    ApplySilverCrucibleToCardRewardGeneration(
+                        player, groupCount: 2);
+                player = silverCrucible.Player;
                 reward = new RewardState(
                     SourceRoom: "Event:" + evt.EventId,
                     CardOptions: [],
@@ -167,13 +179,27 @@ public sealed partial class PrototypeGameEngine
                     PotionResolved: true,
                     RelicResolved: true,
                     EndsAct: false,
-                    ExtraCardOptions: [cards1, cards2]);
+                    ExtraCardOptions: [cards1, cards2],
+                    ExtraCardOptionsUpgraded:
+                        silverCrucible.UpgradeGroups,
+                    CardRewardGenerators:
+                    [null,
+                        new PrototypeCardRewardGenerator(
+                            PrototypeCardRewardGeneratorKind.DistinctRewardPool,
+                            world.Act),
+                        new PrototypeCardRewardGenerator(
+                            PrototypeCardRewardGeneratorKind.DistinctRewardPool,
+                            world.Act)])
+                {
+                    CardRewardLateHooksEnabled = true
+                };
                 break;
             }
 
             case "nondescript_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.DoubtId, state.Rng);
+                    PrototypeNativeGloryEvents.DoubtId, state.Rng,
+                    allocateCardId: () => nextId++);
                 choices.Add(new PrototypePendingEventDeckChoiceState(
                     choice, PrototypePersistentDeckChoiceKind.Transform, 2,
                     Array.Empty<long>()));

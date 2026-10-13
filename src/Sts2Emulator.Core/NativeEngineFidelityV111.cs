@@ -104,6 +104,16 @@ public static class NativeEngineFidelityV111
             guards = guards.Distinct(StringComparer.Ordinal).ToList();
 
             var blockers = new List<string>();
+            // Some native actions contain multiple CardPlayStarted history
+            // entries (e.g. Defend played twice for one energy payment).
+            // Until the native trigger/source and hidden relic/card
+            // continuation are known, one bare engine play_card step is
+            // not a valid causal comparison of this action.
+            if (Get(fixture, "native_events") is
+                { ValueKind: JsonValueKind.Array } observedEvents &&
+                observedEvents.EnumerateArray().Count(e =>
+                    ReadString(e, "kind") == "card_play_started") > 1)
+                blockers.Add("UNVERIFIED_MULTI_CARD_PLAY_TRIGGER_FROM_NATIVE_HISTORY");
             if (Get(originalPlayer, "powers") is not { } playerPowers ||
                 playerPowers.ValueKind != JsonValueKind.Array || playerPowers.GetArrayLength() != 0)
                 blockers.Add("UNSUPPORTED_PLAYER_POWERS");
@@ -398,10 +408,14 @@ public static class NativeEngineFidelityV111
             }
 
             var differences = checks.Where(x => !x.Equal).ToArray();
+            bool uncheckedObservablePowers = guards.Any(value =>
+                value.StartsWith("POWER_SEMANTICS_UNVERIFIED:", StringComparison.Ordinal));
             return new NativeEngineFidelityReportV111(
-                differences.Length == 0
-                    ? "CORE_ENGINE_CHECKPOINT_CONSISTENT"
-                    : "CORE_ENGINE_CHECKPOINT_MISMATCH",
+                differences.Length > 0
+                    ? "CORE_ENGINE_CHECKPOINT_MISMATCH"
+                    : uncheckedObservablePowers
+                        ? "CORE_ENGINE_CHECKPOINT_PARTIAL"
+                        : "CORE_ENGINE_CHECKPOINT_CONSISTENT",
                 "NOT_TESTED", true, build, [], guards.ToArray(),
                 checks.ToArray(), differences.FirstOrDefault()?.Path,
                 EmulatorEventJournal: engineEvents);

@@ -1,7 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Source-pinned v0.111.0 Glory Scrolls of Biting, gated to forced tests.
+/// Source-pinned v0.111.0 Glory Scrolls of Biting encounters selected by the
+/// opt-in three-act route's prepared regional history.
 /// Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class PrototypeNativeGloryScrolls
