@@ -544,6 +544,12 @@ public static class V111Coverage
         var missingVariants = hasSuppressAcquisitionPath
             ? [] : item.Variants ?? [];
         var missingBranches = MissingBranches(item);
+        if (item.Scope == "single-player" && item.Kind == "acts"
+            && HasConfiguredActRoute(item))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "DARV" && missingBranches.Length == 0
             && engineIds.Contains(NativeDarvEventV111.EventId,
@@ -2370,6 +2376,93 @@ public static class V111Coverage
             or NativeTanxEventV111.EventId
             or NativeVakuuEventV111.EventId
             or NativeNonupeipeEventV111.EventId;
+    }
+
+    private static bool HasConfiguredActRoute(V111InventoryItem item)
+    {
+        var act = item.Id switch
+        {
+            "OVERGROWTH" => ActIdentity.Overgrowth,
+            "UNDERDOCKS" => ActIdentity.Underdocks,
+            "HIVE" => ActIdentity.Hive,
+            "GLORY" => ActIdentity.Glory,
+            _ => (ActIdentity?)null
+        };
+        if (act is null)
+            return false;
+
+        var firstAct = act is ActIdentity.Underdocks
+            ? ActIdentity.Underdocks
+            : ActIdentity.Overgrowth;
+        var configuration = RunConfiguration.Create(firstAct: firstAct) with
+        {
+            FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
+        };
+        configuration.Validate();
+        if (!configuration.Acts.Contains(act.Value))
+            return false;
+
+        var (encounterIds, eventIds, ancientsReady) = act.Value switch
+        {
+            ActIdentity.Overgrowth => (
+                PrototypeContent.OvergrowthWeakEncounterPool
+                    .Concat(PrototypeContent.OvergrowthNormalEncounterPool)
+                    .Concat(PrototypeContent.OvergrowthEliteEncounterPool)
+                    .Concat(PrototypeContent.OvergrowthBossEncounterPool)
+                    .ToArray(),
+                PrototypeNativeOvergrowthEvents.RegionEventIds,
+                PrototypeNativeOvergrowthEvents.NeowDefinition.Choices.Length > 0),
+            ActIdentity.Underdocks => (
+                PrototypeNativeUnderdocks.SupportedWeakEncounterIds
+                    .Concat(PrototypeNativeUnderdocks.SupportedNormalEncounterIds)
+                    .Concat(PrototypeNativeUnderdocks.SupportedEliteEncounterIds)
+                    .Concat(PrototypeNativeUnderdocks.SupportedBossEncounterIds)
+                    .ToArray(),
+                PrototypeNativeUnderdocksEvents.SupportedRegionEventIds,
+                PrototypeNativeOvergrowthEvents.NeowDefinition.Choices.Length > 0),
+            ActIdentity.Hive => (
+                ExperimentalSilentThreeActRouteV111.HiveWeak
+                    .Concat(ExperimentalSilentThreeActRouteV111.HiveNormal)
+                    .Concat(ExperimentalSilentThreeActRouteV111.HiveElites)
+                    .Concat(ExperimentalSilentThreeActRouteV111.HiveBosses)
+                    .ToArray(),
+                ExperimentalSilentThreeActRouteV111.HiveEvents,
+                NativeOrobasEventV111.Definition.Choices.Length > 0
+                    && NativePaelRewardsV111.RewardDefinition.Choices.Length > 0
+                    && NativeAncientRewardsV111.TezcataraRewardDefinition
+                        .Choices.Length > 0),
+            ActIdentity.Glory => (
+                ExperimentalSilentThreeActRouteV111.GloryWeak
+                    .Concat(ExperimentalSilentThreeActRouteV111.GloryNormal)
+                    .Concat(ExperimentalSilentThreeActRouteV111.GloryElites)
+                    .Concat(ExperimentalSilentThreeActRouteV111.GloryBosses)
+                    .ToArray(),
+                ExperimentalSilentThreeActRouteV111.GloryEvents,
+                NativeNonupeipeEventV111.Definition.Choices.Length > 0
+                    && NativeTanxEventV111.Definition.Choices.Length > 0
+                    && NativeVakuuEventV111.Definition.Choices.Length > 0),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        if (item.Encounters is not { Length: > 0 } sourceEncounters
+            || encounterIds.Length != sourceEncounters.Length
+            || encounterIds.Any(id => !PrototypeContent.Encounters.Any(
+                encounter => encounter.Id == id))
+            || sourceEncounters.Any(name => !encounterIds.Any(id =>
+                Normalize(id.Split('.').Last()) == Normalize(name)))
+            || !ancientsReady
+            || eventIds.Length == 0
+            || eventIds.Any(id => !PrototypeContent.Events.ContainsKey(id)))
+        {
+            return false;
+        }
+
+        var sourceEvents = item.Events ?? [];
+        return sourceEvents
+            .Where(name => !(act == ActIdentity.Hive
+                && name == "COLORFUL_PHILOSOPHERS"))
+            .All(name => eventIds.Any(id =>
+                Normalize(id.Split('.').Last()) == Normalize(name)));
     }
 
     private static bool HasCompleteAncientRelicBranches(

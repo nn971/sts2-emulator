@@ -13,8 +13,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Acts/Glory.cs#3dc2065dde34d262e34eec18482541f6de38f31b23db46e69cb0deee01680a2c"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "acts",
         "missing_branches": [],
         "missing_variants": [],
@@ -31,8 +31,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Acts/Hive.cs#4fe0cbf5a392b5397e77a903ae4d641c132c5c983349e00b7d47c8bdd2c81b65"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "acts",
         "missing_branches": [],
         "missing_variants": [],
@@ -49,8 +49,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Acts/Overgrowth.cs#9becfaa069afe2d97d66aa39a4a045e5eb4d0fc8b0d289de1354e0d6eba3abe8"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "acts",
         "missing_branches": [],
         "missing_variants": [],
@@ -67,8 +67,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Acts/Underdocks.cs#50e64a9a3bc8f7a2c72a406fe834bdc5c1f751503d9c476271eac32ba07e6460"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "acts",
         "missing_branches": [],
         "missing_variants": [],
@@ -29313,8 +29313,8 @@
         "catalogued": 4,
         "eligible": 4,
         "excluded": 0,
-        "implemented": 0,
-        "integrated": 0,
+        "implemented": 4,
+        "integrated": 4,
         "kind": "acts",
         "scope_review_required": 0,
         "validated": 0
