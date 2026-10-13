@@ -69,6 +69,8 @@ internal static class NativeV111ShuffleHooks
     private const int MaxBufferedInitial = 16;
     private static long _nextOperationId;
     private static bool _observationFailed;
+    private static bool _installed;
+    internal static bool IsInstalled => _installed;
     internal static bool HasActiveSourceScope => _scopes is { Count: > 0 };
 
     internal static bool TryInstall(Harmony harmony)
@@ -106,6 +108,7 @@ internal static class NativeV111ShuffleHooks
             harmony.Patch(modifier,
                 prefix: new HarmonyMethod(HookMethod(nameof(BeforeModifyOrder))),
                 postfix: new HarmonyMethod(HookMethod(nameof(AfterModifyOrder))));
+            _installed = true;
             return true;
         }
         catch (Exception error)
