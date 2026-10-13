@@ -442,6 +442,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "DIAMOND_DIADEM"
+            && engineIds.Contains(
+                NativeGloryAncientsV111.DiamondDiademId,
+                StringComparer.Ordinal)
+            && HasDiamondDiademPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2862,6 +2872,85 @@ public static class V111Coverage
             && openingCombat.DiscardPile.Length == 3
             && laterTurn?.Hand.Length == 3
             && melted?.Hand.Length == 3;
+    }
+
+    private static bool HasDiamondDiademPath()
+    {
+        var relicId = NativeGloryAncientsV111.DiamondDiademId;
+        var choiceId = "take_" + relicId;
+        var definition = PrototypeContent.Relic(relicId);
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(3).Contains(
+                NativeNonupeipeEventV111.EventId, StringComparer.Ordinal)
+            || !HasCompleteAncientRelicBranches(
+                NativeNonupeipeEventV111.EventId, 10)
+            || !NativeNonupeipeEventV111.Definition.Choices.Any(choice =>
+                choice.Id == choiceId)
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || definition.Triggers?.Any(trigger =>
+                trigger.EventKind
+                    == PrototypeCombatEventKind.PlayerSideTurnStarted
+                && trigger.TurnEquals == 1
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.GainPlayerBlock
+                    && effect.Amount == 20)
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.ApplyPlayerPower
+                    && effect.Amount == 1
+                    && effect.PowerId == "proto.power.blur")) != true)
+        {
+            return false;
+        }
+
+        static CombatState Dispatch(int turn, bool melted)
+        {
+            var relicId = NativeGloryAncientsV111.DiamondDiademId;
+            var triggerCount = PrototypeContent.Relic(relicId)
+                .Triggers?.Length ?? 0;
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: PrototypeContent.Rules.BaseEnergy,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [new CombatRelicState(0, relicId, 1,
+                    new int[triggerCount], IsMelted: melted)],
+                Act: 3,
+                PlayPile: []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-diamond-diadem-{turn}-{melted}")).Combat;
+        }
+
+        var opening = Dispatch(turn: 1, melted: false);
+        var laterTurn = Dispatch(turn: 2, melted: false);
+        var melted = Dispatch(turn: 1, melted: true);
+        return opening.PlayerBlock == 20
+            && opening.PlayerPowers.SingleOrDefault(power =>
+                power.PowerId == "proto.power.blur")?.Stacks == 1
+            && laterTurn.PlayerBlock == 0
+            && laterTurn.PlayerPowers.Length == 0
+            && melted.PlayerBlock == 0
+            && melted.PlayerPowers.Length == 0;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

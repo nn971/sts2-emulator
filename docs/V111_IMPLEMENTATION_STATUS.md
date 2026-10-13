@@ -363,7 +363,8 @@ Glory Ancient source offers and their current gates are tracked in the
 Ring is registered as an Ancient relic and grants 888 gold through the shared
 newly-acquired-relic trigger. Looming Fruit adds 31 current and maximum HP
 through the shared acquisition path. Diamond Diadem grants 20 opening Block
-and Blur; Sai grants 7 Block at each player-side turn start. Spiked Gauntlets
+and Blur; coverage follows its Nonupeipe reward and checks turn gating and
+melted copies. Sai grants 7 Block at each player-side turn start. Spiked Gauntlets
 adds one energy and raises Power-card cost by one. These effects are covered
 through reward resolution and combat turns. Crossbow generates a free Attack
 at each player-side turn start through the shared generated-card pipeline.
