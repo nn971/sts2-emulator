@@ -101,6 +101,30 @@ public sealed class ControlledInitialHpV111Tests
     }
 
     [Fact]
+    public void DuplicateMonsterRngOwnersAreRejectedInControlledMode()
+    {
+        var (bare, formation, streams) = Setup("owner-uniqueness-regression");
+        Assert.True(formation.MonsterContexts.Length >= 2);
+        var duplicate = formation.Fork();
+        duplicate.MonsterContexts[1] = duplicate.MonsterContexts[1] with
+        {
+            CombatId = duplicate.MonsterContexts[0].CombatId
+        };
+        Assert.Throws<InvalidDataException>(() =>
+            ControlledInitialHpV111.Begin(bare, duplicate, streams));
+        var valid = ControlledInitialHpV111.Begin(bare, formation, streams);
+        var altered = valid.Fork();
+        altered.Formation.MonsterContexts[1] =
+            altered.Formation.MonsterContexts[1] with
+            {
+                CombatId = altered.Formation.MonsterContexts[0].CombatId
+            };
+        Assert.Throws<InvalidDataException>(() =>
+            ControlledInitialHpV111.Restore(JsonSerializer.Serialize(altered)));
+        Assert.NotNull(valid.Pending);
+    }
+
+    [Fact]
     public void RestoringTamperedPendingFailsClosed()
     {
         var (bare, formation, streams) = Setup("pending-tamper");

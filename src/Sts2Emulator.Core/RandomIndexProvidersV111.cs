@@ -95,6 +95,7 @@ public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
             request with { OrderedCandidates = (int[])request.OrderedCandidates.Clone() },
             index, Mode, before, after);
         decision.Validate();
+        RandomBoundaryJournalV111.Record(decision);
         return decision;
     }
 }
@@ -145,6 +146,7 @@ public sealed class ScriptedRandomIndexProviderV111 : IRandomIndexProviderV111
             expected.SelectedIndex, Mode);
         result.Validate();
         _cursor++;
+        RandomBoundaryJournalV111.Record(result);
         return result;
     }
 
@@ -174,6 +176,7 @@ public sealed class ControlledRandomIndexProviderV111(int selectedIndex)
             request with { OrderedCandidates = (int[])request.OrderedCandidates.Clone() },
             selectedIndex, Mode);
         outcome.Validate();
+        RandomBoundaryJournalV111.Record(outcome);
         return outcome;
     }
 }

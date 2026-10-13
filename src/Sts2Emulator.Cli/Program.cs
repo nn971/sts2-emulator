@@ -15,6 +15,10 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Resume the same deterministic legal policy from an unmodified saved state");
     Console.WriteLine("  native-basic-check <fixture.json> [--out <report.json>]  Diagnostic only; NOT parity");
     Console.WriteLine("  native-visible-step <fixture.json> [--out <report.json>]  Diagnostic only; NOT parity");
+    Console.WriteLine("  native-engine-fidelity <native-expectation.json> [Overgrowth|Underdocks] [ascension]");
+    Console.WriteLine("                          Run actual v111 engine against a single native checkpoint");
+    Console.WriteLine("  native-engine-fidelity-batch <fixtures-dir> [Overgrowth|Underdocks] [ascension]");
+    Console.WriteLine("                          Run independently closed native checkpoints; report blockers");
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
     Console.WriteLine("  prototype-native-overgrowth-map [seed] [ascension]");
@@ -56,6 +60,57 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
 
 switch (args[0])
 {
+    case "native-engine-fidelity-batch":
+    {
+        if (args.Length is < 2 or > 4)
+            throw new ArgumentException(
+                "Usage: native-engine-fidelity-batch <fixtures-directory> [Overgrowth|Underdocks] [ascension]");
+        var region = args.Length >= 3
+            ? Enum.Parse<ActIdentity>(args[2], ignoreCase: true)
+            : ActIdentity.Overgrowth;
+        int ascension = args.Length >= 4
+            ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 0;
+        var report = NativeEngineFidelityBatchV111.CompareDirectory(
+            args[1], region, ascension);
+        Console.WriteLine(JsonSerializer.Serialize(report,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                WriteIndented = true
+            }));
+        if (report.Mismatched > 0)
+            Environment.ExitCode = 1;
+        else if (report.UnsupportedOrInvalid > 0 || report.TotalFixtures == 0)
+            Environment.ExitCode = 2;
+        break;
+    }
+
+    case "native-engine-fidelity":
+    {
+        if (args.Length is < 2 or > 4)
+            throw new ArgumentException(
+                "Usage: native-engine-fidelity <native-expectation.json> [Overgrowth|Underdocks] [ascension]");
+        using var fixture = JsonDocument.Parse(File.ReadAllText(args[1]));
+        var region = args.Length >= 3
+            ? Enum.Parse<ActIdentity>(args[2], ignoreCase: true)
+            : ActIdentity.Overgrowth;
+        int ascension = args.Length >= 4 ? int.Parse(args[3]) : 0;
+        var report = NativeEngineFidelityV111.Compare(
+            fixture.RootElement, region, ascension);
+        Console.WriteLine(JsonSerializer.Serialize(report,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                WriteIndented = true
+            }));
+        if (report.Status is "CORE_ENGINE_CHECKPOINT_MISMATCH")
+            Environment.ExitCode = 1;
+        else if (report.Status != "CORE_ENGINE_CHECKPOINT_CONSISTENT")
+            Environment.ExitCode = 2;
+        break;
+    }
+
+
     case "native-visible-step":
         if (args.Length is not (2 or 4) ||
             args.Length == 4 && args[2] != "--out")

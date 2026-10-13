@@ -1015,6 +1015,15 @@ public sealed partial class PrototypeGameEngine
             Hand = combat.Hand.Where(id => id != payload.CardInstanceId).ToArray()
         };
 
+        NativeEngineEventJournalV111.Record(
+            "resource", "energy_spent",
+            sourceCardInstanceId: payload.CardInstanceId,
+            amount: energySpent);
+        NativeEngineEventJournalV111.Record(
+            "card", "card_play_started",
+            sourceCardInstanceId: payload.CardInstanceId,
+            targetEnemyInstanceId: payload.TargetEnemyId);
+
         if (card.Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Sown } sown
             && !card.EnchantmentTriggeredThisCombat)
@@ -4397,6 +4406,11 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            NativeEngineEventJournalV111.Record(
+                "effect_operation", operation.Kind.ToString(),
+                sourceCardInstanceId: sourceCardInstanceId,
+                targetEnemyInstanceId: targetEnemyId,
+                amount: operation.Amount);
             switch (operation.Kind)
             {
                 case PrototypeCombatEffectKind.DamageEnemy:
@@ -4489,6 +4503,11 @@ public sealed partial class PrototypeGameEngine
                         operation.IsPoweredAttack
                             ? MinimumPoweredAttackHpLoss(player) : 0,
                         operation.IsPoweredAttack);
+                    NativeEngineEventJournalV111.Record(
+                        "effect_result", "enemy_damage",
+                        sourceCardInstanceId: sourceCardInstanceId,
+                        targetEnemyInstanceId: targetEnemyId.Value,
+                        amount: damageResult.DamageDealt);
                     combat = damageResult.Combat;
                     // PersonalHivePower.AfterDamageReceived fires on each
                     // powered hit, including a fully blocked hit. Every
@@ -9560,6 +9579,12 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Prototype combat event chain exceeded the safety depth limit.");
         }
+
+        NativeEngineEventJournalV111.Record(
+            "combat_event_dispatch", combatEvent.Kind.ToString(),
+            sourceCardInstanceId: combatEvent.SourceCardInstanceId,
+            targetEnemyInstanceId: combatEvent.TargetEnemyId,
+            amount: combatEvent.Amount);
 
         if (combatEvent.Kind
             == PrototypeCombatEventKind.PlayerTurnStarted)

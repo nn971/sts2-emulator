@@ -154,6 +154,10 @@ public static class ControlledInitialHpV111
             state.Formation.MonsterContexts.Length != state.Combat.Enemies.Length ||
             state.Transcript.Length != state.NextEnemyIndex)
             throw new InvalidDataException("Invalid controlled HP continuation ownership.");
+        // Every player-controlled chance boundary is bound to one native
+        // creature identity. Two monster contexts with the same CombatId
+        // would make the choice transcript ambiguous after fork/restore.
+        var seenCreatureOwners = new HashSet<long>();
         for (int i = 0; i < state.Combat.Enemies.Length; i++)
         {
             var e = state.Combat.Enemies[i];
@@ -162,8 +166,9 @@ public static class ControlledInitialHpV111
             if (e.EnemyId != spec.EnemyId ||
                 e.FormationPosition != spec.FormationPosition ||
                 e.SlotName != spec.SlotName ||
-                owner.Enemy != spec || owner.CombatId < 0)
-                throw new InvalidDataException("Controlled HP creature ownership mismatch.");
+                owner.Enemy != spec || owner.CombatId < 0 ||
+                !seenCreatureOwners.Add(owner.CombatId))
+                throw new InvalidDataException("Controlled HP creature ownership mismatch or duplicate CombatId.");
             if (i < state.NextEnemyIndex)
             {
                 var choice = state.Transcript[i];
