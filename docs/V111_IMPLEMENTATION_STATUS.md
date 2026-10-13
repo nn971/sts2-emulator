@@ -9,6 +9,14 @@ branch coverage or native parity. War Historian Repy is also recognized as
 implemented across its nine inventoried branches. The overall report currently
 records 62/66 events implemented and 64/66 integrated.
 
+Lasting Candy is integrated as an Uncommon shared relic. Starting with the
+second combat reward, it adds a Power option to eligible combat card rewards on
+alternating rewards, persists its counter, and preserves the option through a
+Driftwood reroll. Its implementation uses the available Silent reward pool and
+prototype RNG; no executable coverage claim is recorded yet. See
+[mechanics gap 143](reference-builds/v0.111.0-mechanics-gap-143.md) for the
+pinned source boundary and remaining fidelity limits.
+
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.
 Native Phrog Parasite deaths also handle Poison at enemy-turn start: the four

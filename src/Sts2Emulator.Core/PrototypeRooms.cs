@@ -4905,6 +4905,55 @@ public sealed partial class PrototypeGameEngine
             ? extraCardOptions.Select(ApplyGlitterToCardRewardOptions).ToArray()
             : null;
 
+        var cardRewardGenerators = Enumerable.Repeat<PrototypeCardRewardGenerator?>(
+                nativeOvergrowth
+                    ? new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.Encounter,
+                        world.Act, room)
+                    : new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RewardPool,
+                        world.Act, room),
+                1 + normalExtraCardRewardGroups)
+            .Concat(Enumerable.Repeat<PrototypeCardRewardGenerator?>(
+                new PrototypeCardRewardGenerator(
+                    PrototypeCardRewardGeneratorKind.RarePool,
+                    world.Act),
+                whiteStarGroups))
+            .ToArray();
+        var cardRewardForCandy = new RewardState(
+            SourceRoom: room.ToString(),
+            CardOptions: cardOptions,
+            PotionOption: null,
+            RelicOption: null,
+            CardResolved: false,
+            PotionResolved: true,
+            RelicResolved: true,
+            EndsAct: false,
+            ExtraCardOptions: extraCardOptions,
+            CardOptionUpgradeFlags: cardUpgradeFlags,
+            ExtraCardOptionUpgradeFlags: extraCardUpgradeFlags,
+            CardOptionEnchantments: cardOptionEnchantments,
+            ExtraCardOptionEnchantments: extraCardOptionEnchantments,
+            CardRewardGenerators: cardRewardGenerators);
+        var lastingCandy = ApplyLastingCandyCombatReward(
+            silverCrucible.Player, cardRewardForCandy, state.Ascension,
+            world.CardRarityOffsetBasisPoints, state.Rng);
+        cardOptions = lastingCandy.Reward.CardOptions;
+        extraCardOptions = lastingCandy.Reward.ExtraCardOptions
+            ?? Array.Empty<string[]>();
+        cardUpgradeFlags = lastingCandy.Reward.CardOptionUpgradeFlags;
+        extraCardUpgradeFlags =
+            lastingCandy.Reward.ExtraCardOptionUpgradeFlags;
+        cardOptionEnchantments =
+            lastingCandy.Reward.CardOptionEnchantments;
+        extraCardOptionEnchantments =
+            lastingCandy.Reward.ExtraCardOptionEnchantments;
+        world = world with
+        {
+            CardRarityOffsetBasisPoints =
+                lastingCandy.CardRarityOffsetBasisPoints
+        };
+
         var relicOptions =
             room == PrototypeRoomType.Boss
                 ? PickDistinct(
@@ -4922,7 +4971,7 @@ public sealed partial class PrototypeGameEngine
 
         var ticketRelicRewards = new List<string>();
         var rewardPlayer = UpdateWongosTicketCombatEnd(
-            silverCrucible.Player,
+            lastingCandy.Player,
             ref world,
             state.Rng,
             ticketRelicRewards,
@@ -4985,21 +5034,9 @@ public sealed partial class PrototypeGameEngine
                 ? new bool[extraGoldRewards.Length] : null,
             ReturnedStolenCards: returnedCards.Length == 0
                 ? null : returnedCards,
-            CardRewardGenerators: Enumerable.Repeat<PrototypeCardRewardGenerator?>(
-                nativeOvergrowth
-                    ? new PrototypeCardRewardGenerator(
-                        PrototypeCardRewardGeneratorKind.Encounter,
-                        world.Act, room)
-                    : new PrototypeCardRewardGenerator(
-                        PrototypeCardRewardGeneratorKind.RewardPool,
-                        world.Act),
-                1 + normalExtraCardRewardGroups)
-                .Concat(Enumerable.Repeat<PrototypeCardRewardGenerator?>(
-                    new PrototypeCardRewardGenerator(
-                        PrototypeCardRewardGeneratorKind.RarePool,
-                        world.Act),
-                    whiteStarGroups))
-                .ToArray());
+            CardRewardGenerators: cardRewardGenerators,
+            LastingCandyRewardActive:
+                lastingCandy.Reward.LastingCandyRewardActive);
         reward = CaptureLavaLampCombatReward(
             state.Player, combat, reward);
         world = world with

@@ -78,6 +78,14 @@ public static class PrototypeNativeCardRarityOdds
     }
 
     /// <summary>
+    /// Pinned CardRarityOdds.RollWithBaseOdds: use the room's base rates
+    /// without its current pity offset or changing future odds.
+    /// </summary>
+    public static PrototypeCardRarity RollWithBaseOdds(int ascension,
+        PrototypeNativeCardOddsSource source, RngBundle rng) =>
+        Roll(0, ascension, source, rng).Rarity;
+
+    /// <summary>
     /// CardFactory.GetNextAllowedRarity cycles Common, Uncommon, Rare,
     /// wrapping after Rare. The odds advance according to the original
     /// rolled rarity, before this fallback.

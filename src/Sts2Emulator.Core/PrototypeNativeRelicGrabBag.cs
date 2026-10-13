@@ -99,6 +99,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.PlanisphereId] =
                 PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.LastingCandyId] =
+                PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.RippleBasinId] =
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.PermafrostId] =
@@ -385,7 +387,8 @@ public static class PrototypeNativeRelicGrabBag
                     .ToArray(),
                 Uncommon = bag.Uncommon.Where(id =>
                     id != PrototypeNativeSharedRelics.BowlerHatId
-                    && id != PrototypeNativeSharedRelics.PlanisphereId)
+                    && id != PrototypeNativeSharedRelics.PlanisphereId
+                    && id != PrototypeNativeSharedRelics.LastingCandyId)
                     .ToArray(),
                 Rare = bag.Rare.Where(id =>
                     id != PrototypeNativeSharedRelics.WhiteStarId)

@@ -45,12 +45,16 @@ public sealed partial class PrototypeGameEngine
             reward.CardRewardGenerators!.Clone();
         var generator = generators[groupIndex]!;
         var oldOptions = reward.CardOptionsForGroup(groupIndex);
+        var lastingCandy = reward.LastingCandyRewardActive
+            && (generator.Kind is PrototypeCardRewardGeneratorKind.Encounter
+                or PrototypeCardRewardGeneratorKind.RewardPool);
+        var generatedCount = oldOptions.Length - (lastingCandy ? 1 : 0);
         var generatedFlags = (bool[]?)null;
         switch (generator.Kind)
         {
             case PrototypeCardRewardGeneratorKind.RewardPool:
                 oldOptions = PickRewardCards(
-                    generator.Act, oldOptions.Length, state.Rng);
+                    generator.Act, generatedCount, state.Rng);
                 break;
             case PrototypeCardRewardGeneratorKind.ColorlessRewardPool:
                 oldOptions = PickRewardCardsFromPool(
@@ -103,7 +107,7 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException(
                         "Encounter card reward generator has no combat room type.");
                 var generated = PrototypeNativeCardRarityOdds
-                    .GenerateEncounterCards(oldOptions.Length,
+                    .GenerateEncounterCards(generatedCount,
                         state.Ascension, generator.Room.Value,
                         world.CardRarityOffsetBasisPoints,
                         state.Rng, generator.Act);
@@ -120,6 +124,29 @@ public sealed partial class PrototypeGameEngine
                 throw new ArgumentOutOfRangeException();
         }
 
+        if (lastingCandy)
+        {
+            var addition = PickPowerOption(
+                oldOptions, generator, state.Ascension,
+                world.CardRarityOffsetBasisPoints, state.Rng);
+            if (addition is not null)
+            {
+                oldOptions = oldOptions.Append(addition.Value.CardId).ToArray();
+                if (generatedFlags is not null
+                    || addition.Value.Upgraded)
+                {
+                    generatedFlags = (generatedFlags
+                            ?? new bool[oldOptions.Length - 1])
+                        .Append(addition.Value.Upgraded).ToArray();
+                }
+                world = world with
+                {
+                    CardRarityOffsetBasisPoints =
+                        addition.Value.NextCardRarityOffsetBasisPoints
+                };
+            }
+        }
+
         generators[groupIndex] = generator with { Rerolled = true };
         if (groupIndex == 0)
         {
@@ -129,6 +156,10 @@ public sealed partial class PrototypeGameEngine
                 CardOptionUpgradeFlags = generatedFlags
                     ?? (reward.CardOptionUpgradeFlags is null
                         ? null : new bool[oldOptions.Length]),
+                CardOptionEnchantments =
+                    reward.CardOptionEnchantments is null
+                        ? null
+                        : ApplyGlitterToCardRewardOptions(oldOptions),
                 CardRewardGenerators = generators
             };
         }
@@ -150,10 +181,23 @@ public sealed partial class PrototypeGameEngine
                 extraFlags[groupIndex - 1] = generatedFlags;
             else if (extraFlags is not null)
                 extraFlags[groupIndex - 1] = new bool[oldOptions.Length];
+            var extraEnchantments =
+                reward.ExtraCardOptionEnchantments is null
+                    ? null
+                    : reward.ExtraCardOptionEnchantments
+                        .Select(group =>
+                            (PrototypeCardEnchantment?[])group.Clone())
+                        .ToArray();
+            if (extraEnchantments is not null)
+            {
+                extraEnchantments[groupIndex - 1] =
+                    ApplyGlitterToCardRewardOptions(oldOptions);
+            }
             reward = reward with
             {
                 ExtraCardOptions = extraOptions,
                 ExtraCardOptionUpgradeFlags = extraFlags,
+                ExtraCardOptionEnchantments = extraEnchantments,
                 CardRewardGenerators = generators
             };
         }

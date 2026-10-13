@@ -49,6 +49,7 @@ public static class PrototypeNativeSharedRelics
     public const string TheCourierId = "proto.relic.the_courier";
     public const string LavaLampId = "proto.relic.lava_lamp";
     public const string MiniatureTentId = "proto.relic.miniature_tent";
+    public const string LastingCandyId = "proto.relic.lasting_candy";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
@@ -244,6 +245,8 @@ public static class PrototypeNativeSharedRelics
         new(LavaLampId, "Lava Lamp"),
         // Miniature Tent allows each remaining rest-site option to be used.
         new(MiniatureTentId, "Miniature Tent"),
+        // Every second combat card reward gains another Power option.
+        new(LastingCandyId, "Lasting Candy"),
         // Beating Remnant caps the owner's HP loss at 20 per combat turn.
         new(BeatingRemnantId, "Beating Remnant",
             PlayerHpLossLimitPerTurn: 20),
