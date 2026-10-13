@@ -1,5 +1,8 @@
 # Native reference bridge
 
+
+**Original Inspector design plan:** [Native Reference Mod and Fidelity Inspector](NATIVE_FIDELITY_INSPECTOR_PLAN.md). Its early passive-capture milestone has progressed through separate Inspector review branches. The bridge's current exact contract and native-game validation status are tracked by those PRs and the [fidelity/RNG phase](NEXT_STEPS.md).
+
 ## First pinned oracle
 
 The first native fidelity target is STS2 `v0.111.0`, commit `41cef1ea`, build fingerprint
