@@ -186,6 +186,9 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "legacy_resume_candidates": 0,
         "terminal_history_clears": 0,
         "raw_terminal_status": None,
+        "native_rng_source_calls": 0,
+        "native_rng_unattributed_calls": 0,
+        "native_rng_source_coverage": "SOURCE_RNG_UNINSTRUMENTED",
         "incomplete_observations": [],
     }
     if error:
@@ -202,7 +205,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     allowed = {
         "header", "history_baseline", "frame_state", "action_started", "action_resumed", "action_completed", "stable_decision",
         "nested_choice_pause", "history_entry", "history_reset", "anomaly",
-        "observation_failure", "terminal",
+        "observation_failure", "native_rng_boundary", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -292,6 +295,30 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 strict_failures.append(f"Nested choice with no active action: {aid}")
             else:
                 awaiting_resume.add(aid)
+        elif typ == "native_rng_boundary":
+            data = record.get("data") or {}
+            before, after = data.get("cursor_before"), data.get("cursor_after")
+            def counter(obj):
+                return (obj.get("counter", obj.get("Counter"))
+                        if isinstance(obj, dict) else None)
+            n, selected = data.get("bounded_count"), data.get("selected_index")
+            if (data.get("origin") != "source_primitive_hook"
+                or data.get("source_hook_observed") is not True
+                or data.get("source_version") != "v0.111.0"
+                or data.get("operation_kind") != "bounded_integer"
+                or type(n) is not int or n <= 0
+                or type(selected) is not int or not 0 <= selected < n
+                or type(counter(before)) is not int
+                or type(counter(after)) is not int
+                or counter(after) != counter(before) + 1):
+                report["reason"] = f"Invalid native RNG source call at ordinal {ordinal}"
+                return report
+            report["native_rng_source_calls"] += 1
+            report["native_rng_source_coverage"] = "SOURCE_RNG_CALLS_OBSERVED"
+            if (data.get("attributed") is not True
+                or any(data.get(name) in (None, "", "UNATTRIBUTED")
+                       for name in ("site_id", "stream_id", "owner_id"))):
+                report["native_rng_unattributed_calls"] += 1
         elif typ == "history_reset":
             history_index = -1
             details = record.get("data") or {}
