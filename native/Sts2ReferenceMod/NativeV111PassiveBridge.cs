@@ -20,6 +20,7 @@ using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Capture;
 using Sts2ReferenceMod.Trace;
 using Sts2ReferenceMod.Ui;
+using CombatState = MegaCrit.Sts2.Core.Combat.CombatState;
 using NativeGameAction = MegaCrit.Sts2.Core.GameActions.GameAction;
 using CanonicalAction = Sts2Emulator.Core.GameAction;
 
