@@ -10,8 +10,7 @@ single-player character, encounter, event, card, potion and relic.
 Multiplayer-only content and mechanics are excluded from implementation,
 validation and coverage denominators. Shared content follows single-player rules.
 
-This is the active implementation plan. Earlier prototype milestones remain
-historical evidence, not the definition of completion. Search, training,
+This is the **long-term all-character completion plan**. The current development phase focuses on fidelity and RNG against the frozen Silent gameplay baseline. Earlier milestones remain historical evidence, not the definition of completion. Search, training,
 experiment management, strategy and presentation remain outside this repository.
 
 Execution progress and conservative evidence gaps are recorded in
@@ -55,7 +54,7 @@ excludes event-only combats; the final inventory must include them.
 
 ## Delivery rules
 
-Extend the current engine. Content breadth is the main implementation track;
+Extend the current engine. Content breadth is a main track when broad implementation resumes;
 native fidelity and measured performance are continuous tracks. Intermediate
 playable slices can have explicit fidelity gaps; final completion requires all
 release gates below.
