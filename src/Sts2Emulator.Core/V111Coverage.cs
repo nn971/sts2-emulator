@@ -1831,6 +1831,32 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BELT_BUCKLE"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.BeltBuckleId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.BeltBuckleId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.BeltBuckleId,
+                out var beltBuckleRarity)
+            && beltBuckleRarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.BeltBuckleId).Triggers?.Count(
+                trigger => trigger.RequiresEmptyPotionSlots
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeCombatEffectKind.ApplyPlayerPower
+                        && effect.Amount == 2
+                        && effect.PowerId
+                            == "proto.power.dexterity")) == 2
+            && HasBeltBucklePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -3571,6 +3597,106 @@ public static class V111Coverage
         return upgraded == 9
             && ordinary == 6
             && melted == 6;
+    }
+
+    private static bool HasBeltBucklePath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.BeltBuckleId;
+        const string potionId = "proto.potion.weak";
+        (PlayerState Player, CombatState Combat) Fixture(
+            int potionCount, bool melted)
+        {
+            var potionSlots = Enumerable.Range(0, potionCount)
+                .Select(_ => (PotionInstance?)new PotionInstance(
+                    potionId, PrototypeJson.EmptyObject()))
+                .ToArray();
+            var player = new PlayerState(30, 30, 0, [],
+                [new RelicInstance(relicId, PrototypeJson.EmptyObject())],
+                potionSlots);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1, [0, 0],
+                        IsMelted: melted)
+                ],
+                Potions: potionSlots.Select((potion, slot) =>
+                    potion is null ? null : new CombatPotionState(
+                        slot, potion.PotionId,
+                        potion.PersistentState.Clone()))
+                    .Where(potion => potion is not null)
+                    .Select(potion => potion!)
+                    .ToArray(),
+                Act: 1,
+                PlayPile: []);
+            return (player, combat);
+        }
+
+        static int Dexterity(CombatState combat) => combat.PlayerPowers
+            .Where(power => power.PowerId == "proto.power.dexterity")
+            .Sum(power => power.Stacks);
+
+        var noPotion = Fixture(0, melted: false);
+        var emptyStart = PrototypeGameEngine.DispatchCombatEvent(
+            noPotion.Player, noPotion.Combat,
+            new PrototypeCombatEvent(PrototypeCombatEventKind.CombatStarted),
+            PrototypeRng.CreateBundle("coverage-belt-buckle-empty"));
+        var hasPotion = Fixture(1, melted: false);
+        var potionStart = PrototypeGameEngine.DispatchCombatEvent(
+            hasPotion.Player, hasPotion.Combat,
+            new PrototypeCombatEvent(PrototypeCombatEventKind.CombatStarted),
+            PrototypeRng.CreateBundle("coverage-belt-buckle-has-potion"));
+        var afterLastPotion = PrototypeGameEngine.DispatchCombatEvent(
+            potionStart.Player with { PotionSlots = [] },
+            potionStart.Combat with { Potions = [] },
+            new PrototypeCombatEvent(PrototypeCombatEventKind.PotionUsed),
+            PrototypeRng.CreateBundle("coverage-belt-buckle-last-potion"));
+        var twoPotions = Fixture(2, melted: false);
+        var twoPotionStart = PrototypeGameEngine.DispatchCombatEvent(
+            twoPotions.Player, twoPotions.Combat,
+            new PrototypeCombatEvent(PrototypeCombatEventKind.CombatStarted),
+            PrototypeRng.CreateBundle("coverage-belt-buckle-two-potions"));
+        var afterOnePotion = PrototypeGameEngine.DispatchCombatEvent(
+            twoPotionStart.Player with
+            {
+                PotionSlots =
+                [
+                    null,
+                    twoPotionStart.Player.PotionSlots[1]
+                ]
+            },
+            twoPotionStart.Combat with
+            {
+                Potions =
+                [
+                    twoPotionStart.Combat.PotionStates[1]
+                ]
+            },
+            new PrototypeCombatEvent(PrototypeCombatEventKind.PotionUsed),
+            PrototypeRng.CreateBundle("coverage-belt-buckle-one-potion-left"));
+        var melted = Fixture(0, melted: true);
+        var meltedStart = PrototypeGameEngine.DispatchCombatEvent(
+            melted.Player, melted.Combat,
+            new PrototypeCombatEvent(PrototypeCombatEventKind.CombatStarted),
+            PrototypeRng.CreateBundle("coverage-belt-buckle-melted"));
+
+        return Dexterity(emptyStart.Combat) == 2
+            && Dexterity(potionStart.Combat) == 0
+            && Dexterity(afterLastPotion.Combat) == 2
+            && Dexterity(twoPotionStart.Combat) == 0
+            && Dexterity(afterOnePotion.Combat) == 0
+            && Dexterity(meltedStart.Combat) == 0;
     }
 
     private static bool HasSlingOfCouragePath()

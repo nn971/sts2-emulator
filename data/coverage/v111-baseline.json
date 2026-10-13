@@ -24183,17 +24183,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.belt_buckle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BeltBuckle.cs#1e72315fdaf11e92a555144fa8b255f3735bde2aaf590f92f6ece0288cab2831"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BELT_BUCKLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29482,8 +29484,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 163,
-        "integrated": 164,
+        "implemented": 164,
+        "integrated": 165,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

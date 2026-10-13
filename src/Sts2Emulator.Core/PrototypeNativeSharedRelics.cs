@@ -20,6 +20,7 @@ public static class PrototypeNativeSharedRelics
     public const string GnarledHammerId = "proto.relic.gnarled_hammer";
     public const string KusarigamaId = "proto.relic.kusarigama";
     public const string MiniatureCannonId = "proto.relic.miniature_cannon";
+    public const string BeltBuckleId = "proto.relic.belt_buckle";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -76,6 +77,19 @@ public static class PrototypeNativeSharedRelics
         // Miniature Cannon adds 3 damage to powered Attacks on upgraded cards.
         new(MiniatureCannonId, "Miniature Cannon",
             UpgradedAttackDamageBonus: 3),
+        // Belt Buckle grants 2 Dexterity while the owner has no potions.
+        new(BeltBuckleId, "Belt Buckle",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CombatStarted,
+                    [new(PrototypeCombatEffectKind.ApplyPlayerPower, 2,
+                        PowerId: "proto.power.dexterity")],
+                    RequiresEmptyPotionSlots: true),
+                new(PrototypeCombatEventKind.PotionUsed,
+                    [new(PrototypeCombatEffectKind.ApplyPlayerPower, 2,
+                        PowerId: "proto.power.dexterity")],
+                    RequiresEmptyPotionSlots: true)
+            ]),
         // Sturdy Clamp retains at most 10 Block when player Block clears.
         new(SturdyClampId, "Sturdy Clamp",
             MaxPlayerBlockRetainedAfterClear: 10),

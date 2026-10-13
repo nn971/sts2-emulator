@@ -10480,6 +10480,12 @@ public sealed partial class PrototypeGameEngine
             return false;
         }
 
+        if (trigger.RequiresEmptyPotionSlots
+            && combat.PotionStates.Length != 0)
+        {
+            return false;
+        }
+
         if (player.MaxHp <= 0)
         {
             return trigger.MaxPlayerHpPercent is null

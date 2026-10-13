@@ -1348,3 +1348,7 @@ next turn. See
 Miniature Cannon is now an Uncommon shared relic. It adds 3 damage to powered
 Attacks from upgraded cards. See
 [mechanics gap 112](reference-builds/v0.111.0-mechanics-gap-112.md).
+Belt Buckle is now a Shop relic, granting 2 Dexterity when its owner has no
+potions at combat start or after using the last one. The emulator has no
+mid-combat potion procurement or discard action. See
+[mechanics gap 113](reference-builds/v0.111.0-mechanics-gap-113.md).
