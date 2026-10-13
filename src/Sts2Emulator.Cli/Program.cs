@@ -17,6 +17,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  native-visible-step <fixture.json> [--out <report.json>]  Diagnostic only; not parity");
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
+    Console.WriteLine("  native-shuffle-step-fidelity <native-source-step-fixture.json> [--out <report.json>]");
+    Console.WriteLine("                          Run actual engine Step with authenticated source shuffle and explicit native card IDs");
     Console.WriteLine("  native-engine-fidelity <native-expectation.json> [Overgrowth|Underdocks] [ascension]");
     Console.WriteLine("                          Actual engine checkpoint diagnostic; strict native ID mappings");
     Console.WriteLine("  native-engine-fidelity-batch <fixtures-directory> [Overgrowth|Underdocks] [ascension]");
@@ -155,6 +157,117 @@ switch (args[0])
             Environment.ExitCode = 1;
         else if (report.UnsupportedOrInvalid > 0 || report.TotalFixtures == 0)
             Environment.ExitCode = 2;
+        break;
+    }
+
+    case "native-shuffle-step-fidelity":
+    {
+        if (args.Length is not (2 or 4) ||
+            args.Length == 4 && args[2] != "--out")
+            throw new ArgumentException(
+                "Usage: native-shuffle-step-fidelity <native-source-step-fixture.json> [--out <report.json>]");
+
+        try
+        {
+            using var fixture = JsonDocument.Parse(File.ReadAllText(args[1]));
+            var root = fixture.RootElement;
+            if (root.GetProperty("schema").GetString() !=
+                "native-shuffle-step-fixture-v1")
+                throw new ArgumentException(
+                    "Source Step fixture schema must be native-shuffle-step-fixture-v1.");
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            var before = JsonSerializer.Deserialize<RunState>(
+                root.GetProperty("emulator_before_state").GetRawText(),
+                jsonOptions) ?? throw new ArgumentException("No emulator pre-state.");
+            var nativeAction = JsonSerializer.Deserialize<GameAction>(
+                root.GetProperty("emulator_action").GetRawText(),
+                jsonOptions) ?? throw new ArgumentException("No emulator action.");
+            if (before.Phase != RunPhase.Combat ||
+                before.World?.Combat is null)
+                throw new ArgumentException("Source Step fixture needs an independently prepared combat pre-state.");
+
+            var source = root.GetProperty("native_source_shuffles");
+            var mappings = root.GetProperty("native_to_emulator_card_tokens");
+            if (source.ValueKind != JsonValueKind.Array ||
+                mappings.ValueKind != JsonValueKind.Array ||
+                source.GetArrayLength() == 0 ||
+                source.GetArrayLength() != mappings.GetArrayLength())
+                throw new ArgumentException(
+                    "A nonempty source-shuffle array and one explicit identity map per operation are required.");
+            var commands = new List<NativeShuffleStepExpectationV111>();
+            for (int index = 0; index < source.GetArrayLength(); ++index)
+            {
+                var map = new Dictionary<string, long>(StringComparer.Ordinal);
+                foreach (var pair in mappings[index].EnumerateObject())
+                    map.Add(pair.Name, pair.Value.GetInt64());
+                commands.Add(NativeShuffleSourceImportV111.Import(
+                    source[index], before.World.Combat, map));
+            }
+            var report = NativeShuffleStepFidelityV111.Compare(
+                before, nativeAction, commands,
+                NativeRngV111.CreateBundle(
+                    "source-shuffle-scripted-no-native-seed-claims"));
+            // Keep the report compact: only the observed source shuffle
+            // stages and a small engine successor projection are exported.
+            var summary = new
+            {
+                schema = "native-shuffle-step-comparison-v1",
+                report.Status,
+                report.ExecutedActualEngineStep,
+                report.NativeGameParity,
+                report.ExactNativeRngParity,
+                report.SourceShuffleStageParity,
+                report.ExpectedSourceShuffles,
+                report.ObservedSourceShuffles,
+                report.FirstMismatchStage,
+                report.Observations,
+                report.EngineFailure,
+                report.UnverifiedPreconditions,
+                emulator_after = report.EmulatorAfter is { } after
+                    ? new
+                    {
+                        phase = after.Phase.ToString(),
+                        decision_index = after.DecisionIndex,
+                        player_hp = after.Player.Hp,
+                        hand = after.World?.Combat?.Hand,
+                        draw_pile = after.World?.Combat?.DrawPile,
+                        discard_pile = after.World?.Combat?.DiscardPile,
+                        exhaust_pile = after.World?.Combat?.ExhaustPile
+                    }
+                    : null
+            };
+            var output = JsonSerializer.Serialize(summary, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+            });
+            Console.WriteLine(output);
+            if (args.Length == 4)
+            {
+                var filename = Path.GetFullPath(args[3]);
+                Directory.CreateDirectory(Path.GetDirectoryName(filename)!);
+                File.WriteAllText(filename, output + System.Environment.NewLine);
+            }
+            System.Environment.ExitCode = report.Status switch
+            {
+                "SOURCE_SHUFFLE_STEP_STAGES_CONSISTENT" => 0,
+                "SOURCE_SHUFFLE_STEP_STAGE_MISMATCH" => 1,
+                _ => 2
+            };
+        }
+        catch (Exception error) when (error is JsonException or IOException
+                                       or UnauthorizedAccessException
+                                       or ArgumentException
+                                       or InvalidOperationException
+                                       or KeyNotFoundException)
+        {
+            Console.Error.WriteLine(
+                "SOURCE_SHUFFLE_STEP_IMPORT_BLOCKED: " + error.Message);
+            System.Environment.ExitCode = 2;
+        }
         break;
     }
 
