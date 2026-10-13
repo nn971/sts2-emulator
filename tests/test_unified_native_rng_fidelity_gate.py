@@ -64,6 +64,16 @@ class UnifiedFidelityGateTests(unittest.TestCase):
         self.assertEqual(1, r["engine"]["actual_engine_steps"])
         self.assertEqual(1, r["engine"]["unsupported_or_invalid"])
 
+    def test_native_source_rng_observations_are_never_upgraded_to_hook_parity(self):
+        captures = corpus()
+        captures["native_rng_source_calls"] = 4
+        captures["native_rng_unattributed_calls"] = 1
+        result = combine(captures, strict(), prefixes(), engine())
+        self.assertEqual("NATIVE_SOURCE_CALLS_PRESENT_UNATTRIBUTED",
+                         result["random_boundary_capture"])
+        self.assertEqual(4, result["capture"]["native_rng_source_calls"])
+        self.assertEqual("NOT_TESTED", result["native_source_hook_order_parity"])
+
     def test_engine_not_run_or_missing_dll_cannot_pass(self):
         r = combine(corpus(), strict(), prefixes(), None)
         self.assertEqual("ENGINE_COMPARISON_NOT_COMPLETED", r["status"])
