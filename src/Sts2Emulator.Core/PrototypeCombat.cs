@@ -2570,6 +2570,40 @@ public sealed partial class PrototypeGameEngine
                 combat = strengthened.Combat;
                 enemies[enemyIndex] = strengthened.Enemy;
             }
+
+            // NemesisPower.AfterSideTurnEnd alternates Intangible after
+            // every enemy side turn, including turns skipped by Stun or a
+            // scripted action skip. Keep this at the side-turn boundary
+            // instead of tying it to ResolveEnemyActions.
+            var subject = enemies[enemyIndex];
+            if (stage == PrototypeTurnStage.EnemyTurnEnd
+                && subject.Hp > 0
+                && subject.EnemyId
+                    == PrototypeNativeGloryBosses.TestSubjectId
+                && subject.BossPhase >= 2
+                && subject.PowerStates.Any(power => power.PowerId
+                    == PrototypeNativeGloryBosses.NemesisId))
+            {
+                var makeIntangible = !subject.NemesisIntangibleNext;
+                subject = subject with
+                {
+                    Powers = subject.PowerStates.Where(power =>
+                        power.PowerId
+                            != PrototypeNativeGloryBosses.NemesisIntangibleId)
+                        .ToArray(),
+                    NemesisIntangibleNext = makeIntangible
+                };
+                if (makeIntangible)
+                {
+                    var applied = ApplyEnemyPowerToState(
+                        combat, subject,
+                        PrototypeNativeGloryBosses.NemesisIntangibleId, 1);
+                    combat = applied.Combat;
+                    subject = applied.Enemy;
+                }
+                enemies[enemyIndex] = subject;
+            }
+
             if (wasAlive && enemies[enemyIndex].Hp <= 0
                 && !enemies[enemyIndex].Escaped)
             {
@@ -4163,29 +4197,6 @@ public sealed partial class PrototypeGameEngine
                     turnEndStrength);
                 combat = strengthened.Combat;
                 enemy = strengthened.Enemy;
-            }
-
-            if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId
-                && enemy.BossPhase >= 2
-                && enemy.PowerStates.Any(power => power.PowerId
-                    == PrototypeNativeGloryBosses.NemesisId))
-            {
-                var makeIntangible = !enemy.NemesisIntangibleNext;
-                enemy = enemy with
-                {
-                    Powers = enemy.PowerStates.Where(power =>
-                        power.PowerId != PrototypeNativeGloryBosses.NemesisIntangibleId)
-                        .ToArray(),
-                    NemesisIntangibleNext = makeIntangible
-                };
-                if (makeIntangible)
-                {
-                    var applied = ApplyEnemyPowerToState(
-                        combat, enemy,
-                        PrototypeNativeGloryBosses.NemesisIntangibleId, 1);
-                    combat = applied.Combat;
-                    enemy = applied.Enemy;
-                }
             }
 
             var consecutiveUses =

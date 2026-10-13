@@ -43,6 +43,9 @@ Neow's Lead Paperweight now suspends the opening for a one-of-two supported
 Colorless card reward drawn from all implemented single-player Colorless
 reward cards. Fully unlocked runs include the epoch-gated cards; restricted
 profiles are unsupported, and native reward RNG remains open.
+Glory's Test Subject now advances its alternating Nemesis Intangible at the
+enemy side-turn boundary, including when a stun or scripted skip prevents its
+move from executing.
 Neow now retains the selected positive or cursed option's finished page after
 its relic effect and queued rewards resolve; dismissing the pre-map opening
 returns to map choice without completing a room. Choice generation still
