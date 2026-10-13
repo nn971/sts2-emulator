@@ -702,6 +702,15 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "enchantments"
+            && item.Id == "SWIFT"
+            && engineIds.Contains("Swift", StringComparer.Ordinal)
+            && HasSwiftPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "KIFUDA"
             && engineIds.Contains(
@@ -5220,6 +5229,107 @@ public static class V111Coverage
             && copied.Player.Deck.All(card => card.InstanceId != 3
                 || card.CardId
                     == PrototypeNativeHiveEvents.LanternKeyCardId);
+    }
+
+    private static bool HasSwiftPath()
+    {
+        if (!HasBeautifulBraceletPath())
+        {
+            return false;
+        }
+
+        const string footworkId = "proto.silent.footwork";
+        const int footworkCombatId = 11;
+        var player = new PlayerState(
+            30,
+            30,
+            0,
+            [
+                new CardInstance(1, footworkId, 0,
+                    PrototypeJson.EmptyObject(),
+                    new PrototypeCardEnchantment(
+                        PrototypeCardEnchantmentKind.Swift,
+                        2)),
+                new CardInstance(2, "proto.silent.strike", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(3, "proto.silent.defend", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(4, "proto.silent.neutralize", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(5, "proto.silent.survivor", 0,
+                    PrototypeJson.EmptyObject())
+            ],
+            [],
+            []);
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [footworkCombatId],
+            DrawPile: [12, 13, 14, 15],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies: [],
+            NextCardInstanceId: 16,
+            Cards:
+            [
+                new CombatCardInstance(
+                    footworkCombatId,
+                    1,
+                    footworkId,
+                    0,
+                    false,
+                    PrototypeJson.EmptyObject(),
+                    Enchantment: player.Deck[0].Enchantment),
+                new CombatCardInstance(12, 2, "proto.silent.strike", 0,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(13, 3, "proto.silent.defend", 0,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(14, 4, "proto.silent.neutralize", 0,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(15, 5, "proto.silent.survivor", 0,
+                    false, PrototypeJson.EmptyObject())
+            ],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Act: 3,
+            PlayPile: []);
+        var rng = PrototypeRng.CreateBundle("coverage-swift");
+        var first = PrototypeGameEngine.ResolveCardPlaySeries(
+            player,
+            combat,
+            rng,
+            new PrototypeCardPlaySeriesState(
+                footworkCombatId,
+                PrototypeCardZone.DiscardPile,
+                TargetEnemyId: null,
+                EnergySpent: 1,
+                PlayCount: 1,
+                NextPlayIndex: 0));
+        if (!first.Combat.Hand.Where(id => id != footworkCombatId)
+                .Order().SequenceEqual(new long[] { 14, 15 })
+            || !first.Combat.DrawPile.SequenceEqual(new long[] { 12, 13 })
+            || !first.Combat.Cards.Single(card =>
+                card.InstanceId == footworkCombatId)
+                .EnchantmentTriggeredThisCombat)
+        {
+            return false;
+        }
+
+        var second = PrototypeGameEngine.ResolveCardPlaySeries(
+            first.Player,
+            first.Combat,
+            rng,
+            new PrototypeCardPlaySeriesState(
+                footworkCombatId,
+                PrototypeCardZone.DiscardPile,
+                TargetEnemyId: null,
+                EnergySpent: 1,
+                PlayCount: 1,
+                NextPlayIndex: 0));
+        return second.Combat.Hand.Where(id => id != footworkCombatId).Order()
+                .SequenceEqual(new long[] { 14, 15 })
+            && second.Combat.DrawPile.SequenceEqual(new long[] { 12, 13 });
     }
 
     private static bool HasKusarigamaPath()

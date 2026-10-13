@@ -12503,8 +12503,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/Swift.cs#efe0086917e21ead2de37ef0e06bffbf39a67bcde1b56c38e9b01922d515b57a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
@@ -29438,8 +29438,8 @@
         "catalogued": 22,
         "eligible": 22,
         "excluded": 0,
-        "implemented": 5,
-        "integrated": 5,
+        "implemented": 6,
+        "integrated": 6,
         "kind": "enchantments",
         "scope_review_required": 0,
         "validated": 0

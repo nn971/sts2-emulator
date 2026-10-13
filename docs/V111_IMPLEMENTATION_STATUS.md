@@ -1420,3 +1420,6 @@ moves its enchanted card to the top after a noninitial draw-pile shuffle. See
 Dolly's Mirror is now a Shop relic that copies one non-Quest deck card while
 preserving its upgrade, enchantment, and persistent state. See
 [mechanics gap 134](reference-builds/v0.111.0-mechanics-gap-134.md).
+Swift now has executable coverage through Glory's Beautiful Bracelet: the
+first play draws two cards, and later plays in that combat do not draw again.
+See [mechanics gap 135](reference-builds/v0.111.0-mechanics-gap-135.md).
