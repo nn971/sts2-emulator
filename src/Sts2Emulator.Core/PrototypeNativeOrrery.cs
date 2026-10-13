@@ -50,6 +50,11 @@ public sealed partial class PrototypeGameEngine
                     PrototypeRoomType.Combat);
             }
 
+            var silverCrucible =
+                ApplySilverCrucibleToCardRewardGeneration(
+                    after.Player, cardGroups.Length);
+            after = after with { Player = silverCrucible.Player };
+
             var reward = new RewardState(
                 SourceRoom: OrreryRewardSource,
                 CardOptions: cardGroups[0],
@@ -60,24 +65,18 @@ public sealed partial class PrototypeGameEngine
                 RelicResolved: true,
                 EndsAct: false,
                 ExtraCardOptions: cardGroups[1..],
+                CardOptionsUpgraded:
+                    silverCrucible.UpgradeGroups[0],
+                ExtraCardOptionsUpgraded:
+                    silverCrucible.UpgradeGroups[1..],
                 IndependentSelection: true,
                 ExtraCardGroupsResolved: new bool[cardGroups.Length - 1],
                 ExtraRelicGroupsResolved: [],
                 CardOptionUpgradeFlags: upgradeGroups[0],
                 ExtraCardOptionUpgradeFlags: upgradeGroups[1..],
-                CardRewardGenerators: generators);
-            var wingCharmResult = ApplyWingCharmToCardRewardOptions(
-                after, reward.CardOptions,
-                reward.ExtraCardOptions ?? Array.Empty<string[]>(),
-                reward.CardOptionEnchantments,
-                reward.ExtraCardOptionEnchantments);
-            after = wingCharmResult.State;
-            reward = reward with
+                CardRewardGenerators: generators)
             {
-                CardOptionEnchantments =
-                    wingCharmResult.CardOptionEnchantments,
-                ExtraCardOptionEnchantments =
-                    wingCharmResult.ExtraCardOptionEnchantments
+                CardRewardLateHooksEnabled = true
             };
             after = after with
             {

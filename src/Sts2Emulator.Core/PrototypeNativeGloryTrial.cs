@@ -166,6 +166,10 @@ public sealed partial class PrototypeGameEngine
                     cardPool, 3, state.Rng, "reward");
                 var cards2 = PickDistinct(
                     cardPool, 3, state.Rng, "reward");
+                var silverCrucible =
+                    ApplySilverCrucibleToCardRewardGeneration(
+                        player, groupCount: 2);
+                player = silverCrucible.Player;
                 reward = new RewardState(
                     SourceRoom: "Event:" + evt.EventId,
                     CardOptions: [],
@@ -176,6 +180,8 @@ public sealed partial class PrototypeGameEngine
                     RelicResolved: true,
                     EndsAct: false,
                     ExtraCardOptions: [cards1, cards2],
+                    ExtraCardOptionsUpgraded:
+                        silverCrucible.UpgradeGroups,
                     CardRewardGenerators:
                     [null,
                         new PrototypeCardRewardGenerator(

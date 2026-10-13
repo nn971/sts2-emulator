@@ -5447,7 +5447,14 @@ public sealed partial class PrototypeGameEngine
                 relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
                 > previous.Player.Relics.Count(relic =>
                     relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId);
-        if ((!isNewEventReward && !isNewGlassEyeReward)
+        var isNewOrreryReward = reward.SourceRoom == OrreryRewardSource
+            && reward.CardRewardLateHooksEnabled
+            && next.Player.Relics.Count(relic =>
+                relic.RelicId == PrototypeNativeSharedRelics.OrreryId)
+                > previous.Player.Relics.Count(relic =>
+                    relic.RelicId == PrototypeNativeSharedRelics.OrreryId);
+        if ((!isNewEventReward && !isNewGlassEyeReward
+                && !isNewOrreryReward)
             || !next.Player.ActiveRelics.Any(relic =>
                 relic.RelicId == NativeGloryAncientsV111.GlitterId))
         {
@@ -5506,7 +5513,14 @@ public sealed partial class PrototypeGameEngine
                 relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
                 > previous.Player.Relics.Count(relic =>
                     relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId);
-        if (!isNewEventReward && !isNewGlassEyeReward)
+        var isNewOrreryReward = reward.SourceRoom == OrreryRewardSource
+            && reward.CardRewardLateHooksEnabled
+            && next.Player.Relics.Count(relic =>
+                relic.RelicId == PrototypeNativeSharedRelics.OrreryId)
+                > previous.Player.Relics.Count(relic =>
+                    relic.RelicId == PrototypeNativeSharedRelics.OrreryId);
+        if (!isNewEventReward && !isNewGlassEyeReward
+            && !isNewOrreryReward)
             return next;
 
         var result = ApplyWingCharmToCardRewardOptions(

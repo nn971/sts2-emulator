@@ -47,6 +47,10 @@ public sealed partial class PrototypeGameEngine
                 (PrototypeCardRewardGenerator?)new(
                     PrototypeCardRewardGeneratorKind.RarityPool,
                     world.Act, Rarity: rarity)).ToArray();
+            var silverCrucible =
+                ApplySilverCrucibleToCardRewardGeneration(
+                    after.Player, groups.Length);
+            after = after with { Player = silverCrucible.Player };
             var reward = new RewardState(
                 SourceRoom: GlassEyeRewardSource,
                 CardOptions: groups[0],
@@ -57,6 +61,10 @@ public sealed partial class PrototypeGameEngine
                 RelicResolved: true,
                 EndsAct: false,
                 ExtraCardOptions: groups[1..],
+                CardOptionsUpgraded:
+                    silverCrucible.UpgradeGroups[0],
+                ExtraCardOptionsUpgraded:
+                    silverCrucible.UpgradeGroups[1..],
                 IndependentSelection: true,
                 ExtraCardGroupsResolved: new bool[groups.Length - 1],
                 ExtraRelicGroupsResolved: [],

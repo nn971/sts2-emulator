@@ -277,8 +277,9 @@ grants 2 Strength on each of the next five combat room entries, and Tea of
 Discourtesy inserts two Dazed cards into the next combat's draw pile. The tea
 charge counters persist across combats; event and combat RNG parity remain
 open.
-Silver Crucible now consumes its first three group charges on supported custom
-event card rewards as well as combat rewards.
+Silver Crucible now consumes its first three group charges across combat
+rewards and supported custom card rewards, including Trial, Glass Eye and
+Orrery.
 Silken Tress now persists its one-shot Glam enchantment through the first
 combat card reward.
 Ambergris now queues its combat extra turn through the shared end-turn
