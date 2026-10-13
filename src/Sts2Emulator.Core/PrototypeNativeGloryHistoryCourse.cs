@@ -26,7 +26,7 @@ public sealed partial class PrototypeGameEngine
         SuppressedUpgradeLevels: card.SuppressedUpgradeLevels,
         WitherFakeUpgradeLevel: card.WitherFakeUpgradeLevel);
 
-    private static RunState ResolveHistoryCourseAutoPlay(RunState state)
+    internal static RunState ResolveHistoryCourseAutoPlay(RunState state)
     {
         var world = RequireWorld(state);
         var combat = world.Combat
@@ -35,7 +35,8 @@ public sealed partial class PrototypeGameEngine
 
         if (combat.Turn <= 1
             || !combat.RelicStates.Any(relic =>
-                relic.RelicId == PrototypeNativeHiveEvents.HistoryCourseId)
+                !relic.IsMelted
+                && relic.RelicId == PrototypeNativeHiveEvents.HistoryCourseId)
             || combat.CounterState.LastOriginalAttackLastTurn is not
                 { } lastAttack
             || AllEnemiesDefeated(combat))

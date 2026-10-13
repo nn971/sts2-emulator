@@ -25950,8 +25950,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/HistoryCourse.cs#9416136b224fbb966f3d8c0f3f5d3397cccec2517281cf0d5dfc7a45244f6dac"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 116,
-        "integrated": 117,
+        "implemented": 117,
+        "integrated": 118,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

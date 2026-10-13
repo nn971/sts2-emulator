@@ -372,6 +372,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "HISTORY_COURSE"
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.HistoryCourseId,
+                StringComparer.Ordinal)
+            && HasHistoryCoursePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2177,6 +2187,105 @@ public static class V111Coverage
             && melted.Bonus == 0
             && melted.Player.Relics.Single().PersistentState
                 .GetProperty("TurnsSeen").GetInt32() == 3;
+    }
+
+    private static bool HasHistoryCoursePath()
+    {
+        var relicId = PrototypeNativeHiveEvents.HistoryCourseId;
+        var repy = PrototypeNativeHiveEvents.Definitions.SingleOrDefault(
+            evt => evt.Id == PrototypeNativeHiveEvents.WarHistorianRepyId);
+        var autoplayPipeline = PrototypeContent.Rules.EndTurnPipeline.Any(
+            step => step.Kind == PrototypeAutomaticStepKind.DispatchCombatEvent
+                && step.EventKind
+                    == PrototypeCombatEventKind.AutoPrePlayPhaseEntered);
+        if (PrototypeContent.RelicPool.Contains(relicId,
+                StringComparer.Ordinal)
+            || PrototypeContent.Relic(relicId).Id != relicId
+            || repy is null
+            || !repy.Choices.Any(choice => choice.Id == "unlock_cage")
+            || !autoplayPipeline)
+        {
+            return false;
+        }
+
+        static RunState CreateState(bool melted)
+        {
+            const string cardId = "proto.silent.neutralize";
+            const string enemyId = "proto.enemy.wriggler";
+            var relicId = PrototypeNativeHiveEvents.HistoryCourseId;
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var lastAttack = new PrototypeCombatCardSnapshot(
+                cardId, 0, PrototypeJson.EmptyObject());
+            var combat = new CombatState(
+                Turn: 2,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, enemyId, 20, 0, 0,
+                        new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1, [],
+                        IsMelted: melted)
+                ],
+                Counters: new PrototypeCombatCounters(
+                    LastOriginalAttackLastTurn: lastAttack),
+                Act: 3,
+                PlayPile: []);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var world = new RunWorldState(
+                RulesetId: PrototypeContent.RulesetId,
+                CharacterId: PrototypeContent.CharacterId,
+                Act: 3,
+                Floor: 1,
+                NextCardInstanceId: 2,
+                ActiveRoom: PrototypeRoomType.Combat,
+                Map: new MapState([]),
+                Combat: combat,
+                Reward: null,
+                Shop: null,
+                Event: null,
+                TerminalOutcome: null);
+            return new RunState(
+                GameBuild: V111Build.Id,
+                EmulatorSchema: V111Build.StateSchema,
+                RunId: "coverage-history-course",
+                RunSeed: "coverage-history-course",
+                DecisionIndex: 0,
+                Phase: RunPhase.Combat,
+                Player: player,
+                Rng: PrototypeRng.CreateBundle("coverage-history-course"),
+                ExtensionState: PrototypeJson.EmptyObject(),
+                World: world);
+        }
+
+        var replayed = PrototypeGameEngine.ResolveHistoryCourseAutoPlay(
+            CreateState(melted: false));
+        var replayedCombat = replayed.World?.Combat;
+        var duplicate = replayedCombat?.Cards.SingleOrDefault(card =>
+            card.IsHistoryCourseDupe);
+        var melted = PrototypeGameEngine.ResolveHistoryCourseAutoPlay(
+            CreateState(melted: true));
+        var meltedCombat = melted.World?.Combat;
+        return duplicate?.CardId == "proto.silent.neutralize"
+            && replayedCombat?.Energy == 3
+            && replayedCombat.Enemies.Single().Hp == 17
+            && replayedCombat.Enemies.Single().Statuses
+                .GetValueOrDefault("proto.status.weak") == 1
+            && meltedCombat?.Cards.Length == 0
+            && meltedCombat.NextCardInstanceId == 1
+            && meltedCombat.Enemies.Single().Hp == 20;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

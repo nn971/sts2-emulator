@@ -1018,6 +1018,8 @@ potion. Full native potion-pool and cursor parity remain unverified.
   History Course now auto-plays the last non-dupe Attack completed on
   the previous turn at the start of turn 2+, with normal targeting,
   zero energy cost, a fork-owned source snapshot and dupe exclusion.
+  Melted copies are inactive. Coverage executes the War Historian cage
+  reward path and a turn-two Silent Attack replay.
   Exact native CardPlaysFinished history parity remains unverified.
   [Glory quest audit](reference-builds/v0.111.0-glory-repy-quest.md).
 
