@@ -502,6 +502,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PUMPKIN_CANDLE"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.PumpkinCandleId,
+                StringComparer.Ordinal)
+            && HasPumpkinCandlePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -3277,6 +3287,98 @@ public static class V111Coverage
             && meltedOnly.Combat.Energy == baseEnergy
             && meltedBeforeActive.Player.Gold == 0
             && meltedBeforeActive.Combat.Energy == baseEnergy + 1;
+    }
+
+    private static bool HasPumpkinCandlePath()
+    {
+        var relicId = NativeAncientRewardsV111.PumpkinCandleId;
+        var choiceId = "take_" + relicId;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || PrototypeNativeRestSiteActionsV111.Kindle != "rest_kindle")
+        {
+            return false;
+        }
+
+        static PlayerState Acquire()
+        {
+            var relicId = NativeAncientRewardsV111.PumpkinCandleId;
+            var player = new PlayerState(30, 30, 0, [],
+                [new RelicInstance(relicId,
+                    PrototypeJson.EmptyObject())], []);
+            return PrototypeGameEngine.ApplyRelicRunEvent(
+                player,
+                PrototypeRunEventKind.RelicAcquired,
+                acquiredRelicId: relicId,
+                rng: PrototypeRng.CreateBundle(
+                    "coverage-pumpkin-candle-acquisition"));
+        }
+
+        var acquired = Acquire();
+        var candleIndex = Array.FindIndex(acquired.Relics,
+            relic => relic.RelicId == relicId);
+        if (candleIndex < 0
+            || NativeAncientRewardsV111.KindleCount(
+                acquired.Relics[candleIndex]) != 5
+            || PrototypeGameEngine.EnergyPerTurn(acquired)
+                != PrototypeContent.Rules.BaseEnergy + 1)
+        {
+            return false;
+        }
+
+        var state = PrototypeNativeLaterActFixture.Create(
+            "coverage-pumpkin-candle-exit", 2) with
+        {
+            Player = acquired
+        };
+        for (var combatIndex = 0; combatIndex < 6; combatIndex++)
+        {
+            state = state with
+            {
+                DecisionIndex = 100 + combatIndex
+            };
+            state = NativeAncientRewardsV111.ApplyCombatEnd(state);
+            var candle = state.Player.Relics[candleIndex];
+            var expectedCharges = Math.Max(0, 4 - combatIndex);
+            if (NativeAncientRewardsV111.KindleCount(candle)
+                    != expectedCharges
+                || PrototypeGameEngine.EnergyPerTurn(state.Player)
+                    != PrototypeContent.Rules.BaseEnergy
+                        + (expectedCharges > 0 ? 1 : 0))
+            {
+                return false;
+            }
+
+            var repeated = NativeAncientRewardsV111.ApplyCombatEnd(state);
+            if (NativeAncientRewardsV111.KindleCount(
+                    repeated.Player.Relics[candleIndex])
+                != expectedCharges)
+            {
+                return false;
+            }
+        }
+
+        var rekindled = NativeAncientRewardsV111.Rekindle(
+            state.Player, candleIndex);
+        var active = rekindled.Relics[candleIndex];
+        var melted = active with { IsMelted = true };
+        var meltedPlayer = rekindled with { Relics = [melted] };
+        return NativeAncientRewardsV111.KindleCount(active) == 5
+            && PrototypeGameEngine.EnergyPerTurn(rekindled)
+                == PrototypeContent.Rules.BaseEnergy + 1
+            && PrototypeGameEngine.EnergyPerTurn(meltedPlayer)
+                == PrototypeContent.Rules.BaseEnergy
+            && NativeAncientRewardsV111.KindleCount(
+                NativeAncientRewardsV111.AfterCombatEnd(meltedPlayer)
+                    .Relics[0]) == 5;
     }
 
     private static bool HasStorybookPath()
