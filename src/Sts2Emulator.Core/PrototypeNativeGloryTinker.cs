@@ -1,0 +1,270 @@
+using System.Text.Json;
+
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// Pinned TinkerTime/MadScience semantics. One persistent card ID carries
+/// native-like selected type and rider in the card's JSON payload, so
+/// forks, transforms and copies preserve the player's customization.
+/// </summary>
+public sealed partial class PrototypeGameEngine
+{
+    private static readonly string[] TinkerTypes = ["attack", "skill", "power"];
+
+    private static string[] TinkerRiders(string type) => type switch
+    {
+        "attack" => ["sapping", "violence", "choking"],
+        "skill" => ["energized", "wisdom", "chaos"],
+        "power" => ["expertise", "curious", "improvement"],
+        _ => throw new InvalidOperationException(
+            $"Unknown Tinker card type '{type}'.")
+    };
+
+    private static IReadOnlyList<GameAction> GetNativeTinkerActions(
+        EventState evt)
+    {
+        string[] ids = evt.NativePageIndex switch
+        {
+            0 => ["choose_card_type"],
+            1 or 2 => evt.OfferedChoiceIds
+                ?? throw new InvalidOperationException(
+                    "Tinker choice page has no persisted random offers."),
+            _ => throw new InvalidOperationException(
+                "Tinker Time has no further event pages.")
+        };
+        return ids.Select(id => GameAction.Create("event_choice",
+            new EventChoicePayload(id))).ToArray();
+    }
+
+    private static RunState StepNativeTinker(RunState state, GameAction action)
+    {
+        RequireKind(action, "event_choice");
+        var world = RequireWorld(state);
+        var evt = world.Event;
+        if (world.Act != 3 ||
+            evt?.EventId != PrototypeNativeGloryEvents.TinkerTimeId)
+            throw new InvalidOperationException(
+                "Tinker Time requires its Glory event fixture.");
+        var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
+        if (!GetNativeTinkerActions(evt).Any(a =>
+                a.ReadPayload<EventChoicePayload>().ChoiceId == choice))
+            throw new InvalidOperationException(
+                $"Tinker choice '{choice}' is unavailable on this page.");
+
+        if (evt.NativePageIndex == 0)
+        {
+            var choices = (string[])TinkerTypes.Clone();
+            PrototypeRng.Shuffle(state.Rng, "event", choices);
+            return state with
+            {
+                World = world with
+                {
+                    Event = evt with
+                    {
+                        NativePageIndex = 1,
+                        OfferedChoiceIds = choices.Take(2).ToArray()
+                    }
+                }
+            };
+        }
+
+        if (evt.NativePageIndex == 1)
+        {
+            var riders = TinkerRiders(choice);
+            PrototypeRng.Shuffle(state.Rng, "event", riders);
+            return state with
+            {
+                World = world with
+                {
+                    Event = evt with
+                    {
+                        NativePageIndex = 2,
+                        NativeTinkerType = choice,
+                        OfferedChoiceIds = riders.Take(2).ToArray()
+                    }
+                }
+            };
+        }
+
+        if (evt.NativePageIndex != 2 || evt.NativeTinkerType is null)
+            throw new InvalidOperationException(
+                "Tinker Time has no rider selection in progress.");
+
+        // Native MadScience stores TinkerTimeType and TinkerTimeRider
+        // as saved card properties. One immutable JSON payload models
+        // both and stays attached to the physical deck instance.
+        var payload = JsonSerializer.SerializeToElement(new
+        {
+            tinkerType = evt.NativeTinkerType,
+            tinkerRider = choice
+        });
+        var nextCardInstanceId = world.NextCardInstanceId;
+        var added = new CardInstance(nextCardInstanceId++,
+            PrototypeNativeGloryEvents.MadScienceId, 0, payload);
+        var player = state.Player with
+        {
+            Deck = state.Player.Deck.Append(added).ToArray()
+        };
+        player = ApplyRelicRunEvent(player,
+            PrototypeRunEventKind.CardAdded, addedCard: added, rng: state.Rng,
+            world: world, allocateCardId: () => nextCardInstanceId++);
+        return CompleteRoomToMap(state with
+        {
+            Player = player,
+            World = world with
+            {
+                NextCardInstanceId = nextCardInstanceId
+            }
+        });
+    }
+
+    private static PrototypeCardDefinition RuntimeCardDefinition(
+        CombatCardInstance card)
+    {
+        var model = PrototypeContent.Card(card.CardId);
+        if (card.CardId != PrototypeNativeGloryEvents.MadScienceId)
+            return model;
+        return MadScienceDefinition(card.State);
+    }
+
+    private static PrototypeCardDefinition MadScienceDefinition(
+        JsonElement state)
+    {
+        if (state.ValueKind != JsonValueKind.Object
+            || !state.TryGetProperty("tinkerType", out var typeValue)
+            || !state.TryGetProperty("tinkerRider", out var riderValue))
+            throw new InvalidOperationException(
+                "Mad Science requires its saved Tinker type and rider.");
+
+        var type = typeValue.GetString()
+            ?? throw new InvalidOperationException("Missing Mad Science type.");
+        var rider = riderValue.GetString()
+            ?? throw new InvalidOperationException("Missing Mad Science rider.");
+        if (!TinkerRiders(type).Contains(rider, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                $"Incompatible Mad Science rider '{rider}' for '{type}'.");
+
+        var cardType = type switch
+        {
+            "attack" => PrototypeCardType.Attack,
+            "skill" => PrototypeCardType.Skill,
+            "power" => PrototypeCardType.Power,
+            _ => throw new InvalidOperationException(
+                "Invalid Mad Science type.")
+        };
+        var effects = type switch
+        {
+            "attack" => MadScienceAttack(rider),
+            "skill" => MadScienceSkill(rider),
+            "power" => MadSciencePower(rider),
+            _ => throw new InvalidOperationException()
+        };
+        return PrototypeContent.Card(
+            PrototypeNativeGloryEvents.MadScienceId) with
+        {
+            Type = cardType,
+            Target = cardType == PrototypeCardType.Attack
+                ? PrototypeCardTarget.Enemy : PrototypeCardTarget.None,
+            Effects = effects
+        };
+    }
+
+    private static PrototypeCombatEffectSpec[] MadScienceAttack(
+        string rider)
+    {
+        var attack = new PrototypeCombatEffectSpec(
+            PrototypeCombatEffectKind.DamageEnemy, 12,
+            Repetitions: rider == "violence" ? 3 : 1);
+        return rider switch
+        {
+            "sapping" =>
+            [
+                attack,
+                new(PrototypeCombatEffectKind.ApplyEnemyStatus, 2,
+                    StatusId: "proto.status.weak"),
+                new(PrototypeCombatEffectKind.ApplyEnemyStatus, 2,
+                    StatusId: "proto.status.vulnerable")
+            ],
+            "violence" => [attack],
+            "choking" =>
+            [
+                attack,
+                new(PrototypeCombatEffectKind.ApplyEnemyPower, 6,
+                    PowerId: PrototypeNativeGloryEvents.StrangleId)
+            ],
+            _ => throw new InvalidOperationException()
+        };
+    }
+
+    private static PrototypeCombatEffectSpec[] MadScienceSkill(
+        string rider) => rider switch
+    {
+        "energized" =>
+        [
+            new(PrototypeCombatEffectKind.GainPlayerBlock, 8),
+            new(PrototypeCombatEffectKind.GainEnergy, 2)
+        ],
+        "wisdom" =>
+        [
+            new(PrototypeCombatEffectKind.GainPlayerBlock, 8),
+            new(PrototypeCombatEffectKind.DrawCards, 3)
+        ],
+        "chaos" =>
+        [
+            new(PrototypeCombatEffectKind.GainPlayerBlock, 8),
+            new(PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand, 1)
+        ],
+        _ => throw new InvalidOperationException()
+    };
+
+    private static PrototypeCombatEffectSpec[] MadSciencePower(
+        string rider) => rider switch
+    {
+        "expertise" =>
+        [
+            new(PrototypeCombatEffectKind.ApplyPlayerPower, 2,
+                PowerId: "proto.power.strength"),
+            new(PrototypeCombatEffectKind.ApplyPlayerPower, 2,
+                PowerId: "proto.power.dexterity")
+        ],
+        "curious" =>
+        [
+            new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: PrototypeNativeGloryEvents.CuriousId)
+        ],
+        "improvement" =>
+        [
+            new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: PrototypeNativeGloryEvents.ImprovementId)
+        ],
+        _ => throw new InvalidOperationException()
+    };
+
+    private static PlayerState ApplyMadScienceImprovement(
+        PlayerState player, CombatState combat, RngBundle rng)
+    {
+        var amount = combat.PlayerPowers
+            .Where(p => p.PowerId == PrototypeNativeGloryEvents.ImprovementId)
+            .Sum(p => Math.Max(0, p.Stacks));
+        var candidates = player.Deck.Where(card =>
+                CanSelectEventDeckCard(card,
+                    PrototypePersistentDeckChoiceKind.Upgrade,
+                    null, null, false))
+            .Select(card => card.InstanceId).ToList();
+        var upgrades = new HashSet<long>();
+        for (var i = 0; i < amount && candidates.Count > 0; i++)
+        {
+            var index = PrototypeRng.NextInt(rng, "combat", candidates.Count);
+            upgrades.Add(candidates[index]);
+            candidates.RemoveAt(index);
+        }
+        return upgrades.Count == 0 ? player : player with
+        {
+            Deck = player.Deck.Select(card =>
+                upgrades.Contains(card.InstanceId)
+                    ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
+                    : card).ToArray()
+        };
+    }
+
+}

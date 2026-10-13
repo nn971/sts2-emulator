@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/sts2-emulator/reference-trace-v0.2.schema.json",
+  "title": "STS2 native reference trace v0.2 line",
+  "description": "Native-neutral semantic trace. State and RNG codec payloads remain versioned bridge data.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "trace_schema",
+        "build",
+        "build_fingerprint",
+        "bridge_version",
+        "run_id",
+        "run_seed",
+        "captured_at_utc"
+      ],
+      "properties": {
+        "type": { "const": "header" },
+        "trace_schema": { "const": "0.2" },
+        "build": { "$ref": "#/$defs/buildIdentity" },
+        "build_fingerprint": { "type": "string", "minLength": 64, "maxLength": 64 },
+        "bridge_version": { "type": "string" },
+        "run_id": { "type": "string" },
+        "run_seed": { "type": "string" },
+        "captured_at_utc": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "decision_index",
+        "boundary_kind",
+        "action",
+        "before",
+        "after",
+        "diagnostics"
+      ],
+      "properties": {
+        "type": { "const": "transition" },
+        "decision_index": { "type": "integer", "minimum": 0 },
+        "boundary_kind": { "type": "string" },
+        "action": { "$ref": "#/$defs/action" },
+        "before": { "$ref": "#/$defs/snapshot" },
+        "after": { "$ref": "#/$defs/snapshot" },
+        "diagnostics": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "buildFile": {
+      "type": "object",
+      "required": ["logical_name", "file_name", "size_bytes", "sha256"],
+      "properties": {
+        "logical_name": { "type": "string" },
+        "file_name": { "type": "string" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string", "minLength": 64, "maxLength": 64 }
+      },
+      "additionalProperties": false
+    },
+    "buildIdentity": {
+      "type": "object",
+      "required": ["schema_id", "release_info", "target_framework", "files"],
+      "properties": {
+        "schema_id": { "const": "sts2-reference-build-v0" },
+        "release_info": { "type": "object" },
+        "target_framework": { "type": "string" },
+        "files": {
+          "type": "array",
+          "minItems": 5,
+          "items": { "$ref": "#/$defs/buildFile" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": {
+      "type": "object",
+      "required": ["kind", "payload"],
+      "properties": {
+        "kind": { "type": "string" },
+        "payload": {}
+      },
+      "additionalProperties": false
+    },
+    "rng": {
+      "type": "object",
+      "required": ["stream_id", "codec_id", "fingerprint"],
+      "properties": {
+        "stream_id": { "type": "string" },
+        "codec_id": { "type": "string" },
+        "fingerprint": { "type": "string" },
+        "state": {},
+        "call_count": { "type": ["integer", "null"], "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "snapshot": {
+      "type": "object",
+      "required": [
+        "decision_index",
+        "boundary_kind",
+        "state",
+        "state_hash",
+        "legal_actions",
+        "rng"
+      ],
+      "properties": {
+        "decision_index": { "type": "integer", "minimum": 0 },
+        "boundary_kind": { "type": "string" },
+        "state": { "type": "object" },
+        "state_hash": { "type": "string" },
+        "legal_actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" }
+        },
+        "rng": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rng" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

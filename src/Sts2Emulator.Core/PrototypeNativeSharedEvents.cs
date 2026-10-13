@@ -1,0 +1,69 @@
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// Shared v0.111.0 events used by the Silent regional route.
+/// </summary>
+public static class PrototypeNativeSharedEvents
+{
+    public const string ThisOrThatId = "proto.native.event.this_or_that";
+    public const string SymbioteId = "proto.native.event.symbiote";
+    public const string ClumsyCardId = NativeGloryAncientsV111.ClumsyCardId;
+
+    public static PrototypeEventDefinition ThisOrThatDefinition { get; } =
+        new(
+            ThisOrThatId,
+            "This or That",
+            [
+                new(
+                    "plain",
+                    "Lose 6 HP and gain 41–68 gold",
+                    [
+                        new(PrototypeRunEffectKind.LoseHp, 6),
+                        new(PrototypeRunEffectKind.GainGold)
+                    ]),
+                new(
+                    "ornate",
+                    "Gain a relic and add Clumsy",
+                    [
+                        new(PrototypeRunEffectKind.GainRandomRelic),
+                        new(PrototypeRunEffectKind.AddCardAfterDeckChoices,
+                            CardId: ClumsyCardId)
+                    ])
+            ],
+            MinAct: 1,
+            MaxAct: 3);
+
+    public static PrototypeEventDefinition SymbioteDefinition { get; } =
+        new(
+            SymbioteId,
+            "Symbiote",
+            [
+                new(
+                    "approach",
+                    "Enchant a card with Corrupted",
+                    [],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Enchant,
+                        1,
+                        EnchantmentKind:
+                            PrototypeCardEnchantmentKind.Corrupted,
+                        RequiredCardType: PrototypeCardType.Attack)),
+                new(
+                    "approach_locked",
+                    "Approach the Symbiote",
+                    []),
+                new(
+                    "kill_with_fire",
+                    "Transform a card",
+                    [],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Transform,
+                        1))
+            ],
+            MinAct: 2,
+            MaxAct: 3);
+
+    public static bool IsSupported(string eventId) =>
+        StringComparer.Ordinal.Equals(eventId, ThisOrThatId)
+        || StringComparer.Ordinal.Equals(eventId, SymbioteId);
+}

@@ -1,0 +1,12 @@
+{
+  "id": "Sts2ReferenceBridge",
+  "name": "STS2 Reference Bridge",
+  "author": "nn971",
+  "description": "Passive, build-pinned instrumentation for emulator fidelity traces and natural-run oracle corpora.",
+  "version": "v0.2.0",
+  "has_pck": false,
+  "has_dll": true,
+  "min_game_version": "0.111.0",
+  "dependencies": [],
+  "affects_gameplay": false
+}

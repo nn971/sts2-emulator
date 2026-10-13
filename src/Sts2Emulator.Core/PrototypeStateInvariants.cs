@@ -1,0 +1,3794 @@
+namespace Sts2Emulator.Core;
+
+public static class PrototypeStateInvariants
+{
+    public static void Validate(RunState state)
+    {
+        RunConfiguration.ValidateState(state);
+        NativeRunRngV111.Validate(state);
+        NativeAncientRewardsV111.ValidateEventContext(state);
+        if (state.Ascension < 0)
+        {
+            throw new InvalidOperationException(
+                $"Ascension is negative: {state.Ascension}.");
+        }
+
+        if (state.Phase == RunPhase.RunStart)
+        {
+            if (state.World is not null)
+            {
+                throw new InvalidOperationException("RunStart state must not have initialized world state.");
+            }
+
+            return;
+        }
+
+        var world = state.World
+            ?? throw new InvalidOperationException("Initialized prototype run is missing world state.");
+
+        if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))
+        {
+            throw new InvalidOperationException($"Unexpected prototype ruleset '{world.RulesetId}'.");
+        }
+
+        if (state.Player.MaxHp <= 0 || state.Player.Hp < 0 || state.Player.Hp > state.Player.MaxHp)
+        {
+            throw new InvalidOperationException(
+                $"Invalid player HP {state.Player.Hp}/{state.Player.MaxHp}.");
+        }
+
+        if (state.Player.Gold < 0)
+        {
+            throw new InvalidOperationException($"Player gold is negative: {state.Player.Gold}.");
+        }
+
+        foreach (var relic in state.Player.Relics.Where(relic =>
+            relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId))
+            _ = NativeAncientRewardsV111.KindleCount(relic);
+        foreach (var relic in state.Player.Relics)
+        {
+            if (relic.IsMelted && !relic.IsWax)
+                throw new InvalidOperationException("Only wax relics can be melted.");
+            if (relic.RelicId == NativeAncientRewardsV111.ToyBoxId)
+                _ = NativeAncientRewardsV111.ToyBoxCombatsSeen(relic);
+            if (relic.RelicId == NativePaelRewardsV111.WingId)
+                _ = NativePaelRewardsV111.RewardsSacrificed(relic);
+            if (relic.RelicId == NativePaelRewardsV111.ToothId)
+                _ = NativePaelRewardsV111.ToothCards(relic);
+            if (relic.RelicId == NativePaelRewardsV111.LegionId)
+                _ = NativePaelRewardsV111.LegionSkin(relic);
+            if (relic.RelicId == PrototypeNativeWingedBoots.RelicId
+                && !PrototypeNativeWingedBoots.HasValidState(relic))
+                throw new InvalidOperationException(
+                    "Winged Boots uses must be between zero and three.");
+        }
+        if (world.LastCombatEndDecisionIndex is { } endIndex
+            && (endIndex < 0 || endIndex > state.DecisionIndex))
+            throw new InvalidOperationException("Combat-end callback stamp exceeds the decision cursor.");
+        foreach (var relic in state.Player.Relics.Where(relic =>
+            relic.RelicId == NativeAncientRewardsV111.GoldenCompassId))
+            _ = PrototypeGoldenPathMapV111.AcquisitionActIndex(relic);
+        if (world.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId
+            && !PrototypeGoldenPathMapV111.IsActive(state.Player, world.Act))
+            throw new InvalidOperationException("Golden path map requires a Compass acquired in this act.");
+
+        if (world.ShopRemovalsUsed < 0)
+        {
+            throw new InvalidOperationException(
+                "Run-wide shop removal count cannot be negative.");
+        }
+
+        if (world.PotionRewardOddsThousandths % 100 != 0)
+        {
+            throw new InvalidOperationException(
+                "Potion reward odds must preserve native 10-percent increments.");
+        }
+
+        if (world.CardRarityOffsetBasisPoints <
+                PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints
+            || world.CardRarityOffsetBasisPoints >
+                PrototypeNativeCardRarityOdds.MaximumOffsetBasisPoints
+            || world.CardRarityOffsetBasisPoints % 50 != 0)
+        {
+            throw new InvalidOperationException(
+                "Native card-rarity offset is outside the source-shaped pity grid.");
+        }
+
+        if (world.RelicBag is { } bag)
+        {
+            var remaining = bag.Remaining;
+            if (remaining.Length != remaining.Distinct(StringComparer.Ordinal).Count()
+                || remaining.Any(id => !PrototypeContent.RelicPool.Contains(
+                        id, StringComparer.Ordinal))
+                || remaining.Any(id => state.Player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(relic.RelicId, id))))
+            {
+                throw new InvalidOperationException(
+                    "Native relic bag contains duplicates, invalid or owned relics.");
+            }
+
+            foreach (var (tier, ids) in new[]
+            {
+                (PrototypeRelicRarity.Common, bag.Common),
+                (PrototypeRelicRarity.Uncommon, bag.Uncommon),
+                (PrototypeRelicRarity.Rare, bag.Rare),
+                (PrototypeRelicRarity.Shop, bag.Shop)
+            })
+            {
+                if (ids.Any(id =>
+                    !PrototypeNativeRelicGrabBag.TryGetRarity(id, out var actual)
+                    || actual != tier))
+                {
+                    throw new InvalidOperationException(
+                        "Native relic bag has incorrectly partitioned relics.");
+                }
+            }
+        }
+
+        if (world.Act < 1 || world.Act > PrototypeContent.Rules.Acts)
+        {
+            throw new InvalidOperationException($"Invalid act {world.Act}.");
+        }
+
+        var currentBossFloor = world.Map.GenerationProfileId switch
+        {
+            PrototypeGoldenPathMapV111.ProfileId => PrototypeGoldenPathMapV111.BossFloor,
+            PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeUnderdocks.GenerationProfileId =>
+                PrototypeNativeOvergrowthMap.BossFloor,
+            PrototypeNativeLaterActMap.HiveProfileId
+                or PrototypeNativeLaterActMap.GloryProfileId =>
+                PrototypeNativeLaterActMap.RoomRows(world.Act) + 1,
+            _ => PrototypeContent.Rules.FloorsPerAct
+        };
+        if (world.Map.GenerationProfileId == PrototypeNativeLaterActMap.GloryProfileId
+            && world.LaterActEncounterBag?.SecondBossEncounterId is not null)
+            currentBossFloor++;
+        if (world.Floor < 0 || world.Floor > currentBossFloor)
+        {
+            throw new InvalidOperationException($"Invalid floor {world.Floor}.");
+        }
+
+        // An opt-in native Overgrowth opening starts with three potion
+        // slots; Tight Belt at A4+ subtracts one. This run-provenance
+        // flag survives Act 1 so later hybrid prototype acts keep the
+        // same belt capacity. Legacy prototype starts remain unchanged.
+        var basePotionSlots = world.NativeOvergrowthOpening
+            ? state.Ascension >= 4 ? 2 : 3
+            : PrototypeContent.Rules.PotionSlots;
+        if (state.Player.PotionSlots.Length
+            != basePotionSlots
+                + state.Player.Relics.Sum(relic =>
+                    PrototypeContent.Relic(relic.RelicId).ExtraPotionSlots))
+        {
+            throw new InvalidOperationException("Potion slot count differs from the active ruleset.");
+        }
+
+        var deckIds = state.Player.Deck.Select(card => card.InstanceId).ToArray();
+        if (deckIds.Length != deckIds.Distinct().Count())
+        {
+            throw new InvalidOperationException("Persistent deck contains duplicate card instance IDs.");
+        }
+
+        if (state.Player.Deck.Any(card =>
+                card.Enchantment is { Disabled: true } disabled
+                && (disabled.Kind != PrototypeCardEnchantmentKind.Vigorous
+                    || PrototypeContent.Card(card.CardId).Type
+                        != PrototypeCardType.Attack)))
+        {
+            throw new InvalidOperationException(
+                "Only an Attack with Vigorous can retain a disabled enchantment.");
+        }
+
+        if (world.NextCardInstanceId <= deckIds.DefaultIfEmpty(0).Max())
+        {
+            throw new InvalidOperationException("Next card instance ID does not exceed all live card IDs.");
+        }
+
+        if (world.Map.Nodes.Length > 0)
+        {
+            ValidateMap(world);
+        }
+
+        ValidateActOneEncounterPool(world);
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute == true)
+        {
+            var darvRevealed = state.Configuration.Profile.RevealedEpochs.Contains(
+                NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+            ValidatePreparedLaterActEncounterBags(
+                world, state.Ascension, darvRevealed);
+            if (world.Act > 1)
+                ValidateLaterActEncounterBag(
+                    world, state.Ascension, darvRevealed);
+            var darvAssignments = (world.LaterActEncounterBag is { } activeBag
+                    ? new[] { activeBag.AssignedAncientId }
+                    : Array.Empty<string?>())
+                .Concat((world.PreparedLaterActEncounterBags ?? [])
+                    .Select(bag => bag.AssignedAncientId))
+                .Count(id => id == NativeDarvEventV111.EventId);
+            if (darvAssignments > 1)
+                throw new InvalidOperationException(
+                    "The shared Darv Ancient cannot be assigned to multiple acts.");
+        }
+        ValidateEncounterHistory(world);
+        ValidateEventHistory(world);
+        ValidateCompletedRoomHistory(world, state.Player);
+        ValidatePhaseState(state, world);
+
+        if (world.Combat is not null)
+        {
+            ValidateCombat(state.Player, world.Combat);
+        }
+
+        if (state.Phase == RunPhase.Terminal)
+        {
+            if (world.TerminalOutcome is not ("victory" or "defeat"))
+            {
+                throw new InvalidOperationException("Terminal state has no recognized outcome.");
+            }
+
+            if (world.TerminalOutcome == "defeat" && state.Player.Hp != 0)
+            {
+                throw new InvalidOperationException("Defeat state must have zero HP.");
+            }
+        }
+        else if (world.TerminalOutcome is not null)
+        {
+            throw new InvalidOperationException("Non-terminal state carries a terminal outcome.");
+        }
+    }
+
+    private static void ValidatePhaseState(RunState state, RunWorldState world)
+    {
+        if (world.Reward?.SourceRoom == "Relic:ToyBox" && world.CustomRewardReturn is null)
+            throw new InvalidOperationException("Toy Box custom rewards have no return continuation.");
+        if (world.Reward?.SourceRoom == "Relic:GlassEye" && world.CustomRewardReturn is null)
+            throw new InvalidOperationException("Glass Eye custom rewards have no return continuation.");
+        if (world.Reward?.SourceRoom == PrototypeGameEngine.CauldronRewardSource
+            && world.CustomRewardReturn is null)
+            throw new InvalidOperationException("Cauldron custom rewards have no return continuation.");
+        if (world.Reward?.SourceRoom == PrototypeGameEngine.OrreryRewardSource
+            && world.CustomRewardReturn is null)
+            throw new InvalidOperationException("Orrery custom rewards have no return continuation.");
+        if (world.CustomRewardReturn is { } customReturn)
+        {
+            if (state.Phase != RunPhase.Reward
+                || world.Reward?.SourceRoom is not ("Relic:ToyBox" or "Relic:GlassEye")
+                    && world.Reward?.SourceRoom != PrototypeGameEngine.CauldronRewardSource
+                    && world.Reward?.SourceRoom != PrototypeGameEngine.OrreryRewardSource)
+                throw new InvalidOperationException("Custom relic rewards require an active reward continuation.");
+            if (world.Reward.SourceRoom == "Relic:ToyBox")
+            {
+                if (!state.Player.Relics.Any(relic => relic.RelicId == NativeAncientRewardsV111.ToyBoxId)
+                    || world.Reward.ExtraRelicRewardIds?.Length != 5
+                    || world.Reward.ExtraRelicWaxFlags is not { Length: 5 } waxFlags
+                    || waxFlags.Any(flag => !flag) || world.Reward.EndsAct)
+                    throw new InvalidOperationException("Toy Box custom rewards require five reserved wax relics.");
+            }
+            else if (world.Reward.SourceRoom == "Relic:GlassEye"
+                && (!state.Player.Relics.Any(relic => relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
+                || !world.Reward.IndependentSelection
+                || world.Reward.CardOptionsForGroup(0).Length != 3
+                || world.Reward.ExtraCardOptions is not { Length: 4 }
+                || world.Reward.EndsAct))
+            {
+                throw new InvalidOperationException("Glass Eye custom rewards require five independent card groups.");
+            }
+            else if (world.Reward.SourceRoom == PrototypeGameEngine.CauldronRewardSource
+                && (!state.Player.Relics.Any(relic =>
+                        relic.RelicId == PrototypeNativeSharedRelics.CauldronId)
+                    || !world.Reward.IndependentSelection
+                    || world.Reward.PotionOption is null
+                    || world.Reward.ExtraPotionOptions is not { Length: 4 }
+                    || world.Reward.ExtraPotionGroupsResolved is not
+                        { Length: 4 } potionGroups
+                    || potionGroups.Any(resolved => resolved)
+                    || world.Reward.EndsAct))
+            {
+                throw new InvalidOperationException("Cauldron custom rewards require five independent potion groups.");
+            }
+            else if (world.Reward.SourceRoom == PrototypeGameEngine.OrreryRewardSource
+                && (!state.Player.Relics.Any(relic =>
+                        relic.RelicId == PrototypeNativeSharedRelics.OrreryId)
+                    || !world.Reward.IndependentSelection
+                    || world.Reward.CardOptions.Length != 3
+                    || world.Reward.ExtraCardOptions?.Length != 4
+                    || world.Reward.ExtraCardOptions!.Any(
+                        group => group.Length != 3)
+                    || world.Reward.ExtraCardGroupsResolved?.Length != 4
+                    || world.Reward.ExtraCardGroupsResolved!.Any(
+                        resolved => resolved)
+                    || world.Reward.CardRewardGenerators?.Length != 5
+                    || world.Reward.CardRewardGenerators!.Any(generator =>
+                        generator is not
+                            { Kind: PrototypeCardRewardGeneratorKind.Encounter,
+                                Room: PrototypeRoomType.Combat })
+                    || world.Reward.EndsAct))
+            {
+                throw new InvalidOperationException("Orrery custom rewards require five independent three-card groups.");
+            }
+            for (var saved = customReturn; saved is not null; saved = saved.Parent)
+            {
+                if (saved.Phase is not (RunPhase.Reward or RunPhase.Shop or RunPhase.Event or RunPhase.MapChoice)
+                    || (saved.Phase == RunPhase.Reward) != (saved.Reward is not null)
+                    || saved.Phase == RunPhase.Shop && world.Shop is null
+                    || saved.Phase == RunPhase.Event && world.Event is null)
+                    throw new InvalidOperationException("Invalid custom reward return phase.");
+                if (saved.Reward is not null)
+                    ValidateReward(state.Player, saved.Reward);
+            }
+        }
+        switch (state.Phase)
+        {
+            case RunPhase.MapChoice:
+                if (world.Map.Options.Length == 0)
+                {
+                    throw new InvalidOperationException("MapChoice phase has no map options.");
+                }
+                break;
+
+            case RunPhase.Combat:
+                if (world.Combat is null)
+                {
+                    throw new InvalidOperationException("Combat phase has no combat state.");
+                }
+                break;
+
+            case RunPhase.Reward:
+                if (world.Reward is null)
+                {
+                    throw new InvalidOperationException("Reward phase has no reward state.");
+                }
+
+                ValidateReward(
+                    state.Player,
+                    world.Reward);
+                // Native event rewards retain a live event continuation.
+                // Check the quest's pre-rolled offers even while reward
+                // choices, rather than event choices, are displayed.
+                if (world.Event?.EventId ==
+                    PrototypeNativeHiveEvents.WarHistorianRepyId)
+                    ValidateEvent(state.Player, world.Event);
+                break;
+
+            case RunPhase.Shop:
+                if (world.Shop is null)
+                {
+                    throw new InvalidOperationException("Shop phase has no shop state.");
+                }
+
+                ValidateShop(state.Player, world.Shop);
+                break;
+
+            case RunPhase.Event:
+                if (world.Event is null)
+                {
+                    throw new InvalidOperationException(
+                        "Event phase has no event state.");
+                }
+
+                ValidateEvent(
+                    state.Player,
+                    world.Event);
+                break;
+
+            case RunPhase.Rest:
+            case RunPhase.ActTransition:
+                break;
+
+            case RunPhase.Terminal:
+                break;
+
+            default:
+                throw new InvalidOperationException($"Unexpected initialized prototype phase {state.Phase}.");
+        }
+    }
+
+    private static void ValidateActOneEncounterPool(
+        RunWorldState world)
+    {
+        var pool = world.ActOneEncounterPool;
+        if (pool is null)
+        {
+            return;
+        }
+
+        if (world.ActOneRegion is { } region
+            && region != pool.Region)
+        {
+            throw new InvalidOperationException(
+                "Act 1 encounter pool region disagrees with the run region.");
+        }
+
+        // Region-specific playable encounter bags may be smaller than
+        // native inventories. Never validate one region using another
+        // region's encounter capacities.
+        var weakPool = pool.Region == PrototypeActOneRegion.Overgrowth
+            ? PrototypeContent.OvergrowthWeakEncounterPool
+            : PrototypeNativeUnderdocks.SupportedWeakEncounterIds;
+        var normalPool = pool.Region == PrototypeActOneRegion.Overgrowth
+            ? PrototypeContent.OvergrowthNormalEncounterPool
+            : PrototypeNativeUnderdocks.SupportedNormalEncounterIds;
+        var elitePool = pool.Region == PrototypeActOneRegion.Overgrowth
+            ? PrototypeContent.OvergrowthEliteEncounterPool
+            : PrototypeNativeUnderdocks.SupportedEliteEncounterIds;
+        var bossPool = pool.Region == PrototypeActOneRegion.Overgrowth
+            ? PrototypeContent.OvergrowthBossEncounterPool
+            : PrototypeNativeUnderdocks.NativeBossEncounterIds;
+
+        if (pool.OrdinaryCombatsStarted < 0
+            || pool.OrdinaryCombatsStarted
+                > PrototypeNativeOvergrowthMap.RoomRows)
+        {
+            throw new InvalidOperationException(
+                $"Invalid Act 1 ordinary-combat counter {pool.OrdinaryCombatsStarted}.");
+        }
+
+        var weakStarted = Math.Min(3, pool.OrdinaryCombatsStarted);
+        if (pool.RemainingWeakEncounterIds.Length
+            != weakPool.Length - weakStarted
+            || pool.RemainingWeakEncounterIds.Distinct(StringComparer.Ordinal)
+                .Count() != pool.RemainingWeakEncounterIds.Length
+            || pool.RemainingWeakEncounterIds.Any(id =>
+                !weakPool.Contains(id, StringComparer.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                "Act 1 weak encounter bag is inconsistent with its region and combat counter.");
+        }
+
+        if (pool.RemainingNormalEncounterIds is { } normal)
+        {
+            var normalStarted = Math.Max(0, pool.OrdinaryCombatsStarted - 3);
+            var normalDrawsInCurrentBag = normalStarted % normalPool.Length;
+            var expectedRemaining = normalDrawsInCurrentBag == 0
+                ? normalPool.Length
+                : normalPool.Length - normalDrawsInCurrentBag;
+            // A bag becomes empty immediately after its final draw. It is
+            // refilled only when the following normal room is selected.
+            if (normalStarted > 0 && normalDrawsInCurrentBag == 0)
+                expectedRemaining = 0;
+            if (normal.Length != expectedRemaining
+                || normal.Distinct(StringComparer.Ordinal).Count()
+                    != normal.Length
+                || normal.Any(id => !normalPool.Contains(
+                    id, StringComparer.Ordinal)))
+            {
+                throw new InvalidOperationException(
+                    "Act 1 normal encounter bag is inconsistent with its region and combat counter.");
+            }
+        }
+
+        if (pool.RemainingEliteEncounterIds is { } elite
+            && (elite.Distinct(StringComparer.Ordinal).Count() != elite.Length
+                || elite.Any(id => !elitePool.Contains(
+                    id, StringComparer.Ordinal))))
+        {
+            throw new InvalidOperationException(
+                "Act 1 elite encounter bag contains a foreign or duplicate encounter.");
+        }
+
+        if (pool.BossEncounterId is null
+            || !bossPool.Contains(pool.BossEncounterId,
+                StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Act 1 run has an invalid region-selected boss encounter.");
+        }
+    }
+
+    private static void ValidatePreparedLaterActEncounterBags(
+        RunWorldState world, int ascension, bool darvRevealed)
+    {
+        var prepared = world.PreparedLaterActEncounterBags
+            ?? throw new InvalidOperationException(
+                "Experimental routes require run-start prepared encounter histories.");
+        var expectedActs = Enumerable.Range(world.Act + 1, 3 - world.Act).ToArray();
+        if (prepared.Any(bag => bag is null)
+            || !prepared.Select(bag => bag.Act).SequenceEqual(expectedActs))
+            throw new InvalidOperationException(
+                "Prepared encounter histories must belong to each future act in route order.");
+        foreach (var bag in prepared)
+        {
+            if (bag.OrdinaryCombatsStarted != 0 || bag.RemainingElite?.Length != 15)
+                throw new InvalidOperationException(
+                    "An unvisited act's prepared encounter history has already been consumed.");
+            ValidateLaterActEncounterBag(
+                world with { Act = bag.Act, LaterActEncounterBag = bag },
+                ascension, darvRevealed);
+        }
+    }
+
+    private static void ValidateLaterActEncounterBag(
+        RunWorldState world, int ascension, bool darvRevealed)
+    {
+        var bag = world.LaterActEncounterBag
+            ?? throw new InvalidOperationException(
+                "Configured Hive/Glory requires pre-generated encounter queues.");
+        var ordinaryRooms = ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(
+            world.Act);
+        if (bag.Act != world.Act
+            || bag.OrdinaryCombatsStarted < 0
+            || bag.OrdinaryCombatsStarted > ordinaryRooms)
+            throw new InvalidOperationException(
+                "Regional encounter queues have an invalid act/count.");
+
+        // In v111 ActModel.GenerateRooms the act creates two weak encounters,
+        // ordinaryRooms - 2 normal encounters, and fifteen elite encounters
+        // before rooms are visited. Refill may duplicate IDs across bag cycles.
+        // Validate the queue cursor via its remaining lengths, not uniqueness.
+        var expectedWeak = Math.Max(0, 2 - bag.OrdinaryCombatsStarted);
+        var expectedNormal = ordinaryRooms - 2
+            - Math.Max(0, bag.OrdinaryCombatsStarted - 2);
+        if (bag.RemainingWeak is null
+            || bag.RemainingNormal is null
+            || bag.RemainingElite is null
+            || bag.RemainingWeak.Length != expectedWeak
+            || bag.RemainingNormal.Length != expectedNormal
+            || bag.RemainingElite.Length > 15)
+            throw new InvalidOperationException(
+                "Regional encounter queue lengths disagree with their cursors.");
+
+        foreach (var (values, pool) in new[]
+        {
+            (bag.RemainingWeak,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Combat, true)),
+            (bag.RemainingNormal,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Combat, false)),
+            (bag.RemainingElite,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Elite, false))
+        })
+        {
+            if (values.Any(id => !pool.Contains(id, StringComparer.Ordinal)))
+                throw new InvalidOperationException(
+                    "Regional encounter queue contains foreign entries.");
+        }
+        if (!ExperimentalSilentThreeActRouteV111.Pool(
+            world.Act, PrototypeRoomType.Boss, false)
+            .Contains(bag.BossEncounterId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Regional preselected boss is not eligible for this act.");
+        if (bag.AssignedAncientId is { } ancientId
+            && !ExperimentalSilentThreeActRouteV111.AncientPool(world.Act,
+                includeDarv: darvRevealed)
+                .Contains(ancientId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Prepared Ancient assignment is unsupported or belongs to another act.");
+        var requiresSecondBoss = world.Act == 3 && ascension >= 10;
+        if (requiresSecondBoss != (bag.SecondBossEncounterId is not null)
+            || bag.SecondBossEncounterId is { } secondBoss
+                && (!ExperimentalSilentThreeActRouteV111.Pool(
+                        world.Act, PrototypeRoomType.Boss, false)
+                    .Contains(secondBoss, StringComparer.Ordinal)
+                    || secondBoss == bag.BossEncounterId))
+            throw new InvalidOperationException(
+                "Regional second-boss assignment disagrees with act and Ascension rules.");
+    }
+
+    private static void ValidateCompletedRoomHistory(
+        RunWorldState world, PlayerState player)
+    {
+        var history = world.CompletedRooms;
+        for (var index = 0; index < history.Length; index++)
+        {
+            var visit = history[index];
+            if (visit.Act < 1
+                || visit.Act > world.Act
+                || visit.Floor < 1
+                || visit.Floor > (world.Map.GenerationProfileId
+                        == PrototypeContent.MapGenerationProfileId
+                    ? PrototypeContent.Rules.FloorsPerAct
+                    : PrototypeGoldenPathMapV111.IsActive(player, visit.Act)
+                        ? PrototypeGoldenPathMapV111.BossFloor
+                        : visit.Act == 1
+                        ? PrototypeNativeOvergrowthMap.BossFloor
+                        : PrototypeNativeLaterActMap.RoomRows(visit.Act) + 1
+                            + (visit.Act == 3
+                                && world.LaterActEncounterBag?.SecondBossEncounterId is not null
+                                ? 1 : 0))
+                || string.IsNullOrWhiteSpace(visit.NodeId))
+            {
+                throw new InvalidOperationException(
+                    "Completed-room history contains an invalid act, floor or node.");
+            }
+
+            if (index > 0)
+            {
+                var previous = history[index - 1];
+                if (visit.Act < previous.Act
+                    || (visit.Act == previous.Act
+                        && visit.Floor <= previous.Floor))
+                {
+                    throw new InvalidOperationException(
+                        "Completed-room history is not strictly ordered.");
+                }
+            }
+
+            if (visit.Act == world.Act
+                && (world.Map.GenerationProfileId is
+                    PrototypeContent.MapGenerationProfileId
+                    or PrototypeNativeOvergrowthMap.GenerationProfileId
+                    or PrototypeNativeUnderdocks.GenerationProfileId
+                    || (world.RulesetId == V111Build.RulesetId
+                        && world.Map.GenerationProfileId is
+                            PrototypeNativeLaterActMap.HiveProfileId
+                            or PrototypeNativeLaterActMap.GloryProfileId
+                            or PrototypeGoldenPathMapV111.ProfileId)))
+            {
+                var node = world.Map.Nodes
+                    .FirstOrDefault(candidate =>
+                        StringComparer.Ordinal.Equals(
+                            candidate.NodeId,
+                            visit.NodeId));
+                if (node is null
+                    || node.Floor != visit.Floor
+                    || (node.RoomType != visit.RoomType
+                        && !(node.RoomType == PrototypeRoomType.Unknown
+                            && visit.RoomType is PrototypeRoomType.Combat
+                                or PrototypeRoomType.Event
+                                or PrototypeRoomType.Shop
+                                or PrototypeRoomType.Treasure)))
+                {
+                    throw new InvalidOperationException(
+                        "Completed-room history disagrees with the active generated map.");
+                }
+            }
+        }
+
+        // Isolated Hive/Glory event fixtures deliberately start in the
+        // middle of an act. Consecutive history is required only by the
+        // configured whole-route engine, not by those source test seams.
+        var fullRouteMap =
+            world.Map.GenerationProfileId is
+                PrototypeContent.MapGenerationProfileId
+                or PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeUnderdocks.GenerationProfileId
+            || (world.RulesetId == V111Build.RulesetId
+                && world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId
+                    or PrototypeGoldenPathMapV111.ProfileId);
+        if (!fullRouteMap)
+            return;
+
+        var completedThisAct = history
+            .Where(visit => visit.Act == world.Act)
+            .ToArray();
+        for (var index = 0;
+             index < completedThisAct.Length;
+             index++)
+        {
+            if (completedThisAct[index].Floor != index + 1)
+            {
+                throw new InvalidOperationException(
+                    "Generated map history must complete consecutive floors.");
+            }
+        }
+
+        if (world.ActiveRoom is not null
+            && world.Map.CurrentNodeId is { } activeId
+            && completedThisAct.Any(visit =>
+                StringComparer.Ordinal.Equals(
+                    visit.NodeId, activeId)))
+        {
+            throw new InvalidOperationException(
+                "An active room has already been completed.");
+        }
+    }
+
+    private static void ValidateEventHistory(RunWorldState world)
+    {
+        foreach (var eventId in world.EventIds)
+        {
+            if (!PrototypeContent.Events.ContainsKey(eventId))
+            {
+                throw new InvalidOperationException(
+                    $"Event history contains unknown event '{eventId}'.");
+            }
+        }
+
+        foreach (var group in world.EventIds.GroupBy(id => id, StringComparer.Ordinal))
+        {
+            var definition = PrototypeContent.Event(group.Key);
+            if (definition.OncePerRun && group.Count() > 1)
+            {
+                throw new InvalidOperationException(
+                    $"Once-per-run event '{group.Key}' appears multiple times.");
+            }
+        }
+
+        if (world.Event is null)
+        {
+            return;
+        }
+
+        var active = PrototypeContent.Event(world.Event.EventId);
+        if (active.CanonicalEncounterId is { } encounterId
+            && !PrototypeContent.Encounters.Any(encounter =>
+                StringComparer.Ordinal.Equals(encounter.Id, encounterId)))
+        {
+            throw new InvalidOperationException(
+                $"Event '{active.Id}' references unknown canonical encounter '{encounterId}'.");
+        }
+
+        if (world.Act < active.MinAct || world.Act > active.MaxAct
+            || (active.Weight <= 0
+                && !NativeAncientRewardsV111.IsOpeningEvent(world)
+                && !NativeTanxEventV111.IsOpeningEvent(world)
+                && !NativeVakuuEventV111.IsOpeningEvent(world)
+                && !NativeNonupeipeEventV111.IsOpeningEvent(world)
+                && active.Id != PrototypeNativeHiveEvents.WarHistorianRepyId
+                && !(world.Act is 2 or 3
+                    && (world.Map.GenerationProfileId ==
+                        PrototypeNativeLaterActMap.ProfileId(world.Act)
+                        || world.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId)
+                    && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                        active.Id, world.Act))
+                && active.Id !=
+                    PrototypeNativeGloryEvents.HungryForMushroomsId
+                && active.Id != PrototypeNativeGloryEvents.ReflectionsId
+                && active.Id != PrototypeNativeGloryEvents.RoundTeaPartyId
+                && active.Id !=
+                    PrototypeNativeGloryEvents.GraveOfTheForgottenId
+                && active.Id != PrototypeNativeGloryEvents.TrialId
+                && active.Id != PrototypeNativeGloryEvents.BattlewornDummyId
+                && active.Id != PrototypeNativeGloryEvents.TinkerTimeId
+                && active.Id != PrototypeNativeArchitectEnding.EventId))
+        {
+            throw new InvalidOperationException(
+                $"Event '{active.Id}' is ineligible in act {world.Act}.");
+        }
+
+        if (world.Map.Nodes.Length > 0)
+        {
+            var latest = world.EventIds.LastOrDefault()
+                ?? throw new InvalidOperationException(
+                    "Map-generated active event has no event-history entry.");
+            if (!StringComparer.Ordinal.Equals(latest, active.Id))
+            {
+                throw new InvalidOperationException(
+                    "Active event disagrees with the latest event-history entry.");
+            }
+        }
+    }
+
+    private static void ValidateEvent(
+        PlayerState player,
+        EventState eventState)
+    {
+        var definition =
+            PrototypeContent.Event(
+                eventState.EventId);
+
+        if (eventState.EventId
+            == PrototypeNativeSlipperyBridge.EventId)
+        {
+            ValidateSlipperyBridgeEvent(player, eventState);
+            return;
+        }
+        if (eventState.EventId
+            == PrototypeNativeRanwidTheElder.EventId)
+        {
+            ValidateRanwidTheElderEvent(player, eventState);
+            return;
+        }
+        if (eventState.NativeSlipperyBridgeHoldCount != 0
+            || eventState.NativeSlipperyBridgeCardInstanceId is not null
+            || eventState.NativeSlipperyBridgeSkippedCardInstanceIds
+                is not null
+            || eventState.NativeRanwidPotionSlot != -1
+            || eventState.NativeRanwidPotionId is not null
+            || eventState.NativeRanwidRelicIndex != -1
+            || eventState.NativeRanwidRelicId is not null)
+        {
+            throw new InvalidOperationException("Native event state leaked into another event.");
+        }
+
+        if (eventState.EventId == PrototypeNativeWongos.EventId)
+        {
+            if (eventState.NativeWongoFeaturedRelicId is null
+                || !PrototypeContent.Relics.ContainsKey(
+                        eventState.NativeWongoFeaturedRelicId)
+                    || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                        eventState.NativeWongoFeaturedRelicId,
+                        out var featuredRarity)
+                    || featuredRarity != PrototypeRelicRarity.Rare)
+            {
+                throw new InvalidOperationException(
+                    "Welcome to Wongos has an invalid featured relic.");
+            }
+            if (eventState.NativeWongoResultPage is not null
+                && eventState.NativeWongoResultPage is not (
+                    "after_buy" or "badge_counter" or "receive_badge"
+                        or "leave"))
+            {
+                throw new InvalidOperationException(
+                    "Welcome to Wongos has an unknown result page.");
+            }
+            if (eventState.NativePageIndex is not (0 or 2)
+                || (eventState.NativePageIndex == 2)
+                    != (eventState.NativeWongoResultPage is not null)
+                || eventState.NativePageIndex == 0
+                    && (eventState.NativeWongoResultPage is null)
+                        != (eventState.ChosenChoiceId is null))
+            {
+                throw new InvalidOperationException(
+                    "Welcome to Wongos result page disagrees with its progress.");
+            }
+        }
+        else if (eventState.NativeWongoFeaturedRelicId is not null
+            || eventState.NativeWongoResultPage is not null)
+        {
+            throw new InvalidOperationException(
+                "Wongos event data leaked into another event.");
+        }
+
+        if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
+        {
+            if (eventState.NativePageIndex == 0
+                && eventState.ChosenChoiceId is null)
+            {
+                var owned = player.PotionSlots
+                    .Select((potion, slot) => (Potion: potion, Slot: slot))
+                    .Where(item => item.Potion is not null)
+                    .ToArray();
+                var expected = owned.Take(3).ToArray();
+                var offers = eventState.NativeFuturePotionOffers;
+                if (owned.Length < 2
+                    || offers is null
+                    || offers.Length != expected.Length
+                    || offers.Select(offer => offer.Slot).Distinct().Count()
+                        != offers.Length
+                    || offers.Where((offer, index) =>
+                        offer.Slot != expected[index].Slot
+                        || offer.PotionId != expected[index].Potion!.PotionId
+                        || !PrototypeNativeFutureOfPotions.TryGetCardRarity(
+                            offer.PotionId, out var rarity)
+                        || offer.CardRarity != rarity
+                        || offer.CardType is not (PrototypeCardType.Attack
+                            or PrototypeCardType.Skill
+                            or PrototypeCardType.Power)
+                        || offer.CardRarity == PrototypeCardRarity.Common
+                            && offer.CardType == PrototypeCardType.Power)
+                        .Any())
+                {
+                    throw new InvalidOperationException(
+                        "The Future of Potions opening offers are invalid.");
+                }
+            }
+            else if (eventState.NativeFuturePotionOffers is not null)
+            {
+                throw new InvalidOperationException(
+                    "The Future of Potions retained offers after the player traded a potion.");
+            }
+        }
+        else if (eventState.NativeFuturePotionOffers is not null)
+        {
+            throw new InvalidOperationException(
+                "Future of Potions offers leaked into another event.");
+        }
+
+        if (eventState.EventId == PrototypeNativeRelicTrader.EventId)
+        {
+            if (eventState.NativePageIndex == 0
+                && eventState.ChosenChoiceId is null)
+            {
+                var offers = eventState.NativeRelicTraderOffers;
+                if (!PrototypeNativeRelicTrader.IsEligible(player)
+                    || offers is null
+                    || offers.Length != 3
+                    || !offers.Select(offer => offer.ChoiceId)
+                        .SequenceEqual(["top", "middle", "bottom"])
+                    || offers.Select(offer => offer.OwnedRelicIndex)
+                        .Distinct().Count() != offers.Length
+                    || offers.Where(offer => offer.NewRelicId
+                            != "proto.relic.circlet")
+                        .Select(offer => offer.NewRelicId)
+                        .Distinct(StringComparer.Ordinal).Count()
+                        != offers.Count(offer => offer.NewRelicId
+                            != "proto.relic.circlet")
+                    || offers.Any(offer =>
+                        (uint)offer.OwnedRelicIndex
+                            >= (uint)player.Relics.Length
+                        || player.Relics[offer.OwnedRelicIndex].RelicId
+                            != offer.OwnedRelicId
+                        || !PrototypeNativeRelicTrader.IsTradable(
+                            player.Relics[offer.OwnedRelicIndex])
+                        || offer.NewRelicId != "proto.relic.circlet"
+                            && player.Relics.Any(relic => relic.RelicId
+                                == offer.NewRelicId)
+                        || !PrototypeContent.Relics.ContainsKey(
+                            offer.NewRelicId)))
+                {
+                    throw new InvalidOperationException(
+                        "Relic Trader's opening exchange offers are invalid.");
+                }
+            }
+            else if (eventState.NativeRelicTraderOffers is not null)
+            {
+                throw new InvalidOperationException(
+                    "Relic Trader retained exchange offers after the trade.");
+            }
+        }
+        else if (eventState.NativeRelicTraderOffers is not null)
+        {
+            throw new InvalidOperationException(
+                "Relic Trader offers leaked into another event.");
+        }
+
+        if (eventState.OfferedChoiceIds is { } offered
+            && (offered.Length == 0
+                || offered.Distinct(StringComparer.Ordinal).Count()
+                    != offered.Length
+                || offered.Any(id =>
+                    !definition.Choices.Any(choice =>
+                        StringComparer.Ordinal.Equals(choice.Id, id)))))
+        {
+            throw new InvalidOperationException(
+                "Event option offer list is empty, duplicated or unknown.");
+        }
+
+        if (eventState.EventId
+                == PrototypeNativeOvergrowthEvents.NeowEventId
+            && eventState.OfferedChoiceIds is { Length: not 3 })
+        {
+            throw new InvalidOperationException(
+                "Neow must offer exactly three distinct choices.");
+        }
+
+        if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId)
+        {
+            if (eventState.NativeEventPotionSlot is { } potionSlot
+                && (potionSlot < 0
+                    || potionSlot >= player.PotionSlots.Length
+                    || player.PotionSlots[potionSlot] is null))
+            {
+                throw new InvalidOperationException(
+                    "Stone of All Time's saved potion slot is invalid.");
+            }
+
+            if (eventState.ChosenChoiceId == "lift"
+                ? eventState.NativeEventPotionSlot is not null
+                : eventState.NativeEventPotionSlot is null)
+            {
+                throw new InvalidOperationException(
+                    "Stone of All Time's potion choice state is inconsistent.");
+            }
+        }
+        else if (eventState.NativeEventPotionSlot is not null)
+        {
+            throw new InvalidOperationException(
+                "A non-Stone event cannot retain a selected potion slot.");
+        }
+
+        if (eventState.DeferredHpLoss < 0)
+        {
+            throw new InvalidOperationException(
+                "Event deferred HP loss cannot be negative.");
+        }
+
+        if (eventState.NativePageIndex < 0
+            || (eventState.EventId ==
+                    PrototypeNativeTabletOfTruth.EventId
+                ? eventState.NativePageIndex > 4
+                    && eventState.NativePageIndex !=
+                        PrototypeNativeEventCompletionPages
+                            .TerminalChoicePageIndex(eventState.EventId)
+                : eventState.EventId ==
+                    PrototypeNativeHiveEvents.WarHistorianRepyId
+                    ? eventState.NativePageIndex > 2
+                : eventState.EventId ==
+                    PrototypeNativeGloryEvents.TinkerTimeId
+                    ? eventState.NativePageIndex > 2
+                : eventState.EventId ==
+                    PrototypeNativeGloryEvents.BattlewornDummyId
+                    ? eventState.NativePageIndex > 4
+                : eventState.EventId == PrototypeNativeGloryEvents.TrialId
+                    ? eventState.NativePageIndex > 6
+                : eventState.EventId ==
+                    PrototypeNativeGloryEvents.RoundTeaPartyId
+                    ? eventState.NativePageIndex > 2
+                    : eventState.EventId ==
+                        PrototypeNativeHiveEvents.LanternKeyEventId
+                        ? eventState.NativePageIndex > 3
+                    : eventState.EventId ==
+                        PrototypeNativeDenseVegetation.EventId
+                        ? eventState.NativePageIndex > 3
+                    : eventState.EventId ==
+                        PrototypeNativeEndlessConveyor.EventId
+                        ? eventState.NativePageIndex > 1
+                            && eventState.NativePageIndex !=
+                                PrototypeNativeEventCompletionPages
+                                    .TerminalChoicePageIndex(
+                                        eventState.EventId)
+                        : eventState.EventId ==
+                            PrototypeNativePunchOff.EventId
+                            ? eventState.NativePageIndex > 2
+                                && eventState.NativePageIndex !=
+                                    PrototypeNativeEventCompletionPages
+                                        .TerminalChoicePageIndex(
+                                            eventState.EventId)
+                            : PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                                eventState.EventId)
+                                ? eventState.NativePageIndex >
+                                    PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                                        eventState.EventId)
+                                : eventState.EventId ==
+                                "proto.native.underdocks.abyssal_baths"
+                                ? false
+                                : eventState.NativePageIndex != 0))
+        {
+            throw new InvalidOperationException(
+                "Native event page progress is out of range.");
+        }
+
+        if (eventState.NativePageIndex > 0
+            && eventState.ChosenChoiceId is not null
+            && eventState.EventId != PrototypeNativeGloryEvents.TrialId
+            && eventState.EventId != PrototypeNativeGloryEvents.TinkerTimeId
+            && eventState.EventId != PrototypeNativeGloryEvents.BattlewornDummyId
+            && eventState.EventId != PrototypeNativeEndlessConveyor.EventId
+            && eventState.EventId != PrototypeNativePunchOff.EventId
+            && !PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventState.EventId)
+            && eventState.EventId != "proto.native.underdocks.abyssal_baths")
+        {
+            throw new InvalidOperationException(
+                "Native followup page cannot have a completed choice.");
+        }
+
+        if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventState.EventId)
+            && eventState.NativePageIndex ==
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    eventState.EventId))
+        {
+            if (!PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                    eventState.EventId, eventState.ChosenChoiceId)
+                || eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null
+                || eventState.RemainingDeckChoices.Length != 0
+                || eventState.RemainingPotionIds.Length != 0
+                || eventState.PendingReward is not null
+                || eventState.DeferredHpLoss != 0
+                || eventState.DeferredGoldLoss != 0
+                || eventState.DeferredCardId is not null
+                || eventState.NativeDishRollPending)
+                throw new InvalidOperationException(
+                    "Native event completion page has unresolved or invalid state.");
+            return;
+        }
+
+        if (eventState.NativeEventGold != 0
+            && (eventState.EventId switch
+            {
+                PrototypeNativeDenseVegetation.EventId =>
+                    eventState.NativeEventGold is >= 61 and <= 99,
+                "proto.native.event.whispering_hollow" =>
+                    eventState.NativeEventGold is >= 26 and <= 44,
+                "proto.native.event.sunken_statue" =>
+                    eventState.NativeEventGold is >= 101 and <= 121,
+                "proto.native.event.luminous_choir" =>
+                    eventState.NativeEventGold is >= 100 and <= 149,
+                "proto.native.event.jungle_maze_adventure" =>
+                    eventState.NativeEventGold is >= 135 and <= 164,
+                "proto.native.underdocks.sunken_statue" =>
+                    eventState.NativeEventGold is >= 101 and <= 121,
+                "proto.native.underdocks.sunken_treasury" =>
+                    eventState.NativeEventGold is >= 52 and <= 67,
+                PrototypeNativeHiveEvents.LostWispId =>
+                    eventState.NativeEventGold is >= 45 and <= 75,
+                PrototypeNativePunchOff.EventId =>
+                    eventState.NativeEventGold is >= 91 and <= 98,
+                PrototypeNativeSharedEvents.ThisOrThatId =>
+                    eventState.NativeEventGold is >= 41 and <= 68,
+                PrototypeNativeCrystalSphere.EventId =>
+                    eventState.NativeEventGold is >= 51 and <= 99,
+                _ => false
+            }) == false)
+        {
+            throw new InvalidOperationException(
+                "Native event gold roll is invalid.");
+        }
+
+        if (eventState.NativeEventSecondaryGold != 0
+            && !(eventState.EventId switch
+            {
+                "proto.native.event.jungle_maze_adventure" =>
+                    eventState.NativeEventSecondaryGold is >= 35 and <= 64,
+                "proto.native.underdocks.sunken_treasury" =>
+                    eventState.NativeEventSecondaryGold is >= 303 and <= 363,
+                _ => false
+            }))
+        {
+            throw new InvalidOperationException(
+                "Native event secondary gold roll is invalid.");
+        }
+
+        if (eventState.EventId == "proto.native.event.jungle_maze_adventure"
+            && (eventState.NativeEventGold == 0)
+                != (eventState.NativeEventSecondaryGold == 0))
+        {
+            throw new InvalidOperationException(
+                "Jungle Maze must preserve both independent gold rolls.");
+        }
+
+        if (eventState.EventId == "proto.native.underdocks.sunken_treasury"
+            && (eventState.NativeEventGold == 0)
+                != (eventState.NativeEventSecondaryGold == 0))
+        {
+            throw new InvalidOperationException(
+                "Sunken Treasury must preserve both independent gold rolls.");
+        }
+
+        if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
+        {
+            ValidateConveyorEvent(player, eventState);
+            return;
+        }
+        if (eventState.NativeDishId is not null
+            || eventState.NativeLastDishId is not null
+            || eventState.NativeDishCount != 0
+            || eventState.NativeDishRollPending)
+        {
+            throw new InvalidOperationException(
+                "Conveyor-specific state leaked into another event.");
+        }
+
+        if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+        {
+            if (eventState.NativePageIndex == 0
+                && eventState.RepyFirstChoiceId is not null
+                || eventState.NativePageIndex > 0
+                    && eventState.RepyFirstChoiceId is not
+                        ("unlock_chest" or "unlock_cage")
+                || (eventState.RepyChestPotionIds is null)
+                    != (eventState.RepyChestRelicIds is null)
+                || eventState.RepyChestGroupsResolved is < 0 or > 1
+                || eventState.RepyChestPotionIds is null
+                    && eventState.RepyChestGroupsResolved != 0
+                || eventState.RepyChestPotionIds is { } potions
+                    && (potions.Length != 2
+                        || potions.Any(id =>
+                            !PrototypeContent.Potions.ContainsKey(id)))
+                || eventState.RepyChestRelicIds is { } relics
+                    && (relics.Length != 2
+                        || relics.Distinct(StringComparer.Ordinal).Count() != 2
+                        || relics.Any(id =>
+                            !PrototypeContent.Relics.ContainsKey(id))))
+                throw new InvalidOperationException(
+                    "War Historian Repy has invalid page or chest reward state.");
+            return;
+        }
+        if (eventState.RepyFirstChoiceId is not null
+            || eventState.RepyChestPotionIds is not null
+            || eventState.RepyChestRelicIds is not null
+            || eventState.RepyChestGroupsResolved != 0)
+            throw new InvalidOperationException(
+                "Repy-specific reward state leaked into another event.");
+
+        if (eventState.EventId == "proto.native.underdocks.abyssal_baths")
+        {
+            if (eventState.ChosenChoiceId is not null
+                || eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null)
+            {
+                throw new InvalidOperationException(
+                    "Abyssal Baths must remain on a resumable choice page.");
+            }
+            return;
+        }
+
+        if (eventState.EventId == PrototypeNativePunchOff.EventId
+            && eventState.ChosenChoiceId is null
+            && eventState.PendingDeckChoice is null
+            && eventState.PendingPotionReplacement is null)
+        {
+            // Initial and challenge/fight pages have their own choices.
+            return;
+        }
+
+        if (eventState.EventId == PrototypeNativeGloryEvents.TinkerTimeId)
+        {
+            var expected = eventState.NativePageIndex switch
+            {
+                0 => 0,
+                1 or 2 => 2,
+                _ => throw new InvalidOperationException(
+                    "Tinker event page is out of range.")
+            };
+            if (eventState.ChosenChoiceId is not null
+                || (eventState.OfferedChoiceIds?.Length ?? 0) != expected
+                || (eventState.NativePageIndex == 2
+                    ? eventState.NativeTinkerType is not
+                        ("attack" or "skill" or "power")
+                    : eventState.NativeTinkerType is not null))
+                throw new InvalidOperationException(
+                    "Tinker selected type and choice offers are inconsistent.");
+            return;
+        }
+        if (eventState.NativeTinkerType is not null)
+            throw new InvalidOperationException(
+                "Tinker-only state leaked into another event.");
+
+        if (eventState.EventId ==
+                PrototypeNativeGloryEvents.BattlewornDummyId
+            && eventState.NativePageIndex > 0
+            && eventState.NativePageIndex <
+                PrototypeNativeEventCompletionPages
+                    .TerminalChoicePageIndex(eventState.EventId)
+            && eventState.ChosenChoiceId is not null
+            && eventState.PendingDeckChoice is null
+            && eventState.PendingReward is null
+            && eventState.RemainingDeckChoices.Length == 0)
+        {
+            // Event combat occupies Combat phase and retains the choice.
+            return;
+        }
+
+        if (eventState.ChosenChoiceId is null)
+        {
+            if (eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null
+                || eventState.RemainingPotionIds.Length > 0
+                || eventState.RemainingDeckChoices.Length > 0
+                || eventState.PendingReward is not null
+                || eventState.DeferredHpLoss != 0
+                || eventState.DeferredCardId is not null)
+            {
+                throw new InvalidOperationException(
+                    "Pending event continuation has no chosen event option.");
+            }
+
+            return;
+        }
+
+        var choice = definition.Choices
+            .FirstOrDefault(item =>
+                StringComparer.Ordinal.Equals(
+                    item.Id,
+                    eventState.ChosenChoiceId))
+            ?? throw new InvalidOperationException(
+                "Event state references an unknown chosen option.");
+
+        if (eventState.DeferredCardId is { } deferredCardId)
+        {
+            _ = PrototypeContent.Card(deferredCardId);
+            if (!choice.Effects.Any(effect =>
+                    effect.Kind
+                        == PrototypeRunEffectKind.AddCardAfterDeckChoices
+                    && StringComparer.Ordinal.Equals(
+                        effect.CardId, deferredCardId)))
+            {
+                throw new InvalidOperationException(
+                    "Deferred card addition disagrees with source event choice.");
+            }
+        }
+
+        if (eventState.PendingReward is { } deferred)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    deferred.SourceRoom, "Event:" + eventState.EventId))
+            {
+                throw new InvalidOperationException(
+                    "Deferred event reward references a foreign source event.");
+            }
+        }
+
+        var pending =
+            eventState.PendingDeckChoice;
+        var potionReplacement =
+            eventState.PendingPotionReplacement;
+        if (pending is null
+            && potionReplacement is null
+            && eventState.PendingReward is null)
+        {
+            throw new InvalidOperationException(
+                "Resolved event choice should not remain in Event phase without an active continuation.");
+        }
+
+        if (pending is not null
+            && potionReplacement is not null)
+        {
+            throw new InvalidOperationException(
+                "An event cannot present two continuation prompts simultaneously.");
+        }
+
+        foreach (var queuedPotionId in eventState.RemainingPotionIds)
+        {
+            _ = PrototypeContent.Potion(queuedPotionId);
+            if (!choice.Effects.Any(effect =>
+                    (effect.Kind == PrototypeRunEffectKind.GainPotion
+                        && StringComparer.Ordinal.Equals(
+                            effect.PotionId, queuedPotionId))
+                    || effect.Kind is PrototypeRunEffectKind.GainRandomPotion
+                        or PrototypeRunEffectKind.GainRandomUncommonPotion))
+            {
+                throw new InvalidOperationException(
+                    "Queued event potion has no matching source effect.");
+            }
+        }
+
+        foreach (var queuedDeckChoice in eventState.RemainingDeckChoices)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    queuedDeckChoice.ChoiceId,
+                    choice.Id)
+                || queuedDeckChoice.RemainingSelections <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Queued event deck continuation has invalid provenance or selections.");
+            }
+
+            if (queuedDeckChoice.SourceRelicId is { } sourceRelic)
+            {
+                if (!player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(
+                            relic.RelicId, sourceRelic)))
+                {
+                    throw new InvalidOperationException(
+                        "Queued event deck continuation references an unowned relic.");
+                }
+
+                var sourceSpec = PrototypeContent.Relic(sourceRelic)
+                    .AcquisitionDeckChoice
+                    ?? throw new InvalidOperationException(
+                        "Queued event deck continuation has no relic source specification.");
+                if (sourceSpec.Kind != queuedDeckChoice.Kind
+                    || sourceSpec.UpgradeTransformedCards
+                        != queuedDeckChoice.UpgradeTransformedCards
+                    || sourceSpec.EnchantmentKind != queuedDeckChoice.EnchantmentKind)
+                {
+                    throw new InvalidOperationException(
+                        "Queued event deck continuation disagrees with its relic.");
+                }
+            }
+            else if (choice.DeckChoice is not { } eventSpec
+                || eventSpec.Kind != queuedDeckChoice.Kind
+                || eventSpec.UpgradeTransformedCards
+                    != queuedDeckChoice.UpgradeTransformedCards)
+            {
+                throw new InvalidOperationException(
+                    "Queued event deck continuation disagrees with its source choice.");
+            }
+        }
+
+        if (pending is not null)
+        {
+            PrototypePersistentDeckChoiceKind expectedKind;
+            bool expectedUpgradeTransformedCards;
+            PrototypeCardEnchantmentKind? expectedEnchantmentKind;
+            string? expectedTransformToCardId;
+            bool expectedBasicCardsOnly;
+            bool expectedRequiresUpgradable;
+            bool expectedPreserveUpgradeOnTransformation;
+            bool expectedPreserveEnchantmentOnTransformation;
+            int expectedMinimumSelections;
+
+            if (pending.SourceRelicId is { } sourceRelicId)
+            {
+                if (!player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(
+                            relic.RelicId,
+                            sourceRelicId)))
+                {
+                    throw new InvalidOperationException(
+                        "Pending relic-sourced event deck choice references an unowned relic.");
+                }
+
+                var relicSpec =
+                    PrototypeContent.Relic(
+                        sourceRelicId)
+                        .AcquisitionDeckChoice
+                    ?? throw new InvalidOperationException(
+                        "Pending relic-sourced event deck choice has no source specification.");
+                expectedKind = relicSpec.Kind;
+                expectedUpgradeTransformedCards =
+                    relicSpec.UpgradeTransformedCards;
+                expectedEnchantmentKind = relicSpec.EnchantmentKind;
+                expectedTransformToCardId = relicSpec.TransformToCardId;
+                expectedBasicCardsOnly = false;
+                expectedRequiresUpgradable = relicSpec.RequiresUpgradable;
+                expectedPreserveUpgradeOnTransformation =
+                    relicSpec.PreserveUpgradeOnTransformation;
+                expectedPreserveEnchantmentOnTransformation =
+                    relicSpec.PreserveEnchantmentOnTransformation;
+                expectedMinimumSelections = relicSpec.MinimumSelections
+                    ?? relicSpec.Selections;
+            }
+            else
+            {
+                var spec = choice.DeckChoice
+                    ?? throw new InvalidOperationException(
+                        "Pending event deck choice source option has no deck-choice specification.");
+                expectedKind = spec.Kind;
+                expectedUpgradeTransformedCards =
+                    spec.UpgradeTransformedCards;
+                expectedEnchantmentKind = spec.EnchantmentKind;
+                expectedTransformToCardId = spec.TransformToCardId;
+                expectedBasicCardsOnly = spec.BasicCardsOnly;
+                expectedRequiresUpgradable = false;
+                expectedPreserveUpgradeOnTransformation = false;
+                expectedPreserveEnchantmentOnTransformation = false;
+                expectedMinimumSelections = spec.Selections;
+            }
+
+            var minimumSelections = pending.MinimumSelectionsRemaining
+                ?? pending.RemainingSelections;
+            if (!StringComparer.Ordinal.Equals(
+                    pending.ChoiceId,
+                    choice.Id)
+                || pending.Kind != expectedKind
+                || pending.UpgradeTransformedCards
+                    != expectedUpgradeTransformedCards
+                || pending.EnchantmentKind != expectedEnchantmentKind
+                || pending.TransformToCardId != expectedTransformToCardId
+                || pending.BasicCardsOnly != expectedBasicCardsOnly
+                || pending.RequiresUpgradable != expectedRequiresUpgradable
+                || pending.PreserveUpgradeOnTransformation
+                    != expectedPreserveUpgradeOnTransformation
+                || pending.PreserveEnchantmentOnTransformation
+                    != expectedPreserveEnchantmentOnTransformation
+                || minimumSelections > expectedMinimumSelections
+                || minimumSelections < 0
+                || minimumSelections > pending.RemainingSelections)
+            {
+                throw new InvalidOperationException(
+                    "Pending event deck choice disagrees with its source.");
+            }
+
+            if (pending.RemainingSelections <= 0
+                || pending.CandidateCardInstanceIds.Length
+                    < pending.RemainingSelections)
+            {
+                throw new InvalidOperationException(
+                    "Pending event deck choice has an invalid selection count.");
+            }
+
+            if (pending.CandidateCardInstanceIds.Length
+                != pending.CandidateCardInstanceIds
+                    .Distinct()
+                    .Count())
+            {
+                throw new InvalidOperationException(
+                    "Pending event deck choice contains duplicate card instances.");
+            }
+
+            foreach (var cardInstanceId in
+                     pending.CandidateCardInstanceIds)
+            {
+                var card = player.Deck
+                    .FirstOrDefault(item =>
+                        item.InstanceId
+                            == cardInstanceId)
+                    ?? throw new InvalidOperationException(
+                        $"Pending event deck choice references missing card {cardInstanceId}.");
+
+                if (!PrototypeGameEngine.CanSelectEventDeckCard(
+                        card, pending.Kind,
+                        pending.TransformToCardId,
+                        pending.EnchantmentKind,
+                        pending.BasicCardsOnly))
+                {
+                    throw new InvalidOperationException(
+                        "Pending event deck choice includes an ineligible card.");
+                }
+                if (pending.RequiresUpgradable
+                    && card.UpgradeLevel >= PrototypeContent.Card(card.CardId).MaxUpgradeLevel)
+                    throw new InvalidOperationException("Pending event deck choice includes a non-upgradable card.");
+                if (pending.RequiredCardType is { } requiredCardType
+                    && PrototypeContent.Card(card.CardId).Type != requiredCardType)
+                    throw new InvalidOperationException("Pending event deck choice includes a card of the wrong type.");
+                if (pending.EnchantmentAmount <= 0)
+                    throw new InvalidOperationException("Pending event enchant amount must be positive.");
+            }
+        }
+
+        if (potionReplacement is not null)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    potionReplacement.ChoiceId,
+                    choice.Id))
+            {
+                throw new InvalidOperationException(
+                    "Pending event potion replacement disagrees with its source option.");
+            }
+
+            if (!choice.Effects.Any(effect =>
+                    (effect.Kind
+                        == PrototypeRunEffectKind.GainPotion
+                        && StringComparer.Ordinal.Equals(
+                            effect.PotionId,
+                            potionReplacement.PotionId))
+                    || effect.Kind
+                        is PrototypeRunEffectKind.GainRandomPotion
+                            or PrototypeRunEffectKind.GainRandomUncommonPotion))
+            {
+                throw new InvalidOperationException(
+                    "Pending event potion replacement has no matching acquisition effect.");
+            }
+
+            _ = PrototypeContent.Potion(
+                potionReplacement.PotionId);
+            if (potionReplacement.CandidateSlots.Length == 0
+                || potionReplacement.CandidateSlots.Length
+                    != potionReplacement.CandidateSlots
+                        .Distinct()
+                        .Count())
+            {
+                throw new InvalidOperationException(
+                    "Pending event potion replacement has invalid slot candidates.");
+            }
+
+            if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)
+                || PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(eventState.EventId))
+            {
+                var firstEmpty = Array.IndexOf(player.PotionSlots, null);
+                var expectedSlots = firstEmpty >= 0
+                    ? new[] { firstEmpty }
+                    : Enumerable.Range(0, player.PotionSlots.Length).ToArray();
+                if (!potionReplacement.CandidateSlots.SequenceEqual(expectedSlots))
+                {
+                    throw new InvalidOperationException(
+                        "Native event potion offer candidates disagree with available slots.");
+                }
+            }
+
+            foreach (var slot in potionReplacement.CandidateSlots)
+            {
+                if (slot < 0
+                    || slot >= player.PotionSlots.Length
+                    || (player.PotionSlots[slot] is null
+                        && !PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)
+                        && !PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(eventState.EventId)))
+                {
+                    throw new InvalidOperationException(
+                        $"Pending event potion reward references invalid slot {slot}.");
+                }
+            }
+        }
+    }
+
+    private static void ValidateSlipperyBridgeEvent(
+        PlayerState player,
+        EventState eventState)
+    {
+        var skipped = eventState
+            .NativeSlipperyBridgeSkippedCardInstanceIds;
+        var cardInstanceId = eventState
+            .NativeSlipperyBridgeCardInstanceId;
+        if (eventState.NativePageIndex
+                == PrototypeNativeEventCompletionPages
+                    .TerminalChoicePageIndex(
+                        PrototypeNativeSlipperyBridge.EventId))
+        {
+            if (eventState.ChosenChoiceId != "overcome"
+                || cardInstanceId is not null
+                || skipped is null
+                || skipped.Length != 0
+                || eventState.NativeSlipperyBridgeHoldCount < 0
+                || eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null
+                || eventState.RemainingDeckChoices.Length != 0
+                || eventState.RemainingPotionIds.Length != 0
+                || eventState.PendingReward is not null)
+            {
+                throw new InvalidOperationException(
+                    "Slippery Bridge completion page is inconsistent.");
+            }
+
+            return;
+        }
+
+        if (eventState.NativeSlipperyBridgeHoldCount < 0
+            || cardInstanceId is null
+            || skipped is null
+            || skipped.Length != skipped.Distinct().Count()
+            || (eventState.ChosenChoiceId is null
+                ? eventState.NativeSlipperyBridgeHoldCount != 0
+                : eventState.NativeSlipperyBridgeHoldCount == 0
+                    || !StringComparer.Ordinal.Equals(
+                        eventState.ChosenChoiceId,
+                        PrototypeNativeSlipperyBridge.HoldChoiceId(
+                            eventState.NativeSlipperyBridgeHoldCount - 1)))
+            || eventState.PendingDeckChoice is not null
+            || eventState.PendingPotionReplacement is not null
+            || eventState.RemainingDeckChoices.Length != 0
+            || eventState.RemainingPotionIds.Length != 0
+            || eventState.PendingReward is not null)
+        {
+            throw new InvalidOperationException(
+                "Slippery Bridge has invalid choice or card-selection state.");
+        }
+
+        var highlighted = player.Deck.FirstOrDefault(card =>
+            card.InstanceId == cardInstanceId.Value);
+        if (highlighted is null
+            || !PrototypeGameEngine.CanSelectEventDeckCard(
+                highlighted, PrototypePersistentDeckChoiceKind.Remove,
+                transformToCardId: null, enchantmentKind: null,
+                basicCardsOnly: false)
+            || skipped.Any(id => !player.Deck.Any(card =>
+                card.InstanceId == id
+                && PrototypeGameEngine.CanSelectEventDeckCard(
+                    card, PrototypePersistentDeckChoiceKind.Remove,
+                    transformToCardId: null, enchantmentKind: null,
+                    basicCardsOnly: false))))
+        {
+            throw new InvalidOperationException(
+                "Slippery Bridge references a missing or unremovable deck card.");
+        }
+    }
+
+    private static void ValidateRanwidTheElderEvent(
+        PlayerState player,
+        EventState eventState)
+    {
+        if (eventState.NativePageIndex
+            == PrototypeNativeEventCompletionPages
+                .TerminalChoicePageIndex(
+                    PrototypeNativeRanwidTheElder.EventId))
+        {
+            if (eventState.ChosenChoiceId is not (
+                    "potion" or "gold" or "relic")
+                || eventState.NativeRanwidPotionSlot != -1
+                || eventState.NativeRanwidPotionId is not null
+                || eventState.NativeRanwidRelicIndex != -1
+                || eventState.NativeRanwidRelicId is not null
+                || eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null
+                || eventState.RemainingDeckChoices.Length != 0
+                || eventState.RemainingPotionIds.Length != 0
+                || eventState.PendingReward is not null)
+            {
+                throw new InvalidOperationException(
+                    "Ranwid the Elder completion page is inconsistent.");
+            }
+
+            return;
+        }
+
+        if (eventState.NativePageIndex != 0
+            || eventState.ChosenChoiceId is not null
+            || !PrototypeNativeRanwidTheElder.HasValidOffer(eventState)
+            || (uint)eventState.NativeRanwidPotionSlot
+                >= (uint)player.PotionSlots.Length
+            || player.PotionSlots[eventState.NativeRanwidPotionSlot]?.PotionId
+                != eventState.NativeRanwidPotionId
+            || (uint)eventState.NativeRanwidRelicIndex
+                >= (uint)player.Relics.Length
+            || player.Relics[eventState.NativeRanwidRelicIndex].RelicId
+                != eventState.NativeRanwidRelicId
+            || !PrototypeNativeRelicTrader.IsTradable(
+                player.Relics[eventState.NativeRanwidRelicIndex])
+            || player.Gold < 100
+            || eventState.PendingDeckChoice is not null
+            || eventState.PendingPotionReplacement is not null
+            || eventState.RemainingDeckChoices.Length != 0
+            || eventState.RemainingPotionIds.Length != 0
+            || eventState.PendingReward is not null)
+        {
+            throw new InvalidOperationException(
+                "Ranwid the Elder offers are missing or inconsistent.");
+        }
+    }
+
+    private static void ValidateConveyorEvent(
+        PlayerState player, EventState evt)
+    {
+        // Source event pages carry the current, player-visible dish.
+        // Even when a grab is suspended, the new dish has not been rolled.
+        string[] dishes =
+        [
+            "CAVIAR", "SPICY_SNAPPY", "JELLY_LIVER", "FRIED_EEL",
+            "SUSPICIOUS_CONDIMENT", "CLAM_ROLL", "GOLDEN_FYSH",
+            "SEAPUNK_SALAD"
+        ];
+        if (evt.NativeDishCount < 1
+            || !dishes.Contains(evt.NativeDishId, StringComparer.Ordinal)
+            || evt.NativeDishId != evt.NativeLastDishId
+            || (evt.NativeDishCount % 5 == 0
+                && evt.NativeDishId != "SEAPUNK_SALAD")
+            || (evt.NativeDishCount % 5 != 0
+                && evt.NativeDishId == "SEAPUNK_SALAD"))
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor dish progression is inconsistent.");
+        }
+
+        if (evt.NativePageIndex == 0)
+        {
+            if (evt.NativeDishCount != 1
+                || evt.ChosenChoiceId is not null
+                || evt.NativeDishRollPending)
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor initial page is inconsistent.");
+            }
+        }
+        else if (evt.ChosenChoiceId != "grab")
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor followup requires a prior grab.");
+        }
+
+        if (evt.PendingDeckChoice is not null
+            && evt.PendingPotionReplacement is not null)
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor has two active selection prompts.");
+        }
+        if (evt.NativeDishRollPending
+            && evt.PendingDeckChoice is null
+            && evt.PendingPotionReplacement is null
+            && evt.RemainingDeckChoices.Length == 0
+            && evt.RemainingPotionIds.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor has an orphaned pending dish roll.");
+        }
+        if ((evt.PendingDeckChoice is not null
+            || evt.PendingPotionReplacement is not null
+            || evt.RemainingDeckChoices.Length > 0
+            || evt.RemainingPotionIds.Length > 0)
+            && !evt.NativeDishRollPending)
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor selection lacks a deferred dish roll.");
+        }
+
+        if (evt.PendingDeckChoice is { } deckChoice)
+        {
+            if (deckChoice.ChoiceId != "grab"
+                || deckChoice.Kind != PrototypePersistentDeckChoiceKind.Transform
+                || deckChoice.RemainingSelections != 1
+                || deckChoice.CandidateCardInstanceIds.Length == 0
+                || deckChoice.CandidateCardInstanceIds
+                    .Distinct().Count() !=
+                    deckChoice.CandidateCardInstanceIds.Length
+                || deckChoice.CandidateCardInstanceIds.Any(id =>
+                    !player.Deck.Any(card => card.InstanceId == id)))
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor Jelly Liver selection is invalid.");
+            }
+        }
+
+        if (evt.PendingPotionReplacement is { } potion)
+        {
+            var firstEmpty = Array.IndexOf(player.PotionSlots, null);
+            var expected = firstEmpty >= 0
+                ? new[] { firstEmpty }
+                : Enumerable.Range(0, player.PotionSlots.Length).ToArray();
+            if (potion.ChoiceId != "grab"
+                || !potion.CandidateSlots.SequenceEqual(expected))
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor potion offer has invalid slots.");
+            }
+            _ = PrototypeContent.Potion(potion.PotionId);
+        }
+
+        foreach (var queued in evt.RemainingPotionIds)
+        {
+            _ = PrototypeContent.Potion(queued);
+        }
+        foreach (var queued in evt.RemainingDeckChoices)
+        {
+            if (queued.ChoiceId != "grab"
+                || queued.Kind != PrototypePersistentDeckChoiceKind.Transform)
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor queued transformation is invalid.");
+            }
+        }
+    }
+
+    private static void ValidateShop(PlayerState player, ShopState shop)
+    {
+        var parasolHeld = player.Relics.Any(relic =>
+            StringComparer.Ordinal.Equals(
+                relic.RelicId,
+                NativeGloryAncientsV111.LordsParasolId));
+        var courierHeld = player.Relics.Any(relic =>
+            StringComparer.Ordinal.Equals(
+                relic.RelicId,
+                PrototypeNativeSharedRelics.TheCourierId));
+        if ((shop.LordsParasolPurchaseFlowActive
+                || shop.LordsParasolPendingPotionOfferId is not null
+                || shop.LordsParasolRemovalChoicePending)
+            && (!parasolHeld || !shop.LordsParasolPurchaseFlowActive))
+        {
+            throw new InvalidOperationException(
+                "Lord's Parasol shop continuation requires its relic and active flow.");
+        }
+
+        if (shop.LordsParasolPendingPotionOfferId is { } potionOfferId
+            && (Array.IndexOf(player.PotionSlots, null) >= 0
+                || !shop.PotionOffers.Any(offer =>
+                    offer.OfferId == potionOfferId && !offer.Sold)))
+        {
+            throw new InvalidOperationException(
+                "Lord's Parasol potion choice must target an unsold offer while the belt is full.");
+        }
+
+        if (shop.LordsParasolRemovalChoicePending
+            && (shop.RemovalUsed
+                || !player.Deck.Any(card =>
+                    !PrototypeCardRules.IsEternal(card))))
+        {
+            throw new InvalidOperationException(
+                "Lord's Parasol removal choice needs an unused removal and eligible card.");
+        }
+
+        if (shop.PendingDeckChoice is { } pending)
+        {
+            if (pending.RemainingSelections < 0
+                || (pending.RemainingSelections == 0
+                    && pending.CardIdAfterChoices is null)
+                || pending.MinimumSelectionsRemaining < 0
+                || pending.MinimumSelectionsRemaining
+                    > pending.RemainingSelections
+                || pending.CandidateCardInstanceIds.Length
+                    < pending.RemainingSelections
+                || pending.CandidateCardInstanceIds.Length
+                    != pending.CandidateCardInstanceIds
+                        .Distinct().Count())
+            {
+                throw new InvalidOperationException(
+                    "Shop relic deck choice has invalid selections or duplicate candidates.");
+            }
+
+            if (!player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(
+                        relic.RelicId, pending.SourceRelicId)))
+            {
+                throw new InvalidOperationException(
+                    "Shop deck-choice source relic is not owned.");
+            }
+
+            var spec = PrototypeContent.Relic(
+                    pending.SourceRelicId)
+                .AcquisitionDeckChoice
+                ?? throw new InvalidOperationException(
+                    "Shop relic deck choice has no acquisition specification.");
+            if (spec.Kind != pending.Kind
+                || spec.UpgradeTransformedCards
+                    != pending.UpgradeTransformedCards
+                || pending.CardIdAfterChoices
+                    != PrototypeContent.Relic(pending.SourceRelicId)
+                        .CardIdAfterAcquisitionDeckChoices)
+            {
+                throw new InvalidOperationException(
+                    "Shop relic deck choice disagrees with the source relic.");
+            }
+            if (pending.CardIdAfterChoices is { } postChoiceCardId)
+                _ = PrototypeContent.Card(postChoiceCardId);
+
+            if (!shop.RelicOffers.Any(offer =>
+                    offer.Sold
+                    && StringComparer.Ordinal.Equals(
+                        offer.ItemId, pending.SourceRelicId)))
+            {
+                throw new InvalidOperationException(
+                    "Shop relic deck-choice source offer was not sold.");
+            }
+
+            foreach (var id in pending.CandidateCardInstanceIds)
+            {
+                var candidate = player.Deck
+                    .FirstOrDefault(card => card.InstanceId == id)
+                    ?? throw new InvalidOperationException(
+                        $"Shop relic deck choice refers to missing card {id}.");
+                if (pending.Kind is PrototypePersistentDeckChoiceKind.Remove
+                        or PrototypePersistentDeckChoiceKind.Transform
+                    && PrototypeCardRules.IsEternal(candidate))
+                {
+                    throw new InvalidOperationException(
+                        "Shop relic deck choice cannot target Eternal cards.");
+                }
+                if (pending.Kind == PrototypePersistentDeckChoiceKind.Transform
+                    && spec.TransformToCardId is not null
+                    && PrototypeContent.Card(candidate.CardId).Type
+                        == PrototypeCardType.Quest)
+                {
+                    throw new InvalidOperationException(
+                        "Shop relic deck choice cannot target Quest cards.");
+                }
+                if (pending.Kind == PrototypePersistentDeckChoiceKind.Enchant
+                    && !PrototypeGameEngine.CanSelectEventDeckCard(candidate, pending.Kind,
+                        null, spec.EnchantmentKind, false))
+                    throw new InvalidOperationException("Shop relic enchant includes an ineligible card.");
+                if (spec.RequiresUpgradable
+                    && candidate.UpgradeLevel >= PrototypeContent.Card(candidate.CardId).MaxUpgradeLevel)
+                    throw new InvalidOperationException("Shop relic choice includes a non-upgradable card.");
+            }
+        }
+
+        if (shop.RemovalPrice <= 0)
+        {
+            throw new InvalidOperationException("Shop removal price must be positive.");
+        }
+
+        var offerIds = shop.CardOffers
+            .Select(offer => offer.OfferId)
+            .Concat(
+                shop.PotionOffers.Select(
+                    offer => offer.OfferId))
+            .Concat(
+                shop.RelicOffers.Select(
+                    offer => offer.OfferId))
+            .ToArray();
+
+        if (offerIds.Length != offerIds.Distinct().Count())
+        {
+            throw new InvalidOperationException("Shop offer IDs are duplicated.");
+        }
+
+        if (shop.CardOffers.Count(offer => offer.OnSale) > 1
+            || shop.PotionOffers.Any(offer => offer.OnSale)
+            || shop.RelicOffers.Any(offer => offer.OnSale))
+        {
+            throw new InvalidOperationException(
+                "Only one character card can be marked on sale.");
+        }
+
+        foreach (var offer in shop.CardOffers)
+        {
+            var characterCard = PrototypeContent.RewardCardPool.Contains(
+                offer.ItemId, StringComparer.Ordinal);
+            var colorlessCard = PrototypeColorlessCards.ImplementedShopPool.Contains(
+                offer.ItemId, StringComparer.Ordinal);
+            if (offer.Price <= 0
+                || !(characterCard || colorlessCard)
+                || (colorlessCard && offer.OnSale)
+                || PrototypeContent.Card(offer.ItemId).Rarity == PrototypeCardRarity.Basic)
+            {
+                throw new InvalidOperationException("Shop contains an invalid card offer.");
+            }
+        }
+
+        if (!courierHeld && shop.PotionOffers
+            .Select(offer => offer.ItemId)
+            .Distinct(StringComparer.Ordinal)
+            .Count()
+            != shop.PotionOffers.Length)
+        {
+            throw new InvalidOperationException(
+                "Shop contains duplicate potion offers.");
+        }
+
+        foreach (var potion in shop.PotionOffers)
+        {
+            if (potion.Price <= 0
+                || !PrototypeContent.Potions.ContainsKey(
+                    potion.ItemId))
+            {
+                throw new InvalidOperationException(
+                    "Shop contains an invalid potion offer.");
+            }
+        }
+
+        if (shop.RelicOffers
+            .Select(offer => offer.ItemId)
+            .Distinct(StringComparer.Ordinal)
+            .Count()
+            != shop.RelicOffers.Length)
+        {
+            throw new InvalidOperationException(
+                "Shop contains duplicate relic offers.");
+        }
+
+        foreach (var relic in shop.RelicOffers)
+        {
+            if (relic.Price <= 0
+                || !PrototypeContent.Relics.ContainsKey(
+                    relic.ItemId))
+            {
+                throw new InvalidOperationException(
+                    "Shop contains an invalid relic offer.");
+            }
+        }
+    }
+
+    private static void ValidateEncounterHistory(RunWorldState world)
+    {
+        foreach (var historicalEncounterId in world.EncounterIds)
+        {
+            if (!PrototypeContent.Encounters.Any(encounter =>
+                StringComparer.Ordinal.Equals(encounter.Id, historicalEncounterId)))
+            {
+                throw new InvalidOperationException(
+                    $"Encounter history contains unknown encounter '{historicalEncounterId}'.");
+            }
+        }
+
+        if (world.ActiveRoom is not (
+                PrototypeRoomType.Combat
+                or PrototypeRoomType.Elite
+                or PrototypeRoomType.Boss))
+        {
+            return;
+        }
+
+        var encounterId = world.EncounterIds.LastOrDefault();
+        if (encounterId is null)
+        {
+            if (world.Map.Nodes.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    "Map-generated active combat room has no encounter-history entry.");
+            }
+
+            return;
+        }
+        var encounter = PrototypeContent.Encounters.Single(item =>
+            StringComparer.Ordinal.Equals(item.Id, encounterId));
+
+        var promotedOvergrowthEncounter =
+            world.Act == 1
+            && world.ActOneRegion
+                == PrototypeActOneRegion.Overgrowth
+            && (PrototypeContent.OvergrowthWeakEncounterPool.Contains(
+                    encounter.Id,
+                    StringComparer.Ordinal)
+                || PrototypeContent.OvergrowthNormalEncounterPool.Contains(
+                    encounter.Id,
+                    StringComparer.Ordinal)
+                || PrototypeContent.OvergrowthEliteEncounterPool.Contains(
+                    encounter.Id,
+                    StringComparer.Ordinal)
+                || PrototypeContent.OvergrowthBossEncounterPool.Contains(
+                    encounter.Id,
+                    StringComparer.Ordinal));
+
+        var promotedUnderdocksEncounter =
+            world.Act == 1
+            && world.ActOneRegion == PrototypeActOneRegion.Underdocks
+            && (PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedEliteEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal)
+                || PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
+                    encounter.Id, StringComparer.Ordinal));
+
+        if (encounter.RoomType != world.ActiveRoom
+            || world.Act < encounter.MinAct
+            || world.Act > encounter.MaxAct
+            || world.Floor < encounter.MinFloor
+            || world.Floor > encounter.MaxFloor
+            || (encounter.Weight <= 0
+                && !promotedOvergrowthEncounter
+                && !promotedUnderdocksEncounter
+                && !(world.Map.GenerationProfileId is
+                    PrototypeNativeLaterActMap.HiveProfileId
+                    or PrototypeNativeLaterActMap.GloryProfileId
+                    or PrototypeGoldenPathMapV111.ProfileId
+                    && ExperimentalSilentThreeActRouteV111.ContainsEncounter(
+                        encounter.Id, world.Act))))
+        {
+            throw new InvalidOperationException(
+                $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");
+        }
+    }
+
+    private static void ValidateReward(
+        PlayerState player,
+        RewardState reward)
+    {
+        var registeredEventReward =
+            reward.SourceRoom.StartsWith("Event:", StringComparison.Ordinal)
+            && PrototypeContent.Events.ContainsKey(
+                reward.SourceRoom["Event:".Length..]);
+        if ((reward.ExtraGoldOptions is null) != (reward.ExtraGoldGroupsResolved is null)
+            || (reward.ExtraGoldOptions is not null && (!reward.IndependentSelection
+                || reward.ExtraGoldOptions.Length != reward.ExtraGoldGroupsResolved!.Length
+                || reward.ExtraGoldOptions.Any(amount => amount <= 0))))
+            throw new InvalidOperationException("Extra gold offers require positive amounts and matching independent resolution flags.");
+
+        if (reward.GoldOption is < 0
+            || (reward.GoldOption is null && !reward.GoldResolved)
+            || (reward.GoldOption is not null
+                && reward.SourceRoom is not ("Combat" or "Elite" or "Boss")
+                && !registeredEventReward))
+        {
+            throw new InvalidOperationException(
+                "Gold offer is invalid or unresolved without an offer.");
+        }
+
+        // Native custom event rewards (such as Glory's Trial and
+        // Battleworn Dummy) may expose independent offers, just like
+        // combat rewards. Their event continuation is validated by
+        // CompleteReward/ValidatePhaseState rather than the source name.
+        var registeredRelicReward = reward.SourceRoom is
+                "Relic:ToyBox" or "Relic:GlassEye"
+            || reward.SourceRoom == PrototypeGameEngine.CauldronRewardSource
+            || reward.SourceRoom == PrototypeGameEngine.OrreryRewardSource;
+        if (reward.IndependentSelection
+            && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest" or "Relic:ToyBox")
+            && reward.SourceRoom != PrototypeGameEngine.CauldronRewardSource
+            && reward.SourceRoom != PrototypeGameEngine.OrreryRewardSource
+            && !registeredEventReward && !registeredRelicReward)
+        {
+            throw new InvalidOperationException(
+                "Independent reward selection requires a recognized combat, rest or event reward.");
+        }
+
+        var extraCards = reward.ExtraCardOptions ?? Array.Empty<string[]>();
+        var extraRelics = reward.ExtraRelicRewardIds
+            ?? Array.Empty<string>();
+        if ((reward.ExtraPotionOptions is null)
+                != (reward.ExtraPotionGroupsResolved is null)
+            || reward.ExtraPotionOptions is { } extraPotions
+                && (!reward.IndependentSelection
+                    || reward.ExtraPotionGroupsResolved!.Length
+                        != extraPotions.Length
+                    || extraPotions.Any(id =>
+                        !PrototypeContent.Potions.ContainsKey(id)))
+            || !reward.IndependentSelection
+                && reward.ExtraPotionGroupsResolved is not null)
+            throw new InvalidOperationException(
+                "Extra potion reward groups are invalid.");
+        if (reward.CardRewardGenerators is { } generators)
+        {
+            if (generators.Length != 1 + extraCards.Length)
+                throw new InvalidOperationException(
+                    "Card reward generators must match the reward groups.");
+            for (var index = 0; index < generators.Length; index++)
+            {
+                if (generators[index] is not { } generator)
+                    continue;
+                if (generator.Act < 1
+                    || !Enum.IsDefined(generator.Kind)
+                    || (generator.Kind == PrototypeCardRewardGeneratorKind.Encounter
+                        ? generator.Room is not (PrototypeRoomType.Combat
+                            or PrototypeRoomType.Elite
+                            or PrototypeRoomType.Boss)
+                        : generator.Room is not null)
+                    || (generator.Kind == PrototypeCardRewardGeneratorKind.RarityPool
+                        ? generator.Rarity is not (PrototypeCardRarity.Common
+                            or PrototypeCardRarity.Uncommon
+                            or PrototypeCardRarity.Rare)
+                        : generator.Rarity is not null)
+                    || (generator.CardType is { } cardType
+                        && (generator.Kind != PrototypeCardRewardGeneratorKind.RarityPool
+                            || cardType is not (PrototypeCardType.Attack
+                                or PrototypeCardType.Skill
+                                or PrototypeCardType.Power))))
+                    throw new InvalidOperationException(
+                        "Card reward generator metadata is invalid.");
+                var options = reward.CardOptionsForGroup(index);
+                if (generator.Kind == PrototypeCardRewardGeneratorKind.RarePool
+                    && options.Any(id => PrototypeContent.Card(id).Rarity
+                        != PrototypeCardRarity.Rare))
+                    throw new InvalidOperationException(
+                        "Rare-pool generator contains a non-Rare option.");
+                if (generator.Kind == PrototypeCardRewardGeneratorKind.RarityPool
+                    && options.Any(id => PrototypeContent.Card(id).Rarity
+                        != generator.Rarity))
+                    throw new InvalidOperationException(
+                        "Rarity-pool generator contains an option of another rarity.");
+                if (generator.CardType is { } requiredCardType
+                    && options.Any(id => PrototypeContent.Card(id).Type
+                        != requiredCardType))
+                    throw new InvalidOperationException(
+                        "Filtered card reward generator contains an option of another type.");
+            }
+        }
+        if (reward.ExtraRelicWaxFlags is { } waxFlags && waxFlags.Length != extraRelics.Length)
+            throw new InvalidOperationException("Wax flags must match the persisted extra relic offers.");
+
+        if (reward.ExtraCardRewardsResolved < 0
+            || reward.ExtraCardRewardsResolved > extraCards.Length
+            || reward.IndependentSelection
+                && (reward.ExtraCardGroupsResolved is null
+                    || reward.ExtraCardGroupsResolved.Length != extraCards.Length
+                    || reward.ExtraCardGroupsResolved.Count(resolved => resolved)
+                        != reward.ExtraCardRewardsResolved)
+            || !reward.IndependentSelection
+                && reward.ExtraCardGroupsResolved is not null)
+        {
+            throw new InvalidOperationException(
+                "Extra card reward group resolution is invalid.");
+        }
+
+        if (reward.IndependentSelection
+            && (reward.ExtraRelicGroupsResolved is null
+                || reward.ExtraRelicGroupsResolved.Length != extraRelics.Length
+                || reward.ExtraRelicGroupsResolved.Count(resolved => resolved)
+                    != reward.ExtraRelicsResolved)
+            || !reward.IndependentSelection
+                && reward.ExtraRelicGroupsResolved is not null)
+        {
+            throw new InvalidOperationException(
+                "Extra relic reward group resolution is invalid.");
+        }
+
+        if (reward.ExtraRelicsResolved < 0
+            || reward.ExtraRelicsResolved > extraRelics.Length
+            || extraRelics.Distinct(StringComparer.Ordinal).Count()
+                != extraRelics.Length
+            || extraRelics.Any(id =>
+                !PrototypeContent.Relics.ContainsKey(id)))
+        {
+            throw new InvalidOperationException(
+                "Extra relic rewards have invalid progression or IDs.");
+        }
+
+        if (reward.ExtraPotionGroupsResolved is { } potionGroups
+            && potionGroups.Length
+                != (reward.ExtraPotionOptions?.Length ?? 0))
+            throw new InvalidOperationException(
+                "Extra potion reward group resolution is invalid.");
+
+        if (reward.ExtraCardOptionsUpgraded is { } upgrades
+            && upgrades.Length !=
+                (reward.ExtraCardOptions?.Length ?? 0))
+        {
+            throw new InvalidOperationException(
+                "Reward card-upgrade metadata does not match reward groups.");
+        }
+
+        if (reward.CardOptionUpgradeFlags is { } flags
+            && flags.Length != reward.CardOptions.Length)
+        {
+            throw new InvalidOperationException(
+                "Card-option upgrade flags disagree with the options.");
+        }
+
+        if (reward.ExtraCardOptionUpgradeFlags is { } extraFlags
+            && (extraFlags.Length !=
+                    (reward.ExtraCardOptions?.Length ?? 0)
+                || extraFlags.Where((group, index) =>
+                    group is null
+                    || group.Length != reward.ExtraCardOptions![index].Length)
+                    .Any()))
+        {
+            throw new InvalidOperationException(
+                "Extra reward upgrade flags disagree with the options.");
+        }
+
+        if (reward.CardOptionEnchantments is { } enchantments
+            && enchantments.Length != reward.CardOptions.Length)
+        {
+            throw new InvalidOperationException(
+                "Card-option enchantments disagree with the options.");
+        }
+
+        if (reward.ExtraCardOptionEnchantments is { } extraEnchantments
+            && (extraEnchantments.Length !=
+                    (reward.ExtraCardOptions?.Length ?? 0)
+                || extraEnchantments.Where((group, index) =>
+                    group is null
+                    || group.Length != reward.ExtraCardOptions![index].Length)
+                    .Any()))
+        {
+            throw new InvalidOperationException(
+                "Extra reward enchantments disagree with the options.");
+        }
+
+        if (reward.CardBundles is { } bundles)
+        {
+            if (reward.CardOptions.Length > 0
+                || bundles.Length != 2
+                || bundles.Any(bundle =>
+                    bundle.Length != 3
+                    || bundle.Take(2).Any(id =>
+                        !PrototypeContent.RewardCardPool.Contains(id,
+                            StringComparer.Ordinal)
+                        || PrototypeContent.Card(id).Rarity
+                            != PrototypeCardRarity.Common)
+                    || !PrototypeContent.RewardCardPool.Contains(
+                        bundle[2], StringComparer.Ordinal)
+                    || PrototypeContent.Card(bundle[2]).Rarity
+                        != PrototypeCardRarity.Uncommon)
+                || bundles.SelectMany(bundle => bundle)
+                    .Distinct(StringComparer.Ordinal).Count() != 6)
+            {
+                throw new InvalidOperationException(
+                    "Card-bundle reward must contain two distinct Common-Common-Uncommon offers.");
+            }
+        }
+
+        if (reward.CardOptions.Length != reward.CardOptions.Distinct(StringComparer.Ordinal).Count())
+        {
+            throw new InvalidOperationException("Reward card options contain duplicates.");
+        }
+
+        foreach (var cardId in reward.CardOptions)
+        {
+            if (!PrototypeContent.RewardCardPool.Contains(cardId, StringComparer.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"Reward contains card '{cardId}' outside the reward pool.");
+            }
+
+            if (PrototypeContent.Card(cardId).Rarity == PrototypeCardRarity.Basic)
+            {
+                throw new InvalidOperationException("Reward contains a basic-only card.");
+            }
+        }
+
+        var relicOptions = reward.CurrentRelicOptions;
+        if (relicOptions.Length
+            != relicOptions
+                .Distinct(StringComparer.Ordinal)
+                .Count())
+        {
+            throw new InvalidOperationException(
+                "Reward relic options contain duplicates.");
+        }
+
+        foreach (var relicId in relicOptions)
+        {
+            if (!PrototypeContent.Relics.ContainsKey(relicId))
+            {
+                throw new InvalidOperationException(
+                    $"Reward contains unknown relic '{relicId}'.");
+            }
+        }
+
+        if (!reward.RelicResolved
+            && relicOptions.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Unresolved relic reward has no relic options.");
+        }
+
+        if (reward.PendingDeckChoice is { } deckChoice)
+        {
+            if (!reward.RelicResolved && reward.ExtraRelicsResolved == 0)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice requires an acquired relic reward.");
+            }
+
+            if (deckChoice.RemainingSelections < 0
+                || (deckChoice.RemainingSelections == 0
+                    && deckChoice.CardIdAfterChoices is null
+                    && deckChoice.HpLossAfterChoices <= 0))
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice has no remaining selections.");
+            }
+
+            if (deckChoice.HpLossAfterChoices < 0)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice has a negative HP loss.");
+            }
+
+            if (deckChoice.MinimumSelectionsRemaining < 0
+                || deckChoice.MinimumSelectionsRemaining
+                    > deckChoice.RemainingSelections)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice has invalid minimum selections.");
+            }
+
+            if (deckChoice.CandidateCardInstanceIds.Length
+                < deckChoice.RemainingSelections)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice has too few candidates.");
+            }
+
+            if (deckChoice.CandidateCardInstanceIds.Length
+                != deckChoice.CandidateCardInstanceIds
+                    .Distinct()
+                    .Count())
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice contains duplicate card instances.");
+            }
+
+            if (!player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(
+                        relic.RelicId,
+                        deckChoice.SourceRelicId)))
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice source relic is not owned.");
+            }
+
+            var sourceDefinition =
+                PrototypeContent.Relic(
+                    deckChoice.SourceRelicId);
+            if (deckChoice.CardIdAfterChoices
+                != sourceDefinition.CardIdAfterAcquisitionDeckChoices)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice disagrees with its post-choice card effect.");
+            }
+            if (deckChoice.CardIdAfterChoices is { } postChoiceCardId)
+                _ = PrototypeContent.Card(postChoiceCardId);
+            var sourceSpec =
+                sourceDefinition.AcquisitionDeckChoice
+                ?? throw new InvalidOperationException(
+                    "Pending relic deck choice source has no acquisition deck-choice capability.");
+            if (sourceSpec.Kind != deckChoice.Kind
+                || sourceSpec.UpgradeTransformedCards
+                    != deckChoice.UpgradeTransformedCards)
+            {
+                throw new InvalidOperationException(
+                    "Pending relic deck choice disagrees with its source relic.");
+            }
+
+            foreach (var cardInstanceId in
+                     deckChoice.CandidateCardInstanceIds)
+            {
+                var card = player.Deck
+                    .FirstOrDefault(item =>
+                        item.InstanceId == cardInstanceId)
+                    ?? throw new InvalidOperationException(
+                        $"Pending relic deck choice references missing card {cardInstanceId}.");
+                if (deckChoice.Kind is PrototypePersistentDeckChoiceKind.Remove
+                        or PrototypePersistentDeckChoiceKind.Transform
+                    && PrototypeCardRules.IsEternal(card))
+                {
+                    throw new InvalidOperationException(
+                        "Pending relic deck choice includes an Eternal card.");
+                }
+                if (deckChoice.Kind == PrototypePersistentDeckChoiceKind.Enchant
+                    && !PrototypeGameEngine.CanSelectRelicDeckCard(card, sourceSpec))
+                    throw new InvalidOperationException("Pending relic enchant includes an ineligible card.");
+                if (sourceSpec.RequiresUpgradable
+                    && card.UpgradeLevel >= PrototypeContent.Card(card.CardId).MaxUpgradeLevel)
+                    throw new InvalidOperationException("Pending relic choice includes a non-upgradable card.");
+            }
+        }
+    }
+
+    private static void ValidateCombatPotions(
+        PlayerState player,
+        CombatState combat)
+    {
+        var occupiedSlots = player.PotionSlots
+            .Select((potion, slot) => (Potion: potion, Slot: slot))
+            .Where(item => item.Potion is not null)
+            .ToArray();
+
+        if (combat.PotionStates.Length != occupiedSlots.Length)
+        {
+            throw new InvalidOperationException(
+                "Occupied persistent potion slots are not represented exactly once in combat.");
+        }
+
+        if (combat.PotionStates.Select(potion => potion.Slot).Distinct().Count()
+            != combat.PotionStates.Length)
+        {
+            throw new InvalidOperationException("Combat potion slots are duplicated.");
+        }
+
+        foreach (var combatPotion in combat.PotionStates)
+        {
+            if (combatPotion.Slot < 0 || combatPotion.Slot >= player.PotionSlots.Length)
+            {
+                throw new InvalidOperationException("Combat potion has an invalid slot.");
+            }
+
+            var persistent = player.PotionSlots[combatPotion.Slot]
+                ?? throw new InvalidOperationException(
+                    "Combat potion points to an empty persistent slot.");
+            if (!StringComparer.Ordinal.Equals(combatPotion.PotionId, persistent.PotionId))
+            {
+                throw new InvalidOperationException(
+                    "Combat potion disagrees with its persistent origin.");
+            }
+
+            _ = PrototypeContent.Potion(combatPotion.PotionId);
+        }
+    }
+
+    private static void ValidateCombatRelics(
+        PlayerState player,
+        CombatState combat)
+    {
+        if (combat.RelicStates.Length != player.Relics.Length)
+        {
+            throw new InvalidOperationException(
+                "Persistent relics are not represented exactly once in combat.");
+        }
+
+        var expectedPets = NativePaelRewardsV111.CreateCombatPets(player);
+        var actualPets = combat.Pets ?? Array.Empty<PrototypeCombatPetState>();
+        if (!expectedPets.SequenceEqual(actualPets))
+            throw new InvalidOperationException("Combat pet identity or saved skin disagrees with owned relics.");
+
+        if (combat.CounterState.CardsPlayedLastTurn < 0
+            || combat.CounterState.ManualCardsPlayedThisTurn < 0
+            || combat.CounterState.ManualCardsPlayedThisTurn > combat.CounterState.CardsPlayedThisTurn)
+            throw new InvalidOperationException("Manual card-play counter is inconsistent with total plays.");
+        if (combat.PotionExtraTurnsPending < 0)
+            throw new InvalidOperationException(
+                "Pending potion extra turns cannot be negative.");
+        if (combat.PaelsEyeExtraTurnPending
+            && !combat.RelicStates.Any(relic => relic.RelicId == NativePaelRewardsV111.EyeId
+                && !relic.IsMelted && !relic.PaelsEyeUsedThisCombat))
+            throw new InvalidOperationException("Pending Pael's Eye turn has no eligible relic instance.");
+        if (combat.RelicStates.Any(relic => relic.PaelsEyeUsedThisCombat
+            && relic.RelicId != NativePaelRewardsV111.EyeId))
+            throw new InvalidOperationException("Pael's Eye usage state belongs to a different relic.");
+
+        foreach (var relic in combat.RelicStates)
+        {
+            if (relic.PersistentIndex < 0 || relic.PersistentIndex >= player.Relics.Length)
+            {
+                throw new InvalidOperationException("Combat relic has an invalid persistent index.");
+            }
+
+            var persistent = player.Relics[relic.PersistentIndex];
+            if (relic.HadLeftoverEnergy && relic.RelicId != NativePaelRewardsV111.TearsId)
+                throw new InvalidOperationException("Leftover-energy state belongs only to Pael's Tears.");
+            if (relic.RelicId == NativePaelRewardsV111.LegionId
+                ? relic.PaelsLegionCooldown is < 0 or > 2
+                : relic.PaelsLegionCooldown != 0
+                    || relic.PaelsLegionTriggeredBlockLastTurn
+                    || relic.PaelsLegionAffectedCardPlaySourceId is not null)
+                throw new InvalidOperationException("Pael's Legion combat state is invalid.");
+            if (relic.PaelsLegionAffectedCardPlaySourceId is { } sourceId
+                && !combat.Cards.Any(card => card.InstanceId == sourceId))
+                throw new InvalidOperationException("Pael's Legion references an unknown card play.");
+            if (!StringComparer.Ordinal.Equals(relic.RelicId, persistent.RelicId)
+                || relic.IsMelted != persistent.IsMelted)
+            {
+                throw new InvalidOperationException("Combat relic disagrees with its persistent origin.");
+            }
+
+            var definition = PrototypeContent.Relic(relic.RelicId);
+            var triggerCount = (definition.Triggers ?? Array.Empty<PrototypeRelicTriggerSpec>()).Length;
+            if (relic.TriggerCounts.Length != triggerCount
+                || relic.TriggerCounts.Any(count => count < 0))
+            {
+                throw new InvalidOperationException("Combat relic trigger counters are invalid.");
+            }
+        }
+
+        if (combat.RelicStates.Select(relic => relic.PersistentIndex).Distinct().Count()
+            != combat.RelicStates.Length)
+        {
+            throw new InvalidOperationException("Combat relic persistent indices are duplicated.");
+        }
+    }
+
+    private static void ValidatePowerOwner(
+        string owner,
+        PrototypePowerInstanceState[] powers)
+    {
+        foreach (var power in powers)
+        {
+            var definition = PrototypeContent.Power(
+                power.PowerId);
+            if (power.Stacks == 0
+                || (power.Stacks < 0
+                    && !definition.AllowNegative))
+            {
+                throw new InvalidOperationException(
+                    $"{owner} power '{power.PowerId}' has invalid stacks {power.Stacks}.");
+            }
+        }
+
+        foreach (var group in powers.GroupBy(
+                     power => power.PowerId,
+                     StringComparer.Ordinal))
+        {
+            var definition = PrototypeContent.Power(group.Key);
+            if (!definition.IsInstanced && group.Count() > 1)
+            {
+                throw new InvalidOperationException(
+                    $"{owner} stacking power '{group.Key}' occurs more than once.");
+            }
+        }
+
+        foreach (var power in powers)
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.RequiresCardPayload != (power.CardPayload is not null))
+            {
+                throw new InvalidOperationException(
+                    $"{owner} power '{power.PowerId}' has invalid card-payload state.");
+            }
+
+            if (power.CardPayload is not null)
+            {
+                _ = PrototypeContent.Card(power.CardPayload.CardId);
+            }
+        }
+    }
+
+    private static void ValidateNativeOvergrowthMap(RunWorldState world)
+    {
+        if (world.Act != 1)
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth map profile is only valid in Act 1.");
+        }
+
+        var map = world.Map;
+        var nodes = map.Nodes;
+        if (nodes.Length == 0
+            || nodes.Select(node => node.NodeId)
+                .Distinct(StringComparer.Ordinal).Count() != nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth map is empty or contains duplicate nodes.");
+        }
+
+        var byId = nodes.ToDictionary(
+            node => node.NodeId, StringComparer.Ordinal);
+        var entries = map.EntryNodeIds ?? Array.Empty<string>();
+        if (entries.Length < 2
+            || entries.Distinct(StringComparer.Ordinal).Count()
+                != entries.Length
+            || entries.Any(id => !byId.TryGetValue(id, out var node)
+                || node.Floor != 1))
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth map must have distinct first-row entries.");
+        }
+
+        for (var floor = 1;
+             floor <= PrototypeNativeOvergrowthMap.BossFloor;
+             floor++)
+        {
+            var layer = nodes.Where(node => node.Floor == floor).ToArray();
+            if (layer.Length == 0
+                || layer.Length > PrototypeNativeOvergrowthMap.MapWidth)
+            {
+                throw new InvalidOperationException(
+                    $"Native Overgrowth floor {floor} has an invalid node count.");
+            }
+
+            if (floor == 1
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Combat)
+                || floor == PrototypeNativeOvergrowthMap.FirstTreasureFloor
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Treasure)
+                || floor == PrototypeNativeOvergrowthMap.PreBossRestFloor
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Rest))
+            {
+                throw new InvalidOperationException(
+                    "Native Overgrowth map has an invalid fixed room row.");
+            }
+
+            if (floor == PrototypeNativeOvergrowthMap.BossFloor
+                && (layer.Length != 1
+                    || layer[0].RoomType != PrototypeRoomType.Boss
+                    || (layer[0].NextNodeIds?.Length ?? 0) != 0))
+            {
+                throw new InvalidOperationException(
+                    "Native Overgrowth map does not terminate at one boss.");
+            }
+        }
+
+        foreach (var node in nodes)
+        {
+            if (node.Act != 1
+                || node.Floor is < 1 or > PrototypeNativeOvergrowthMap.BossFloor
+                || !TryNativeColumn(node.NodeId, out var column)
+                || column is < 0 or >= PrototypeNativeOvergrowthMap.MapWidth)
+            {
+                throw new InvalidOperationException(
+                    "Native Overgrowth map has an invalid node coordinate.");
+            }
+
+            var children = node.NextNodeIds ?? Array.Empty<string>();
+            if (children.Distinct(StringComparer.Ordinal).Count() != children.Length
+                || (node.Floor < PrototypeNativeOvergrowthMap.BossFloor
+                    && children.Length == 0))
+            {
+                throw new InvalidOperationException(
+                    "Native Overgrowth map has duplicate or missing outgoing edges.");
+            }
+
+            foreach (var id in children)
+            {
+                if (!byId.TryGetValue(id, out var child)
+                    || child.Floor != node.Floor + 1
+                    || (node.Floor < PrototypeNativeOvergrowthMap.RoomRows
+                        && (!TryNativeColumn(id, out var targetColumn)
+                            || Math.Abs(targetColumn - column) > 1)))
+                {
+                    throw new InvalidOperationException(
+                        "Native Overgrowth map has an invalid path edge.");
+                }
+            }
+        }
+
+        var reachable = new HashSet<string>(entries, StringComparer.Ordinal);
+        var queue = new Queue<string>(entries);
+        while (queue.Count > 0)
+        {
+            foreach (var id in byId[queue.Dequeue()].NextNodeIds
+                     ?? Array.Empty<string>())
+            {
+                if (reachable.Add(id))
+                {
+                    queue.Enqueue(id);
+                }
+            }
+        }
+
+        if (reachable.Count != nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth map has unreachable nodes.");
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+            {
+                throw new InvalidOperationException(
+                    "Unentered native Overgrowth map must be at floor zero.");
+            }
+        }
+        else if (!byId.TryGetValue(map.CurrentNodeId, out var current)
+            || current.Floor != world.Floor)
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth current position disagrees with run floor.");
+        }
+
+        if (world.UnknownRoomOdds is { } odds
+            && (odds.MonsterWeight < 0 || odds.ShopWeight < 0
+                || odds.TreasureWeight < 0))
+        {
+            throw new InvalidOperationException(
+                "Native Overgrowth unknown-room weights must be nonnegative.");
+        }
+    }
+
+    private static void ValidateNativeLaterActMap(RunWorldState world)
+    {
+        if (world.Act is not (2 or 3)
+            || world.Map.GenerationProfileId !=
+                PrototypeNativeLaterActMap.ProfileId(world.Act))
+            throw new InvalidOperationException(
+                "Native Hive/Glory map profile disagrees with the act.");
+
+        var roomRows = PrototypeNativeLaterActMap.RoomRows(world.Act);
+        var bossFloor = roomRows + 1;
+        var hasSecondBoss = world.Act == 3
+            && world.LaterActEncounterBag?.SecondBossEncounterId is not null;
+        var finalFloor = bossFloor + (hasSecondBoss ? 1 : 0);
+        var treasureFloor = bossFloor - 7;
+        var map = world.Map;
+        var nodes = map.Nodes;
+        if (nodes.Length == 0
+            || nodes.Select(node => node.NodeId)
+                .Distinct(StringComparer.Ordinal).Count() != nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Native later-act map is empty or contains duplicate nodes.");
+        }
+
+        var byId = nodes.ToDictionary(
+            node => node.NodeId, StringComparer.Ordinal);
+        var entries = map.EntryNodeIds ?? Array.Empty<string>();
+        if (entries.Length < 2
+            || entries.Distinct(StringComparer.Ordinal).Count()
+                != entries.Length
+            || entries.Any(id => !byId.TryGetValue(id, out var node)
+                || node.Floor != 1))
+        {
+            throw new InvalidOperationException(
+                "Native later-act map must have distinct first-row entries.");
+        }
+
+        for (var floor = 1;
+             floor <= finalFloor;
+             floor++)
+        {
+            var layer = nodes.Where(node => node.Floor == floor).ToArray();
+            if (layer.Length == 0
+                || layer.Length > PrototypeNativeLaterActMap.MapWidth)
+            {
+                throw new InvalidOperationException(
+                    $"Native later-act floor {floor} has an invalid node count.");
+            }
+
+            if (floor == 1
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Combat)
+                || floor == treasureFloor
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Treasure)
+                || floor == roomRows
+                && layer.Any(node => node.RoomType != PrototypeRoomType.Rest))
+            {
+                throw new InvalidOperationException(
+                    "Native later-act map has an invalid fixed room row.");
+            }
+
+            if (floor == bossFloor
+                && (layer.Length != 1
+                    || layer[0].RoomType != PrototypeRoomType.Boss
+                    || (layer[0].NextNodeIds?.Length ?? 0)
+                        != (hasSecondBoss ? 1 : 0)))
+            {
+                throw new InvalidOperationException(
+                    "Native later-act map has an invalid first boss node.");
+            }
+            if (hasSecondBoss && floor == finalFloor
+                && (layer.Length != 1
+                    || layer[0].RoomType != PrototypeRoomType.Boss
+                    || (layer[0].NextNodeIds?.Length ?? 0) != 0))
+            {
+                throw new InvalidOperationException(
+                    "A10 Glory map must terminate at its second boss.");
+            }
+        }
+
+        foreach (var node in nodes)
+        {
+            if (node.Act != world.Act
+                || node.Floor < 1 || node.Floor > finalFloor
+                || !TryLaterActColumn(node.NodeId, world.Act, out var column)
+                || column is < 0 or >= PrototypeNativeLaterActMap.MapWidth)
+            {
+                throw new InvalidOperationException(
+                    "Native later-act map has an invalid node coordinate.");
+            }
+
+            var children = node.NextNodeIds ?? Array.Empty<string>();
+            if (children.Distinct(StringComparer.Ordinal).Count() != children.Length
+                || (node.Floor < finalFloor
+                    && children.Length == 0))
+            {
+                throw new InvalidOperationException(
+                    "Native later-act map has duplicate or missing outgoing edges.");
+            }
+
+            foreach (var id in children)
+            {
+                if (!byId.TryGetValue(id, out var child)
+                    || child.Floor != node.Floor + 1
+                    || (node.Floor < roomRows
+                        && (!TryLaterActColumn(id, world.Act, out var targetColumn)
+                            || Math.Abs(targetColumn - column) > 1)))
+                {
+                    throw new InvalidOperationException(
+                        "Native later-act map has an invalid path edge.");
+                }
+            }
+        }
+
+        var reachable = new HashSet<string>(entries, StringComparer.Ordinal);
+        var queue = new Queue<string>(entries);
+        while (queue.Count > 0)
+        {
+            foreach (var id in byId[queue.Dequeue()].NextNodeIds
+                     ?? Array.Empty<string>())
+            {
+                if (reachable.Add(id))
+                {
+                    queue.Enqueue(id);
+                }
+            }
+        }
+
+        if (reachable.Count != nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Native later-act map has unreachable nodes.");
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+            {
+                throw new InvalidOperationException(
+                    "Unentered native Overgrowth map must be at floor zero.");
+            }
+        }
+        else if (!byId.TryGetValue(map.CurrentNodeId, out var current)
+            || current.Floor != world.Floor)
+        {
+            throw new InvalidOperationException(
+                "Native later-act current position disagrees with run floor.");
+        }
+
+        if (world.UnknownRoomOdds is { } odds
+            && (odds.MonsterWeight < 0 || odds.ShopWeight < 0
+                || odds.TreasureWeight < 0))
+        {
+            throw new InvalidOperationException(
+                "Native later-act unknown-room weights must be nonnegative.");
+        }
+    }
+
+    private static bool TryLaterActColumn(
+        string id, int act, out int column)
+    {
+        column = -1;
+        var parts = id.Split(':');
+        return parts.Length == 3
+            && parts[0] == act.ToString(
+                System.Globalization.CultureInfo.InvariantCulture)
+            && int.TryParse(parts[1], out var floor)
+            && floor is >= 1 and <= 15
+            && int.TryParse(parts[2], out column);
+    }
+
+    private static bool TryNativeColumn(string id, out int column)
+    {
+        column = -1;
+        var parts = id.Split(':');
+        return parts.Length == 3
+            && parts[0] == "1"
+            && int.TryParse(parts[2], out column);
+    }
+
+    private static void ValidateMap(RunWorldState world)
+    {
+        if (world.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId)
+        {
+            var expected = PrototypeGoldenPathMapV111.Generate(world.Act);
+            if (world.Map.Nodes.Length != expected.Nodes.Length
+                || !world.Map.Nodes.Zip(expected.Nodes).All(pair =>
+                    pair.First.NodeId == pair.Second.NodeId
+                    && pair.First.Act == pair.Second.Act && pair.First.Floor == pair.Second.Floor
+                    && pair.First.RoomType == pair.Second.RoomType
+                    && (pair.First.NextNodeIds ?? []).SequenceEqual(pair.Second.NextNodeIds ?? []))
+                || !(world.Map.EntryNodeIds ?? []).SequenceEqual(expected.EntryNodeIds ?? [])
+                || (world.Map.CurrentNodeId is not null
+                    && !expected.Nodes.Any(node => node.NodeId == world.Map.CurrentNodeId)))
+                throw new InvalidOperationException("Golden path geometry disagrees with its source layout.");
+            return;
+        }
+        if (world.Map.GenerationProfileId is
+            PrototypeNativeLaterActMap.HiveProfileId
+            or PrototypeNativeLaterActMap.GloryProfileId)
+        {
+            ValidateNativeLaterActMap(world);
+            return;
+        }
+
+        if (world.Map.GenerationProfileId
+            == PrototypeNativeHiveEvents.RepyFixtureMapProfileId)
+        {
+            ValidateRepyForcedFixtureMap(world);
+            return;
+        }
+
+        if (world.Map.GenerationProfileId
+                == PrototypeNativeOvergrowthMap.GenerationProfileId
+            || world.Map.GenerationProfileId
+                == PrototypeNativeUnderdocks.GenerationProfileId)
+        {
+            ValidateNativeOvergrowthMap(world);
+            return;
+        }
+
+        var map = world.Map;
+        var nodesById = map.Nodes.ToDictionary(node => node.NodeId, StringComparer.Ordinal);
+        if (nodesById.Count != map.Nodes.Length)
+        {
+            throw new InvalidOperationException("Map node IDs are not unique.");
+        }
+
+        if (map.EntryNodeIds is null || map.EntryNodeIds.Length == 0)
+        {
+            throw new InvalidOperationException("Non-empty map has no entry nodes.");
+        }
+
+        if (map.EntryNodeIds.Length != map.EntryNodeIds.Distinct(StringComparer.Ordinal).Count())
+        {
+            throw new InvalidOperationException("Map entry nodes contain duplicates.");
+        }
+
+        foreach (var entryId in map.EntryNodeIds)
+        {
+            if (!nodesById.TryGetValue(entryId, out var entry) || entry.Floor != 1)
+            {
+                throw new InvalidOperationException("Map entry must reference a floor-one node.");
+            }
+        }
+
+        foreach (var node in map.Nodes)
+        {
+            if (node.Act != world.Act)
+            {
+                throw new InvalidOperationException("Map node belongs to a different act.");
+            }
+
+            if (node.Floor < 1 || node.Floor > PrototypeContent.Rules.FloorsPerAct)
+            {
+                throw new InvalidOperationException("Map node has an invalid floor.");
+            }
+
+            var matchingRules = PrototypeContent.Rules.MapFloorRules
+                .Where(rule =>
+                    node.Floor >= rule.MinFloor
+                    && node.Floor <= rule.MaxFloor)
+                .ToArray();
+            if (matchingRules.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Floor {node.Floor} must be covered by exactly one map rule.");
+            }
+
+            if (!matchingRules[0].RoomPool.Contains(node.RoomType))
+            {
+                throw new InvalidOperationException(
+                    $"Room {node.RoomType} is not allowed on floor {node.Floor}.");
+            }
+
+            var nextNodeIds =
+                node.NextNodeIds
+                ?? Array.Empty<string>();
+            if (nextNodeIds.Length
+                != nextNodeIds
+                    .Distinct(StringComparer.Ordinal)
+                    .Count())
+            {
+                throw new InvalidOperationException(
+                    $"Map node '{node.NodeId}' contains duplicate outgoing edges.");
+            }
+
+            foreach (var nextId in nextNodeIds)
+            {
+                if (!nodesById.TryGetValue(nextId, out var next))
+                {
+                    throw new InvalidOperationException($"Map edge targets missing node '{nextId}'.");
+                }
+
+                if (next.Floor != node.Floor + 1)
+                {
+                    throw new InvalidOperationException("Map edge must advance exactly one floor.");
+                }
+            }
+        }
+
+        foreach (var floorGroup in map.Nodes.GroupBy(node => node.Floor))
+        {
+            var matchingRules = PrototypeContent.Rules.MapFloorRules
+                .Where(rule =>
+                    floorGroup.Key >= rule.MinFloor
+                    && floorGroup.Key <= rule.MaxFloor)
+                .ToArray();
+            if (matchingRules.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Floor {floorGroup.Key} must be covered by exactly one map rule.");
+            }
+
+            if (!matchingRules[0].AllowDuplicateSpecialRooms)
+            {
+                var duplicateSpecial = floorGroup
+                    .Where(node => node.RoomType != PrototypeRoomType.Combat)
+                    .GroupBy(node => node.RoomType)
+                    .FirstOrDefault(group => group.Count() > 1);
+                if (duplicateSpecial is not null)
+                {
+                    throw new InvalidOperationException(
+                        $"Floor {floorGroup.Key} duplicates special room {duplicateSpecial.Key}.");
+                }
+            }
+        }
+
+        if (StringComparer.Ordinal.Equals(
+                map.GenerationProfileId,
+                PrototypeContent.MapGenerationProfileId))
+        {
+            ValidateGeneratedStrategicMap(
+                map,
+                nodesById);
+        }
+
+        var bosses = map.Nodes
+            .Where(node => node.RoomType == PrototypeRoomType.Boss)
+            .ToArray();
+        if (bosses.Length != 1
+            || bosses[0].Floor != PrototypeContent.Rules.FloorsPerAct
+            || (bosses[0].NextNodeIds?.Length ?? 0) != 0)
+        {
+            throw new InvalidOperationException("Prototype act map must end in exactly one boss node.");
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+            {
+                throw new InvalidOperationException("Unentered act map must be at floor zero.");
+            }
+        }
+        else
+        {
+            if (!nodesById.TryGetValue(map.CurrentNodeId, out var current))
+            {
+                throw new InvalidOperationException("Map current node is missing from the graph.");
+            }
+
+            if (current.Floor != world.Floor)
+            {
+                throw new InvalidOperationException("World floor disagrees with current map node.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The Glory quest slice deliberately supplies two manual nodes.
+    /// The profile is explicit and is forbidden outside act 3; full
+    /// production map validation continues through the existing path.
+    /// </summary>
+    private static void ValidateRepyForcedFixtureMap(RunWorldState world)
+    {
+        var map = world.Map;
+        if (world.Act != 3 || map.Nodes.Length == 0)
+            throw new InvalidOperationException(
+                "Repy forced map requires a non-empty Glory fixture.");
+        var nodes = map.Nodes.ToDictionary(node => node.NodeId,
+            StringComparer.Ordinal);
+        if (nodes.Count != map.Nodes.Length
+            || map.EntryNodeIds is not { Length: > 0 }
+            || map.EntryNodeIds.Distinct(StringComparer.Ordinal).Count()
+                != map.EntryNodeIds.Length)
+            throw new InvalidOperationException(
+                "Repy fixture map has duplicate or missing entry nodes.");
+        foreach (var entry in map.EntryNodeIds)
+        {
+            if (!nodes.TryGetValue(entry, out var node)
+                || node.Floor != 1)
+                throw new InvalidOperationException(
+                    "Repy fixture entry must be on floor one.");
+        }
+        foreach (var node in map.Nodes)
+        {
+            if (node.Act != 3 || node.Floor is < 1 or > 6
+                || node.NextNodeIds is { } next
+                    && next.Distinct(StringComparer.Ordinal).Count()
+                        != next.Length)
+                throw new InvalidOperationException(
+                    "Invalid Glory quest fixture node.");
+            foreach (var target in node.NextNodeIds
+                ?? Array.Empty<string>())
+            {
+                if (!nodes.TryGetValue(target, out var other)
+                    || other.Floor != node.Floor + 1)
+                    throw new InvalidOperationException(
+                        "Glory quest fixture edges must advance one floor.");
+            }
+        }
+
+        if (map.CurrentNodeId is null)
+        {
+            if (world.Floor != 0)
+                throw new InvalidOperationException(
+                    "Unentered quest fixture must start at floor zero.");
+        }
+        else if (!nodes.TryGetValue(map.CurrentNodeId, out var current)
+            || current.Floor != world.Floor)
+        {
+            throw new InvalidOperationException(
+                "Glory quest fixture cursor disagrees with run floor.");
+        }
+    }
+
+    private static void ValidateGeneratedStrategicMap(
+        MapState map,
+        IReadOnlyDictionary<string, MapNodeState> nodesById)
+    {
+        var rules = PrototypeContent.Rules;
+        for (var floor = 1;
+             floor <= rules.FloorsPerAct;
+             floor++)
+        {
+            var floorRule =
+                rules.MapFloorRules.Single(rule =>
+                    floor >= rule.MinFloor
+                    && floor <= rule.MaxFloor);
+            var nodes = map.Nodes
+                .Where(node =>
+                    node.Floor == floor)
+                .ToArray();
+
+            if (nodes.Length < floorRule.MinNodes
+                || nodes.Length > floorRule.MaxNodes)
+            {
+                throw new InvalidOperationException(
+                    $"Generated map floor {floor} width {nodes.Length} is outside [{floorRule.MinNodes}, {floorRule.MaxNodes}].");
+            }
+
+            foreach (var requiredRoom in
+                     floorRule.RequiredRooms)
+            {
+                if (!nodes.Any(node =>
+                        node.RoomType
+                            == requiredRoom))
+                {
+                    throw new InvalidOperationException(
+                        $"Generated map floor {floor} is missing required room {requiredRoom}.");
+                }
+            }
+
+            if (floorRule
+                .AvoidMatchingSpecialPredecessors)
+            {
+                var previous = map.Nodes
+                    .Where(node =>
+                        node.Floor == floor - 1)
+                    .ToArray();
+                foreach (var node in nodes.Where(node =>
+                             node.RoomType
+                                 != PrototypeRoomType.Combat))
+                {
+                    if (previous.Any(predecessor =>
+                            predecessor.RoomType
+                                == node.RoomType
+                            && (predecessor.NextNodeIds
+                                    ?? Array.Empty<string>())
+                                .Contains(
+                                    node.NodeId,
+                                    StringComparer.Ordinal)))
+                    {
+                        throw new InvalidOperationException(
+                            $"Generated map repeats special room {node.RoomType} across an edge into floor {floor}.");
+                    }
+                }
+            }
+        }
+
+        var incoming = map.Nodes.ToDictionary(
+            node => node.NodeId,
+            _ => 0,
+            StringComparer.Ordinal);
+        foreach (var node in map.Nodes)
+        {
+            var next =
+                node.NextNodeIds
+                ?? Array.Empty<string>();
+            if (node.Floor
+                < rules.FloorsPerAct
+                && (next.Length < 1
+                    || next.Length > 2))
+            {
+                throw new InvalidOperationException(
+                    $"Generated map node '{node.NodeId}' must have one or two outgoing edges.");
+            }
+
+            foreach (var nextId in next)
+            {
+                incoming[nextId]++;
+            }
+        }
+
+        var entryIds =
+            map.EntryNodeIds
+            ?? Array.Empty<string>();
+        foreach (var node in map.Nodes.Where(node =>
+                     node.Floor > 1))
+        {
+            if (incoming[node.NodeId] == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Generated map node '{node.NodeId}' has no incoming route.");
+            }
+        }
+
+        var reachable =
+            new HashSet<string>(
+                entryIds,
+                StringComparer.Ordinal);
+        var queue =
+            new Queue<string>(
+                entryIds);
+        while (queue.Count > 0)
+        {
+            var node =
+                nodesById[queue.Dequeue()];
+            foreach (var nextId in
+                     node.NextNodeIds
+                     ?? Array.Empty<string>())
+            {
+                if (reachable.Add(nextId))
+                {
+                    queue.Enqueue(nextId);
+                }
+            }
+        }
+
+        if (reachable.Count != map.Nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Generated map contains a node that is unreachable from every entry.");
+        }
+
+        var boss = map.Nodes.Single(node =>
+            node.RoomType
+                == PrototypeRoomType.Boss);
+        var canReachBoss =
+            new HashSet<string>(
+                [boss.NodeId],
+                StringComparer.Ordinal);
+        for (var floor =
+                 rules.FloorsPerAct - 1;
+             floor >= 1;
+             floor--)
+        {
+            foreach (var node in map.Nodes.Where(node =>
+                         node.Floor == floor))
+            {
+                if ((node.NextNodeIds
+                        ?? Array.Empty<string>())
+                    .Any(canReachBoss.Contains))
+                {
+                    canReachBoss.Add(
+                        node.NodeId);
+                }
+            }
+        }
+
+        if (canReachBoss.Count
+            != map.Nodes.Length)
+        {
+            throw new InvalidOperationException(
+                "Generated map contains a dead-end route that cannot reach the boss.");
+        }
+
+        if (!map.Nodes.Any(node =>
+                node.Floor
+                    < rules.FloorsPerAct - 1
+                && (node.NextNodeIds?.Length ?? 0)
+                    == 2))
+        {
+            throw new InvalidOperationException(
+                "Generated map contains no meaningful pre-boss branch.");
+        }
+
+        if (!map.Nodes.Any(node =>
+                node.Floor > 1
+                && node.Floor
+                    < rules.FloorsPerAct
+                && incoming[node.NodeId] > 1))
+        {
+            throw new InvalidOperationException(
+                "Generated map contains no pre-boss route convergence.");
+        }
+    }
+
+    private static void ValidateCombat(PlayerState player, CombatState combat)
+    {
+        NativeCombatRngEntryV111.Validate(combat);
+        if (combat.AutomaticPipelineContinuation is { OpeningStage: { } opening } openingContinuation
+            && (!Enum.IsDefined(opening)
+                || opening <= PrototypeOpeningCombatStage.PlayerSideStart
+                || combat.Turn != 1 || !combat.IsPlayerTurn
+                || combat.PendingChoice is null
+                || openingContinuation.NextStepIndex != PrototypeContent.Rules.EndTurnPipeline.Length
+                || openingContinuation.PendingPostDispatchEventKind is not null))
+            throw new InvalidOperationException("Invalid suspended opening-combat stage.");
+        if (combat.ToricShields is { } shields
+            && shields.Any(shield =>
+                shield.BlockAmount <= 0
+                || shield.ClearsRemaining is < 1 or > 2))
+        {
+            throw new InvalidOperationException(
+                "Toric Toughness delayed block must be positive and expire within two clears.");
+        }
+
+        if (combat.Turn <= 0)
+        {
+            throw new InvalidOperationException($"Combat turn must be positive, got {combat.Turn}.");
+        }
+
+        if (combat.Energy < 0 || combat.PlayerBlock < 0)
+        {
+            throw new InvalidOperationException("Combat energy/block cannot be negative.");
+        }
+
+        if (combat.Enemies.Any(enemy => enemy.Hp < 0 || enemy.Block < 0))
+        {
+            throw new InvalidOperationException("Enemy HP/block cannot be negative.");
+        }
+
+        if (combat.Enemies.Any(enemy =>
+                enemy.StunFollowUpMoveIndex is { } moveIndex
+                && (moveIndex < 0
+                    || moveIndex >= PrototypeContent.Enemy(enemy.EnemyId)
+                        .Moves.Length)))
+        {
+            throw new InvalidOperationException(
+                "Stunned enemy follow-up move is outside its move set.");
+        }
+
+        if (combat.KnowledgeDemonChoiceResolvedTurn < 0
+            || combat.KnowledgeDemonChoiceResolvedTurn > combat.Turn)
+            throw new InvalidOperationException(
+                "Knowledge Demon resolved-choice turn is invalid.");
+        if (combat.PendingKnowledgeDemonChoice is { } curse)
+        {
+            if (combat.IsPlayerTurn || combat.PendingChoice is not null
+                || combat.AutomaticPipelineContinuation is null
+                || curse.EnemyTurn != combat.Turn
+                || combat.KnowledgeDemonChoiceResolvedTurn == combat.Turn
+                || curse.CurseIndex is < 0 or > 2
+                || !curse.OptionCardIds.SequenceEqual(
+                    PrototypeNativeHiveKnowledgeDemonChoice.Options(
+                        curse.CurseIndex))
+                || !combat.Enemies.Any(enemy =>
+                    enemy.InstanceId == curse.EnemyInstanceId
+                    && enemy.EnemyId == PrototypeNativeHiveBosses.KnowledgeId
+                    && enemy.Hp > 0 && enemy.PlannedMoveIndex == 0
+                    && (enemy.MoveUseCounts?.GetValueOrDefault(
+                        "curse_of_knowledge") ?? 0) == curse.CurseIndex))
+                throw new InvalidOperationException(
+                    "Pending Knowledge Demon curse choice is stale or malformed.");
+        }
+
+        if (combat.AutoPlayTargetRolls is { } rolls
+            && rolls.Any(roll =>
+                roll.CardInstanceId <= 0
+                || roll.Turn <= 0 || roll.Turn > combat.Turn
+                || roll.CandidateCount <= 0
+                || roll.SelectedIndex < 0
+                || roll.SelectedIndex >= roll.CandidateCount
+                || !combat.Enemies.Any(enemy =>
+                    enemy.InstanceId == roll.TargetEnemyInstanceId)))
+            throw new InvalidOperationException(
+                "Recorded Sly auto-play target roll has invalid identity or bounds.");
+
+        var known = combat.Cards.Select(card => card.InstanceId).ToHashSet();
+        if (known.Count != combat.Cards.Length)
+        {
+            throw new InvalidOperationException("Combat card instance IDs are not unique.");
+        }
+
+        if (combat.NextCardInstanceId <= known.DefaultIfEmpty(0).Max())
+        {
+            throw new InvalidOperationException("Next combat card instance ID is not fresh.");
+        }
+
+        var persistentIds = player.Deck.Select(card => card.InstanceId).ToHashSet();
+        var persistentCombatCards = combat.Cards
+            .Where(card => card.PersistentCardInstanceId is not null)
+            .ToArray();
+        var representedPersistentIds = persistentCombatCards
+            .Select(card => card.PersistentCardInstanceId!.Value)
+            .ToArray();
+
+        if (representedPersistentIds.Distinct().Count()
+                != representedPersistentIds.Length
+            || persistentCombatCards.Any(card =>
+                card.PersistentCardInstanceId is null
+                || !persistentIds.Contains(card.PersistentCardInstanceId.Value)))
+        {
+            throw new InvalidOperationException(
+                "Persistent deck cards have invalid combat provenance.");
+        }
+
+        if (combat.Cards.Any(card => card.IsTemporary != (card.PersistentCardInstanceId is null)))
+        {
+            throw new InvalidOperationException("Combat temporary-card provenance is inconsistent.");
+        }
+
+        foreach (var card in persistentCombatCards)
+        {
+            var persistent = player.Deck.Single(item =>
+                item.InstanceId == card.PersistentCardInstanceId!.Value);
+            if (!StringComparer.Ordinal.Equals(card.CardId, persistent.CardId)
+                || card.UpgradeLevel
+                    + card.SuppressedUpgradeLevels
+                    < persistent.UpgradeLevel
+                || card.Enchantment != persistent.Enchantment)
+            {
+                throw new InvalidOperationException(
+                    "Combat card no longer matches its persistent origin.");
+            }
+        }
+
+        var representedPersistentSet = representedPersistentIds.ToHashSet();
+        var transformedPersistentIds = combat.TransformedPersistentCardIds
+            ?? Array.Empty<long>();
+        if (transformedPersistentIds.Length
+                != transformedPersistentIds.Distinct().Count()
+            || transformedPersistentIds.Any(id =>
+                !persistentIds.Contains(id)
+                || representedPersistentSet.Contains(id)))
+        {
+            throw new InvalidOperationException(
+                "Combat card transformation provenance is inconsistent.");
+        }
+
+        var transformedPersistentSet = transformedPersistentIds.ToHashSet();
+        foreach (var persistent in player.Deck.Where(card =>
+                     !representedPersistentSet.Contains(card.InstanceId)
+                     && !transformedPersistentSet.Contains(card.InstanceId)))
+        {
+            if (PrototypeContent.Card(persistent.CardId).Type
+                != PrototypeCardType.Power)
+            {
+                throw new InvalidOperationException(
+                    "Only resolved Power or transformed cards may leave the combat card scope.");
+            }
+        }
+
+        ValidatePowerOwner("player", combat.PlayerPowers);
+
+        foreach (var power in combat.PlayerPowers)
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            if (definition.SourceBoundToEnemy)
+            {
+                if (power.SourceEnemyInstanceId is not
+                    { } sourceEnemyId)
+                {
+                    throw new InvalidOperationException(
+                        "Source-bound player power is missing its enemy source.");
+                }
+
+                var source = combat.Enemies.FirstOrDefault(enemy =>
+                    enemy.InstanceId == sourceEnemyId);
+                if (source is null || source.Hp <= 0)
+                {
+                    throw new InvalidOperationException(
+                        "Source-bound player power references a missing or defeated enemy.");
+                }
+            }
+            else if (power.SourceEnemyInstanceId is not null)
+            {
+                throw new InvalidOperationException(
+                    "Non-source-bound player power carries an enemy source.");
+            }
+        }
+
+        foreach (var card in combat.Cards)
+        {
+            if (card.Affliction?.SourceEnemyInstanceId is not
+                { } sourceEnemyId)
+            {
+                continue;
+            }
+
+            var source = combat.Enemies.FirstOrDefault(enemy =>
+                enemy.InstanceId == sourceEnemyId);
+            if (source is null)
+                throw new InvalidOperationException(
+                    "Source-owned card Affliction refers to an unknown enemy.");
+            // Two later-act card afflictions are installed by *enemy*
+            // powers, not player powers. Galvanized persists on the card
+            // after Globe Head dies, but its damage hook no longer fires.
+            // Vital Spark's Tainted instead clears when the source dies.
+            var enemyOwnedAffliction = card.Affliction.Kind switch
+            {
+                PrototypeCardAfflictionKind.Galvanized =>
+                    source.PowerStates.Any(power =>
+                        PrototypeContent.Power(power.PowerId)
+                            .GalvanizePowerCardsPerStack > 0)
+                    || source.Hp <= 0,
+                PrototypeCardAfflictionKind.Tainted =>
+                    source.Hp > 0 && source.PowerStates.Any(power =>
+                        power.PowerId == PrototypeNativeHiveElites.VitalSparkId
+                        && power.Stacks > 0),
+                _ => false
+            };
+            var hasMatchingSourcePower =
+                enemyOwnedAffliction
+                || combat.PlayerPowers.Any(power =>
+                {
+                    if (power.SourceEnemyInstanceId != sourceEnemyId)
+                        return false;
+                    return PrototypeContent.Power(power.PowerId)
+                        .SourceBoundCardAffliction == card.Affliction.Kind;
+                });
+            if (!hasMatchingSourcePower)
+                throw new InvalidOperationException(
+                    "Source-owned card Affliction has no matching active power.");
+        }
+
+        foreach (var enemy in combat.Enemies)
+        {
+            ValidatePowerOwner($"enemy {enemy.InstanceId}", enemy.PowerStates);
+        }
+
+        var allPowers = combat.PlayerPowers
+            .Concat(combat.Enemies.SelectMany(enemy => enemy.PowerStates))
+            .ToArray();
+
+        ValidateCombatRelics(player, combat);
+        ValidateCombatPotions(player, combat);
+
+        var allSubscriberOrders = allPowers
+            .Select(power => power.ApplicationOrder)
+            .Concat(combat.RelicStates.Select(relic => relic.ApplicationOrder))
+            .ToArray();
+
+        if (allSubscriberOrders.Distinct().Count() != allSubscriberOrders.Length)
+        {
+            throw new InvalidOperationException(
+                "Event-subscriber application order must be globally unique.");
+        }
+
+        if (allSubscriberOrders.Any(order =>
+            order <= 0 || order >= combat.NextPowerApplicationOrder))
+        {
+            throw new InvalidOperationException("Event-subscriber application order is invalid.");
+        }
+
+        if (combat.NextPowerApplicationOrder <= allSubscriberOrders.DefaultIfEmpty(0).Max())
+        {
+            throw new InvalidOperationException("Next event-subscriber application order is not fresh.");
+        }
+
+        var zoneLocations = combat.Hand
+            .Select(id => (Id: id, Location: "Hand"))
+            .Concat(combat.DrawPile.Select(id => (Id: id, Location: "DrawPile")))
+            .Concat(combat.DiscardPile.Select(id => (Id: id, Location: "DiscardPile")))
+            .Concat(combat.ExhaustPile.Select(id => (Id: id, Location: "ExhaustPile")))
+            .Concat(combat.PlayCardIds.Select(id => (Id: id, Location: "PlayPile")))
+            .Concat(combat.ChoiceCardIds.Select(id => (Id: id, Location: "ChoicePool")))
+            .ToList();
+        var zones = zoneLocations
+            .Select(item => item.Id)
+            .ToArray();
+
+        var suspendedSources = new List<long>();
+        if (combat.PendingChoice is
+                {
+                    SourceCardInstanceId: { } pendingSource,
+                    SourceCardAlreadyMoved: false
+                })
+        {
+            suspendedSources.Add(pendingSource);
+        }
+
+        for (var continuation =
+                 combat.PendingChoice?.OuterChoiceContinuation;
+             continuation is not null;
+             continuation = continuation.Parent)
+        {
+            if (!continuation.SourceCardAlreadyMoved
+                && continuation.SourceCardInstanceId is
+                    { } continuationSource)
+            {
+                suspendedSources.Add(continuationSource);
+            }
+        }
+
+        var represented = zones
+            .Concat(suspendedSources)
+            .ToArray();
+
+        if (represented.Any(cardId => !known.Contains(cardId)))
+        {
+            throw new InvalidOperationException("Combat zone contains an unknown combat card instance.");
+        }
+
+        if (represented.Length != represented.Distinct().Count())
+        {
+            var suspendedLocations = suspendedSources
+                .Select((id, index) =>
+                    (Id: id, Location: $"SuspendedSource[{index}]"));
+            var locations = zoneLocations
+                .Concat(suspendedLocations)
+                .GroupBy(item => item.Id)
+                .Where(group => group.Count() > 1)
+                .Select(group =>
+                {
+                    var card = combat.Cards.Single(item =>
+                        item.InstanceId == group.Key);
+                    return $"{group.Key}:{card.CardId} ({string.Join(", ", group.Select(item => item.Location))})";
+                })
+                .ToArray();
+            throw new InvalidOperationException(
+                "A card instance occurs in multiple combat zones/continuations: "
+                + string.Join("; ", locations));
+        }
+
+        if (represented.Length != known.Count)
+        {
+            var missing = known.Except(represented).Order().ToArray();
+            var missingCards = missing.Select(id =>
+            {
+                var card = combat.Cards.Single(item => item.InstanceId == id);
+                return $"{id}:{card.CardId}";
+            });
+            throw new InvalidOperationException(
+                "Combat cards are not fully represented by zones/continuations: "
+                + string.Join(", ", missingCards));
+        }
+
+        if (combat.ChoiceCardIds.Length > 0
+            && (combat.PendingChoice is null
+                || combat.PendingChoice.Selection.SourceZone
+                    != PrototypeCardZone.ChoicePool))
+        {
+            throw new InvalidOperationException(
+                "Combat choice pool exists without a matching pending choice.");
+        }
+
+        if (combat.PendingChoice is not null)
+        {
+            var pending = combat.PendingChoice;
+            var sourceZone = pending.Selection.SourceZone switch
+            {
+                PrototypeCardZone.Hand => combat.Hand,
+                PrototypeCardZone.DrawPile => combat.DrawPile,
+                PrototypeCardZone.DiscardPile => combat.DiscardPile,
+                PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
+                PrototypeCardZone.PlayPile => combat.PlayCardIds,
+                PrototypeCardZone.ChoicePool => combat.ChoiceCardIds,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+            if (pending.CandidateCardInstanceIds.Length
+                != pending.CandidateCardInstanceIds.Distinct().Count())
+            {
+                throw new InvalidOperationException("Pending choice contains duplicate candidates.");
+            }
+
+            if (pending.CandidateCardInstanceIds.Any(cardId => !sourceZone.Contains(cardId)))
+            {
+                throw new InvalidOperationException("Pending choice candidate left its declared source zone.");
+            }
+
+            var sequentialSelected =
+                pending.SequentialSelectedCardInstanceIds
+                ?? Array.Empty<long>();
+            if (!pending.Selection.SequentialOptional
+                && sequentialSelected.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    "Non-sequential pending choice carries sequential selections.");
+            }
+
+            if (sequentialSelected.Length
+                != sequentialSelected.Distinct().Count())
+            {
+                throw new InvalidOperationException(
+                    "Sequential pending choice contains duplicate accumulated selections.");
+            }
+
+            if (sequentialSelected.Any(cardId =>
+                    !sourceZone.Contains(cardId))
+                || sequentialSelected.Any(cardId =>
+                    pending.CandidateCardInstanceIds.Contains(cardId)))
+            {
+                throw new InvalidOperationException(
+                    "Sequential pending choice has an invalid accumulated selection.");
+            }
+
+            var availableSelectionCapacity =
+                pending.CandidateCardInstanceIds.Length
+                + sequentialSelected.Length;
+            if (pending.Selection.MinSelections < 0
+                || pending.Selection.MaxSelections
+                    < pending.Selection.MinSelections
+                || pending.Selection.MaxSelections
+                    > availableSelectionCapacity
+                || sequentialSelected.Length
+                    > pending.Selection.MaxSelections
+                || (!pending.Selection.SequentialOptional
+                    && pending.Selection.MaxSelections
+                        > pending.CandidateCardInstanceIds.Length))
+            {
+                throw new InvalidOperationException(
+                    "Pending choice has an invalid selection range.");
+            }
+
+
+            for (var continuation = pending.OuterChoiceContinuation;
+                 continuation is not null;
+                 continuation = continuation.Parent)
+            {
+                if (continuation.PendingSlyCardInstanceIds.Any(
+                        cardId => !combat.DiscardPile.Contains(cardId)))
+                {
+                    throw new InvalidOperationException(
+                        "Nested choice continuation has a pending Sly card outside Discard.");
+                }
+
+                if (continuation.PendingDiscardEvents.Any(combatEvent =>
+                        combatEvent.SourceCardInstanceId is
+                            { } cardId
+                        && !combat.DiscardPile.Contains(cardId)))
+                {
+                    throw new InvalidOperationException(
+                        "Nested choice continuation has a pending discard event for a card outside Discard.");
+                }
+            }
+        }
+    }
+}

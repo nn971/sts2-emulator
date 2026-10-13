@@ -3,8 +3,8 @@ using System.Text.Json;
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Language-neutral semantic action. Payload is canonical JSON so the trace protocol
-/// can evolve before every action receives a dedicated CLR type.
+/// Language-neutral semantic action. Payload remains canonical JSON at the public boundary,
+/// while implemented engines may deserialize it into typed phase-specific payload records.
 /// </summary>
 public sealed record GameAction(string Kind, JsonElement Payload)
 {
@@ -13,4 +13,11 @@ public sealed record GameAction(string Kind, JsonElement Payload)
         using var document = JsonDocument.Parse("{}");
         return new GameAction(kind, document.RootElement.Clone());
     }
+
+    public static GameAction Create<T>(string kind, T payload) =>
+        new(kind, JsonSerializer.SerializeToElement(payload));
+
+    public T ReadPayload<T>() =>
+        Payload.Deserialize<T>()
+        ?? throw new InvalidOperationException($"Action '{Kind}' has an invalid payload.");
 }

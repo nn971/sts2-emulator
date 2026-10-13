@@ -1,74 +1,35 @@
-# Immediate next steps
+# Next development phase — Native fidelity and RNG
 
-The next work should focus on evidence acquisition, not breadth of guessed mechanics.
+**Effective after the Silent v0.111 gameplay freeze (2026-10-13).**
 
-## Sprint 1 — choose and pin the reference build
+The frozen [all-Act Silent gameplay baseline](SILENT_V111_FROZEN_BASELINE.md) is the comparison target. Preserve the existing gameplay implementation and consumer contracts while the Inspector/RNG work progresses on isolated branches.
 
-1. Record the exact installed STS2 version/build.
-2. Record the mod-loader/toolchain versions used for instrumentation.
-3. Create `reference-builds/<build>/manifest.json` locally or in a small redistributable manifest.
-4. Freeze trace schema `0.1` for the first experiment, accepting that it will evolve.
+## 1. Establish the reference baseline
 
-## Sprint 2 — inspect prior art before coding the bridge
+- Merge the gameplay freeze documentation and the Silent all-Act implementation onto `main`; pin the exact merge SHA and maintain a named snapshot reference.
+- Record baseline build, test failures, coverage classifications and eight synthetic full-route tests.
+- Keep a reproducer for any unexpected baseline regression. Gameplay fixes go into scoped PRs, never retrospectively change the frozen reference.
 
-Study, side by side:
+## 2. Complete native Inspector acceptance
 
-- CombatSolver's snapshot/fork/RNG boundaries;
-- `sts2-simulator`'s live bridge and parity replay protocol;
-- Zamiell's C# NativeAOT emulator/binding architecture.
+- Compile/load the Inspector mod locally against the pinned real-game DLL and confirm its opt-in instrumentation works during gameplay.
+- Collect representative action envelopes, nested choices, enemy turns, potion/relic interactions and full-combat observations; audit provenance, recording completeness and source hooks.
+- Compare actual native engine actions/states with the emulator on independently importable checkpoints; classify unsupported observations instead of promoting partial evidence to full parity.
+- Apply the [native-fidelity plan](V111_NATIVE_ENGINE_FIDELITY.md) and the dedicated review PR stack, without mixing gameplay modifications.
 
-Write an ADR for what we reuse conceptually and what we deliberately redesign.
+## 3. Implement the desired RNG abstraction
 
-## Sprint 3 — minimal native recorder
+- Follow [desired RNG implementation](DESIRED_RNG_IMPLEMENTATION.md): mechanics issue typed chance requests at source-authentic call sites, and the native / scripted / externally controlled Nature providers share the continuation.
+- Preserve per-stream ownership, ordering, native primitive draw behavior and exact snapshots in native mode.
+- Use game-local native stream and action evidence to test call order and eligibility. Calibrate chance distributions separately from mechanical behavior.
+- Keep controlled Nature interfaces available for downstream AI, with algorithm/training experiments owned by `sts2-ai`.
 
-Implement passive recording for one decision class at a time:
+## 4. Completion and handoff gates
 
-1. run metadata + seed;
-2. map choice;
-3. one combat state/action;
-4. card reward.
+- Check full-test regressions against the frozen SHA, and maintain a provenance-aware list of observed mismatch classes.
+- Run repeatable game-local Inspector corpora and a representative local emulator replay suite.
+- Merge Inspector/RNG changes only after focused checks and documented behavior changes, while retaining a stable baseline for comparisons.
 
-Do not attempt full coverage yet.
+## Deliberate postponements
 
-The output must be inspectable JSONL and stable across two recordings of the same deterministic scenario.
-
-## Sprint 4 — RNG inventory
-
-Build a table:
-
-| Stream | Native owner/type | Init point | Full state recoverable? | First parity fixture |
-|---|---|---|---|---|
-| TBD | | | | |
-
-Recover exact stream semantics before implementing a PRNG codec in the emulator.
-
-## Sprint 5 — first emulator transition
-
-Choose the smallest nontrivial run-level transition whose native trace is fully understood—likely a map/reward choice rather than combat.
-
-Implement it in `Sts2Emulator.Core`, then make replay pass exactly.
-
-The rule for early development is:
-
-> one audited transition end-to-end is more valuable than fifty approximate cards.
-
-## Sprint 6 — parity harness automation
-
-Add a command roughly equivalent to:
-
-```text
-sts2sim replay reference.jsonl
-```
-
-It should stop on first divergence and print canonical state/RNG/legal-action differences.
-
-## Sprint 7 — establish a performance baseline
-
-Only after several genuine mechanics exist, record:
-
-- step throughput by phase;
-- fork throughput;
-- canonical hash cost;
-- allocations and memory.
-
-Then optimize the largest measured bottleneck without changing parity fixtures.
+Full cross-character mechanics, multiplayer behavior, release-grade optimization and all-character native parity remain outside this phase. The [full implementation roadmap](FULL_IMPLEMENTATION_ROADMAP.md) records those longer-term targets.

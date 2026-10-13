@@ -1,126 +1,62 @@
 # STS2 Emulator
 
-A **trustworthy, practically fast, whole-run emulator for Slay the Spire 2**.
+A deterministic, forkable, headless Slay the Spire 2 emulator for whole-run simulation, search and learning. Game mechanics, persistent state, chance resolution, native fidelity tooling and the consumer interface belong here; policies, strategic search and training belong in [sts2-ai](https://github.com/nn971/sts2-ai).
 
-This repository is intended to stand on its own as emulator infrastructure and to be embedded as a **subrepository/submodule** inside a future AI-learning project. It owns game semantics, state transitions, RNG reproduction, parity tooling, and performance-critical simulation. It deliberately does **not** own strategy search, policy/value models, training loops, experiment management, or decision databases.
+## Current milestone: frozen Silent v0.111 gameplay baseline
 
-The first milestone is the whole point of this repository:
+**Single-player Silent supports configured end-to-end Overgrowth / Underdocks → Hive → Glory gameplay**, with persisted state, regional encounters, events, Ancients, rewards, shops, rest sites and endgame routing. The baseline is broadly integrated, with explicit known omissions, approximate generation and mechanics requiring further tests. It is an **implementation checkpoint**, not a native-fidelity release.
 
-> **Reproduce complete STS2 runs with high fidelity to a pinned real-game build, while remaining fast enough for large-scale branching simulation.**
+Start with the [Silent all-Act freeze notes](docs/SILENT_V111_FROZEN_BASELINE.md) for scope, supported mode, current coverage, important test failures and unresolved mechanics. See [implementation status](docs/V111_IMPLEMENTATION_STATUS.md) for the cumulative mechanics audit.
 
-## Scope boundary
+The next active tracks are:
 
-This repository owns:
+1. **Native Inspector and fidelity comparisons:** collect reliable native action, state, and RNG evidence and compare real-game transitions against the emulator.
+2. **Desired RNG architecture:** source-ordered, typed random-choice requests, swappable native/controlled providers, deterministic continuations and explicit chance distributions.
 
-- canonical whole-run state;
-- deterministic `Step(state, action)` semantics;
-- legal-action generation;
-- complete continuation-relevant RNG state;
-- cheap independent `Fork()`;
-- combat, map, rewards, shops, events, rests, relics, potions, and act transitions;
-- native/live-game reference capture;
-- differential replay and parity tests;
-- stable serialization, hashing, and language bindings;
-- performance benchmarks for simulation consumers.
+Read the [desired RNG plan](docs/DESIRED_RNG_IMPLEMENTATION.md), [native engine fidelity notes](docs/V111_NATIVE_ENGINE_FIDELITY.md) and [current next steps](docs/NEXT_STEPS.md). The native-game source/binary pin is v0.111.0, game commit `41cef1ea`; mechanics support remains separately classified from native parity.
 
-A parent AI repository should own:
+## Supported execution and contracts
 
-- search algorithms;
-- strategic experience/decision databases;
-- training datasets derived from emulator output;
-- policy/value/world models;
-- RL or expert-iteration loops;
-- experiment configuration and evaluation;
-- player-facing automation or control.
+- Stable whole-run state, deterministic `Step`, legal actions, forks and exact snapshot/restore.
+- Opt-in Silent full-route fidelity ID: `v111-experimental-silent-three-act-route-v1`.
+- Versioned JSONL consumer protocol and Python binding for external search/training.
+- Historical restrictive prototype remains supported via its versioned adapters.
+- Single-player only. Multiplayer behavior and other-character mechanics are postponed.
 
-See [docs/SUBREPO_INTEGRATION.md](docs/SUBREPO_INTEGRATION.md).
+See [v111 interface](docs/V111_INTERFACE.md), [AI adapter](docs/AI_INTERFACE.md), and [subrepo integration](docs/SUBREPO_INTEGRATION.md). Registered content and supported execution are distinguished in the [coverage inventory](data/coverage/v111-baseline.json).
 
-## Design principles
+## Build and diagnostics
 
-1. **Parity before performance.** A speedup must preserve verified semantics.
-2. **Whole-run state.** Combat is one subsystem of a persistent run state.
-3. **Deterministic core.** Hidden RNG state belongs to engine state, so `Step(S, a)` is deterministic.
-4. **Forking is first-class.** Counterfactual branches must be cheap and isolated.
-5. **Version-pinned truth.** Every trace and parity result names the target game build and emulator revision.
-6. **Explicit uncertainty.** Unsupported or weakly verified mechanics fail loudly or carry explicit status.
-7. **Stable consumer boundary.** AI/search code consumes the emulator through documented APIs and bindings instead of importing internal mechanics.
-8. **No presentation baggage.** UI, animation, audio, and rendering are outside canonical simulation state unless they affect future mechanics.
-
-## Milestone 1: trustworthy + practically fast emulator
-
-Milestone 1 succeeds when a large corpus of real seeded runs can be replayed with canonical agreement at every decision boundary, and the emulator has measured throughput/fork/memory characteristics suitable for background search and learning workloads.
-
-Initial acceptance target:
-
-- 1,000+ version-pinned real-game runs with diverse/random legal decisions;
-- no unexplained canonical-state divergence from run start to terminal state;
-- exact legal-action agreement for supported phases;
-- reproducible RNG-stream state and consumption;
-- cheap isolated full-run forks;
-- reproducible benchmark suite and regression budgets;
-- a stable native/C ABI or equivalent binding suitable for a parent research project.
-
-See [docs/MILESTONE_1.md](docs/MILESTONE_1.md).
-
-## Repository layout
-
-```text
-.
-├── src/
-│   ├── Sts2Emulator.Core/       # Canonical deterministic state + engine contracts
-│   ├── Sts2Emulator.Trace/      # Versioned trace/state protocol
-│   └── Sts2Emulator.Cli/        # Developer CLI; no hidden game rules
-├── tests/
-│   └── Sts2Emulator.Core.Tests/ # Fork/hash/protocol invariants and later parity fixtures
-├── benchmarks/
-│   └── Sts2Emulator.Microbench/ # Fork/hash/transition microbenchmarks
-├── bindings/
-│   └── python/                   # Planned thin consumer binding only
-├── schemas/                      # Language-neutral state/trace schemas
-├── tools/                        # Replay/parity utilities
-├── scripts/                      # Fish-shell developer helpers
-├── data/                         # Local traces/extractions; proprietary data is not committed
-├── docs/                         # Fidelity, RNG, architecture, performance, integration, roadmap
-└── .github/workflows/ci.yml
-```
-
-## Build
-
-Requires .NET 9 SDK.
+Requires .NET 9 SDK:
 
 ```fish
-./scripts/test.fish
+dotnet test Sts2Emulator.sln -c Release
+dotnet run --project src/Sts2Emulator.Cli -- v111-coverage
+python tools/check_v111_coverage.py
 ./scripts/bench.fish
 ```
 
-Equivalent direct commands:
+The all-Act gameplay baseline has **known global test failures** (296 identified in the initial Inspector integration report); the full test suite and coverage checker are not yet certified green. See the [freeze limitations](docs/SILENT_V111_FROZEN_BASELINE.md) before interpreting a CI result.
 
-```text
-dotnet test Sts2Emulator.sln -c Release
-dotnet run --project benchmarks/Sts2Emulator.Microbench/Sts2Emulator.Microbench.csproj -c Release
+The JSONL interface is launched with:
+
+```fish
+dotnet run --project src/Sts2Emulator.Cli -- prototype-ai-jsonl
 ```
 
-The current scaffold contains **infrastructure contracts, not an invented approximation of STS2 mechanics**. Missing mechanics should fail loudly until implemented from audited semantics or validated against the native reference.
+Consult [the contract](docs/V111_INTERFACE.md) for `reset_v111`, legal actions, `step`, `fork`, `observe` and save/load.
 
-## Start here
+## Documentation map
 
-1. [docs/PURPOSE.md](docs/PURPOSE.md) — emulator charter and repository boundary.
-2. [docs/SUBREPO_INTEGRATION.md](docs/SUBREPO_INTEGRATION.md) — how the future AI project should consume this repo.
-3. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — native oracle → exact emulator → stable consumer API.
-4. [docs/FIDELITY_CONTRACT.md](docs/FIDELITY_CONTRACT.md) — what “trustworthy” means.
-5. [docs/STATE_MODEL.md](docs/STATE_MODEL.md) — canonical exact state and public projections.
-6. [docs/RNG.md](docs/RNG.md) — RNG as explicit forkable state.
-7. [docs/PARITY_TESTING.md](docs/PARITY_TESTING.md) — trace capture and first-divergence workflow.
-8. [docs/PERFORMANCE.md](docs/PERFORMANCE.md) — speed, memory, fork, and batch metrics.
-9. [docs/REFERENCE_BRIDGE.md](docs/REFERENCE_BRIDGE.md) — native-game oracle responsibilities.
-10. [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) — concrete first implementation sprints.
-11. [docs/ROADMAP.md](docs/ROADMAP.md) — emulator-only roadmap.
-12. [docs/REFERENCES.md](docs/REFERENCES.md) — relevant STS2 emulator/prediction prior art.
+- [Freeze baseline](docs/SILENT_V111_FROZEN_BASELINE.md) — current stable gameplay reference and open gaps.
+- [Next steps](docs/NEXT_STEPS.md) — native fidelity and RNG priorities.
+- [Implementation status](docs/V111_IMPLEMENTATION_STATUS.md) — cumulative source-backed gameplay change ledger.
+- [Full implementation roadmap](docs/FULL_IMPLEMENTATION_ROADMAP.md) — longer-term all-content/all-character ambition.
+- [Emulator roadmap](docs/ROADMAP.md) — archived prototype milestones and later release gates.
+- [RNG](docs/RNG.md) and [desired RNG implementation](docs/DESIRED_RNG_IMPLEMENTATION.md).
+- [Parity testing](docs/PARITY_TESTING.md), [native reference bridge](docs/REFERENCE_BRIDGE.md), [fidelity contract](docs/FIDELITY_CONTRACT.md).
+- [Project status](PROJECT_STATUS.md) — concise current index; the old rolling notes are archived.
 
-## Current status
+## Repository responsibility and data policy
 
-**Scaffold / Milestone 0.** Engine interfaces, trace envelope, canonical hashing bootstrap, tests, schemas, docs, CI, and parity diff tooling are present. No claim of STS2 mechanical coverage is made yet.
-
-## Independence
-
-This is an independent research/interoperability project and is not affiliated with Mega Crit. Do not commit proprietary game assets, redistributed assemblies, or copied/decompiled source text. See [docs/LEGAL_AND_DATA_POLICY.md](docs/LEGAL_AND_DATA_POLICY.md).
+The emulator is independent of Mega Crit. The game installation, proprietary assets, redistributed assemblies and copied/decompiled source code remain local and uncommitted. Only separately audited metadata, implementation, test fixtures and documentation belong in this repository. See [legal and data policy](docs/LEGAL_AND_DATA_POLICY.md).

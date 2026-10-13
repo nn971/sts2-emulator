@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sts2-emulator:step-batch-v1",
+  "title": "Ordered deterministic JSONL batch request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "op",
+    "steps"
+  ],
+  "properties": {
+    "op": {
+      "const": "step_batch"
+    },
+    "request_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "parallelism": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state_handle",
+          "action_id"
+        ],
+        "properties": {
+          "state_handle": {
+            "type": "string"
+          },
+          "action_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
