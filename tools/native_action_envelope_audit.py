@@ -187,12 +187,15 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "terminal_history_clears": 0,
         "raw_terminal_status": None,
         "native_rng_hook_installed": False,
+        "native_rng_double_hook_installed": False,
+        "native_rng_bool_hook_installed": False,
         "native_monster_ai_scope_installed": False,
         "native_shuffle_scope_installed": False,
         "native_initial_hp_scope_installed": False,
         "native_initial_hp_source_rolls": 0,
         "native_shuffle_source_operations": 0,
         "native_rng_source_calls": 0,
+        "native_rng_scalar_source_calls": 0,
         "native_rng_unattributed_calls": 0,
         "native_rng_source_coverage": "SOURCE_RNG_UNINSTRUMENTED",
         "incomplete_observations": [],
@@ -207,6 +210,10 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         return report
     report["native_rng_hook_installed"] = (
         records[0].get("data", {}).get("native_rng_hook_installed") is True)
+    report["native_rng_double_hook_installed"] = (
+        records[0].get("data", {}).get("native_rng_double_hook_installed") is True)
+    report["native_rng_bool_hook_installed"] = (
+        records[0].get("data", {}).get("native_rng_bool_hook_installed") is True)
     report["native_monster_ai_scope_installed"] = (
         records[0].get("data", {}).get("native_monster_ai_scope_installed") is True)
     report["native_shuffle_scope_installed"] = (
@@ -223,6 +230,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "header", "history_baseline", "frame_state", "action_started", "action_resumed", "action_completed", "stable_decision",
         "nested_choice_pause", "history_entry", "history_reset", "anomaly",
         "observation_failure", "native_rng_boundary",
+        "native_rng_scalar_boundary",
         "native_shuffle_operation", "native_initial_hp_roll", "terminal",
     }
     running: dict[int, dict] = {}
@@ -337,6 +345,37 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     f"Invalid native shuffle source operation at {ordinal}")
                 return report
             report["native_shuffle_source_operations"] += 1
+        elif typ == "native_rng_scalar_boundary":
+            data = record.get("data") or {}
+            before, after = data.get("cursor_before"), data.get("cursor_after")
+            def counter(obj):
+                return (obj.get("counter", obj.get("Counter"))
+                        if isinstance(obj, dict) else None)
+            kind = data.get("operation_kind")
+            scalar = data.get("selected_double")
+            boolean = data.get("selected_bool")
+            value_valid = (
+                (kind == "unit_double" and type(scalar) in (float, int)
+                 and 0 <= scalar < 1 and boolean is None)
+                or (kind == "boolean" and type(boolean) is bool
+                    and scalar is None))
+            if (data.get("origin") != "source_primitive_hook"
+                or data.get("source_hook_observed") is not True
+                or data.get("source_version") != "v0.111.0"
+                or not value_valid
+                or type(counter(before)) is not int
+                or type(counter(after)) is not int
+                or counter(after) != counter(before) + 1):
+                report["reason"] = (
+                    f"Invalid native RNG scalar source call at ordinal {ordinal}")
+                return report
+            report["native_rng_source_calls"] += 1
+            report["native_rng_scalar_source_calls"] += 1
+            report["native_rng_source_coverage"] = "SOURCE_RNG_CALLS_OBSERVED"
+            if (data.get("attributed") is not True
+                or any(data.get(name) in (None, "", "UNATTRIBUTED")
+                       for name in ("site_id", "stream_id", "owner_id"))):
+                report["native_rng_unattributed_calls"] += 1
         elif typ == "native_rng_boundary":
             data = record.get("data") or {}
             before, after = data.get("cursor_before"), data.get("cursor_after")

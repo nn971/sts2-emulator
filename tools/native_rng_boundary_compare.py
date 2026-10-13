@@ -28,7 +28,8 @@ def compare_native_emulator(
 ) -> dict:
     native = []
     for rec in sidecar:
-        if key(rec, "type") != "native_rng_boundary":
+        if key(rec, "type") not in (
+            "native_rng_boundary", "native_rng_scalar_boundary"):
             continue
         if key(rec, "action_id") == action_id:
             native.append(key(rec, "data"))
@@ -74,6 +75,11 @@ def compare_native_emulator(
     if primitive["stream_conflict_count"]:
         return {**base, "status": "NATIVE_RNG_STREAM_ORDER_CONFLICT",
                 "first_mismatch": primitive["stream_conflicts"][0]}
+    if any(key(n, "operation_kind") != "bounded_integer" for n in native):
+        # Current emulator provider journal models bounded index choices only.
+        # Source-observed bool/double draws must never be silently discarded
+        # when claiming a complete one-action random-call comparison.
+        return {**base, "status": "UNSUPPORTED_NATIVE_RNG_OPERATION"}
     if key(engine, "executed_actual_engine_step") is not True:
         return {**base, "status": "EMULATOR_STEP_NOT_EXECUTED"}
     emulator = key(engine, "emulator_random_boundaries")
