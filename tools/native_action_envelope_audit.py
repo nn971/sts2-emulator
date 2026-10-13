@@ -189,6 +189,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_rng_hook_installed": False,
         "native_monster_ai_scope_installed": False,
         "native_shuffle_scope_installed": False,
+        "native_initial_hp_source_rolls": 0,
         "native_shuffle_source_operations": 0,
         "native_rng_source_calls": 0,
         "native_rng_unattributed_calls": 0,
@@ -219,7 +220,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "header", "history_baseline", "frame_state", "action_started", "action_resumed", "action_completed", "stable_decision",
         "nested_choice_pause", "history_entry", "history_reset", "anomaly",
         "observation_failure", "native_rng_boundary",
-        "native_shuffle_operation", "terminal",
+        "native_shuffle_operation", "native_initial_hp_roll", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -309,6 +310,17 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 strict_failures.append(f"Nested choice with no active action: {aid}")
             else:
                 awaiting_resume.add(aid)
+        elif typ == "native_initial_hp_roll":
+            data = record.get("data") or {}
+            if (data.get("source_version") != "v0.111.0"
+                or data.get("source_callsite_observed") is not True
+                or not isinstance(data.get("ordered_eligible_hp"), list)
+                or type(data.get("selected_index")) is not int
+                or type(data.get("selected_hp")) is not int):
+                report["reason"] = (
+                    f"Invalid native initial HP source roll at {ordinal}")
+                return report
+            report["native_initial_hp_source_rolls"] += 1
         elif typ == "native_shuffle_operation":
             data = record.get("data") or {}
             if (data.get("source_version") != "v0.111.0"
