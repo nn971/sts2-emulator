@@ -1495,13 +1495,8 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 case PrototypeRunEffectKind.LoseHp:
-                    var hpLoss = ReducePlayerHpLoss(player, effect.Amount);
-                    player = player with
-                    {
-                        Hp = Math.Max(
-                            0,
-                            player.Hp - hpLoss)
-                    };
+                    player = ApplyPlayerHpLossAndDeathPrevention(
+                        player, effect.Amount);
                     // Native CreatureCmd.Damage stops the event when
                     // it kills the player. Do not execute subsequent
                     // rewards (e.g. Jungle Maze's gold after damage).
@@ -4066,14 +4061,8 @@ public sealed partial class PrototypeGameEngine
             if (reward.PendingDeckChoice is null
                 && deckChoice.HpLossAfterChoices > 0)
             {
-                var hpLoss = ReducePlayerHpLoss(
+                player = ApplyPlayerHpLossAndDeathPrevention(
                     player, deckChoice.HpLossAfterChoices);
-                player = player with
-                {
-                    Hp = Math.Max(
-                        0,
-                        player.Hp - hpLoss)
-                };
                 if (player.Hp == 0)
                 {
                     world = world with

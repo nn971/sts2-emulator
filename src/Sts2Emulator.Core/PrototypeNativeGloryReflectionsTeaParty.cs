@@ -160,11 +160,8 @@ public sealed partial class PrototypeGameEngine
         // The first click only opens a follow-up page. The second
         // causes eleven unblockable, unpowered damage, THEN obtains
         // one relic from the front of the persistent reward grab bag.
-        var hpLoss = ReducePlayerHpLoss(state.Player, 11);
-        var playerAfterHit = state.Player with
-        {
-            Hp = Math.Max(0, state.Player.Hp - hpLoss)
-        };
+        var playerAfterHit = ApplyPlayerHpLossAndDeathPrevention(
+            state.Player, 11);
         state = state with { Player = playerAfterHit };
         if (playerAfterHit.Hp == 0)
             return EndRun(state, "defeat");

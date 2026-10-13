@@ -329,13 +329,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 }
 
                 case PrototypeRunEffectKind.LoseHp:
-                    var hpLoss = ReducePlayerHpLoss(player, effect.Amount);
-                    player = player with
-                    {
-                        Hp = Math.Max(
-                            0,
-                            player.Hp - hpLoss)
-                    };
+                    player = ApplyPlayerHpLossAndDeathPrevention(
+                        player, effect.Amount);
                     break;
 
                 case PrototypeRunEffectKind.GainGold:

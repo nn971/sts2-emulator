@@ -98,6 +98,7 @@ public static class PrototypeNativeRelicGrabBag
             [PrototypeNativeRestSiteRelics.GiryaId] = PrototypeRelicRarity.Rare,
             ["proto.relic.gambling_chip"] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.TungstenRodId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.LizardTailId] = PrototypeRelicRarity.Rare,
 
             ["proto.relic.lees_waffle"] = PrototypeRelicRarity.Shop,
             ["proto.relic.membership_card"] = PrototypeRelicRarity.Shop,

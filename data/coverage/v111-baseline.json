@@ -26362,17 +26362,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.lizard_tail"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/LizardTail.cs#76084bfb5a0e4d4a24605204176af9d0639b08d818df8038639c0825f76aa537"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "LIZARD_TAIL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29455,8 +29457,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 111,
-        "integrated": 112,
+        "implemented": 112,
+        "integrated": 113,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

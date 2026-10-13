@@ -218,9 +218,9 @@ public sealed partial class PrototypeGameEngine
                 "Slippery Bridge choice does not match the current page.");
         }
 
-        var hpLoss = ReducePlayerHpLoss(state.Player,
+        var playerAfterHold = ApplyPlayerHpLossAndDeathPrevention(
+            state.Player,
             3 + eventState.NativeSlipperyBridgeHoldCount);
-        var hp = Math.Max(0, state.Player.Hp - hpLoss);
         var skipped = (eventState
                 .NativeSlipperyBridgeSkippedCardInstanceIds
             ?? Array.Empty<long>())
@@ -242,9 +242,10 @@ public sealed partial class PrototypeGameEngine
         };
         var next = state with
         {
-            Player = state.Player with { Hp = hp },
+            Player = playerAfterHold,
             World = world with { Event = nextEvent }
         };
-        return hp == 0 ? EndRun(next, "defeat") : next;
+        return playerAfterHold.Hp == 0
+            ? EndRun(next, "defeat") : next;
     }
 }

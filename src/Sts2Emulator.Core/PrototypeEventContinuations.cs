@@ -179,19 +179,17 @@ public sealed partial class PrototypeGameEngine
 
             if (eventState.DeferredHpLoss > 0)
             {
-                var hpLoss = ReducePlayerHpLoss(
+                var player = ApplyPlayerHpLossAndDeathPrevention(
                     state.Player, eventState.DeferredHpLoss);
-                var hp = Math.Max(
-                    0, state.Player.Hp - hpLoss);
                 state = state with
                 {
-                    Player = state.Player with { Hp = hp },
+                    Player = player,
                     World = world with
                     {
                         Event = eventState with { DeferredHpLoss = 0 }
                     }
                 };
-                if (hp <= 0)
+                if (player.Hp <= 0)
                 {
                     return EndRun(state, "defeat");
                 }

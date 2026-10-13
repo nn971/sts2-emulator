@@ -322,6 +322,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "LIZARD_TAIL"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.LizardTailId,
+                StringComparer.Ordinal)
+            && HasLizardTailPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -1982,6 +1992,30 @@ public static class V111Coverage
             && consumed.Bonus == 2
             && !PrototypeNativeFakeMerchant.HasTeaSetCharge(
                 consumed.Player.Relics.Single());
+    }
+
+    private static bool HasLizardTailPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.LizardTailId;
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            || rarity != PrototypeRelicRarity.Rare)
+        {
+            return false;
+        }
+
+        var player = new PlayerState(5, 40, 0, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var saved = PrototypeGameEngine
+            .ApplyPlayerHpLossAndDeathPrevention(player, 10);
+        var usedRelic = saved.Relics.Single();
+        var diedAgain = PrototypeGameEngine
+            .ApplyPlayerHpLossAndDeathPrevention(saved, 20);
+        return saved.Hp == 20
+            && PrototypeGameEngine.IsLizardTailUsed(usedRelic)
+            && diedAgain.Hp == 0;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

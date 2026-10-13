@@ -1324,6 +1324,7 @@ public sealed partial class PrototypeGameEngine
                 dispatched.Combat);
         }
 
+        player = TryUseLizardTail(player);
         return (player, combat);
     }
 

@@ -67,11 +67,10 @@ public sealed partial class PrototypeGameEngine
             return FinishColossalFlower(state, eventState, choice);
         }
 
-        var hpLoss = ReducePlayerHpLoss(state.Player, damages[stage]);
-        var hp = Math.Max(0, state.Player.Hp - hpLoss);
-        var player = state.Player with { Hp = hp };
+        var player = ApplyPlayerHpLossAndDeathPrevention(
+            state.Player, damages[stage]);
         state = state with { Player = player };
-        if (hp == 0)
+        if (player.Hp == 0)
         {
             // Native CreatureCmd.Damage is unpowered and unblockable.
             return EndRun(state, "defeat");

@@ -90,6 +90,10 @@ public sealed partial class PrototypeGameEngine
             // Native flags the lethal option and kills the player
             // if selected. It does not silently clamp a lethal
             // maximum-HP reduction to one HP.
+            var prevented = TryUseLizardTail(
+                state.Player with { Hp = 0 });
+            if (prevented.Hp > 0)
+                return state with { Player = prevented };
             return EndRun(state, "defeat");
         }
 

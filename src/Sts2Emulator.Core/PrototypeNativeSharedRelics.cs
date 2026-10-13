@@ -10,6 +10,7 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.centennial_puzzle";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
     public const string JuzuBraceletId = "proto.relic.juzu_bracelet";
+    public const string LizardTailId = "proto.relic.lizard_tail";
     public const string PearId = "proto.relic.pear";
     public const string PantographId = "proto.relic.pantograph";
     public const string PetrifiedToadId = "proto.relic.petrified_toad";
@@ -86,6 +87,7 @@ public static class PrototypeNativeSharedRelics
         // unblocked HP loss to 5. The event-rarity relic remains outside the
         // ordinary relic pool and is awarded by Trash Heap.
         new(TheBootId, "The Boot", MinPoweredAttackHpLoss: 5),
-        new(VenerableTeaSetId, "Venerable Tea Set")
+        new(VenerableTeaSetId, "Venerable Tea Set"),
+        new(LizardTailId, "Lizard Tail")
     ];
 }

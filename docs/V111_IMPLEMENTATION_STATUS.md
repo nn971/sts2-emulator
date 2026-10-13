@@ -56,6 +56,10 @@ Venerable Tea Set is now in the Common relic pool. Rest Site entry charges it
 for +2 Energy at the next combat's opening energy reset; the charge is then
 cleared. See
 [mechanics gap 062](reference-builds/v0.111.0-mechanics-gap-062.md).
+Lizard Tail now prevents one fatal HP loss, restores half of Max HP (minimum
+1), and persists its used state. Run effects and combat death prevention share
+the hook, with automatic combat potions resolving first. See
+[mechanics gap 063](reference-builds/v0.111.0-mechanics-gap-063.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).

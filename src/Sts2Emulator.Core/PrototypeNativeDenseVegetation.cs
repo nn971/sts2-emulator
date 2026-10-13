@@ -34,14 +34,11 @@ public sealed partial class PrototypeGameEngine
         {
             if (choiceId == "trudge")
             {
-                var hpLoss = ReducePlayerHpLoss(state.Player, 8);
-                var hpAfter = Math.Max(0, state.Player.Hp - hpLoss);
-                if (hpAfter == 0)
+                var player = ApplyPlayerHpLossAndDeathPrevention(
+                    state.Player, 8);
+                if (player.Hp == 0)
                 {
-                    return EndRun(state with
-                    {
-                        Player = state.Player with { Hp = 0 }
-                    }, "defeat");
+                    return EndRun(state with { Player = player }, "defeat");
                 }
 
                 var gold = current.NativeEventGold is >= 61 and <= 99
@@ -50,10 +47,9 @@ public sealed partial class PrototypeGameEngine
                         state.Rng, "event", 39);
                 var result = state with
                 {
-                    Player = state.Player with
+                    Player = player with
                     {
-                        Hp = hpAfter,
-                        Gold = GoldAfterGain(state.Player, gold)
+                        Gold = GoldAfterGain(player, gold)
                     },
                     World = world with
                     {
