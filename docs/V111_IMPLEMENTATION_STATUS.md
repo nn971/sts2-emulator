@@ -26,6 +26,10 @@ Girya's Lift count persists on the relic, caps at three, and grants that much
 Strength at each combat entry. All eight single-player rest-site option
 identifiers now map to executable actions. See the
 [rest-site Dig and Lift slice](reference-builds/v0.111.0-rest-site-dig-lift.md).
+Coverage now recognizes behavior-bearing relic definitions in the ordinary
+Silent/shared pool through their typed mechanics and the common rarity-bag
+acquisition path. This records emulator integration only; native relic
+behavior and RNG parity remain unverified.
 Neow's Lead Paperweight now suspends the opening for a one-of-two supported
 Colorless card reward drawn from all implemented single-player Colorless
 reward cards. Account unlock filtering and native reward RNG remain open.

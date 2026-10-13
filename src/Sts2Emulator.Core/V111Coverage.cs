@@ -1016,11 +1016,33 @@ public static class V111Coverage
                 integration = "integrated";
             }
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && engineIds.Length == 1
+            && PrototypeContent.RelicPool.Contains(engineIds[0],
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(engineIds[0], out _)
+            && HasExecutableRelicBehavior(PrototypeContent.Relic(engineIds[0])))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         return new V111CoverageItem(item.Kind, item.Id, item.Scope, engineIds,
             true, engineIds.Length > 0, implementation, integration, "unverified",
             missingVariants,
             missingBranches,
             item.Source is null ? [] : [$"{V111Build.SourceCommit}:{item.Source}#{item.SourceSha256}"]);
+    }
+
+    private static bool HasExecutableRelicBehavior(
+        PrototypeRelicDefinition definition)
+    {
+        // Every non-name field on this typed definition is consumed by the
+        // shared combat, run-event, reward, shop, or acquisition handlers.
+        // Comparing with the record defaults keeps name-only placeholders
+        // from being reported as implemented.
+        var empty = new PrototypeRelicDefinition(string.Empty, string.Empty);
+        return definition with { Id = string.Empty, Name = string.Empty }
+            != empty;
     }
 
     private static string[] RestSiteOptionEngineIds(string optionId)

@@ -24102,8 +24102,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Anchor.cs#8ec8f84f20049c2b3613be8e6705a5a669ec6b2338984091d2774b4b39f5b647"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24156,8 +24156,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ArtOfWar.cs#24d63ae01faa77ad9e99b56e68a4716d155261f8cd4f7e42f0c3167a45c66a27"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24192,8 +24192,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BagOfMarbles.cs#74dc0706aded95fe9d8639e42101d57dc9c8a4737f6a03a7e576381488ded908"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24210,8 +24210,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BagOfPreparation.cs#c3b3a527c44562ca78288265f36ca10aa48b5c913ca363efda870761db35d761"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24432,8 +24432,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BloodVial.cs#68a09be73d3832bd3f4eac44bc1d81d6165f33a306b896fdcfdff141499fa7b6"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24632,8 +24632,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BronzeScales.cs#f2f538709955773194cad98421b9cd8a7a4239ea4740a199ab900be4aa284a5a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24666,8 +24666,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BurningSticks.cs#7c01f7308ea8d12a84161c069c669dbdadc18fb48ef5f551a5d9adcfbe3e8cf9"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24736,8 +24736,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/CaptainsWheel.cs#1ed14a0fedcf0e97e38765d61c6a5d16bfb829609ad6ff8612aff9f9b73e603d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -24802,8 +24802,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/CharonsAshes.cs#f09fa13f8ca1dc062070b14da370a53f5accdbca97b3c0ac24ddc4d3f8970924"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -25652,8 +25652,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FrozenEgg.cs#09fdd62baaf545bfb544722d07a921db4cf406726cf327e636db96706efb7ceb"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -25720,8 +25720,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/GamblingChip.cs#bf589d53ed86e59ab0cac026b9e640097e492588d9b44cee4720465b014c450b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -25908,8 +25908,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/GremlinHorn.cs#a132a06a66a9e90ee324e2a2316cbfb4f324705e0fef8e3c07561ce73b605ae6"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -25944,8 +25944,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/HappyFlower.cs#8ad5559934d60a145251e438a1e0745e4501506f511f42f9f617f68b9a96a080"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26016,8 +26016,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/HornCleat.cs#c410e13417a8b4ccb1acde332b8c4197901c746a76ba49aee8f387dff21eeb2f"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26034,8 +26034,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/IceCream.cs#caa19e827662631dea281944be94ec30acf400aa0956227a094cae279c3e24c1"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26154,8 +26154,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/JossPaper.cs#97237a51eda6199f48455edf7e83c061a73b97980279ee4a6cfdd149561b6bf2"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26222,8 +26222,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Kunai.cs#acbf0464c5202e7e6446f7b3186113a23797ac15ddd0486cb23d71ee52936fcc"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26256,8 +26256,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Lantern.cs#e5fc452e0f38c418c0712ec30018085db24efd7912127ab6e6f6d62a8601fc04"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26378,8 +26378,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/LeesWaffle.cs#f49b1c72ff824d5560ed68806e177b660308a1872a466e976dee95d57e9ad887"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26396,8 +26396,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/LetterOpener.cs#7e7baa1be33e66dad81bf434502c81d327e4980b94470fa76a00f3295f6b2679"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26502,8 +26502,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/LuckyFysh.cs#0d1e889ba2653e9d46c9c7336c57cb7d3066e0d0e2d3fdf5e8f79d02cfb6b13b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26536,8 +26536,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Mango.cs#60aa9ac08a3feb291f2987e6eee622f8d13810d55108cd9bae912c2158b9b3cf"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26590,8 +26590,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MealTicket.cs#823e6af550e3807ae1bb54ed717625c7c198fd669e82945a2d363cd7a18d3d3e"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26626,8 +26626,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MeatOnTheBone.cs#26a3652b82aff11b27e20553d601959deac3dd6600f27c3e5a8d593e8964bdd9"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26644,8 +26644,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MembershipCard.cs#b9cc004e01d5dc5aeea99573a60bc4aa9e64f58e3368085f4aeec2a52f5db191"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26662,8 +26662,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MercuryHourglass.cs#6bb62618305f9fa0519293143fe55a91574ef2daa3ca3aeb44dfce7d7aaeda89"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26744,8 +26744,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MoltenEgg.cs#b706622e797a32ba54e62bc05f71c67d7ace9f29254ba5111f49dbf14ac04571"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26938,8 +26938,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Nunchaku.cs#a92136bd62320001fe02783db5c11ef70aa5df3b4ef5226243df5f1830697243"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -26992,8 +26992,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/OddlySmoothStone.cs#ae087678f5af9a76736b6b3970fe0732de6b8b3aee0407e9a16ad99d02143d70"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -27010,8 +27010,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/OldCoin.cs#01505b6abb0e448cf765e6d515e5bbb1bbe02cc061301b0a05465c650ce15378"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -27044,8 +27044,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Orichalcum.cs#26ea7db10392ce478bef226d3b112f7b17575177d3d839ce176c135f031c06f8"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -27062,8 +27062,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/OrnamentalFan.cs#96dcaeb91b7e6dc95a84802b1b1814131c9be636e44b090c5c84cfcce6e2c2e6"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -27594,8 +27594,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PrayerWheel.cs#381a30c20ccef43ba13d43ae7b00ea5f5665ac63369649486408c4b3aa69c8fc"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -27832,8 +27832,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ReptileTrinket.cs#73dfefc29119cc91bab25f406d8ab6b40611067b812b0629354106efd740c241"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28158,8 +28158,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Shuriken.cs#07a1162ad993818794a249365dad5769b1571ca6d310dc5f69bfee970c82eb7a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28676,8 +28676,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Toolbox.cs#8b68915fdcd5a9f62c4a299bbec42c1ed6c1b1d216ccfa630c183832a53175fc"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28730,8 +28730,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ToxicEgg.cs#5199ee81e31f3273550d0fddf884df69a6d876df34c3b94f5105c5e946701d60"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28884,8 +28884,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Vajra.cs#a55eba805b932ba1e2eb2e77ce71104a1bdde3fec4299285c7ef788120557148"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29070,8 +29070,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/WhiteBeastStatue.cs#3007ded1a11f5287f780cc4b53b61e924b4166bc9ca83e1af371bfb5dc25a704"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29479,8 +29479,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 33,
-        "integrated": 33,
+        "implemented": 72,
+        "integrated": 72,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
