@@ -24027,8 +24027,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ArcaneScroll.cs#2c4ed3e98daa57d0d689bd0f4af253f2c5c09697190b9f0d6f2d1f3e946c19ba"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29484,8 +29484,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 168,
-        "integrated": 169,
+        "implemented": 169,
+        "integrated": 170,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

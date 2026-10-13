@@ -310,6 +310,21 @@ public static class V111Coverage
         }
         if (item.Scope == "single-player"
             && item.Kind == "relics"
+            && item.Id == "ARCANE_SCROLL"
+            && engineIds.Contains(
+                PrototypeNativeOvergrowthEvents.NeowRelicId("ArcaneScroll"),
+                StringComparer.Ordinal)
+            && PrototypeNativeOvergrowthEvents.NeowPositiveRelicNames
+                .Contains("ArcaneScroll", StringComparer.Ordinal)
+            && IsIntegratedEvent(
+                PrototypeNativeOvergrowthEvents.NeowEventId)
+            && HasArcaneScrollPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player"
+            && item.Kind == "relics"
             && item.Id == "NEOWS_TORMENT"
             && engineIds.Contains(
                 PrototypeNativeOvergrowthEvents.NeowRelicId("NeowsTorment"),
@@ -6723,6 +6738,45 @@ public static class V111Coverage
                     effect.Kind == PrototypeRunEffectKind.AddCard
                     && effect.CardId == cardId)) == true
             && acquired.Deck is [{ CardId: cardId }];
+    }
+
+    private static bool HasArcaneScrollPath()
+    {
+        const string relicId = "proto.native.neow.arcanescroll";
+        var choiceExists = PrototypeContent.Event(
+            PrototypeNativeOvergrowthEvents.NeowEventId).Choices.Any(choice =>
+            choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId == relicId));
+        var acquisition = PrototypeContent.Relic(relicId).RunTriggers?
+            .SingleOrDefault(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.RelicAcquired);
+        var rarePool = PrototypeContent.NativeSilentRewardCardPool
+            .Where(cardId => PrototypeContent.Card(cardId).Rarity
+                == PrototypeCardRarity.Rare)
+            .ToArray();
+        if (!choiceExists
+            || acquisition?.Effects is not
+                [{ Kind: PrototypeRunEffectKind.GainRandomRareCard }]
+            || rarePool.Length == 0
+            || rarePool.Any(cardId => !PrototypeContent.NativeSilentCardPool
+                .Contains(cardId, StringComparer.Ordinal)))
+        {
+            return false;
+        }
+
+        long nextCardInstanceId = 1;
+        var player = new PlayerState(30, 30, 7, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var acquired = PrototypeGameEngine.ApplyRelicRunEvent(
+            player,
+            PrototypeRunEventKind.RelicAcquired,
+            acquiredRelicId: relicId,
+            rng: PrototypeRng.CreateBundle("coverage-arcane-scroll"),
+            allocateCardId: () => nextCardInstanceId++);
+        return acquired.Deck is
+                [{ InstanceId: 1, CardId: var cardId }]
+            && rarePool.Contains(cardId, StringComparer.Ordinal);
     }
 
     private static bool HasPreciseScissorsPath()

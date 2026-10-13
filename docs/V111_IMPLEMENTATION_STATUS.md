@@ -1364,3 +1364,7 @@ Fury to the deck. See
 Precise Scissors' Neow pickup now has executable coverage for removing one
 selected card from the deck. See
 [mechanics gap 117](reference-builds/v0.111.0-mechanics-gap-117.md).
+Arcane Scroll's Neow pickup now has executable coverage for adding one Rare
+card from the supported Silent reward pool. Native card-pool ordering and RNG
+parity remain unverified. See
+[mechanics gap 118](reference-builds/v0.111.0-mechanics-gap-118.md).
