@@ -153,3 +153,13 @@ preserve `native_source_hook_order_parity=NOT_TESTED` and
 
 This is an **offline diagnostic**. The native hook, RNG consumption,
 Silent four-Act engine and active gameplay branches are unchanged.
+
+The standalone `native_rng_boundary_compare.py` now runs the same
+source-primitive and full-sidecar persistent-stream continuity verifier before
+matching an isolated action to an actual engine provider journal. It returns
+`NATIVE_RNG_PRIMITIVE_MISMATCH` or `NATIVE_RNG_STREAM_ORDER_CONFLICT`
+for invalid native evidence, and a **partial** verdict
+`OBSERVED_RNG_PRIMITIVE_WITH_UNOBSERVED_STREAM_ADVANCES` when supported
+bounds/results match but another observed call exposes uninstrumented stream
+advances. This prevents a stand-alone local comparator from claiming agreement
+on tampered source cursors or overlapped source callbacks.

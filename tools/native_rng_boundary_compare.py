@@ -12,6 +12,8 @@ import argparse
 import json
 from pathlib import Path
 
+from native_rng_boundary_verify import audit as verify_native_rng_primitives
+
 
 def key(obj: dict, name: str):
     """Read either snake_case or C# PascalCase of a canonical field."""
@@ -41,6 +43,9 @@ def compare_native_emulator(
         "emulator_call_count": 0,
         "compared": 0,
         "first_mismatch": None,
+        "native_primitive_verification": "NOT_CHECKED",
+        "native_stream_gap_count": 0,
+        "native_stream_conflict_count": 0,
     }
 
     if not native:
@@ -56,6 +61,19 @@ def compare_native_emulator(
                                key(n, "owner_id"))
            for n in native):
         return {**base, "status": "NATIVE_RNG_CALLSITE_UNATTRIBUTED"}
+    # A standalone comparison must also fail closed on source primitive
+    # tampering and inter-call stream overlap. Otherwise a fabricated pair
+    # of native/emulator journals could be labelled locally consistent.
+    primitive = verify_native_rng_primitives(sidecar)
+    base["native_primitive_verification"] = primitive["status"]
+    base["native_stream_gap_count"] = primitive["stream_gap_count"]
+    base["native_stream_conflict_count"] = primitive["stream_conflict_count"]
+    if primitive["primitive_error_count"]:
+        return {**base, "status": "NATIVE_RNG_PRIMITIVE_MISMATCH",
+                "first_mismatch": primitive["errors"][0]}
+    if primitive["stream_conflict_count"]:
+        return {**base, "status": "NATIVE_RNG_STREAM_ORDER_CONFLICT",
+                "first_mismatch": primitive["stream_conflicts"][0]}
     if key(engine, "executed_actual_engine_step") is not True:
         return {**base, "status": "EMULATOR_STEP_NOT_EXECUTED"}
     emulator = key(engine, "emulator_random_boundaries")
@@ -122,6 +140,10 @@ def compare_native_emulator(
                 "first_mismatch": {
                     "index": base["compared"], "field": "call_count",
                     "native": len(native), "emulator": len(emulator)}}
+    if primitive["stream_gap_count"]:
+        return {**base,
+                "status": "OBSERVED_RNG_PRIMITIVE_WITH_UNOBSERVED_STREAM_ADVANCES",
+                "semantic_eligibility_parity": "NOT_TESTED"}
     if semantic_eligibility_unverified:
         return {**base,
                 "status": "OBSERVED_RNG_PRIMITIVE_INDEX_ONLY_ELIGIBILITY_UNVERIFIED"}
@@ -149,7 +171,9 @@ def main() -> int:
         args.out.write_text(output, encoding="utf-8")
     return (0 if result["status"] == "OBSERVED_RNG_CALL_SEQUENCE_CONSISTENT"
             else 1 if result["status"] in
-                 ("RNG_BOUNDARY_MISMATCH", "RNG_BOUNDARY_COUNT_MISMATCH")
+                 ("RNG_BOUNDARY_MISMATCH", "RNG_BOUNDARY_COUNT_MISMATCH",
+                  "NATIVE_RNG_PRIMITIVE_MISMATCH",
+                  "NATIVE_RNG_STREAM_ORDER_CONFLICT")
             else 2)
 
 
