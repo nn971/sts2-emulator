@@ -84,6 +84,8 @@ public sealed class NativeShuffleStepReplayV111 : IDisposable
     private int _cursor;
     private bool _disposed;
     private bool _pendingPostHook;
+    private bool _eligibilityProbe;
+    private readonly List<long[]> _probedEligibleInputs = [];
 
     private NativeShuffleStepReplayV111(
         IEnumerable<NativeShuffleStepExpectationV111> script, RngBundle nativeStreams)
@@ -103,8 +105,22 @@ public sealed class NativeShuffleStepReplayV111 : IDisposable
         return new NativeShuffleStepReplayV111(script, nativeStreams);
     }
 
+    /// <summary>
+    /// Diagnostic-only eligible-card census for constructing SYNTHETIC
+    /// engine tests. It is NOT independently observed native source evidence
+    /// and cannot be passed off as native shuffle parity.
+    /// </summary>
+    public IReadOnlyList<long[]> ProbedEligibleInputs => _probedEligibleInputs;
     public IReadOnlyList<NativeShuffleStepObservationV111> Observations => _events;
     public int Remaining => _script.Length - _cursor;
+
+    public static NativeShuffleStepReplayV111 BeginEngineEligibilityProbe()
+    {
+        var scope = new NativeShuffleStepReplayV111(
+            [], PrototypeRng.CreateBundle("diagnostic-source-census"));
+        scope._eligibilityProbe = true;
+        return scope;
+    }
     public string Status => _events.FirstOrDefault(x =>
         x.Status != "SOURCE_SHUFFLE_STAGE_CONSISTENT")?.Status ??
         (Remaining > 0 || _pendingPostHook ? "REPLAY_INCOMPLETE"
@@ -124,6 +140,13 @@ public sealed class NativeShuffleStepReplayV111 : IDisposable
             var output = (long[])engineEligibleInput.Clone();
             PrototypeRng.Shuffle(engineRng, "combat", output);
             return output;
+        }
+        if (scope._eligibilityProbe)
+        {
+            scope._probedEligibleInputs.Add((long[])engineEligibleInput.Clone());
+            var unchanged = (long[])engineEligibleInput.Clone();
+            PrototypeRng.Shuffle(engineRng, "combat", unchanged);
+            return unchanged;
         }
         if (scope._pendingPostHook)
             throw new InvalidOperationException("Nested source shuffle before preceding post-hook verification.");
@@ -171,7 +194,7 @@ public sealed class NativeShuffleStepReplayV111 : IDisposable
     public static long[] CheckPostHook(long[] actualEngineOrder)
     {
         var scope = Active.Value;
-        if (scope is null) return actualEngineOrder;
+        if (scope is null || scope._eligibilityProbe) return actualEngineOrder;
         if (!scope._pendingPostHook || scope._events.Count == 0)
             throw new InvalidOperationException("Source shuffle post-hook callback without pending source shuffle.");
         int index = scope._events.Count - 1;
