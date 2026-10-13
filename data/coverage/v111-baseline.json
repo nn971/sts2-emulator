@@ -28527,13 +28527,13 @@
       {
         "catalogued": true,
         "engine_ids": [
-          "proto.native.trash_heap.the_boot"
+          "proto.relic.the_boot"
         ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/TheBoot.cs#8576e133831f8964d485db7266957cc63e041aab4a397667350b4dae20f1aec6"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29443,8 +29443,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 92,
-        "integrated": 93,
+        "implemented": 93,
+        "integrated": 94,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

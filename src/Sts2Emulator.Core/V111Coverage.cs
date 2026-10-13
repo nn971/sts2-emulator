@@ -1164,6 +1164,22 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "THE_BOOT"
+            && engineIds.Contains(PrototypeNativeSharedRelics.TheBootId,
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksTrashHeap.RelicIds.Contains(
+                PrototypeNativeSharedRelics.TheBootId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Relic(PrototypeNativeSharedRelics.TheBootId)
+                .MinPoweredAttackHpLoss == 5
+            && !PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.TheBootId,
+                StringComparer.Ordinal))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);

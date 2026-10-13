@@ -17,7 +17,7 @@ public static class PrototypeNativeUnderdocksTrashHeap
         "proto.native.trash_heap.dream_catcher",
         HandDrillId,
         "proto.native.trash_heap.maw_bank",
-        "proto.native.trash_heap.the_boot"
+        PrototypeNativeSharedRelics.TheBootId
     ];
 
     public static string[] CardIds { get; } =
@@ -42,9 +42,7 @@ public static class PrototypeNativeUnderdocksTrashHeap
         new(HandDrillId, "Hand Drill",
             EnemyVulnerableOnBlockBroken: 2),
         new("proto.native.trash_heap.maw_bank", "Maw Bank",
-            GoldOnRoomEntryUntilPurchase: 12),
-        new("proto.native.trash_heap.the_boot", "The Boot",
-            MinPoweredAttackHpLoss: 5)
+            GoldOnRoomEntryUntilPurchase: 12)
     ];
 
     // Cross-character event acquisitions use the same typed combat kernel.
