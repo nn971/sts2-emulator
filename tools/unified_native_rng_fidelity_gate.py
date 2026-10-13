@@ -100,7 +100,19 @@ def main() -> int:
     prefixes = extract_dir(args.trace_dir, fixtures)
     engine = None
     error = None
-    if args.engine_dll is not None:
+    # Do not accidentally count stale expectations from a previous trace
+    # directory as belonging to today's independently closed prefixes.
+    expected_fixtures = {
+        filename for entry in prefixes.get("traces", [])
+        for filename in entry.get("fixtures", [])
+    }
+    all_fixtures = {path.name for path in fixtures.glob("*.json")}
+    foreign = sorted(all_fixtures - expected_fixtures)
+    missing = sorted(expected_fixtures - all_fixtures)
+    if foreign or missing:
+        error = ("Fixture corpus does not match closed-prefix manifest: "
+                 f"foreign={foreign[:6]}, missing={missing[:6]}")
+    if args.engine_dll is not None and error is None:
         if not args.engine_dll.is_file():
             error = "Engine DLL not found: " + str(args.engine_dll)
         else:
