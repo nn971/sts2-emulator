@@ -402,6 +402,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BEAUTIFUL_BRACELET"
+            && engineIds.Contains(
+                NativeGloryAncientsV111.BeautifulBraceletId,
+                StringComparer.Ordinal)
+            && HasBeautifulBraceletPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2471,6 +2481,88 @@ public static class V111Coverage
             && laterTurn.Combat.DrawPile.Length == 0
             && melted.Energy == PrototypeContent.Rules.BaseEnergy
             && melted.Combat.DrawPile.Length == 0;
+    }
+
+    private static bool HasBeautifulBraceletPath()
+    {
+        var relicId = NativeGloryAncientsV111.BeautifulBraceletId;
+        var choiceId = "take_" + relicId;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(3).Contains(
+                NativeNonupeipeEventV111.EventId, StringComparer.Ordinal)
+            || !HasCompleteAncientRelicBranches(
+                NativeNonupeipeEventV111.EventId, 10)
+            || !NativeNonupeipeEventV111.Definition.Choices.Any(choice =>
+                choice.Id == choiceId)
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        var eligibleDeck = Enumerable.Range(1, 5)
+            .Select(instanceId => new CardInstance(
+                instanceId, "proto.silent.strike", 0,
+                PrototypeJson.EmptyObject()))
+            .ToArray();
+        var eligiblePlayer = new PlayerState(30, 30, 0,
+            eligibleDeck, [], []);
+        if (!NativeGloryAncientsV111.IsBeautifulBraceletEligible(
+                eligiblePlayer))
+        {
+            return false;
+        }
+
+        var braceletOffered = false;
+        for (var seedIndex = 0; seedIndex < 32; seedIndex++)
+        {
+            var eligibleBase = PrototypeNativeLaterActFixture.Create(
+                $"coverage-beautiful-bracelet-offer-{seedIndex}", 3);
+            var opening = NativeNonupeipeEventV111.BeginOpening(
+                eligibleBase with { Player = eligiblePlayer });
+            var evt = opening.World?.Event;
+            if (evt?.NativeNonupeipeBraceletEligible == true
+                && evt.OfferedChoiceIds?.Contains(
+                    choiceId, StringComparer.Ordinal) == true)
+            {
+                braceletOffered = true;
+                break;
+            }
+        }
+        if (!braceletOffered)
+            return false;
+
+        var ineligibleBase = PrototypeNativeLaterActFixture.Create(
+            "coverage-beautiful-bracelet-ineligible", 3);
+        var ineligiblePlayer = ineligibleBase.Player with
+        {
+            Deck = eligibleDeck[..3]
+        };
+        var ineligibleOpening = NativeNonupeipeEventV111.BeginOpening(
+            ineligibleBase with { Player = ineligiblePlayer });
+        var ineligibleEvent = ineligibleOpening.World?.Event;
+        if (ineligibleEvent?.NativeNonupeipeBraceletEligible != false
+            || ineligibleEvent.OfferedChoiceIds?.Contains(
+                choiceId, StringComparer.Ordinal) == true)
+        {
+            return false;
+        }
+
+        var acquired = NativeGloryAncientsV111
+            .ApplyBeautifulBraceletAcquisition(
+                eligiblePlayer,
+                PrototypeRng.CreateBundle(
+                    "coverage-beautiful-bracelet-acquisition"),
+                nativeRunRng: null);
+        return acquired.Deck.Count(card =>
+                card.Enchantment is
+                {
+                    Kind: PrototypeCardEnchantmentKind.Swift,
+                    Amount: 2
+                }) == 4
+            && acquired.Deck.Count(card => card.Enchantment is null) == 1
+            && acquired.Deck.Select(card => card.InstanceId)
+                .Order().SequenceEqual(eligibleDeck
+                    .Select(card => card.InstanceId).Order());
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

@@ -24188,8 +24188,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BeautifulBracelet.cs#5de3205cc373ee93763d5f136d07ae1268e7120f0776eac0c05edc4542045b9d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 119,
-        "integrated": 120,
+        "implemented": 120,
+        "integrated": 121,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

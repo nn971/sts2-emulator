@@ -416,7 +416,8 @@ trigger. Glitter applies Glam to eligible cards in normal and extra
 combat reward groups; its saved option enchantments survive restore and card
 acquisition. Event-owned reward surfaces and native hook order remain gated.
 Beautiful Bracelet's four-card Swift acquisition now uses run.niche and its
-two-card draw enchant triggers on the first play per combat. Fiddle adds two
+two-card draw enchant triggers on the first play per combat. Coverage checks
+the conditional Nonupeipe offer and four-of-five acquisition. Fiddle adds two
 opening cards and prevents additional draws during the player's turn.
 Blood-Soaked Rose adds one energy and the Eternal Enthralled curse, which
 blocks other manual card plays while it remains in hand. Whispering Earring
