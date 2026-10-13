@@ -25514,8 +25514,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Fiddle.cs#6c2062234d4433cd088e7dd1b268b0f42c25bbd54190aa0a3e23940708787f96"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 120,
-        "integrated": 121,
+        "implemented": 121,
+        "integrated": 122,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

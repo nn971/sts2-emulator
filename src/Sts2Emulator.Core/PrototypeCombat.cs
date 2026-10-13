@@ -1747,7 +1747,7 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static RunState ResolveAutomaticStep(
+    internal static RunState ResolveAutomaticStep(
         RunState state,
         PrototypeAutomaticStep automaticStep)
     {
@@ -2241,9 +2241,6 @@ public sealed partial class PrototypeGameEngine
                 player = pollinousTurn.Player;
                 var handDrawBonus =
                     pollinousTurn.Bonus
-                    + (player.ActiveRelics.Any(relic =>
-                        relic.RelicId == NativeGloryAncientsV111.FiddleId)
-                        ? 2 : 0)
                     + combat.PlayerPowers.Sum(power =>
                         PrototypeContent.Power(power.PowerId)
                             .HandDrawBonusPerStack
@@ -13506,14 +13503,14 @@ public sealed partial class PrototypeGameEngine
             true);
     }
 
-    private sealed record PrototypeDrawCardsResult(
+    internal sealed record PrototypeDrawCardsResult(
         PlayerState Player,
         CombatState Combat,
         long[] DrawnCardInstanceIds,
         int RemainingCount = 0,
         bool ShuffleSelectionPending = false);
 
-    private static PrototypeDrawCardsResult DrawCards(
+    internal static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
         CombatState combat,
         int count,

@@ -94,7 +94,7 @@ public sealed partial class PrototypeGameEngine
         { AutomaticPipelineContinuation = null } } };
     }
 
-    private static RunState DrawOpeningHand(RunState state)
+    internal static RunState DrawOpeningHand(RunState state)
     {
         var world = RequireWorld(state);
         var combat = world.Combat!;

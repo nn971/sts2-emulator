@@ -418,7 +418,8 @@ acquisition. Event-owned reward surfaces and native hook order remain gated.
 Beautiful Bracelet's four-card Swift acquisition now uses run.niche and its
 two-card draw enchant triggers on the first play per combat. Coverage checks
 the conditional Nonupeipe offer and four-of-five acquisition. Fiddle adds two
-opening cards and prevents additional draws during the player's turn.
+cards to opening and subsequent hand draws and prevents extra draws during its
+owner's turn; coverage checks both draw boundaries and off-turn behavior.
 Blood-Soaked Rose adds one energy and the Eternal Enthralled curse, which
 blocks other manual card plays while it remains in hand. Whispering Earring
 adds one energy and pays to auto-play the first playable hand cards in order

@@ -412,6 +412,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "FIDDLE"
+            && engineIds.Contains(
+                NativeGloryAncientsV111.FiddleId,
+                StringComparer.Ordinal)
+            && HasFiddlePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2563,6 +2573,118 @@ public static class V111Coverage
             && acquired.Deck.Select(card => card.InstanceId)
                 .Order().SequenceEqual(eligibleDeck
                     .Select(card => card.InstanceId).Order());
+    }
+
+    private static bool HasFiddlePath()
+    {
+        var relicId = NativeGloryAncientsV111.FiddleId;
+        var choiceId = "take_" + relicId;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(3).Contains(
+                NativeVakuuEventV111.EventId, StringComparer.Ordinal)
+            || !HasCompleteAncientRelicBranches(
+                NativeVakuuEventV111.EventId, 10)
+            || !NativeVakuuEventV111.RelicPools[0].Contains(
+                relicId, StringComparer.Ordinal)
+            || !NativeVakuuEventV111.Definition.Choices.Any(choice =>
+                choice.Id == choiceId)
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || PrototypeContent.Relic(relicId).HandDrawBonus != 2)
+        {
+            return false;
+        }
+
+        static RunState CreateState(bool isPlayerTurn, int turn = 1)
+        {
+            const string relicId = NativeGloryAncientsV111.FiddleId;
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject());
+            var cards = Enumerable.Range(1, 10)
+                .Select(instanceId => new CombatCardInstance(
+                    instanceId, null, "proto.silent.strike", 0,
+                    IsTemporary: true,
+                    State: PrototypeJson.EmptyObject()))
+                .ToArray();
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: PrototypeContent.Rules.BaseEnergy,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: cards.Select(card => card.InstanceId).ToArray(),
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 11,
+                Cards: cards,
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [new CombatRelicState(0, relicId, 1, [])],
+                Act: 3,
+                PlayPile: [],
+                IsPlayerTurn: isPlayerTurn);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var world = new RunWorldState(
+                RulesetId: PrototypeContent.RulesetId,
+                CharacterId: PrototypeContent.CharacterId,
+                Act: 3,
+                Floor: 1,
+                NextCardInstanceId: 11,
+                ActiveRoom: PrototypeRoomType.Combat,
+                Map: new MapState([]),
+                Combat: combat,
+                Reward: null,
+                Shop: null,
+                Event: null,
+                TerminalOutcome: null);
+            return new RunState(
+                GameBuild: V111Build.Id,
+                EmulatorSchema: V111Build.StateSchema,
+                RunId: "coverage-fiddle",
+                RunSeed: "coverage-fiddle",
+                DecisionIndex: 0,
+                Phase: RunPhase.Combat,
+                Player: player,
+                Rng: PrototypeRng.CreateBundle("coverage-fiddle"),
+                ExtensionState: PrototypeJson.EmptyObject(),
+                World: world);
+        }
+
+        var playerTurn = CreateState(isPlayerTurn: true);
+        var opening = PrototypeGameEngine.DrawOpeningHand(playerTurn);
+        var openingCombat = opening.World?.Combat;
+        var nextTurnState = CreateState(isPlayerTurn: true, turn: 2);
+        var drawPlayerHandStep = PrototypeContent.Rules.EndTurnPipeline
+            .Single(step => step.Kind
+                == PrototypeAutomaticStepKind.DrawPlayerHand);
+        var nextTurn = PrototypeGameEngine.ResolveAutomaticStep(
+            nextTurnState, drawPlayerHandStep);
+        var inTurn = PrototypeGameEngine.DrawCards(
+            playerTurn.Player,
+            playerTurn.World!.Combat!,
+            2,
+            playerTurn.Rng,
+            fromHandDraw: false);
+        var otherSide = CreateState(isPlayerTurn: false);
+        var otherSideDraw = PrototypeGameEngine.DrawCards(
+            otherSide.Player,
+            otherSide.World!.Combat!,
+            2,
+            otherSide.Rng,
+            fromHandDraw: false);
+        return PrototypeNativeOrobasRelics.HandDrawBonusForTurn(
+                playerTurn.Player, 1) == 2
+            && openingCombat?.Hand.Length
+                == PrototypeContent.Rules.HandSize + 2
+            && nextTurn.World?.Combat?.Hand.Length
+                == PrototypeContent.Rules.HandSize + 2
+            && inTurn.DrawnCardInstanceIds.Length == 0
+            && inTurn.Combat.DrawPile.Length == 10
+            && otherSideDraw.DrawnCardInstanceIds.Length == 2;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)
