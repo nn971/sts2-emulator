@@ -249,6 +249,27 @@ public static class PrototypeNativePotionShop
     }
 
     /// <summary>
+    /// Source-shaped single PotionReward population. Separate rewards each
+    /// start with the full pool, so repeated potion IDs remain possible.
+    /// </summary>
+    public static string PickWeightedNative(
+        RngBundle rng, string streamId)
+    {
+        var roll = NativeRngV111.NextFloat(rng, streamId);
+        var rarity = roll <= 0.1f
+            ? PrototypeNativePotionRarity.Rare
+            : roll <= 0.35f
+                ? PrototypeNativePotionRarity.Uncommon
+                : PrototypeNativePotionRarity.Common;
+        var candidates = NativePotionPoolOrder
+            .Where(id => Rarities[id] == rarity).ToArray();
+        return NativeRngV111.NextItem(
+                rng, streamId, (IReadOnlyList<string>)candidates)
+            ?? throw new InvalidOperationException(
+                $"No {rarity} potions are available.");
+    }
+
+    /// <summary>
     /// Source uniform selection over the full-unlock character/shared potion
     /// pool, with no rarity weighting. Used by Wellspring and event offers.
     /// </summary>

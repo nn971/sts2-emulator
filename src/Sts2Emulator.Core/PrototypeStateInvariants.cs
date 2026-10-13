@@ -244,10 +244,14 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Toy Box custom rewards have no return continuation.");
         if (world.Reward?.SourceRoom == "Relic:GlassEye" && world.CustomRewardReturn is null)
             throw new InvalidOperationException("Glass Eye custom rewards have no return continuation.");
+        if (world.Reward?.SourceRoom == PrototypeGameEngine.CauldronRewardSource
+            && world.CustomRewardReturn is null)
+            throw new InvalidOperationException("Cauldron custom rewards have no return continuation.");
         if (world.CustomRewardReturn is { } customReturn)
         {
             if (state.Phase != RunPhase.Reward
-                || world.Reward?.SourceRoom is not ("Relic:ToyBox" or "Relic:GlassEye"))
+                || world.Reward?.SourceRoom is not ("Relic:ToyBox" or "Relic:GlassEye")
+                    && world.Reward?.SourceRoom != PrototypeGameEngine.CauldronRewardSource)
                 throw new InvalidOperationException("Custom relic rewards require an active reward continuation.");
             if (world.Reward.SourceRoom == "Relic:ToyBox")
             {
@@ -257,13 +261,27 @@ public static class PrototypeStateInvariants
                     || waxFlags.Any(flag => !flag) || world.Reward.EndsAct)
                     throw new InvalidOperationException("Toy Box custom rewards require five reserved wax relics.");
             }
-            else if (!state.Player.Relics.Any(relic => relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
+            else if (world.Reward.SourceRoom == "Relic:GlassEye"
+                && (!state.Player.Relics.Any(relic => relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
                 || !world.Reward.IndependentSelection
                 || world.Reward.CardOptionsForGroup(0).Length != 3
                 || world.Reward.ExtraCardOptions is not { Length: 4 }
-                || world.Reward.EndsAct)
+                || world.Reward.EndsAct))
             {
                 throw new InvalidOperationException("Glass Eye custom rewards require five independent card groups.");
+            }
+            else if (world.Reward.SourceRoom == PrototypeGameEngine.CauldronRewardSource
+                && (!state.Player.Relics.Any(relic =>
+                        relic.RelicId == PrototypeNativeSharedRelics.CauldronId)
+                    || !world.Reward.IndependentSelection
+                    || world.Reward.PotionOption is null
+                    || world.Reward.ExtraPotionOptions is not { Length: 4 }
+                    || world.Reward.ExtraPotionGroupsResolved is not
+                        { Length: 4 } potionGroups
+                    || potionGroups.Any(resolved => resolved)
+                    || world.Reward.EndsAct))
+            {
+                throw new InvalidOperationException("Cauldron custom rewards require five independent potion groups.");
             }
             for (var saved = customReturn; saved is not null; saved = saved.Parent)
             {
@@ -2059,9 +2077,11 @@ public static class PrototypeStateInvariants
         // combat rewards. Their event continuation is validated by
         // CompleteReward/ValidatePhaseState rather than the source name.
         var registeredRelicReward = reward.SourceRoom is
-            "Relic:ToyBox" or "Relic:GlassEye";
+                "Relic:ToyBox" or "Relic:GlassEye"
+            || reward.SourceRoom == PrototypeGameEngine.CauldronRewardSource;
         if (reward.IndependentSelection
             && reward.SourceRoom is not ("Combat" or "Elite" or "Boss" or "Rest" or "Relic:ToyBox")
+            && reward.SourceRoom != PrototypeGameEngine.CauldronRewardSource
             && !registeredEventReward && !registeredRelicReward)
         {
             throw new InvalidOperationException(

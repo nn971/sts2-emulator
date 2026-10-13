@@ -44,6 +44,7 @@ public static class PrototypeNativeSharedRelics
     public const string MiniatureCannonId = "proto.relic.miniature_cannon";
     public const string BeltBuckleId = "proto.relic.belt_buckle";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
+    public const string CauldronId = "proto.relic.cauldron";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
@@ -224,6 +225,9 @@ public static class PrototypeNativeSharedRelics
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),
+        // Cauldron offers five independently resolved random potions on pickup.
+        new(CauldronId, "Cauldron",
+            AcquisitionPotionRewardCount: 5),
         // Beating Remnant caps the owner's HP loss at 20 per combat turn.
         new(BeatingRemnantId, "Beating Remnant",
             PlayerHpLossLimitPerTurn: 20),

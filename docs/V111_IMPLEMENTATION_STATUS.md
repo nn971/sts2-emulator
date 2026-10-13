@@ -1431,3 +1431,7 @@ creates three or four Shivs, while base and upgraded Storm of Steel create
 matching Shiv variants after discarding the rest of the hand. Shiv stays out
 of ordinary reward pools. See
 [mechanics gap 137](reference-builds/v0.111.0-mechanics-gap-137.md).
+Cauldron is now in the shared Shop relic pool and offers five independently
+resolved potion rewards when acquired. The pickup suspends and restores its
+prior room or reward, and Cauldron is excluded from relic trading. See
+[mechanics gap 138](reference-builds/v0.111.0-mechanics-gap-138.md).

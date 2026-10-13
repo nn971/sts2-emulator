@@ -7593,6 +7593,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.BookOfFiveRingsId,
         PrototypeNativeSharedRelics.PendulumId,
         PrototypeNativeSharedRelics.TinyMailboxId,
+        PrototypeNativeSharedRelics.CauldronId,
         PrototypeNativeSharedRelics.WhiteStarId,
         PrototypeNativeSharedRelics.BreadId,
         PrototypeNativeSharedRelics.GorgetId,

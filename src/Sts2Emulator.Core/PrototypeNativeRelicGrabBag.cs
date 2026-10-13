@@ -43,6 +43,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Common,
             [PrototypeNativeSharedRelics.BreadId] =
                 PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.CauldronId] =
+                PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.TinyMailboxId] =
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.AmethystAubergineId] =

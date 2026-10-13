@@ -24672,17 +24672,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.cauldron"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Cauldron.cs#6aaa5a7e8ec692857e14e739ca6a7db417a3fbd60f2a98efdd86b9de89b4b446"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CAULDRON",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29517,8 +29519,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 185,
-        "integrated": 186,
+        "implemented": 186,
+        "integrated": 187,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

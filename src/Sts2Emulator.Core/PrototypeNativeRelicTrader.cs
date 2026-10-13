@@ -46,6 +46,7 @@ public static class PrototypeNativeRelicTrader
         var definition = PrototypeContent.Relic(relic.RelicId);
         return definition.AcquisitionDeckChoice is null
             && definition.AcquisitionHpLossAfterDeckChoices == 0
+            && definition.AcquisitionPotionRewardCount == 0
             && definition.CardIdAfterAcquisitionDeckChoices is null
             && definition.UpgradeAddedCardType is null
             && definition.ExtraPotionSlots == 0

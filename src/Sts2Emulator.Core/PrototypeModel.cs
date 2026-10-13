@@ -905,7 +905,8 @@ public sealed record PrototypeRelicDefinition(
     int UpgradedAttackDamageBonus = 0,
     int GoldGainMultiplierNumerator = 1,
     int GoldGainMultiplierDenominator = 1,
-    int HealAtFirstUnknownMapPoint = 0);
+    int HealAtFirstUnknownMapPoint = 0,
+    int AcquisitionPotionRewardCount = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
