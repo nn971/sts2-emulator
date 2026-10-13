@@ -7569,6 +7569,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.StrawberryId,
         PrototypeNativeSharedRelics.PearId,
         PrototypeNativeSharedRelics.PetrifiedToadId,
+        PrototypeNativeSharedRelics.PantographId,
         PrototypeNativeSharedRelics.WarPaintId,
         PrototypeNativeSharedRelics.WhetstoneId,
         PrototypeNativeSharedRelics.EternalFeatherId,

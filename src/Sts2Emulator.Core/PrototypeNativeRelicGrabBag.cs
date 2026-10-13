@@ -51,6 +51,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.bag_of_marbles"] = PrototypeRelicRarity.Common,
 
             [PrototypeNativeSharedRelics.PearId] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.PantographId] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.PetrifiedToadId] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.AkabekoId] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.EternalFeatherId] = PrototypeRelicRarity.Uncommon,

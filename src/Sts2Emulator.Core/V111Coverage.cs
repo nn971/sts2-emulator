@@ -1093,6 +1093,25 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PANTOGRAPH"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PantographId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PantographId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PantographId,
+                out var pantographRarity)
+            && pantographRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.PantographId)
+                .HealBeforeBossCombat == 25)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "JUZU_BRACELET"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.JuzuBraceletId,

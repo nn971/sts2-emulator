@@ -857,7 +857,8 @@ public sealed record PrototypeRelicDefinition(
     PrototypeCardType? UpgradeRandomCardsOnAcquisitionType = null,
     int RestSiteHealPerFiveCards = 0,
     string? PotionIdBeforeCombat = null,
-    bool ExcludesMonsterRoomsFromUnknownMap = false);
+    bool ExcludesMonsterRoomsFromUnknownMap = false,
+    int HealBeforeBossCombat = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

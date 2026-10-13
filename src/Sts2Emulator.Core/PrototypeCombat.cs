@@ -8584,7 +8584,8 @@ public sealed partial class PrototypeGameEngine
             {
                 var definition = PrototypeContent.Relic(relic.RelicId);
                 return definition.ProcureRandomPotionsBeforeCombat
-                    || definition.PotionIdBeforeCombat is not null;
+                    || definition.PotionIdBeforeCombat is not null
+                    || definition.HealBeforeBossCombat > 0;
             })
             .ToArray();
         if (relicTriggers.Length == 0)
@@ -8595,6 +8596,25 @@ public sealed partial class PrototypeGameEngine
         foreach (var relic in relicTriggers)
         {
             var definition = PrototypeContent.Relic(relic.RelicId);
+            if (definition.HealBeforeBossCombat > 0)
+            {
+                if (state.Player.Hp > 0
+                    && state.World?.ActiveRoom == PrototypeRoomType.Boss)
+                {
+                    state = state with
+                    {
+                        Player = state.Player with
+                        {
+                            Hp = Math.Min(
+                                state.Player.MaxHp,
+                                state.Player.Hp
+                                    + definition.HealBeforeBossCombat)
+                        }
+                    };
+                }
+                continue;
+            }
+
             if (definition.PotionIdBeforeCombat is { } fixedPotionId)
             {
                 var slot = Array.IndexOf(slots, null);

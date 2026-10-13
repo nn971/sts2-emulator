@@ -74,6 +74,9 @@ Juzu Bracelet removes Monster from Unknown-room outcomes across Overgrowth,
 Underdocks, Hive and Glory. Its excluded odds stop increasing, while the
 remaining room weights preserve their source thresholds. The roll still uses
 prototype RNG; see the [pinned map relic audit](reference-builds/v0.111.0-juzu-bracelet.md).
+Pantograph heals 25 HP before each Boss combat across the four acts, capped at
+Max HP; see the
+[pinned boss-entry audit](reference-builds/v0.111.0-pantograph.md).
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

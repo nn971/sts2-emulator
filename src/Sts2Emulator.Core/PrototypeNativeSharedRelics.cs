@@ -9,6 +9,7 @@ public static class PrototypeNativeSharedRelics
     public const string EternalFeatherId = "proto.relic.eternal_feather";
     public const string JuzuBraceletId = "proto.relic.juzu_bracelet";
     public const string PearId = "proto.relic.pear";
+    public const string PantographId = "proto.relic.pantograph";
     public const string PetrifiedToadId = "proto.relic.petrified_toad";
     public const string PotionShapedRockId = "proto.potion.shaped_rock";
     public const string StrawberryId = "proto.relic.strawberry";
@@ -18,6 +19,8 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Pantograph.BeforeCombatStart heals 25 when the current room is Boss.
+        new(PantographId, "Pantograph", HealBeforeBossCombat: 25),
         // JuzuBracelet.ModifyUnknownMapPointRoomTypes removes Monster.
         new(JuzuBraceletId, "Juzu Bracelet",
             ExcludesMonsterRoomsFromUnknownMap: true),

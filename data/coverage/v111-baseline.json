@@ -27278,17 +27278,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.pantograph"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Pantograph.cs#37880f830fc16c478f474e49aa438496dadea31bd642de4bce9902a72a5b457c"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PANTOGRAPH",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29479,8 +29481,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 83,
-        "integrated": 84,
+        "implemented": 84,
+        "integrated": 85,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
