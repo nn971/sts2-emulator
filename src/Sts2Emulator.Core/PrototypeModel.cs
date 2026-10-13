@@ -2282,7 +2282,8 @@ public sealed record PrototypeCardRewardGenerator(
     int Act,
     PrototypeRoomType? Room = null,
     bool Rerolled = false,
-    PrototypeCardRarity? Rarity = null);
+    PrototypeCardRarity? Rarity = null,
+    PrototypeCardType? CardType = null);
 
 public sealed record ShopOffer(
     int OfferId,
@@ -2420,7 +2421,9 @@ public sealed record EventState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool? NativeTanxTriEligible = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    bool? NativeNonupeipeBraceletEligible = null)
+    bool? NativeNonupeipeBraceletEligible = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -2451,9 +2454,18 @@ public sealed record EventState(
         RepyChestPotionIds = RepyChestPotionIds is null
             ? null : (string[])RepyChestPotionIds.Clone(),
         RepyChestRelicIds = RepyChestRelicIds is null
-            ? null : (string[])RepyChestRelicIds.Clone()
+            ? null : (string[])RepyChestRelicIds.Clone(),
+        NativeFuturePotionOffers = NativeFuturePotionOffers is null
+            ? null
+            : (PrototypeFuturePotionOffer[])NativeFuturePotionOffers.Clone()
     };
 }
+
+public sealed record PrototypeFuturePotionOffer(
+    int Slot,
+    string PotionId,
+    PrototypeCardType CardType,
+    PrototypeCardRarity CardRarity);
 
 public sealed record PrototypeUnknownRoomOddsState(
     int MonsterWeight = 100,
@@ -2571,6 +2583,7 @@ public sealed record ChooseExtraPotionRewardPayload(int GroupIndex, int Slot = -
 public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
+public sealed record TradeFuturePotionPayload(int Slot);
 public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceEventPotionPayload(int Slot);
 public sealed record UpgradeCardPayload(long CardInstanceId);

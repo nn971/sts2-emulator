@@ -365,6 +365,12 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "THE_FUTURE_OF_POTIONS"
+            && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeFutureOfPotions.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "MORPHIC_GROVE" && missingBranches.Length == 0
             && engineIds.Contains("proto.native.event.morphic_grove",
                 StringComparer.Ordinal))
@@ -1160,6 +1166,14 @@ public static class V111Coverage
                 .ToHashSet(StringComparer.Ordinal);
             return (item.Branches ?? []).Where(branch => !supported.Contains(branch))
                 .ToArray();
+        }
+        if (item.Kind == "events"
+            && item.Id == "THE_FUTURE_OF_POTIONS")
+        {
+            var supported = PrototypeNativeFutureOfPotions.CoveredBranches
+                .ToHashSet(StringComparer.Ordinal);
+            return (item.Branches ?? [])
+                .Where(branch => !supported.Contains(branch)).ToArray();
         }
         return item.BranchInventoryComplete ? [] : item.Branches ?? [];
     }

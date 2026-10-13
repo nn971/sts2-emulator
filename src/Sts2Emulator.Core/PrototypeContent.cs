@@ -6785,6 +6785,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeStoneOfAllTime.Definition)
             .Append(PrototypeNativeFakeMerchant.Definition)
             .Append(PrototypeNativeSharedEvents.ThisOrThatDefinition)
+            .Append(PrototypeNativeFutureOfPotions.Definition)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .Append(NativeAncientRewardsV111.TezcataraRewardDefinition)
