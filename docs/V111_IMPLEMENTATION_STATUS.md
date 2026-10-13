@@ -11,6 +11,9 @@ records 60/66 events implemented and 62/66 integrated.
 
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.
+Native Phrog Parasite deaths also handle Poison at enemy-turn start: the four
+Wrigglers skip the current action pass, then present their source-shaped Stun
+move before their alternating slot openers.
 
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.

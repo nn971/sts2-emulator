@@ -4317,16 +4317,16 @@ public sealed partial class PrototypeGameEngine
                     == "PhrogParasiteElite"
                 && source.EnemyId == "proto.enemy.phrog_parasite";
             if (nativePhrog
-                && (enemyActionSkips != 1
+                && (enemyActionSkips is not (1 or 2)
                     || summons.Length != 4
                     || summons.Select((summon, i) =>
                         summon.EnemyId == "proto.enemy.wriggler"
                         && summon.SlotName == $"wriggler{i + 1}")
                         .Any(matches => !matches)))
                 throw new NotSupportedException(
-                    "Native InfestedPower currently supports the audited " +
-                    "player-turn death phase only; four fixed Wriggler " +
-                    "slots with SPAWNED_MOVE are required.");
+                    "Native InfestedPower requires a player-turn or " +
+                    "enemy-turn-start death phase and four fixed Wriggler " +
+                    "slots with SPAWNED_MOVE.");
             if (nativeMerc
                 && (summons.Length != 2
                     || summons[0].EnemyId != "proto.enemy.sneaky_gremlin"
@@ -4377,6 +4377,8 @@ public sealed partial class PrototypeGameEngine
                         ? 1
                         : enemies.Max(enemy =>
                             enemy.InstanceId) + 1;
+                var nativePhrogAtEnemyTurnStart = nativePhrog
+                    && enemyActionSkips == 2;
 
                 var spawnedEnemy =
                     new EnemyCombatState(
@@ -4406,10 +4408,16 @@ public sealed partial class PrototypeGameEngine
                         // a genuine visible SPAWNED_MOVE StunIntent,
                         // not the prototype's silent skipped action.
                         AiStateId: nativePhrog ? "spawned_move" : null,
-                        PlannedMoveIndex: nativePhrog ? 2 : null,
-                        PlannedNextAiStateId: nativePhrog ? "init" : null,
-                        EnemyActionSkipsRemaining: nativePhrog ? 0 :
-                            summon.SkipEnemyActions == 1
+                        // If Poison kills Phrog at enemy-turn start, skip
+                        // this in-progress action pass first; the next pass
+                        // performs the visible Stun move.
+                        PlannedMoveIndex: nativePhrog
+                            && !nativePhrogAtEnemyTurnStart ? 2 : null,
+                        PlannedNextAiStateId: nativePhrog
+                            && !nativePhrogAtEnemyTurnStart ? "init" : null,
+                        EnemyActionSkipsRemaining: nativePhrog
+                            ? (nativePhrogAtEnemyTurnStart ? 1 : 0)
+                            : summon.SkipEnemyActions == 1
                                 ? Math.Max(0, enemyActionSkips)
                                 : Math.Max(0, summon.SkipEnemyActions));
                 if (combat.NativeRng is not null)

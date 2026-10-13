@@ -148,9 +148,8 @@ public sealed class NativePhrogParasiteDeathPhaseV111Tests
                 spawned, state.Rng.Fork());
             Assert.Equal(CanonicalJson.Sha256(spawned),
                 CanonicalJson.Sha256(repeated));
-            Assert.Throws<NotSupportedException>(() =>
-                PrototypeGameEngine.ResolveEnemyDeathSummons(
-                    damaged, state.Rng.Fork(), enemyActionSkips: 2));
+            _ = PrototypeGameEngine.ResolveEnemyDeathSummons(
+                damaged, state.Rng.Fork(), enemyActionSkips: 2);
         }
     }
 
