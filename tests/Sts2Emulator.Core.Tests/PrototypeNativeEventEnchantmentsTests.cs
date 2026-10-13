@@ -86,6 +86,15 @@ public sealed class PrototypeNativeEventEnchantmentsTests
             && a.ReadPayload<ChooseEventDeckCardPayload>().CardInstanceId
                 == cardInstanceId);
         state = engine.Step(state, select).State;
+        while (state.Phase == RunPhase.Event)
+        {
+            var continuation = engine.GetLegalActions(state)
+                .SingleOrDefault(item => item.Kind == "continue_event");
+            if (continuation is null)
+                break;
+            state = engine.Step(state, continuation).State;
+            PrototypeStateInvariants.Validate(state);
+        }
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Null(state.World!.Event);
         PrototypeStateInvariants.Validate(state);

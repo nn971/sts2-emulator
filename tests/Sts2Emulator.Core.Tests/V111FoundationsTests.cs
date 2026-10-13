@@ -52,6 +52,74 @@ public sealed class V111FoundationsTests
             && item.Scope == "multiplayer-only" && item.Implementation == "excluded");
         Assert.Contains(report.Items, item => item.Kind == "events" && item.NativeId == "NEOW"
             && item.MissingBranches.Length > 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "ABYSSAL_BATHS"
+            && item.Implementation == "partial"
+            && item.Integration == "integrated");
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "AMALGAMATOR"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "LOST_WISP"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "SPIRIT_GRAFTER"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "COLOSSAL_FLOWER"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "DOORS_OF_LIGHT_AND_DARK"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "DROWNING_BEACON"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "SUNKEN_TREASURY"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "SUNKEN_STATUE"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "FIELD_OF_MAN_SIZED_HOLES"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "REFLECTIONS"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "ROUND_TEA_PARTY"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "HUNGRY_FOR_MUSHROOMS"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "GRAVE_OF_THE_FORGOTTEN"
+            && item.Integration == "integrated"
+            && item.MissingBranches.Length == 0);
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "DARV"
+            && item.Integration == "integrated"
+            && item.Implementation == "partial");
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "VAKUU"
+            && item.Implementation == "partial"
+            && item.Integration == "integrated");
+        Assert.Contains(report.Items, item => item.Kind == "events"
+            && item.NativeId == "COLORFUL_PHILOSOPHERS"
+            && item.Implementation == "missing"
+            && item.Integration == "missing");
         Assert.Equal(CanonicalJson.Serialize(report), CanonicalJson.Serialize(V111Coverage.Create()));
     }
 
@@ -99,7 +167,11 @@ public sealed class V111FoundationsTests
     [Fact]
     public void ConfigurationProfileAndResourcesAreOwnedByEachFork()
     {
-        var profile = new SimulationProfile(true, ["silent"], ["FIRST"]);
+        var profile = new SimulationProfile(true, ["silent"], ["FIRST"])
+        {
+            SeenBossEncounters =
+                [PrototypeNativeGloryBosses.QueenEncounterId]
+        };
         var configuration = RunConfiguration.Create(profile: profile);
         var state = V111RunFactory.Create("fork-config", configuration);
         var fork = state.Fork();
@@ -108,11 +180,40 @@ public sealed class V111FoundationsTests
         Assert.Equal(ActIdentity.Overgrowth, state.Configuration!.Acts[0]);
         Assert.Equal("FIRST", state.Configuration.Profile.RevealedEpochs[0]);
         Assert.Equal("FIRST", profile.RevealedEpochs[0]);
+        fork.Configuration.Profile.SeenBossEncounters[0] = "changed";
+        Assert.Equal(PrototypeNativeGloryBosses.QueenEncounterId,
+            state.Configuration.Profile.SeenBossEncounters[0]);
+        Assert.Equal(PrototypeNativeGloryBosses.QueenEncounterId,
+            profile.SeenBossEncounters[0]);
         var resources = new CharacterResourceState(Stars: 3, OrbSlots: 3, Orbs: [new("DARK_ORB", 6)]);
         var player = state.Player with { Resources = resources };
         var playerFork = player.Fork();
         playerFork.Resources!.Orbs![0] = new("FROST_ORB");
         Assert.Equal("DARK_ORB", player.Resources!.Orbs![0].Kind);
+    }
+
+    [Fact]
+    public void ProfileRejectsInvalidBossDiscoveryHistory()
+    {
+        var duplicate = RunConfiguration.Create() with
+        {
+            Profile = SimulationProfile.Unlocked() with
+            {
+                SeenBossEncounters =
+                [PrototypeNativeGloryBosses.QueenEncounterId,
+                 PrototypeNativeGloryBosses.QueenEncounterId]
+            }
+        };
+        Assert.Throws<ArgumentException>(duplicate.Validate);
+
+        var emptyId = RunConfiguration.Create() with
+        {
+            Profile = SimulationProfile.Unlocked() with
+            {
+                SeenBossEncounters = [""]
+            }
+        };
+        Assert.Throws<ArgumentException>(emptyId.Validate);
     }
 
     [Fact]

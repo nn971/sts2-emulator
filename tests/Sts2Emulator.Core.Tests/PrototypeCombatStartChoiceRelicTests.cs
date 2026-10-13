@@ -59,6 +59,9 @@ public sealed class PrototypeCombatStartChoiceRelicTests
                     entryNodeId))).State;
 
         var combat = state.World!.Combat!;
+        Assert.Empty(combat.Hand);
+        Assert.Equal(PrototypeOpeningCombatStage.DrawHand,
+            combat.AutomaticPipelineContinuation!.OpeningStage);
         var pending =
             Assert.IsType<PendingCombatChoiceState>(
                 combat.PendingChoice);
@@ -185,13 +188,17 @@ public sealed class PrototypeCombatStartChoiceRelicTests
             .ReadPayload<SelectCardsPayload>()
             .CardInstanceIds[0];
 
+        var restored = engine.Step(RunSnapshot.Load(RunSnapshot.Save(state)), choose).State;
         state = engine.Step(
             state,
             choose).State;
+        Assert.Equal(CanonicalJson.Sha256(restored), CanonicalJson.Sha256(state));
 
         var combat =
             state.World!.Combat!;
         Assert.Null(combat.PendingChoice);
+        Assert.Equal(6, combat.Hand.Length);
+        Assert.Null(combat.AutomaticPipelineContinuation);
         Assert.Empty(
             combat.ChoiceCardIds);
         Assert.Contains(

@@ -124,6 +124,37 @@ public sealed class PrototypeShopRelicDeckChoiceTests
     }
 
     [Fact]
+    public void PreservedFogAddsFollyAfterItsShopRemovalChoice()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = BuyRelic(engine, ShopStateForRelic(
+            NativeGloryAncientsV111.PreservedFogId,
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend"),
+                Card(3, "proto.silent.neutralize"),
+                Card(4, "proto.silent.survivor")
+            ]));
+
+        Assert.Equal(3, state.World!.Shop!.PendingDeckChoice!.RemainingSelections);
+        foreach (var cardId in new long[] { 1, 2, 3 })
+        {
+            state = ChooseDeckCard(engine, state, cardId);
+            PrototypeStateInvariants.Validate(state);
+            if (cardId != 3)
+                Assert.DoesNotContain(state.Player.Deck,
+                    card => card.CardId == NativeGloryAncientsV111.FollyCardId);
+        }
+
+        Assert.Null(state.World!.Shop!.PendingDeckChoice);
+        Assert.Equal(2, state.Player.Deck.Length);
+        Assert.Single(state.Player.Deck,
+            card => card.CardId == NativeGloryAncientsV111.FollyCardId);
+        Assert.Contains(engine.GetLegalActions(state),
+            action => action.Kind == "leave_shop");
+    }
+
+    [Fact]
     public void InvariantsRejectStaleShopDeckChoiceCandidates()
     {
         var engine = new PrototypeGameEngine();

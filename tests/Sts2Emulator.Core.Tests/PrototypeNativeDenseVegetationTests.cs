@@ -85,6 +85,13 @@ public sealed class PrototypeNativeDenseVegetationTests
             && a.ReadPayload<EventChoicePayload>().ChoiceId == "trudge");
         state = engine.Step(state, action).State;
 
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(3, state.World!.Event!.NativePageIndex);
+        Assert.Equal("trudge", state.World.Event.ChosenChoiceId);
+        var continueEvent = Assert.Single(engine.GetLegalActions(state));
+        Assert.Equal("continue_event", continueEvent.Kind);
+        state = engine.Step(state, continueEvent).State;
+
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(22, state.Player.Hp);
         Assert.Equal(gold + 80, state.Player.Gold);

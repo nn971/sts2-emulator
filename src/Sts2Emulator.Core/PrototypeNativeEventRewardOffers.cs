@@ -8,17 +8,73 @@ namespace Sts2Emulator.Core;
 public sealed partial class PrototypeGameEngine
 {
     private static RewardState CreateDeferredEventReward(
+        RunState state, PrototypeRunEffectKind kind, PlayerState player, string eventId)
+    {
+        var world = RequireWorld(state);
+        if (kind == PrototypeRunEffectKind.OfferWaxRelics)
+            throw new InvalidOperationException("Wax reward construction requires retained bag updates.");
+        return CreateDeferredEventRewardCore(
+            state, kind, player, eventId, ref world);
+    }
+
+    private static RewardState CreateDeferredEventReward(
+        RunState state,
+        PrototypeRunEffectKind kind,
+        ref PlayerState player,
+        string eventId,
+        ref RunWorldState world)
+    {
+        var reward = CreateDeferredEventRewardCore(
+            state, kind, player, eventId, ref world);
+        if (kind is not (PrototypeRunEffectKind.OfferThreeRareCards
+            or PrototypeRunEffectKind.OfferThreeCardsAndPotion
+            or PrototypeRunEffectKind.OfferFiveClassCards
+            or PrototypeRunEffectKind.OfferThreeColorlessCards))
+        {
+            return reward;
+        }
+
+        var primaryGroupCount = reward.CardOptions.Length > 0 ? 1 : 0;
+        var extraGroupCount = reward.ExtraCardOptions?.Length ?? 0;
+        var groupCount = primaryGroupCount + extraGroupCount;
+        if (groupCount == 0)
+        {
+            return reward;
+        }
+
+        var upgraded = ApplySilverCrucibleToCardRewardGeneration(
+            player, groupCount);
+        player = upgraded.Player;
+        var groupIndex = 0;
+        var primaryUpgraded = primaryGroupCount > 0
+            && upgraded.UpgradeGroups[groupIndex++];
+        var extraUpgrades = extraGroupCount > 0
+            ? upgraded.UpgradeGroups.Skip(groupIndex).ToArray()
+            : reward.ExtraCardOptionsUpgraded;
+        return reward with
+        {
+            CardOptionsUpgraded = primaryUpgraded,
+            ExtraCardOptionsUpgraded = extraUpgrades
+        };
+    }
+
+    private static RewardState CreateDeferredEventRewardCore(
         RunState state,
         PrototypeRunEffectKind kind,
         PlayerState player,
-        string eventId)
+        string eventId,
+        ref RunWorldState world)
     {
         var prefix = "Event:" + eventId;
         switch (kind)
         {
+            case PrototypeRunEffectKind.OfferWaxRelics:
+            {
+                return CreateWaxRelicReward(state, player, prefix, ref world);
+            }
             case PrototypeRunEffectKind.OfferThreeRareCards:
             {
-                var rarePool = PrototypeContent.RewardCardPool
+                var rarePool = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity
                         == PrototypeCardRarity.Rare)
                     .ToArray();
@@ -33,7 +89,11 @@ public sealed partial class PrototypeGameEngine
                     PotionResolved: true,
                     RelicResolved: true,
                     EndsAct: false,
-                    AddCardAfterReward: "proto.native.neow.injury");
+                    AddCardAfterReward: "proto.native.neow.injury",
+                    CardRewardGenerators:
+                    [new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RarePool,
+                        world.Act)]);
             }
 
             case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
@@ -53,16 +113,87 @@ public sealed partial class PrototypeGameEngine
                     CardResolved: false,
                     PotionResolved: potion is null,
                     RelicResolved: true,
+                    EndsAct: false,
+                    CardRewardGenerators:
+                    [new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RewardPool,
+                        world.Act)]);
+            }
+
+            case PrototypeRunEffectKind.OfferFiveClassCards:
+            {
+                var cards = PickRewardCards(world.Act, 5, state.Rng);
+                if (cards.Length != 5)
+                {
+                    throw new InvalidOperationException(
+                        "Brain Leech requires five distinct class cards.");
+                }
+
+                return new RewardState(
+                    SourceRoom: prefix,
+                    CardOptions: cards,
+                    PotionOption: null,
+                    RelicOption: null,
+                    CardResolved: false,
+                    PotionResolved: true,
+                    RelicResolved: true,
+                    EndsAct: false,
+                    CardRewardGenerators:
+                    [new PrototypeCardRewardGenerator(
+                        PrototypeCardRewardGeneratorKind.RewardPool,
+                        world.Act)]);
+            }
+
+            case PrototypeRunEffectKind.OfferThreeColorlessCards:
+            {
+                var pool = PrototypeColorlessCards
+                    .ImplementedCombatGenerationPool;
+                if (pool.Length < 3)
+                {
+                    throw new InvalidOperationException(
+                        "Brain Leech requires three implemented colorless cards.");
+                }
+
+                return new RewardState(
+                    SourceRoom: prefix,
+                    CardOptions: PickDistinct(
+                        pool, 3, state.Rng, "reward"),
+                    PotionOption: null,
+                    RelicOption: null,
+                    CardResolved: false,
+                    PotionResolved: true,
+                    RelicResolved: true,
+                    EndsAct: false);
+            }
+
+            case PrototypeRunEffectKind.OfferTwoColorlessCards:
+            {
+                var pool = PrototypeColorlessCards.ImplementedRewardPool;
+                if (pool.Length < 2)
+                {
+                    throw new InvalidOperationException(
+                        "Lead Paperweight requires two implemented reward-eligible Colorless cards.");
+                }
+
+                return new RewardState(
+                    SourceRoom: prefix,
+                    CardOptions: PickDistinct(
+                        pool, 2, state.Rng, "reward"),
+                    PotionOption: null,
+                    RelicOption: null,
+                    CardResolved: false,
+                    PotionResolved: true,
+                    RelicResolved: true,
                     EndsAct: false);
             }
 
             case PrototypeRunEffectKind.OfferCardBundles:
             {
-                var commons = PrototypeContent.RewardCardPool
+                var commons = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity ==
                         PrototypeCardRarity.Common)
                     .ToArray();
-                var uncommons = PrototypeContent.RewardCardPool
+                var uncommons = PrototypeContent.NativeSilentRewardCardPool
                     .Where(id => PrototypeContent.Card(id).Rarity ==
                         PrototypeCardRarity.Uncommon)
                     .ToArray();
@@ -94,19 +225,11 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeRunEffectKind.OfferNeowsBonesRelics:
             {
-                // The pinned native Neow's Bones samples from all
-                // allowed Neow relics except Bones itself. Until the
-                // remaining special acquisition hooks are implemented,
-                // restrict this generator to already-functional
-                // single-player Silent relic acquisition paths.
-                string[] supportedNativeNames =
-                [
-                    "BoomingConch", "FishingRod", "GoldenPearl",
-                    "LavaRock", "NutritiousOyster", "StoneHumidifier",
-                    "NeowsTalisman", "Pomander", "PreciseScissors",
-                    "NewLeaf", "SilverCrucible", "SilkenTress"
-                ];
-                var available = supportedNativeNames
+                // Pickup continuations are handled after every Neow relic
+                // reward. Kaleidoscope's foreign card pools and multiplayer
+                // Massive Scroll remain outside this Silent profile.
+                var available = PrototypeNativeOvergrowthEvents
+                    .NeowBonesSupportedRelicNames
                     .Select(PrototypeNativeOvergrowthEvents.NeowRelicId)
                     .Where(id => !player.Relics.Any(relic =>
                         StringComparer.Ordinal.Equals(relic.RelicId, id)))
@@ -132,7 +255,10 @@ public sealed partial class PrototypeGameEngine
                     ExtraRelicRewardIds: chosen,
                     // Injury is the sole ordinary standalone Curse
                     // implemented in the current Silent prototype.
-                    AddCardAfterReward: "proto.native.neow.injury");
+                    AddCardAfterReward: "proto.native.neow.injury")
+                {
+                    ExtraRelicGroupsSkippable = false
+                };
             }
 
             case PrototypeRunEffectKind.OfferRandomRelic:
@@ -163,5 +289,41 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidOperationException(
                     $"Unsupported deferred event reward kind '{kind}'.");
         }
+    }
+
+    private static RewardState CreateCallingBellRelicReward(
+        PlayerState player,
+        string eventId,
+        RngBundle rng,
+        ref RunWorldState world)
+    {
+        var relics = new List<string>(3);
+        foreach (var rarity in new[]
+                 {
+                     PrototypeRelicRarity.Common,
+                     PrototypeRelicRarity.Uncommon,
+                     PrototypeRelicRarity.Rare
+                 })
+        {
+            var draw = PrototypeNativeRelicGrabBag.Draw(
+                world, player, rng, merchant: false,
+                forcedRarity: rarity);
+            world = draw.World;
+            if (draw.Id is { } relicId)
+                relics.Add(relicId);
+        }
+
+        return new RewardState(
+            SourceRoom: "Event:" + eventId,
+            CardOptions: [],
+            PotionOption: null,
+            RelicOption: null,
+            CardResolved: true,
+            PotionResolved: true,
+            RelicResolved: true,
+            EndsAct: false,
+            ExtraRelicRewardIds: relics.ToArray(),
+            IndependentSelection: true,
+            ExtraRelicGroupsResolved: new bool[relics.Count]);
     }
 }

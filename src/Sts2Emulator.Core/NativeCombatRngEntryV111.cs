@@ -102,7 +102,9 @@ public static class NativeCombatRngEntryV111
             usedHp.Add(hp);
         }
 
-        return combat with { Enemies = enemies, NativeRng = fresh };
+        var attached = combat with { Enemies = enemies, NativeRng = fresh };
+        Validate(attached);
+        return attached;
     }
 
     /// <summary>
@@ -135,25 +137,137 @@ public static class NativeCombatRngEntryV111
             || formation.MonsterContexts.Length != combat.Enemies.Length)
             throw new InvalidOperationException(
                 "Native encounter RNG context has an invalid formation.");
+
+        // Encounter and creature RNG stream names encode their original
+        // owners. A valid xoshiro state from *another* encounter or
+        // monster must never be accepted as the current owner's cursor.
+        // Source provenance is optional only for older isolated fixtures.
+        // When present, it must be complete and agree with the combat act.
+        if ((formation.RunSeed is null) !=
+                (formation.NativeActIndex is null)
+            || formation.NativeActIndex is < 0 or > 2
+            || (formation.NativeActIndex is { } actIndex
+                && actIndex != combat.Act - 1)
+            || formation.MapColumn is < 0 or > 6
+            || formation.MapRow is < 0)
+            throw new InvalidOperationException(
+                "Native encounter creation provenance is invalid.");
+        var expectedEncounterStreamId =
+            $"context.encounter.{formation.NativeEncounterEntry}.floor_{formation.TotalFloor}";
+        if (formation.EncounterRng.StreamId != expectedEncounterStreamId)
+            throw new InvalidOperationException(
+                "Native encounter RNG belongs to a different encounter or floor.");
         _ = NativeRngV111.ToSnapshot(formation.EncounterRng);
         if (formation.MonsterContexts.Select(context => context.CombatId)
                 .Distinct().Count() != formation.MonsterContexts.Length)
             throw new InvalidOperationException(
                 "Native monster combat ids must be unique.");
+        var ownedMonsterStreamIds = new HashSet<string>(
+            StringComparer.Ordinal);
 
         for (var i = 0; i < combat.Enemies.Length; i++)
         {
             var spec = formation.Enemies[i];
             var context = formation.MonsterContexts[i];
             var enemy = combat.Enemies[i];
+            // ToughEgg.Hatch mutates its original MonsterModel in
+            // place. The prototype swaps the effective move proxy to
+            // HatchlingId; the native formation/spec/context must keep
+            // the original ToughEgg model and CombatId.
+            var hatchedToughEgg =
+                enemy.NativeToughEggHatched
+                && formation.NativeEncounterEntry == "OvicopterNormal"
+                && spec.EnemyId ==
+                    PrototypeNativeHiveSummoningNormals.ToughEggId
+                && enemy.EnemyId ==
+                    PrototypeNativeHiveSummoningNormals.HatchlingId;
             if (context.CombatId < 0 || context.Enemy != spec
-                || enemy.EnemyId != spec.EnemyId
+                || (!hatchedToughEgg && enemy.EnemyId != spec.EnemyId)
+                || (enemy.NativeToughEggHatched && !hatchedToughEgg)
                 || enemy.FormationPosition != spec.FormationPosition
                 || enemy.SlotName != spec.SlotName)
                 throw new InvalidOperationException(
                     "Native monster RNG context does not match combat formation.");
+            if (!ownedMonsterStreamIds.Add(context.Rng.StreamId))
+                throw new InvalidOperationException(
+                    "Native monster-local RNG streams must have distinct owners.");
+            if (formation.NativeActIndex is { } nativeActIndex
+                && context.Rng.StreamId !=
+                    $"context.monster.{context.CombatId}.act_{nativeActIndex}.map_{formation.MapColumn ?? 0}_{formation.MapRow ?? 0}")
+                throw new InvalidOperationException(
+                    "Native monster-local RNG belongs to a different creature or map.");
             _ = NativeRngV111.ToSnapshot(context.Rng);
         }
+    }
+
+    /// <summary>
+    /// Source ToughEgg.Hatch is NOT a monster replacement. It uses
+    /// RunRng.Niche.NextInt(HatchlingMinHp, HatchlingMaxHp + 1),
+    /// sets current/max HP in-place and removes all powers except
+    /// Minion. The existing monster-local RNG, creature CombatId,
+    /// formation spec and model identity are preserved. HatchlingId
+    /// remains the prototype's proxy for the post-hatch Nibble move.
+    /// This source path is allowed ONLY in the explicit Ovicopter
+    /// isolated native combat fixture; native Hive route execution
+    /// remains gated.
+    /// </summary>
+    public static CombatState HatchToughEgg(
+        CombatState combat, EnemyCombatState currentEgg,
+        out EnemyCombatState hatched)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(currentEgg);
+        var native = combat.NativeRng?.Fork() ??
+            throw new InvalidOperationException(
+                "Native Tough Egg hatching requires native combat ownership.");
+        if (native.Formation.NativeEncounterEntry != "OvicopterNormal"
+            || combat.Act != 2
+            || currentEgg.EnemyId !=
+                PrototypeNativeHiveSummoningNormals.ToughEggId
+            || currentEgg.NativeToughEggHatched)
+            throw new NotSupportedException(
+                "Only a source-unhatched native Ovicopter Tough Egg can hatch.");
+        Validate(combat);
+        var index = Array.FindIndex(combat.Enemies, enemy =>
+            enemy.InstanceId == currentEgg.InstanceId);
+        if (index < 0
+            || combat.Enemies[index].EnemyId != currentEgg.EnemyId
+            || native.Formation.Enemies[index].EnemyId
+                != PrototypeNativeHiveSummoningNormals.ToughEggId
+            || native.Formation.MonsterContexts[index].Enemy
+                != native.Formation.Enemies[index]
+            || currentEgg.Hp <= 0)
+            throw new InvalidOperationException(
+                "Native Tough Egg must retain its original live combat identity.");
+
+        // ToughEgg.Hatch direct NextInt is *not* the unique HP sampler:
+        // no surrounding monster HP exclusions, exactly one niche draw.
+        // Ascension 8+ uses [20,23] instead of [19,22].
+        var min = combat.Ascension >= 8 ? 20 : 19;
+        var max = combat.Ascension >= 8 ? 23 : 22;
+        var hp = min + NativeRngV111.NextInt(
+            native.RunStreams, "run.niche", max - min + 1);
+        hatched = currentEgg with
+        {
+            EnemyId = PrototypeNativeHiveSummoningNormals.HatchlingId,
+            NativeToughEggHatched = true,
+            Hp = hp,
+            MaxHp = hp,
+            Powers = currentEgg.PowerStates.Where(power =>
+                power.PowerId == "proto.power.minion").ToArray(),
+            AiStateId = null
+        };
+        // C# out parameters cannot be captured by LINQ lambdas.
+        var hatchedSnapshot = hatched.Fork();
+        var updatedEnemies = combat.Enemies.Select((enemy, i) =>
+            i == index ? hatchedSnapshot : enemy.Fork()).ToArray();
+        var updated = combat with
+        {
+            Enemies = updatedEnemies,
+            NativeRng = native
+        };
+        Validate(updated);
+        return updated;
     }
 
     /// <summary>
@@ -171,7 +285,9 @@ public static class NativeCombatRngEntryV111
     public static CombatState AppendSummonedEnemy(
         CombatState combat,
         IReadOnlyList<EnemyCombatState> currentEnemies,
-        EnemyCombatState spawned)
+        EnemyCombatState spawned,
+        int? precreatedUnattachedId = null,
+        int? dyingStillAttachedId = null)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(currentEnemies);
@@ -193,6 +309,20 @@ public static class NativeCombatRngEntryV111
             || formation.MapRow is null)
             throw new NotSupportedException(
                 "Native summon requires pinned run seed and map-coordinate provenance.");
+        if (precreatedUnattachedId is not null
+            && (native.Formation.NativeEncounterEntry != "GremlinMercNormal"
+                || spawned.EnemyId != "proto.enemy.sneaky_gremlin"
+                || currentEnemies.Count(enemy =>
+                    enemy.InstanceId == precreatedUnattachedId
+                    && enemy.EnemyId == "proto.enemy.fat_gremlin") != 1))
+            throw new NotSupportedException(
+                "Native precreated-unattached HP exclusion is audited only for SurprisePower.");
+        if (dyingStillAttachedId is not null
+            && currentEnemies.Count(enemy =>
+                enemy.InstanceId == dyingStillAttachedId
+                && enemy.Hp <= 0) != 1)
+            throw new InvalidOperationException(
+                "Native AfterDeath HP pool must identify exactly one dying attached creature.");
         if (spawned.InstanceId <= 0
             || currentEnemies.Any(enemy =>
                 enemy.InstanceId == spawned.InstanceId)
@@ -205,7 +335,18 @@ public static class NativeCombatRngEntryV111
                 "Native spawn must create a living creature.");
         var range = PrototypeContent.Enemy(spawned.EnemyId)
             .HpRangeAt(combat.Act, combat.Ascension);
-        var usedHp = currentEnemies.Where(enemy => enemy.Hp > 0)
+        // Creature.SetUniqueMonsterHpValue excludes maxima belonging
+        // to *attached* enemy creatures. The prototype retains dead
+        // monsters forever in its history; native combat removes them
+        // after their death hooks. Include the dying source while its
+        // AfterDeath hook is executing, but never stale historical dead
+        // bodies. SurprisePower precreates Fat without attaching it
+        // before Sneaky's HP roll, so that one model is excluded.
+        var usedHp = currentEnemies
+            .Where(enemy =>
+                (enemy.Hp > 0
+                    || enemy.InstanceId == dyingStillAttachedId)
+                && enemy.InstanceId != precreatedUnattachedId)
             .Select(enemy => enemy.MaxHp).ToHashSet();
         var possible = Enumerable.Range(
                 range.Min, checked(range.Max - range.Min + 1))
@@ -246,6 +387,65 @@ public static class NativeCombatRngEntryV111
         };
         Validate(result);
         return result;
+    }
+
+    /// <summary>
+    /// Gremlin Merc's SurprisePower.AfterDeath calls CreateCreature on
+    /// Fat Gremlin BEFORE CreatureCmd.Add of Sneaky Gremlin, then calls
+    /// CreatureCmd.Add for the already-created Fat Gremlin. The native
+    /// CombatIds/RNG seeds follow creation order while their combat turn
+    /// order follows addition/slot order. Rearrange the three typed
+    /// enemies and their attached native contexts as an atomic permutation
+    /// without exchanging or re-seeding either native monster stream.
+    /// </summary>
+    public static CombatState SortGremlinMercDeathPair(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (combat.NativeRng?.Formation.NativeEncounterEntry
+            != "GremlinMercNormal")
+            throw new NotSupportedException(
+                "Only native GremlinMercNormal's audited death pair can reorder.");
+        Validate(combat);
+        if (combat.Enemies.Length != 3
+            || combat.Enemies.Count(enemy =>
+                enemy.EnemyId == "proto.enemy.gremlin_merc") != 1
+            || combat.Enemies.Count(enemy =>
+                enemy.EnemyId == "proto.enemy.sneaky_gremlin") != 1
+            || combat.Enemies.Count(enemy =>
+                enemy.EnemyId == "proto.enemy.fat_gremlin") != 1
+            || combat.Enemies[1].EnemyId != "proto.enemy.fat_gremlin"
+            || combat.Enemies[2].EnemyId != "proto.enemy.sneaky_gremlin")
+            throw new InvalidOperationException(
+                "Gremlin Merc pair must be created Fat then Sneaky.");
+        var native = combat.NativeRng.Fork();
+        var permutation = Enumerable.Range(0, combat.Enemies.Length)
+            .OrderBy(index => combat.Enemies[index].FormationPosition)
+            .ToArray();
+        var reordered = combat with
+        {
+            Enemies = permutation.Select(index =>
+                combat.Enemies[index].Fork()).ToArray(),
+            NativeRng = native with
+            {
+                Formation = native.Formation with
+                {
+                    Enemies = permutation.Select(index =>
+                        native.Formation.Enemies[index] with { }).ToArray(),
+                    MonsterContexts = permutation.Select(index =>
+                        native.Formation.MonsterContexts[index].Fork()).ToArray()
+                }
+            }
+        };
+        Validate(reordered);
+        if (reordered.Enemies[1].EnemyId
+                != "proto.enemy.sneaky_gremlin"
+            || reordered.Enemies[2].EnemyId
+                != "proto.enemy.fat_gremlin"
+            || reordered.NativeRng!.Formation.MonsterContexts[1].CombatId
+                != combat.NativeRng.Formation.MonsterContexts[2].CombatId)
+            throw new InvalidOperationException(
+                "Gremlin Merc native addition order was not preserved.");
+        return reordered;
     }
 
     /// <summary>

@@ -267,7 +267,9 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
         var combat = state.World!.Combat!;
         Assert.Equal(2, combat.Enemies.Length);
         Assert.Equal("proto.enemy.gas_bomb", combat.Enemies[^1].EnemyId);
-        Assert.Equal("bomb5", combat.Enemies[^1].SlotName);
+        // LivingFog.BloatMove uses Encounter.GetNextSlot, which chooses
+        // the FIRST unoccupied slot from bomb1 through bomb5.
+        Assert.Equal("bomb1", combat.Enemies[^1].SlotName);
         Assert.Equal(2, combat.Enemies[^1].InstanceId);
         Assert.Equal(initialNiche.Counter + 1,
             NativeRngV111.ToSnapshot(state.NativeRunRng!.Streams.Single(
@@ -278,6 +280,95 @@ public sealed class NativeActOneNormalCombatEntryV111Tests
         Assert.Equal(CanonicalJson.Sha256(state),
             CanonicalJson.Sha256(RunSnapshot.Load(
                 RunSnapshot.Save(state))));
+    }
+
+    [Fact]
+    public void SurprisePowerNativeDeathPrecreatesFatButAddsSneakyFirst()
+    {
+        // Source: SurprisePower.AfterDeath invokes
+        // CreateCreature(Fat) first, Add<Sneaky>() second, Add(fat)
+        // third. Niche rolls follow creation, while enemy ordering
+        // follows addition, and precreated Fat does not affect
+        // Sneaky's HP exclusion set.
+        for (var iteration = 0; iteration < 96; iteration++)
+        {
+            var seed = "source-surprise-death-order-" + iteration;
+            var setup = SetupNormalRoom(
+                Initial(seed, ActIdentity.Underdocks),
+                "proto.encounter.gremlin_merc_normal");
+            var mapAction = Engine.GetLegalActions(setup)
+                .Where(option => option.Kind == "choose_map_node")
+                .First(option => setup.World!.Map.Nodes.Any(node =>
+                    node.RoomType == PrototypeRoomType.Combat
+                    && node.NodeId == option
+                        .ReadPayload<ChooseMapNodePayload>().NodeId));
+            var state = Engine.Step(setup, mapAction).State;
+            var sourceCombat = state.World!.Combat!;
+            var initialSnapshot = CanonicalJson.Sha256(state);
+            var beforeNiche = NativeRngV111.ToSnapshot(
+                sourceCombat.NativeRng!.RunStreams.Streams.Single(stream =>
+                    stream.StreamId == "run.niche"));
+
+            var killed = sourceCombat with
+            {
+                Enemies = sourceCombat.Enemies.Select(enemy =>
+                    enemy with { Hp = 0, StolenGold = 17 }).ToArray()
+            };
+            var result = PrototypeGameEngine.ResolveEnemyDeathSummons(
+                killed, state.Rng.Fork());
+
+            Assert.Equal(initialSnapshot, CanonicalJson.Sha256(state));
+            Assert.Equal(new[]
+            {
+                "proto.enemy.gremlin_merc",
+                "proto.enemy.sneaky_gremlin",
+                "proto.enemy.fat_gremlin"
+            }, result.Enemies.Select(enemy => enemy.EnemyId));
+            Assert.Equal(new[] { 1, 3, 2 },
+                result.Enemies.Select(enemy => enemy.InstanceId));
+            Assert.Equal(new[] { 1L, 3L, 2L },
+                result.NativeRng!.Formation.MonsterContexts
+                    .Select(context => context.CombatId));
+            Assert.Equal(new[] { "merc", "sneaky", "fat" },
+                result.Enemies.Select(enemy => enemy.SlotName));
+            var sneaky = result.Enemies[1];
+            var fat = result.Enemies[2];
+            Assert.Equal(17, fat.StolenGold);
+            Assert.Contains(fat.PowerStates, power =>
+                power.PowerId == "proto.power.heist"
+                && power.Stacks == 17);
+            Assert.Equal(beforeNiche.Counter + 2,
+                NativeRngV111.ToSnapshot(
+                    result.NativeRng.RunStreams.Streams.Single(stream =>
+                        stream.StreamId == "run.niche")).Counter);
+
+            var oracle = sourceCombat.NativeRng.RunStreams.Fork();
+            var fatRange = PrototypeContent.Enemy("proto.enemy.fat_gremlin")
+                .HpRangeAt(sourceCombat.Act, sourceCombat.Ascension);
+            var fatOptions = Enumerable.Range(
+                fatRange.Min, fatRange.Max - fatRange.Min + 1);
+            var fatExpected = fatOptions.ElementAt(
+                NativeRngV111.NextInt(
+                    oracle, "run.niche", fatOptions.Count()));
+            var sneakRange = PrototypeContent.Enemy(
+                "proto.enemy.sneaky_gremlin")
+                .HpRangeAt(sourceCombat.Act, sourceCombat.Ascension);
+            var sneakOptions = Enumerable.Range(
+                sneakRange.Min, sneakRange.Max - sneakRange.Min + 1);
+            var sneakExpected = sneakOptions.ElementAt(
+                NativeRngV111.NextInt(
+                    oracle, "run.niche", sneakOptions.Count()));
+            Assert.Equal(fatExpected, fat.Hp);
+            Assert.Equal(sneakExpected, sneaky.Hp);
+            Assert.Equal(NativeRngV111.ToSnapshot(
+                oracle.Streams.Single(stream => stream.StreamId == "run.niche")),
+                NativeRngV111.ToSnapshot(
+                    result.NativeRng.RunStreams.Streams.Single(stream =>
+                        stream.StreamId == "run.niche")));
+            NativeCombatRngEntryV111.Validate(result);
+            Assert.Equal(CanonicalJson.Sha256(result),
+                CanonicalJson.Sha256(result.Fork()));
+        }
     }
 
     [Fact]

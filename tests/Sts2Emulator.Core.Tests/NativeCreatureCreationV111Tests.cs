@@ -81,6 +81,70 @@ public sealed class NativeCreatureCreationV111Tests
     }
 
     [Fact]
+    public void NicheExcludesOnlyStillAttachedMaxHpNotArchivedDeadMonsters()
+    {
+        for (var seedIndex = 0; seedIndex < 96; seedIndex++)
+        {
+            var combat = Fixture("native-attached-hp-" + seedIndex);
+            var deadId = combat.Enemies[0].InstanceId;
+            var ended = combat with
+            {
+                Enemies = combat.Enemies.Select((enemy, index) =>
+                    index == 0 ? enemy with { Hp = 0 } : enemy.Fork())
+                    .ToArray()
+            };
+            var originalHash = CanonicalJson.Sha256(ended);
+            var id = ended.Enemies.Max(enemy => enemy.InstanceId) + 1;
+            var spawned = new EnemyCombatState(
+                id, ended.Enemies[0].EnemyId,
+                1, 0, 0, new Dictionary<string, int>(),
+                FormationPosition: 100, SlotName: "test_spawn");
+            var baseline = ended.NativeRng!.RunStreams.Fork();
+            var definition = PrototypeContent.Enemy(spawned.EnemyId);
+            var range = definition.HpRangeAt(ended.Act, ended.Ascension);
+            var fullRange = Enumerable.Range(
+                range.Min, range.Max - range.Min + 1).ToArray();
+
+            int ExpectedHp(bool includeDying)
+            {
+                var excluded = ended.Enemies
+                    .Where(enemy => enemy.Hp > 0
+                        || (includeDying
+                            && enemy.InstanceId == deadId))
+                    .Select(enemy => enemy.MaxHp)
+                    .ToHashSet();
+                var eligible = fullRange.Where(hp =>
+                    !excluded.Contains(hp)).ToArray();
+                var pool = eligible.Length == 0
+                    ? fullRange : eligible;
+                var rng = baseline.Fork();
+                return pool[NativeRngV111.NextInt(
+                    rng, "run.niche", pool.Length)];
+            }
+
+            var subsequent = NativeCombatRngEntryV111.AppendSummonedEnemy(
+                ended, ended.Enemies, spawned);
+            Assert.Equal(ExpectedHp(false), subsequent.Enemies[^1].Hp);
+            var withinDeathHook =
+                NativeCombatRngEntryV111.AppendSummonedEnemy(
+                    ended, ended.Enemies, spawned,
+                    dyingStillAttachedId: deadId);
+            Assert.Equal(ExpectedHp(true), withinDeathHook.Enemies[^1].Hp);
+            Assert.Equal(originalHash, CanonicalJson.Sha256(ended));
+            Assert.Equal(CanonicalJson.Sha256(subsequent),
+                CanonicalJson.Sha256(subsequent.Fork()));
+            Assert.Equal(CanonicalJson.Sha256(withinDeathHook),
+                CanonicalJson.Sha256(withinDeathHook.Fork()));
+            NativeCombatRngEntryV111.Validate(subsequent);
+            NativeCombatRngEntryV111.Validate(withinDeathHook);
+            Assert.Throws<InvalidOperationException>(() =>
+                NativeCombatRngEntryV111.AppendSummonedEnemy(
+                    ended, ended.Enemies, spawned,
+                    dyingStillAttachedId: ended.Enemies[1].InstanceId));
+        }
+    }
+
+    [Fact]
     public void NativeSpawnRejectsReusedIdAndDoesNotTouchInputs()
     {
         var combat = Fixture("native-spawn-invalid");

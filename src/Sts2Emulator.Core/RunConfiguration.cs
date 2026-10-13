@@ -18,16 +18,28 @@ public static class V111Build
     // randomness is NOT made native by this combat-entry milestone.
     public const string NativeWeakCombatEntryFidelityId =
         "v111-experimental-native-weak-combat-entry-v1";
+    // Explicit opt-in to a deliberately restricted three-act Silent route.
+    // Its late-act encounter/event bags and combat RNG are provisional.
+    public const string ExperimentalSilentThreeActRouteFidelityId =
+        "v111-experimental-silent-three-act-route-v1";
 }
 
 public sealed record SimulationProfile(
     bool FullyUnlocked, string[] UnlockedCharacters, string[] RevealedEpochs)
 {
+    /// <summary>
+    /// Bosses already discovered by the player before this run. ActModel's
+    /// discovery-order modification uses this history when it replaces the
+    /// randomly preselected Hive/Glory boss.
+    /// </summary>
+    public string[] SeenBossEncounters { get; init; } = [];
+
     public static SimulationProfile Unlocked() => new(true, [], []);
     public SimulationProfile Fork() => this with
     {
         UnlockedCharacters = (string[])UnlockedCharacters.Clone(),
-        RevealedEpochs = (string[])RevealedEpochs.Clone()
+        RevealedEpochs = (string[])RevealedEpochs.Clone(),
+        SeenBossEncounters = (string[])SeenBossEncounters.Clone()
     };
 }
 
@@ -39,6 +51,8 @@ public sealed record RunConfiguration(
 {
     public bool UsesExperimentalNativeWeakCombatEntry =>
         FidelityId == V111Build.NativeWeakCombatEntryFidelityId;
+    public bool UsesExperimentalSilentThreeActRoute =>
+        FidelityId == V111Build.ExperimentalSilentThreeActRouteFidelityId;
 
     public static RunConfiguration Create(
         string characterId = "silent", int ascension = 0,
@@ -54,14 +68,21 @@ public sealed record RunConfiguration(
 
     public void Validate()
     {
-        if (Acts is null || Profile is null || Profile.UnlockedCharacters is null || Profile.RevealedEpochs is null)
+        if (Acts is null || Profile is null || Profile.UnlockedCharacters is null
+            || Profile.RevealedEpochs is null || Profile.SeenBossEncounters is null)
             throw new InvalidDataException("Run configuration requires explicit route and profile arrays.");
+        if (Profile.SeenBossEncounters.Any(string.IsNullOrWhiteSpace)
+            || Profile.SeenBossEncounters.Distinct(StringComparer.Ordinal).Count()
+                != Profile.SeenBossEncounters.Length)
+            throw new ArgumentException(
+                "Profile boss discovery history must contain distinct non-empty encounter IDs.");
         _ = V111Characters.Get(CharacterId);
         if (Ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(Ascension), "v111 supports Ascension 0 through 10.");
         if (RulesetId != V111Build.RulesetId || BuildFingerprint != V111Build.Fingerprint
             || FidelityId is not ("v111-mechanics-prototype-rng-v1"
-                or V111Build.NativeWeakCombatEntryFidelityId))
+                or V111Build.NativeWeakCombatEntryFidelityId
+                or V111Build.ExperimentalSilentThreeActRouteFidelityId))
             throw new NotSupportedException("Configured runs require the pinned v111 ruleset and fingerprint.");
         if (Acts.Length != 3 || Acts[0] is not (ActIdentity.Overgrowth or ActIdentity.Underdocks)
             || Acts[1] != ActIdentity.Hive || Acts[2] != ActIdentity.Glory)
@@ -92,14 +113,30 @@ public sealed record RunConfiguration(
         {
             if (configuration.CharacterId != "silent")
                 throw new NotSupportedException("Initialized v111 character mechanics are currently limited to Silent.");
-            if (initialized.Act != 1)
-                throw new NotSupportedException("Initialized native Hive/Glory state is not supported yet.");
-            var region = configuration.Acts[0] == ActIdentity.Overgrowth
-                ? PrototypeActOneRegion.Overgrowth : PrototypeActOneRegion.Underdocks;
-            var mapProfile = region == PrototypeActOneRegion.Overgrowth
-                ? PrototypeNativeOvergrowthMap.GenerationProfileId : PrototypeNativeUnderdocks.GenerationProfileId;
-            if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile)
-                throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
+            if (initialized.Act > 1)
+            {
+                if (!configuration.UsesExperimentalSilentThreeActRoute)
+                    throw new NotSupportedException(
+                        "Initialized native Hive/Glory state requires an explicit experimental route opt-in.");
+                if (initialized.ActOneRegion is not null
+                    || initialized.ActOneEncounterPool is not null
+                    || initialized.LaterActEncounterBag?.Act != initialized.Act
+                    || (initialized.Map.GenerationProfileId !=
+                        PrototypeNativeLaterActMap.ProfileId(initialized.Act)
+                        && !(initialized.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId
+                            && PrototypeGoldenPathMapV111.IsActive(state.Player, initialized.Act))))
+                    throw new InvalidDataException(
+                        "Later-act route must own its native map profile without Act 1 encounter bags.");
+            }
+            else
+            {
+                var region = configuration.Acts[0] == ActIdentity.Overgrowth
+                    ? PrototypeActOneRegion.Overgrowth : PrototypeActOneRegion.Underdocks;
+                var mapProfile = region == PrototypeActOneRegion.Overgrowth
+                    ? PrototypeNativeOvergrowthMap.GenerationProfileId : PrototypeNativeUnderdocks.GenerationProfileId;
+                if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile)
+                    throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
+            }
         }
     }
 }
@@ -186,7 +223,29 @@ public static class V111RunFactory
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = input.NativeRunRng?.Fork()
                 ?? NativeRngV111.CreateBundle(input.RunSeed),
-            World = opening.World! with { RulesetId = config.RulesetId, ActIdentity = config.Acts[0] }
+            World = opening.World! with
+            {
+                RulesetId = config.RulesetId,
+                ActIdentity = config.Acts[0],
+                PreparedLaterActEncounterBags = config.UsesExperimentalSilentThreeActRoute
+                    ? BuildPreparedLaterActBags(opening.Rng, config)
+                    : null
+            }
         };
+    }
+
+    private static PrototypeLaterActEncounterBagV111[] BuildPreparedLaterActBags(
+        RngBundle rng, RunConfiguration configuration)
+    {
+        var assigned = ExperimentalSilentThreeActRouteV111
+            .PrepareAncientAssignments(rng, configuration.Ascension,
+                configuration.Profile);
+        return new[] { 2, 3 }.Select((act, index) =>
+            ExperimentalSilentThreeActRouteV111.InitialBag(
+                act, rng, configuration.Ascension, configuration.Profile,
+                assignAncient: false) with
+            {
+                AssignedAncientId = assigned[index]
+            }).ToArray();
     }
 }

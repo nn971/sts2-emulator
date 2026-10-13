@@ -35,9 +35,39 @@ public sealed class V111CompleteWeakEncounterTests
             var encounter = PrototypeContent.Encounter(item.EngineIds[0]);
             Assert.Equal((3, 3, 0),
                 (encounter.MinAct, encounter.MaxAct, encounter.Weight));
-            Assert.Equal("missing", item.Integration);
+            Assert.Equal("implemented", item.Implementation);
+            Assert.Equal("integrated", item.Integration);
             Assert.Equal("unverified", item.Validation);
         });
+    }
+
+    [Fact]
+    public void RegionalEncounterCoverageIncludesExperimentalHiveAndGloryQueues()
+    {
+        var encounters = V111Coverage.Create().Items
+            .Where(item => item.Kind == "encounters")
+            .ToArray();
+        Assert.Equal(90, encounters.Length);
+        Assert.Equal(80, encounters.Count(item =>
+            item.Implementation == "implemented"
+            && item.Integration == "integrated"));
+        Assert.Equal(10, encounters.Count(item =>
+            item.Integration == "missing"));
+        foreach (var id in ExperimentalSilentThreeActRouteV111.HiveWeak
+            .Concat(ExperimentalSilentThreeActRouteV111.HiveNormal)
+            .Concat(ExperimentalSilentThreeActRouteV111.HiveElites)
+            .Concat(ExperimentalSilentThreeActRouteV111.HiveBosses)
+            .Concat(ExperimentalSilentThreeActRouteV111.GloryWeak)
+            .Concat(ExperimentalSilentThreeActRouteV111.GloryNormal)
+            .Concat(ExperimentalSilentThreeActRouteV111.GloryElites)
+            .Concat(ExperimentalSilentThreeActRouteV111.GloryBosses))
+        {
+            var item = Assert.Single(encounters, item =>
+                item.EngineIds.Contains(id, StringComparer.Ordinal));
+            Assert.Equal("implemented", item.Implementation);
+            Assert.Equal("integrated", item.Integration);
+            Assert.Equal("unverified", item.Validation);
+        }
     }
 
     [Theory]

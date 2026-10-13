@@ -94,6 +94,595 @@ public sealed class PrototypeExpandedPotionTests
     }
 
     [Fact]
+    public void CunningPotionCreatesThreeUpgradedShivsInHand()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.strike")],
+            hand: [1],
+            potionId: "proto.potion.cunning");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        var shivs = combat.Cards.Where(card =>
+            card.CardId == "proto.silent.shiv").ToArray();
+        Assert.Equal(3, shivs.Length);
+        Assert.All(shivs, shiv => Assert.Equal(1, shiv.UpgradeLevel));
+        Assert.All(shivs, shiv => Assert.Contains(shiv.InstanceId, combat.Hand));
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void FyshOilAppliesStrengthThenDexterity()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.strike")],
+            hand: [1],
+            potionId: "proto.potion.fysh_oil");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var powers = state.World!.Combat!.PlayerPowers;
+        Assert.Equal(1, Assert.Single(powers,
+            power => power.PowerId == "proto.power.strength").Stacks);
+        Assert.Equal(1, Assert.Single(powers,
+            power => power.PowerId == "proto.power.dexterity").Stacks);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void PotionOfBindingAppliesWeakAndVulnerableToEveryEnemy()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.strike")],
+            hand: [1],
+            potionId: "proto.potion.binding",
+            additionalEnemies: 2);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(3, state.World!.Combat!.Enemies.Length);
+        Assert.All(state.World.Combat.Enemies, enemy =>
+        {
+            Assert.Equal(1,
+                enemy.Statuses.GetValueOrDefault("proto.status.weak"));
+            Assert.Equal(1,
+                enemy.Statuses.GetValueOrDefault("proto.status.vulnerable"));
+        });
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void ShipInABottleGivesBlockNowAndAfterTheNextReset()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.ship_in_a_bottle");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(10, state.World!.Combat!.PlayerBlock);
+        Assert.Equal(10, Assert.Single(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.block_next_turn").Stacks);
+        Assert.Null(state.Player.PotionSlots[0]);
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(2, state.World!.Combat!.Turn);
+        Assert.Equal(10, state.World.Combat.PlayerBlock);
+        Assert.DoesNotContain(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.block_next_turn");
+    }
+
+    [Fact]
+    public void DropletOfPrecognitionLetsPlayerChooseOneDrawPileCard()
+    {
+        var state = CombatStateWith(
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend")
+            ],
+            hand: [1],
+            potionId: "proto.potion.droplet_of_precognition",
+            drawPile: [2]);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var pending = Assert.IsType<PendingCombatChoiceState>(
+            state.World!.Combat!.PendingChoice);
+        Assert.Equal(PrototypeCardZone.DrawPile,
+            pending.Selection.SourceZone);
+        Assert.Equal([2L], pending.CandidateCardInstanceIds);
+        var choose = Assert.Single(
+            engine.GetLegalActions(state),
+            action => action.Kind == "select_cards"
+                && action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.SequenceEqual([2L]));
+
+        state = engine.Step(state, choose).State;
+
+        Assert.Equal(new long[] { 1, 2 }, state.World!.Combat!.Hand);
+        Assert.Empty(state.World.Combat.DrawPile);
+        Assert.Null(state.World.Combat.PendingChoice);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void ExplosiveAmpouleDealsTenDamageToEveryEnemy()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.strike")],
+            hand: [1],
+            potionId: "proto.potion.explosive_ampoule",
+            enemyHp: 20,
+            additionalEnemies: 1);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(new[] { 10, 10 },
+            state.World!.Combat!.Enemies.Select(enemy => enemy.Hp));
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void BottledPotentialReturnsHandShufflesAndDrawsFive()
+    {
+        var cards = Enumerable.Range(1, 6)
+            .Select(id => Card(
+                id,
+                id % 2 == 0
+                    ? "proto.silent.defend"
+                    : "proto.silent.strike"))
+            .ToArray();
+        var state = CombatStateWith(
+            cards,
+            hand: [1, 2],
+            potionId: "proto.potion.bottled_potential",
+            drawPile: [3, 4, 5, 6]);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(5, combat.Hand.Length);
+        Assert.Single(combat.DrawPile);
+        Assert.Equal(
+            new long[] { 1, 2, 3, 4, 5, 6 }.Order(),
+            combat.Hand.Concat(combat.DrawPile).Order());
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void HeartOfIronAppliesSevenPlating()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.heart_of_iron");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(7, Assert.Single(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.plating").Stacks);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void ShacklingPotionTemporarilyReducesEveryEnemyStrength()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.shackling",
+            enemyStrength: 5,
+            additionalEnemies: 1);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.All(state.World!.Combat!.Enemies, enemy =>
+        {
+            Assert.Equal(-2, Assert.Single(
+                enemy.PowerStates,
+                power => power.PowerId == "proto.power.strength").Stacks);
+            Assert.Equal(7, Assert.Single(
+                enemy.PowerStates,
+                power => power.PowerId == "proto.power.shackling_potion")
+                .Stacks);
+        });
+        Assert.Null(state.Player.PotionSlots[0]);
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.All(state.World!.Combat!.Enemies, enemy =>
+        {
+            Assert.Equal(5, Assert.Single(
+                enemy.PowerStates,
+                power => power.PowerId == "proto.power.strength").Stacks);
+            Assert.DoesNotContain(enemy.PowerStates,
+                power => power.PowerId == "proto.power.shackling_potion");
+        });
+    }
+
+    [Fact]
+    public void MazalethsGiftGrantsStrengthAtPlayerTurnEnd()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.mazaleths_gift");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.DoesNotContain(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.strength");
+        Assert.Equal(1, Assert.Single(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.ritual").Stacks);
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(1, Assert.Single(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.strength").Stacks);
+    }
+
+    [Fact]
+    public void RadiantTinctureAddsImmediateEnergyAndThreeLaterEnergyResets()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.radiant_tincture");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        Assert.Equal(4, state.World!.Combat!.Energy);
+        Assert.Equal(3, Assert.Single(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.radiance").Stacks);
+
+        for (var expectedStacks = 2; expectedStacks >= 0; expectedStacks--)
+        {
+            state = engine.Step(
+                state,
+                engine.GetLegalActions(state)
+                    .Single(action => action.Kind == "end_turn")).State;
+            Assert.Equal(4, state.World!.Combat!.Energy);
+            if (expectedStacks == 0)
+            {
+                Assert.DoesNotContain(
+                    state.World.Combat.PlayerPowers,
+                    power => power.PowerId == "proto.power.radiance");
+            }
+            else
+            {
+                Assert.Equal(expectedStacks, Assert.Single(
+                    state.World.Combat.PlayerPowers,
+                    power => power.PowerId == "proto.power.radiance").Stacks);
+            }
+        }
+    }
+
+    [Fact]
+    public void BeetleJuiceReducesPoweredEnemyDamageAndExpiresAfterFourTurns()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.beetle_juice");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        var enemy = Assert.Single(combat.Enemies);
+        Assert.Equal(4, Assert.Single(
+            enemy.PowerStates,
+            power => power.PowerId == "proto.power.shrink").Stacks);
+        Assert.Equal(7, PrototypeGameEngine.EnemyHitDamage(
+            enemy,
+            combat,
+            new PrototypeEnemyEffectSpec(
+                PrototypeEnemyEffectKind.DamagePlayer,
+                10),
+            act: 1,
+            ascension: 0));
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(3, Assert.Single(
+            state.World!.Combat!.Enemies.Single().PowerStates,
+            power => power.PowerId == "proto.power.shrink").Stacks);
+    }
+
+    [Fact]
+    public void GigantificationTriplesAndConsumesOnTheNextPoweredAttack()
+    {
+        var state = CombatStateWith(
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.strike")
+            ],
+            hand: [1, 2],
+            potionId: "proto.potion.gigantification",
+            enemyHp: 100);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        Assert.Contains(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.gigantification");
+
+        var firstStrike = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 1);
+        state = engine.Step(state, firstStrike).State;
+        Assert.Equal(82, state.World!.Combat!.Enemies.Single().Hp);
+        Assert.DoesNotContain(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.gigantification");
+
+        var secondStrike = engine.GetLegalActions(state)
+            .Single(action => action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId == 2);
+        state = engine.Step(state, secondStrike).State;
+        Assert.Equal(76, state.World!.Combat!.Enemies.Single().Hp);
+    }
+
+    [Fact]
+    public void ClarityDrawsNowAndAddsOneCardToEachOfTheNextThreeHands()
+    {
+        var cards = Enumerable.Range(1, 10)
+            .Select(id => Card(
+                id,
+                id % 2 == 0
+                    ? "proto.silent.defend"
+                    : "proto.silent.strike"))
+            .ToArray();
+        var state = CombatStateWith(
+            cards,
+            hand: [1],
+            potionId: "proto.potion.clarity",
+            drawPile: Enumerable.Range(2, 9)
+                .Select(id => (long)id).ToArray());
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        Assert.Equal(2, state.World!.Combat!.Hand.Length);
+        Assert.Equal(3, Assert.Single(
+            state.World.Combat.PlayerPowers,
+            power => power.PowerId == "proto.power.clarity").Stacks);
+
+        for (var expectedStacks = 2; expectedStacks >= 0; expectedStacks--)
+        {
+            state = engine.Step(
+                state,
+                engine.GetLegalActions(state)
+                    .Single(action => action.Kind == "end_turn")).State;
+
+            Assert.Equal(6, state.World!.Combat!.Hand.Length);
+            if (expectedStacks == 0)
+            {
+                Assert.DoesNotContain(
+                    state.World.Combat.PlayerPowers,
+                    power => power.PowerId == "proto.power.clarity");
+            }
+            else
+            {
+                Assert.Equal(expectedStacks, Assert.Single(
+                    state.World.Combat.PlayerPowers,
+                    power => power.PowerId == "proto.power.clarity").Stacks);
+            }
+        }
+    }
+
+    [Fact]
+    public void ColorlessPotionOffersThreeDistinctFreeColorlessCards()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.colorless");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var combat = state.World!.Combat!;
+        var pending = Assert.IsType<PendingCombatChoiceState>(
+            combat.PendingChoice);
+        Assert.Equal(3, pending.CandidateCardInstanceIds.Length);
+        Assert.Equal(3, pending.CandidateCardInstanceIds
+            .Select(id => combat.Cards.Single(
+                card => card.InstanceId == id).CardId)
+            .Distinct(StringComparer.Ordinal).Count());
+        Assert.All(pending.CandidateCardInstanceIds, id =>
+        {
+            var card = combat.Cards.Single(
+                item => item.InstanceId == id);
+            Assert.Contains(
+                card.CardId,
+                PrototypeColorlessCards.ImplementedCombatGenerationPool);
+            Assert.True(card.IsTemporary);
+            Assert.Equal(0, card.TemporaryEnergyCost!.Cost);
+        });
+        Assert.Contains(
+            engine.GetLegalActions(state),
+            action => action.Kind == "select_cards"
+                && action.ReadPayload<SelectCardsPayload>()
+                    .CardInstanceIds.Length == 0);
+
+        var chosenId = pending.CandidateCardInstanceIds[0];
+        var choose = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "select_cards"
+            && action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.SequenceEqual([chosenId]));
+        state = engine.Step(state, choose).State;
+
+        Assert.Contains(chosenId, state.World!.Combat!.Hand);
+        Assert.Empty(state.World.Combat.ChoiceCardIds);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void ColorlessPotionCanBeSkipped()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.colorless");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        var skip = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "select_cards"
+            && action.ReadPayload<SelectCardsPayload>()
+                .CardInstanceIds.Length == 0);
+        state = engine.Step(state, skip).State;
+
+        Assert.Empty(state.World!.Combat!.ChoiceCardIds);
+        Assert.Equal(new long[] { 1 }, state.World.Combat.Hand);
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
+    public void PowderedDemiseDealsNineUnblockableHpLossAtEnemyTurnEnd()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.powdered_demise",
+            enemyHp: 20,
+            enemyBlock: 100);
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var enemy = Assert.Single(state.World!.Combat!.Enemies);
+        Assert.Equal(20, enemy.Hp);
+        Assert.Equal(100, enemy.Block);
+        Assert.Equal(9, Assert.Single(
+            enemy.PowerStates,
+            power => power.PowerId == "proto.power.demise").Stacks);
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        enemy = Assert.Single(state.World!.Combat!.Enemies);
+        Assert.Equal(11, enemy.Hp);
+    }
+
+    [Fact]
+    public void LuckyTonicPreventsAndConsumesTheNextHpLossInstance()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.lucky_tonic");
+        var combat = state.World!.Combat!;
+        combat = combat with
+        {
+            Enemies =
+            [
+                combat.Enemies.Single() with
+                {
+                    SkipNextEnemyAction = true,
+                    Powers =
+                    [
+                        new PrototypePowerInstanceState(
+                            "proto.power.constrict",
+                            3,
+                            1,
+                            SourceEnemyInstanceId: 1)
+                    ]
+                }
+            ]
+        };
+        state = state with
+        {
+            World = state.World with { Combat = combat }
+        };
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+        Assert.Contains(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.buffer");
+
+        state = engine.Step(
+            state,
+            engine.GetLegalActions(state)
+                .Single(action => action.Kind == "end_turn")).State;
+
+        Assert.Equal(70, state.Player.Hp);
+        Assert.DoesNotContain(
+            state.World!.Combat!.PlayerPowers,
+            power => power.PowerId == "proto.power.buffer");
+    }
+
+    [Fact]
+    public void OrobicAcidCreatesFreeAttackSkillAndPowerCards()
+    {
+        var state = CombatStateWith(
+            [Card(1, "proto.silent.defend")],
+            hand: [1],
+            potionId: "proto.potion.orobic_acid");
+        var engine = new PrototypeGameEngine();
+
+        state = UseOnlyPotion(engine, state);
+
+        var generated = state.World!.Combat!.Cards
+            .Where(card => card.IsTemporary
+                && card.InstanceId != 1)
+            .ToArray();
+        Assert.Equal(3, generated.Length);
+        Assert.Equal(
+            new[]
+            {
+                PrototypeCardType.Attack,
+                PrototypeCardType.Skill,
+                PrototypeCardType.Power
+            }.Order(),
+            generated.Select(card =>
+                PrototypeContent.Card(card.CardId).Type)
+                .Order());
+        Assert.All(generated, card =>
+        {
+            Assert.Contains(card.InstanceId, state.World.Combat.Hand);
+            Assert.Equal(0, card.TemporaryEnergyCost!.Cost);
+        });
+        Assert.Null(state.Player.PotionSlots[0]);
+    }
+
+    [Fact]
     public void SpeedPotionUsesTemporaryDexterityPower()
     {
         var state = CombatStateWith(
@@ -277,7 +866,11 @@ public sealed class PrototypeExpandedPotionTests
         string potionId,
         int playerBlock = 0,
         int enemyHp = 100,
-        int playerHp = 70)
+        int playerHp = 70,
+        int additionalEnemies = 0,
+        long[]? drawPile = null,
+        int enemyStrength = 0,
+        int enemyBlock = 0)
     {
         var empty = PrototypeJson.EmptyObject();
         var persistent = cards
@@ -303,20 +896,24 @@ public sealed class PrototypeExpandedPotionTests
             Energy: 3,
             PlayerBlock: playerBlock,
             Hand: hand,
-            DrawPile: [],
+            DrawPile: drawPile ?? [],
             DiscardPile: [],
             ExhaustPile: [],
-            Enemies:
-            [
-                new EnemyCombatState(
-                    1,
+            Enemies: Enumerable.Range(0, additionalEnemies + 1)
+                .Select(index => new EnemyCombatState(
+                    index + 1,
                     "proto.enemy.crawler",
                     enemyHp,
+                    enemyBlock,
                     0,
-                    0,
-                    new Dictionary<string, int>(
-                        StringComparer.Ordinal))
-            ],
+                    new Dictionary<string, int>(StringComparer.Ordinal),
+                    Powers: enemyStrength == 0
+                        ? []
+                        : [new PrototypePowerInstanceState(
+                            "proto.power.strength",
+                            enemyStrength,
+                            1)]))
+                .ToArray(),
             NextCardInstanceId:
                 cards.Max(card => card.InstanceId) + 1,
             Cards: cards,

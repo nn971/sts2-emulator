@@ -44,7 +44,8 @@ public sealed class V111GloryBossRosterTests
             item =>
             {
                 Assert.True(item.Registered);
-                Assert.Equal("missing", item.Integration);
+                Assert.Equal("implemented", item.Implementation);
+                Assert.Equal("integrated", item.Integration);
                 Assert.Equal("unverified", item.Validation);
             });
     }

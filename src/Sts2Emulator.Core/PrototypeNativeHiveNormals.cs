@@ -1,10 +1,10 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Source-pinned Hive normal encounter definitions. These are independently
-/// executable in forced combat fixtures but deliberately NOT selectable by
-/// the legacy prototype map: Hive encounter pools and act progression are
-/// still incomplete in v0.111.0.
+/// Source-pinned Hive normal encounter definitions. The opt-in three-act
+/// route selects its supported subset from a prepared Hive history; the
+/// generic legacy map excludes these definitions and default v111 routing
+/// remains gated.
 /// </summary>
 public static class PrototypeNativeHiveNormals
 {
@@ -40,15 +40,16 @@ public static class PrototypeNativeHiveNormals
             EndTurnDamageIfInHand: 5, MaxUpgradeLevel: 0)
     ];
 
-    // SlumberPower: three enemy-side turns of Snore or wake early on
-    // unblocked incoming attack damage. Companion Plating is removed
-    // on either wake route. This is NOT the Underdocks Asleep power:
+    // SlumberPower: three enemy-side turns of Snore; each unblocked
+    // damage callback removes one counter, and the Beetle wakes when
+    // the counter expires. Companion Plating is removed on either
+    // wake route. This is NOT the Underdocks Asleep power:
     // their post-wake first moves have different identifiers.
     public static PrototypePowerDefinition[] Powers { get; } =
     [
         new("proto.native.hive.slumber", "Slumber", 0, [],
             EnemyStacksDecayAtSideTurnEnd: 1,
-            WakeOwnerOnUnblockedAttackDamage: true,
+            EnemyStacksDecayOnUnblockedDamage: 1,
             OwnerAiStateOnWake: "rollout",
             RemoveOwnerPowersOnWake:
                 ["proto.native.hive.slumber", "proto.power.plating"],
@@ -82,8 +83,8 @@ public static class PrototypeNativeHiveNormals
         // SlumberingBeetle.cs: native 86/89 HP, Plating 15/18
         // and three Slumber charges. Snore until the count expires
         // at enemy-side turn end; Roll Out then attacks and gains
-        // Strength 2 every enemy turn. An unblocked attack hit
-        // interrupts Slumber and stuns the current planned action.
+        // Strength 2 every enemy turn. Three unblocked damage callbacks
+        // also expire Slumber and stun the current planned action.
         new(SlumberingBeetleId, "Slumbering Beetle", 86, 0,
             [
                 new("snore", []),

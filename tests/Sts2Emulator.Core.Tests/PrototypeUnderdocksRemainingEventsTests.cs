@@ -81,6 +81,47 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
     }
 
     [Fact]
+    public void FriedEelAddsFromTheCompleteImplementedSoloColorlessPool()
+    {
+        var engine = new PrototypeGameEngine();
+        var entered = FindEvent(engine,
+            PrototypeNativeEndlessConveyor.EventId,
+            "conveyor-fried-eel-colorless", gold: 400);
+        var forced = entered with
+        {
+            World = entered.World! with
+            {
+                Event = entered.World.Event! with
+                {
+                    NativeDishId = "FRIED_EEL",
+                    NativeLastDishId = "FRIED_EEL"
+                }
+            }
+        };
+        var predictedRng = entered.Rng.Fork();
+        var pool = PrototypeColorlessCards.Implemented
+            .Where(card => card.MechanicsImplemented
+                && !card.MultiplayerOnly)
+            .Select(card => card.Id).ToArray();
+        Assert.Equal(53, pool.Length);
+        var cardId = pool[PrototypeRng.NextInt(
+            predictedRng, "event", pool.Length)];
+        _ = PrototypeNativeEndlessConveyor.RollNextDish(
+            forced.World.Event, forced.Player, predictedRng);
+
+        var resolved = Choose(engine, forced, "grab");
+        Assert.Equal(cardId, resolved.Player.Deck.Last().CardId);
+        Assert.Equal(entered.Player.Gold - 40, resolved.Player.Gold);
+        Assert.Equal(CanonicalJson.Sha256(predictedRng),
+            CanonicalJson.Sha256(resolved.Rng));
+        var card = PrototypeContent.Card(cardId);
+        Assert.True(card.MechanicsImplemented);
+        Assert.False(card.MultiplayerOnly);
+        Assert.Equal(RunPhase.Event, resolved.Phase);
+        Assert.Equal(2, resolved.World!.Event!.NativeDishCount);
+    }
+
+    [Fact]
     public void ConveyorFourGrabsLeadToFifthGuaranteedFeedingFrenzyDish()
     {
         var engine = new PrototypeGameEngine();
@@ -146,6 +187,43 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.Equal(new[] { "observe" }, ChoiceIds(engine, current));
         Assert.Equal(RunPhase.MapChoice,
             Choose(engine, current, "observe").Phase);
+    }
+
+    [Fact]
+    public void ConveyorCaviarClamRollAndGoldenFyshApplyTheirExactPayouts()
+    {
+        var engine = new PrototypeGameEngine();
+
+        var caviar = ForceConveyorDish(engine, "conveyor-caviar", "CAVIAR");
+        var caviarHp = caviar.Player.Hp;
+        var caviarMaxHp = caviar.Player.MaxHp;
+        var caviarGold = caviar.Player.Gold;
+        var afterCaviar = Choose(engine, caviar, "grab");
+        Assert.Equal(caviarMaxHp + 4, afterCaviar.Player.MaxHp);
+        Assert.Equal(caviarHp + 4, afterCaviar.Player.Hp);
+        Assert.Equal(caviarGold - 40, afterCaviar.Player.Gold);
+        Assert.Equal(2, afterCaviar.World!.Event!.NativeDishCount);
+
+        var clam = ForceConveyorDish(engine, "conveyor-clam-roll", "CLAM_ROLL");
+        clam = clam with
+        {
+            Player = clam.Player with { Hp = clam.Player.MaxHp - 20 }
+        };
+        var clamGold = clam.Player.Gold;
+        var clamHp = clam.Player.Hp;
+        var afterClam = Choose(engine, clam, "grab");
+        Assert.Equal(clamHp + 10, afterClam.Player.Hp);
+        Assert.Equal(clam.Player.MaxHp, afterClam.Player.MaxHp);
+        Assert.Equal(clamGold - 40, afterClam.Player.Gold);
+        Assert.Equal(2, afterClam.World!.Event!.NativeDishCount);
+
+        var fysh = ForceConveyorDish(engine, "conveyor-golden-fysh", "GOLDEN_FYSH");
+        var fyshGold = fysh.Player.Gold;
+        var afterFysh = Choose(engine, fysh, "grab");
+        Assert.Equal(fyshGold + 75, afterFysh.Player.Gold);
+        Assert.Equal(fysh.Player.Hp, afterFysh.Player.Hp);
+        Assert.Equal(fysh.Player.MaxHp, afterFysh.Player.MaxHp);
+        Assert.Equal(2, afterFysh.World!.Event!.NativeDishCount);
     }
 
     [Fact]
@@ -250,6 +328,20 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.NotNull(reward.PotionOption);
         Assert.False(reward.RelicResolved);
         Assert.False(reward.PotionResolved);
+
+        state = engine.Step(state, engine.GetLegalActions(state).Single(action =>
+            action.Kind == "take_reward_relic")).State;
+        Assert.True(state.World!.Reward!.RelicResolved);
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == reward.RelicOption);
+        state = engine.Step(state, engine.GetLegalActions(state).Single(action =>
+            action.Kind == "skip_reward_potion")).State;
+        Assert.True(state.World!.Reward!.PotionResolved);
+        state = engine.Step(state, engine.GetLegalActions(state).Single(action =>
+            action.Kind == "leave_reward")).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Null(state.World!.Reward);
+        Assert.Null(state.World.Event);
     }
 
 
@@ -325,10 +417,15 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             }
         };
         Assert.Contains(null, forced.Player.PotionSlots);
+        var expectedRng = forced.Rng.Fork();
+        var expectedPotion = PrototypeNativePotionShop.PickUniform(
+            expectedRng, "reward");
         var pending = Choose(engine, forced, "grab");
         Assert.Equal(RunPhase.Event, pending.Phase);
         Assert.True(pending.World!.Event!.NativeDishRollPending);
         Assert.NotNull(pending.World.Event.PendingPotionReplacement);
+        Assert.Equal(expectedPotion,
+            pending.World.Event.PendingPotionReplacement!.PotionId);
         Assert.Equal(1, pending.World.Event.NativeDishCount);
         Assert.Equal("SUSPICIOUS_CONDIMENT",
             pending.World.Event.NativeDishId);
@@ -378,6 +475,10 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         var before = CanonicalJson.Sha256(state);
         Assert.Contains("sword", ChoiceIds(engine, state));
         var chosen = Choose(engine, state, "sword");
+        Assert.Equal(RunPhase.Event, chosen.Phase);
+        Assert.Equal(1, chosen.World!.Event!.NativePageIndex);
+        chosen = engine.Step(chosen,
+            GameAction.Empty("continue_event")).State;
         Assert.Equal(RunPhase.MapChoice, chosen.Phase);
         var swords = chosen.Player.Relics
             .Where(relic => relic.RelicId == swordId).ToArray();
@@ -409,6 +510,10 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         };
         Assert.Contains("climb", ChoiceIds(engine, state));
         var after = Choose(engine, state, "climb");
+        Assert.Equal(RunPhase.Event, after.Phase);
+        Assert.Equal(1, after.World!.Event!.NativePageIndex);
+        after = engine.Step(after,
+            GameAction.Empty("continue_event")).State;
         Assert.Equal(RunPhase.MapChoice, after.Phase);
         Assert.Equal(state.Player.MaxHp - 13, after.Player.MaxHp);
         var lenses = after.Player.Relics.Where(relic =>
@@ -459,7 +564,8 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             null, null, false));
         var hash = CanonicalJson.Sha256(state);
         var done = Choose(engine, state, "light");
-        Assert.Equal(RunPhase.MapChoice, done.Phase);
+        Assert.Equal(RunPhase.Event, done.Phase);
+        Assert.Equal(1, done.World!.Event!.NativePageIndex);
         Assert.All(upgradeable, id =>
             Assert.Equal(1, done.Player.Deck.Single(card =>
                 card.InstanceId == id).UpgradeLevel));
@@ -467,6 +573,9 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             card.InstanceId == invalidId);
         Assert.Equal("proto.native.neow.injury", injury.CardId);
         Assert.Equal(0, injury.UpgradeLevel);
+        done = engine.Step(done,
+            GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, done.Phase);
         Assert.Equal(hash, CanonicalJson.Sha256(state));
     }
 
@@ -478,13 +587,41 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
                 action.ReadPayload<EventChoicePayload>().ChoiceId)
             .ToArray();
 
+    private static RunState ForceConveyorDish(
+        PrototypeGameEngine engine, string seed, string dishId)
+    {
+        var state = FindEvent(engine,
+            PrototypeNativeEndlessConveyor.EventId, seed, gold: 400);
+        return state with
+        {
+            World = state.World! with
+            {
+                Event = state.World.Event! with
+                {
+                    NativeDishId = dishId,
+                    NativeLastDishId = dishId
+                }
+            }
+        };
+    }
+
     private static RunState Choose(
         PrototypeGameEngine engine, RunState state, string id)
     {
         var action = engine.GetLegalActions(state).Single(item =>
             item.Kind == "event_choice"
             && item.ReadPayload<EventChoicePayload>().ChoiceId == id);
-        return engine.Step(state, action).State;
+        var result = engine.Step(state, action).State;
+        if (result.Phase == RunPhase.Event
+            && result.World?.Event is { } eventState
+            && eventState.EventId == PrototypeNativeEndlessConveyor.EventId
+            && eventState.NativePageIndex == int.MaxValue)
+        {
+            var continueEvent = engine.GetLegalActions(result).Single(item =>
+                item.Kind == "continue_event");
+            result = engine.Step(result, continueEvent).State;
+        }
+        return result;
     }
 
     private static RunState FindEvent(

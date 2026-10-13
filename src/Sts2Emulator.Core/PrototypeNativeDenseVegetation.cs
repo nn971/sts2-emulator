@@ -47,14 +47,20 @@ public sealed partial class PrototypeGameEngine
                     ? current.NativeEventGold
                     : 61 + PrototypeRng.NextInt(
                         state.Rng, "event", 39);
-                return CompleteRoomToMap(state with
+                var result = state with
                 {
                     Player = state.Player with
                     {
                         Hp = hpAfter,
-                        Gold = state.Player.Gold + gold
+                        Gold = GoldAfterGain(state.Player, gold)
+                    },
+                    World = world with
+                    {
+                        Event = current with { ChosenChoiceId = choiceId }
                     }
-                });
+                };
+                return PreserveNativeEventCompletionPage(
+                    result, choiceId);
             }
 
             if (choiceId == "rest")

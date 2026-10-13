@@ -48,10 +48,94 @@ public sealed class PrototypeNativePotionShopTests
         var right = left.Fork();
         var fromHelper = PrototypeNativePotionShop.PickUniform(
             left, "reward");
-        var expected = PrototypeContent.PotionPool[
+        var expected = PrototypeNativePotionShop.NativePotionPoolOrder[
             PrototypeRng.NextInt(
-                right, "reward", PrototypeContent.PotionPool.Length)];
+                right, "reward",
+                PrototypeNativePotionShop.NativePotionPoolOrder.Count)];
         Assert.Equal(expected, fromHelper);
+    }
+
+    [Fact]
+    public void NativePotionGenerationKeepsCharacterThenSharedPoolOrder()
+    {
+        string[] expectedOrder =
+        [
+            "proto.potion.poison",
+            "proto.potion.ghost_in_a_jar",
+            "proto.potion.cunning",
+            "proto.potion.attack",
+            "proto.potion.beetle_juice",
+            "proto.potion.blessing_of_the_forge",
+            "proto.potion.block",
+            "proto.potion.bottled_potential",
+            "proto.potion.clarity",
+            "proto.potion.colorless",
+            "proto.potion.cure_all",
+            "proto.potion.dexterity",
+            "proto.potion.distilled_chaos",
+            "proto.potion.droplet_of_precognition",
+            "proto.potion.duplicator",
+            "proto.potion.energy",
+            "proto.potion.entropic_brew",
+            "proto.potion.explosive_ampoule",
+            "proto.potion.fairy_in_a_bottle",
+            "proto.potion.fire",
+            "proto.potion.flex",
+            "proto.potion.fortifier",
+            "proto.potion.fruit_juice",
+            "proto.potion.fysh_oil",
+            "proto.potion.gamblers_brew",
+            "proto.potion.gigantification",
+            "proto.potion.heart_of_iron",
+            "proto.potion.liquid_bronze",
+            "proto.potion.liquid_memories",
+            "proto.potion.lucky_tonic",
+            "proto.potion.mazaleths_gift",
+            "proto.potion.orobic_acid",
+            "proto.potion.binding",
+            "proto.potion.powdered_demise",
+            "proto.potion.power",
+            "proto.potion.radiant_tincture",
+            "proto.potion.regen",
+            "proto.potion.shackling",
+            "proto.potion.ship_in_a_bottle",
+            "proto.potion.skill",
+            "proto.potion.snecko_oil",
+            "proto.potion.speed",
+            "proto.potion.stable_serum",
+            "proto.potion.strength",
+            "proto.potion.swift",
+            "proto.potion.touch_of_insanity",
+            "proto.potion.vulnerable",
+            "proto.potion.weak"
+        ];
+
+        Assert.Equal(expectedOrder,
+            PrototypeNativePotionShop.NativePotionPoolOrder);
+        Assert.Equal(
+            PrototypeContent.PotionPool.Order(StringComparer.Ordinal),
+            PrototypeNativePotionShop.NativePotionPoolOrder
+                .Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void MerchantPotionTierSelectionUsesPinnedSourcePoolOrder()
+    {
+        var actualRng = PrototypeRng.CreateBundle(
+            "native-merchant-potion-pool-order");
+        var expectedRng = actualRng.Fork();
+        var rarity = PrototypeNativePotionShop.RollRarity(
+            expectedRng, "shop");
+        var candidates = PrototypeNativePotionShop.NativePotionPoolOrder
+            .Where(id => PrototypeNativePotionShop.TryGetRarity(
+                id, out var candidateRarity)
+                && candidateRarity == rarity)
+            .ToArray();
+        var expected = candidates[PrototypeRng.NextInt(
+            expectedRng, "shop", candidates.Length)];
+
+        Assert.Equal(expected,
+            PrototypeNativePotionShop.PickWeighted(actualRng, "shop"));
     }
 
     [Fact]
@@ -82,14 +166,31 @@ public sealed class PrototypeNativePotionShopTests
 
     [Theory]
     [InlineData("proto.potion.block", 50)]
+    [InlineData("proto.potion.explosive_ampoule", 50)]
+    [InlineData("proto.potion.colorless", 50)]
     [InlineData("proto.potion.energy", 50)]
-    [InlineData("proto.potion.blood", 50)]
     [InlineData("proto.potion.regen", 75)]
+    [InlineData("proto.potion.cunning", 75)]
+    [InlineData("proto.potion.fysh_oil", 75)]
+    [InlineData("proto.potion.binding", 75)]
+    [InlineData("proto.potion.heart_of_iron", 75)]
+    [InlineData("proto.potion.clarity", 75)]
+    [InlineData("proto.potion.powdered_demise", 75)]
+    [InlineData("proto.potion.lucky_tonic", 100)]
+    [InlineData("proto.potion.orobic_acid", 100)]
+    [InlineData("proto.potion.radiant_tincture", 75)]
     [InlineData("proto.potion.duplicator", 75)]
     [InlineData("proto.potion.touch_of_insanity", 75)]
     [InlineData("proto.potion.entropic_brew", 100)]
     [InlineData("proto.potion.fairy_in_a_bottle", 100)]
     [InlineData("proto.potion.distilled_chaos", 100)]
+    [InlineData("proto.potion.ship_in_a_bottle", 100)]
+    [InlineData("proto.potion.droplet_of_precognition", 100)]
+    [InlineData("proto.potion.bottled_potential", 100)]
+    [InlineData("proto.potion.shackling", 100)]
+    [InlineData("proto.potion.mazaleths_gift", 100)]
+    [InlineData("proto.potion.beetle_juice", 100)]
+    [InlineData("proto.potion.gigantification", 100)]
     public void NativeMerchantPotionPricesFollowPinnedRarities(
         string potionId, int expected)
     {
@@ -100,7 +201,94 @@ public sealed class PrototypeNativePotionShopTests
     [Fact]
     public void EverySupportedShopPotionHasExactlyOneNativeRarity()
     {
-        Assert.Equal(32, PrototypeContent.PotionPool.Length);
+        Assert.Equal(48, PrototypeContent.PotionPool.Length);
+        Assert.Contains("proto.potion.cunning", PrototypeContent.PotionPool);
+        Assert.DoesNotContain("proto.potion.blood", PrototypeContent.PotionPool);
+        Assert.DoesNotContain(
+            "proto.potion.explosive", PrototypeContent.PotionPool);
+        Assert.False(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.explosive", out _));
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.cunning", out var cunningRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, cunningRarity);
+        Assert.Contains("proto.potion.fysh_oil", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.fysh_oil", out var fyshOilRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, fyshOilRarity);
+        Assert.Contains("proto.potion.binding", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.binding", out var bindingRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, bindingRarity);
+        Assert.Contains(
+            "proto.potion.ship_in_a_bottle", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.ship_in_a_bottle", out var shipRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare, shipRarity);
+        Assert.Contains(
+            "proto.potion.droplet_of_precognition",
+            PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.droplet_of_precognition", out var dropletRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare, dropletRarity);
+        Assert.Contains(
+            "proto.potion.explosive_ampoule", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.explosive_ampoule", out var ampouleRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Common, ampouleRarity);
+        Assert.Contains(
+            "proto.potion.bottled_potential", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.bottled_potential", out var bottledRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare, bottledRarity);
+        Assert.Contains("proto.potion.heart_of_iron", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.heart_of_iron", out var heartRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, heartRarity);
+        Assert.Contains("proto.potion.shackling", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.shackling", out var shacklingRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare, shacklingRarity);
+        Assert.Contains(
+            "proto.potion.mazaleths_gift", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.mazaleths_gift", out var mazalethRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare, mazalethRarity);
+        Assert.Contains(
+            "proto.potion.radiant_tincture", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.radiant_tincture", out var radiantRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, radiantRarity);
+        Assert.Contains("proto.potion.beetle_juice", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.beetle_juice", out var beetleRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare, beetleRarity);
+        Assert.Contains(
+            "proto.potion.gigantification", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.gigantification", out var gigantificationRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare,
+            gigantificationRarity);
+        Assert.Contains("proto.potion.clarity", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.clarity", out var clarityRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, clarityRarity);
+        Assert.Contains("proto.potion.colorless", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.colorless", out var colorlessRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Common, colorlessRarity);
+        Assert.Contains(
+            "proto.potion.powdered_demise", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.powdered_demise", out var demiseRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Uncommon, demiseRarity);
+        Assert.Contains("proto.potion.lucky_tonic", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.lucky_tonic", out var luckyRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare, luckyRarity);
+        Assert.Contains("proto.potion.orobic_acid", PrototypeContent.PotionPool);
+        Assert.True(PrototypeNativePotionShop.TryGetRarity(
+            "proto.potion.orobic_acid", out var orobicRarity));
+        Assert.Equal(PrototypeNativePotionRarity.Rare, orobicRarity);
         Assert.All(PrototypeContent.PotionPool, id =>
         {
             Assert.True(PrototypeNativePotionShop.TryGetRarity(id, out _),

@@ -155,7 +155,7 @@ public static class PrototypeNativeCardRarityOdds
                 PrototypeNativeCardOddsSource.BossEncounter,
             _ => throw new ArgumentOutOfRangeException(nameof(room))
         };
-        var pool = PrototypeContent.RewardCardPool.ToList();
+        var pool = PrototypeContent.NativeSilentRewardCardPool.ToList();
         var cards = new List<string>(count);
         var upgrades = new List<bool>(count);
         var offset = currentOffsetBasisPoints;
@@ -189,7 +189,7 @@ public static class PrototypeNativeCardRarityOdds
         }
         // Merchant cards are individually generated from the same
         // eligible character pool; duplicate models are legal.
-        var pool = PrototypeContent.RewardCardPool
+        var pool = PrototypeContent.NativeSilentRewardCardPool
             .Where(id => PrototypeContent.Card(id).Type == type)
             .ToArray();
         var cards = new string[count];

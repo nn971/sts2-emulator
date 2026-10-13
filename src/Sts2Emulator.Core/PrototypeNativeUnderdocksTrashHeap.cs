@@ -141,7 +141,9 @@ public sealed partial class PrototypeGameEngine
     {
         RequireKind(action, "event_choice");
         var world = RequireWorld(state);
-        if (world.Event?.EventId != PrototypeNativeUnderdocksTrashHeap.EventId)
+        var evt = world.Event
+            ?? throw new InvalidOperationException("Trash Heap is not active.");
+        if (evt.EventId != PrototypeNativeUnderdocksTrashHeap.EventId)
         {
             throw new InvalidOperationException("Trash Heap is not active.");
         }
@@ -157,18 +159,19 @@ public sealed partial class PrototypeGameEngine
                         PrototypeNativeUnderdocksTrashHeap.CardIds.Length)];
                 var player = state.Player with
                 {
-                    Gold = checked(state.Player.Gold + 100)
+                    Gold = GoldAfterGain(state.Player, 100)
                 };
                 player = AppendCard(
                     player, world.NextCardInstanceId, chosen, state.Rng);
-                return CompleteRoomToMap(state with
+                var result = state with
                 {
                     Player = player,
                     World = world with
                     {
                         NextCardInstanceId = world.NextCardInstanceId + 1
                     }
-                });
+                };
+                return PreserveNativeEventCompletionPage(result, choice);
             }
             case "dive":
             {
@@ -199,7 +202,12 @@ public sealed partial class PrototypeGameEngine
                 player = ApplyRelicRunEvent(
                     player, PrototypeRunEventKind.RelicAcquired,
                     acquiredRelicId: relicId, rng: state.Rng);
-                return CompleteRoomToMap(state with { Player = player });
+                var result = state with
+                {
+                    Player = player,
+                    World = world with { Event = evt }
+                };
+                return PreserveNativeEventCompletionPage(result, choice);
             }
             default:
                 throw new InvalidOperationException(

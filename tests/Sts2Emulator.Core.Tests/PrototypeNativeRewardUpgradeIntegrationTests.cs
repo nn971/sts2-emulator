@@ -108,7 +108,9 @@ public sealed class PrototypeNativeRewardUpgradeIntegrationTests
             ExtraCardOptions = [(string[])reward.CardOptions.Clone()],
             ExtraCardOptionsUpgraded = [false],
             ExtraCardOptionUpgradeFlags = [[true, false, false]],
-            ExtraCardGroupsResolved = [false]
+            ExtraCardGroupsResolved = [false],
+            CardRewardGenerators =
+            [reward.CardRewardGenerators![0], null]
         };
         state = state with { World = state.World with { Reward = reward } };
         PrototypeStateInvariants.Validate(state);

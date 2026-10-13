@@ -160,6 +160,64 @@ public sealed class PrototypeRelicDeckChoiceTests
             state.World!.Reward!.PendingDeckChoice);
     }
 
+    [Fact]
+    public void PreservedFogAddsFollyOnlyAfterThreeCardsAreRemoved()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = RewardStateForRelic(
+            NativeGloryAncientsV111.PreservedFogId,
+            [
+                Card(1, "proto.silent.strike"),
+                Card(2, "proto.silent.defend"),
+                Card(3, "proto.silent.neutralize"),
+                Card(4, "proto.silent.survivor")
+            ]);
+
+        state = engine.Step(state, Assert.Single(
+            engine.GetLegalActions(state),
+            action => action.Kind == "take_reward_relic")).State;
+        Assert.Equal(3, state.World!.Reward!.PendingDeckChoice!.RemainingSelections);
+        Assert.DoesNotContain(state.Player.Deck,
+            card => card.CardId == NativeGloryAncientsV111.FollyCardId);
+        state = RunSnapshot.Load(RunSnapshot.Save(state));
+
+        state = ChooseDeckCard(engine, state, 1);
+        state = ChooseDeckCard(engine, state, 2);
+        Assert.DoesNotContain(state.Player.Deck,
+            card => card.CardId == NativeGloryAncientsV111.FollyCardId);
+        state = ChooseDeckCard(engine, state, 3);
+
+        Assert.Null(state.World!.Reward!.PendingDeckChoice);
+        Assert.Equal(2, state.Player.Deck.Length);
+        var folly = Assert.Single(state.Player.Deck,
+            card => card.CardId == NativeGloryAncientsV111.FollyCardId);
+        var follyDefinition = PrototypeContent.Card(folly.CardId);
+        Assert.True(follyDefinition.Innate);
+        Assert.True(follyDefinition.Ethereal);
+        Assert.True(follyDefinition.Eternal);
+        Assert.True(follyDefinition.Unplayable);
+    }
+
+    [Fact]
+    public void PreservedFogStillAddsFollyWhenNoDeckCardsCanBeRemoved()
+    {
+        var engine = new PrototypeGameEngine();
+        var state = RewardStateForRelic(
+            NativeGloryAncientsV111.PreservedFogId, []);
+
+        state = engine.Step(state, Assert.Single(
+            engine.GetLegalActions(state),
+            action => action.Kind == "take_reward_relic")).State;
+        Assert.Empty(state.World!.Reward!.PendingDeckChoice!.CandidateCardInstanceIds);
+        Assert.Contains(engine.GetLegalActions(state),
+            action => action.Kind == "finish_relic_deck_choice");
+        state = engine.Step(state, GameAction.Empty("finish_relic_deck_choice")).State;
+
+        Assert.Null(state.World!.Reward!.PendingDeckChoice);
+        Assert.Equal(NativeGloryAncientsV111.FollyCardId,
+            Assert.Single(state.Player.Deck).CardId);
+    }
+
     private static RunState ChooseDeckCard(
         PrototypeGameEngine engine,
         RunState state,

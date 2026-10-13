@@ -91,6 +91,22 @@ public sealed class PrototypeSilentCardCatalogTests
             });
     }
 
+    [Fact]
+    public void NativeRewardPoolPreservesPinnedCharacterCardPoolOrder()
+    {
+        var rewardIds = PrototypeContent.RewardCardPool
+            .ToHashSet(StringComparer.Ordinal);
+        var expectedNativeOrder = PrototypeContent.NativeSilentCardPool
+            .Where(rewardIds.Contains)
+            .ToArray();
+
+        Assert.Equal(expectedNativeOrder,
+            PrototypeContent.NativeSilentRewardCardPool);
+        Assert.Equal(rewardIds.Order(StringComparer.Ordinal),
+            PrototypeContent.NativeSilentRewardCardPool
+                .Order(StringComparer.Ordinal));
+    }
+
     [Theory]
     [InlineData("proto.silent.quick_slash")]
     [InlineData("proto.silent.concentrate")]

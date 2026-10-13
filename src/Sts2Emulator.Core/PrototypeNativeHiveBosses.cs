@@ -1,10 +1,10 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// The three pinned v0.111 Hive bosses, forced-combat only. Source:
+/// Source-backed v0.111 Hive boss models and typed encounters. Source:
 /// Flaaax/STS2-source @706ef1c9fa2219220065849fd5265328607ece20.
-/// Knowledge Demon's mandatory CurseOfKnowledge selection deliberately
-/// fails closed until the enemy-owned choice pipeline is implemented.
+/// Knowledge Demon's enemy-owned curse choice has a persisted player
+/// decision; all bosses remain subject to native RNG/parity validation.
 /// </summary>
 public static class PrototypeNativeHiveBosses
 {
@@ -102,10 +102,9 @@ public static class PrototypeNativeHiveBosses
         ],
         HpAscensionDeltas: [new(8, 10)],
         StartingPowers: [new(BackRightId, 1), new(RageId, 1)]),
-        // The opening CurseOfKnowledge needs a blocking choice between
-        // Disintegration and a level-specific negative card. Native
-        // attack/heal loop is executable in isolated models, but curse
-        // explicitly rejects rather than silently picking for the player.
+        // CurseOfKnowledge suspends the enemy turn before the committed
+        // move, offers the two source-defined IChoosable status models,
+        // and resumes that very move after the player's selected power.
         new(KnowledgeId, "Knowledge Demon", 379, 0,
         [
             new("curse_of_knowledge",

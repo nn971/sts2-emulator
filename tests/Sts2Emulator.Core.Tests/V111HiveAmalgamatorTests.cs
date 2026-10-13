@@ -36,6 +36,9 @@ public sealed class V111HiveAmalgamatorTests
     {
         var state = Fixture();
         var original = CanonicalJson.Sha256(state);
+        var rngBeforeEvent = CanonicalJson.Sha256(state.Rng);
+        var nativeRngBeforeEvent = state.NativeRunRng is null
+            ? null : CanonicalJson.Sha256(state.NativeRunRng);
         var initialDeck = state.Player.Deck;
         var nextId = state.World!.NextCardInstanceId;
         var action = Engine.GetLegalActions(state).Single(a =>
@@ -61,7 +64,8 @@ public sealed class V111HiveAmalgamatorTests
             });
             state = Engine.Step(state, actions[0]).State;
         }
-        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(1, state.World!.Event!.NativePageIndex);
         Assert.Equal(initialDeck.Length - 1, state.Player.Deck.Length);
         Assert.Equal(expectedCard, state.Player.Deck.Last().CardId);
         Assert.Equal(nextId, state.Player.Deck.Last().InstanceId);
@@ -69,6 +73,25 @@ public sealed class V111HiveAmalgamatorTests
         Assert.Equal(PrototypeCardRarity.Uncommon,
             PrototypeContent.Card(expectedCard).Rarity);
         Assert.Equal(original, CanonicalJson.Sha256(Fixture()));
+        PrototypeStateInvariants.Validate(state);
+        Assert.Equal(CanonicalJson.Sha256(state), CanonicalJson.Sha256(
+            RunSnapshot.Load(RunSnapshot.Save(state))));
+        Assert.Equal(rngBeforeEvent, CanonicalJson.Sha256(state.Rng));
+        Assert.Equal(nativeRngBeforeEvent,
+            state.NativeRunRng is null
+                ? null : CanonicalJson.Sha256(state.NativeRunRng));
+        var rngAtFinish = CanonicalJson.Sha256(state.Rng);
+        Assert.Equal("continue_event",
+            Assert.Single(Engine.GetLegalActions(state)).Kind);
+        Assert.Throws<InvalidOperationException>(() => Engine.Step(
+            state, GameAction.Empty("invalid_continue")));
+        state = Engine.Step(state, GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Null(state.World!.Event);
+        Assert.Equal(rngAtFinish, CanonicalJson.Sha256(state.Rng));
+        Assert.Equal(nativeRngBeforeEvent,
+            state.NativeRunRng is null
+                ? null : CanonicalJson.Sha256(state.NativeRunRng));
         Assert.Equal(CanonicalJson.Sha256(state),
             CanonicalJson.Sha256(state.Fork()));
     }
@@ -84,19 +107,20 @@ public sealed class V111HiveAmalgamatorTests
             c.CardId == "proto.silent.defend").Take(2);
         var deck = strikes.Concat(defends).ToArray();
         Assert.Equal(4, deck.Length);
+        var map = PrototypeNativeLaterActMap.GenerateNative(
+            "hive-amalgamator", 2);
+        var eventNode = map.Nodes.First(node => node.Floor == 2);
         return start with
         {
             Phase = RunPhase.Event,
             Player = start.Player with { Deck = deck },
             World = start.World! with
             {
-                Act = 2, Floor = 1, ActiveRoom = PrototypeRoomType.Event,
+                Act = 2, Floor = eventNode.Floor,
+                ActiveRoom = PrototypeRoomType.Event,
                 Event = new EventState(PrototypeNativeHiveEvents.AmalgamatorId),
-                Map = new MapState(
-                [
-                    new("event", 2, 1, PrototypeRoomType.Event, ["next"]),
-                    new("next", 2, 2, PrototypeRoomType.Combat, [])
-                ], "event", ["event"])
+                EventHistory = [PrototypeNativeHiveEvents.AmalgamatorId],
+                Map = map with { CurrentNodeId = eventNode.NodeId }
             }
         };
     }

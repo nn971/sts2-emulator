@@ -200,7 +200,7 @@ public sealed class V111HiveReactiveNormalEncounterTests
     }
 
     [Fact]
-    public void FirstUnblockedHitInterruptsSleepAndRemovesPlating()
+    public void ThreeUnblockedDamageCallbacksInterruptSleepAndRemovePlating()
     {
         var engine = new PrototypeGameEngine();
         var original = Commit(State([Spec(Beetle, 0)],
@@ -212,9 +212,28 @@ public sealed class V111HiveReactiveNormalEncounterTests
             p => p.PowerId == Slumber);
         Assert.Equal(0, Assert.Single(blocked.Enemies).PlannedMoveIndex);
 
-        var awakened = Hit(original.World!.Combat!, 20);
+        var poison = PrototypeGameEngine.ApplyRawHpLossForSourceRegression(
+            blocked, 1, 1);
+        var poisoned = Assert.Single(poison.Enemies);
+        Assert.Equal(85, poisoned.Hp);
+        Assert.Equal(3, Assert.Single(poisoned.PowerStates,
+            p => p.PowerId == Slumber).Stacks);
+
+        var first = Hit(blocked, 20);
+        var firstEnemy = Assert.Single(first.Enemies);
+        Assert.Equal(2, Assert.Single(firstEnemy.PowerStates,
+            p => p.PowerId == Slumber).Stacks);
+        Assert.Equal(0, firstEnemy.PlannedMoveIndex);
+
+        var second = Hit(first, 20);
+        var secondEnemy = Assert.Single(second.Enemies);
+        Assert.Equal(1, Assert.Single(secondEnemy.PowerStates,
+            p => p.PowerId == Slumber).Stacks);
+        Assert.Equal(0, secondEnemy.PlannedMoveIndex);
+
+        var awakened = Hit(second, 20);
         var awake = Assert.Single(awakened.Enemies);
-        Assert.Equal(81, awake.Hp);
+        Assert.Equal(26, awake.Hp);
         Assert.Equal(0, awake.Block);
         Assert.DoesNotContain(awake.PowerStates, p =>
             p.PowerId == Slumber || p.PowerId == "proto.power.plating");

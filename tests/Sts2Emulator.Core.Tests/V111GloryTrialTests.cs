@@ -269,6 +269,97 @@ public sealed class V111GloryTrialTests
                 GameAction.Empty("end_turn"))));
     }
 
+    [Fact]
+    public void DebtLosesUpToTenGoldAtPlayerTurnEnd()
+    {
+        var state = Battle();
+        var combat = state.World!.Combat!;
+        var id = combat.NextCardInstanceId;
+        state = state with
+        {
+            Player = state.Player with { Gold = 7 },
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    NextCardInstanceId = id + 1,
+                    Cards = combat.Cards.Append(new CombatCardInstance(
+                        id, null, NativeGloryAncientsV111.DebtCardId,
+                        0, true, PrototypeJson.EmptyObject())).ToArray(),
+                    Hand = combat.Hand.Append(id).ToArray()
+                }
+            }
+        };
+
+        state = Step(state, GameAction.Empty("end_turn"));
+
+        Assert.Equal(0, state.Player.Gold);
+    }
+
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(1, false)]
+    public void ApparitionEtherealIsRemovedByUpgrade(int upgradeLevel,
+        bool exhausted)
+    {
+        var state = Battle();
+        var combat = state.World!.Combat!;
+        var id = combat.NextCardInstanceId;
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    NextCardInstanceId = id + 1,
+                    Cards = combat.Cards.Append(new CombatCardInstance(
+                        id, null, NativeGloryAncientsV111.ApparitionCardId,
+                        upgradeLevel, true,
+                        PrototypeJson.EmptyObject())).ToArray(),
+                    Hand = combat.Hand.Append(id).ToArray()
+                }
+            }
+        };
+
+        state = Step(state, GameAction.Empty("end_turn"));
+
+        Assert.Equal(exhausted,
+            state.World!.Combat!.ExhaustPile.Contains(id));
+        Assert.Equal(!exhausted,
+            state.World.Combat.DiscardPile.Contains(id));
+    }
+
+    [Fact]
+    public void ApparitionAppliesIntangibleAndExhaustsWhenPlayed()
+    {
+        var state = Battle();
+        var combat = state.World!.Combat!;
+        var id = combat.NextCardInstanceId;
+        state = state with
+        {
+            World = state.World with
+            {
+                Combat = combat with
+                {
+                    NextCardInstanceId = id + 1,
+                    Cards = combat.Cards.Append(new CombatCardInstance(
+                        id, null, NativeGloryAncientsV111.ApparitionCardId,
+                        0, true, PrototypeJson.EmptyObject())).ToArray(),
+                    Hand = combat.Hand.Append(id).ToArray()
+                }
+            }
+        };
+        var play = Engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId == id);
+
+        state = Step(state, play);
+
+        Assert.Contains(state.World!.Combat!.PlayerPowers, power =>
+            power.PowerId == "proto.power.intangible" && power.Stacks == 1);
+        Assert.Contains(id, state.World.Combat.ExhaustPile);
+    }
+
     [Theory]
     [InlineData(PrototypeNativeGloryEvents.ShameId, "proto.power.frail")]
     [InlineData(PrototypeNativeGloryEvents.DoubtId, "proto.power.weak")]

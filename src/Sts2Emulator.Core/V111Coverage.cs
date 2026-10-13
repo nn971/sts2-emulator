@@ -98,7 +98,17 @@ public static class V111Coverage
             "monsters" => PrototypeContent.Enemies.Values
                 .Where(enemy => Matches(item, enemy.Id, enemy.Name)).Select(enemy => enemy.Id).ToArray(),
             "encounters" => PrototypeContent.Encounters
-                .Where(encounter => Normalize(encounter.Id.Split('.').Last()) == normalized)
+                .Where(encounter =>
+                    Normalize(encounter.Id.Split('.').Last()) == normalized
+                    || (item.Id == "PUNCH_OFF_EVENT_ENCOUNTER"
+                        && encounter.Id
+                            == PrototypeNativePunchOff.EncounterId)
+                    || (item.Id == "DENSE_VEGETATION_EVENT_ENCOUNTER"
+                        && encounter.Id
+                            == PrototypeNativeDenseVegetation.EncounterId)
+                    || (item.Id == "FAKE_MERCHANT_EVENT_ENCOUNTER"
+                        && encounter.Id
+                            == PrototypeNativeFakeMerchant.EncounterId))
                 .Select(encounter => encounter.Id).ToArray(),
             "events" => PrototypeContent.Events.Values
                 .Where(evt => Matches(item, evt.Id, evt.Name)).Select(evt => evt.Id).ToArray(),
@@ -125,6 +135,32 @@ public static class V111Coverage
                     || PrototypeColorlessCards.ImplementedShopPool.Contains(id)))
                     integration = "integrated";
             }
+            if (engineIds.Contains(NativeDarvEventV111.CurseOfTheBellCardId,
+                    StringComparer.Ordinal)
+                && NativeDarvEventV111.SupportedRelicIds.Contains(
+                    NativeDarvEventV111.CallingBellId, StringComparer.Ordinal))
+                integration = "integrated";
+            if (engineIds.Contains(NativeDarvEventV111.DustyTomeCardId,
+                    StringComparer.Ordinal)
+                && NativeDarvEventV111.SupportedRelicIds.Contains(
+                    NativeDarvEventV111.DustyTomeId, StringComparer.Ordinal)
+                && PrototypeContent.Card(
+                    NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel > 0)
+                integration = "integrated";
+        }
+        if (item.Scope == "single-player"
+            && item.Kind == "enchantments"
+            && item.Id == "VIGOROUS"
+            && engineIds.Contains("Vigorous", StringComparer.Ordinal)
+            && PrototypeNativeStoneOfAllTime.Definition.Choices.Any(choice =>
+                choice.DeckChoice?.EnchantmentKind
+                    == PrototypeCardEnchantmentKind.Vigorous
+                && choice.DeckChoice.EnchantmentAmount == 8)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeStoneOfAllTime.EventId, 2))
+        {
+            implementation = "implemented";
+            integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "encounters")
         {
@@ -135,8 +171,762 @@ public static class V111Coverage
                 .Concat(PrototypeNativeUnderdocks.SupportedWeakEncounterIds)
                 .Concat(PrototypeNativeUnderdocks.SupportedNormalEncounterIds)
                 .Concat(PrototypeNativeUnderdocks.SupportedEliteEncounterIds)
-                .Concat(PrototypeNativeUnderdocks.NativeBossEncounterIds).ToHashSet(StringComparer.Ordinal);
+                .Concat(PrototypeNativeUnderdocks.NativeBossEncounterIds)
+                .Concat(ExperimentalSilentThreeActRouteV111.HiveWeak)
+                .Concat(ExperimentalSilentThreeActRouteV111.HiveNormal)
+                .Concat(ExperimentalSilentThreeActRouteV111.HiveElites)
+                .Concat(ExperimentalSilentThreeActRouteV111.HiveBosses)
+                .Concat(ExperimentalSilentThreeActRouteV111.GloryWeak)
+                .Concat(ExperimentalSilentThreeActRouteV111.GloryNormal)
+                .Concat(ExperimentalSilentThreeActRouteV111.GloryElites)
+                .Concat(ExperimentalSilentThreeActRouteV111.GloryBosses)
+                .ToHashSet(StringComparer.Ordinal);
             if (engineIds.Any(pools.Contains))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "PUNCH_OFF_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativePunchOff.EncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeNativeUnderdocksEvents.IsSupported(
+                    PrototypeNativePunchOff.EventId)
+                && PrototypeNativePunchOff.Encounter.Weight == 0
+                && PrototypeNativePunchOff.Encounter.EnemyIds.SequenceEqual(
+                    ["proto.enemy.punch_construct",
+                     "proto.enemy.punch_construct"],
+                    StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "DENSE_VEGETATION_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativeDenseVegetation.EncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(
+                    PrototypeNativeDenseVegetation.EventId)
+                && PrototypeContent.Encounter(
+                    PrototypeNativeDenseVegetation.EncounterId).Weight == 0
+                && PrototypeContent.Encounter(
+                    PrototypeNativeDenseVegetation.EncounterId).EnemyIds
+                    .SequenceEqual(
+                        ["proto.enemy.wriggler", "proto.enemy.wriggler",
+                         "proto.enemy.wriggler", "proto.enemy.wriggler"],
+                        StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "FAKE_MERCHANT_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativeFakeMerchant.EncounterId,
+                    StringComparer.Ordinal)
+                && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeFakeMerchant.EventId, 2)
+                && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeFakeMerchant.EventId, 3)
+                && PrototypeNativeFakeMerchant.Encounter.Weight == 0
+                && PrototypeNativeFakeMerchant.Encounter.EnemyIds
+                    .SequenceEqual(
+                        [PrototypeNativeFakeMerchant.MonsterId],
+                        StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "MYSTERIOUS_KNIGHT_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativeHiveEvents.MysteriousKnightEncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeNativeHiveEvents.IsNativeEvent(
+                    PrototypeNativeHiveEvents.LanternKeyEventId)
+                && PrototypeContent.Encounter(
+                    PrototypeNativeHiveEvents.MysteriousKnightEncounterId)
+                    .Weight == 0
+                && PrototypeContent.Encounter(
+                    PrototypeNativeHiveEvents.MysteriousKnightEncounterId)
+                    .EnemyIds.SequenceEqual(
+                        [PrototypeNativeHiveEvents.MysteriousKnightId],
+                        StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            (string EncounterId, string EnemyId, string ChoiceId)? battleworn =
+                item.Id switch
+                {
+                    "BATTLEWORN_DUMMY_EVENT_V1_ENCOUNTER" =>
+                        (PrototypeNativeGloryEvents.BattlewornV1EncounterId,
+                         PrototypeNativeGloryEvents.BattleFriendV1Id,
+                         "setting_1"),
+                    "BATTLEWORN_DUMMY_EVENT_V2_ENCOUNTER" =>
+                        (PrototypeNativeGloryEvents.BattlewornV2EncounterId,
+                         PrototypeNativeGloryEvents.BattleFriendV2Id,
+                         "setting_2"),
+                    "BATTLEWORN_DUMMY_EVENT_V3_ENCOUNTER" =>
+                        (PrototypeNativeGloryEvents.BattlewornV3EncounterId,
+                         PrototypeNativeGloryEvents.BattleFriendV3Id,
+                         "setting_3"),
+                    _ => null
+                };
+            if (battleworn is { } training
+                && engineIds.Contains(
+                    training.EncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeContent.Event(
+                    PrototypeNativeGloryEvents.BattlewornDummyId).Choices
+                    .Any(choice => choice.Id == training.ChoiceId)
+                && PrototypeContent.Encounter(training.EncounterId).Weight == 0
+                && PrototypeContent.Encounter(training.EncounterId).EnemyIds
+                    .SequenceEqual([training.EnemyId], StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+        }
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && engineIds.Length > 0)
+        {
+            implementation = "partial";
+            if (engineIds.Any(IsIntegratedEvent))
+                integration = "integrated";
+        }
+        var missingBranches = MissingBranches(item);
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DARV" && missingBranches.Length == 0
+            && engineIds.Contains(NativeDarvEventV111.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "AROMA_OF_CHAOS" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.aroma_of_chaos",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "BRAIN_LEECH" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeBrainLeech.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SELF_HELP_BOOK" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeSelfHelpBook.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "POTION_COURIER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativePotionCourier.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "MORPHIC_GROVE" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.morphic_grove",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "JUNGLE_MAZE_ADVENTURE"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                "proto.native.event.jungle_maze_adventure",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "BUGSLAYER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeLaterActs.HiveBugslayerId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "WELLSPRING" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.wellspring",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "WHISPERING_HOLLOW" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.whispering_hollow",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "LUMINOUS_CHOIR" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.luminous_choir",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SAPPHIRE_SEED" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.sapphire_seed",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "UNREST_SITE" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.unrest_site",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TABLET_OF_TRUTH" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeTabletOfTruth.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "BYRDONIS_NEST" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.byrdonis_nest",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "WOOD_CARVINGS" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.wood_carvings",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "THIS_OR_THAT" && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeSharedEvents.ThisOrThatId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "STONE_OF_ALL_TIME"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeStoneOfAllTime.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SUNKEN_STATUE" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.event.sunken_statue",
+                StringComparer.Ordinal)
+            && engineIds.Contains("proto.native.underdocks.sunken_statue",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DOORS_OF_LIGHT_AND_DARK"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                "proto.native.underdocks.doors_of_light_and_dark",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DROWNING_BEACON" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.underdocks.drowning_beacon",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SUNKEN_TREASURY" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.underdocks.sunken_treasury",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "AMALGAMATOR" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.AmalgamatorId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "COLOSSAL_FLOWER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.ColossalFlowerId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "FIELD_OF_MAN_SIZED_HOLES"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.FieldOfManSizedHolesId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "LOST_WISP" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.LostWispId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SPIRIT_GRAFTER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.SpiritGrafterId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "GRAVE_OF_THE_FORGOTTEN"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.GraveOfTheForgottenId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "HUNGRY_FOR_MUSHROOMS"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.HungryForMushroomsId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "INFESTED_AUTOMATON"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.InfestedAutomatonId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeHiveEvents.InfestedAutomatonId, 2)
+            && PrototypeContent.Event(
+                PrototypeNativeHiveEvents.InfestedAutomatonId).Choices
+                .Any(choice => choice.Id == "study")
+            && PrototypeContent.Event(
+                PrototypeNativeHiveEvents.InfestedAutomatonId).Choices
+                .Any(choice => choice.Id == "touch_core"))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "REFLECTIONS" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.ReflectionsId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ROUND_TEA_PARTY" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.RoundTeaPartyId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TEA_MASTER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.TeaMasterId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeGloryEvents.TeaMasterId, 3)
+            && PrototypeNativeGloryEvents.IsEligible(
+                PrototypeContent.Event(
+                    PrototypeNativeGloryEvents.TeaMasterId),
+                new PlayerState(1, 1, 150, [], [], [])))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "BATTLEWORN_DUMMY"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.BattlewornDummyId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeGloryEvents.BattlewornDummyId, 3)
+            && PrototypeContent.Event(
+                PrototypeNativeGloryEvents.BattlewornDummyId).Choices
+                .Select(choice => choice.Id)
+                .ToHashSet(StringComparer.Ordinal)
+                .IsSupersetOf(["setting_1", "setting_2", "setting_3"]))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TRIAL" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.TrialId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeGloryEvents.TrialId, 3)
+            && PrototypeContent.Event(
+                PrototypeNativeGloryEvents.TrialId).Choices
+                .Select(choice => choice.Id)
+                .ToHashSet(StringComparer.Ordinal)
+                .IsSupersetOf([
+                    "accept", "reject", "double_down",
+                    "confirm_abandon", "cancel_abandon",
+                    "merchant_guilty", "merchant_innocent",
+                    "noble_guilty", "noble_innocent",
+                    "nondescript_guilty", "nondescript_innocent"
+                ]))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "THE_LANTERN_KEY"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.LanternKeyEventId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeHiveEvents.LanternKeyEventId, 2)
+            && PrototypeContent.Event(
+                PrototypeNativeHiveEvents.LanternKeyEventId).Choices
+                .Select(choice => choice.Id)
+                .ToHashSet(StringComparer.Ordinal)
+                .IsSupersetOf(["return_key", "keep_key"]))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ZEN_WEAVER" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeHiveEvents.ZenWeaverId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeHiveEvents.ZenWeaverId, 2)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                PrototypeNativeHiveEvents.ZenWeaverId)
+            && PrototypeNativeHiveEvents.IsEligible(
+                PrototypeContent.Event(
+                    PrototypeNativeHiveEvents.ZenWeaverId),
+                new PlayerState(1, 1, 125, [], [], []))
+            && PrototypeContent.Event(
+                PrototypeNativeHiveEvents.ZenWeaverId).Choices
+                .Select(choice => choice.Id)
+                .ToHashSet(StringComparer.Ordinal)
+                .IsSupersetOf(["breathing", "emotional", "arachnid"]))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TEZCATARA" && missingBranches.Length == 0
+            && engineIds.Contains(NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            && IsIntegratedEvent(NativeAncientRewardsV111.TezcataraId)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                NativeAncientRewardsV111.TezcataraId)
+            && NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Length == NativeAncientRewardsV111.Relics.Length
+            && NativeAncientRewardsV111.Relics.All(relic =>
+                PrototypeContent.Relic(relic.Id).Id == relic.Id
+                && NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                    .Any(choice => choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relic.Id)))
+            && NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .All(choice =>
+                    PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                        NativeAncientRewardsV111.TezcataraId, choice.Id)))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id is ("PAEL" or "TANX" or "VAKUU" or "NONUPEIPE")
+            && missingBranches.Length == 0
+            && engineIds.Length == 1
+            && IsIntegratedEvent(engineIds[0])
+            && HasCompleteAncientRelicBranches(engineIds[0], 10))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TINKER_TIME" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeGloryEvents.TinkerTimeId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DENSE_VEGETATION" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeDenseVegetation.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "WATERLOGGED_SCRIPTORIUM"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                "proto.native.underdocks.waterlogged_scriptorium",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SPIRALING_WHIRLPOOL"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                "proto.native.underdocks.spiraling_whirlpool",
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksEvents.IsSupported(
+                "proto.native.underdocks.spiraling_whirlpool")
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                "proto.native.underdocks.spiraling_whirlpool")
+            && PrototypeNativeUnderdocksEvents.IsEligible(
+                PrototypeContent.Event(
+                    "proto.native.underdocks.spiraling_whirlpool"),
+                new PlayerState(1, 1, 0,
+                    [new CardInstance(1, "proto.silent.strike", 0,
+                        PrototypeJson.EmptyObject())], [], []))
+            && PrototypeContent.Event(
+                "proto.native.underdocks.spiraling_whirlpool").Choices
+                .Any(choice => choice.Id == "observe"
+                    && choice.DeckChoice is
+                    {
+                        Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                        Selections: 1,
+                        EnchantmentKind:
+                            PrototypeCardEnchantmentKind.Spiral,
+                        BasicCardsOnly: true
+                    })
+            && PrototypeContent.Event(
+                "proto.native.underdocks.spiraling_whirlpool").Choices
+                .Any(choice => choice.Id == "drink"
+                    && choice.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeRunEffectKind.HealPercentMaxHp
+                        && effect.Amount == 33)))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "TRASH_HEAP" && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeUnderdocksTrashHeap.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ABYSSAL_BATHS" && missingBranches.Length == 0
+            && engineIds.Contains("proto.native.underdocks.abyssal_baths",
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ENDLESS_CONVEYOR"
+            && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeEndlessConveyor.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "PUNCH_OFF" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativePunchOff.EventId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "FAKE_MERCHANT"
+            && engineIds.Contains(PrototypeNativeFakeMerchant.EventId,
+                StringComparer.Ordinal)
+            && PrototypeNativeFakeMerchant.StockRelicIds.All(id =>
+                PrototypeNativeFakeMerchant.Definition.Choices.Any(choice =>
+                    choice.Id == PrototypeNativeFakeMerchant.ChoiceId(id)))
+            && PrototypeNativeFakeMerchant.Definition.Choices.Any(choice =>
+                choice.Id == PrototypeNativeFakeMerchant.LeaveChoiceId)
+            && PrototypeContent.Encounter(
+                PrototypeNativeFakeMerchant.EncounterId).Weight == 0)
+            implementation = "implemented";
+
+        if (item.Scope == "single-player" && item.Kind == "potions"
+            && item.Id == "FOUL_POTION"
+            && engineIds.Contains(
+                PrototypeNativeFakeMerchant.FoulPotionId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Potion(
+                PrototypeNativeFakeMerchant.FoulPotionId).Effects.Any(
+                effect => effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                    && effect.Amount == 12
+                    && effect.Target == PrototypeEffectTarget.AllEnemies)
+            && !PrototypeContent.Potion(
+                PrototypeNativeFakeMerchant.FoulPotionId).Effects.Any(
+                effect => effect.Kind == PrototypeCombatEffectKind.DamagePlayer)
+            && PrototypeNativeFakeMerchant.Definition.Choices.Length == 10)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+
+        if (item.Scope == "single-player" && item.Kind == "monsters"
+            && item.Id == "FAKE_MERCHANT_MONSTER"
+            && engineIds.Contains(PrototypeNativeFakeMerchant.MonsterId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Encounter(
+                PrototypeNativeFakeMerchant.EncounterId).EnemyIds
+                .Contains(PrototypeNativeFakeMerchant.MonsterId,
+                    StringComparer.Ordinal))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id.StartsWith("FAKE_", StringComparison.Ordinal)
+            && engineIds.Length > 0
+            && (item.Id == "FAKE_MERCHANTS_RUG"
+                ? PrototypeNativeFakeMerchant.Encounter.Weight == 0
+                    && PrototypeNativeFakeMerchant.StockRelicIds.Length == 9
+                : PrototypeNativeFakeMerchant.StockRelicIds.Contains(
+                    engineIds[0], StringComparer.Ordinal))
+            && (ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeFakeMerchant.EventId, 2)
+                || ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeFakeMerchant.EventId, 3)))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && engineIds.Any(id =>
+            {
+                var relic = PrototypeContent.Relic(id);
+                var blackStarIntegrated = relic.ExtraEliteRelicRewardCount > 0
+                    && PrototypeContent.RelicPool.Contains(id,
+                        StringComparer.Ordinal)
+                    && PrototypeNativeRelicGrabBag.TryGetRarity(id, out _);
+                var ectoplasmIntegrated = relic.PreventGoldGain
+                    && relic.EnergyPerTurnBonus > 0
+                    && PrototypeContent.BossRelicPool.Contains(id,
+                        StringComparer.Ordinal);
+                var callingBellIntegrated = id == NativeDarvEventV111.CallingBellId
+                    && PrototypeContent.Card(
+                        NativeDarvEventV111.CurseOfTheBellCardId).Eternal
+                    && NativeDarvEventV111.SupportedRelicIds.Contains(id,
+                        StringComparer.Ordinal);
+                var dustyTomeIntegrated = id == NativeDarvEventV111.DustyTomeId
+                    && NativeDarvEventV111.SupportedRelicIds.Contains(id,
+                        StringComparer.Ordinal)
+                    && PrototypeContent.Card(
+                        NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel > 0;
+                var pandorasBoxIntegrated = id == NativeDarvEventV111.PandorasBoxId
+                    && NativeDarvEventV111.SupportedRelicIds.Contains(id,
+                        StringComparer.Ordinal)
+                    && PrototypeContent.NativeSilentCardPool.Any(cardId =>
+                        PrototypeContent.Card(cardId).Tags?.Any(tag =>
+                            tag is "Strike" or "Defend") == true);
+                return blackStarIntegrated || ectoplasmIntegrated
+                    || callingBellIntegrated || dustyTomeIntegrated
+                    || pandorasBoxIntegrated;
+            }))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "WINGED_BOOTS"
+            && engineIds.Contains(PrototypeNativeWingedBoots.RelicId,
+                StringComparer.Ordinal))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TWISTED_FUNNEL"
+            && engineIds.Contains(PrototypeNativeSilentRelics.TwistedFunnelId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.TwistedFunnelId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.TwistedFunnelId, out var rarity)
+            && rarity == PrototypeRelicRarity.Uncommon)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "NINJA_SCROLL"
+            && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.NinjaScrollId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.NinjaScrollId, out var ninjaRarity)
+            && ninjaRarity == PrototypeRelicRarity.Shop)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "HELICAL_DART"
+            && engineIds.Contains(PrototypeNativeSilentRelics.HelicalDartId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.HelicalDartId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.HelicalDartId, out var dartRarity)
+            && dartRarity == PrototypeRelicRarity.Rare)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "SNECKO_SKULL"
+            && engineIds.Contains(PrototypeNativeSilentRelics.SneckoSkullId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.SneckoSkullId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.SneckoSkullId, out var skullRarity)
+            && skullRarity == PrototypeRelicRarity.Common)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "POTION_BELT"
+            && engineIds.Contains("proto.relic.potion_belt",
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                "proto.relic.potion_belt", StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                "proto.relic.potion_belt", out var potionBeltRarity)
+            && potionBeltRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic("proto.relic.potion_belt")
+                is { ExtraPotionSlots: 2 } potionBelt
+            && potionBelt.RunTriggers?.Any(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.RelicAcquired
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainPotionSlots
+                    && effect.Amount == 2)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PAPER_KRANE"
+            && engineIds.Contains(PrototypeNativeSilentRelics.PaperKraneId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSilentRelics.PaperKraneId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSilentRelics.PaperKraneId, out var craneRarity)
+            && craneRarity == PrototypeRelicRarity.Rare)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TINGSHA"
+            && engineIds.Contains("proto.relic.tingsha",
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains("proto.relic.tingsha",
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                "proto.relic.tingsha", out var tingshaRarity)
+            && tingshaRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic("proto.relic.tingsha").Triggers?.Any(
+                trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.CardDiscarded
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                        && effect.Amount == 3
+                        && effect.Target
+                            == PrototypeEffectTarget.RandomEnemy)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TOUGH_BANDAGES"
+            && engineIds.Contains("proto.relic.tough_bandages",
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                "proto.relic.tough_bandages", StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                "proto.relic.tough_bandages", out var bandagesRarity)
+            && bandagesRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic("proto.relic.tough_bandages").Triggers?
+                .Any(trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.CardDiscarded
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.GainPlayerBlock
+                        && effect.Amount == 3)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "RING_OF_THE_SNAKE"
+            && engineIds.Contains(
+                PrototypeNativeOrobasRelics.RingOfTheSnakeId,
+                StringComparer.Ordinal)
+            && V111Characters.Get("silent").StartingRelics.Contains(
+                "RING_OF_THE_SNAKE", StringComparer.Ordinal)
+            && PrototypeContent.StartingRelics.Contains(
+                PrototypeNativeOrobasRelics.RingOfTheSnakeId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Relic(
+                PrototypeNativeOrobasRelics.RingOfTheSnakeId)
+                .FirstTurnDrawBonus == 2)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id is ("BONE_TEA" or "EMBER_TEA"
+                or "TEA_OF_DISCOURTESY")
+            && engineIds.Length == 1
+            && PrototypeNativeGloryEvents.Events.Any(evt =>
+                evt.Id == PrototypeNativeGloryEvents.TeaMasterId)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeGloryEvents.TeaMasterId, 3))
+        {
+            var choiceId = item.Id switch
+            {
+                "BONE_TEA" => "bone_tea",
+                "EMBER_TEA" => "ember_tea",
+                _ => "tea_of_discourtesy"
+            };
+            if (PrototypeContent.Event(
+                    PrototypeNativeGloryEvents.TeaMasterId).Choices.Any(
+                    choice => choice.Id == choiceId))
             {
                 implementation = "implemented";
                 integration = "integrated";
@@ -149,8 +939,46 @@ public static class V111Coverage
         }
         return new V111CoverageItem(item.Kind, item.Id, item.Scope, engineIds,
             true, engineIds.Length > 0, implementation, integration, "unverified",
-            item.Variants ?? [], item.Branches ?? [],
+            item.Variants ?? [],
+            missingBranches,
             item.Source is null ? [] : [$"{V111Build.SourceCommit}:{item.Source}#{item.SourceSha256}"]);
+    }
+
+    private static string[] MissingBranches(V111InventoryItem item)
+    {
+        if (item.Kind == "events" && item.Id == "NEOW")
+        {
+            var supported = PrototypeNativeOvergrowthEvents
+                .NeowCoveredChoiceRelicNames
+                .Select(PrototypeNativeOvergrowthEvents.NeowRelicId)
+                .Select(id => Normalize(id.Split('.').Last()))
+                .ToHashSet(StringComparer.Ordinal);
+            return (item.Branches ?? [])
+                .Where(branch => !supported.Contains(
+                    Normalize(branch.Split('/').Last())))
+                .ToArray();
+        }
+        if (item.Kind == "events" && item.Id == "OROBAS")
+        {
+            var supported = NativeOrobasEventV111.Definition.Choices
+                .SelectMany(choice => choice.Effects)
+                .Where(effect => effect.Kind
+                        == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId is not null)
+                .Select(effect => $"relic/{effect.RelicId!.Split('.').Last().ToUpperInvariant()}")
+                .ToHashSet(StringComparer.Ordinal);
+            return (item.Branches ?? [])
+                .Where(branch => !supported.Contains(branch)).ToArray();
+        }
+        if (item.Kind == "events" && item.Id == "DARV")
+        {
+            var supported = NativeDarvEventV111.SupportedRelicIds
+                .Select(id => $"relic/{id.Split('.').Last().ToUpperInvariant()}")
+                .ToHashSet(StringComparer.Ordinal);
+            return (item.Branches ?? []).Where(branch => !supported.Contains(branch))
+                .ToArray();
+        }
+        return item.BranchInventoryComplete ? [] : item.Branches ?? [];
     }
 
     private static bool Matches(V111InventoryItem item, string engineId, string name)
@@ -164,6 +992,64 @@ public static class V111Coverage
                 && key == last + Normalize(item.Pool ?? "");
         }
         return key == last || key == Normalize(name);
+    }
+
+    private static bool IsIntegratedEvent(string eventId)
+    {
+        if (eventId == PrototypeNativeOvergrowthEvents.NeowEventId)
+            return true;
+        if (PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(eventId))
+            return true;
+        if (PrototypeNativeUnderdocksEvents.IsSupported(eventId))
+            return true;
+        if (PrototypeNativeSharedEvents.IsSupported(eventId))
+            return true;
+        if (ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 2)
+            || ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 3))
+            return true;
+        if (eventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+            return true;
+
+        // Configured three-act runs prepare these act-local assignments and
+        // execute the existing opening handlers at each transition. Orobas's
+        // foreign-card options are explicitly deferred; implementation and
+        // branch-completeness claims remain separate from this routing claim.
+        return eventId is NativePaelRewardsV111.PaelId
+            or NativeAncientRewardsV111.TezcataraId
+            or NativeOrobasEventV111.EventId
+            or NativeDarvEventV111.EventId
+            or NativeTanxEventV111.EventId
+            or NativeVakuuEventV111.EventId
+            or NativeNonupeipeEventV111.EventId;
+    }
+
+    private static bool HasCompleteAncientRelicBranches(
+        string eventId, int expectedCount)
+    {
+        if (!PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventId))
+            return false;
+
+        var choices = PrototypeContent.Event(eventId).Choices
+            .Where(choice => choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId is not null))
+            .ToArray();
+        if (choices.Length != expectedCount)
+            return false;
+
+        var relicIds = choices.Select(choice => choice.Effects
+            .Where(effect => effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId is not null)
+            .Select(effect => effect.RelicId!)
+            .Single()).ToArray();
+        return relicIds.Distinct(StringComparer.Ordinal).Count()
+                == expectedCount
+            && relicIds.All(relicId =>
+                PrototypeContent.Relic(relicId).Id == relicId)
+            && choices.All(choice =>
+                PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                    eventId, choice.Id));
     }
 
     private static string Normalize(string value) =>

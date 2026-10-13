@@ -371,7 +371,10 @@ public sealed class PrototypeNativeIndependentRewardsTests
             ExtraCardOptionUpgradeFlags =
                 [(bool[])oldFlags.Clone(), [true, false, false]],
             ExtraCardOptionsUpgraded = [false, false],
-            ExtraCardGroupsResolved = [false, false]
+            ExtraCardGroupsResolved = [false, false],
+            CardRewardGenerators =
+            [reward.CardRewardGenerators![0],
+                reward.CardRewardGenerators[1], null]
         };
         state = state with
         {

@@ -14,6 +14,10 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
   cards directly into hand. It excludes Jack itself, applies native
   `CardFactory.FilterForCombat` plus solo restrictions, and uses
   `CombatCardGeneration`.
+- **Lead Paperweight:** its deferred Neow reward uses the implemented
+  single-player Colorless reward pool, including epoch-gated cards. This
+  reward pool is distinct from the conservative combat-generation subset;
+  account unlock filtering is still deferred.
 - **Seeker Strike:** after its damage, randomly shortlist up to three
   draw-pile cards using `CombatCardSelection`; choose one to hand.
 - **Colorless epochs:** `Colorless1Epoch` through `Colorless5Epoch`

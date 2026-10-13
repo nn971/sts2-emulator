@@ -81,6 +81,15 @@ public sealed class PrototypeNativeEventOrderingTests
             && a.ReadPayload<EventChoicePayload>().ChoiceId == choice);
         state = engine.Step(state, action).State;
         PrototypeStateInvariants.Validate(state);
+        while (state.Phase == RunPhase.Event)
+        {
+            var continuation = engine.GetLegalActions(state)
+                .SingleOrDefault(item => item.Kind == "continue_event");
+            if (continuation is null)
+                break;
+            state = engine.Step(state, continuation).State;
+            PrototypeStateInvariants.Validate(state);
+        }
         return state;
     }
 
@@ -611,7 +620,9 @@ public sealed class PrototypeNativeEventOrderingTests
             && action.ReadPayload<ChooseEventDeckCardPayload>()
                 .CardInstanceId == originalDeck[1].InstanceId);
         state = engine.Step(state, second).State;
-        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(1, state.World!.Event!.NativePageIndex);
+        Assert.Equal("reach", state.World.Event.ChosenChoiceId);
         Assert.Equal(12, state.Player.Deck.Length);
         Assert.DoesNotContain(state.Player.Deck,
             card => card.InstanceId == originalDeck[0].InstanceId
@@ -620,6 +631,11 @@ public sealed class PrototypeNativeEventOrderingTests
             card => card.CardId == "proto.native.event.spore_mind"
                 && card.InstanceId == nextCardId);
         Assert.Equal(nextCardId + 1, state.World!.NextCardInstanceId);
+        Assert.Equal("continue_event",
+            Assert.Single(engine.GetLegalActions(state)).Kind);
+        state = engine.Step(state, Assert.Single(
+            engine.GetLegalActions(state))).State;
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
         PrototypeStateInvariants.Validate(state);
     }
 

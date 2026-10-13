@@ -120,23 +120,24 @@ public sealed class PrototypeUnderdocksTrashHeapTests
     }
 
     [Fact]
-    public void ImplementedCrossCharacterItemsStaySeparateFromUnsupportedIdentityHooks()
+    public void AllTenTrashHeapCardsHaveExecutableEffectSpecifications()
     {
         var cards = PrototypeNativeUnderdocksTrashHeap.CardIds
             .Select(PrototypeContent.Card).ToArray();
-        // The two simple Silent event cards remain executable.
+        Assert.Equal(10, cards.Length);
+        Assert.All(cards, card =>
+        {
+            Assert.True(card.MechanicsImplemented, card.Id);
+            Assert.NotEmpty(card.Effects);
+        });
+
+        // Preserve the source event-card values for Silent's two cards.
         Assert.True(cards[0].MechanicsImplemented); // Caltrops
         Assert.Equal(3, cards[0].Effects.Single().Amount);
         Assert.Equal(2, cards[0].Effects.Single().UpgradeDelta);
         Assert.True(cards[6].MechanicsImplemented); // Outmaneuver
         Assert.Equal(2, cards[6].Effects.Single().Amount);
         Assert.Equal(1, cards[6].Effects.Single().UpgradeDelta);
-
-        foreach (var index in new[] { 1, 2, 3, 4, 5, 7, 8, 9 })
-        {
-            Assert.True(cards[index].MechanicsImplemented);
-            Assert.NotEmpty(cards[index].Effects);
-        }
 
         Assert.True(cards[2].ExhaustOnUse);
     }
@@ -183,7 +184,17 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         var action = engine.GetLegalActions(state).Single(action =>
             action.Kind == "event_choice"
             && action.ReadPayload<EventChoicePayload>().ChoiceId == choice);
-        return engine.Step(state, action).State;
+        var resolved = engine.Step(state, action).State;
+        if (resolved.Phase == RunPhase.Event
+            && resolved.World?.Event is { } eventState
+            && eventState.EventId == EventId
+            && eventState.NativePageIndex == 1)
+        {
+            var continueEvent = engine.GetLegalActions(resolved).Single(item =>
+                item.Kind == "continue_event");
+            resolved = engine.Step(resolved, continueEvent).State;
+        }
+        return resolved;
     }
 
     private static RunState FindTrashHeap(

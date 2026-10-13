@@ -52,6 +52,12 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             var originalGold = state.Player.Gold;
             var first = Select(engine, state, "first_chest");
             var second = Select(engine, state, "second_chest");
+            Assert.Equal(RunPhase.Event, first.Phase);
+            Assert.Equal(1, first.World!.Event!.NativePageIndex);
+            Assert.Equal(RunPhase.Event, second.Phase);
+            Assert.Equal(1, second.World!.Event!.NativePageIndex);
+            first = Continue(engine, first);
+            second = Continue(engine, second);
             Assert.Equal(originalGold + evt.NativeEventGold,
                 first.Player.Gold);
             Assert.Equal(originalGold + evt.NativeEventSecondaryGold,
@@ -86,14 +92,74 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             var upgraded = light.Player.Deck.Count(card =>
                 card.UpgradeLevel > original[card.InstanceId]);
             Assert.Equal(2, upgraded);
+            Assert.Equal(RunPhase.Event, light.Phase);
+            Assert.Equal(1, light.World!.Event!.NativePageIndex);
+            Assert.Equal("continue_event",
+                Assert.Single(engine.GetLegalActions(light)).Kind);
+            light = engine.Step(light,
+                GameAction.Empty("continue_event")).State;
+            Assert.Equal(RunPhase.MapChoice, light.Phase);
 
             var dark = Select(engine, state, "dark");
             Assert.NotNull(dark.World!.Event?.PendingDeckChoice);
             Assert.Equal(PrototypePersistentDeckChoiceKind.Remove,
                 dark.World.Event!.PendingDeckChoice!.Kind);
+            var removedId = engine.GetLegalActions(dark).First(action =>
+                action.Kind == "choose_event_deck_card")
+                .ReadPayload<ChooseEventDeckCardPayload>().CardInstanceId;
+            dark = engine.Step(dark, engine.GetLegalActions(dark).Single(
+                action => action.Kind == "choose_event_deck_card"
+                    && action.ReadPayload<ChooseEventDeckCardPayload>()
+                        .CardInstanceId == removedId)).State;
+            Assert.DoesNotContain(dark.Player.Deck,
+                card => card.InstanceId == removedId);
+            Assert.Equal(RunPhase.Event, dark.Phase);
+            Assert.Equal(1, dark.World!.Event!.NativePageIndex);
+            dark = engine.Step(dark,
+                GameAction.Empty("continue_event")).State;
+            Assert.Equal(RunPhase.MapChoice, dark.Phase);
             return;
         }
         throw new InvalidOperationException("Doors never drawn.");
+    }
+
+    [Fact]
+    public void DoorsLightFinishesWhenNoCardCanBeUpgraded()
+    {
+        var engine = new PrototypeGameEngine();
+        RunState? state = null;
+        for (var i = 0; i < 128; i++)
+        {
+            var candidate = StartUnderdocksEvent(engine,
+                "doors-no-upgrades-" + i);
+            if (candidate.World!.Event!.EventId
+                == "proto.native.underdocks.doors_of_light_and_dark")
+            {
+                state = candidate;
+                break;
+            }
+        }
+        Assert.NotNull(state);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Select(card => card with
+                {
+                    UpgradeLevel = PrototypeContent.Card(card.CardId)
+                        .MaxUpgradeLevel
+                }).ToArray()
+            }
+        };
+        var deck = state.Player.Deck;
+        var result = Select(engine, state, "light");
+        Assert.Equal(deck, result.Player.Deck);
+        Assert.Equal(RunPhase.Event, result.Phase);
+        Assert.Equal(1, result.World!.Event!.NativePageIndex);
+        Assert.Equal("light", result.World.Event.ChosenChoiceId);
+        result = engine.Step(result,
+            GameAction.Empty("continue_event")).State;
+        Assert.Equal(RunPhase.MapChoice, result.Phase);
     }
 
     [Fact]
@@ -113,16 +179,24 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             var rolled = state.World.Event.NativeEventGold;
             Assert.InRange(rolled, 101, 121);
             var sword = Select(engine, state, "sword");
+            Assert.Equal(RunPhase.Event, sword.Phase);
+            Assert.Equal(1, sword.World!.Event!.NativePageIndex);
             Assert.Equal(original.Hp, sword.Player.Hp);
             Assert.Equal(original.Gold, sword.Player.Gold);
             Assert.Contains(sword.Player.Relics, relic =>
                 relic.RelicId == "proto.native.event.sword_of_stone");
+            sword = Continue(engine, sword);
+            Assert.Equal(RunPhase.MapChoice, sword.Phase);
 
             var dive = Select(engine, state, "dive");
+            Assert.Equal(RunPhase.Event, dive.Phase);
+            Assert.Equal(1, dive.World!.Event!.NativePageIndex);
             Assert.Equal(original.Gold + rolled, dive.Player.Gold);
             Assert.Equal(original.Hp - 7, dive.Player.Hp);
             Assert.DoesNotContain(dive.Player.Relics, relic =>
                 relic.RelicId == "proto.native.event.sword_of_stone");
+            dive = Continue(engine, dive);
+            Assert.Equal(RunPhase.MapChoice, dive.Phase);
             Assert.Equal(CanonicalJson.Sha256(state),
                 CanonicalJson.Sha256(state.Fork()));
             return;
@@ -151,6 +225,10 @@ public sealed class PrototypeNativeUnderdocksEventsTests
             && item.Payload.GetProperty("ChoiceId").GetString() == choice);
         return engine.Step(state, action).State;
     }
+
+    private static RunState Continue(
+        PrototypeGameEngine engine, RunState state) =>
+        engine.Step(state, GameAction.Empty("continue_event")).State;
 
     private static RunState StartUnderdocksEvent(
         PrototypeGameEngine engine, string seed)

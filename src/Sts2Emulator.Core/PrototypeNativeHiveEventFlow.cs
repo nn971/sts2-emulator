@@ -57,13 +57,14 @@ public sealed partial class PrototypeGameEngine
         int[] damages = [5, 6, 7];
         if (choice == "extract")
         {
-            return CompleteRoomToMap(state with
+            state = state with
             {
                 Player = state.Player with
                 {
-                    Gold = state.Player.Gold + prizes[stage]
+                    Gold = GoldAfterGain(state.Player, prizes[stage])
                 }
-            });
+            };
+            return FinishColossalFlower(state, eventState, choice);
         }
 
         var hp = Math.Max(0, state.Player.Hp - damages[stage]);
@@ -101,8 +102,25 @@ public sealed partial class PrototypeGameEngine
             player, PrototypeRunEventKind.RelicAcquired,
             acquiredRelicId: PrototypeNativeHiveEvents.PollinousCoreId,
             rng: state.Rng);
-        return CompleteRoomToMap(state with { Player = player });
+        return FinishColossalFlower(state with { Player = player },
+            eventState, choice);
     }
+
+    private static RunState FinishColossalFlower(
+        RunState state, EventState eventState, string choice) =>
+        state with
+        {
+            World = RequireWorld(state) with
+            {
+                Event = eventState with
+                {
+                    NativePageIndex =
+                        PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                            eventState.EventId),
+                    ChosenChoiceId = choice
+                }
+            }
+        };
 
     /// <summary>
     /// PollinousCore.BeforeHandDraw increments its saved TurnsSeen

@@ -25,9 +25,21 @@ public sealed class V111FabricatorNormalTests
             Assert.True(item.Registered, item.NativeId);
             Assert.NotEmpty(item.EngineIds);
         });
+        var routed = ExperimentalSilentThreeActRouteV111.HiveNormal
+            .Concat(ExperimentalSilentThreeActRouteV111.GloryNormal)
+            .ToHashSet(StringComparer.Ordinal);
         Assert.All(normals.Where(item =>
-            PrototypeContent.Encounter(item.EngineIds[0]).MinAct >= 2),
-            item => Assert.Equal("missing", item.Integration));
+            routed.Contains(item.EngineIds[0])),
+            item =>
+            {
+                Assert.Equal("implemented", item.Implementation);
+                Assert.Equal("integrated", item.Integration);
+                Assert.Equal("unverified", item.Validation);
+            });
+        var fixtureOnly = Assert.Single(normals, item =>
+            item.NativeId == "TUNNELER_NORMAL");
+        Assert.Equal("partial", fixtureOnly.Implementation);
+        Assert.Equal("missing", fixtureOnly.Integration);
     }
 
     [Theory]

@@ -22,6 +22,56 @@ jobs:
         run: python tools/check_v111_coverage.py
       - name: v111 Python binding, snapshots and deterministic batches
         run: python tools/v111_interface_smoke.py
+      - name: Unassisted v111 Silent natural-run integrity sweep
+        run: |
+          set +e
+          dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-natural-sweep 128 0 0 /tmp/v111-natural-checkpoints > /tmp/v111-natural-smoke.json
+          status=$?
+          set -e
+          python - <<'PY'
+          import json
+          import pathlib
+          import subprocess
+          r = json.load(open("/tmp/v111-natural-smoke.json"))
+          assert r["completed"] + r["blocked"] == len(r["runs"]) == 256
+          assert r["defeats"] + r["victories"] == r["completed"]
+          print("Natural Silent seeded smoke:",
+                "runs =", len(r["runs"]),
+                "terminal =", r["completed"],
+                "victory =", r["victories"],
+                "defeat =", r["defeats"],
+                "blocked =", r["blocked"],
+                "reached Hive =", r["reachedHive"],
+                "reached Glory =", r["reachedGlory"])
+          for run in r["runs"]:
+              if run["blocker"]:
+                  print("BLOCKER", run["seed"], run["terminalAct"],
+                        run["terminalFloor"], run["blocker"],
+                        "encounter =", run["lastEncounter"],
+                        "recent =", run["recentActions"])
+          cli = "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"
+          checked = 0
+          for run in r["runs"]:
+              for checkpoint in run["checkpoints"]:
+                  path = pathlib.Path("/tmp/v111-natural-checkpoints") / checkpoint["file"]
+                  assert path.exists(), path
+                  result = json.loads(subprocess.check_output(
+                      ["dotnet", cli, "v111-natural-resume", str(path)], text=True))
+                  assert result["finalHash"] == run["finalHash"], run["seed"]
+                  assert result["outcome"] == run["outcome"], run["seed"]
+                  assert result["blocker"] == run["blocker"], run["seed"]
+                  checked += 1
+          print("Exact act-entry snapshots resumed to identical terminal hashes:", checked)
+          PY
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v111-natural-run-smoke
+          path: |
+            /tmp/v111-natural-smoke.json
+            /tmp/v111-natural-checkpoints/
+          if-no-files-found: ignore
       - name: Reproducible v111 coverage and performance reports
         run: |
           dotnet src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll v111-coverage > /tmp/v111-coverage.json

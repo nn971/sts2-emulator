@@ -55,7 +55,9 @@ public sealed class V111HiveFieldOfHolesTests
             c.CardId == PrototypeNativeHiveEvents.NormalityId);
 
         state = ChooseCard(state, second);
-        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(1, state.World!.Event!.NativePageIndex);
+        Assert.Equal("resist", state.World.Event.ChosenChoiceId);
         Assert.Equal(startCount - 1, state.Player.Deck.Length);
         Assert.DoesNotContain(state.Player.Deck, c =>
             c.InstanceId == first || c.InstanceId == second);
@@ -63,6 +65,8 @@ public sealed class V111HiveFieldOfHolesTests
             c.CardId == PrototypeNativeHiveEvents.NormalityId);
         Assert.Equal(newId, curse.InstanceId);
         Assert.Equal(newId + 1, state.World!.NextCardInstanceId);
+        state = Continue(state);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(initial, CanonicalJson.Sha256(Fixture()));
         Assert.Equal(CanonicalJson.Sha256(state),
             CanonicalJson.Sha256(state.Fork()));
@@ -82,13 +86,17 @@ public sealed class V111HiveFieldOfHolesTests
                 .CardInstanceId == selected.InstanceId);
 
         state = ChooseCard(state, selected.InstanceId);
-        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        Assert.Equal(RunPhase.Event, state.Phase);
+        Assert.Equal(1, state.World!.Event!.NativePageIndex);
+        Assert.Equal("enter_your_hole", state.World.Event.ChosenChoiceId);
         Assert.Equal(PrototypeCardEnchantmentKind.PerfectFit,
             state.Player.Deck.Single(c =>
                 c.InstanceId == selected.InstanceId).Enchantment!.Kind);
         Assert.All(state.Player.Deck.Where(c =>
             c.InstanceId != selected.InstanceId),
             c => Assert.Null(c.Enchantment));
+        state = Continue(state);
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(CanonicalJson.Sha256(state),
             CanonicalJson.Sha256(state.Fork()));
     }
@@ -290,4 +298,7 @@ public sealed class V111HiveFieldOfHolesTests
                 .CardInstanceId == id);
         return Engine.Step(state, action).State;
     }
+
+    private static RunState Continue(RunState state) =>
+        Engine.Step(state, GameAction.Empty("continue_event")).State;
 }

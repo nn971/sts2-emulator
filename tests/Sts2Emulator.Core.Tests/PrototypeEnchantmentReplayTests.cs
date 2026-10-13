@@ -198,6 +198,48 @@ public sealed class PrototypeEnchantmentReplayTests
     }
 
     [Fact]
+    public void SwiftDrawsItsAmountOnlyAfterTheFirstPlayEachCombat()
+    {
+        var strike = Card(1, "proto.silent.strike",
+            enchantment: new(PrototypeCardEnchantmentKind.Swift, 2));
+        var drawCards = new[]
+        {
+            Card(2, "proto.silent.defend"),
+            Card(3, "proto.silent.defend"),
+            Card(4, "proto.silent.defend")
+        };
+        var engine = new PrototypeGameEngine();
+        var state = CreateState(energy: 3, hand: [strike],
+            drawCards: drawCards);
+
+        state = PlayCard(engine, state, strike.InstanceId);
+
+        var combat = state.World!.Combat!;
+        Assert.Equal(2, combat.Hand.Length);
+        Assert.True(combat.Cards.Single(card =>
+            card.InstanceId == strike.InstanceId)
+            .EnchantmentTriggeredThisCombat);
+
+        combat = combat with
+        {
+            Hand = [strike.InstanceId],
+            DiscardPile = combat.DiscardPile
+                .Where(id => id != strike.InstanceId).ToArray()
+        };
+        state = state with
+        {
+            World = state.World with { Combat = combat }
+        };
+        state = PlayCard(engine, state, strike.InstanceId);
+
+        combat = state.World!.Combat!;
+        Assert.Empty(combat.Hand);
+        Assert.True(combat.Cards.Single(card =>
+            card.InstanceId == strike.InstanceId)
+            .EnchantmentTriggeredThisCombat);
+    }
+
+    [Fact]
     public void GlamAndBurstStackOnlyOnTheFirstPlay()
     {
         var defend = Card(
@@ -266,16 +308,18 @@ public sealed class PrototypeEnchantmentReplayTests
     private static RunState CreateState(
         int energy,
         CombatCardInstance[] hand,
-        PrototypePowerInstanceState[]? powers = null)
+        PrototypePowerInstanceState[]? powers = null,
+        CombatCardInstance[]? drawCards = null)
     {
         powers ??= [];
+        drawCards ??= [];
         var empty = PrototypeJson.EmptyObject();
 
         var player = new PlayerState(
             70,
             70,
             0,
-            hand.Select(card => new CardInstance(
+            hand.Concat(drawCards).Select(card => new CardInstance(
                 card.PersistentCardInstanceId!.Value,
                 card.CardId,
                 card.UpgradeLevel,
@@ -291,7 +335,7 @@ public sealed class PrototypeEnchantmentReplayTests
             PlayerBlock: 0,
             Hand: hand.Select(
                 card => card.InstanceId).ToArray(),
-            DrawPile: [],
+            DrawPile: drawCards.Select(card => card.InstanceId).ToArray(),
             DiscardPile: [],
             ExhaustPile: [],
             Enemies:
@@ -306,8 +350,8 @@ public sealed class PrototypeEnchantmentReplayTests
                         StringComparer.Ordinal))
             ],
             NextCardInstanceId:
-                hand.Max(card => card.InstanceId) + 1,
-            Cards: hand,
+                hand.Concat(drawCards).Max(card => card.InstanceId) + 1,
+            Cards: hand.Concat(drawCards).ToArray(),
             PlayerPowers: powers,
             NextPowerApplicationOrder:
                 powers.Length == 0

@@ -2,7 +2,7 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Persistent rarity-partitioned relic queues for the restricted
-/// single-player Overgrowth/Silent profile. The native game shuffles
+/// configured single-player Silent profile. The native game shuffles
 /// queues at run creation and draws front for rewards, back for shops.
 /// This class preserves the mechanics, not byte-identical RNG.
 /// </summary>
@@ -39,6 +39,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.anchor"] = PrototypeRelicRarity.Common,
             ["proto.relic.vajra"] = PrototypeRelicRarity.Common,
             ["proto.relic.blood_vial"] = PrototypeRelicRarity.Common,
+            ["proto.relic.potion_belt"] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSilentRelics.SneckoSkullId] = PrototypeRelicRarity.Common,
             ["proto.relic.meal_ticket"] = PrototypeRelicRarity.Common,
             ["proto.relic.bronze_scales"] = PrototypeRelicRarity.Common,
             ["proto.relic.oddly_smooth_stone"] = PrototypeRelicRarity.Common,
@@ -51,6 +53,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.lucky_fysh"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.gremlin_horn"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.mercury_hourglass"] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSilentRelics.TwistedFunnelId] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.orichalcum"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.horn_cleat"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.tingsha"] = PrototypeRelicRarity.Uncommon,
@@ -63,9 +66,12 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.toxic_egg"] = PrototypeRelicRarity.Rare,
             ["proto.relic.frozen_egg"] = PrototypeRelicRarity.Rare,
             ["proto.relic.captains_wheel"] = PrototypeRelicRarity.Rare,
+            ["proto.relic.black_star"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSilentRelics.PaperKraneId] = PrototypeRelicRarity.Rare,
             ["proto.relic.kunai"] = PrototypeRelicRarity.Rare,
             ["proto.relic.shuriken"] = PrototypeRelicRarity.Rare,
             ["proto.relic.ice_cream"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSilentRelics.HelicalDartId] = PrototypeRelicRarity.Rare,
             ["proto.relic.tough_bandages"] = PrototypeRelicRarity.Rare,
             ["proto.relic.prayer_wheel"] = PrototypeRelicRarity.Rare,
             ["proto.relic.white_beast_statue"] = PrototypeRelicRarity.Rare,
@@ -76,7 +82,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.lees_waffle"] = PrototypeRelicRarity.Shop,
             ["proto.relic.membership_card"] = PrototypeRelicRarity.Shop,
             ["proto.relic.burning_sticks"] = PrototypeRelicRarity.Shop,
-            ["proto.relic.toolbox"] = PrototypeRelicRarity.Shop
+            ["proto.relic.toolbox"] = PrototypeRelicRarity.Shop,
+            [PrototypeNativeSilentRelics.NinjaScrollId] = PrototypeRelicRarity.Shop
         };
 
     private static readonly HashSet<string> NotSoldInShops =
@@ -209,6 +216,31 @@ public static class PrototypeNativeRelicGrabBag
         }
 
         return (bag, null);
+    }
+
+    /// <summary>
+    /// RelicCmd.Obtain can grant a specific relic outside the ordinary
+    /// grab-bag draw path (events, Ancients and special rewards). Such
+    /// acquired entries must be removed from all persistent queues before
+    /// the next decision boundary. Do not reshuffle or consume RNG.
+    /// </summary>
+    public static RunWorldState PruneOwned(
+        RunWorldState world, PlayerState player)
+    {
+        if (world.RelicBag is not { } bag)
+            return world;
+        var owned = player.Relics.Select(relic => relic.RelicId)
+            .ToHashSet(StringComparer.Ordinal);
+        static string[] Prune(string[] remaining, HashSet<string> owned) =>
+            remaining.Where(id => !owned.Contains(id)).ToArray();
+        var pruned = bag with
+        {
+            Common = Prune(bag.Common, owned),
+            Uncommon = Prune(bag.Uncommon, owned),
+            Rare = Prune(bag.Rare, owned),
+            Shop = Prune(bag.Shop, owned)
+        };
+        return world with { RelicBag = pruned };
     }
 
     public static (RunWorldState World, string? Id) Draw(

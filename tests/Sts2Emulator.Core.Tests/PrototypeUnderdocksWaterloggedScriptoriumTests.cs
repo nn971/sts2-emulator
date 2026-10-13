@@ -249,7 +249,8 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
         var action = engine.GetLegalActions(state).Single(item =>
             item.Kind == "event_choice"
             && item.ReadPayload<EventChoicePayload>().ChoiceId == choice);
-        return engine.Step(state, action).State;
+        return ContinueResultPage(engine,
+            engine.Step(state, action).State);
     }
 
     private static RunState SelectCard(
@@ -259,6 +260,24 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
             item.Kind == "choose_event_deck_card"
             && item.ReadPayload<ChooseEventDeckCardPayload>().CardInstanceId
                 == id);
+        return ContinueResultPage(engine,
+            engine.Step(state, action).State);
+    }
+
+    private static RunState ContinueResultPage(
+        PrototypeGameEngine engine, RunState state)
+    {
+        if (state.Phase != RunPhase.Event
+            || state.World?.Event is not { } eventState
+            || eventState.EventId != EventId
+            || eventState.NativePageIndex != 1
+            || eventState.ChosenChoiceId is null)
+        {
+            return state;
+        }
+
+        var action = engine.GetLegalActions(state).Single(item =>
+            item.Kind == "continue_event");
         return engine.Step(state, action).State;
     }
 

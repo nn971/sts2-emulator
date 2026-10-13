@@ -91,6 +91,39 @@ public sealed class PrototypeNativeCardRarityOddsTests
             left.Streams.Single(s => s.StreamId == "reward").CallCount);
     }
 
+    [Fact]
+    public void EncounterSelectionUsesPinnedCharacterPoolOrderWithinRarity()
+    {
+        const int offset = 1600;
+        const int ascension = 3;
+        const int act = 3;
+        var actualRng = PrototypeRng.CreateBundle(
+            "card-odds-encounter-source-order");
+        var expectedRng = actualRng.Fork();
+        var (rolled, nextOffset) = PrototypeNativeCardRarityOdds.Roll(
+            offset, ascension,
+            PrototypeNativeCardOddsSource.RegularEncounter, expectedRng);
+        var pool = PrototypeContent.NativeSilentRewardCardPool.ToList();
+        var rarity = PrototypeNativeCardRarityOdds.NextAvailableRarity(
+            rolled,
+            pool.Select(id => PrototypeContent.Card(id).Rarity)
+                .Distinct().ToArray());
+        var candidates = pool.Where(id =>
+            PrototypeContent.Card(id).Rarity == rarity).ToArray();
+        var expectedCard = candidates[PrototypeRng.NextInt(
+            expectedRng, "reward", candidates.Length)];
+        var expectedUpgrade = PrototypeNativeCardRarityOdds
+            .RollEncounterCardUpgrade(expectedCard, act, ascension,
+                expectedRng);
+
+        var actual = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+            1, ascension, PrototypeRoomType.Combat, offset, actualRng, act);
+
+        Assert.Equal(new[] { expectedCard }, actual.Cards);
+        Assert.Equal(new[] { expectedUpgrade }, actual.UpgradeFlags);
+        Assert.Equal(nextOffset, actual.NextOffsetBasisPoints);
+    }
+
     [Theory]
     [InlineData(1, 0, 0)]
     [InlineData(2, 0, 1250)]
@@ -168,6 +201,34 @@ public sealed class PrototypeNativeCardRarityOddsTests
             s => s.StreamId == "shop").CallCount);
         Assert.All(a, id => Assert.Equal(PrototypeCardType.Attack,
             PrototypeContent.Card(id).Type));
+    }
+
+    [Fact]
+    public void MerchantSelectionUsesPinnedCharacterPoolOrderWithinRarity()
+    {
+        var actualRng = PrototypeRng.CreateBundle(
+            "card-odds-merchant-source-order");
+        var expectedRng = actualRng.Fork();
+        var (rolled, _) = PrototypeNativeCardRarityOdds.Roll(
+            1250, 0, PrototypeNativeCardOddsSource.Shop, expectedRng);
+        var pool = PrototypeContent.NativeSilentRewardCardPool
+            .Where(id => PrototypeContent.Card(id).Type
+                == PrototypeCardType.Attack)
+            .ToArray();
+        var rarity = PrototypeNativeCardRarityOdds.NextAvailableRarity(
+            rolled,
+            pool.Select(id => PrototypeContent.Card(id).Rarity)
+                .Distinct().ToArray());
+        var candidates = pool.Where(id =>
+            PrototypeContent.Card(id).Rarity == rarity).ToArray();
+        var expected = candidates[PrototypeRng.NextInt(
+            expectedRng, "shop", candidates.Length)];
+        _ = PrototypeRng.NextInt(expectedRng, "shop", 10000);
+
+        var actual = PrototypeNativeCardRarityOdds.GenerateMerchantCards(
+            1, 0, PrototypeCardType.Attack, 1250, actualRng);
+
+        Assert.Equal(new[] { expected }, actual);
     }
 
     [Fact]

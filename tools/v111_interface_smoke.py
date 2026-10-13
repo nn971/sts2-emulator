@@ -19,6 +19,22 @@ def main():
     command = [args.dotnet, str(ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"), "prototype-ai-jsonl"]
     with Session(command) as session:
         assert session.capabilities["v111FidelityId"] == "v111-mechanics-prototype-rng-v1"
+        # Opt-in full-route execution must be selectable through the same
+        # public JSONL/Python binding without changing the default fidelity.
+        experimental = session.reset("three-act-wire", fidelity_id=
+            "v111-experimental-silent-three-act-route-v1")
+        assert json.loads(experimental.save_snapshot())["state"]["configuration"][
+            "fidelity_id"] == "v111-experimental-silent-three-act-route-v1"
+        experimental_started = experimental.step(experimental.actions()[0]["actionId"])
+        assert experimental_started.actions()
+        experimental.release()
+        experimental_started.release()
+        try:
+            session.reset("bad-fidelity-wire", fidelity_id="invalid-route")
+        except EmulatorError:
+            pass
+        else:
+            raise AssertionError("An unsupported fidelity override succeeded")
         for region in ["Overgrowth", "Underdocks"]:
             root = session.reset("binding-" + region, first_act=region)
             parent_hash = root.exact_hash()
