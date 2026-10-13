@@ -48,10 +48,17 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
         "native_source_hook_order_parity": "NOT_TESTED",
         "exact_native_rng_parity": "NOT_TESTED",
         "conditional_chance_law": "NOT_CALIBRATED",
-        "random_boundary_capture": "NOT_IN_NATIVE_SIDECAR_YET",
+        "random_boundary_capture": (
+            "NATIVE_SOURCE_CALLS_PRESENT_UNATTRIBUTED"
+            if corpus.get("native_rng_unattributed_calls", 0) else
+            "SOURCE_RNG_CALLS_OBSERVED_NOT_YET_PAIRED"
+            if corpus.get("native_rng_source_calls", 0) else
+            "NOT_IN_NATIVE_SIDECAR_YET"),
         "verification_boundary": "ISOLATED_SUPPORTED_NATIVE_CHECKPOINTS_ONLY",
         "capture": {
             "sidecar_files": captures,
+            "native_rng_source_calls": corpus.get("native_rng_source_calls", 0),
+            "native_rng_unattributed_calls": corpus.get("native_rng_unattributed_calls", 0),
             "strict_trace_files": strict.get("trace_count", 0),
             "strict_traces_complete": strict.get("structurally_valid_count", 0),
             "closed_decision_prefixes": prefixes_count,
