@@ -73,6 +73,18 @@ class NativeRngBoundaryCompareTests(unittest.TestCase):
         self.assertEqual("NATIVE_RNG_CALLSITE_UNATTRIBUTED",
             compare_native_emulator([unattributed], engine(), 4)["status"])
 
+    def test_index_match_does_not_claim_semantic_candidate_parity(self):
+        step = engine()
+        req = step["emulator_random_boundaries"][0]["request"]
+        req["operation_kind"] = "choose_index"
+        del req["bounded_count"]
+        req["ordered_candidates"] = [44, 45]
+        report = compare_native_emulator([row()], step, 4)
+        self.assertEqual(
+            "OBSERVED_RNG_PRIMITIVE_INDEX_ONLY_ELIGIBILITY_UNVERIFIED",
+            report["status"])
+        self.assertEqual(1, report["compared"])
+
     def test_wrong_action_is_not_cross_correlated(self):
         self.assertEqual("NATIVE_RNG_SOURCE_UNOBSERVED",
             compare_native_emulator([row(action=7)], engine(), 4)["status"])
