@@ -49,8 +49,10 @@ class EnvelopeAuditTests(unittest.TestCase):
                          default["native_rng_source_coverage"])
         records = sample()
         records[0]["data"]["native_rng_hook_installed"] = True
+        records[0]["data"]["native_monster_ai_scope_installed"] = True
         installed = audit(records)
         self.assertTrue(installed["native_rng_hook_installed"])
+        self.assertTrue(installed["native_monster_ai_scope_installed"])
         self.assertEqual("HOOK_INSTALLED_NO_SOURCE_CALLS_OBSERVED",
                          installed["native_rng_source_coverage"])
         self.assertEqual(0, installed["native_rng_source_calls"])
