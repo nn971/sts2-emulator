@@ -20,7 +20,7 @@ jobs:
         run: dotnet build Sts2Emulator.sln -c Release --no-restore
       - name: RNG, native Inspector and actual-engine fidelity unit tests
         run: |
-          dotnet test Sts2Emulator.sln -c Release --no-build --filter 'FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~RandomIndexProvidersV111Tests|FullyQualifiedName~RandomIntentProviderV111Tests|FullyQualifiedName~ControlledInitialHpV111Tests|FullyQualifiedName~ControlledIntentsV111Tests|FullyQualifiedName~NativeActionEnvelopeRecorderTests|FullyQualifiedName~NativeEngineFidelityV111Tests|FullyQualifiedName~NativeEngineFidelityBatchV111Tests'
+          dotnet test Sts2Emulator.sln -c Release --no-build --filter 'FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~RandomIndexProvidersV111Tests|FullyQualifiedName~RandomIntentProviderV111Tests|FullyQualifiedName~ControlledInitialHpV111Tests|FullyQualifiedName~ControlledIntentsV111Tests|FullyQualifiedName~NativeRngSourceRegistryV111Tests|FullyQualifiedName~NativeActionEnvelopeRecorderTests|FullyQualifiedName~NativeEngineFidelityV111Tests|FullyQualifiedName~NativeEngineFidelityBatchV111Tests'
       - name: Native Inspector strict and sidecar audit tools
         run: python -m unittest discover -s tests -p 'test_native_*.py' -v
       - name: Unified gate and explicit source RNG first-divergence tests
