@@ -387,6 +387,18 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "THE_ARCHITECT"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeArchitectEnding.EventId,
+                StringComparer.Ordinal)
+            && PrototypeNativeArchitectEnding.Definition.Choices
+                .Select(choice => choice.Id)
+                .SequenceEqual(
+                    [PrototypeNativeArchitectEnding.ProceedChoiceId],
+                    StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "MORPHIC_GROVE" && missingBranches.Length == 0
             && engineIds.Contains("proto.native.event.morphic_grove",
                 StringComparer.Ordinal))
@@ -1217,6 +1229,8 @@ public static class V111Coverage
     private static bool IsIntegratedEvent(string eventId)
     {
         if (eventId == PrototypeNativeOvergrowthEvents.NeowEventId)
+            return true;
+        if (eventId == PrototypeNativeArchitectEnding.EventId)
             return true;
         if (PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(eventId))
             return true;

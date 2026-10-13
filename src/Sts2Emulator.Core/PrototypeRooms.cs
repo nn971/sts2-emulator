@@ -1084,6 +1084,9 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
             return StepNativeFutureOfPotions(state, action);
 
+        if (eventState.EventId == PrototypeNativeArchitectEnding.EventId)
+            return StepNativeArchitectEnding(state, action);
+
         if (eventState.EventId == PrototypeNativeRelicTrader.EventId)
             return StepNativeRelicTrader(state, action);
 
@@ -4793,6 +4796,12 @@ public sealed partial class PrototypeGameEngine
 
         if (world.Act >= PrototypeContent.Rules.Acts)
         {
+            if (state.Configuration?.UsesExperimentalSilentThreeActRoute
+                == true)
+            {
+                return PrototypeNativeArchitectEnding
+                    .EnterAfterFinalBoss(state);
+            }
             return EndRun(state, "victory");
         }
 

@@ -15925,17 +15925,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.the_architect"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TheArchitect.cs#3d3ea8889b71d0781a0d6bc06ed2db2c5c6786dfeefbfe9f7bfa4503af70149a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "THE_ARCHITECT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29421,8 +29423,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 53,
-        "integrated": 56,
+        "implemented": 54,
+        "integrated": 57,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

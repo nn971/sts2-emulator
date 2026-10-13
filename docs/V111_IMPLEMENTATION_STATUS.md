@@ -70,6 +70,10 @@ pairs, then removes the selected relic and applies the replacement's
 acquisition effects. The supported Silent relic bag supplies replacements;
 source rarity and relic pool parity remain unverified. See the
 [Relic Trader audit](reference-builds/v0.111.0-relic-trader.md).
+After the final Glory boss reward, configured Silent runs now enter The
+Architect's one-choice ending and become victorious after Proceed. The
+profile-specific dialogue and visual scene are omitted from the headless
+state; see the [ending audit](reference-builds/v0.111.0-the-architect.md).
 Stone of All Time is integrated in Hive. Lift discards the potion chosen on
 event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one
 eligible Attack for Vigorous 8. Vigorous adds its amount to powered Attack

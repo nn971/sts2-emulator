@@ -684,7 +684,8 @@ public static class PrototypeStateInvariants
                     PrototypeNativeGloryEvents.GraveOfTheForgottenId
                 && active.Id != PrototypeNativeGloryEvents.TrialId
                 && active.Id != PrototypeNativeGloryEvents.BattlewornDummyId
-                && active.Id != PrototypeNativeGloryEvents.TinkerTimeId))
+                && active.Id != PrototypeNativeGloryEvents.TinkerTimeId
+                && active.Id != PrototypeNativeArchitectEnding.EventId))
         {
             throw new InvalidOperationException(
                 $"Event '{active.Id}' is ineligible in act {world.Act}.");

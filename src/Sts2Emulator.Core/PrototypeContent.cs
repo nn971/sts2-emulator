@@ -6789,6 +6789,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeSharedEvents.ThisOrThatDefinition)
             .Append(PrototypeNativeFutureOfPotions.Definition)
             .Append(PrototypeNativeRelicTrader.Definition)
+            .Append(PrototypeNativeArchitectEnding.Definition)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
             .Append(NativeAncientRewardsV111.TezcataraRewardDefinition)
