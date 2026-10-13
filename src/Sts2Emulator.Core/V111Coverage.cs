@@ -972,6 +972,34 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "AKABEKO"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.AkabekoId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.AkabekoId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.AkabekoId, out var akabekoRarity)
+            && akabekoRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.AkabekoId).Triggers?.Any(trigger =>
+                trigger.EventKind
+                    == PrototypeCombatEventKind.PlayerSideTurnStarted
+                && trigger.TurnEquals == 1
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.ApplyPlayerPower
+                    && effect.Amount == 8
+                    && effect.PowerId
+                        == PrototypeNativeSharedRelics.VigorId)) == true
+            && PrototypeContent.Power(
+                PrototypeNativeSharedRelics.VigorId)
+                .PlayerAttackDamageBonusPerStack == 1)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "NINJA_SCROLL"
             && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
                 StringComparer.Ordinal)
@@ -1031,6 +1059,35 @@ public static class V111Coverage
                     && effect.Amount == 2)) == true)
         {
             implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "powers"
+            && item.Id == "VIGOR"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.VigorId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Power(
+                PrototypeNativeSharedRelics.VigorId) is
+                {
+                    PlayerAttackDamageBonusPerStack: 1,
+                    EnemyAttackDamageBonusPerStack: 1,
+                    ConsumeAfterEnemyAttack: true
+                }
+            && PrototypeContent.Enemy("proto.enemy.terror_eel").Moves
+                .Any(move => move.Effects.Any(effect =>
+                    effect.Kind == PrototypeEnemyEffectKind.ApplyEnemyPower
+                    && effect.PowerId
+                        == PrototypeNativeSharedRelics.VigorId))
+            && PrototypeNativeUnderdocks.SupportedEliteEncounterIds.Contains(
+                "proto.encounter.terror_eel_elite",
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.AkabekoId,
+                StringComparer.Ordinal))
+        {
+            // Route-backed Vigor cases are modeled; cardless powered
+            // attack commands remain outside the current combat API.
+            implementation = "partial";
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"

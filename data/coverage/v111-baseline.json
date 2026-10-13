@@ -23893,7 +23893,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Powers/VigorPower.cs#55dcf1d1fec473d5c3da51d253ff9159e1e5c715bc2453a7c518531317bd3290"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "powers",
         "missing_branches": [],
         "missing_variants": [],
@@ -24046,17 +24046,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.akabeko"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Akabeko.cs#c7987f6de16afb2a7910507f12fc9803298798a8425b670d8f44e1f2ed058236"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "AKABEKO",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29472,7 +29474,7 @@
         "eligible": 246,
         "excluded": 19,
         "implemented": 0,
-        "integrated": 0,
+        "integrated": 1,
         "kind": "powers",
         "scope_review_required": 0,
         "validated": 0
@@ -29481,8 +29483,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 73,
-        "integrated": 73,
+        "implemented": 74,
+        "integrated": 74,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

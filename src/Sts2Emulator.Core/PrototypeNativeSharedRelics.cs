@@ -1,0 +1,24 @@
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// Shared v0.111.0 relic behavior used by configured Silent runs.
+/// </summary>
+public static class PrototypeNativeSharedRelics
+{
+    public const string AkabekoId = "proto.relic.akabeko";
+    public const string VigorId = "proto.power.vigor";
+
+    public static PrototypeRelicDefinition[] Relics { get; } =
+    [
+        // Akabeko.AfterSideTurnStart grants 8 Vigor on the owner's first
+        // turn. PlayerSideTurnStarted is the corresponding combat boundary.
+        new(AkabekoId, "Akabeko",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                    [new(PrototypeCombatEffectKind.ApplyPlayerPower, 8,
+                        PowerId: VigorId)],
+                    TurnEquals: 1)
+            ])
+    ];
+}

@@ -75,6 +75,10 @@ Architect's one-choice ending and become victorious after Proceed. The
 ending links to a zero-weight scene encounter with a 9999 HP Architect actor.
 Profile-specific dialogue and animations remain omitted from the headless
 state; see the [ending audit](reference-builds/v0.111.0-the-architect.md).
+Akabeko is now in the shared Silent Uncommon relic pool and grants 8 Vigor at
+the start of its owner's first combat turn. Card-backed Attack cards consume
+Vigor after the completed attack; cardless powered attacks remain unmodeled.
+See the [pinned Akabeko and Vigor audit](reference-builds/v0.111.0-akabeko.md).
 Stone of All Time is integrated in Hive. Lift discards the potion chosen on
 event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one
 eligible Attack for Vigorous 8. Vigorous adds its amount to powered Attack

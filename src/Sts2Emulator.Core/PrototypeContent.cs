@@ -3275,6 +3275,7 @@ public static class PrototypeContent
                 ])
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
             .Concat(PrototypeNativeSilentRelics.Relics)
+            .Concat(PrototypeNativeSharedRelics.Relics)
             .Concat(PrototypeNativeFakeMerchant.Relics)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .Concat(PrototypeNativeHiveEvents.Relics)
@@ -7532,6 +7533,7 @@ public static class PrototypeContent
         "proto.relic.ink_bottle",
         "proto.relic.bag_of_preparation",
         "proto.relic.ornamental_fan",
+        PrototypeNativeSharedRelics.AkabekoId,
         "proto.relic.nunchaku",
         "proto.relic.letter_opener",
         "proto.relic.happy_flower",
