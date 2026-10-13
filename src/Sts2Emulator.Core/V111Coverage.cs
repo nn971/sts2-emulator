@@ -512,6 +512,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "GOLDEN_COMPASS"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.GoldenCompassId,
+                StringComparer.Ordinal)
+            && HasGoldenCompassPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -3379,6 +3389,129 @@ public static class V111Coverage
             && NativeAncientRewardsV111.KindleCount(
                 NativeAncientRewardsV111.AfterCombatEnd(meltedPlayer)
                     .Relics[0]) == 5;
+    }
+
+    private static bool HasGoldenCompassPath()
+    {
+        var relicId = NativeAncientRewardsV111.GoldenCompassId;
+        var choiceId = "take_" + relicId;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        var expectedRooms = new[]
+        {
+            PrototypeRoomType.Combat,
+            PrototypeRoomType.Unknown,
+            PrototypeRoomType.Combat,
+            PrototypeRoomType.Rest,
+            PrototypeRoomType.Combat,
+            PrototypeRoomType.Rest,
+            PrototypeRoomType.Unknown,
+            PrototypeRoomType.Treasure,
+            PrototypeRoomType.Unknown,
+            PrototypeRoomType.Treasure,
+            PrototypeRoomType.Unknown,
+            PrototypeRoomType.Shop,
+            PrototypeRoomType.Elite,
+            PrototypeRoomType.Rest,
+            PrototypeRoomType.Elite,
+            PrototypeRoomType.Rest,
+            PrototypeRoomType.Boss
+        };
+
+        static RunState AddCompass(RunState before, string relicId)
+        {
+            var after = before with
+            {
+                Player = before.Player with
+                {
+                    Relics = before.Player.Relics.Append(
+                        new RelicInstance(relicId,
+                            PrototypeJson.EmptyObject())).ToArray()
+                }
+            };
+            return PrototypeGoldenPathMapV111.ApplyAcquisition(
+                before, after);
+        }
+
+        static bool HasGoldenMap(MapState map,
+            PrototypeRoomType[] expectedRooms, int act)
+        {
+            if (map.GenerationProfileId
+                    != PrototypeGoldenPathMapV111.ProfileId
+                || map.Nodes.Length != expectedRooms.Length
+                || map.EntryNodeIds is not { Length: 1 } entries
+                || entries[0] != $"{act}:1:3")
+            {
+                return false;
+            }
+
+            for (var index = 0; index < expectedRooms.Length; index++)
+            {
+                var node = map.Nodes[index];
+                var expectedNext = index + 1 < expectedRooms.Length
+                    ? new[] { $"{act}:{index + 2}:3" }
+                    : Array.Empty<string>();
+                if (node.NodeId != $"{act}:{index + 1}:3"
+                    || node.Act != act
+                    || node.Floor != index + 1
+                    || node.RoomType != expectedRooms[index]
+                    || !(node.NextNodeIds ?? Array.Empty<string>())
+                        .SequenceEqual(
+                        expectedNext, StringComparer.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return map.Nodes[^1].Floor
+                == PrototypeGoldenPathMapV111.BossFloor;
+        }
+
+        var before = PrototypeNativeLaterActFixture.Create(
+            "coverage-golden-compass", 2);
+        var acquired = AddCompass(before, relicId);
+        var compass = acquired.Player.Relics[^1];
+        if (PrototypeGoldenPathMapV111.AcquisitionActIndex(compass) != 1
+            || !PrototypeGoldenPathMapV111.IsActive(
+                acquired.Player, 2)
+            || PrototypeGoldenPathMapV111.IsActive(
+                acquired.Player, 3)
+            || !HasGoldenMap(
+                acquired.World!.Map, expectedRooms, 2)
+            || acquired.World.Floor != before.World!.Floor
+            || acquired.World.Map.CurrentNodeId is not null)
+        {
+            return false;
+        }
+
+        var midActWorld = before.World! with
+        {
+            Floor = 5,
+            Map = before.World.Map with
+            {
+                CurrentNodeId = "2:5:3"
+            }
+        };
+        var midActBefore = before with { World = midActWorld };
+        var midActAcquired = AddCompass(midActBefore, relicId);
+        return HasGoldenMap(
+                midActAcquired.World!.Map, expectedRooms, 2)
+            && midActAcquired.World.Floor == 5
+            && midActAcquired.World.Map.CurrentNodeId == "2:5:3"
+            && PrototypeGoldenPathMapV111.IsActive(
+                midActAcquired.Player, 2);
     }
 
     private static bool HasStorybookPath()

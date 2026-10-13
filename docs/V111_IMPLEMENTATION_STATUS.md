@@ -301,6 +301,9 @@ triggers and melted-copy suppression; see [mechanics gap 081](reference-builds/v
 Pumpkin Candle coverage checks its five-charge acquisition, Energy bonus,
 depletion across six idempotent combat exits, re-kindling and melted-copy
 suppression; see [mechanics gap 082](reference-builds/v0.111.0-mechanics-gap-082.md).
+Golden Compass coverage checks the Tezcatara acquisition, all map rooms and
+edges, saved acquisition act, act gating and mid-act node handoff; see
+[mechanics gap 083](reference-builds/v0.111.0-mechanics-gap-083.md).
 
 Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
 cards through shared acquisition; Flesh modifies energy reset from turn three;

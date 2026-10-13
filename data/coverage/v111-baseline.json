@@ -25789,8 +25789,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/GoldenCompass.cs#4c444add3c7a77ce07c202661e5507d1666966fb1e7f69ff21b52d2db2091f86"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29460,8 +29460,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 131,
-        "integrated": 132,
+        "implemented": 132,
+        "integrated": 133,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
