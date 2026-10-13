@@ -7660,6 +7660,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.BellowsId,
         PrototypeNativeSharedRelics.ChandelierId,
         PrototypeNativeSharedRelics.CloakClaspId,
+        PrototypeNativeSharedRelics.RingingTriangleId,
         "proto.relic.membership_card",
         "proto.relic.chemical_x",
         "proto.relic.the_abacus",

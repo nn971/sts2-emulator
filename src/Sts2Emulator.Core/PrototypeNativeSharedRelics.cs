@@ -13,6 +13,7 @@ public static class PrototypeNativeSharedRelics
     public const string GamePieceId = "proto.relic.game_piece";
     public const string RegalPillowId = "proto.relic.regal_pillow";
     public const string CloakClaspId = "proto.relic.cloak_clasp";
+    public const string RingingTriangleId = "proto.relic.ringing_triangle";
     public const string CentennialPuzzleId =
         "proto.relic.centennial_puzzle";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
@@ -138,6 +139,10 @@ public static class PrototypeNativeSharedRelics
                         AmountPerCount: 1)],
                     RequiresPlayerSide: true)
             ]),
+        // Ringing Triangle keeps the owner's first-turn hand through
+        // the enemy turn; later turns flush it normally.
+        new(RingingTriangleId, "Ringing Triangle",
+            PreventsFirstTurnHandDiscard: true),
         // CentennialPuzzle draws three cards after the owner's first
         // unblocked damage callback in each combat.
         new(CentennialPuzzleId, "Centennial Puzzle",

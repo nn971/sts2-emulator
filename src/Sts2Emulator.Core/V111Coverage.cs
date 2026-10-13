@@ -2112,6 +2112,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "RINGING_TRIANGLE"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.RingingTriangleId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.RingingTriangleId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.RingingTriangleId,
+                out var ringingTriangleRarity)
+            && ringingTriangleRarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.RingingTriangleId)
+                .PreventsFirstTurnHandDiscard
+            && HasRingingTrianglePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "NINJA_SCROLL"
             && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
                 StringComparer.Ordinal)
@@ -3616,6 +3636,76 @@ public static class V111Coverage
         return EndTurnBlock(handSize: 3, melted: false) == 5
             && EndTurnBlock(handSize: 0, melted: false) == 2
             && EndTurnBlock(handSize: 3, melted: true) == 2;
+    }
+
+    private static bool HasRingingTrianglePath()
+    {
+        RunState Fixture(int turn, bool melted)
+        {
+            var state = PrototypeNativeLaterActFixture.Create(
+                $"coverage-ringing-triangle-{turn}-{melted}", 2);
+            var relic = new RelicInstance(
+                PrototypeNativeSharedRelics.RingingTriangleId,
+                PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = state.Player with { Relics = [relic] };
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [1, 2],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 3,
+                Cards:
+                [
+                    new CombatCardInstance(1, 1, "proto.silent.strike", 0,
+                        false, PrototypeJson.EmptyObject()),
+                    new CombatCardInstance(2, 2, "proto.silent.defend", 0,
+                        false, PrototypeJson.EmptyObject())
+                ],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0,
+                        PrototypeNativeSharedRelics.RingingTriangleId,
+                        1, [], IsMelted: melted)
+                ],
+                Act: 2,
+                PlayPile: []);
+            return state with
+            {
+                Player = player,
+                Phase = RunPhase.Combat,
+                World = state.World! with
+                {
+                    ActiveRoom = PrototypeRoomType.Combat,
+                    Combat = combat
+                }
+            };
+        }
+
+        RunState Discard(RunState state) =>
+            PrototypeGameEngine.ResolveAutomaticStep(
+                state,
+                new PrototypeAutomaticStep(
+                    PrototypeAutomaticStepKind.DiscardPlayerHand));
+
+        var firstTurn = Discard(Fixture(turn: 1, melted: false));
+        var laterTurn = Discard(Fixture(turn: 2, melted: false));
+        var melted = Discard(Fixture(turn: 1, melted: true));
+        return firstTurn.World?.Combat is
+                { Hand.Length: 2, DiscardPile.Length: 0 }
+            && laterTurn.World?.Combat is
+                { Hand.Length: 0, DiscardPile.Length: 2 }
+            && melted.World?.Combat is
+                { Hand.Length: 0, DiscardPile.Length: 2 };
     }
 
     private static bool HasDiamondDiademPath()

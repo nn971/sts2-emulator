@@ -1959,6 +1959,10 @@ public sealed partial class PrototypeGameEngine
                     || player.ActiveRelics.Any(relic =>
                         PrototypeContent.Relic(relic.RelicId)
                             .PreventsHandDiscard);
+                preserveHand |= combat.Turn == 1
+                    && player.ActiveRelics.Any(relic =>
+                        PrototypeContent.Relic(relic.RelicId)
+                            .PreventsFirstTurnHandDiscard);
                 var retained = combat.Hand
                     .Where(instanceId =>
                         !etherealSet.Contains(instanceId)

@@ -124,7 +124,9 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Shop,
             ["proto.relic.the_abacus"] = PrototypeRelicRarity.Shop,
             [PrototypeNativeSilentRelics.NinjaScrollId] = PrototypeRelicRarity.Shop,
-            ["proto.relic.chemical_x"] = PrototypeRelicRarity.Shop
+            ["proto.relic.chemical_x"] = PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.RingingTriangleId] =
+                PrototypeRelicRarity.Shop
         };
 
     private static readonly HashSet<string> NotSoldInShops =

@@ -27789,17 +27789,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.ringing_triangle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RingingTriangle.cs#b22768d0aaef05a63bd42900d41a2e39e66a659065b789d96d09075708e0d293"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "RINGING_TRIANGLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29446,8 +29448,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 146,
-        "integrated": 147,
+        "implemented": 147,
+        "integrated": 148,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

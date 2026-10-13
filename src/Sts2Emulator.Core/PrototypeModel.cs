@@ -839,7 +839,6 @@ public sealed record PrototypeRelicDefinition(
     // General run/combat modifier hooks, including event-only relics.
     int GoldOnRoomEntryUntilPurchase = 0,
     int RestHealCardRewardCount = 0,
-    int RestSiteHealBonus = 0,
     int MinPoweredAttackHpLoss = 0,
     int EnemyVulnerableOnBlockBroken = 0,
     string? AfterShuffleGeneratedCardId = null,
@@ -871,7 +870,9 @@ public sealed record PrototypeRelicDefinition(
     int EliteWinsToTransform = 0,
     int ConditionalHandDrawBonus = 0,
     int ConditionalHandDrawMaxCardsPlayedLastTurn = 0,
-    int PlayerBlockAfterDrawPileShuffle = 0);
+    int PlayerBlockAfterDrawPileShuffle = 0,
+    int RestSiteHealBonus = 0,
+    bool PreventsFirstTurnHandDiscard = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
