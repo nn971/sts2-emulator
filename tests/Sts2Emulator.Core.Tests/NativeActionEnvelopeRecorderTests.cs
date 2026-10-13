@@ -70,6 +70,41 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task NativeInitialShuffleSourceIsRecordedWithOrderedSwapAndHookStages()
+    {
+        var streams = Sts2Emulator.Core.NativeRngV111.CreateBundle(
+            "native-action-shuffle-recorder");
+        var shuffled = Sts2Emulator.Core.NativeFisherYatesV111.Execute(
+            [0L, 1L, 2L], streams,
+            new Sts2Emulator.Core.NativeRandomIndexProviderV111());
+        var evidence = new NativeShuffleOperationEvidenceV111(
+            1, "initial", ["card:0", "card:1", "card:2"],
+            shuffled.Choices.Select(c => new NativeShuffleChoiceV111(
+                c.Request.BoundedCount!.Value, c.SelectedIndex,
+                c.NativeCursorBefore!, c.NativeCursorAfter!)).ToArray(),
+            shuffled.PreHookOutput.Select(x => "card:" + x).ToArray(),
+            shuffled.PreHookOutput.Select(x => "card:" + x).ToArray(),
+            ["Strike", "Defend", "Strike"]);
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeShuffleOperation(evidence);
+            recorder.Finish("Combat ended", State(3));
+        });
+        var observed = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "native_shuffle_operation");
+        Assert.True(observed.GetProperty("action_id").ValueKind
+            == JsonValueKind.Null);
+        var data = observed.GetProperty("data");
+        Assert.Equal("initial", data.GetProperty("kind").GetString());
+        Assert.Equal(2, data.GetProperty("choices").GetArrayLength());
+        Assert.Equal("shuffle_operation_local",
+            data.GetProperty("card_identity_scope").GetString());
+        Assert.True(data.GetProperty("recorded_before_first_frame").GetBoolean());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task ChangedFrameSnapshotsDeduplicateAndKeepChronology()
     {
         var entries = await Record(recorder =>
