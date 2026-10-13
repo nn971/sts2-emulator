@@ -44,6 +44,8 @@ public sealed partial class PrototypeGameEngine
         var generators = (PrototypeCardRewardGenerator?[])
             reward.CardRewardGenerators!.Clone();
         var generator = generators[groupIndex]!;
+        var includeColorless = state.Player.ActiveRelics.Any(relic =>
+            relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
         var oldOptions = reward.CardOptionsForGroup(groupIndex);
         var lastingCandy = reward.LastingCandyRewardActive
             && (generator.Kind is PrototypeCardRewardGeneratorKind.Encounter
@@ -54,7 +56,8 @@ public sealed partial class PrototypeGameEngine
         {
             case PrototypeCardRewardGeneratorKind.RewardPool:
                 oldOptions = PickRewardCards(
-                    generator.Act, generatedCount, state.Rng);
+                    generator.Act, generatedCount, state.Rng,
+                    includeColorless);
                 break;
             case PrototypeCardRewardGeneratorKind.ColorlessRewardPool:
                 oldOptions = PickRewardCardsFromPool(
@@ -110,7 +113,8 @@ public sealed partial class PrototypeGameEngine
                     .GenerateEncounterCards(generatedCount,
                         state.Ascension, generator.Room.Value,
                         world.CardRarityOffsetBasisPoints,
-                        state.Rng, generator.Act);
+                        state.Rng, generator.Act,
+                        includeColorlessCardRewards: includeColorless);
                 oldOptions = generated.Cards;
                 generatedFlags = generated.UpgradeFlags;
                 world = world with
@@ -128,7 +132,8 @@ public sealed partial class PrototypeGameEngine
         {
             var addition = PickPowerOption(
                 oldOptions, generator, state.Ascension,
-                world.CardRarityOffsetBasisPoints, state.Rng);
+                world.CardRarityOffsetBasisPoints, state.Rng,
+                includeColorless);
             if (addition is not null)
             {
                 oldOptions = oldOptions.Append(addition.Value.CardId).ToArray();
@@ -203,6 +208,19 @@ public sealed partial class PrototypeGameEngine
         }
 
         reward = ApplyLavaLampRewardModifier(state.Player, reward);
+        var wingCharmResult = ApplyWingCharmToCardRewardOptions(
+            state, reward.CardOptions,
+            reward.ExtraCardOptions ?? Array.Empty<string[]>(),
+            reward.CardOptionEnchantments,
+            reward.ExtraCardOptionEnchantments);
+        state = wingCharmResult.State;
+        reward = reward with
+        {
+            CardOptionEnchantments =
+                wingCharmResult.CardOptionEnchantments,
+            ExtraCardOptionEnchantments =
+                wingCharmResult.ExtraCardOptionEnchantments
+        };
         return state with { World = world with { Reward = reward } };
     }
 }

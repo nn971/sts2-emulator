@@ -26,6 +26,8 @@ public sealed partial class PrototypeGameEngine
             var upgradeGroups = new bool[5][];
             var generators = new PrototypeCardRewardGenerator?[5];
             var rarityOffset = world.CardRarityOffsetBasisPoints;
+            var includeColorless = after.Player.ActiveRelics.Any(relic =>
+                relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
             for (var groupIndex = 0;
                  groupIndex < cardGroups.Length;
                  groupIndex++)
@@ -37,7 +39,8 @@ public sealed partial class PrototypeGameEngine
                         room: PrototypeRoomType.Combat,
                         currentOffsetBasisPoints: rarityOffset,
                         rng: after.Rng,
-                        act: world.Act);
+                        act: world.Act,
+                        includeColorlessCardRewards: includeColorless);
                 cardGroups[groupIndex] = generated.Cards;
                 upgradeGroups[groupIndex] = generated.UpgradeFlags;
                 rarityOffset = generated.NextOffsetBasisPoints;
@@ -63,6 +66,19 @@ public sealed partial class PrototypeGameEngine
                 CardOptionUpgradeFlags: upgradeGroups[0],
                 ExtraCardOptionUpgradeFlags: upgradeGroups[1..],
                 CardRewardGenerators: generators);
+            var wingCharmResult = ApplyWingCharmToCardRewardOptions(
+                after, reward.CardOptions,
+                reward.ExtraCardOptions ?? Array.Empty<string[]>(),
+                reward.CardOptionEnchantments,
+                reward.ExtraCardOptionEnchantments);
+            after = wingCharmResult.State;
+            reward = reward with
+            {
+                CardOptionEnchantments =
+                    wingCharmResult.CardOptionEnchantments,
+                ExtraCardOptionEnchantments =
+                    wingCharmResult.ExtraCardOptionEnchantments
+            };
             after = after with
             {
                 Phase = RunPhase.Reward,

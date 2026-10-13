@@ -109,6 +109,8 @@ public sealed partial class PrototypeGameEngine
     {
         var world = RequireWorld(state);
         var native = UsesNativeRegionalSystems(world);
+        var includeColorless = state.Player.ActiveRelics.Any(relic =>
+            relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
         var cardGroups = new List<string[]>();
         var cardUpgradeGroups = new List<bool[]>();
         var potionOptions = new List<string>();
@@ -124,7 +126,8 @@ public sealed partial class PrototypeGameEngine
                             definition.RestHealCardRewardCount,
                             state.Ascension, PrototypeRoomType.Combat,
                             world.CardRarityOffsetBasisPoints, state.Rng,
-                            act: world.Act);
+                            act: world.Act,
+                            includeColorlessCardRewards: includeColorless);
                     cardGroups.Add(next.Cards);
                     cardUpgradeGroups.Add(next.UpgradeFlags);
                     world = world with
@@ -138,7 +141,7 @@ public sealed partial class PrototypeGameEngine
                     cardGroups.Add(PickRewardCards(
                         world.Act,
                         definition.RestHealCardRewardCount,
-                        state.Rng));
+                        state.Rng, includeColorless));
                 }
             }
 
@@ -184,7 +187,19 @@ public sealed partial class PrototypeGameEngine
                     world.Act,
                     native ? PrototypeRoomType.Combat : null)).ToArray());
 
-        return state with
+        var wingCharmResult = ApplyWingCharmToCardRewardOptions(
+            state, reward.CardOptions,
+            reward.ExtraCardOptions ?? Array.Empty<string[]>(),
+            reward.CardOptionEnchantments,
+            reward.ExtraCardOptionEnchantments);
+        reward = reward with
+        {
+            CardOptionEnchantments =
+                wingCharmResult.CardOptionEnchantments,
+            ExtraCardOptionEnchantments =
+                wingCharmResult.ExtraCardOptionEnchantments
+        };
+        return wingCharmResult.State with
         {
             World = world with { Reward = reward },
             Phase = RunPhase.Reward

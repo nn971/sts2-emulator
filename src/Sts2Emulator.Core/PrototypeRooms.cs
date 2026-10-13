@@ -4759,10 +4759,10 @@ public sealed partial class PrototypeGameEngine
         string[][] extraCardOptions;
         bool[]? cardUpgradeFlags = null;
         bool[][]? extraCardUpgradeFlags = null;
+        var hasDingyRug = state.Player.ActiveRelics.Any(relic =>
+            relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
         if (nativeOvergrowth)
         {
-            var hasDingyRug = state.Player.ActiveRelics.Any(relic =>
-                relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
             var offset = world.CardRarityOffsetBasisPoints;
             var first = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                 cardChoiceCount, state.Ascension, room, offset, state.Rng,
@@ -4792,11 +4792,11 @@ public sealed partial class PrototypeGameEngine
         else
         {
             cardOptions = PickRewardCards(
-                world.Act, cardChoiceCount, state.Rng);
+                world.Act, cardChoiceCount, state.Rng, hasDingyRug);
             extraCardOptions = Enumerable.Range(
                     0, normalExtraCardRewardGroups)
                 .Select(_ => PickRewardCards(
-                    world.Act, cardChoiceCount, state.Rng))
+                    world.Act, cardChoiceCount, state.Rng, hasDingyRug))
                 .ToArray();
         }
 
@@ -5315,9 +5315,14 @@ public sealed partial class PrototypeGameEngine
     private static string[] PickRewardCards(
         int act,
         int count,
-        RngBundle rng) =>
+        RngBundle rng,
+        bool includeColorless = false) =>
         PickRewardCardsFromPool(
-            act, count, rng, PrototypeContent.RewardCardPool);
+            act, count, rng,
+            includeColorless
+                ? PrototypeContent.RewardCardPool.Concat(
+                    PrototypeColorlessCards.ImplementedRewardPool)
+                : PrototypeContent.RewardCardPool);
 
     private static string[] PickRewardCardsFromPool(
         int act,

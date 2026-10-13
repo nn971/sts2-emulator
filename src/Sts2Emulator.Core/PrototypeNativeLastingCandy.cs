@@ -48,7 +48,10 @@ public sealed partial class PrototypeGameEngine
                     var generator = generators[groupIndex]!;
                     var addition = PickPowerOption(
                         options, generator, ascension,
-                        cardRarityOffsetBasisPoints, rng);
+                        cardRarityOffsetBasisPoints, rng,
+                        includeColorless: player.ActiveRelics.Any(relic =>
+                            relic.RelicId
+                                == PrototypeNativeSharedRelics.DingyRugId));
                     if (addition is null)
                         continue;
 
@@ -88,9 +91,13 @@ public sealed partial class PrototypeGameEngine
         int NextCardRarityOffsetBasisPoints)?
         PickPowerOption(IReadOnlyList<string> existing,
             PrototypeCardRewardGenerator generator, int ascension,
-            int cardRarityOffsetBasisPoints, RngBundle rng)
+            int cardRarityOffsetBasisPoints, RngBundle rng,
+            bool includeColorless = false)
     {
         var powerPool = PrototypeContent.NativeSilentRewardCardPool
+            .Concat(includeColorless
+                ? PrototypeColorlessCards.ImplementedRewardPool
+                : Array.Empty<string>())
             .Where(id => PrototypeContent.Card(id).Type
                 == PrototypeCardType.Power).ToArray();
         var distinct = powerPool.Where(id =>
