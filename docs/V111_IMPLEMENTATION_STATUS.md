@@ -64,6 +64,9 @@ Sling of Courage is now a Shop relic that adds 2 Strength on Elite room
 entry, using the shared combat-start hook for Overgrowth, Underdocks, Hive,
 and Glory. Melted copies do not trigger. See
 [mechanics gap 064](reference-builds/v0.111.0-mechanics-gap-064.md).
+Red Mask is now a Common relic that applies 1 Weak to all enemies on the
+owner's first player-side turn. See
+[mechanics gap 065](reference-builds/v0.111.0-mechanics-gap-065.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).

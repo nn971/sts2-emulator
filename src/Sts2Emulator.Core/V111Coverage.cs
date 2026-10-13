@@ -342,6 +342,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "RED_MASK"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.RedMaskId,
+                StringComparer.Ordinal)
+            && HasRedMaskPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2056,6 +2066,29 @@ public static class V111Coverage
                 {
                     Relics = [relics[0] with { IsMelted = true }]
                 }, PrototypeRoomType.Elite) == 0;
+    }
+
+    private static bool HasRedMaskPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.RedMaskId;
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            || rarity != PrototypeRelicRarity.Common)
+        {
+            return false;
+        }
+
+        return PrototypeContent.Relic(relicId).Triggers?.Any(trigger =>
+            trigger.EventKind
+                == PrototypeCombatEventKind.PlayerSideTurnStarted
+            && trigger.TurnEquals == 1
+            && trigger.Effects.Any(effect =>
+                effect.Kind == PrototypeCombatEffectKind.ApplyEnemyPower
+                && effect.Amount == 1
+                && effect.Target == PrototypeEffectTarget.AllEnemies
+                && effect.PowerId == "proto.power.weak")) == true;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

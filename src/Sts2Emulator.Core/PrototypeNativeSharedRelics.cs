@@ -16,6 +16,7 @@ public static class PrototypeNativeSharedRelics
     public const string PearId = "proto.relic.pear";
     public const string PantographId = "proto.relic.pantograph";
     public const string PetrifiedToadId = "proto.relic.petrified_toad";
+    public const string RedMaskId = "proto.relic.red_mask";
     public const string PotionShapedRockId = "proto.potion.shaped_rock";
     public const string StrawberryId = "proto.relic.strawberry";
     public const string TheBootId = "proto.relic.the_boot";
@@ -92,6 +93,15 @@ public static class PrototypeNativeSharedRelics
         new(VenerableTeaSetId, "Venerable Tea Set"),
         new(LizardTailId, "Lizard Tail"),
         new(SlingOfCourageId, "Sling of Courage",
-            StrengthOnEliteRoomEntry: 2)
+            StrengthOnEliteRoomEntry: 2),
+        new(RedMaskId, "Red Mask",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                    [new(PrototypeCombatEffectKind.ApplyEnemyPower, 1,
+                        Target: PrototypeEffectTarget.AllEnemies,
+                        PowerId: "proto.power.weak")],
+                    TurnEquals: 1)
+            ])
     ];
 }

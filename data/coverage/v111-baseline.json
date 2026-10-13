@@ -27726,17 +27726,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.red_mask"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RedMask.cs#5464edf9bebbc3e8b86a52f42f95e108fa678871351dc53bcddcdc3878d8c3f6"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "RED_MASK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29459,8 +29461,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 113,
-        "integrated": 114,
+        "implemented": 114,
+        "integrated": 115,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

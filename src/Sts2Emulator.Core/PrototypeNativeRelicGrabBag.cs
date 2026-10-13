@@ -49,6 +49,8 @@ public static class PrototypeNativeRelicGrabBag
             [PrototypeNativeSharedRelics.WhetstoneId] = PrototypeRelicRarity.Common,
             [PrototypeNativeSharedRelics.VenerableTeaSetId] =
                 PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.RedMaskId] =
+                PrototypeRelicRarity.Common,
             ["proto.relic.meal_ticket"] = PrototypeRelicRarity.Common,
             ["proto.relic.bronze_scales"] = PrototypeRelicRarity.Common,
             ["proto.relic.oddly_smooth_stone"] = PrototypeRelicRarity.Common,
