@@ -58,6 +58,10 @@ parity remains open; see the
 Pear is integrated as an Uncommon shared relic; its pickup adds 10 Max HP and
 it enters the Silent uncommon relic queue. Relic RNG parity remains open; see
 the [pinned Pear audit](reference-builds/v0.111.0-pear.md).
+Whetstone and War Paint are integrated as Common shared relics, randomly
+upgrading up to two upgradable Attacks or Skills on pickup, respectively.
+The candidate selection uses prototype RNG; see the
+[pinned pickup audit](reference-builds/v0.111.0-whetstone-war-paint.md).
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

@@ -851,7 +851,9 @@ public sealed record PrototypeRelicDefinition(
     bool PreventGoldGain = false,
     string? AppliedEnemyStatusAmountBonusId = null,
     int AppliedEnemyStatusAmountBonus = 0,
-    int WeakAttackDamageReductionPercent = 0);
+    int WeakAttackDamageReductionPercent = 0,
+    int UpgradeRandomCardsOnAcquisitionCount = 0,
+    PrototypeCardType? UpgradeRandomCardsOnAcquisitionType = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

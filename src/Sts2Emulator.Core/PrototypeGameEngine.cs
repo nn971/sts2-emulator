@@ -444,6 +444,38 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 };
             }
             if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && definition.UpgradeRandomCardsOnAcquisitionCount > 0
+                && definition.UpgradeRandomCardsOnAcquisitionType is
+                    { } randomlyUpgradedType)
+            {
+                var candidates = player.Deck.Where(card =>
+                {
+                    var cardDefinition = PrototypeContent.Card(card.CardId);
+                    return cardDefinition.Type == randomlyUpgradedType
+                        && card.UpgradeLevel < cardDefinition.MaxUpgradeLevel;
+                }).ToArray();
+                if (candidates.Length > 1)
+                {
+                    PrototypeRng.Shuffle(
+                        rng ?? throw new InvalidOperationException(
+                            "Random relic pickup upgrades require an RNG bundle."),
+                        "event",
+                        candidates);
+                }
+
+                var selectedInstances = candidates
+                    .Take(definition.UpgradeRandomCardsOnAcquisitionCount)
+                    .Select(card => card.InstanceId)
+                    .ToHashSet();
+                player = player with
+                {
+                    Deck = player.Deck.Select(card =>
+                        selectedInstances.Contains(card.InstanceId)
+                            ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
+                            : card).ToArray()
+                };
+            }
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
                 && relic.RelicId == NativeDarvEventV111.CallingBellId)
             {
                 player = AppendCard(

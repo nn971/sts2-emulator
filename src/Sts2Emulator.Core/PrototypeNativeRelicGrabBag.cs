@@ -42,6 +42,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.blood_vial"] = PrototypeRelicRarity.Common,
             ["proto.relic.potion_belt"] = PrototypeRelicRarity.Common,
             [PrototypeNativeSilentRelics.SneckoSkullId] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.WarPaintId] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.WhetstoneId] = PrototypeRelicRarity.Common,
             ["proto.relic.meal_ticket"] = PrototypeRelicRarity.Common,
             ["proto.relic.bronze_scales"] = PrototypeRelicRarity.Common,
             ["proto.relic.oddly_smooth_stone"] = PrototypeRelicRarity.Common,

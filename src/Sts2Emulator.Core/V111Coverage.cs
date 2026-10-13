@@ -1076,6 +1076,34 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && (item.Id is "WAR_PAINT" or "WHETSTONE")
+            && engineIds.Contains(item.Id == "WAR_PAINT"
+                ? PrototypeNativeSharedRelics.WarPaintId
+                : PrototypeNativeSharedRelics.WhetstoneId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(item.Id == "WAR_PAINT"
+                ? PrototypeNativeSharedRelics.WarPaintId
+                : PrototypeNativeSharedRelics.WhetstoneId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                item.Id == "WAR_PAINT"
+                    ? PrototypeNativeSharedRelics.WarPaintId
+                    : PrototypeNativeSharedRelics.WhetstoneId,
+                out var upgradeRelicRarity)
+            && upgradeRelicRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic(item.Id == "WAR_PAINT"
+                    ? PrototypeNativeSharedRelics.WarPaintId
+                    : PrototypeNativeSharedRelics.WhetstoneId)
+                is { UpgradeRandomCardsOnAcquisitionCount: 2 } upgradeRelic
+            && upgradeRelic.UpgradeRandomCardsOnAcquisitionType
+                == (item.Id == "WAR_PAINT"
+                    ? PrototypeCardType.Skill
+                    : PrototypeCardType.Attack))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "PEAR"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.PearId,

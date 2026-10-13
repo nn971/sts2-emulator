@@ -8,10 +8,20 @@ public static class PrototypeNativeSharedRelics
     public const string AkabekoId = "proto.relic.akabeko";
     public const string PearId = "proto.relic.pear";
     public const string StrawberryId = "proto.relic.strawberry";
+    public const string WarPaintId = "proto.relic.war_paint";
+    public const string WhetstoneId = "proto.relic.whetstone";
     public const string VigorId = "proto.power.vigor";
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // WarPaint.AfterObtained randomly upgrades up to two Skills.
+        new(WarPaintId, "War Paint",
+            UpgradeRandomCardsOnAcquisitionCount: 2,
+            UpgradeRandomCardsOnAcquisitionType: PrototypeCardType.Skill),
+        // Whetstone.AfterObtained randomly upgrades up to two Attacks.
+        new(WhetstoneId, "Whetstone",
+            UpgradeRandomCardsOnAcquisitionCount: 2,
+            UpgradeRandomCardsOnAcquisitionType: PrototypeCardType.Attack),
         // Pear.AfterObtained grants ten Max HP.
         new(PearId, "Pear",
             RunTriggers:
