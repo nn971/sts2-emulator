@@ -8,12 +8,14 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeUnderdocksTrashHeap
 {
     public const string EventId = "proto.native.underdocks.trash_heap";
+    public const string HandDrillId =
+        "proto.native.trash_heap.hand_drill";
 
     public static string[] RelicIds { get; } =
     [
         "proto.relic.darkstone_periapt",
         "proto.native.trash_heap.dream_catcher",
-        "proto.native.trash_heap.hand_drill",
+        HandDrillId,
         "proto.native.trash_heap.maw_bank",
         "proto.native.trash_heap.the_boot"
     ];
@@ -37,7 +39,7 @@ public static class PrototypeNativeUnderdocksTrashHeap
     [
         new("proto.native.trash_heap.dream_catcher", "Dream Catcher",
             RestHealCardRewardCount: 3),
-        new("proto.native.trash_heap.hand_drill", "Hand Drill",
+        new(HandDrillId, "Hand Drill",
             EnemyVulnerableOnBlockBroken: 2),
         new("proto.native.trash_heap.maw_bank", "Maw Bank",
             GoldOnRoomEntryUntilPurchase: 12),

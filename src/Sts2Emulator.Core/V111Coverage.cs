@@ -914,6 +914,28 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "HAND_DRILL"
+            && engineIds.Contains(
+                PrototypeNativeUnderdocksTrashHeap.HandDrillId,
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksEvents.IsSupported(
+                PrototypeNativeUnderdocksTrashHeap.EventId)
+            && PrototypeNativeUnderdocksTrashHeap.RelicIds.Contains(
+                PrototypeNativeUnderdocksTrashHeap.HandDrillId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Event(
+                PrototypeNativeUnderdocksTrashHeap.EventId).Choices
+                .Any(choice => choice.Id == "dive")
+            && PrototypeContent.Relic(
+                PrototypeNativeUnderdocksTrashHeap.HandDrillId)
+                .EnemyVulnerableOnBlockBroken == 2)
+        {
+            // Player-caused block breaks are modeled; pet attack execution
+            // remains outside the current combat route.
+            implementation = "partial";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);

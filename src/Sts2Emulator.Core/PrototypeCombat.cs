@@ -4771,7 +4771,9 @@ public sealed partial class PrototypeGameEngine
                         damageAmount,
                         operation.IsPoweredAttack
                             ? MinimumPoweredAttackHpLoss(player) : 0,
-                        operation.IsPoweredAttack);
+                        operation.IsPoweredAttack,
+                        player,
+                        PrototypeBlockBreakerKind.Player);
                     combat = damageResult.Combat;
                     NativeEngineEventJournalV111.Record(
                         "effect_result", "enemy_damage",
@@ -4834,8 +4836,6 @@ public sealed partial class PrototypeGameEngine
                                     } : enemy).ToArray()
                         };
                     }
-                    if (splashTarget is { Block: > 0 } && damageAmount >= splashTarget.Block)
-                        combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
                     if (operation.SplashUnpoweredAttackToOtherEnemies
                         && splashTarget is { Hp: > 0 })
                     {
@@ -5064,17 +5064,16 @@ public sealed partial class PrototypeGameEngine
                                     echoDamageAmount);
                             }
 
-                            var echoTargetBlock = combat.Enemies.Single(enemy => enemy.InstanceId == enemyId).Block;
                             var echoDamageResult = DamageEnemyInternal(
                                 combat,
                                 enemyId,
                                 echoDamageAmount,
                                 operation.IsPoweredAttack
                                     ? MinimumPoweredAttackHpLoss(player) : 0,
-                                operation.IsPoweredAttack);
+                                operation.IsPoweredAttack,
+                                player,
+                                PrototypeBlockBreakerKind.Player);
                             combat = echoDamageResult.Combat;
-                            if (echoTargetBlock > 0 && echoDamageAmount >= echoTargetBlock)
-                                combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, enemyId);
                             if (echoDamageResult.Defeated)
                             {
                                 pendingRounds++;
@@ -5884,7 +5883,14 @@ public sealed partial class PrototypeGameEngine
                         targetEnemyId.Value,
                         0);
                     if (blockBeforeRemoval > 0)
-                        combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
+                    {
+                        var breaker = operation.SourceKind
+                            == PrototypeEffectSourceKind.Card
+                                ? PrototypeBlockBreakerKind.Player
+                                : PrototypeBlockBreakerKind.None;
+                        combat = DispatchAfterBlockBroken(
+                            player, combat, targetEnemyId.Value, breaker);
+                    }
                     break;
 
                 case PrototypeCombatEffectKind.RemoveEnemyPower:
@@ -12482,15 +12488,37 @@ public sealed partial class PrototypeGameEngine
             nextCombat, damageDealt, Defeated: defeated);
     }
 
-    private static CombatState ApplyPlayerEnemyBlockBrokenRelics(
-        PlayerState player, CombatState combat, int enemyId)
+    private static CombatState DispatchAfterBlockBroken(
+        PlayerState? owner,
+        CombatState combat,
+        int enemyId,
+        PrototypeBlockBreakerKind breaker)
     {
-        foreach (var relic in player.ActiveRelics)
+        if (owner is null
+            || breaker is not (PrototypeBlockBreakerKind.Player
+                or PrototypeBlockBreakerKind.PlayerPet))
         {
-            var amount = PrototypeContent.Relic(relic.RelicId).EnemyVulnerableOnBlockBroken;
-            if (amount > 0) combat = ApplyEnemyPower(combat, enemyId, "proto.power.vulnerable", amount);
+            return combat;
         }
-        return combat;
+
+        var index = Array.FindIndex(
+            combat.Enemies,
+            enemy => enemy.InstanceId == enemyId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                $"Block-break target enemy {enemyId} is missing.");
+        var result = ApplyAfterBlockBrokenRelics(
+            combat,
+            combat.Enemies[index],
+            owner,
+            breaker);
+        if (ReferenceEquals(result.Target, combat.Enemies[index])
+            && ReferenceEquals(result.Combat, combat))
+            return combat;
+
+        var enemies = (EnemyCombatState[])combat.Enemies.Clone();
+        enemies[index] = result.Target;
+        return result.Combat with { Enemies = enemies };
     }
 
     private static PrototypeDamageResult DamageEnemy(
@@ -12506,7 +12534,10 @@ public sealed partial class PrototypeGameEngine
         int enemyId,
         int damage,
         int minPoweredAttackHpLoss,
-        bool isPoweredAttack)
+        bool isPoweredAttack,
+        PlayerState? blockBreakerOwner = null,
+        PrototypeBlockBreakerKind breaker =
+            PrototypeBlockBreakerKind.None)
     {
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var index = Array.FindIndex(enemies, enemy => enemy.InstanceId == enemyId);
@@ -12548,14 +12579,21 @@ public sealed partial class PrototypeGameEngine
         }
 
         var absorbed = Math.Min(enemy.Block, Math.Max(0, damage));
-        // BurrowedPower.AfterBlockBroken fires when a HIT actually
-        // consumes the last point of the shield. Ordinary enemy Block
-        // resetting, HP-loss effects and hits on zero Block do not stun.
-        var brokeBurrowedBlock = enemy.Block > 0
-            && absorbed == enemy.Block
+        var blockBroken = enemy.Block > 0 && absorbed == enemy.Block;
+        var brokeBurrowedBlock = blockBroken
             && enemy.PowerStates.Any(power =>
                 power.Stacks > 0
                 && power.PowerId == "proto.native.hive.burrowed");
+        if (blockBroken)
+        {
+            var broken = ApplyAfterBlockBrokenRelics(
+                combat, enemy, blockBreakerOwner, breaker);
+            combat = broken.Combat;
+            enemy = broken.Target;
+        }
+        // BurrowedPower.AfterBlockBroken fires when a HIT actually
+        // consumes the last point of the shield. Ordinary enemy Block
+        // resetting, HP-loss effects and hits on zero Block do not stun.
         var unblocked = Math.Max(0, damage - absorbed);
         // The Boot modifies attack HP loss AFTER Block absorption.
         // A fully blocked hit or non-attack HP loss does not trigger.
@@ -12690,6 +12728,37 @@ public sealed partial class PrototypeGameEngine
         }
         return new PrototypeDamageResult(
             nextCombat, damageDealt, Defeated: defeated);
+    }
+
+    private static (CombatState Combat, EnemyCombatState Target)
+        ApplyAfterBlockBrokenRelics(
+            CombatState combat,
+            EnemyCombatState target,
+            PlayerState? owner,
+            PrototypeBlockBreakerKind breaker)
+    {
+        if (owner is null
+            || target.Hp <= 0
+            || breaker is not (PrototypeBlockBreakerKind.Player
+                or PrototypeBlockBreakerKind.PlayerPet))
+        {
+            return (combat, target);
+        }
+
+        foreach (var relic in owner.ActiveRelics)
+        {
+            var amount = PrototypeContent.Relic(relic.RelicId)
+                .EnemyVulnerableOnBlockBroken;
+            if (amount <= 0)
+                continue;
+            (combat, target) = ApplyEnemyPowerToState(
+                combat,
+                target,
+                "proto.power.vulnerable",
+                amount);
+        }
+
+        return (combat, target);
     }
 
     /// <summary>

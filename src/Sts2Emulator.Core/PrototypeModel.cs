@@ -311,6 +311,15 @@ public enum PrototypeCombatEventKind
     OpeningPlayerTurnStarted
 }
 
+public enum PrototypeBlockBreakerKind
+{
+    None,
+    Player,
+    PlayerPet,
+    Enemy,
+    Other
+}
+
 public sealed record PrototypeCombatEvent(
     PrototypeCombatEventKind Kind,
     long? SourceCardInstanceId = null,

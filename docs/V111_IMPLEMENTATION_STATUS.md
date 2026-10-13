@@ -118,6 +118,9 @@ retains the Group and Loner result pages. Wellspring and Whispering Hollow
 retain their result pages after potion and card continuations. Waterlogged
 Scriptorium now keeps its result page after each optional Steady selection;
 Trash Heap retains its result page after either successful reward, and
+Hand Drill now applies Vulnerable on actual player-caused block breaks,
+including Expose's explicit block removal. Pet attack actions remain
+unmodeled; see the [Trash Heap relic mechanics audit](reference-builds/v0.111.0-trash-heap-relic-mechanics.md).
 Endless Conveyor retains its Observe Chef/Leave results. Spiraling Whirlpool
 retains its Observe or Drink result after the selected enchantment or healing
 completes. The coverage report

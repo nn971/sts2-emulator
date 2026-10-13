@@ -25931,7 +25931,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/HandDrill.cs#723430ed119427f5cb08509806804ec05db61730c7cc6b008b3e61a3f2bbe773"
         ],
         "implementation": "partial",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29484,7 +29484,7 @@
         "eligible": 297,
         "excluded": 1,
         "implemented": 74,
-        "integrated": 74,
+        "integrated": 75,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
