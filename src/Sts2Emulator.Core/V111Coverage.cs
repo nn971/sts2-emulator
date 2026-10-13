@@ -352,6 +352,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "STONE_CALENDAR"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.StoneCalendarId,
+                StringComparer.Ordinal)
+            && HasStoneCalendarPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2089,6 +2099,25 @@ public static class V111Coverage
                 && effect.Amount == 1
                 && effect.Target == PrototypeEffectTarget.AllEnemies
                 && effect.PowerId == "proto.power.weak")) == true;
+    }
+
+    private static bool HasStoneCalendarPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.StoneCalendarId;
+        return PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            && rarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(relicId).Triggers?.Any(trigger =>
+                trigger.EventKind
+                    == PrototypeCombatEventKind.PlayerTurnEnded
+                && trigger.TurnEquals == 7
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                    && effect.Amount == 52
+                    && effect.Target
+                        == PrototypeEffectTarget.AllEnemies)) == true;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

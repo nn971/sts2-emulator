@@ -7608,6 +7608,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.LizardTailId,
         PrototypeNativeSharedRelics.SlingOfCourageId,
         PrototypeNativeSharedRelics.RedMaskId,
+        PrototypeNativeSharedRelics.StoneCalendarId,
         PrototypeNativeSharedRelics.EternalFeatherId,
         "proto.relic.potion_belt",
         "proto.relic.snecko_skull",

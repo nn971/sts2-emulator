@@ -17,6 +17,8 @@ public static class PrototypeNativeSharedRelics
     public const string PantographId = "proto.relic.pantograph";
     public const string PetrifiedToadId = "proto.relic.petrified_toad";
     public const string RedMaskId = "proto.relic.red_mask";
+    public const string StoneCalendarId =
+        "proto.relic.stone_calendar";
     public const string PotionShapedRockId = "proto.potion.shaped_rock";
     public const string StrawberryId = "proto.relic.strawberry";
     public const string TheBootId = "proto.relic.the_boot";
@@ -102,6 +104,14 @@ public static class PrototypeNativeSharedRelics
                         Target: PrototypeEffectTarget.AllEnemies,
                         PowerId: "proto.power.weak")],
                     TurnEquals: 1)
+            ]),
+        new(StoneCalendarId, "Stone Calendar",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerTurnEnded,
+                    [new(PrototypeCombatEffectKind.DamageEnemy, 52,
+                        Target: PrototypeEffectTarget.AllEnemies)],
+                    TurnEquals: 7)
             ])
     ];
 }

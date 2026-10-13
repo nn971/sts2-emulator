@@ -67,6 +67,9 @@ and Glory. Melted copies do not trigger. See
 Red Mask is now a Common relic that applies 1 Weak to all enemies on the
 owner's first player-side turn. See
 [mechanics gap 065](reference-builds/v0.111.0-mechanics-gap-065.md).
+Stone Calendar is now a Rare relic that deals 52 damage to all enemies at
+the end of turn 7. See
+[mechanics gap 066](reference-builds/v0.111.0-mechanics-gap-066.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).

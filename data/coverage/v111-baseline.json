@@ -28314,17 +28314,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.stone_calendar"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/StoneCalendar.cs#e408de85fc808a1bac043a45ab5e9eb0f80af95e7c955491cd0bc92bad503699"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "STONE_CALENDAR",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29461,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 114,
-        "integrated": 115,
+        "implemented": 115,
+        "integrated": 116,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
