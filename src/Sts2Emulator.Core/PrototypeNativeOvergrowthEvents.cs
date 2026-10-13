@@ -47,9 +47,7 @@ public static class PrototypeNativeOvergrowthEvents
             .ToArray();
 
     public static string[] NeowBonesSupportedRelicNames { get; } =
-        NeowCoveredChoiceRelicNames
-            .Where(name => name != "LargeCapsule")
-            .ToArray();
+        NeowCoveredChoiceRelicNames;
 
     public static string NeowRelicId(string nativeClass) =>
         "proto.native.neow." + nativeClass.ToLowerInvariant();

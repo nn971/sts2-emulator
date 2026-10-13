@@ -1990,9 +1990,6 @@ public sealed record RewardState(
     bool CardOptionsUpgraded = false,
     bool[]? ExtraCardOptionsUpgraded = null,
     string? AddCardAfterReward = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    string[]? AddCardsAfterReward = null,
     string[][]? CardBundles = null,
     string[]? ExtraRelicRewardIds = null,
     int ExtraRelicsResolved = 0,
@@ -2232,9 +2229,6 @@ public sealed record RewardState(
         CardBundles = CardBundles is null
             ? null
             : CardBundles.Select(bundle => (string[])bundle.Clone()).ToArray(),
-        AddCardsAfterReward = AddCardsAfterReward is null
-            ? null
-            : (string[])AddCardsAfterReward.Clone(),
         ExtraRelicRewardIds = ExtraRelicRewardIds is null
             ? null
             : (string[])ExtraRelicRewardIds.Clone(),

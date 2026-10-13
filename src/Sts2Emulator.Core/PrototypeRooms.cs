@@ -4579,13 +4579,6 @@ public sealed partial class PrototypeGameEngine
                 player = AppendCard(
                     player, nextId++, afterRewardCardId, state.Rng);
             }
-            foreach (var extraCardAfterRewardId in
-                     reward.AddCardsAfterReward ?? Array.Empty<string>())
-            {
-                player = AppendCard(
-                    player, nextId++, extraCardAfterRewardId, state.Rng);
-            }
-
             return state with
             {
                 Player = player,
@@ -4629,13 +4622,6 @@ public sealed partial class PrototypeGameEngine
                 player = AppendCard(
                     player, nextId++, additionalCardId, state.Rng);
             }
-            foreach (var additionalCardAfterRewardId in
-                     reward.AddCardsAfterReward ?? Array.Empty<string>())
-            {
-                player = AppendCard(
-                    player, nextId++, additionalCardAfterRewardId, state.Rng);
-            }
-
             return AdvanceEventContinuations(state with
             {
                 Player = player,

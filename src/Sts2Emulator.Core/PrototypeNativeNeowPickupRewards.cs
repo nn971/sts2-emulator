@@ -40,8 +40,8 @@ public sealed partial class PrototypeGameEngine
         var player = after.Player;
         var world = RequireWorld(after);
         var nextId = world.NextCardInstanceId;
+        var nativeRunRng = after.NativeRunRng?.Fork();
         RewardState? nestedReward = null;
-        var additionalRelicIds = new List<string>();
         var cardsAfterReward = new List<string>();
 
         foreach (var effect in choice.Effects.Skip(1))
@@ -56,7 +56,7 @@ public sealed partial class PrototypeGameEngine
                 or PrototypeRunEffectKind.OfferRandomRelic
                 or PrototypeRunEffectKind.OfferWaxRelics)
             {
-                if (nestedReward is not null || additionalRelicIds.Count > 0)
+                if (nestedReward is not null)
                 {
                     throw new NotSupportedException(
                         "A Neow relic pickup cannot queue multiple reward groups yet.");
@@ -84,7 +84,18 @@ public sealed partial class PrototypeGameEngine
                 {
                     relicId = PickUnownedEventRelic(player, after.Rng);
                 }
-                additionalRelicIds.Add(relicId);
+                player = player with
+                {
+                    Relics = player.Relics.Append(new RelicInstance(
+                        relicId, PrototypeJson.EmptyObject())).ToArray()
+                };
+                player = ApplyRelicRunEvent(
+                    player,
+                    PrototypeRunEventKind.RelicAcquired,
+                    acquiredRelicId: relicId,
+                    rng: after.Rng,
+                    allocateCardId: () => nextId++,
+                    nativeRunRng: nativeRunRng);
                 continue;
             }
 
@@ -105,44 +116,17 @@ public sealed partial class PrototypeGameEngine
                 $"Neow relic pickup effect '{effect.Kind}' is not implemented.");
         }
 
-        if (additionalRelicIds.Count > 0)
-        {
-            if (nestedReward is not null)
-            {
-                throw new NotSupportedException(
-                    "A Neow relic pickup cannot combine relic and custom reward groups.");
-            }
-
-            nestedReward = new RewardState(
-                SourceRoom: "Event:" + PrototypeNativeOvergrowthEvents.NeowEventId,
-                CardOptions: [],
-                PotionOption: null,
-                RelicOption: null,
-                CardResolved: true,
-                PotionResolved: true,
-                RelicResolved: true,
-                EndsAct: false,
-                AddCardsAfterReward: cardsAfterReward.Count == 0
-                    ? null : cardsAfterReward.ToArray(),
-                ExtraRelicRewardIds: additionalRelicIds.ToArray(),
-                IndependentSelection: true,
-                ExtraCardGroupsResolved: [],
-                ExtraRelicGroupsResolved:
-                    new bool[additionalRelicIds.Count]);
-        }
-        else if (nestedReward is not null && cardsAfterReward.Count > 0)
-        {
-            nestedReward = nestedReward with
-            {
-                AddCardsAfterReward = cardsAfterReward.ToArray()
-            };
-        }
-        else
+        if (nestedReward is null)
         {
             foreach (var cardId in cardsAfterReward)
             {
                 player = AppendCard(player, nextId++, cardId, after.Rng);
             }
+        }
+        else if (cardsAfterReward.Count > 0)
+        {
+            throw new NotSupportedException(
+                "A Neow relic pickup cannot defer cards behind a nested reward.");
         }
 
         if (nestedReward is null)
@@ -150,6 +134,7 @@ public sealed partial class PrototypeGameEngine
             return after with
             {
                 Player = player,
+                NativeRunRng = nativeRunRng ?? after.NativeRunRng,
                 World = world with { NextCardInstanceId = nextId }
             };
         }
@@ -159,6 +144,7 @@ public sealed partial class PrototypeGameEngine
         return after with
         {
             Player = player,
+            NativeRunRng = nativeRunRng ?? after.NativeRunRng,
             Phase = RunPhase.Reward,
             World = world with
             {

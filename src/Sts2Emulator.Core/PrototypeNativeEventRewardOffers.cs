@@ -266,10 +266,6 @@ public sealed partial class PrototypeGameEngine
                 var available = PrototypeContent.RelicPool
                     .Where(id => !player.Relics.Any(relic =>
                         StringComparer.Ordinal.Equals(relic.RelicId, id)))
-                    .Where(id => eventId
-                            != PrototypeNativeOvergrowthEvents.NeowEventId
-                        || id != PrototypeNativeOvergrowthEvents.NeowRelicId(
-                            "LargeCapsule"))
                     .ToArray();
                 if (available.Length == 0)
                 {
