@@ -25,6 +25,12 @@ public sealed record NativeCombatRngV111(
 /// MonsterModel.RollMove uses run.monster_ai; these are different from the
 /// encounter's local formation RNG and each MonsterModel's own Rng.
 /// </summary>
+public sealed record NativeInitialHpAuditV111(
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
+public sealed record NativeIntentAuditV111(
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 public static class NativeCombatRngEntryV111
 {
     /// <summary>
@@ -40,6 +46,18 @@ public static class NativeCombatRngEntryV111
     /// AfterAddedToRoom HP hooks and later scaling are separate boundaries.
     /// </summary>
     public static CombatState AttachAndRollInitialHp(
+        CombatState combat,
+        NativeEncounterFormationV111 formation,
+        RngBundle nativeRunStreams) =>
+        AttachAndRollInitialHpWithAudit(combat, formation, nativeRunStreams).Combat;
+
+    /// <summary>
+    /// Audited first RNG seam. This always uses the native provider and
+    /// preserves the historical native combat state hash/cursors. Scripted
+    /// outcomes can be checked against the returned transcript independently;
+    /// persisting controlled combat continuations is the later D3 milestone.
+    /// </summary>
+    public static NativeInitialHpAuditV111 AttachAndRollInitialHpWithAudit(
         CombatState combat,
         NativeEncounterFormationV111 formation,
         RngBundle nativeRunStreams)
@@ -68,6 +86,8 @@ public static class NativeCombatRngEntryV111
 
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var usedHp = new HashSet<int>();
+        var chooser = new NativeRandomIndexProviderV111();
+        var choices = new List<RandomIndexDecisionV111>(enemies.Length);
         for (var index = 0; index < enemies.Length; index++)
         {
             var enemy = enemies[index];
@@ -84,27 +104,41 @@ public static class NativeCombatRngEntryV111
                     "Native combat RNG and existing enemy formation disagree.");
             }
             _ = NativeRngV111.ToSnapshot(context.Rng);
-            var range = PrototypeContent.Enemy(enemy.EnemyId)
-                .HpRangeAt(combat.Act, combat.Ascension);
-            var possible = Enumerable.Range(
-                    range.Min, checked(range.Max - range.Min + 1))
-                .Where(hp => !usedHp.Contains(hp))
-                .ToArray();
-            var pool = possible.Length > 0
-                ? possible
-                : Enumerable.Range(
-                    range.Min, checked(range.Max - range.Min + 1)).ToArray();
-            // The native NextItem also consumes one draw for a singleton.
-            var roll = NativeRngV111.NextInt(
-                fresh.RunStreams, "run.niche", pool.Length);
-            var hp = pool[roll];
+            var pool = InitialHpPool(combat, enemy, usedHp);
+            // Candidate eligibility and creation order are owned by mechanics.
+            // The native provider consumes the same NextInt as before,
+            // including a singleton pool. Outcome identity is an INDEX into
+            // the ordered pool, not an independently re-sampled HP number.
+            var request = new RandomIndexRequestV111(
+                "combat.initial_unique_hp", "run.niche",
+                "creature:" + context.CombatId, index, pool);
+            var choice = chooser.Resolve(request, fresh.RunStreams);
+            choices.Add(choice);
+            var hp = choice.SelectedValue;
             enemies[index] = enemy with { Hp = hp, MaxHp = hp };
             usedHp.Add(hp);
         }
 
         var attached = combat with { Enemies = enemies, NativeRng = fresh };
         Validate(attached);
-        return attached;
+        return new NativeInitialHpAuditV111(
+            attached, choices.ToArray(), chooser.Mode);
+    }
+
+    /// <summary>
+    /// Shared mechanics-owned eligible HP construction for native and
+    /// externally controlled initial-combat continuation. This is invoked
+    /// at the actual creation-order choice boundary, never post-hoc.
+    /// </summary>
+    internal static int[] InitialHpPool(
+        CombatState combat, EnemyCombatState enemy, HashSet<int> usedHp)
+    {
+        var range = PrototypeContent.Enemy(enemy.EnemyId)
+            .HpRangeAt(combat.Act, combat.Ascension);
+        var all = Enumerable.Range(
+            range.Min, checked(range.Max - range.Min + 1)).ToArray();
+        var available = all.Where(hp => !usedHp.Contains(hp)).ToArray();
+        return available.Length > 0 ? available : all;
     }
 
     /// <summary>
@@ -461,6 +495,23 @@ public static class NativeCombatRngEntryV111
                 "Only a native-RNG combat can use this isolated intent API.");
         return PrototypeGameEngine.CommitEnemyIntents(
             combat, RngBundle.Empty);
+    }
+
+    /// <summary>
+    /// Same mechanics and native stream as CommitIntents, but captures the
+    /// actual bounded index draws with per-creature source identity. The
+    /// transcript is observational and separate from exact game state.
+    /// </summary>
+    public static NativeIntentAuditV111 CommitIntentsWithAudit(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (combat.NativeRng is null)
+            throw new InvalidOperationException(
+                "Only native RNG combat can produce a native intent audit.");
+        var audit = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
+            combat, RngBundle.Empty);
+        return new NativeIntentAuditV111(
+            audit.Combat, audit.Choices, "native-v111");
     }
 
     /// <summary>

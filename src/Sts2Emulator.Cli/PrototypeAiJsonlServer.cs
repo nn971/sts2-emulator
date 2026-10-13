@@ -13,6 +13,8 @@ internal static class PrototypeAiJsonlServer
     // public enemy intents with optional per-hit base/current damage.
     public const string PublicEnemyIntentId =
         "prototype-committed-public-enemy-intents-v1";
+    public const string NatureBoundarySchemaId =
+        "sts2-v111-nature-isolated-boundary-v1";
 
     public static void Run(TextReader input, TextWriter output)
     {
@@ -23,6 +25,29 @@ internal static class PrototypeAiJsonlServer
         var hypotheticalHandles = new HashSet<string>(StringComparer.Ordinal);
         var freshCombatHandles = new HashSet<string>(StringComparer.Ordinal);
         long nextHandle = 1;
+        // Experimental Nature handles are a separate namespace. They are NOT
+        // playable RunState handles; only explicitly supported isolated entry
+        // mechanics may be resumed. Existing Step() remains unaffected.
+        var natureHp = new Dictionary<string, ControlledInitialHpStateV111>(
+            StringComparer.Ordinal);
+        var natureIntents = new Dictionary<string, ControlledIntentStateV111>(
+            StringComparer.Ordinal);
+        long nextNatureHandle = 1;
+
+        string StoreNature(ControlledInitialHpStateV111 state)
+        {
+            string handle = "n" + nextNatureHandle++;
+            natureHp.Add(handle, state.Fork());
+            return handle;
+        }
+
+        string StoreNatureIntent(ControlledIntentStateV111 state)
+        {
+            string handle = "n" + nextNatureHandle++;
+            natureIntents.Add(handle, state.Fork());
+            return handle;
+        }
+
 
         string Store(
             RunState state,
@@ -99,6 +124,9 @@ internal static class PrototypeAiJsonlServer
                             pristineRewardProposalId = PrototypePristineRewardProposal.SchemaId,
                             nativeOvergrowthResetId = NativeOvergrowthResetId,
                             publicEnemyIntentId = PublicEnemyIntentId,
+                            natureBoundarySchemaId = NatureBoundarySchemaId,
+                            natureBoundaryScope = "isolated-combat-entry-only",
+                            natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
                             snapshotSchemaId = RunSnapshot.SchemaId,
                             batchSchemaId = DeterministicBatch.SchemaId,
@@ -119,6 +147,216 @@ internal static class PrototypeAiJsonlServer
                     case "v111_coverage":
                         Write(new { requestId, ok = true, coverage = V111Coverage.Create() });
                         break;
+
+                    // Versioned experimental Nature protocol. These
+                    // operations are opt-in, use a distinct handle namespace,
+                    // and are NOT a replacement for live RunState.Step.
+                    case "nature_begin":
+                    {
+                        var kind = RequiredString(request, "kind");
+                        var seed = RequiredString(request, "seed");
+                        int act = OptionalInt(request, "act") ?? 2;
+                        var encounterId = RequiredString(request, "encounter_id");
+                        var nativeEntry = RequiredString(request, "native_entry");
+                        int floor = OptionalInt(request, "total_floor") ?? 20;
+                        int ascension = OptionalInt(request, "ascension") ?? 0;
+                        int column = OptionalInt(request, "map_column") ?? 3;
+                        int row = OptionalInt(request, "map_row") ?? 5;
+                        if (act is not (2 or 3))
+                            throw new NotSupportedException(
+                                "Nature v1 isolated formation fixture supports Hive/Glory only.");
+                        if (kind == "initial_hp")
+                        {
+                            var pre = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
+                                seed, act, encounterId, nativeEntry, floor,
+                                ascension, 1, column, row);
+                            var state = ControlledInitialHpV111.Begin(
+                                pre.Combat, pre.Formation, pre.NativeStreams);
+                            var handle = StoreNature(state);
+                            Write(new { requestId, ok = true,
+                                schemaId = NatureBoundarySchemaId,
+                                kind, natureHandle = handle,
+                                fingerprint = state.Fingerprint,
+                                pending = state.Pending, complete = state.Complete,
+                                mode = state.Mode });
+                        }
+                        else if (kind == "intents")
+                        {
+                            var pre = PrototypeNativeLaterActFixture.CreateCombatRngSnapshot(
+                                seed, act, encounterId, nativeEntry, floor,
+                                ascension, 1, column, row,
+                                commitInitialIntents: false);
+                            var state = ControlledIntentsV111.Begin(pre);
+                            var handle = StoreNatureIntent(state);
+                            Write(new { requestId, ok = true,
+                                schemaId = NatureBoundarySchemaId,
+                                kind, natureHandle = handle,
+                                fingerprint = state.Fingerprint,
+                                pending = state.Pending, complete = state.Complete,
+                                mode = state.Mode });
+                        }
+                        else throw new NotSupportedException(
+                            "Unsupported Nature boundary kind.");
+                        break;
+                    }
+
+                    case "nature_advance":
+                    {
+                        // Compose completed controlled HP outcomes into source
+                        // intent selection without sampling native RNG again.
+                        var handle = RequiredString(request, "nature_handle");
+                        if (!natureHp.TryGetValue(handle, out var hp))
+                            throw new InvalidOperationException(
+                                "nature_advance requires an initial_hp handle.");
+                        var next = ControlledIntentsV111.BeginAfterControlledHp(hp);
+                        string childHandle = StoreNatureIntent(next);
+                        Write(new { requestId, ok = true,
+                            schemaId = NatureBoundarySchemaId,
+                            kind = "intents", parent = handle,
+                            child = childHandle, natureHandle = childHandle,
+                            fingerprint = next.Fingerprint,
+                            pending = next.Pending, complete = next.Complete,
+                            mode = next.Mode });
+                        break;
+                    }
+
+                    case "nature_resolve":
+                    {
+                        var handle = RequiredString(request, "nature_handle");
+                        var fingerprint = RequiredString(request, "fingerprint");
+                        int selectedIndex = OptionalInt(request, "selected_index") ??
+                            throw new ArgumentException("Nature requires selected_index.");
+                        if (natureHp.TryGetValue(handle, out var hp))
+                        {
+                            var child = ControlledInitialHpV111.Resolve(
+                                hp, fingerprint, selectedIndex);
+                            string childHandle = StoreNature(child);
+                            Write(new { requestId, ok = true,
+                                schemaId = NatureBoundarySchemaId,
+                                kind = "initial_hp", parent = handle,
+                                child = childHandle, natureHandle = childHandle,
+                                fingerprint = child.Fingerprint,
+                                pending = child.Pending, complete = child.Complete,
+                                mode = child.Mode });
+                        }
+                        else if (natureIntents.TryGetValue(handle, out var intent))
+                        {
+                            var child = ControlledIntentsV111.Resolve(
+                                intent, fingerprint, selectedIndex);
+                            string childHandle = StoreNatureIntent(child);
+                            Write(new { requestId, ok = true,
+                                schemaId = NatureBoundarySchemaId,
+                                kind = "intents", parent = handle,
+                                child = childHandle, natureHandle = childHandle,
+                                fingerprint = child.Fingerprint,
+                                pending = child.Pending, complete = child.Complete,
+                                mode = child.Mode });
+                        }
+                        else throw new InvalidOperationException(
+                            "Unknown Nature handle: " + handle);
+                        break;
+                    }
+
+                    case "nature_fork":
+                    {
+                        var handle = RequiredString(request, "nature_handle");
+                        if (natureHp.TryGetValue(handle, out var hp))
+                        {
+                            var child = hp.Fork();
+                            string newHandle = StoreNature(child);
+                            Write(new { requestId, ok = true,
+                                kind = "initial_hp", parent = handle,
+                                natureHandle = newHandle,
+                                fingerprint = child.Fingerprint,
+                                pending = child.Pending, complete = child.Complete });
+                        }
+                        else if (natureIntents.TryGetValue(handle, out var intent))
+                        {
+                            var child = ControlledIntentsV111.Restore(
+                                ControlledIntentsV111.Save(intent));
+                            string newHandle = StoreNatureIntent(child);
+                            Write(new { requestId, ok = true,
+                                kind = "intents", parent = handle,
+                                natureHandle = newHandle,
+                                fingerprint = child.Fingerprint,
+                                pending = child.Pending, complete = child.Complete });
+                        }
+                        else throw new InvalidOperationException(
+                            "Unknown Nature handle: " + handle);
+                        break;
+                    }
+
+                    case "nature_release_many":
+                    {
+                        if (!request.TryGetProperty("nature_handles", out var elements) ||
+                            elements.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "nature_release_many requires nature_handles array.");
+                        // Validate the complete batch before removing any
+                        // handle so malformed requests leave session intact.
+                        var handles = elements.EnumerateArray().Select(element =>
+                            element.ValueKind == JsonValueKind.String
+                                ? element.GetString()
+                                : throw new ArgumentException(
+                                    "nature_handles entries must be strings")).ToArray();
+                        if (handles.Any(string.IsNullOrWhiteSpace))
+                            throw new ArgumentException("Empty Nature handle.");
+                        int released = 0;
+                        foreach (var handle in handles)
+                        {
+                            if (natureHp.Remove(handle!) || natureIntents.Remove(handle!))
+                                released++;
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "nature_save":
+                    {
+                        var handle = RequiredString(request, "nature_handle");
+                        if (natureHp.TryGetValue(handle, out var hp))
+                            Write(new { requestId, ok = true,
+                                schemaId = NatureBoundarySchemaId,
+                                kind = "initial_hp",
+                                snapshot = ControlledInitialHpV111.Save(hp) });
+                        else if (natureIntents.TryGetValue(handle, out var intent))
+                            Write(new { requestId, ok = true,
+                                schemaId = NatureBoundarySchemaId,
+                                kind = "intents",
+                                snapshot = ControlledIntentsV111.Save(intent) });
+                        else throw new InvalidOperationException(
+                            "Unknown Nature handle: " + handle);
+                        break;
+                    }
+
+                    case "nature_load":
+                    {
+                        var kind = RequiredString(request, "kind");
+                        var snapshot = RequiredString(request, "snapshot");
+                        if (kind == "initial_hp")
+                        {
+                            var state = ControlledInitialHpV111.Restore(snapshot);
+                            string handle = StoreNature(state);
+                            Write(new { requestId, ok = true,
+                                schemaId = NatureBoundarySchemaId, kind,
+                                natureHandle = handle,
+                                fingerprint = state.Fingerprint,
+                                pending = state.Pending, complete = state.Complete });
+                        }
+                        else if (kind == "intents")
+                        {
+                            var state = ControlledIntentsV111.Restore(snapshot);
+                            string handle = StoreNatureIntent(state);
+                            Write(new { requestId, ok = true,
+                                schemaId = NatureBoundarySchemaId, kind,
+                                natureHandle = handle,
+                                fingerprint = state.Fingerprint,
+                                pending = state.Pending, complete = state.Complete });
+                        }
+                        else throw new NotSupportedException(
+                            "Unsupported Nature snapshot kind.");
+                        break;
+                    }
 
                     case "reset_v111":
                     {
