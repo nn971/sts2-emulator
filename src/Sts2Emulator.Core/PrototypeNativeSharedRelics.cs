@@ -11,6 +11,8 @@ public static class PrototypeNativeSharedRelics
     public const string EternalFeatherId = "proto.relic.eternal_feather";
     public const string JuzuBraceletId = "proto.relic.juzu_bracelet";
     public const string LizardTailId = "proto.relic.lizard_tail";
+    public const string SlingOfCourageId =
+        "proto.relic.sling_of_courage";
     public const string PearId = "proto.relic.pear";
     public const string PantographId = "proto.relic.pantograph";
     public const string PetrifiedToadId = "proto.relic.petrified_toad";
@@ -88,6 +90,8 @@ public static class PrototypeNativeSharedRelics
         // ordinary relic pool and is awarded by Trash Heap.
         new(TheBootId, "The Boot", MinPoweredAttackHpLoss: 5),
         new(VenerableTeaSetId, "Venerable Tea Set"),
-        new(LizardTailId, "Lizard Tail")
+        new(LizardTailId, "Lizard Tail"),
+        new(SlingOfCourageId, "Sling of Courage",
+            StrengthOnEliteRoomEntry: 2)
     ];
 }

@@ -332,6 +332,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "SLING_OF_COURAGE"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.SlingOfCourageId,
+                StringComparer.Ordinal)
+            && HasSlingOfCouragePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2016,6 +2026,36 @@ public static class V111Coverage
         return saved.Hp == 20
             && PrototypeGameEngine.IsLizardTailUsed(usedRelic)
             && diedAgain.Hp == 0;
+    }
+
+    private static bool HasSlingOfCouragePath()
+    {
+        var relicId = PrototypeNativeSharedRelics.SlingOfCourageId;
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            || rarity != PrototypeRelicRarity.Shop
+            || PrototypeContent.Relic(relicId)
+                .StrengthOnEliteRoomEntry != 2)
+        {
+            return false;
+        }
+
+        var relics = new[]
+        {
+            new RelicInstance(relicId, PrototypeJson.EmptyObject())
+        };
+        var player = new PlayerState(20, 20, 0, [], relics, []);
+        return PrototypeGameEngine.RelicStrengthOnRoomEntry(
+                player, PrototypeRoomType.Elite) == 2
+            && PrototypeGameEngine.RelicStrengthOnRoomEntry(
+                player, PrototypeRoomType.Combat) == 0
+            && PrototypeGameEngine.RelicStrengthOnRoomEntry(
+                player with
+                {
+                    Relics = [relics[0] with { IsMelted = true }]
+                }, PrototypeRoomType.Elite) == 0;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

@@ -28188,17 +28188,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.sling_of_courage"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/SlingOfCourage.cs#275be872ac99ee8c7df47df277f55110e96750c035730b63b43120fa7707a8b3"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SLING_OF_COURAGE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29457,8 +29459,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 112,
-        "integrated": 113,
+        "implemented": 113,
+        "integrated": 114,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

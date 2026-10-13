@@ -402,6 +402,13 @@ public sealed partial class PrototypeGameEngine
             combat = ApplyPlayerPower(
                 combat, "proto.power.strength", giryaStrength);
         }
+        var eliteRoomStrength = RelicStrengthOnRoomEntry(
+            state.Player, roomType);
+        if (eliteRoomStrength > 0)
+        {
+            combat = ApplyPlayerPower(
+                combat, "proto.power.strength", eliteRoomStrength);
+        }
 
         // Bind the native owner before combat entry hooks and the first
         // intent commitment. HP and all initial enemy maxima now use

@@ -104,6 +104,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.membership_card"] = PrototypeRelicRarity.Shop,
             ["proto.relic.burning_sticks"] = PrototypeRelicRarity.Shop,
             ["proto.relic.toolbox"] = PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.SlingOfCourageId] =
+                PrototypeRelicRarity.Shop,
             ["proto.relic.the_abacus"] = PrototypeRelicRarity.Shop,
             [PrototypeNativeSilentRelics.NinjaScrollId] = PrototypeRelicRarity.Shop,
             ["proto.relic.chemical_x"] = PrototypeRelicRarity.Shop

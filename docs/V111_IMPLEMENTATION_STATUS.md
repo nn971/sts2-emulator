@@ -60,6 +60,10 @@ Lizard Tail now prevents one fatal HP loss, restores half of Max HP (minimum
 1), and persists its used state. Run effects and combat death prevention share
 the hook, with automatic combat potions resolving first. See
 [mechanics gap 063](reference-builds/v0.111.0-mechanics-gap-063.md).
+Sling of Courage is now a Shop relic that adds 2 Strength on Elite room
+entry, using the shared combat-start hook for Overgrowth, Underdocks, Hive,
+and Glory. Melted copies do not trigger. See
+[mechanics gap 064](reference-builds/v0.111.0-mechanics-gap-064.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).

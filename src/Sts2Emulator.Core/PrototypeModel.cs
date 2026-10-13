@@ -860,6 +860,7 @@ public sealed record PrototypeRelicDefinition(
     string? PotionIdBeforeCombat = null,
     bool ExcludesMonsterRoomsFromUnknownMap = false,
     int HealBeforeBossCombat = 0,
+    int StrengthOnEliteRoomEntry = 0,
     int MaxHpOnCombatVictory = 0,
     int PlayerHpLossReduction = 0,
     int UnblockableHpLossAtCombatStart = 0,
