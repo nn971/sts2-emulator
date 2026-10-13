@@ -6,6 +6,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeSharedRelics
 {
     public const string AkabekoId = "proto.relic.akabeko";
+    public const string BellowsId = "proto.relic.bellows";
     public const string CentennialPuzzleId =
         "proto.relic.centennial_puzzle";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
@@ -74,6 +75,15 @@ public static class PrototypeNativeSharedRelics
                 new(PrototypeCombatEventKind.PlayerSideTurnStarted,
                     [new(PrototypeCombatEffectKind.ApplyPlayerPower, 8,
                         PowerId: VigorId)],
+                    TurnEquals: 1)
+            ]),
+        // Bellows upgrades every upgradeable card in hand at the owner's
+        // first turn start of each combat.
+        new(BellowsId, "Bellows",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                    [new(PrototypeCombatEffectKind.UpgradeHandCards, 0)],
                     TurnEquals: 1)
             ]),
         // CentennialPuzzle draws three cards after the owner's first

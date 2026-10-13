@@ -7653,6 +7653,7 @@ public static class PrototypeContent
         "proto.relic.prayer_wheel",
         "proto.relic.pocketwatch",
         "proto.relic.white_beast_statue",
+        PrototypeNativeSharedRelics.BellowsId,
         "proto.relic.membership_card",
         "proto.relic.chemical_x",
         "proto.relic.the_abacus",

@@ -6089,7 +6089,9 @@ public sealed partial class PrototypeGameEngine
                             {
                                 if (!combat.Hand.Contains(
                                         card.InstanceId)
-                                    || card.UpgradeLevel > 0)
+                                    || card.UpgradeLevel
+                                        >= PrototypeContent.Card(card.CardId)
+                                            .MaxUpgradeLevel)
                                 {
                                     return card;
                                 }

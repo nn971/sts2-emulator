@@ -1942,6 +1942,30 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BELLOWS"
+            && engineIds.Contains(PrototypeNativeSharedRelics.BellowsId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.BellowsId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.BellowsId, out var bellowsRarity)
+            && bellowsRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.BellowsId).Triggers?.Any(
+                trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.PlayerSideTurnStarted
+                    && trigger.TurnEquals == 1
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeCombatEffectKind.UpgradeHandCards))
+                == true
+            && HasBellowsPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "NINJA_SCROLL"
             && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
                 StringComparer.Ordinal)
@@ -3050,6 +3074,76 @@ public static class V111Coverage
             && openingCombat.DiscardPile.Length == 3
             && laterTurn?.Hand.Length == 3
             && melted?.Hand.Length == 3;
+    }
+
+    private static bool HasBellowsPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.BellowsId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        CombatState Dispatch(int turn, bool melted)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(
+                30, 30, 0, [], [relic], []);
+            var combatCards = new[]
+            {
+                new CombatCardInstance(1, 1, "proto.silent.strike", 0,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(2, 2, "proto.silent.defend", 1,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(3, 3, "proto.status.wound", 0,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(4, 4, "proto.silent.strike", 0,
+                    false, PrototypeJson.EmptyObject())
+            };
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [1, 2, 3],
+                DrawPile: [4],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 5,
+                Cards: combatCards,
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-bellows-{turn}-{melted}")).Combat;
+        }
+
+        var firstTurn = Dispatch(turn: 1, melted: false);
+        var laterTurn = Dispatch(turn: 2, melted: false);
+        var melted = Dispatch(turn: 1, melted: true);
+        static int UpgradeLevel(CombatState state, long instanceId) =>
+            state.Cards.Single(card => card.InstanceId == instanceId)
+                .UpgradeLevel;
+        return UpgradeLevel(firstTurn, 1) == 1
+            && UpgradeLevel(firstTurn, 2) == 1
+            && UpgradeLevel(firstTurn, 3) == 0
+            && UpgradeLevel(firstTurn, 4) == 0
+            && laterTurn.Cards.All(card => card.UpgradeLevel == 0)
+            && melted.Cards.All(card => card.UpgradeLevel == 0);
     }
 
     private static bool HasDiamondDiademPath()
