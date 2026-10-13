@@ -472,6 +472,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "YUMMY_COOKIE"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.YummyCookieId,
+                StringComparer.Ordinal)
+            && HasYummyCookiePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -3222,6 +3232,84 @@ public static class V111Coverage
         return active.Deck is
             [{ InstanceId: 1, CardId: NativeAncientRewardsV111.BrightestFlameId }]
             && melted.Deck.Length == 0;
+    }
+
+    private static bool HasYummyCookiePath()
+    {
+        var relicId = NativeAncientRewardsV111.YummyCookieId;
+        var choiceId = "take_" + relicId;
+        var relic = PrototypeContent.Relic(relicId);
+        var acquisition = relic.AcquisitionDeckChoice;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || acquisition is not
+                { Kind: PrototypePersistentDeckChoiceKind.Upgrade,
+                    Selections: 4 }
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        const string strikeId = "proto.silent.strike";
+        if (PrototypeContent.Card(strikeId).MaxUpgradeLevel < 1)
+            return false;
+
+        var originalDeck = Enumerable.Range(1, 5)
+            .Select(id => new CardInstance(id, strikeId, 0,
+                PrototypeJson.EmptyObject()))
+            .ToArray();
+        var player = new PlayerState(
+            30, 30, 0, originalDeck, [], []);
+        var pending = PrototypeGameEngine.CreateRelicDeckChoice(
+            player, relicId);
+        if (pending is not
+            { Kind: PrototypePersistentDeckChoiceKind.Upgrade,
+                RemainingSelections: 4,
+                CandidateCardInstanceIds.Length: 5,
+                MinimumSelectionsRemaining: 4 })
+        {
+            return false;
+        }
+
+        var rng = PrototypeRng.CreateBundle("coverage-yummy-cookie");
+        while (pending is { RemainingSelections: > 0 })
+        {
+            if (pending.CandidateCardInstanceIds.Length == 0)
+                return false;
+            var selectedId = pending.CandidateCardInstanceIds[0];
+            var resolved = PrototypeGameEngine.ResolveRelicDeckChoice(
+                player, pending, selectedId, rng);
+            player = resolved.Player;
+            pending = resolved.Remaining;
+            if (pending?.CandidateCardInstanceIds.Contains(selectedId) == true)
+                return false;
+        }
+
+        var upgraded = player.Deck
+            .Where(card => card.UpgradeLevel == 1)
+            .Select(card => card.InstanceId)
+            .OrderBy(id => id)
+            .ToArray();
+        var unchanged = player.Deck
+            .Where(card => card.UpgradeLevel == 0)
+            .Select(card => card.InstanceId)
+            .ToArray();
+        return pending is null
+            && player.Deck.Length == originalDeck.Length
+            && player.Deck.Select(card => card.InstanceId)
+                .OrderBy(id => id)
+                .SequenceEqual(originalDeck.Select(card => card.InstanceId)
+                    .OrderBy(id => id))
+            && upgraded.Length == 4
+            && unchanged.Length == 1
+            && player.Deck.All(card => card.UpgradeLevel is 0 or 1);
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

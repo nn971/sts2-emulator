@@ -7,7 +7,7 @@ public sealed partial class PrototypeGameEngine
     /// whether the relic was obtained from a reward or purchased in a shop.
     /// Returning null means the final selection has been resolved.
     /// </summary>
-    private static (
+    internal static (
         PlayerState Player,
         PrototypePendingDeckChoiceState? Remaining
     ) ResolveRelicDeckChoice(

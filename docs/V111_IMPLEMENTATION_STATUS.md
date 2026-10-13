@@ -290,7 +290,9 @@ see [Tezcatara dependency audit](reference-builds/v0.111.0-tezcatara-reward-depe
 Biiig Hug coverage checks its Tezcatara reward, four-card removal selection,
 Soot insertion after discard recycling, and melted-copy behavior.
 Very Hot Cocoa coverage checks its Tezcatara reward, turn-one Energy grant,
-later-turn gating, and melted-copy behavior.
+later-turn gating, and melted-copy behavior. Yummy Cookie coverage resolves its
+four-card acquisition choice and verifies four distinct upgrades while the
+fifth eligible card remains unchanged; see [mechanics gap 079](reference-builds/v0.111.0-mechanics-gap-079.md).
 
 Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
 cards through shared acquisition; Flesh modifies energy reset from turn three;

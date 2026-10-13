@@ -5108,7 +5108,7 @@ public sealed partial class PrototypeGameEngine
         }).ToArray();
     }
 
-    private static PrototypePendingDeckChoiceState?
+    internal static PrototypePendingDeckChoiceState?
         CreateRelicDeckChoice(
             PlayerState player,
             string relicId)

@@ -29151,8 +29151,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/YummyCookie.cs#9db8648e11817c7d542ac53493cdaf3d5dacc222723c593a1b859c0287ec464e"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29460,8 +29460,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 127,
-        "integrated": 128,
+        "implemented": 128,
+        "integrated": 129,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
