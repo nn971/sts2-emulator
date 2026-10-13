@@ -308,6 +308,21 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "relics"
+            && item.Id == "NEOWS_TORMENT"
+            && engineIds.Contains(
+                PrototypeNativeOvergrowthEvents.NeowRelicId("NeowsTorment"),
+                StringComparer.Ordinal)
+            && PrototypeNativeOvergrowthEvents.NeowPositiveRelicNames
+                .Contains("NeowsTorment", StringComparer.Ordinal)
+            && IsIntegratedEvent(
+                PrototypeNativeOvergrowthEvents.NeowEventId)
+            && HasNeowsTormentPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "CIRCLET"
             && engineIds.Contains("proto.relic.circlet",
@@ -6665,6 +6680,33 @@ public static class V111Coverage
                 && effect.Amount == 333)
             && acquired.Deck is [{ CardId: greedCardId }]
             && acquired.Gold == 340;
+    }
+
+    private static bool HasNeowsTormentPath()
+    {
+        const string relicId = "proto.native.neow.neowstorment";
+        const string cardId = "proto.native.neow.neows_fury";
+        var choiceExists = PrototypeContent.Event(
+            PrototypeNativeOvergrowthEvents.NeowEventId).Choices.Any(choice =>
+            choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId == relicId));
+        var player = new PlayerState(30, 30, 7, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        long nextCardInstanceId = 1;
+        var acquired = PrototypeGameEngine.ApplyRelicRunEvent(
+            player,
+            PrototypeRunEventKind.RelicAcquired,
+            acquiredRelicId: relicId,
+            rng: PrototypeRng.CreateBundle("coverage-neows-torment"),
+            allocateCardId: () => nextCardInstanceId++);
+        return choiceExists
+            && PrototypeContent.Relic(relicId).RunTriggers?.Any(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.RelicAcquired
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.AddCard
+                    && effect.CardId == cardId)) == true
+            && acquired.Deck is [{ CardId: cardId }];
     }
 
     private static bool HasCompleteWarHistorianRepyBranches(

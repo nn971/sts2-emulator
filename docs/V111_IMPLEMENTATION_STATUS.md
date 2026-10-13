@@ -1358,3 +1358,6 @@ acquisition callback. See
 Cursed Pearl's Neow pickup now has executable coverage for adding Greed and
 granting 333 Gold. See
 [mechanics gap 115](reference-builds/v0.111.0-mechanics-gap-115.md).
+Neow's Torment's Neow pickup now has executable coverage for adding Neow's
+Fury to the deck. See
+[mechanics gap 116](reference-builds/v0.111.0-mechanics-gap-116.md).
