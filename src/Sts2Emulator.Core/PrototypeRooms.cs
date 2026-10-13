@@ -4617,7 +4617,15 @@ public sealed partial class PrototypeGameEngine
 
             var player = state.Player;
             var nextId = world.NextCardInstanceId;
-            if (reward.AddCardAfterReward is { } additionalCardId)
+            if (reward.AddRandomCurseAfterReward)
+            {
+                var cursePool = NativeGloryAncientsV111
+                    .ModifierGeneratedCurseIds;
+                var curseId = cursePool[PrototypeRng.NextInt(
+                    state.Rng, "reward", cursePool.Length)];
+                player = AppendCard(player, nextId++, curseId, state.Rng);
+            }
+            else if (reward.AddCardAfterReward is { } additionalCardId)
             {
                 player = AppendCard(
                     player, nextId++, additionalCardId, state.Rng);

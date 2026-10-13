@@ -27,8 +27,10 @@ Neow now retains the selected positive or cursed option's finished page after
 its relic effect and queued rewards resolve; dismissing the pre-map opening
 returns to map choice without completing a room. Choice generation still
 approximates native unlock filtering and RNG. The implemented opening-choice
-branches are covered except for Neow's Bones' curse-pool placeholder and
-Kaleidoscope's deferred foreign card pools.
+branches are covered except for Kaleidoscope's deferred foreign card pools.
+Neow's Bones adds one random Curse from the ten-card modifier-generated Curse
+pool after both relic pickups and any relic acquisition continuations resolve;
+its draw still uses prototype reward RNG, with native stream parity deferred.
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

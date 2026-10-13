@@ -95,8 +95,8 @@ public sealed class PrototypeNativeNeowsBonesTests
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(1, state.Player.Deck.Single(card =>
             card.InstanceId == 1L).UpgradeLevel);
-        Assert.Equal("proto.native.neow.injury",
-            state.Player.Deck[^1].CardId);
+        Assert.Contains(state.Player.Deck[^1].CardId,
+            NativeGloryAncientsV111.ModifierGeneratedCurseIds);
         PrototypeStateInvariants.Validate(state);
     }
 
@@ -120,9 +120,11 @@ public sealed class PrototypeNativeNeowsBonesTests
         Assert.True(reward.PotionResolved);
         Assert.True(reward.RelicResolved);
         Assert.Null(reward.RelicOption);
-        Assert.Equal("proto.native.neow.injury", reward.AddCardAfterReward);
-        Assert.DoesNotContain(state.Player.Deck,
-            c => c.CardId == "proto.native.neow.injury");
+        Assert.True(reward.AddRandomCurseAfterReward);
+        Assert.Null(reward.AddCardAfterReward);
+        Assert.DoesNotContain(state.Player.Deck, c =>
+            NativeGloryAncientsV111.ModifierGeneratedCurseIds
+                .Contains(c.CardId, StringComparer.Ordinal));
         Assert.Empty(state.World.CompletedRooms);
 
         var ids = reward.ExtraRelicRewardIds!;
@@ -161,8 +163,9 @@ public sealed class PrototypeNativeNeowsBonesTests
             PrototypeStateInvariants.Validate(state);
             if (state.Phase == RunPhase.Reward)
             {
-                Assert.DoesNotContain(state.Player.Deck,
-                    c => c.CardId == "proto.native.neow.injury");
+                Assert.DoesNotContain(state.Player.Deck, c =>
+                    NativeGloryAncientsV111.ModifierGeneratedCurseIds
+                        .Contains(c.CardId, StringComparer.Ordinal));
             }
         }
 
@@ -175,9 +178,10 @@ public sealed class PrototypeNativeNeowsBonesTests
             relic => relic.RelicId == id));
         Assert.Equal(4, state.Player.Relics.Length);
         Assert.Single(state.Player.Deck, c =>
-            c.CardId == "proto.native.neow.injury");
-        Assert.Equal("proto.native.neow.injury",
-            state.Player.Deck[^1].CardId);
+            NativeGloryAncientsV111.ModifierGeneratedCurseIds
+                .Contains(c.CardId, StringComparer.Ordinal));
+        Assert.Contains(state.Player.Deck[^1].CardId,
+            NativeGloryAncientsV111.ModifierGeneratedCurseIds);
         PrototypeStateInvariants.Validate(state);
     }
 }

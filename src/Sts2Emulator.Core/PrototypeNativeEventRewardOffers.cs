@@ -253,9 +253,9 @@ public sealed partial class PrototypeGameEngine
                     RelicResolved: true,
                     EndsAct: false,
                     ExtraRelicRewardIds: chosen,
-                    // Injury is the sole ordinary standalone Curse
-                    // implemented in the current Silent prototype.
-                    AddCardAfterReward: "proto.native.neow.injury")
+                    // Draw one source-pool Curse only after both relics
+                    // and their acquisition continuations are resolved.
+                    AddRandomCurseAfterReward: true)
                 {
                     ExtraRelicGroupsSkippable = false
                 };
