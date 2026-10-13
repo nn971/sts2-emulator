@@ -24817,17 +24817,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.cloak_clasp"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/CloakClasp.cs#1b8e9638fab92d0ea0322f48e9c4e48fe10ae7f2fb6696b21932dc1d73995f0d"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CLOAK_CLASP",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29444,8 +29446,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 145,
-        "integrated": 146,
+        "implemented": 146,
+        "integrated": 147,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

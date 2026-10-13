@@ -2085,6 +2085,33 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "CLOAK_CLASP"
+            && engineIds.Contains(PrototypeNativeSharedRelics.CloakClaspId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.CloakClaspId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.CloakClaspId,
+                out var cloakClaspRarity)
+            && cloakClaspRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.CloakClaspId).Triggers?.Any(
+                trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.PlayerTurnEnded
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeCombatEffectKind.GainPlayerBlock
+                        && effect.CountKind
+                            == PrototypeCombatCountKind.OtherCardsInHand
+                        && effect.AmountPerCount == 1)) == true
+            && HasCloakClaspPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "NINJA_SCROLL"
             && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
                 StringComparer.Ordinal)
@@ -3521,6 +3548,74 @@ public static class V111Coverage
                 == expectedBase + 15
             && PrototypeGameEngine.RestSiteHealAmount(meltedPlayer)
                 == expectedBase;
+    }
+
+    private static bool HasCloakClaspPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.CloakClaspId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Fixture(
+            int handSize, bool melted)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(
+                30, 30, 0, [], [relic], []);
+            var cards = new[]
+            {
+                new CombatCardInstance(1, 1, "proto.silent.strike", 0,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(2, 2, "proto.silent.defend", 0,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(3, 3, "proto.status.wound", 0,
+                    false, PrototypeJson.EmptyObject()),
+                new CombatCardInstance(4, 4, "proto.silent.strike", 0,
+                    false, PrototypeJson.EmptyObject())
+            };
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 2,
+                Hand: handSize == 0 ? [] : [1, 2, 3],
+                DrawPile: [4],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 5,
+                Cards: cards,
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+            return (player, combat);
+        }
+
+        int EndTurnBlock(int handSize, bool melted)
+        {
+            var (player, combat) = Fixture(handSize, melted);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerTurnEnded),
+                PrototypeRng.CreateBundle(
+                    $"coverage-cloak-clasp-{handSize}-{melted}")).Combat.PlayerBlock;
+        }
+
+        return EndTurnBlock(handSize: 3, melted: false) == 5
+            && EndTurnBlock(handSize: 0, melted: false) == 2
+            && EndTurnBlock(handSize: 3, melted: true) == 2;
     }
 
     private static bool HasDiamondDiademPath()

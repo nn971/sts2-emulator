@@ -12,6 +12,7 @@ public static class PrototypeNativeSharedRelics
     public const string FestivePopperId = "proto.relic.festive_popper";
     public const string GamePieceId = "proto.relic.game_piece";
     public const string RegalPillowId = "proto.relic.regal_pillow";
+    public const string CloakClaspId = "proto.relic.cloak_clasp";
     public const string CentennialPuzzleId =
         "proto.relic.centennial_puzzle";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
@@ -127,6 +128,16 @@ public static class PrototypeNativeSharedRelics
             ]),
         // Regal Pillow adds 15 HP to each rest-site heal.
         new(RegalPillowId, "Regal Pillow", RestSiteHealBonus: 15),
+        // Cloak Clasp grants one unpowered Block per card in hand at turn end.
+        new(CloakClaspId, "Cloak Clasp",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerTurnEnded,
+                    [new(PrototypeCombatEffectKind.GainPlayerBlock, 0,
+                        CountKind: PrototypeCombatCountKind.OtherCardsInHand,
+                        AmountPerCount: 1)],
+                    RequiresPlayerSide: true)
+            ]),
         // CentennialPuzzle draws three cards after the owner's first
         // unblocked damage callback in each combat.
         new(CentennialPuzzleId, "Centennial Puzzle",

@@ -7659,6 +7659,7 @@ public static class PrototypeContent
         "proto.relic.white_beast_statue",
         PrototypeNativeSharedRelics.BellowsId,
         PrototypeNativeSharedRelics.ChandelierId,
+        PrototypeNativeSharedRelics.CloakClaspId,
         "proto.relic.membership_card",
         "proto.relic.chemical_x",
         "proto.relic.the_abacus",

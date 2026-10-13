@@ -105,6 +105,8 @@ public static class PrototypeNativeRelicGrabBag
             [PrototypeNativeSharedRelics.BellowsId] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.ChandelierId] =
                 PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.CloakClaspId] =
+                PrototypeRelicRarity.Rare,
             ["proto.relic.art_of_war"] = PrototypeRelicRarity.Rare,
             ["proto.relic.charons_ashes"] = PrototypeRelicRarity.Rare,
             [PrototypeNativeRestSiteRelics.ShovelId] = PrototypeRelicRarity.Rare,
