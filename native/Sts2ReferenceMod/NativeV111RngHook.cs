@@ -98,6 +98,7 @@ internal static class NativeV111RngHook
                 // in the locally installed hotfix; the log is authoritative.
             }
             var shuffleScopeInstalled = NativeV111ShuffleHooks.TryInstall(harmony);
+            var initialHpScopeInstalled = NativeV111InitialHpHooks.TryInstall(harmony);
             _patches = harmony;
             _rollMoveScopeInstalled = rollMoveScopeInstalled;
             GD.Print("[Sts2ReferenceMod] RNG_HOOK_STATUS=INSTALLED_BOUND_INT_OVERLOADS;" +
@@ -105,7 +106,9 @@ internal static class NativeV111RngHook
                 " rollmove_source_scope=" +
                 (rollMoveScopeInstalled ? "INSTALLED" : "UNAVAILABLE") +
                 "; shuffle_source_scope=" +
-                (shuffleScopeInstalled ? "INSTALLED" : "UNAVAILABLE"));
+                (shuffleScopeInstalled ? "INSTALLED" : "UNAVAILABLE") +
+                "; initial_hp_source_scope=" +
+                (initialHpScopeInstalled ? "INSTALLED" : "UNAVAILABLE"));
         }
         catch (Exception error)
         {
@@ -156,7 +159,8 @@ internal static class NativeV111RngHook
 
     private static CallState Capture(NativeRng rng, int min, int max)
     {
-        if ((!_attached && !NativeV111ShuffleHooks.HasActiveSourceScope)
+        if ((!_attached && !NativeV111ShuffleHooks.HasActiveSourceScope
+                && !NativeV111InitialHpHooks.HasActiveSourceScope)
             || _observationFailed
             || (_attached
                 && System.Environment.CurrentManagedThreadId != _threadId)
@@ -227,6 +231,9 @@ internal static class NativeV111RngHook
         {
             var after = Snapshot(rng);
             NativeV111ShuffleHooks.ObserveChoice(
+                rng, state.Bound, checked(result - state.Min),
+                state.Before!, after);
+            NativeV111InitialHpHooks.ObserveChoice(
                 rng, state.Bound, checked(result - state.Min),
                 state.Before!, after);
             // Pre-attachment initial shuffles are emitted from a bounded
