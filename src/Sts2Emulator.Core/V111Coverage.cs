@@ -482,6 +482,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TOASTY_MITTENS"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.ToastyMittensId,
+                StringComparer.Ordinal)
+            && HasToastyMittensPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -3310,6 +3320,187 @@ public static class V111Coverage
             && upgraded.Length == 4
             && unchanged.Length == 1
             && player.Deck.All(card => card.UpgradeLevel is 0 or 1);
+    }
+
+    private static bool HasToastyMittensPath()
+    {
+        var relicId = NativeAncientRewardsV111.ToastyMittensId;
+        var choiceId = "take_" + relicId;
+        var relicDefinition = PrototypeContent.Relic(relicId);
+        var triggers = relicDefinition.Triggers ?? [];
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || triggers.Length != 2
+            || triggers[0].EventKind
+                != PrototypeCombatEventKind.OpeningPlayerTurnStarted
+            || triggers[1].EventKind
+                != PrototypeCombatEventKind.PlayerTurnStarted
+            || triggers[1].MinTurn != 2
+            || triggers.Any(trigger => trigger.Effects is not
+                [
+                    { Kind: PrototypeCombatEffectKind.ChooseCards,
+                        Selection: { SourceZone: PrototypeCardZone.Hand,
+                            MinSelections: 1, MaxSelections: 1,
+                            Resolution: PrototypeCardSelectionResolutionKind.MoveToExhaust } },
+                    { Kind: PrototypeCombatEffectKind.ApplyPlayerPower,
+                        PowerId: "proto.power.strength", Amount: 1 }
+                ]))
+        {
+            return false;
+        }
+
+        static RunState CreateFixture(bool melted)
+        {
+            var relicId = NativeAncientRewardsV111.ToastyMittensId;
+            var state = PrototypeNativeLaterActFixture.Create(
+                $"coverage-toasty-mittens-{melted}", 2);
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var cards = Enumerable.Range(1, 5)
+                .Select(id => new CombatCardInstance(
+                    id, null, "proto.silent.strike", 0, false,
+                    PrototypeJson.EmptyObject()))
+                .ToArray();
+            var triggerCount = PrototypeContent.Relic(relicId)
+                .Triggers?.Length ?? 0;
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: PrototypeContent.Rules.BaseEnergy,
+                PlayerBlock: 0,
+                Hand: cards.Select(card => card.InstanceId).ToArray(),
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 6,
+                Cards: cards,
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [new CombatRelicState(0, relicId, 1,
+                    new int[triggerCount], IsMelted: melted)],
+                Act: 2,
+                PlayPile: []);
+            var world = state.World!;
+            return state with
+            {
+                Phase = RunPhase.Combat,
+                Player = state.Player with { Relics = [relic] },
+                World = world with
+                {
+                    Floor = Math.Max(1, world.Floor),
+                    ActiveRoom = PrototypeRoomType.Combat,
+                    Combat = combat
+                }
+            };
+        }
+
+        static RunState Dispatch(RunState state,
+            PrototypeCombatEventKind eventKind, int turn)
+        {
+            var world = state.World!;
+            var combat = world.Combat! with { Turn = turn };
+            var result = PrototypeGameEngine.DispatchCombatEvent(
+                state.Player, combat,
+                new PrototypeCombatEvent(eventKind), state.Rng,
+                allowSuspension: true);
+            return state with
+            {
+                Player = result.Player,
+                World = world with { Combat = result.Combat }
+            };
+        }
+
+        static RunState? ResolvePrompt(RunState state)
+        {
+            var pending = state.World?.Combat?.PendingChoice;
+            if (pending is null
+                || pending.CandidateCardInstanceIds.Length == 0
+                || pending.Selection.SourceZone != PrototypeCardZone.Hand
+                || pending.Selection.Resolution
+                    != PrototypeCardSelectionResolutionKind.MoveToExhaust)
+            {
+                return null;
+            }
+
+            var selectedId = pending.CandidateCardInstanceIds[0];
+            return PrototypeGameEngine.ResolvePendingChoice(
+                state,
+                GameAction.Create("select_cards",
+                    new SelectCardsPayload([selectedId])));
+        }
+
+        static int Strength(RunState state) =>
+            state.World?.Combat?.PlayerPowers
+                .SingleOrDefault(power =>
+                    power.PowerId == "proto.power.strength")?.Stacks ?? 0;
+
+        var active = CreateFixture(melted: false);
+        active = Dispatch(active,
+            PrototypeCombatEventKind.PlayerTurnStarted, turn: 1);
+        if (active.World?.Combat?.PendingChoice is not null
+            || Strength(active) != 0)
+        {
+            return false;
+        }
+
+        active = Dispatch(active,
+            PrototypeCombatEventKind.OpeningPlayerTurnStarted, turn: 1);
+        var openingChoice = active.World?.Combat?.PendingChoice;
+        if (openingChoice is not
+            { CandidateCardInstanceIds.Length: 5,
+                Selection.MinSelections: 1,
+                Selection.MaxSelections: 1 })
+        {
+            return false;
+        }
+        var resolvedOpening = ResolvePrompt(active);
+        if (resolvedOpening is null)
+            return false;
+        active = resolvedOpening;
+        if (Strength(active) != 1
+            || active.World?.Combat?.ExhaustPile.Length != 1)
+        {
+            return false;
+        }
+
+        for (var turn = 2; turn <= 3; turn++)
+        {
+            active = Dispatch(active,
+                PrototypeCombatEventKind.PlayerTurnStarted, turn);
+            var pending = active.World?.Combat?.PendingChoice;
+            if (pending is null
+                || pending.CandidateCardInstanceIds.Length != 5 - turn + 1)
+                return false;
+            var resolved = ResolvePrompt(active);
+            if (resolved is null)
+                return false;
+            active = resolved;
+            if (Strength(active) != turn
+                || active.World?.Combat?.ExhaustPile.Length != turn)
+            {
+                return false;
+            }
+        }
+
+        var melted = CreateFixture(melted: true);
+        melted = Dispatch(melted,
+            PrototypeCombatEventKind.OpeningPlayerTurnStarted, turn: 1);
+        return melted.World?.Combat?.PendingChoice is null
+            && Strength(melted) == 0
+            && melted.World?.Combat?.ExhaustPile.Length == 0;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

@@ -11580,7 +11580,7 @@ public sealed partial class PrototypeGameEngine
         return actions;
     }
 
-    private static RunState ResolvePendingChoice(RunState state, GameAction action)
+    internal static RunState ResolvePendingChoice(RunState state, GameAction action)
     {
         RequireKind(action, "select_cards");
         var payload = action.ReadPayload<SelectCardsPayload>();

@@ -28629,8 +28629,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ToastyMittens.cs#8c8aa3ab557673382847616931606a587a319ed7a4417bda613fd0fa3c550530"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29460,8 +29460,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 128,
-        "integrated": 129,
+        "implemented": 129,
+        "integrated": 130,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
