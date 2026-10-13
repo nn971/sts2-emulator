@@ -1,6 +1,6 @@
 # Silent v0.111 all-Act gameplay baseline (2026-10-13)
 
-**Status: gameplay freeze candidate.** This document identifies the gameplay implementation to preserve while development focuses on the integrated native fidelity Inspector and desired RNG architecture. It is a reproducible **implementation baseline**, not a statement of full mechanics coverage, native parity, or a passing complete test suite.
+**Status: frozen gameplay checkpoint, merged into `main` on 2026-10-13.** This document identifies the gameplay implementation to preserve while development focuses on the integrated native fidelity Inspector and desired RNG architecture. It is a reproducible **implementation baseline**, not a statement of full mechanics coverage, native parity, or a passing complete test suite.
 
 ## Scope
 
@@ -26,7 +26,7 @@ The committed `data/coverage/v111-baseline.json` currently records **4/4 acts**,
 
 ## Rules for working from the freeze
 
-- **Immutable reference:** use the Git merge commit into `main` and the `snapshot/silent-v111-all-act-20261013` reference created after the release PR merges. Pin downstream work to an exact SHA for reproducibility.
+- **Immutable reference:** Git commit [`d6d65cc2a588cdd569e393cf1c7d8a299a43461c`](https://github.com/nn971/sts2-emulator/commit/d6d65cc2a588cdd569e393cf1c7d8a299a43461c), merged via [PR #141](https://github.com/nn971/sts2-emulator/pull/141), with the matching `snapshot/silent-v111-all-act-20261013` branch. Pin downstream work to this exact SHA for reproducibility.
 - **Gameplay changes:** fix mechanics only on a separate, explicitly named branch, with tests and a recorded baseline diff; preserve this frozen revision for regression comparison.
 - **Fidelity/RNG development:** apply isolated changes on the pre-existing dedicated branches and their review chain; measure against the snapshot and record divergence without silently redefining expected mechanics.
 - **Documentation:** this concise page is the freeze entrypoint. [Implementation status](V111_IMPLEMENTATION_STATUS.md) is the cumulative dated mechanical ledger; [full roadmap](FULL_IMPLEMENTATION_ROADMAP.md) defines the larger eventual project. [Next steps](NEXT_STEPS.md) tracks the fidelity/RNG phase.
@@ -42,6 +42,10 @@ python tools/check_v111_coverage.py
 ```
 
 Classify full-suite failures and missing coverage honestly; expected nonzero results are part of the recorded baseline. Native game attachment requires the local pinned Steam build, outside remote CI.
+
+## Development history
+
+Read the [chronological history](HISTORY.md) and [archived mechanics ledger](archive/status/2026-10-13-v111-implementation-ledger.md) for dated implementation details. The [document index](INDEX.md) separates active, historical and proposed work.
 
 ## Deferred targets
 
