@@ -10889,7 +10889,7 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
-    private static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
+    internal static (PlayerState Player, CombatState Combat) DispatchCombatEvent(
         PlayerState player,
         CombatState combat,
         PrototypeCombatEvent combatEvent,

@@ -25550,8 +25550,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ForgottenSoul.cs#1faa9b48c82680094333903c7f59bdae31ba226506c3c58217b3406fa5b34a79"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 117,
-        "integrated": 118,
+        "implemented": 118,
+        "integrated": 119,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

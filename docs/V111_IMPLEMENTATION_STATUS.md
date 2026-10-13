@@ -1068,6 +1068,8 @@ potion. Full native potion-pool and cursor parity remain unverified.
   Forgotten Soul `CardExhausted` randomized unpowered 1-damage hook,
   rather than duplicating source models. Corrected Forgotten Soul's
   erroneous ordinary reward-pool membership: native rarity is Event.
+  Executable coverage follows the Act 3 Accept reward and dispatches the
+  damage trigger, including the melted-relic case.
   Souls Power's effect applies to both manual and automatic card play.
   Detailed branch, persistence and combat tests remain emulator-only,
   not native RNG/trace parity evidence.

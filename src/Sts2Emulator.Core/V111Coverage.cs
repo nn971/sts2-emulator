@@ -382,6 +382,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "FORGOTTEN_SOUL"
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.ForgottenSoulId,
+                StringComparer.Ordinal)
+            && HasForgottenSoulPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2286,6 +2296,80 @@ public static class V111Coverage
             && meltedCombat?.Cards.Length == 0
             && meltedCombat.NextCardInstanceId == 1
             && meltedCombat.Enemies.Single().Hp == 20;
+    }
+
+    private static bool HasForgottenSoulPath()
+    {
+        var relicId = PrototypeNativeGloryEvents.ForgottenSoulId;
+        var grave = PrototypeNativeGloryEvents.Events.SingleOrDefault(
+            evt => evt.Id == PrototypeNativeGloryEvents.GraveOfTheForgottenId);
+        if (grave is null
+            || !ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                grave.Id, 3)
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !grave.Choices.Any(choice => choice.Id == "accept"
+                && choice.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId == relicId))
+            || PrototypeContent.Relic(relicId).Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.CardExhausted
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                    && effect.Amount == 1
+                    && effect.Target
+                        == PrototypeEffectTarget.RandomEnemy)) != true)
+        {
+            return false;
+        }
+
+        static (PlayerState Player, CombatState Combat) Dispatch(bool melted)
+        {
+            var relicId = PrototypeNativeGloryEvents.ForgottenSoulId;
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var triggerCount = PrototypeContent.Relic(relicId)
+                .Triggers?.Length ?? 0;
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal)),
+                    new EnemyCombatState(2, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount],
+                        IsMelted: melted)
+                ],
+                Act: 3,
+                PlayPile: []);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardExhausted),
+                PrototypeRng.CreateBundle("coverage-forgotten-soul"));
+        }
+
+        var active = Dispatch(melted: false).Combat;
+        var melted = Dispatch(melted: true).Combat;
+        return active.Enemies.Sum(enemy => enemy.Hp) == 39
+            && melted.Enemies.Sum(enemy => enemy.Hp) == 40;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)
