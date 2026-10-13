@@ -7603,6 +7603,7 @@ public static class PrototypeContent
         "proto.relic.blood_vial",
         PrototypeNativeSharedRelics.CentennialPuzzleId,
         PrototypeNativeSharedRelics.JuzuBraceletId,
+        PrototypeNativeSharedRelics.FestivePopperId,
         PrototypeNativeSharedRelics.StrawberryId,
         PrototypeNativeSharedRelics.PearId,
         PrototypeNativeSharedRelics.PetrifiedToadId,

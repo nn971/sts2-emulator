@@ -25461,17 +25461,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.festive_popper"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FestivePopper.cs#6be306610fedfbfe4c666ae768cfa7dc27e2d3a22a2637438d6075d2d8149c5e"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "FESTIVE_POPPER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29438,8 +29440,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 142,
-        "integrated": 143,
+        "implemented": 143,
+        "integrated": 144,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

@@ -2014,6 +2014,32 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "FESTIVE_POPPER"
+            && engineIds.Contains(PrototypeNativeSharedRelics.FestivePopperId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.FestivePopperId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.FestivePopperId,
+                out var festivePopperRarity)
+            && festivePopperRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.FestivePopperId).Triggers?.Any(
+                trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.PlayerSideTurnStarted
+                    && trigger.TurnEquals == 1
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                        && effect.Amount == 9
+                        && effect.Target
+                            == PrototypeEffectTarget.AllEnemies)) == true
+            && HasFestivePopperPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "NINJA_SCROLL"
             && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
                 StringComparer.Ordinal)
@@ -3292,6 +3318,61 @@ public static class V111Coverage
         return Dispatch(turn: 2, melted: false) == 1
             && Dispatch(turn: 3, melted: false) == 4
             && Dispatch(turn: 3, melted: true) == 1;
+    }
+
+    private static bool HasFestivePopperPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.FestivePopperId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        EnemyCombatState[] Dispatch(int turn, bool melted)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(
+                30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 30,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal)),
+                    new EnemyCombatState(2, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-festive-popper-{turn}-{melted}")).Combat.Enemies;
+        }
+
+        static bool HasHp(
+            EnemyCombatState[] enemies, int first, int second) =>
+            enemies[0].Hp == first && enemies[1].Hp == second;
+        return HasHp(Dispatch(turn: 1, melted: false), 21, 11)
+            && HasHp(Dispatch(turn: 2, melted: false), 30, 20)
+            && HasHp(Dispatch(turn: 1, melted: true), 30, 20);
     }
 
     private static bool HasDiamondDiademPath()
