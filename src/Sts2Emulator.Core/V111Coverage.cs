@@ -1990,6 +1990,30 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "CHANDELIER"
+            && engineIds.Contains(PrototypeNativeSharedRelics.ChandelierId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.ChandelierId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.ChandelierId,
+                out var chandelierRarity)
+            && chandelierRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.ChandelierId).Triggers?.Any(
+                trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.PlayerSideTurnStarted
+                    && trigger.TurnEquals == 3
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.GainEnergy
+                        && effect.Amount == 3)) == true
+            && HasChandelierPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "NINJA_SCROLL"
             && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
                 StringComparer.Ordinal)
@@ -3218,6 +3242,56 @@ public static class V111Coverage
         return Dispatch(turn: 1, melted: false) == 1
             && Dispatch(turn: 2, melted: false) == 3
             && Dispatch(turn: 2, melted: true) == 1;
+    }
+
+    private static bool HasChandelierPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.ChandelierId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        int Dispatch(int turn, bool melted)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(
+                30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: 1,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-chandelier-{turn}-{melted}")).Combat.Energy;
+        }
+
+        return Dispatch(turn: 2, melted: false) == 1
+            && Dispatch(turn: 3, melted: false) == 4
+            && Dispatch(turn: 3, melted: true) == 1;
     }
 
     private static bool HasDiamondDiademPath()

@@ -24691,17 +24691,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.chandelier"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Chandelier.cs#ab78a72c9a34a56d87bbad834b42d75aacdeca60e3653fd16905b4fd119afa0e"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CHANDELIER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29436,8 +29438,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 141,
-        "integrated": 142,
+        "implemented": 142,
+        "integrated": 143,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

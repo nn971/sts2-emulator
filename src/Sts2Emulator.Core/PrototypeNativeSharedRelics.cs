@@ -8,6 +8,7 @@ public static class PrototypeNativeSharedRelics
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
     public const string CandelabraId = "proto.relic.candelabra";
+    public const string ChandelierId = "proto.relic.chandelier";
     public const string CentennialPuzzleId =
         "proto.relic.centennial_puzzle";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
@@ -94,6 +95,14 @@ public static class PrototypeNativeSharedRelics
                 new(PrototypeCombatEventKind.PlayerSideTurnStarted,
                     [new(PrototypeCombatEffectKind.GainEnergy, 2)],
                     TurnEquals: 2)
+            ]),
+        // Chandelier grants three Energy when the owner's third turn starts.
+        new(ChandelierId, "Chandelier",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                    [new(PrototypeCombatEffectKind.GainEnergy, 3)],
+                    TurnEquals: 3)
             ]),
         // CentennialPuzzle draws three cards after the owner's first
         // unblocked damage callback in each combat.

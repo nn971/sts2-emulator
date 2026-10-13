@@ -97,6 +97,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.pocketwatch"] = PrototypeRelicRarity.Rare,
             ["proto.relic.white_beast_statue"] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.BellowsId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.ChandelierId] =
+                PrototypeRelicRarity.Rare,
             ["proto.relic.art_of_war"] = PrototypeRelicRarity.Rare,
             ["proto.relic.charons_ashes"] = PrototypeRelicRarity.Rare,
             [PrototypeNativeRestSiteRelics.ShovelId] = PrototypeRelicRarity.Rare,
