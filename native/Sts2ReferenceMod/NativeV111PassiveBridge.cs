@@ -78,6 +78,10 @@ internal static class NativeV111PassiveBridge
         NativeShuffleOperationEvidenceV111 evidence) =>
         _actionEnvelopes?.NativeShuffleOperation(evidence);
 
+    internal static void NativeInitialHpRoll(
+        NativeInitialHpRollEvidenceV111 evidence) =>
+        _actionEnvelopes?.NativeInitialHpRoll(evidence);
+
     internal static void NativeRngHookFailure(string exceptionType) =>
         _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
 
@@ -268,6 +272,9 @@ internal static class NativeV111PassiveBridge
         // A source-audited initial shuffle executes before the rendered
         // combat frame. Buffered evidence must precede later RNG requests
         // in this sidecar, with its pre-attachment basis clearly marked.
+        // Source-local preframe buffers are flushed separately: the exact
+        // cross-mechanic chronology is not inferred from this flush order.
+        NativeV111InitialHpHooks.FlushBuffered();
         NativeV111ShuffleHooks.FlushBufferedInitial();
         _actionEnvelopes.HistoryBaseline(_historyIndex);
         // All 12+3 native named streams are bound to their identity only
