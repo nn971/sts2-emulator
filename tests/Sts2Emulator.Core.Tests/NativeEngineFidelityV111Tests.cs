@@ -234,7 +234,7 @@ public sealed class NativeEngineFidelityV111Tests
     {
         var fixture = ChangedFixture(root =>
             root["post_state"]!["combat"]!["creatures"]![1]!["powers"] =
-                JsonNode.Parse("[{\\"model_id\\":\\"WEAK_POWER\\",\\"amount\\":1}]"));
+                JsonNode.Parse("""[{"model_id":"WEAK_POWER","amount":1}]"""));
         var report = NativeEngineFidelityV111.Compare(fixture);
         Assert.True(report.ExecutedActualEngineStep);
         Assert.Equal("CORE_ENGINE_CHECKPOINT_PARTIAL", report.Status);
