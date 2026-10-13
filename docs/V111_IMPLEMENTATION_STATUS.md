@@ -489,8 +489,9 @@ zero energy, using the turn-scoped manual-play counter. Blessed Antler adds
 one energy and inserts three Dazed at random draw-pile positions before the
 first hand draw; executable coverage checks its Nonupeipe offer and opening
 trigger. Glitter applies Glam to eligible cards in normal and extra
-combat reward groups; its saved option enchantments survive restore and card
-acquisition. Event-owned reward surfaces and native hook order remain gated.
+combat reward groups and supported event-owned card rewards; its saved option
+enchantments survive restore and card acquisition. Native hook order and
+multi-enchantment combinations remain for the later fidelity pass.
 Beautiful Bracelet's four-card Swift acquisition now uses run.niche and its
 two-card draw enchant triggers on the first play per combat. Coverage checks
 the conditional Nonupeipe offer and four-of-five acquisition. Fiddle adds two

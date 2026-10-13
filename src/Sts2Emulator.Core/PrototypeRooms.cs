@@ -4909,7 +4909,8 @@ public sealed partial class PrototypeGameEngine
             ? ApplyGlitterToCardRewardOptions(cardOptions)
             : null;
         var extraCardOptionEnchantments = hasGlitter
-            ? extraCardOptions.Select(ApplyGlitterToCardRewardOptions).ToArray()
+            ? extraCardOptions.Select(group =>
+                ApplyGlitterToCardRewardOptions(group)).ToArray()
             : null;
 
         var cardRewardGenerators = Enumerable.Repeat<PrototypeCardRewardGenerator?>(
@@ -5394,22 +5395,91 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static PrototypeCardEnchantment?[] ApplyGlitterToCardRewardOptions(
-        string[] cardIds)
+        string[] cardIds,
+        PrototypeCardEnchantment?[]? existing = null)
     {
-        return cardIds.Select(cardId =>
+        var result = existing is null
+            ? new PrototypeCardEnchantment?[cardIds.Length]
+            : (PrototypeCardEnchantment?[])existing.Clone();
+        for (var index = 0; index < cardIds.Length; index++)
         {
+            if (result[index] is not null)
+                continue;
+
             var candidate = new CardInstance(
-                0, cardId, 0, PrototypeJson.EmptyObject());
-            return PrototypeGameEngine.CanSelectEventDeckCard(
+                0, cardIds[index], 0, PrototypeJson.EmptyObject());
+            if (PrototypeGameEngine.CanSelectEventDeckCard(
                 candidate,
                 PrototypePersistentDeckChoiceKind.Enchant,
                 transformToCardId: null,
                 enchantmentKind: PrototypeCardEnchantmentKind.Glam,
-                basicCardsOnly: false)
-                ? new PrototypeCardEnchantment(
-                    PrototypeCardEnchantmentKind.Glam)
-                : null;
-        }).ToArray();
+                basicCardsOnly: false))
+            {
+                result[index] = new PrototypeCardEnchantment(
+                    PrototypeCardEnchantmentKind.Glam);
+            }
+        }
+
+        return result;
+    }
+
+    private static RunState ApplyGlitterToNewLateCardReward(
+        RunState previous,
+        RunState next)
+    {
+        if (next.Phase != RunPhase.Reward
+            || next.World?.Reward is not { } reward
+            || (reward.CardOptions.Length == 0
+                && !(reward.ExtraCardOptions?.Any(group =>
+                    group.Length > 0) ?? false)))
+        {
+            return next;
+        }
+
+        var isNewEventReward = previous.Phase != RunPhase.Reward
+            && reward.CardRewardLateHooksEnabled
+            && reward.SourceRoom.StartsWith(
+                "Event:", StringComparison.Ordinal);
+        var isNewGlassEyeReward = reward.SourceRoom
+                == GlassEyeRewardSource
+            && reward.CardRewardLateHooksEnabled
+            && next.Player.Relics.Count(relic =>
+                relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
+                > previous.Player.Relics.Count(relic =>
+                    relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId);
+        if ((!isNewEventReward && !isNewGlassEyeReward)
+            || !next.Player.ActiveRelics.Any(relic =>
+                relic.RelicId == NativeGloryAncientsV111.GlitterId))
+        {
+            return next;
+        }
+
+        var primary = reward.CardOptions.Length > 0
+            ? ApplyGlitterToCardRewardOptions(
+                reward.CardOptions, reward.CardOptionEnchantments)
+            : reward.CardOptionEnchantments;
+        var extras = reward.ExtraCardOptions is { } groups
+            ? groups.Select((group, index) =>
+                ApplyGlitterToCardRewardOptions(
+                    group,
+                    reward.ExtraCardOptionEnchantments is { } oldGroups
+                        && index < oldGroups.Length
+                        ? oldGroups[index]
+                        : null)).ToArray()
+            : reward.ExtraCardOptionEnchantments;
+        var world = RequireWorld(next);
+
+        return next with
+        {
+            World = world with
+            {
+                Reward = reward with
+                {
+                    CardOptionEnchantments = primary,
+                    ExtraCardOptionEnchantments = extras
+                }
+            }
+        };
     }
 
     private static RunState ApplyWingCharmToNewEventCardReward(

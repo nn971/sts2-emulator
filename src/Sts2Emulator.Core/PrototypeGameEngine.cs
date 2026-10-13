@@ -68,6 +68,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         next = ApplyNeowRelicPickupRewards(state, next);
         next = PrototypeGoldenPathMapV111.ApplyAcquisition(state, next);
         next = NativePaelRewardsV111.SynchronizeLegionPet(next);
+        next = ApplyGlitterToNewLateCardReward(state, next);
         next = ApplyWingCharmToNewEventCardReward(state, next);
         if (state.World?.Combat is not null && next.World?.Combat is null)
             next = NativeAncientRewardsV111.ApplyCombatEnd(next);
