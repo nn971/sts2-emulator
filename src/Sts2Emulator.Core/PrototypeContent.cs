@@ -7707,6 +7707,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.BeltBuckleId,
         PrototypeNativeSharedRelics.KifudaId,
         PrototypeNativeSharedRelics.PunchDaggerId,
+        PrototypeNativeSharedRelics.DollysMirrorId,
         PrototypeNativeSharedRelics.DragonFruitId,
         PrototypeNativeSharedRelics.ScreamingFlagonId
     ];

@@ -809,7 +809,8 @@ public enum PrototypePersistentDeckChoiceKind
     Remove,
     Upgrade,
     Transform,
-    Enchant
+    Enchant,
+    Copy
 }
 
 public sealed record PrototypeRelicDeckChoiceSpec(

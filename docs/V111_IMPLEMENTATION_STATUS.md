@@ -1417,3 +1417,6 @@ combat. See [mechanics gap 132](reference-builds/v0.111.0-mechanics-gap-132.md).
 Perfect Fit is now executable in Hive's Field of Man-Sized Holes event and
 moves its enchanted card to the top after a noninitial draw-pile shuffle. See
 [mechanics gap 133](reference-builds/v0.111.0-mechanics-gap-133.md).
+Dolly's Mirror is now a Shop relic that copies one non-Quest deck card while
+preserving its upgrade, enchantment, and persistent state. See
+[mechanics gap 134](reference-builds/v0.111.0-mechanics-gap-134.md).

@@ -757,6 +757,30 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "DOLLYS_MIRROR"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.DollysMirrorId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.DollysMirrorId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.DollysMirrorId,
+                out var dollysMirrorRarity)
+            && dollysMirrorRarity == PrototypeRelicRarity.Shop
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.DollysMirrorId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.DollysMirrorId)
+                .AcquisitionDeckChoice is
+                { Kind: PrototypePersistentDeckChoiceKind.Copy,
+                    Selections: 1 }
+            && HasDollysMirrorPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "encounters")
         {
             var pools = PrototypeContent.OvergrowthWeakEncounterPool
@@ -5131,6 +5155,71 @@ public static class V111Coverage
             && draw.Combat.Hand.SequenceEqual([11L])
             && draw.Combat.DrawPile.SequenceEqual([12L])
             && draw.Combat.DiscardPile.Length == 0;
+    }
+
+    private static bool HasDollysMirrorPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.DollysMirrorId;
+        const string strikeId = "proto.silent.strike";
+        var player = new PlayerState(
+            30,
+            30,
+            0,
+            [
+                new CardInstance(
+                    1,
+                    strikeId,
+                    1,
+                    JsonSerializer.SerializeToElement(
+                        new { marker = 17 }),
+                    new PrototypeCardEnchantment(
+                        PrototypeCardEnchantmentKind.Sharp,
+                        2)),
+                new CardInstance(2, "proto.silent.footwork", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(
+                    3,
+                    PrototypeNativeHiveEvents.LanternKeyCardId,
+                    0,
+                    PrototypeJson.EmptyObject())
+            ],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())],
+            []);
+        var pending = PrototypeGameEngine.CreateRelicDeckChoice(
+            player,
+            relicId);
+        if (pending is not
+                { Kind: PrototypePersistentDeckChoiceKind.Copy,
+                    RemainingSelections: 1,
+                    MinimumSelectionsRemaining: 1 }
+            || !pending.CandidateCardInstanceIds
+                .SequenceEqual(new long[] { 1, 2 }))
+        {
+            return false;
+        }
+
+        var copied = PrototypeGameEngine.ResolveRelicDeckChoice(
+            player,
+            pending,
+            cardInstanceId: 1,
+            PrototypeRng.CreateBundle("coverage-dollys-mirror"),
+            copyCardInstanceId: 4);
+        var original = copied.Player.Deck.Single(card =>
+            card.InstanceId == 1);
+        var clone = copied.Player.Deck.Single(card =>
+            card.InstanceId == 4);
+        return copied.Remaining is null
+            && copied.Player.Deck.Length == 4
+            && original.InstanceId != clone.InstanceId
+            && original.CardId == clone.CardId
+            && original.UpgradeLevel == clone.UpgradeLevel
+            && original.Enchantment == clone.Enchantment
+            && original.PersistentState.GetProperty("marker").GetInt32()
+                == clone.PersistentState.GetProperty("marker").GetInt32()
+            && clone.PersistentState.GetProperty("marker").GetInt32() == 17
+            && copied.Player.Deck.All(card => card.InstanceId != 3
+                || card.CardId
+                    == PrototypeNativeHiveEvents.LanternKeyCardId);
     }
 
     private static bool HasKusarigamaPath()

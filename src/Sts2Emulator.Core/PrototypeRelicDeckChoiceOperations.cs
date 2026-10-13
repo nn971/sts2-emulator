@@ -14,7 +14,8 @@ public sealed partial class PrototypeGameEngine
         PlayerState player,
         PrototypePendingDeckChoiceState choice,
         long cardInstanceId,
-        RngBundle rng)
+        RngBundle rng,
+        long? copyCardInstanceId = null)
     {
         if (!choice.CandidateCardInstanceIds.Contains(cardInstanceId))
         {
@@ -75,6 +76,20 @@ public sealed partial class PrototypeGameEngine
                         cardInstanceId,
                         choice.UpgradeTransformedCards,
                         rng),
+            PrototypePersistentDeckChoiceKind.Copy =>
+                copyCardInstanceId is { } newInstanceId
+                    && player.Deck.All(card =>
+                        card.InstanceId != newInstanceId)
+                    ? player with
+                    {
+                        Deck = player.Deck.Append(selected with
+                        {
+                            InstanceId = newInstanceId,
+                            PersistentState = selected.PersistentState.Clone()
+                        }).ToArray()
+                    }
+                    : throw new InvalidOperationException(
+                        "Relic deck copy requires a fresh card instance ID."),
             PrototypePersistentDeckChoiceKind.Upgrade =>
                 player with
                 {

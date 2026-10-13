@@ -10,7 +10,10 @@ public sealed partial class PrototypeGameEngine
     internal static bool CanSelectRelicDeckCard(
         CardInstance card,
         PrototypeRelicDeckChoiceSpec spec) =>
-        (spec.RequiredCardType is null
+        spec.Kind == PrototypePersistentDeckChoiceKind.Copy
+            ? PrototypeContent.Card(card.CardId).Type
+                != PrototypeCardType.Quest
+            : (spec.RequiredCardType is null
             || PrototypeContent.Card(card.CardId).Type
                 == spec.RequiredCardType.Value)
         && (spec.TransformToCardId is null

@@ -25,6 +25,7 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.intimidating_helmet";
     public const string KifudaId = "proto.relic.kifuda";
     public const string PunchDaggerId = "proto.relic.punch_dagger";
+    public const string DollysMirrorId = "proto.relic.dollys_mirror";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -214,6 +215,11 @@ public static class PrototypeNativeSharedRelics
                 EnchantmentKind: PrototypeCardEnchantmentKind.Momentum,
                 EnchantmentAmount: 5,
                 RequiredCardType: PrototypeCardType.Attack)),
+        // Dolly's Mirror copies any non-Quest deck card on acquisition.
+        new(DollysMirrorId, "Dolly's Mirror",
+            AcquisitionDeckChoice: new(
+                PrototypePersistentDeckChoiceKind.Copy,
+                1)),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),

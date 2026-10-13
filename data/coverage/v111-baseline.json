@@ -25075,17 +25075,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.dollys_mirror"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DollysMirror.cs#99b9c95e83710132971f5ad0a44ee466d36a30dbfa8fd8bf54ad53ed50f647f5"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DOLLYS_MIRROR",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29516,8 +29518,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 183,
-        "integrated": 184,
+        "implemented": 184,
+        "integrated": 185,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

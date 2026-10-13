@@ -2756,6 +2756,7 @@ public sealed partial class PrototypeGameEngine
                 .OfferId == pendingPotionOfferId;
         }
         var nativeRunRng = state.NativeRunRng?.Fork();
+        var nextCardInstanceId = world.NextCardInstanceId;
 
         if (shop.PendingDeckChoice is { } pending)
         {
@@ -2778,12 +2779,17 @@ public sealed partial class PrototypeGameEngine
                     state.Player,
                     pending,
                     payload.CardInstanceId,
-                    state.Rng);
+                    state.Rng,
+                    copyCardInstanceId:
+                        pending.Kind == PrototypePersistentDeckChoiceKind.Copy
+                            ? nextCardInstanceId
+                            : null);
                 resolvedPlayer = resolved.Player;
                 remaining = resolved.Remaining;
+                if (pending.Kind == PrototypePersistentDeckChoiceKind.Copy)
+                    nextCardInstanceId++;
             }
 
-            var nextCardInstanceId = world.NextCardInstanceId;
             if (remaining is null
                 && pending.CardIdAfterChoices is { } afterChoicesCardId)
             {
@@ -4079,12 +4085,20 @@ public sealed partial class PrototypeGameEngine
                     player,
                     deckChoice,
                     payload.CardInstanceId,
-                    state.Rng);
+                    state.Rng,
+                    copyCardInstanceId:
+                        deckChoice.Kind
+                            == PrototypePersistentDeckChoiceKind.Copy
+                            ? nextId
+                            : null);
                 player = resolved.Player;
                 reward = reward with
                 {
                     PendingDeckChoice = resolved.Remaining
                 };
+                if (deckChoice.Kind
+                    == PrototypePersistentDeckChoiceKind.Copy)
+                    nextId++;
             }
 
             if (reward.PendingDeckChoice is null
