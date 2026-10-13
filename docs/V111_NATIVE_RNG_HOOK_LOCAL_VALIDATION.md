@@ -20,7 +20,7 @@ The native mod's `NativeV111RngHook` uses Harmony prefix+postfix on exactly the 
 
 The hook is separately gated: **both** `STS2_FIDELITY_CAPTURE=1` **and** `STS2_FIDELITY_RNG_HOOK=1` must be set in the **native Windows game process's environment**, along with `STS2_FIDELITY_EXPECT_SHA256=<locally computed actual SHA256>`. Set `STS2_FIDELITY_TRACE_DIR` to your existing `D:\\SteamLibrary\\sts2-inspector-traces` (Windows-visible path) if desired. Environment variables set only in an unrelated WSL shell are insufficient for a Windows Steam-launched game process.
 
-Native logs distinguish `RNG_HOOK_STATUS=INSTALLED_BOUND_INT_OVERLOADS`, `PIN_OR_SCENE_REJECTED` and `INSTALL_FAILED`. Record the exact logs and failed source signatures if installation fails; the observer must never be promoted without native compile/runtime evidence.
+Native logs distinguish `RNG_HOOK_STATUS=INSTALLED_BOUND_INT_OVERLOADS`, `PIN_OR_SCENE_REJECTED` and `INSTALL_FAILED`. The installed message additionally reports `rollmove_source_scope=INSTALLED` or `UNAVAILABLE`. The optional pinned-source `MonsterModel.RollMove(IEnumerable<Creature>)` scope tags `RunRng.MonsterAi` draws with the actual creature combat ID and the `combat.committed_intent.index_draw` site. The native action sidecar records `native_monster_ai_scope_installed`; scope absence preserves primitive coverage without invented intent attribution. Record the exact logs and failed source signatures if installation fails; the observer must never be promoted without native compile/runtime evidence.
 
 Only already-started, single-player combats are observed. The first sidecar frame registers all **12 run + 3 player** RNG objects from the combat's native player/run, with separate object identities and local zero-based ordinals. RNG draws **before the first observed combat frame**, on another game thread, from independently constructed map/event/monster/content RNGs, and from non-NextInt primitives remain **unverified**. Every primitive event emitted so far carries `site_id=UNATTRIBUTED` because `Rng.NextInt` is itself a primitive API, not a validated mechanic-level call site. Registered streams have a real owner category (`run`, `player:0`); ephemeral streams are `UNATTRIBUTED`. Capturing these events is meaningful evidence without pretending hook or full eligibility completeness.
 
@@ -54,10 +54,12 @@ python tools/native_action_envelope_batch.py "$trace" \\
     --out "$trace/native-rng-hook-corpus.json"
 jq '{
   native_rng_hook_installed_sidecars,
+  native_monster_ai_scope_installed_sidecars,
   native_rng_source_calls,
   native_rng_unattributed_calls,
   traces: [.traces[] | {
     file, status, native_rng_hook_installed,
+    native_monster_ai_scope_installed,
     native_rng_source_calls, native_rng_unattributed_calls,
     native_rng_source_coverage
   }]
