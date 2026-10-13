@@ -178,7 +178,8 @@ internal static class NativeV111InitialHpHooks
                     "monster_creation:" + evidence.CreationOrdinal, 0,
                     evidence.OrderedEligibleHp.Length, evidence.SelectedIndex,
                     evidence.CursorBefore, evidence.CursorAfter));
-            NativeV111PassiveBridge.NativeInitialHpRoll(evidence);
+            NativeV111PassiveBridge.NativeInitialHpRoll(
+                evidence, bufferedBeforeFirstFrame: true);
         }
     }
 
