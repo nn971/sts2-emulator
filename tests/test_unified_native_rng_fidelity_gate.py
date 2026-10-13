@@ -92,6 +92,30 @@ class UnifiedFidelityGateTests(unittest.TestCase):
         self.assertEqual("ENGINE_EXECUTION_UNAVAILABLE", error["status"])
         self.assertIn("Engine DLL", error["engine"]["error"])
 
+    def test_locally_valid_rng_calls_with_overlapping_stream_fail_gate(self):
+        evidence = corpus()
+        evidence["native_rng_source_calls"] = 2
+        evidence["native_rng_primitive_validated_calls"] = 2
+        evidence["native_rng_stream_conflicts"] = 1
+        report = combine(evidence, strict(0), prefixes(), None)
+        self.assertEqual("NATIVE_RNG_STREAM_ORDER_CONFLICT", report["status"])
+        self.assertEqual(1, report["capture"]["native_rng_stream_conflicts"])
+        self.assertEqual("NOT_TESTED", report["exact_native_rng_parity"])
+
+    def test_unobserved_stream_advance_keeps_agreeing_engine_partial(self):
+        evidence = corpus()
+        evidence["native_rng_source_calls"] = 2
+        evidence["native_rng_stream_gaps"] = 1
+        evidence["native_rng_stream_pairs_checked"] = 1
+        report = combine(evidence, strict(), prefixes(), engine())
+        self.assertEqual("NATIVE_RNG_STREAM_GAPS_REQUIRE_REVIEW", report["status"])
+        self.assertEqual(1, report["capture"]["native_rng_stream_gaps"])
+        # A real engine mismatch remains higher-priority evidence.
+        mismatch = combine(evidence, strict(), prefixes(),
+                           engine("CHECKPOINT_MISMATCHES_DETECTED", 2, 1))
+        self.assertEqual("REAL_ENGINE_CHECKPOINT_MISMATCH",
+                         mismatch["status"])
+
 
 if __name__ == "__main__":
     unittest.main()
