@@ -39,6 +39,9 @@ Max HP and keeps its first-turn draw penalty; Fragrant Mushroom applies its
 HP loss before upgrading two distinct cards. See
 [mechanics gaps 053](reference-builds/v0.111.0-mechanics-gap-053.md) and
 [054](reference-builds/v0.111.0-mechanics-gap-054.md).
+Lost Wisp is integrated through Hive's Claim choice; its event relic deals 8
+unpowered damage to all enemies after each owner-played Power card. See
+[mechanics gap 056](reference-builds/v0.111.0-mechanics-gap-056.md).
 
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.

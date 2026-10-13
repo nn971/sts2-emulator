@@ -26438,8 +26438,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/LostWisp.cs#1c9abca9e7341560b8d9a442037bd3bf4fd1aacaa708ac2dc4ec0f93b57a5249"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29447,8 +29447,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 100,
-        "integrated": 101,
+        "implemented": 101,
+        "integrated": 102,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

@@ -1324,6 +1324,39 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "LOST_WISP"
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.LostWispRelicId,
+                StringComparer.Ordinal)
+            && !PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeHiveEvents.LostWispRelicId, out _)
+            && PrototypeContent.Relic(
+                PrototypeNativeHiveEvents.LostWispRelicId).Triggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeCombatEventKind.CardPlayed
+                    && trigger.RequiredSourceCardType
+                        == PrototypeCardType.Power
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                        && effect.Amount == 8
+                        && effect.Target
+                            == PrototypeEffectTarget.AllEnemies)) == true
+            && PrototypeNativeHiveEvents.Definitions.Any(evt =>
+                evt.Id == PrototypeNativeHiveEvents.LostWispId
+                && evt.Choices.Any(choice => choice.Id == "claim"
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.AddCard
+                        && effect.CardId
+                            == PrototypeNativeHiveEvents.DecayId)
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId
+                            == PrototypeNativeHiveEvents.LostWispRelicId))))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);
