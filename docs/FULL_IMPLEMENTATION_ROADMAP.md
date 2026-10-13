@@ -37,7 +37,7 @@ assemblies and decompiled source remain local and ignored under the
 | --- | --- | --- |
 | Engine | Whole-run state, independent forks, hashes, resumable choices, ordered combat hooks, maps, rewards, shops, events, transitions | General configuration and remaining semantics/parity |
 | Silent | All 86 single-player entries in the 91-card native pool marked implemented; five multiplayer cards excluded | Variant-aware semantic and integration validation |
-| Colorless | 65-card pool inventoried; first six implemented | Remaining eligible shared cards |
+| Colorless | 53 single-player cards implemented; 12 multiplayer-only entries excluded from execution | Variant validation and remaining shared card families outside the Colorless pool |
 | Overgrowth | All 22 encounters marked implemented for models, formations and pools | Remaining events/run rules, progression conditions and reference validation |
 | Underdocks | All 20 ordinary encounter IDs, ten regional event models, supported shop/reward/rest/treasure flow, and regional route tests | Exhaustive event/branch audit, unassisted full-run evidence, live native validation |
 | Hive / Glory | Supported later-act routes, regional event paths, and all three Glory Ancient branches through named fixtures; the global queue integrates 80/90 catalogued encounters | Hive Orobas dependencies, normal Ancient assignment, remaining special/event branches, full route evidence and live native validation |
