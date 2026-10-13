@@ -2407,7 +2407,8 @@ public static class PrototypeStateInvariants
         if (!expectedPets.SequenceEqual(actualPets))
             throw new InvalidOperationException("Combat pet identity or saved skin disagrees with owned relics.");
 
-        if (combat.CounterState.ManualCardsPlayedThisTurn < 0
+        if (combat.CounterState.CardsPlayedLastTurn < 0
+            || combat.CounterState.ManualCardsPlayedThisTurn < 0
             || combat.CounterState.ManualCardsPlayedThisTurn > combat.CounterState.CardsPlayedThisTurn)
             throw new InvalidOperationException("Manual card-play counter is inconsistent with total plays.");
         if (combat.PotionExtraTurnsPending < 0)

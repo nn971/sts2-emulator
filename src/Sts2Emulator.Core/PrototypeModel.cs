@@ -864,7 +864,9 @@ public sealed record PrototypeRelicDefinition(
     int PlayerHpLossReduction = 0,
     int UnblockableHpLossAtCombatStart = 0,
     string? RelicIdAfterEliteWins = null,
-    int EliteWinsToTransform = 0);
+    int EliteWinsToTransform = 0,
+    int ConditionalHandDrawBonus = 0,
+    int ConditionalHandDrawMaxCardsPlayedLastTurn = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1842,7 +1844,8 @@ public sealed record PrototypeCombatCounters(
     // across turn boundaries and through deterministic snapshot forks.
     PrototypeCombatCardSnapshot? LastOriginalAttackThisTurn = null,
     PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null,
-    int MaulDamageBonus = 0)
+    int MaulDamageBonus = 0,
+    int CardsPlayedLastTurn = 0)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();

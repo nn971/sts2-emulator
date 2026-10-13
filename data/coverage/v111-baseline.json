@@ -27462,17 +27462,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.pocketwatch"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Pocketwatch.cs#34ace6fd79250582c18f53ea514062b8c7963f290e4fd389cace177464a192f6"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "POCKETWATCH",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29447,8 +29449,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 107,
-        "integrated": 108,
+        "implemented": 108,
+        "integrated": 109,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

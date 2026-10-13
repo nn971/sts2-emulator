@@ -2245,6 +2245,18 @@ public sealed partial class PrototypeGameEngine
                             ? PrototypeContent.Power(power.PowerId)
                                 .HandDrawBonusWhileActive
                             : 0)
+                    + (combat.Turn <= 1
+                        ? 0
+                        : player.ActiveRelics.Sum(relic =>
+                        {
+                            var definition = PrototypeContent.Relic(
+                                relic.RelicId);
+                            return definition.ConditionalHandDrawBonus > 0
+                                && combat.CounterState.CardsPlayedLastTurn
+                                    <= definition
+                                        .ConditionalHandDrawMaxCardsPlayedLastTurn
+                                ? definition.ConditionalHandDrawBonus : 0;
+                        }))
                     + PrototypeNativeOrobasRelics.HandDrawBonusForTurn(
                         player, combat.Turn);
                 var drawn = DrawCards(
@@ -2303,6 +2315,7 @@ public sealed partial class PrototypeGameEngine
     private static PrototypeCombatCounters AdvanceTurnCounters(
         PrototypeCombatCounters counters) => counters with
     {
+        CardsPlayedLastTurn = counters.CardsPlayedThisTurn,
         CardsPlayedThisTurn = 0,
         ManualCardsPlayedThisTurn = 0,
         AttacksPlayedLastTurn = counters.AttacksPlayedThisTurn,

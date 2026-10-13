@@ -1880,6 +1880,7 @@ public static class V111Coverage
             && PrototypeContent.RelicPool.Contains(engineIds[0],
                 StringComparer.Ordinal)
             && PrototypeNativeRelicGrabBag.TryGetRarity(engineIds[0], out _)
+            && (item.Id != "POCKETWATCH" || HasPocketwatchPath())
             && HasExecutableRelicBehavior(PrototypeContent.Relic(engineIds[0])))
         {
             implementation = "implemented";
@@ -1902,6 +1903,15 @@ public static class V111Coverage
         var empty = new PrototypeRelicDefinition(string.Empty, string.Empty);
         return definition with { Id = string.Empty, Name = string.Empty }
             != empty;
+    }
+
+    private static bool HasPocketwatchPath()
+    {
+        const string relicId = "proto.relic.pocketwatch";
+        var definition = PrototypeContent.Relic(relicId);
+        return HasOrdinaryRareRelic(relicId)
+            && definition.ConditionalHandDrawBonus == 3
+            && definition.ConditionalHandDrawMaxCardsPlayedLastTurn == 3;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

@@ -3216,6 +3216,11 @@ public static class PrototypeContent
                 HandDrawBonus: 2,
                 RandomizeDrawnCardCostMaxExclusive: 4),
             new PrototypeRelicDefinition(
+                "proto.relic.pocketwatch",
+                "Pocketwatch",
+                ConditionalHandDrawBonus: 3,
+                ConditionalHandDrawMaxCardsPlayedLastTurn: 3),
+            new PrototypeRelicDefinition(
                 "proto.relic.charons_ashes",
                 "Charon's Ashes",
                 Triggers:
@@ -7617,6 +7622,7 @@ public static class PrototypeContent
         "proto.relic.hovering_kite",
         "proto.relic.question_card",
         "proto.relic.prayer_wheel",
+        "proto.relic.pocketwatch",
         "proto.relic.white_beast_statue",
         "proto.relic.membership_card",
         "proto.relic.chemical_x",
