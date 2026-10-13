@@ -24621,17 +24621,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.candelabra"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Candelabra.cs#d5cd6181a82f34159c72c7938f891fe589e8ce152f9942c4dd280289903d1424"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CANDELABRA",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29434,8 +29436,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 140,
-        "integrated": 141,
+        "implemented": 141,
+        "integrated": 142,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

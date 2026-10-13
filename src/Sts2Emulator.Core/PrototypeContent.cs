@@ -7634,6 +7634,7 @@ public static class PrototypeContent
         "proto.relic.bag_of_marbles",
         "proto.relic.gremlin_horn",
         "proto.relic.mercury_hourglass",
+        PrototypeNativeSharedRelics.CandelabraId,
         "proto.relic.twisted_funnel",
         "proto.relic.orichalcum",
         "proto.relic.horn_cleat",
