@@ -1396,3 +1396,6 @@ enemy at turn end when its owner has at least 10 Block. See
 Vexing Puzzlebox is now a Rare relic and adds one random Silent card to its
 owner's first-turn hand, free for that turn. See
 [mechanics gap 126](reference-builds/v0.111.0-mechanics-gap-126.md).
+Pendulum is now a Common relic and draws one extra card every third hand draw,
+keeping its counter between combats. See
+[mechanics gap 127](reference-builds/v0.111.0-mechanics-gap-127.md).

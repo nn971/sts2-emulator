@@ -35,6 +35,8 @@ public static class PrototypeNativeRelicGrabBag
         {
             [PrototypeNativeSharedRelics.BookOfFiveRingsId] =
                 PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.PendulumId] =
+                PrototypeRelicRarity.Common,
             [PrototypeNativeSharedRelics.GorgetId] =
                 PrototypeRelicRarity.Common,
             [PrototypeNativeSharedRelics.StrikeDummyId] =

@@ -7591,6 +7591,7 @@ public static class PrototypeContent
     public static string[] RelicPool { get; } =
     [
         PrototypeNativeSharedRelics.BookOfFiveRingsId,
+        PrototypeNativeSharedRelics.PendulumId,
         PrototypeNativeSharedRelics.TinyMailboxId,
         PrototypeNativeSharedRelics.WhiteStarId,
         PrototypeNativeSharedRelics.BreadId,

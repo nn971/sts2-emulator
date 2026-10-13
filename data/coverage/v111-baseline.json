@@ -27337,17 +27337,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.pendulum"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Pendulum.cs#b6cde64b88889ab99f32e49c660e864ecebe732b003220f1d9663b1025e592e9"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PENDULUM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29500,8 +29502,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 177,
-        "integrated": 178,
+        "implemented": 178,
+        "integrated": 179,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

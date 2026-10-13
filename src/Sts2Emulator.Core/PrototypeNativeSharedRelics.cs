@@ -18,6 +18,7 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.parrying_shield";
     public const string VexingPuzzleboxId =
         "proto.relic.vexing_puzzlebox";
+    public const string PendulumId = "proto.relic.pendulum";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -149,6 +150,18 @@ public static class PrototypeNativeSharedRelics
                     TurnEquals: 1,
                     RequiresPlayerSide: true)
             ]),
+        // Draw one extra card every third owner hand draw, carrying the
+        // counter between combats.
+        new(PendulumId, "Pendulum",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.BeforeHandDraw,
+                    [new(PrototypeCombatEffectKind.DrawCards, 1)],
+                    EveryNth: 3,
+                    RequiresPlayerSide: true)
+            ],
+            PersistentTriggerCountProperty: "TurnsSeen",
+            PersistentTriggerCountModulo: 3),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),

@@ -2014,6 +2014,39 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PENDULUM"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PendulumId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PendulumId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PendulumId,
+                out var pendulumRarity)
+            && pendulumRarity == PrototypeRelicRarity.Common
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.PendulumId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.PendulumId) is
+                {
+                    PersistentTriggerCountProperty: "TurnsSeen",
+                    PersistentTriggerCountModulo: 3
+                } pendulum
+            && pendulum.Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.BeforeHandDraw
+                && trigger.EveryNth == 3
+                && trigger.RequiresPlayerSide
+                && trigger.Effects.Length == 1
+                && trigger.Effects[0].Kind
+                    == PrototypeCombatEffectKind.DrawCards
+                && trigger.Effects[0].Amount == 1) == true
+            && HasPendulumPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -4276,6 +4309,87 @@ public static class V111Coverage
                 playerSideActive: true).Combat.Cards.Length == 0
             && Dispatch(turn: 1, melted: false,
                 playerSideActive: false).Combat.Cards.Length == 0;
+    }
+
+    private static bool HasPendulumPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.PendulumId;
+        const string countProperty = "TurnsSeen";
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+        var relic = new RelicInstance(
+            relicId,
+            JsonSerializer.SerializeToElement(new { TurnsSeen = 0 }));
+        var player = new PlayerState(30, 30, 0, [], [relic], []);
+
+        CombatState CreateCombat(PlayerState currentPlayer, bool melted)
+        {
+            var savedCount = currentPlayer.Relics[0].PersistentState
+                    .TryGetProperty(countProperty, out var saved)
+                && saved.ValueKind == JsonValueKind.Number
+                    ? saved.GetInt32()
+                    : 0;
+            var combatRelic = new CombatRelicState(
+                0, relicId, 1, [savedCount], IsMelted: melted);
+            return new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [1, 2, 3, 4, 5],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 6,
+                Cards: Enumerable.Range(1, 5).Select(id =>
+                    new CombatCardInstance(
+                        id, null, "proto.silent.strike", 0, false,
+                        PrototypeJson.EmptyObject())).ToArray(),
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics: [combatRelic],
+                Act: 1,
+                PlayPile: []);
+        }
+
+        (PlayerState Player, CombatState Combat) Dispatch(
+            PlayerState currentPlayer, CombatState combat,
+            bool melted = false) =>
+            PrototypeGameEngine.DispatchCombatEvent(
+                currentPlayer,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.BeforeHandDraw),
+                PrototypeRng.CreateBundle(
+                    $"coverage-pendulum-{combat.RelicStates[0].TriggerCounts[0]}-{melted}"));
+
+        var firstCombat = CreateCombat(player, melted: false);
+        var firstDraw = Dispatch(player, firstCombat);
+        var secondDraw = Dispatch(firstDraw.Player, firstDraw.Combat);
+        var secondCombat = CreateCombat(secondDraw.Player, melted: false);
+        var thirdDraw = Dispatch(secondDraw.Player, secondCombat);
+
+        var nearTriggerRelic = relic with
+        {
+            PersistentState = JsonSerializer.SerializeToElement(
+                new { TurnsSeen = 2 })
+        };
+        var nearTriggerPlayer = player with { Relics = [nearTriggerRelic] };
+        var meltedCombat = CreateCombat(nearTriggerPlayer, melted: true);
+        var meltedDraw = Dispatch(nearTriggerPlayer, meltedCombat,
+            melted: true);
+
+        return firstDraw.Combat.Hand.Length == 0
+            && secondDraw.Combat.Hand.Length == 0
+            && secondDraw.Player.Relics[0].PersistentState
+                .GetProperty(countProperty).GetInt32() == 2
+            && thirdDraw.Combat.Hand.Length == 1
+            && thirdDraw.Combat.DrawPile.Length == 4
+            && thirdDraw.Player.Relics[0].PersistentState
+                .GetProperty(countProperty).GetInt32() == 0
+            && meltedDraw.Combat.Hand.Length == 0
+            && meltedDraw.Player.Relics[0].PersistentState
+                .GetProperty(countProperty).GetInt32() == 2;
     }
 
     private static bool HasGnarledHammerPath()
