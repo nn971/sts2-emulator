@@ -7665,6 +7665,7 @@ public static class PrototypeContent
         "proto.relic.pocketwatch",
         PrototypeNativeSharedRelics.GamePieceId,
         PrototypeNativeSharedRelics.RazorToothId,
+        PrototypeNativeSharedRelics.IntimidatingHelmetId,
         "proto.relic.white_beast_statue",
         PrototypeNativeSharedRelics.BellowsId,
         PrototypeNativeSharedRelics.ChandelierId,

@@ -21,6 +21,8 @@ public static class PrototypeNativeSharedRelics
     public const string PendulumId = "proto.relic.pendulum";
     public const string RazorToothId = "proto.relic.razor_tooth";
     public const string RippleBasinId = "proto.relic.ripple_basin";
+    public const string IntimidatingHelmetId =
+        "proto.relic.intimidating_helmet";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -185,6 +187,15 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.GainPlayerBlock, 4)],
                     RequiresPlayerSide: true,
                     MaxAttacksPlayedThisTurn: 0)
+            ]),
+        // Gain 4 Block before playing a card that spends at least 2 Energy.
+        new(IntimidatingHelmetId, "Intimidating Helmet",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.BeforeCardPlayed,
+                    [new(PrototypeCombatEffectKind.GainPlayerBlock, 4)],
+                    RequiresPlayerSide: true,
+                    MinEnergySpent: 2)
             ]),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",

@@ -2107,6 +2107,36 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "INTIMIDATING_HELMET"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.IntimidatingHelmetId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.IntimidatingHelmetId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.IntimidatingHelmetId,
+                out var intimidatingHelmetRarity)
+            && intimidatingHelmetRarity == PrototypeRelicRarity.Rare
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.IntimidatingHelmetId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.IntimidatingHelmetId).Triggers is
+                [{ EventKind: PrototypeCombatEventKind.BeforeCardPlayed,
+                    RequiresPlayerSide: true,
+                    MinEnergySpent: 2,
+                    Effects:
+                    [
+                        { Kind:
+                            PrototypeCombatEffectKind.GainPlayerBlock,
+                            Amount: 4 }
+                    ] }]
+            && HasIntimidatingHelmetPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -4628,6 +4658,69 @@ public static class V111Coverage
 
         return noAttacks.Combat.PlayerBlock == 4
             && oneAttack.Combat.PlayerBlock == 0
+            && melted.Combat.PlayerBlock == 0
+            && enemySide.Combat.PlayerBlock == 0;
+    }
+
+    private static bool HasIntimidatingHelmetPath()
+    {
+        const string relicId =
+            PrototypeNativeSharedRelics.IntimidatingHelmetId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Dispatch(
+            int? energySpent, bool melted, bool playerSideActive)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(
+                        0, relicId, 1, new int[triggerCount],
+                        IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: [],
+                IsPlayerSideActive: playerSideActive);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.BeforeCardPlayed,
+                    EnergySpent: energySpent),
+                PrototypeRng.CreateBundle(
+                    $"coverage-intimidating-helmet-{energySpent}-{melted}-{playerSideActive}"));
+        }
+
+        var threshold = Dispatch(
+            energySpent: 2, melted: false, playerSideActive: true);
+        var belowThreshold = Dispatch(
+            energySpent: 1, melted: false, playerSideActive: true);
+        var missingEnergy = Dispatch(
+            energySpent: null, melted: false, playerSideActive: true);
+        var melted = Dispatch(
+            energySpent: 2, melted: true, playerSideActive: true);
+        var enemySide = Dispatch(
+            energySpent: 2, melted: false, playerSideActive: false);
+
+        return threshold.Combat.PlayerBlock == 4
+            && belowThreshold.Combat.PlayerBlock == 0
+            && missingEnergy.Combat.PlayerBlock == 0
             && melted.Combat.PlayerBlock == 0
             && enemySide.Combat.PlayerBlock == 0;
     }

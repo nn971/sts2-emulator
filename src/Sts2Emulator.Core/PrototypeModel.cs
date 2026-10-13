@@ -315,7 +315,8 @@ public enum PrototypeCombatEventKind
     EnemyDefeated,
     PlayerSideTurnStarted,
     OpeningPlayerTurnStarted,
-    PlayerDamaged
+    PlayerDamaged,
+    BeforeCardPlayed
 }
 
 public enum PrototypeBlockBreakerKind
@@ -336,7 +337,8 @@ public sealed record PrototypeCombatEvent(
     long? PowerApplicationOrderCeiling = null,
     bool FromHandDraw = false,
     bool IsAutoPlay = false,
-    bool IsPoweredAttack = false);
+    bool IsPoweredAttack = false,
+    int? EnergySpent = null);
 
 public sealed record PrototypeEventSubscriberState(
     long ApplicationOrder,
@@ -785,7 +787,8 @@ public sealed record PrototypeRelicTriggerSpec(
     bool RequiresPlayerSide = false,
     bool RequiresEmptyPotionSlots = false,
     int? MinPlayerBlock = null,
-    int? MaxAttacksPlayedThisTurn = null);
+    int? MaxAttacksPlayedThisTurn = null,
+    int? MinEnergySpent = null);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,

@@ -1038,6 +1038,35 @@ public sealed partial class PrototypeGameEngine
                 card,
                 definition);
 
+        var beforeCardPlayed = DispatchCombatEvent(
+            state.Player,
+            combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeCardPlayed,
+                SourceCardInstanceId: payload.CardInstanceId,
+                CardId: card.CardId,
+                TargetEnemyId: payload.TargetEnemyId,
+                EnergySpent: energySpent),
+            state.Rng);
+        if (beforeCardPlayed.Combat.PendingChoice is not null)
+        {
+            throw new NotSupportedException(
+                "Before-card-play combat hooks cannot suspend card execution.");
+        }
+
+        state = state with
+        {
+            Player = beforeCardPlayed.Player,
+            World = world with
+            {
+                Combat = beforeCardPlayed.Combat
+            }
+        };
+        world = RequireWorld(state);
+        combat = world.Combat!;
+        card = RequireCombatCard(combat, payload.CardInstanceId);
+        definition = RuntimeCardDefinition(card);
+
         combat = combat with
         {
             Energy = combat.Energy - energySpent,
@@ -11414,6 +11443,9 @@ public sealed partial class PrototypeGameEngine
                                     StringComparer.Ordinal) ?? false)))
                     || (trigger.RequiresEmptyHand
                         && combat.Hand.Length != 0)
+                || (trigger.MinEnergySpent is { } minEnergySpent
+                    && combatEvent.EnergySpent.GetValueOrDefault()
+                        < minEnergySpent)
                     || !RelicTriggerMatchesPlayer(
                         trigger,
                         player,

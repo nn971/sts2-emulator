@@ -26011,17 +26011,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.intimidating_helmet"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/IntimidatingHelmet.cs#85eaad41fffa0ac0f622b91f2ee0b47490a47967436271d0021e3cfeb786ac8e"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "INTIMIDATING_HELMET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29506,8 +29508,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 180,
-        "integrated": 181,
+        "implemented": 181,
+        "integrated": 182,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
