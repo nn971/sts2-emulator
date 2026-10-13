@@ -1811,6 +1811,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "MINIATURE_CANNON"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.MiniatureCannonId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.MiniatureCannonId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.MiniatureCannonId,
+                out var miniatureCannonRarity)
+            && miniatureCannonRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.MiniatureCannonId)
+                .UpgradedAttackDamageBonus == 3
+            && HasMiniatureCannonPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -3508,6 +3528,49 @@ public static class V111Coverage
 
         return sixth.Combat.Enemies.Sum(enemy => enemy.Hp) == 48
             && meltedThird.Combat.Enemies.Sum(enemy => enemy.Hp) == 60;
+    }
+
+    private static bool HasMiniatureCannonPath()
+    {
+        const long strikeInstanceId = 1;
+        const string relicId = PrototypeNativeSharedRelics.MiniatureCannonId;
+        const string strikeId = "proto.silent.strike";
+        CombatState Fixture(int upgradeLevel, bool melted)
+        {
+            var card = new CombatCardInstance(
+                strikeInstanceId, 1, strikeId, upgradeLevel, false,
+                PrototypeJson.EmptyObject());
+            return new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [strikeInstanceId],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 2,
+                Cards: [card],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1, [],
+                        IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+        }
+
+        var upgraded = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            Fixture(1, melted: false), strikeInstanceId, 3, 6);
+        var ordinary = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            Fixture(0, melted: false), strikeInstanceId, 3, 6);
+        var melted = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            Fixture(1, melted: true), strikeInstanceId, 3, 6);
+        return upgraded == 9
+            && ordinary == 6
+            && melted == 6;
     }
 
     private static bool HasSlingOfCouragePath()

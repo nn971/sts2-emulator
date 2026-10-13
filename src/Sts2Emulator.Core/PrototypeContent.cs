@@ -7677,6 +7677,7 @@ public static class PrototypeContent
         "proto.relic.joss_paper",
         "proto.relic.tuning_fork",
         PrototypeNativeSharedRelics.KusarigamaId,
+        PrototypeNativeSharedRelics.MiniatureCannonId,
         PrototypeNativeSharedRelics.PenNibId,
         "proto.relic.burning_sticks",
         // Forgotten Soul is an Event relic (Grave of the Forgotten),

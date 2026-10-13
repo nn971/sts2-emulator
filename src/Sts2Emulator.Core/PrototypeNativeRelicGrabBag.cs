@@ -79,6 +79,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.nunchaku"] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.KusarigamaId] =
                 PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.MiniatureCannonId] =
+                PrototypeRelicRarity.Uncommon,
             ["proto.relic.letter_opener"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.reptile_trinket"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.lucky_fysh"] = PrototypeRelicRarity.Uncommon,

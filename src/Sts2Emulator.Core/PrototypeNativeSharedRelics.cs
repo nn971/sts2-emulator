@@ -19,6 +19,7 @@ public static class PrototypeNativeSharedRelics
     public const string PenNibId = "proto.relic.pen_nib";
     public const string GnarledHammerId = "proto.relic.gnarled_hammer";
     public const string KusarigamaId = "proto.relic.kusarigama";
+    public const string MiniatureCannonId = "proto.relic.miniature_cannon";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -72,6 +73,9 @@ public static class PrototypeNativeSharedRelics
         new(StrikeDummyId, "Strike Dummy",
             AttackDamageBonusRequiredCardTag: "Strike",
             AttackDamageBonusPerCardTag: 3),
+        // Miniature Cannon adds 3 damage to powered Attacks on upgraded cards.
+        new(MiniatureCannonId, "Miniature Cannon",
+            UpgradedAttackDamageBonus: 3),
         // Sturdy Clamp retains at most 10 Block when player Block clears.
         new(SturdyClampId, "Sturdy Clamp",
             MaxPlayerBlockRetainedAfterClear: 10),

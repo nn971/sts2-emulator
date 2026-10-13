@@ -1345,3 +1345,6 @@ Kusarigama is now an Uncommon shared relic. Every third owner-played Attack
 deals 6 unpowered damage to a random living enemy, then the counter resets
 next turn. See
 [mechanics gap 111](reference-builds/v0.111.0-mechanics-gap-111.md).
+Miniature Cannon is now an Uncommon shared relic. It adds 3 damage to powered
+Attacks from upgraded cards. See
+[mechanics gap 112](reference-builds/v0.111.0-mechanics-gap-112.md).

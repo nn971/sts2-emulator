@@ -26637,17 +26637,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.miniature_cannon"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MiniatureCannon.cs#a19365a8ed8a04b6de0ca0b2fffbcf25c464b27cc4bd55b2e2d795c347ad4c0f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MINIATURE_CANNON",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29480,8 +29482,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 162,
-        "integrated": 163,
+        "implemented": 163,
+        "integrated": 164,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
