@@ -362,6 +362,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "POLLINOUS_CORE"
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.PollinousCoreId,
+                StringComparer.Ordinal)
+            && HasPollinousCorePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2118,6 +2128,55 @@ public static class V111Coverage
                     && effect.Amount == 52
                     && effect.Target
                         == PrototypeEffectTarget.AllEnemies)) == true;
+    }
+
+    private static bool HasPollinousCorePath()
+    {
+        var relicId = PrototypeNativeHiveEvents.PollinousCoreId;
+        var evt = PrototypeNativeHiveEvents.Definitions.SingleOrDefault(
+            candidate => candidate.Id
+                == PrototypeNativeHiveEvents.ColossalFlowerId);
+        if (evt is null || !PrototypeNativeHiveEvents.IsNativeEvent(evt.Id)
+            || evt.MinAct != 2 || evt.MaxAct != 2
+            || !evt.Choices.Any(choice => choice.Id == "relic")
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        var relic = new RelicInstance(
+            relicId, PrototypeJson.EmptyObject());
+        var player = new PlayerState(20, 20, 0, [], [relic], []);
+        for (var draw = 0; draw < 3; draw++)
+        {
+            var result = PrototypeGameEngine
+                .ApplyPollinousCoreHandDraw(player);
+            if (result.Bonus != 0)
+                return false;
+            player = result.Player;
+        }
+
+        var fourthDraw = PrototypeGameEngine
+            .ApplyPollinousCoreHandDraw(player);
+        var melted = PrototypeGameEngine.ApplyPollinousCoreHandDraw(
+            player with
+            {
+                Relics = [relic with
+                {
+                    IsMelted = true,
+                    PersistentState = JsonSerializer.SerializeToElement(
+                        new { TurnsSeen = 3 })
+                }]
+            });
+        return fourthDraw.Bonus == 2
+            && fourthDraw.Player.Relics.Single().PersistentState
+                .TryGetProperty("TurnsSeen", out var turnsSeen)
+            && turnsSeen.ValueKind == JsonValueKind.Number
+            && turnsSeen.GetInt32() == 0
+            && melted.Bonus == 0
+            && melted.Player.Relics.Single().PersistentState
+                .GetProperty("TurnsSeen").GetInt32() == 3;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

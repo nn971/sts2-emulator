@@ -27488,8 +27488,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PollinousCore.cs#37cc32f0978fb0ce588e72a0e157db7501daa3253459c55d249759c39ffeddc9"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 115,
-        "integrated": 116,
+        "implemented": 116,
+        "integrated": 117,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

@@ -70,6 +70,10 @@ owner's first player-side turn. See
 Stone Calendar is now a Rare relic that deals 52 damage to all enemies at
 the end of turn 7. See
 [mechanics gap 066](reference-builds/v0.111.0-mechanics-gap-066.md).
+Pollinous Core is now coverage-verified through Act 2's Colossal Flower
+reward path. Its fourth hand draw adds 2 cards and resets its saved counter;
+melted copies no longer advance it. See
+[mechanics gap 067](reference-builds/v0.111.0-mechanics-gap-067.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).

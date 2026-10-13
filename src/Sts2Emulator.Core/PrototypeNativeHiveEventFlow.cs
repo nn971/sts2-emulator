@@ -129,7 +129,7 @@ public sealed partial class PrototypeGameEngine
     /// The saved property intentionally lives in the persistent relic
     /// instance rather than a combat-only trigger count.
     /// </summary>
-    private static (PlayerState Player, int Bonus)
+    internal static (PlayerState Player, int Bonus)
         ApplyPollinousCoreHandDraw(PlayerState player)
     {
         var relics = player.Relics;
@@ -138,7 +138,8 @@ public sealed partial class PrototypeGameEngine
         for (var i = 0; i < relics.Length; i++)
         {
             var relic = relics[i];
-            if (relic.RelicId != PrototypeNativeHiveEvents.PollinousCoreId)
+            if (relic.RelicId != PrototypeNativeHiveEvents.PollinousCoreId
+                || relic.IsMelted)
             {
                 continue;
             }
