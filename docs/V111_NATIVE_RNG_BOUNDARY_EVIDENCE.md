@@ -52,7 +52,7 @@ the **single-fixture** report from the `native-engine-fidelity` CLI.
 
 ## Precisely unimplemented
 
-**Native source-hook installation is NOT implemented yet.** The installed
+**Native source-hook installation code for the two integer NextInt overloads is now implemented, but has not been built or exercised against the installed game.** The installed
 game DLL is absent from remote synthetic CI; no pinned v0.111 native
 `Rng.NextInt` Harmony or source hook has been built, attached or compared
 against a real game run on this branch. Existing Inspector captures therefore
@@ -88,3 +88,34 @@ boundary correspondence is needed before pairing an emulator step.
 The current focused CI exercises synthetic source evidence, rejection of
 frame-inferred events, exact comparator classifications and both providers.
 It cannot substitute for a native-game-local build or full combat parity.
+
+## 2026-10-13 next implementation: opt-in native primitive hook source code
+
+Implemented `native/Sts2ReferenceMod/NativeV111RngHook.cs`, enabled only with
+`STS2_FIDELITY_CAPTURE=1` **and** `STS2_FIDELITY_RNG_HOOK=1`, after the
+existing runtime SHA-256 game-pin check. Harmony targets the exact pinned
+`Rng.NextInt(int)` and `Rng.NextInt(int,int)` method signatures; a
+pure `ToSerializable()` prefix snapshots four xoshiro state words/counter,
+and the postfix copies the original returned value and new snapshot.
+
+`NativeRngSourceRegistryV111` identifies the 12 run + 3 player streams
+by **native object reference**, bound from the one combat player's actual
+`RunState.Rng` and `PlayerRng`. Context RNGs and source mechanic sites
+are explicitly `UNATTRIBUTED`. The hook is restricted to observed
+single-player combats after the first frame; early combat-entry, different
+threads, and non-`NextInt` operations remain unverified.
+
+Sidecar headers record `native_rng_hook_installed`, while the corpus
+auditor distinguishes `SOURCE_RNG_UNINSTRUMENTED`,
+`HOOK_INSTALLED_NO_SOURCE_CALLS_OBSERVED`, and source calls actually
+captured. Failure to install a hook leaves ordinary passive Inspector
+capture functioning. Synthetic tests cover owner reference identity,
+call ordinals, source snapshot validation and audit classification.
+
+**Evidence gate: native game-local build and execution are still untested.**
+The raw game binary is absent from CI. Source-level hookup is complete
+for these overloads, but claiming an installed/running hook, no-perturbation,
+full call-site coverage, semantic candidate eligibility or native RNG parity
+requires real-game traces. Use
+[`V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md`](V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md)
+for the isolated WSL checkout and Windows process setup.
