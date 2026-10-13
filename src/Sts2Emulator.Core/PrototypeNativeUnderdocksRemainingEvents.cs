@@ -215,7 +215,8 @@ public sealed partial class PrototypeGameEngine
                 var id = pool[PrototypeRng.NextInt(
                     state.Rng, "event", pool.Length)];
                 playerAfter = AppendCard(
-                    playerAfter, nextCardId++, id, state.Rng);
+                    playerAfter, nextCardId++, id, state.Rng,
+                    allocateCardId: () => nextCardId++);
                 break;
             }
 
@@ -250,7 +251,8 @@ public sealed partial class PrototypeGameEngine
                 playerAfter = AppendCard(
                     playerAfter, nextCardId++,
                     PrototypeNativeEndlessConveyor.FeedingFrenzyId,
-                    state.Rng);
+                    state.Rng,
+                    allocateCardId: () => nextCardId++);
                 break;
 
             default:
@@ -329,9 +331,11 @@ public sealed partial class PrototypeGameEngine
 
         if (evt.NativePageIndex == 0 && choice == "nab")
         {
+            var nextCardId = world.NextCardInstanceId;
             var player = AppendCard(
-                state.Player, world.NextCardInstanceId,
-                "proto.native.neow.injury", state.Rng);
+                state.Player, nextCardId++,
+                "proto.native.neow.injury", state.Rng,
+                allocateCardId: () => nextCardId++);
             var reward = CreateDeferredEventReward(
                 state, PrototypeRunEffectKind.OfferRandomRelic,
                 player, evt.EventId);
@@ -340,7 +344,7 @@ public sealed partial class PrototypeGameEngine
                 Player = player,
                 World = world with
                 {
-                    NextCardInstanceId = world.NextCardInstanceId + 1,
+                    NextCardInstanceId = nextCardId,
                     Event = evt with
                     {
                         ChosenChoiceId = "nab",

@@ -395,7 +395,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RngBundle? rng = null,
         RunWorldState? world = null,
         Func<long>? allocateCardId = null,
-        RngBundle? nativeRunRng = null)
+        RngBundle? nativeRunRng = null,
+        string? skipRelicId = null)
     {
         // RelicAcquired models RelicModel.AfterObtained on the newly
         // appended instance, not a broadcast to every owned relic with the
@@ -417,6 +418,11 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             var relic = player.Relics[relicIndex];
             if (relic.IsMelted)
                 continue;
+            if (eventKind == PrototypeRunEventKind.CardAdded
+                && StringComparer.Ordinal.Equals(relic.RelicId, skipRelicId))
+            {
+                continue;
+            }
             var definition =
                 PrototypeContent.Relic(relic.RelicId);
             if (eventKind == PrototypeRunEventKind.RelicAcquired
@@ -480,7 +486,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         "Calling Bell acquisition requires card IDs."))(),
                     NativeDarvEventV111.CurseOfTheBellCardId,
                     rng ?? throw new InvalidOperationException(
-                        "Calling Bell acquisition requires RNG context."));
+                        "Calling Bell acquisition requires RNG context."),
+                    allocateCardId);
             }
             if (eventKind == PrototypeRunEventKind.RelicAcquired
                 && relic.RelicId == NativePaelRewardsV111.WingId)
@@ -513,13 +520,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     var curseId = curseIds[selectedIndex];
                     curseIds.RemoveAt(selectedIndex);
                     player = AppendCard(player, allocate(), curseId,
-                        acquisitionRng);
+                        acquisitionRng, allocate);
                 }
 
                 for (var i = 0; i < 3; i++)
                     player = AppendCard(player, allocate(),
                         NativeGloryAncientsV111.ApparitionCardId,
-                        acquisitionRng);
+                        acquisitionRng, allocate);
             }
             if (eventKind == PrototypeRunEventKind.RelicAcquired
                 && relic.RelicId == NativePaelRewardsV111.ClawId)
@@ -588,6 +595,40 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     continue;
                 }
 
+                if (trigger.CopyAddedCardToDeckBottom)
+                {
+                    if (eventKind != PrototypeRunEventKind.CardAdded
+                        || addedCard is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Bing Bong requires a newly added deck card.");
+                    }
+
+                    var copy = addedCard with
+                    {
+                        InstanceId = (allocateCardId
+                            ?? throw new InvalidOperationException(
+                                "Bing Bong requires a card instance allocator."))(),
+                        PersistentState = addedCard.PersistentState.Clone()
+                    };
+                    player = player with
+                    {
+                        Deck = player.Deck.Append(copy).ToArray()
+                    };
+                    // The cloned card enters the deck too. Like the source
+                    // relic's clonedBy check, suppress only Bing Bong's own
+                    // callback while allowing other relics to see the copy.
+                    player = ApplyRelicRunEvent(
+                        player,
+                        PrototypeRunEventKind.CardAdded,
+                        addedCard: copy,
+                        rng: rng,
+                        world: world,
+                        allocateCardId: allocateCardId,
+                        nativeRunRng: nativeRunRng,
+                        skipRelicId: relic.RelicId);
+                }
+
                 player = ApplyRelicAcquisitionRunEffects(
                     player, trigger.Effects, rng, allocateCardId);
             }
@@ -614,7 +655,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         effect.CardId ?? throw new InvalidOperationException(
                             "Card grant requires a card ID."),
                         rng ?? throw new InvalidOperationException(
-                            "Card grant requires RNG context."));
+                            "Card grant requires RNG context."),
+                        allocateCardId);
                     break;
 
                 case PrototypeRunEffectKind.GainRandomRareCard:
@@ -637,7 +679,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     var cardId = rarePool[PrototypeRng.NextInt(
                         rewardRng, "reward", rarePool.Length)];
                     player = AppendCard(
-                        player, cardAllocator(), cardId, rewardRng);
+                        player, cardAllocator(), cardId, rewardRng,
+                        allocateCardId);
                     break;
                 }
 
@@ -1027,7 +1070,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         PlayerState player,
         long instanceId,
         string cardId,
-        RngBundle rng)
+        RngBundle rng,
+        Func<long>? allocateCardId = null)
     {
         var definition = PrototypeContent.Card(cardId);
         var upgradeLevel = InitialAddedCardUpgradeLevel(player, definition);
@@ -1050,7 +1094,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             player,
             PrototypeRunEventKind.CardAdded,
             addedCard: card,
-            rng: rng);
+            rng: rng,
+            allocateCardId: allocateCardId);
     }
 
     internal static int InitialAddedCardUpgradeLevel(

@@ -101,7 +101,8 @@ public sealed partial class PrototypeGameEngine
             case "merchant_guilty":
             {
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.RegretId, state.Rng);
+                    PrototypeNativeGloryEvents.RegretId, state.Rng,
+                    allocateCardId: () => nextId++);
                 // Native obtains two front-of-bag relics directly;
                 // each can enqueue an acquisition-driven deck choice.
                 for (var i = 0; i < 2; i++)
@@ -129,7 +130,8 @@ public sealed partial class PrototypeGameEngine
 
             case "merchant_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.ShameId, state.Rng);
+                    PrototypeNativeGloryEvents.ShameId, state.Rng,
+                    allocateCardId: () => nextId++);
                 choices.Add(new PrototypePendingEventDeckChoiceState(
                     choice, PrototypePersistentDeckChoiceKind.Upgrade, 2,
                     Array.Empty<long>()));
@@ -144,7 +146,8 @@ public sealed partial class PrototypeGameEngine
 
             case "noble_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.RegretId, state.Rng);
+                    PrototypeNativeGloryEvents.RegretId, state.Rng,
+                    allocateCardId: () => nextId++);
                 player = player with
                 {
                     Gold = GoldAfterGain(player, 300)
@@ -154,7 +157,8 @@ public sealed partial class PrototypeGameEngine
             case "nondescript_guilty":
             {
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.DoubtId, state.Rng);
+                    PrototypeNativeGloryEvents.DoubtId, state.Rng,
+                    allocateCardId: () => nextId++);
                 // Native presents two independently selectable
                 // three-card rewards from the character's pool.
                 var cards1 = PickDistinct(
@@ -186,7 +190,8 @@ public sealed partial class PrototypeGameEngine
 
             case "nondescript_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.DoubtId, state.Rng);
+                    PrototypeNativeGloryEvents.DoubtId, state.Rng,
+                    allocateCardId: () => nextId++);
                 choices.Add(new PrototypePendingEventDeckChoiceState(
                     choice, PrototypePersistentDeckChoiceKind.Transform, 2,
                     Array.Empty<long>()));

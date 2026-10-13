@@ -344,14 +344,16 @@ public sealed partial class PrototypeGameEngine
 
         var selected = eligible[
             PrototypeRng.NextInt(state.Rng, "event", eligible.Length)];
+        var nextCardId = world.NextCardInstanceId;
         var player = AppendCard(
-            state.Player, world.NextCardInstanceId, selected, state.Rng);
+            state.Player, nextCardId++, selected, state.Rng,
+            allocateCardId: () => nextCardId++);
         return PreserveNativeEventCompletionPage(state with
         {
             Player = player,
             World = world with
             {
-                NextCardInstanceId = world.NextCardInstanceId + 1
+                NextCardInstanceId = nextCardId
             }
         }, choice);
     }

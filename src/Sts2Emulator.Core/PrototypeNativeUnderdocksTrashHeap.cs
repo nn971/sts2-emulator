@@ -162,14 +162,16 @@ public sealed partial class PrototypeGameEngine
                 {
                     Gold = GoldAfterGain(state.Player, 100)
                 };
+                var nextCardId = world.NextCardInstanceId;
                 player = AppendCard(
-                    player, world.NextCardInstanceId, chosen, state.Rng);
+                    player, nextCardId++, chosen, state.Rng,
+                    allocateCardId: () => nextCardId++);
                 var result = state with
                 {
                     Player = player,
                     World = world with
                     {
-                        NextCardInstanceId = world.NextCardInstanceId + 1
+                        NextCardInstanceId = nextCardId
                     }
                 };
                 return PreserveNativeEventCompletionPage(result, choice);

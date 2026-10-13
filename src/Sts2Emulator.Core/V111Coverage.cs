@@ -305,6 +305,14 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id is "DAUGHTER_OF_THE_WIND" or "MR_STRUGGLES"
+                or "BING_BONG"
+            && HasDollRoomRelicMechanic(item.Id))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id is "SWORD_OF_STONE" or "SWORD_OF_JADE"
             && HasSwordOfStoneJadePath(item.Id))
         {
@@ -859,6 +867,12 @@ public static class V111Coverage
             && missingBranches.Length == 0
             && engineIds.Contains(PrototypeNativeRelicTrader.EventId,
                 StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "DOLL_ROOM" && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeDollRoom.EventId,
+                StringComparer.Ordinal)
+            && HasDollRoomPath())
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "THE_ARCHITECT"
@@ -4649,6 +4663,11 @@ public static class V111Coverage
 
     private static string[] MissingBranches(V111InventoryItem item)
     {
+        if (item.Kind == "events" && item.Id == "DOLL_ROOM")
+        {
+            return HasCompleteDollRoomBranches(item)
+                ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events" && item.Id == "SLIPPERY_BRIDGE")
         {
             return HasCompleteSlipperyBridgeBranches(item)
@@ -4759,6 +4778,222 @@ public static class V111Coverage
                 .Where(branch => !supported.Contains(branch)).ToArray();
         }
         return item.BranchInventoryComplete ? [] : item.Branches ?? [];
+    }
+
+    private static bool HasCompleteDollRoomBranches(
+        V111InventoryItem item)
+    {
+        var expectedBranches = PrototypeNativeDollRoom.CoveredBranches;
+        var definition = PrototypeNativeDollRoom.Definition;
+        return item.Branches is { Length: 14 } branches
+            && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                expectedBranches.Order(StringComparer.Ordinal),
+                StringComparer.Ordinal)
+            && IsIntegratedEvent(PrototypeNativeDollRoom.EventId)
+            && definition.MinAct == 2
+            && definition.MaxAct == 2
+            && definition.Choices.Select(choice => choice.Id)
+                .SequenceEqual(
+                [
+                    "random", "take_some_time", "examine",
+                    "daughter_of_the_wind", "mr_struggles", "fable"
+                ], StringComparer.Ordinal)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                PrototypeNativeDollRoom.EventId)
+            && PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                PrototypeNativeDollRoom.EventId) == 2
+            && RelicChoiceEffectsMatch();
+
+        static bool RelicChoiceEffectsMatch() =>
+            PrototypeNativeDollRoom.Definition.Choices.Any(choice =>
+                choice.Id == "daughter_of_the_wind"
+                && choice.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId
+                        == PrototypeNativeDollRoom.DaughterOfTheWindId))
+            && PrototypeNativeDollRoom.Definition.Choices.Any(choice =>
+                choice.Id == "mr_struggles"
+                && choice.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId
+                        == PrototypeNativeDollRoom.MrStrugglesId))
+            && PrototypeNativeDollRoom.Definition.Choices.Any(choice =>
+                choice.Id == "fable"
+                && choice.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId == PrototypeNativeDollRoom.BingBongId));
+    }
+
+    private static bool HasDollRoomRelicMechanic(string nativeId)
+    {
+        var relicId = nativeId switch
+        {
+            "DAUGHTER_OF_THE_WIND" =>
+                PrototypeNativeDollRoom.DaughterOfTheWindId,
+            "MR_STRUGGLES" => PrototypeNativeDollRoom.MrStrugglesId,
+            "BING_BONG" => PrototypeNativeDollRoom.BingBongId,
+            _ => null
+        };
+        if (relicId is null
+            || !PrototypeContent.Relics.ContainsKey(relicId)
+            || !PrototypeNativeDollRoom.Definition.Choices.Any(choice =>
+                choice.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId == relicId))
+            || !ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                PrototypeNativeDollRoom.EventId, 2))
+        {
+            return false;
+        }
+
+        var relic = PrototypeContent.Relic(relicId);
+        return nativeId switch
+        {
+            "DAUGHTER_OF_THE_WIND" => relic.Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.CardPlayed
+                && trigger.RequiredSourceCardType
+                    == PrototypeCardType.Attack
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.GainPlayerBlock
+                    && effect.Amount == 1)) == true,
+            "MR_STRUGGLES" => relic.Triggers is { } strugglesTriggers
+                && new[]
+                {
+                    PrototypeCombatEventKind.OpeningPlayerTurnStarted,
+                    PrototypeCombatEventKind.PlayerTurnStarted
+                }.All(eventKind => strugglesTriggers.Count(trigger =>
+                    trigger.EventKind == eventKind
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.DamageEnemy
+                        && effect.Target == PrototypeEffectTarget.AllEnemies
+                        && effect.AmountPerCount == 1
+                        && effect.CountKind
+                            == PrototypeCombatCountKind.TurnNumber)) == 1),
+            "BING_BONG" => relic.RunTriggers?.Any(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.CardAdded
+                && trigger.CopyAddedCardToDeckBottom) == true,
+            _ => false
+        };
+    }
+
+    private static bool HasDollRoomPath()
+    {
+        if (!HasDollRoomRelicMechanic("DAUGHTER_OF_THE_WIND")
+            || !HasDollRoomRelicMechanic("MR_STRUGGLES")
+            || !HasDollRoomRelicMechanic("BING_BONG"))
+        {
+            return false;
+        }
+
+        static RunState EventFixture(string seed)
+        {
+            var state = PrototypeNativeLaterActFixture.Create(seed, 2);
+            var world = state.World!;
+            var node = world.Map.Nodes.First(item =>
+                item.RoomType == PrototypeRoomType.Unknown
+                && item.NextNodeIds is { Length: > 0 });
+            return state with
+            {
+                Phase = RunPhase.Event,
+                World = world with
+                {
+                    Floor = node.Floor,
+                    ActiveRoom = PrototypeRoomType.Event,
+                    Map = world.Map with { CurrentNodeId = node.NodeId },
+                    Event = new EventState(
+                        PrototypeNativeDollRoom.EventId),
+                    EventHistory = world.EventIds.Append(
+                        PrototypeNativeDollRoom.EventId).ToArray()
+                }
+            };
+        }
+
+        var engine = new PrototypeGameEngine();
+        var time = EventFixture("coverage-doll-room-time");
+        if (!IsIntegratedEvent(PrototypeNativeDollRoom.EventId)
+            || engine.GetLegalActions(time).Count != 3)
+        {
+            return false;
+        }
+
+        var timeChoice = engine.GetLegalActions(time).Single(action =>
+            action.ReadPayload<EventChoicePayload>().ChoiceId
+                == "take_some_time");
+        var timeOffer = engine.Step(time, timeChoice).State;
+        if (timeOffer.Player.Hp != time.Player.Hp - 5
+            || timeOffer.World?.Event is not
+                { NativePageIndex: 1, OfferedChoiceIds.Length: 2 })
+        {
+            return false;
+        }
+
+        var take = engine.GetLegalActions(timeOffer).First();
+        var received = engine.Step(timeOffer, take).State;
+        var receivedChoice = take.ReadPayload<EventChoicePayload>().ChoiceId;
+        var receivedRelic = PrototypeNativeDollRoom
+            .RelicIdForChoice(receivedChoice);
+        if (!received.Player.Relics.Any(relic =>
+                relic.RelicId == receivedRelic)
+            || received.World?.Event is not
+                { NativePageIndex: 2, OfferedChoiceIds: null }
+            || engine.GetLegalActions(received).Single().Kind
+                != "continue_event")
+        {
+            return false;
+        }
+
+        var examine = EventFixture("coverage-doll-room-examine");
+        var examineAction = engine.GetLegalActions(examine).Single(action =>
+            action.ReadPayload<EventChoicePayload>().ChoiceId == "examine");
+        var examineOffer = engine.Step(examine, examineAction).State;
+        if (examineOffer.Player.Hp != examine.Player.Hp - 15
+            || examineOffer.World?.Event is not
+                { NativePageIndex: 1, OfferedChoiceIds.Length: 3 }
+            || engine.GetLegalActions(examineOffer).Count != 3)
+        {
+            return false;
+        }
+
+        var random = EventFixture("coverage-doll-room-random");
+        var randomAction = engine.GetLegalActions(random).Single(action =>
+            action.ReadPayload<EventChoicePayload>().ChoiceId == "random");
+        var randomResult = engine.Step(random, randomAction).State;
+        if (randomResult.Player.Hp != random.Player.Hp
+            || randomResult.Player.Relics.Length
+                != random.Player.Relics.Length + 1
+            || !PrototypeNativeDollRoom.RelicChoiceIds.Select(
+                    PrototypeNativeDollRoom.RelicIdForChoice)
+                .Contains(randomResult.Player.Relics[^1].RelicId,
+                    StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        var relicId = PrototypeNativeDollRoom.BingBongId;
+        var card = new CardInstance(
+            1, "proto.silent.strike", 1, PrototypeJson.EmptyObject(),
+            new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.Sharp, 2));
+        var player = new PlayerState(
+            70, 70, 0, [card],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var fixture = EventFixture("coverage-doll-room-bing-bong");
+        var nextId = fixture.World!.NextCardInstanceId;
+        var copied = PrototypeGameEngine.ApplyRelicRunEvent(
+            player,
+            PrototypeRunEventKind.CardAdded,
+            addedCard: card,
+            rng: fixture.Rng,
+            world: fixture.World,
+            allocateCardId: () => nextId++);
+        return copied.Deck.Length == 2
+            && copied.Deck[1].InstanceId == fixture.World.NextCardInstanceId
+            && copied.Deck[1].CardId == card.CardId
+            && copied.Deck[1].UpgradeLevel == card.UpgradeLevel
+            && copied.Deck[1].PersistentState.GetRawText()
+                == card.PersistentState.GetRawText()
+            && copied.Deck[1].Enchantment == card.Enchantment
+            && nextId == fixture.World.NextCardInstanceId + 1;
     }
 
     private static bool HasCompleteSlipperyBridgeBranches(

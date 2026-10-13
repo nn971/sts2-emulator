@@ -21,7 +21,10 @@ public sealed partial class PrototypeGameEngine
             var card = ApplyNewCardEnchantments(player, original with
             { InstanceId = nextId++, UpgradeLevel = upgrade, PersistentState = original.PersistentState.Clone() });
             player = player with { Deck = [..player.Deck, card] };
-            player = ApplyRelicRunEvent(player, PrototypeRunEventKind.CardAdded, addedCard: card, rng: state.Rng);
+            player = ApplyRelicRunEvent(player,
+                PrototypeRunEventKind.CardAdded, addedCard: card,
+                rng: state.Rng, world: world,
+                allocateCardId: () => nextId++);
         }
         return CompleteRoomToMap(state with
         { Player = player, World = world with { NextCardInstanceId = nextId } });

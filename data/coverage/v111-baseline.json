@@ -15199,32 +15199,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.hive.doll_room"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/DollRoom.cs#e5e25680eba1f4fa23ee4398be346f4183a5174ef51e6b8deedd7fc8d31dbb3b"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/EXAMINE",
-          "initial/RANDOM",
-          "initial/TAKE_SOME_TIME",
-          "page/DAUGHTER_OF_WIND",
-          "page/EXAMINE",
-          "page/FABLE",
-          "page/INITIAL",
-          "page/INITIAL/EXAMINE",
-          "page/INITIAL/RANDOM",
-          "page/INITIAL/TAKE_SOME_TIME",
-          "page/MR_STRUGGLES",
-          "page/TAKE",
-          "page/TAKE/TAKE",
-          "page/TAKE_SOME_TIME"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "DOLL_ROOM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24281,17 +24268,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.bing_bong"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BingBong.cs#da18b6cc23b80747b57f79f110886fc9daa533e5aeb454946e0bbe23ca709595"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BING_BONG",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24949,17 +24938,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.daughter_of_the_wind"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DaughterOfTheWind.cs#d54d6e169c6d61993c31313953524df5888bd4eadccfcdc7a1345e93a1a1cb21"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DAUGHTER_OF_THE_WIND",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -26709,17 +26700,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.mr_struggles"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MrStruggles.cs#8a2d573c08904450b6426dd46d1606c1b549bd5798ab594ea0d739f5152d55ff"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MR_STRUGGLES",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29410,8 +29403,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 60,
-        "integrated": 62,
+        "implemented": 61,
+        "integrated": 63,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
@@ -29460,8 +29453,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 134,
-        "integrated": 135,
+        "implemented": 137,
+        "integrated": 138,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

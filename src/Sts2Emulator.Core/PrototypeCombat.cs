@@ -9113,6 +9113,7 @@ public sealed partial class PrototypeGameEngine
                         && PrototypeContent.Power(power.PowerId).IsDebuff
                         && !PrototypeContent.Power(power.PowerId)
                             .RemoveAtEnemyTurnEnd)),
+            PrototypeCombatCountKind.TurnNumber => combat.Turn,
 
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };

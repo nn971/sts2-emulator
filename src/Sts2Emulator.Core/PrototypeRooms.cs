@@ -975,6 +975,9 @@ public sealed partial class PrototypeGameEngine
                     eventState.EventId))
             return [GameAction.Empty("continue_event")];
 
+        if (eventState.EventId == PrototypeNativeDollRoom.EventId)
+            return GetNativeDollRoomActions(eventState);
+
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
         {
             return (eventState.NativeFuturePotionOffers
@@ -1149,6 +1152,9 @@ public sealed partial class PrototypeGameEngine
             }
             return CompleteRoomToMap(state);
         }
+
+        if (eventState.EventId == PrototypeNativeDollRoom.EventId)
+            return StepNativeDollRoom(state, action);
 
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
             return StepNativeFutureOfPotions(state, action);
@@ -1605,7 +1611,8 @@ public sealed partial class PrototypeGameEngine
                         player,
                         nextId++,
                         effect.CardId,
-                        state.Rng);
+                        state.Rng,
+                        allocateCardId: () => nextId++);
                     break;
 
                 case PrototypeRunEffectKind.TransformFirstCardOfId:
@@ -1679,7 +1686,8 @@ public sealed partial class PrototypeGameEngine
                         PrototypeRng.NextInt(
                             state.Rng, "reward", rares.Length)];
                     player = AppendCard(
-                        player, nextId++, cardId, state.Rng);
+                        player, nextId++, cardId, state.Rng,
+                        allocateCardId: () => nextId++);
                     break;
                 }
 
@@ -1748,7 +1756,8 @@ public sealed partial class PrototypeGameEngine
                         player = AppendCard(
                             player, cardInstanceId,
                             NativeDarvEventV111.DustyTomeCardId,
-                            state.Rng);
+                            state.Rng,
+                            allocateCardId: () => nextId++);
                         var maxUpgradeLevel = PrototypeContent.Card(
                             NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel;
                         player = player with
@@ -2750,7 +2759,9 @@ public sealed partial class PrototypeGameEngine
                 && pending.CardIdAfterChoices is { } afterChoicesCardId)
             {
                 resolvedPlayer = AppendCard(
-                    resolvedPlayer, nextCardInstanceId++, afterChoicesCardId, state.Rng);
+                    resolvedPlayer, nextCardInstanceId++, afterChoicesCardId,
+                    state.Rng,
+                    allocateCardId: () => nextCardInstanceId++);
             }
             return state with
             {
@@ -2856,7 +2867,8 @@ public sealed partial class PrototypeGameEngine
                 },
                 nextId++,
                 offer.ItemId,
-                state.Rng);
+                state.Rng,
+                allocateCardId: () => nextId++);
             shop = shop with
             {
                 CardOffers = shop.CardOffers
@@ -4055,7 +4067,8 @@ public sealed partial class PrototypeGameEngine
                 && deckChoice.CardIdAfterChoices is { } afterChoicesCardId)
             {
                 player = AppendCard(
-                    player, nextId++, afterChoicesCardId, state.Rng);
+                    player, nextId++, afterChoicesCardId, state.Rng,
+                    allocateCardId: () => nextId++);
             }
 
             if (reward.PendingDeckChoice is null
@@ -4091,7 +4104,9 @@ public sealed partial class PrototypeGameEngine
 
             foreach (var cardId in bundles[payload.Index])
             {
-                player = AppendCard(player, nextId++, cardId, state.Rng);
+                player = AppendCard(
+                    player, nextId++, cardId, state.Rng,
+                    allocateCardId: () => nextId++);
             }
             reward = reward with { CardResolved = true };
         }
@@ -4122,6 +4137,7 @@ public sealed partial class PrototypeGameEngine
                     player, nextId++, options[payload.Index],
                     reward.CardUpgradeFlagsForGroup(groupIndex + 1)[payload.Index],
                     state.Rng,
+                    () => nextId++,
                     reward.CardEnchantmentsForGroup(groupIndex + 1)[payload.Index]);
             }
             else if (payload.Index != -1)
@@ -4200,6 +4216,7 @@ public sealed partial class PrototypeGameEngine
                     reward.CardOptions[payload.Index],
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
                     state.Rng,
+                    () => nextId++,
                     reward.CurrentCardOptionEnchantments[payload.Index]);
                 if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward))
                 {
@@ -4244,6 +4261,7 @@ public sealed partial class PrototypeGameEngine
                     currentOptions[payload.Index],
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
                     state.Rng,
+                    () => nextId++,
                     reward.CurrentCardOptionEnchantments[payload.Index]);
             }
             else
@@ -4814,7 +4832,8 @@ public sealed partial class PrototypeGameEngine
             if (reward.AddCardAfterReward is { } afterRewardCardId)
             {
                 player = AppendCard(
-                    player, nextId++, afterRewardCardId, state.Rng);
+                    player, nextId++, afterRewardCardId, state.Rng,
+                    allocateCardId: () => nextId++);
             }
             return state with
             {
@@ -4860,12 +4879,15 @@ public sealed partial class PrototypeGameEngine
                     .ModifierGeneratedCurseIds;
                 var curseId = cursePool[PrototypeRng.NextInt(
                     state.Rng, "reward", cursePool.Length)];
-                player = AppendCard(player, nextId++, curseId, state.Rng);
+                player = AppendCard(
+                    player, nextId++, curseId, state.Rng,
+                    allocateCardId: () => nextId++);
             }
             else if (reward.AddCardAfterReward is { } additionalCardId)
             {
                 player = AppendCard(
-                    player, nextId++, additionalCardId, state.Rng);
+                    player, nextId++, additionalCardId, state.Rng,
+                    allocateCardId: () => nextId++);
             }
             return AdvanceEventContinuations(state with
             {

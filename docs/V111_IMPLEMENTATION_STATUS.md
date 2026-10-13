@@ -7,7 +7,7 @@ event registration (with Colorful Philosophers still deferred), and the
 act-entry Ancient definitions. It records route integration, not complete
 branch coverage or native parity. War Historian Repy is also recognized as
 implemented across its nine inventoried branches. The overall report currently
-records 60/66 events implemented and 62/66 integrated.
+records 61/66 events implemented and 63/66 integrated.
 
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.
@@ -212,6 +212,13 @@ damage and disables itself after the card's first completed play.
 Infested Automaton is integrated in Hive for Silent. Study adds one eligible
 Power and Touch Core adds one eligible zero cost card when the card generator
 returns one; both choices retain their result page even when no card is added.
+Doll Room is integrated in Hive for Silent. The free choice takes a random doll;
+Take Some Time loses 5 HP and offers two dolls, while Examine loses 15 HP and
+offers all three. Daughter of the Wind grants 1 Block per Attack, Mr. Struggles
+damages all enemies by the current turn number, and Bing Bong copies each new
+deck card to the bottom of the deck. Doll reward sampling uses prototype RNG;
+native RNG parity remains open. See [mechanics gap
+086](reference-builds/v0.111.0-mechanics-gap-086.md).
 The Lantern Key now retains its return result page and exits to the map after
 the optional quest card reward from its fight.
 Zen Weaver retains its selected result page after the breathing-technique

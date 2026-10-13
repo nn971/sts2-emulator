@@ -160,17 +160,19 @@ public sealed partial class PrototypeGameEngine
 
             if (eventState.DeferredCardId is { } deferredCardId)
             {
+                var nextCardId = world.NextCardInstanceId;
                 var player = AppendCard(
                     state.Player,
-                    world.NextCardInstanceId,
+                    nextCardId++,
                     deferredCardId,
-                    state.Rng);
+                    state.Rng,
+                    allocateCardId: () => nextCardId++);
                 state = state with
                 {
                     Player = player,
                     World = world with
                     {
-                        NextCardInstanceId = world.NextCardInstanceId + 1,
+                        NextCardInstanceId = nextCardId,
                         Event = eventState with { DeferredCardId = null }
                     }
                 };

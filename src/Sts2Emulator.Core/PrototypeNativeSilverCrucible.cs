@@ -110,9 +110,11 @@ public sealed partial class PrototypeGameEngine
         string cardId,
         bool upgraded,
         RngBundle rng,
+        Func<long> allocateCardId,
         PrototypeCardEnchantment? enchantment = null)
     {
-        player = AppendCard(player, instanceId, cardId, rng);
+        player = AppendCard(
+            player, instanceId, cardId, rng, allocateCardId);
         if (enchantment is not null)
         {
             player = player with

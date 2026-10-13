@@ -85,11 +85,13 @@ public sealed partial class PrototypeGameEngine
             player = player with { Deck = player.Deck.Append(copy).ToArray() };
             player = ApplyRelicRunEvent(player,
                 PrototypeRunEventKind.CardAdded, addedCard: copy,
-                rng: state.Rng);
+                rng: state.Rng, world: world,
+                allocateCardId: () => nextId++);
         }
 
         player = AppendCard(player, nextId++,
-            PrototypeNativeGloryEvents.BadLuckId, state.Rng);
+            PrototypeNativeGloryEvents.BadLuckId, state.Rng,
+            allocateCardId: () => nextId++);
         return PreserveNativeEventCompletionPage(state with
         {
             Player = player,

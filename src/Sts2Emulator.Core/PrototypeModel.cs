@@ -272,7 +272,8 @@ public enum PrototypeCombatCountKind
     DrawPileCards,
     PlayerBlock,
     TargetDebuffs,
-    DiscardPileCards
+    DiscardPileCards,
+    TurnNumber
 }
 
 public sealed record PrototypeCombatPredicateSpec(
@@ -782,7 +783,8 @@ public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
     PrototypeRunEffectSpec[] Effects,
     PrototypeCardType? RequiredCardType = null,
-    PrototypeRouteConditionSpec? RouteCondition = null);
+    PrototypeRouteConditionSpec? RouteCondition = null,
+    bool CopyAddedCardToDeckBottom = false);
 
 public enum PrototypePersistentDeckChoiceKind
 {

@@ -36,7 +36,8 @@ public sealed partial class PrototypeGameEngine
             };
             player = player with { Deck = player.Deck.Append(returned).ToArray() };
             player = ApplyRelicRunEvent(player, PrototypeRunEventKind.CardAdded,
-                addedCard: returned, rng: state.Rng);
+                addedCard: returned, rng: state.Rng, world: world,
+                allocateCardId: () => nextCardId++);
         }
 
         return state with

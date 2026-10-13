@@ -120,7 +120,9 @@ public sealed partial class PrototypeGameEngine
         {
             foreach (var cardId in cardsAfterReward)
             {
-                player = AppendCard(player, nextId++, cardId, after.Rng);
+                player = AppendCard(
+                    player, nextId++, cardId, after.Rng,
+                    allocateCardId: () => nextId++);
             }
         }
         else if (cardsAfterReward.Count > 0)
