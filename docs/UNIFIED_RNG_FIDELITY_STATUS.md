@@ -153,3 +153,26 @@ full call-site coverage, semantic candidate eligibility or native RNG parity
 requires real-game traces. Use
 [`V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md`](V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md)
 for the isolated WSL checkout and Windows process setup.
+
+### Native monster-intent source scope (implementation added, runtime validation pending)
+
+`NativeV111RngHook` additionally attempts an independent, **optional**
+Harmony prefix/postfix/finalizer on source-audited
+`MonsterModel.RollMove(IEnumerable<Creature>)`. In the pinned source
+this method synchronously delegates to the state machine with
+`RunRng.MonsterAi`. A nested native `NextInt` observed in this scope
+is assigned `site_id=combat.committed_intent.index_draw`, the native
+`creature:<CombatId>`, and a **zero-based per-RollMove** call ordinal.
+Other primitives preserve `UNATTRIBUTED` source-site provenance.
+
+This scope has a separate installed flag
+`native_monster_ai_scope_installed` in the combat sidecar header,
+and a dedicated `NativeRngCallsiteScopesV111Tests` regression suite
+checks stream filtering, nested source scopes and LIFO restoration.
+Failures to install the optional game scope leave the primitive
+`NextInt` observer operational and keep intent attribution unsupported.
+**No installed native game build or paired real-game/emulator intent
+fidelity test has yet certified this attribution.**
+
+Local procedure and exact capture fields:
+[`V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md`](V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md).
