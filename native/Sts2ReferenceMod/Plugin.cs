@@ -24,6 +24,9 @@ public static class Plugin
         {
             Log.Info("[Sts2ReferenceMod] Native passive combat capture is explicitly enabled.");
             NativeV111PassiveBridge.Start();
+            // Extra environment gate: default passive Inspector stays intact,
+            // while source-level RNG observation must be explicitly requested.
+            NativeV111RngHook.TryInstall();
         }
         else
         {
