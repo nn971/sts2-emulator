@@ -28762,17 +28762,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.tuning_fork"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/TuningFork.cs#b70f96a86a8d49bba98c50d815a85b3272f128fc1a5410db0e0ff565d54146a5"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TUNING_FORK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29451,8 +29453,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 109,
-        "integrated": 110,
+        "implemented": 110,
+        "integrated": 111,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

@@ -49,6 +49,9 @@ combat state. See
 The Abacus is now a Shop relic: each owner draw-pile shuffle grants 6 Block
 through the shared Block modifier path. See
 [mechanics gap 060](reference-builds/v0.111.0-mechanics-gap-060.md).
+Tuning Fork is now an Uncommon relic that grants 7 Block for each tenth Skill
+played, with its per-instance counter persisted across combats. See
+[mechanics gap 061](reference-builds/v0.111.0-mechanics-gap-061.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).

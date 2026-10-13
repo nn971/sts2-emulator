@@ -1882,6 +1882,7 @@ public static class V111Coverage
             && PrototypeNativeRelicGrabBag.TryGetRarity(engineIds[0], out _)
             && (item.Id != "POCKETWATCH" || HasPocketwatchPath())
             && (item.Id != "THE_ABACUS" || HasTheAbacusPath())
+            && (item.Id != "TUNING_FORK" || HasTuningForkPath())
             && HasExecutableRelicBehavior(PrototypeContent.Relic(engineIds[0])))
         {
             implementation = "implemented";
@@ -1925,6 +1926,27 @@ public static class V111Coverage
             && rarity == PrototypeRelicRarity.Shop
             && PrototypeContent.Relic(relicId)
                 .PlayerBlockAfterDrawPileShuffle == 6;
+    }
+
+    private static bool HasTuningForkPath()
+    {
+        const string relicId = "proto.relic.tuning_fork";
+        var definition = PrototypeContent.Relic(relicId);
+        return PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            && rarity == PrototypeRelicRarity.Uncommon
+            && definition.PersistentTriggerCountProperty == "SkillsPlayed"
+            && definition.Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.CardPlayed
+                && trigger.RequiresPlayerSide
+                && trigger.RequiredSourceCardType
+                    == PrototypeCardType.Skill
+                && trigger.EveryNth == 10
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.GainPlayerBlock
+                    && effect.Amount == 7)) == true;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

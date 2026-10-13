@@ -69,6 +69,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.horn_cleat"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.tingsha"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.joss_paper"] = PrototypeRelicRarity.Uncommon,
+            ["proto.relic.tuning_fork"] = PrototypeRelicRarity.Uncommon,
 
             ["proto.relic.meat_on_the_bone"] = PrototypeRelicRarity.Rare,
             ["proto.relic.old_coin"] = PrototypeRelicRarity.Rare,
