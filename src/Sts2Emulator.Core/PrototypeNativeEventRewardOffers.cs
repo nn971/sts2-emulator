@@ -187,11 +187,7 @@ public sealed partial class PrototypeGameEngine
                     CardResolved: false,
                     PotionResolved: true,
                     RelicResolved: true,
-                    EndsAct: false,
-                    CardRewardGenerators:
-                    [new PrototypeCardRewardGenerator(
-                        PrototypeCardRewardGeneratorKind.ColorlessRewardPool,
-                        world.Act)]);
+                    EndsAct: false);
             }
 
             case PrototypeRunEffectKind.OfferCardBundles:
