@@ -230,6 +230,21 @@ public sealed class NativeEngineFidelityV111Tests
     }
 
     [Fact]
+    public void UncheckedVisibleNativePowerCannotBeReportedAsFullyConsistent()
+    {
+        var fixture = ChangedFixture(root =>
+            root["post_state"]!["combat"]!["creatures"]![1]!["powers"] =
+                JsonNode.Parse("[{\\"model_id\\":\\"WEAK_POWER\\",\\"amount\\":1}]"));
+        var report = NativeEngineFidelityV111.Compare(fixture);
+        Assert.True(report.ExecutedActualEngineStep);
+        Assert.Equal("CORE_ENGINE_CHECKPOINT_PARTIAL", report.Status);
+        Assert.Contains(report.UnverifiedPreconditions, item =>
+            item == "POWER_SEMANTICS_UNVERIFIED:creature:1");
+        Assert.Equal("NOT_TESTED", report.NativeGameParity);
+        Assert.All(report.CheckedFields, check => Assert.True(check.Equal, check.Path));
+    }
+
+    [Fact]
     public void MissingNativePostEnemyIsACheckpointMismatch()
     {
         var fixture = ChangedFixture(root =>
