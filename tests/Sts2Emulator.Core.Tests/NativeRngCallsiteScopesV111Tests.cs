@@ -41,6 +41,23 @@ public sealed class NativeRngCallsiteScopesV111Tests
     }
 
     [Fact]
+    public void ScalarOwnerPeekDoesNotConsumeIndexDrawOrdinal()
+    {
+        Assert.Null(NativeRngCallsiteScopesV111.PeekOwnerFor("run.monster_ai"));
+        using (NativeRngCallsiteScopesV111.Enter(
+            "combat.committed_intent.index_draw", "run.monster_ai", "creature:9"))
+        {
+            Assert.Null(NativeRngCallsiteScopesV111.PeekOwnerFor("run.niche"));
+            Assert.Equal("creature:9",
+                NativeRngCallsiteScopesV111.PeekOwnerFor("run.monster_ai"));
+            Assert.Equal("creature:9",
+                NativeRngCallsiteScopesV111.PeekOwnerFor("run.monster_ai"));
+            Assert.Equal(0, NativeRngCallsiteScopesV111.NextFor(
+                "run.monster_ai")!.Value.CallOrdinal);
+        }
+    }
+
+    [Fact]
     public void ScopeRequiresStrictLifoDisposal()
     {
         var parent = NativeRngCallsiteScopesV111.Enter("outer", "run.niche", "run");

@@ -78,6 +78,8 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
                 corpus.get("native_shuffle_verified_operations", 0),
             "native_shuffle_errors": corpus.get("native_shuffle_errors", 0),
             "native_rng_source_calls": corpus.get("native_rng_source_calls", 0),
+            "native_rng_scalar_source_calls":
+                corpus.get("native_rng_scalar_source_calls", 0),
             "native_rng_primitive_validated_calls":
                 corpus.get("native_rng_primitive_validated_calls", 0),
             "native_rng_primitive_errors":

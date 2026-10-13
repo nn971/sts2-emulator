@@ -100,3 +100,43 @@ If a sidecar has `native_rng_hook_installed=true` but zero events, the audit say
 - Restore powers, relic/potion mutable state, skill counters and auto-play causes from independently verified before-state; verify complete combat parity.
 
 This experiment changes only the Inspector integration branch on GitHub and the separate local native mod installation when the user explicitly runs the steps. **The developing all-Act branch and `~/projects/sts2-emulator` checkout remain untouched.**
+
+## 2026-10-13: passive source-level scalar RNG capture (review branch)
+
+The opt-in native observer additionally attempts independent Harmony
+prefix/postfix probes on the pinned **zero-argument**
+`Rng.NextDouble()` and `Rng.NextBool()` methods. Both methods consume
+exactly one xoshiro256** output, using respectively the top 53 bits
+divided by `2^53` and the game's bounded-`2` coin flip. The callbacks
+copy `ToSerializable()` before/after and record the game's original
+return value. Missing optional methods leave `NextInt` probes running.
+
+Each new `native_rng_scalar_boundary` sidecar entry stores
+`operation_kind=unit_double|boolean`, a typed selected value,
+the actual native stream identity, source attribution/provenance,
+action ID when available, and native cursor snapshots. The header reports
+separately `native_rng_double_hook_installed` and
+`native_rng_bool_hook_installed`. They are independent of the existing
+bounded-integer hook installation flag.
+
+`native_rng_boundary_verify.py` verifies both scalar outcomes using
+the original xoshiro output, one-counter-step transition, and every
+state word. Stream continuity now spans mixed integer, double and bool
+calls; forward gaps still explicitly report uninstrumented advances.
+`native_rng_boundary_compare.py` marks a native action containing
+a scalar primitive as `UNSUPPORTED_NATIVE_RNG_OPERATION` until the
+emulator has a corresponding typed provider boundary. Thus source
+coverage cannot be silently mistaken for full emulator RNG parity.
+
+Validate on the **actual pinned installed DLL** with `STS2_FIDELITY_RNG_HOOK=1`,
+then inspect log fields `double_source_hook` and `bool_source_hook`
+and corpus fields `native_rng_scalar_source_calls`,
+`native_rng_stream_gaps`, `native_rng_stream_conflicts`.
+Native exact-build compilation, attachment, and no-perturbation evidence
+remain unverified by synthetic CI.
+
+**Coverage boundary:** the range overloads, `NextFloat`,
+unsigned/long draws, chaotic/context RNGs and pre-attachment calls
+still require independent source capture or explicit gaps. The two
+zero-argument new probes cover some Gaussian inner draws and boolean
+effects, but do not prove every composed RNG caller was observed.

@@ -31,9 +31,13 @@ internal static class NativeV111RngHook
     private static bool _observationFailed;
     private static int _threadId;
     private static bool _rollMoveScopeInstalled;
+    private static bool _doubleHookInstalled;
+    private static bool _boolHookInstalled;
 
     internal static bool IsInstalled => _patches is not null;
     internal static bool HasRollMoveScope => IsInstalled && _rollMoveScopeInstalled;
+    internal static bool HasDoubleHook => IsInstalled && _doubleHookInstalled;
+    internal static bool HasBoolHook => IsInstalled && _boolHookInstalled;
 
     internal static void TryInstall()
     {
@@ -69,6 +73,16 @@ internal static class NativeV111RngHook
                 postfix: new HarmonyMethod(postfixOne));
             harmony.Patch(two, prefix: new HarmonyMethod(prefixTwo),
                 postfix: new HarmonyMethod(postfixTwo));
+            // Source-verified one-step scalar RNG calls, installed as optional
+            // patches so a hotfix signature mismatch preserves NextInt capture.
+            // Only the zero-argument overloads are hooked: higher-level
+            // wrappers and Gaussian rejection compose these source calls.
+            _doubleHookInstalled = TryInstallScalar(
+                harmony, nameof(NativeRng.NextDouble),
+                nameof(PrefixScalar), nameof(PostfixDouble));
+            _boolHookInstalled = TryInstallScalar(
+                harmony, nameof(NativeRng.NextBool),
+                nameof(PrefixScalar), nameof(PostfixBool));
             // Additional source-level causal identity for enemy intentions.
             // MonsterModel.RollMove is synchronous and delegates directly to
             // MoveStateMachine.RollMove(..., RunRng.MonsterAi) in pinned v111.
@@ -108,7 +122,11 @@ internal static class NativeV111RngHook
                 "; shuffle_source_scope=" +
                 (shuffleScopeInstalled ? "INSTALLED" : "UNAVAILABLE") +
                 "; initial_hp_source_scope=" +
-                (initialHpScopeInstalled ? "INSTALLED" : "UNAVAILABLE"));
+                (initialHpScopeInstalled ? "INSTALLED" : "UNAVAILABLE") +
+                "; double_source_hook=" +
+                (_doubleHookInstalled ? "INSTALLED" : "UNAVAILABLE") +
+                "; bool_source_hook=" +
+                (_boolHookInstalled ? "INSTALLED" : "UNAVAILABLE"));
         }
         catch (Exception error)
         {
@@ -119,8 +137,34 @@ internal static class NativeV111RngHook
             catch (Exception) { /* original game must still run */ }
             _patches = null;
             _rollMoveScopeInstalled = false;
+            _doubleHookInstalled = false;
+            _boolHookInstalled = false;
             GD.PushError("[Sts2ReferenceMod] RNG_HOOK_STATUS=INSTALL_FAILED;" +
                 " reason=" + error.GetType().Name + "; exact RNG fidelity NOT_TESTED");
+        }
+    }
+
+    private static bool TryInstallScalar(Harmony harmony, string methodName,
+        string prefixName, string postfixName)
+    {
+        const BindingFlags methods = BindingFlags.Static | BindingFlags.NonPublic;
+        try
+        {
+            var target = AccessTools.Method(typeof(NativeRng), methodName,
+                Type.EmptyTypes) ?? throw new MissingMethodException(
+                    "Rng." + methodName + "()");
+            harmony.Patch(target,
+                prefix: new HarmonyMethod(
+                    typeof(NativeV111RngHook).GetMethod(prefixName, methods)!),
+                postfix: new HarmonyMethod(
+                    typeof(NativeV111RngHook).GetMethod(postfixName, methods)!));
+            return true;
+        }
+        catch (Exception error)
+        {
+            GD.PushError("[Sts2ReferenceMod] SCALAR_RNG_HOOK_STATUS=UNAVAILABLE;" +
+                " method=" + methodName + ";reason=" + error.GetType().Name);
+            return false;
         }
     }
 
@@ -191,6 +235,17 @@ internal static class NativeV111RngHook
         NativeRng __instance, int __result, CallState __state) =>
         Observe(__instance, __result, __state);
 
+    private static void PrefixScalar(NativeRng __instance, out CallState __state) =>
+        __state = Capture(__instance, 0, 1);
+
+    private static void PostfixDouble(
+        NativeRng __instance, double __result, CallState __state) =>
+        ObserveScalar(__instance, "unit_double", __result, null, __state);
+
+    private static void PostfixBool(
+        NativeRng __instance, bool __result, CallState __state) =>
+        ObserveScalar(__instance, "boolean", null, __result, __state);
+
     private static void PrefixRollMove(
         MonsterModel __instance, out IDisposable? __state)
     {
@@ -251,6 +306,29 @@ internal static class NativeV111RngHook
                 site, stream, actor, ordinal, state.Bound,
                 checked(result - state.Min), state.Before!, after);
             NativeV111PassiveBridge.NativeRngBoundary(evidence);
+        }
+        catch (Exception error) { ObservationFailure(error); }
+    }
+
+    private static void ObserveScalar(NativeRng rng, string operation,
+        double? numeric, bool? boolean, CallState state)
+    {
+        if (!state.Active || _observationFailed || !_attached) return;
+        try
+        {
+            var after = Snapshot(rng);
+            var (stream, owner, streamOrdinal) = Owners.Next(rng);
+            // MonsterModel.RollMove's existing source scope specifically
+            // labels index draws. A bool/double source call within that
+            // method has a creature owner, but no audited index eligibility.
+            // Peeking must not advance NextInt's per-RollMove ordinal.
+            var scopedOwner = NativeRngCallsiteScopesV111.PeekOwnerFor(stream);
+            var evidence = new NativeRngScalarEvidenceV111(
+                "UNATTRIBUTED", stream,
+                scopedOwner ?? owner,
+                streamOrdinal, operation,
+                numeric, boolean, state.Before!, after);
+            NativeV111PassiveBridge.NativeRngScalarBoundary(evidence);
         }
         catch (Exception error) { ObservationFailure(error); }
     }

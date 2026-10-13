@@ -34,7 +34,9 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         int queueCapacity = 8192, bool nativeRngHookInstalled = false,
         bool nativeMonsterAiScopeInstalled = false,
         bool nativeShuffleScopeInstalled = false,
-        bool nativeInitialHpScopeInstalled = false)
+        bool nativeInitialHpScopeInstalled = false,
+        bool nativeRngDoubleHookInstalled = false,
+        bool nativeRngBoolHookInstalled = false)
     {
         _gameBuild = gameBuild;
         _writer = new AsyncTraceWriter(path, queueCapacity);
@@ -47,6 +49,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 source = "native_action_executor_and_combat_history",
                 coverage = "callback_order_and_observed_snapshots_only",
                 native_rng_hook_installed = nativeRngHookInstalled,
+                native_rng_double_hook_installed = nativeRngDoubleHookInstalled,
+                native_rng_bool_hook_installed = nativeRngBoolHookInstalled,
                 native_monster_ai_scope_installed = nativeMonsterAiScopeInstalled,
                 native_shuffle_scope_installed = nativeShuffleScopeInstalled,
                 native_initial_hp_scope_installed = nativeInitialHpScopeInstalled,
@@ -299,6 +303,38 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 operation_kind = "bounded_integer",
                 bounded_count = evidence.BoundedCount,
                 selected_index = evidence.SelectedIndex,
+                cursor_before = evidence.CursorBefore,
+                cursor_after = evidence.CursorAfter,
+                source_version = evidence.SourceVersion,
+                origin = evidence.Origin,
+                attributed = evidence.Attributed,
+                source_hook_observed = true
+            })));
+    }
+
+    /// <summary>
+    /// Typed zero-argument scalar primitive callback. Only a source Harmony
+    /// postfix may invoke this in production; it neither samples nor advances.
+    /// </summary>
+    public void NativeRngScalarBoundary(NativeRngScalarEvidenceV111 evidence)
+    {
+        if (_closed) return;
+        ArgumentNullException.ThrowIfNull(evidence);
+        evidence.Validate();
+        Write(new NativeActionEnvelopeRecord(
+            "native_rng_scalar_boundary", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            NativeType: evidence.OperationKind == "unit_double"
+                ? "Rng.NextDouble()" : "Rng.NextBool()",
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                site_id = evidence.SiteId,
+                stream_id = evidence.StreamId,
+                owner_id = evidence.OwnerId,
+                call_ordinal = evidence.CallOrdinal,
+                operation_kind = evidence.OperationKind,
+                selected_double = evidence.SelectedDouble,
+                selected_bool = evidence.SelectedBool,
                 cursor_before = evidence.CursorBefore,
                 cursor_after = evidence.CursorAfter,
                 source_version = evidence.SourceVersion,

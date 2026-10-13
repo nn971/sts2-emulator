@@ -47,6 +47,18 @@ public static class NativeRngCallsiteScopesV111
         return new Scope(frame);
     }
 
+    /// <summary>
+    /// Read the owning native mechanic scope without consuming an
+    /// index-draw ordinal. Scalar draws during RollMove have an observed
+    /// creature owner but NOT the source eligibility of an index draw.
+    /// </summary>
+    public static string? PeekOwnerFor(string streamId)
+    {
+        var frame = _active;
+        return frame is not null && frame.StreamId == streamId
+            ? frame.OwnerId : null;
+    }
+
     public static (string SiteId, string OwnerId, long CallOrdinal)? NextFor(
         string streamId)
     {
