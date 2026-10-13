@@ -1426,3 +1426,8 @@ See [mechanics gap 135](reference-builds/v0.111.0-mechanics-gap-135.md).
 Planisphere now heals 5 HP on the run's first Unknown map point and stops
 appearing at the Act 3 treasure chest. See
 [mechanics gap 136](reference-builds/v0.111.0-mechanics-gap-136.md).
+Shiv now has executable integration coverage as a generated token: Blade Dance
+creates three or four Shivs, while base and upgraded Storm of Steel create
+matching Shiv variants after discarding the rest of the hand. Shiv stays out
+of ordinary reward pools. See
+[mechanics gap 137](reference-builds/v0.111.0-mechanics-gap-137.md).

@@ -9540,13 +9540,10 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Shiv.cs#eb92dcec378fe8897f7b088de7cb78354562f65167eeceff8b95dfc6912f10c8"
         ],
         "implementation": "implemented",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "cards",
         "missing_branches": [],
-        "missing_variants": [
-          "base",
-          "upgraded"
-        ],
+        "missing_variants": [],
         "native_id": "SHIV",
         "registered": true,
         "scope": "single-player",
@@ -29421,7 +29418,7 @@
         "eligible": 558,
         "excluded": 37,
         "implemented": 205,
-        "integrated": 144,
+        "integrated": 145,
         "kind": "cards",
         "scope_review_required": 0,
         "validated": 0

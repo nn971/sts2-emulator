@@ -151,6 +151,11 @@ public static class V111Coverage
                 : PrototypeNativeOrobasRelics.RingOfTheDrakeId,
                 StringComparer.Ordinal)
             && HasTouchOrobasRingUpgradePath();
+        var hasShivGenerationPath = item.Scope == "single-player"
+            && item.Kind == "cards"
+            && item.Id == "SHIV"
+            && engineIds.Contains("proto.silent.shiv", StringComparer.Ordinal)
+            && HasShivGenerationPath();
         if (item.Scope == "single-player" && item.Kind == "cards")
         {
             if (engineIds.Any(id => PrototypeContent.Card(id).MechanicsImplemented
@@ -177,6 +182,8 @@ public static class V111Coverage
                     NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel > 0)
                 integration = "integrated";
             if (hasSuppressAcquisitionPath)
+                integration = "integrated";
+            if (hasShivGenerationPath)
                 integration = "integrated";
         }
         if (item.Scope == "single-player"
@@ -1025,6 +1032,7 @@ public static class V111Coverage
             integration = "integrated";
         }
         var missingVariants = hasSuppressAcquisitionPath
+            || hasShivGenerationPath
             ? [] : item.Variants ?? [];
         if (item.Scope == "single-player" && item.Kind == "cards"
             && item.Id == "BRIGHTEST_FLAME"
@@ -8390,6 +8398,191 @@ public static class V111Coverage
             && (nativeId == "SWORD_OF_STONE"
                 ? stone.Id == stoneId
                 : nativeId == "SWORD_OF_JADE" && jade.Id == jadeId);
+    }
+
+    private static bool HasShivGenerationPath()
+    {
+        const string shivId = "proto.silent.shiv";
+        const string bladeDanceId = "proto.silent.blade_dance";
+        const string stormOfSteelId = "proto.silent.storm_of_steel";
+        const string strikeId = "proto.silent.strike";
+        const string defendId = "proto.silent.defend";
+
+        var shiv = PrototypeContent.Card(shivId);
+        var bladeDance = PrototypeContent.Card(bladeDanceId);
+        var stormOfSteel = PrototypeContent.Card(stormOfSteelId);
+        var bladeDanceGeneration = bladeDance.Effects.SingleOrDefault(
+            effect => effect.Kind
+                == PrototypeCombatEffectKind.CreateCardsInHand);
+        var stormGeneration = stormOfSteel.Effects.SingleOrDefault(
+            effect => effect.Kind
+                == PrototypeCombatEffectKind.CreateCardsInHand);
+        if (!shiv.MechanicsImplemented
+            || shiv.Rarity != PrototypeCardRarity.Token
+            || shiv.RewardEligible
+            || shiv.Type != PrototypeCardType.Attack
+            || !shiv.ExhaustOnUse
+            || shiv.Tags?.Contains("Shiv", StringComparer.Ordinal) != true
+            || shiv.Effects.Length != 1
+            || shiv.Effects[0] is not
+                {
+                    Kind: PrototypeCombatEffectKind.DamageEnemy,
+                    Amount: 4,
+                    UpgradeDelta: 2
+                }
+            || PrototypeContent.NativeSilentCardPool.Contains(
+                shivId, StringComparer.Ordinal)
+            || PrototypeContent.RewardCardPool.Contains(
+                shivId, StringComparer.Ordinal)
+            || bladeDanceGeneration is not
+                {
+                    Amount: 3,
+                    UpgradeDelta: 1,
+                    CardId: shivId
+                }
+            || stormGeneration is not
+                {
+                    CountKind: PrototypeCombatCountKind.OtherCardsInHand,
+                    AmountPerCount: 1,
+                    GeneratedCardUpgradePerSourceUpgrade: 1,
+                    CardId: shivId
+                })
+        {
+            return false;
+        }
+
+        (PlayerState Player, CombatState Combat) Play(
+            string cardId,
+            int sourceUpgradeLevel,
+            string[] otherHandCardIds,
+            string seed)
+        {
+            var source = new CardInstance(
+                1, cardId, sourceUpgradeLevel,
+                PrototypeJson.EmptyObject());
+            var otherDeckCards = otherHandCardIds.Select((otherId, index) =>
+                new CardInstance(index + 2L, otherId, 0,
+                    PrototypeJson.EmptyObject())).ToArray();
+            var player = new PlayerState(
+                50,
+                50,
+                0,
+                [source, .. otherDeckCards],
+                [],
+                []);
+            var otherCombatCards = otherHandCardIds.Select((otherId, index) =>
+                new CombatCardInstance(
+                    index + 2L,
+                    index + 2L,
+                    otherId,
+                    0,
+                    false,
+                    PrototypeJson.EmptyObject())).ToArray();
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: otherCombatCards
+                    .Select(card => card.InstanceId).ToArray(),
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: otherHandCardIds.Length + 2L,
+                Cards:
+                [
+                    new CombatCardInstance(
+                        1,
+                        1,
+                        cardId,
+                        sourceUpgradeLevel,
+                        false,
+                        PrototypeJson.EmptyObject()),
+                    .. otherCombatCards
+                ],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Act: 1,
+                PlayPile: [1]);
+            var card = PrototypeContent.Card(cardId);
+            var destination = card.ExhaustOnUse
+                ? PrototypeCardZone.ExhaustPile
+                : PrototypeCardZone.DiscardPile;
+            var resolved = PrototypeGameEngine.ResolveCardPlaySeries(
+                player,
+                combat,
+                PrototypeRng.CreateBundle(seed),
+                new PrototypeCardPlaySeriesState(
+                    SourceCardInstanceId: 1,
+                    SourceCardDestination: destination,
+                    TargetEnemyId: null,
+                    EnergySpent: 1,
+                    PlayCount: 1,
+                    NextPlayIndex: 0));
+            return (resolved.Player, resolved.Combat);
+        }
+
+        static bool HasOnlyGeneratedShivs(
+            CombatState combat,
+            int expectedCount,
+            int expectedUpgradeLevel,
+            long sourceCardInstanceId,
+            PrototypeCardZone sourceDestination)
+        {
+            var generated = combat.Cards
+                .Where(card => card.CardId == shivId)
+                .ToArray();
+            var expectedSourcePile = sourceDestination
+                == PrototypeCardZone.ExhaustPile
+                ? combat.ExhaustPile
+                : combat.DiscardPile;
+            return generated.Length == expectedCount
+                && generated.All(card => card.IsTemporary
+                    && card.UpgradeLevel == expectedUpgradeLevel
+                    && combat.Hand.Contains(card.InstanceId))
+                && combat.Hand.Length == expectedCount
+                && expectedSourcePile.Contains(sourceCardInstanceId);
+        }
+
+        var bladeDanceBase = Play(
+            bladeDanceId, 0, [], "coverage-shiv-blade-dance");
+        var bladeDanceUpgraded = Play(
+            bladeDanceId, 1, [], "coverage-shiv-blade-dance-upgraded");
+        var stormBase = Play(
+            stormOfSteelId,
+            0,
+            [strikeId, defendId],
+            "coverage-shiv-storm-of-steel");
+        var stormUpgraded = Play(
+            stormOfSteelId,
+            1,
+            [strikeId, defendId],
+            "coverage-shiv-storm-of-steel-upgraded");
+
+        return HasOnlyGeneratedShivs(
+                bladeDanceBase.Combat,
+                3,
+                0,
+                1,
+                PrototypeCardZone.ExhaustPile)
+            && HasOnlyGeneratedShivs(
+                bladeDanceUpgraded.Combat,
+                4,
+                0,
+                1,
+                PrototypeCardZone.ExhaustPile)
+            && HasOnlyGeneratedShivs(
+                stormBase.Combat,
+                2,
+                0,
+                1,
+                PrototypeCardZone.DiscardPile)
+            && HasOnlyGeneratedShivs(
+                stormUpgraded.Combat,
+                2,
+                1,
+                1,
+                PrototypeCardZone.DiscardPile);
     }
 
     private static bool HasSupportedBossRelicPath(
