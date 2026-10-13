@@ -37,6 +37,10 @@ fifth elite victory; Jade grants 3 Strength at combat start. Coverage links
 both Overgrowth and Underdocks Sunken Statue offers to the transformation and
 combat trigger. See
 [mechanics gap 057](reference-builds/v0.111.0-mechanics-gap-057.md).
+Coverage also recognizes Astrolabe, Sozu, Snecko Eye, and Velvet Choker in the
+configured boss reward pool, checking each relic's acquisition or combat
+metadata. See
+[mechanics gap 058](reference-builds/v0.111.0-mechanics-gap-058.md).
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).

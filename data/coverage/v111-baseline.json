@@ -24118,8 +24118,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Astrolabe.cs#8d8baaedd21687eaec5cb391cda4a6d0020b8951c3dbd688e570f6f0503ab928"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28224,8 +28224,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/SneckoEye.cs#7b27d2c6246f9c377d403c052c882cdb146a46e8251197608707b8c9b78d135d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28260,8 +28260,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Sozu.cs#e4526ab54c41f21ad2aa135a7a41dff433b2f9b586041b319676b81011fc0c77"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28882,8 +28882,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/VelvetChoker.cs#418c2070e88c5f9145a55a393978a7f993ffd29ab4a1a9b514549294deb24140"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29447,8 +29447,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 103,
-        "integrated": 104,
+        "implemented": 107,
+        "integrated": 108,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

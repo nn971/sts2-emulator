@@ -311,6 +311,13 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && engineIds.Length == 1
+            && HasSupportedBossRelicPath(item.Id, engineIds[0]))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player"
             && item.Kind == "enchantments"
             && item.Id == "VIGOROUS"
@@ -1933,6 +1940,38 @@ public static class V111Coverage
             && (nativeId == "SWORD_OF_STONE"
                 ? stone.Id == stoneId
                 : nativeId == "SWORD_OF_JADE" && jade.Id == jadeId);
+    }
+
+    private static bool HasSupportedBossRelicPath(
+        string nativeId, string engineId)
+    {
+        if (!PrototypeContent.BossRelicPool.Contains(
+                engineId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        var definition = PrototypeContent.Relic(engineId);
+        return nativeId switch
+        {
+            "ASTROLABE" => engineId == "proto.relic.astrolabe"
+                && definition.AcquisitionDeckChoice is
+                {
+                    Kind: PrototypePersistentDeckChoiceKind.Transform,
+                    Selections: 3,
+                    UpgradeTransformedCards: true
+                },
+            "SOZU" => engineId == "proto.relic.sozu"
+                && definition.EnergyPerTurnBonus == 1
+                && definition.PreventPotionAcquisition,
+            "SNECKO_EYE" => engineId == "proto.relic.snecko_eye"
+                && definition.HandDrawBonus == 2
+                && definition.RandomizeDrawnCardCostMaxExclusive == 4,
+            "VELVET_CHOKER" => engineId == "proto.relic.velvet_choker"
+                && definition.EnergyPerTurnBonus == 1
+                && definition.MaxCardsPlayablePerTurn == 6,
+            _ => false
+        };
     }
 
     private static string[] RestSiteOptionEngineIds(string optionId)
