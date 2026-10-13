@@ -95,9 +95,11 @@ Mazaleth's Gift, Radiant Tincture, Beetle Juice, Gigantification Potion,
 Clarity, Colorless Potion, Powdered Demise, Lucky Tonic and Orobic Acid, and
 excludes Ironclad-only Blood Potion and the off-pool legacy Explosive Potion;
 all 48 pinned Silent/shared pool entries are now registered, with executable
-effects for the newly covered entries. Remaining potion gaps are unlock-filter
-coverage, live native cursor validation, and Colorless Potion/Orobic Acid
-candidate card pools, which still use currently implemented cards. Prismatic
+effects for the newly covered entries. Remaining potion gaps are restricted-
+profile unlock filtering and live native cursor validation. Colorless Potion
+now samples the full supported single-player Colorless combat-generation pool
+for the required fully unlocked profile. Orobic Acid remains limited to Silent
+cards because its other-character pools are deferred. Prismatic
 Gem now implements its persistent +1 energy component, but its foreign
 card-pool effect and Sea Glass are deferred cross-character mechanics. See
 [the Orobas dependency ledger](reference-builds/v0.111.0-hive-orobas-ancient.md).

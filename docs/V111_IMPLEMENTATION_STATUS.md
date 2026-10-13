@@ -266,12 +266,16 @@ Alchemical Coffer adds
 four slots and generates four distinct potions from the full-unlock
 Silent/shared pool in pinned source order. With native run RNG enabled it uses
 `run.combat_potion_generation`; Sozu blocks procurement after generation, so
-the source draws still occur. Unlock filtering and live cursor validation
-remain open. Native-shaped card reward and merchant generators also preserve
-the pinned Silent card-pool order, while the legacy prototype pool remains
-sorted. All 48 pinned Silent/shared potion IDs have executable definitions.
-Colorless Potion and Orobic Acid use restricted implemented-card candidate
-pools; native acquisition timing and other-character mappings remain open.
+the source draws still occur. Restricted-profile unlock filtering and live
+cursor validation remain open. Native-shaped card reward and merchant
+generators also preserve the pinned Silent card-pool order, while the legacy
+prototype pool remains sorted. All 48 pinned Silent/shared potion IDs have
+executable definitions.
+Colorless Potion now samples the supported, combat-generatable single-player
+Colorless pool, including all 15 epoch-gated cards for the required fully
+unlocked profile. Orobic Acid still uses Silent candidates only; its
+other-character pools are deferred with cross-character card mechanics.
+Native acquisition timing remains open.
 
 Glory Ancient source offers and their current gates are tracked in the
 [Glory Ancient ledger](reference-builds/v0.111.0-glory-ancients.md). Signet

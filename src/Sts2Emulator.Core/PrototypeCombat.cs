@@ -7328,8 +7328,8 @@ public sealed partial class PrototypeGameEngine
 
         // Native GetDistinctForCombat uses CombatCardGeneration and a
         // fully-unlocked card pool. Synthetic RNG currently shares the
-        // combat stream, and we intentionally omit locked/unimplemented
-        // models until the native unlock bridge exists.
+        // combat stream. Configured v111 profiles are fully unlocked; the
+        // pool still omits multiplayer-only and unsupported card models.
         PrototypeRng.Shuffle(rng, "combat", candidates);
         foreach (var cardId in candidates.Take(
                      Math.Min(Math.Min(count, capacity), candidates.Length)))
