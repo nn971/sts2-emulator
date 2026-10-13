@@ -218,7 +218,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// Fisher-Yates permutation and AFTER-HOOK order. An initial shuffle
     /// may arrive from the pre-first-frame buffer; it has no executor action.
     /// </summary>
-    public void NativeInitialHpRoll(NativeInitialHpRollEvidenceV111 evidence)
+    public void NativeInitialHpRoll(NativeInitialHpRollEvidenceV111 evidence,
+        bool bufferedBeforeFirstFrame = false)
     {
         if (_closed) return;
         ArgumentNullException.ThrowIfNull(evidence);
@@ -242,7 +243,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_creature_combat_id = (long?)null,
                 native_creature_combat_id_status =
                     "PRE_ATTACH_CREATURE_ID_UNVERIFIED",
-                recorded_before_first_frame = true,
+                recorded_before_first_frame = bufferedBeforeFirstFrame,
                 source_callsite_observed = true,
                 native_to_emulator_creature_identity = "NOT_TESTED"
             })));
