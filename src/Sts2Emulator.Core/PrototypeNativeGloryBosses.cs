@@ -47,8 +47,10 @@ public static class PrototypeNativeGloryBosses
         new(DampenId, "Dampen", 0, [], DoesNotStack: true, IsDebuff: true,
             SourceBoundToEnemy: true, DowngradeExistingCardsOnApply: true,
             RestoreDowngradedCardsWhenLastSourceRemoved: true),
-        new(ChainsId, "Chains of Binding", 0, [], IsDebuff: true,
-            SourceBoundToEnemy: true),
+        // Queen applies this power to the player. It remains active after
+        // Queen dies; the source PowerModel only clears Bound afflictions at
+        // the player's side-turn end and has no owner-death removal hook.
+        new(ChainsId, "Chains of Binding", 0, [], IsDebuff: true),
         new(AdaptableId, "Adaptable", 0, [], DoesNotStack: true,
             OwnerDeathTriggersFatal: false),
         new(EnrageId, "Enrage", 0, []),

@@ -10657,10 +10657,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     var power = combat.PlayerPowers[powerIndex];
                     if (power.PowerId != PrototypeNativeGloryBosses.ChainsId
-                        || power.StoredValue >= power.Stacks
-                        || power.SourceEnemyInstanceId is not { } sourceId
-                        || !combat.Enemies.Any(enemy =>
-                            enemy.InstanceId == sourceId && enemy.Hp > 0))
+                        || power.StoredValue >= power.Stacks)
                         continue;
                     combat = combat with
                     {
@@ -10669,8 +10666,7 @@ public sealed partial class PrototypeGameEngine
                                 ? candidate with
                                 {
                                     Affliction = new PrototypeCardAffliction(
-                                        PrototypeCardAfflictionKind.Bound,
-                                        SourceEnemyInstanceId: sourceId)
+                                        PrototypeCardAfflictionKind.Bound)
                                 }
                                 : candidate).ToArray(),
                         PlayerPowers = combat.PlayerPowers.Select((candidate, i) =>

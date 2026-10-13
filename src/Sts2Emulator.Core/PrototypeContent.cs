@@ -3986,7 +3986,7 @@ public static class PrototypeContent
                 BlockBonusPerStack: 0,
                 Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
                 DoesNotStack: true,
-                EnemyStrengthGainAtTurnEndPerStack: 1),
+                EnemyStrengthAtSideTurnEndPerStack: 1),
             new PrototypePowerDefinition(
                 "proto.power.illusion",
                 "Illusion",
