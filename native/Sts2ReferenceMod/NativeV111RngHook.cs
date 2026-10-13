@@ -2,7 +2,6 @@
 using System.Reflection;
 using HarmonyLib;
 using Godot;
-using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Rngs;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
@@ -112,7 +111,7 @@ internal static class NativeV111RngHook
         }
     }
 
-    internal static void BeginCombat(CombatState combat)
+    internal static void BeginCombat(MegaCrit.Sts2.Core.Combat.CombatState combat)
     {
         if (!IsInstalled) return;
         _attached = false;
