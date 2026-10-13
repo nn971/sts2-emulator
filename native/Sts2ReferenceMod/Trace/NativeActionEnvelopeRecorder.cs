@@ -209,6 +209,43 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// existing frame/history observer: those callbacks cannot attribute
     /// a particular primitive RNG operation or exact hook order.
     /// </summary>
+    /// <summary>
+    /// Complete source-observed shuffle stage, including the BEFORE-HOOK
+    /// Fisher-Yates permutation and AFTER-HOOK order. An initial shuffle
+    /// may arrive from the pre-first-frame buffer; it has no executor action.
+    /// </summary>
+    public void NativeShuffleOperation(NativeShuffleOperationEvidenceV111 evidence)
+    {
+        if (_closed) return;
+        ArgumentNullException.ThrowIfNull(evidence);
+        evidence.Validate();
+        Write(new NativeActionEnvelopeRecord(
+            "native_shuffle_operation", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            NativeType: "native.source.card_pile.shuffle",
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                operation_id = evidence.OperationId,
+                kind = evidence.Kind,
+                ordered_input = evidence.OrderedInput,
+                choices = evidence.Choices.Select(c => new
+                {
+                    bounded_count = c.BoundedCount,
+                    selected_index = c.SelectedIndex,
+                    cursor_before = c.CursorBefore,
+                    cursor_after = c.CursorAfter
+                }).ToArray(),
+                pre_hook_order = evidence.PreHookOrder,
+                post_hook_order = evidence.PostHookOrder,
+                card_models = evidence.CardModels,
+                source_version = evidence.SourceVersion,
+                card_identity_scope = "shuffle_operation_local",
+                recorded_before_first_frame = evidence.Kind == "initial",
+                hook_order_stage = "modify_shuffle_order_completed",
+                exact_rng_parity = "NOT_TESTED"
+            })));
+    }
+
     public void NativeRngBoundary(NativeRngBoundaryEvidenceV111 evidence)
     {
         if (_closed) return;
