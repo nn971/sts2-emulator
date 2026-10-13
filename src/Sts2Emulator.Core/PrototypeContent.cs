@@ -3169,7 +3169,7 @@ public static class PrototypeContent
                 Triggers:
                 [
                     new PrototypeRelicTriggerSpec(
-                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        PrototypeCombatEventKind.PlayerSideTurnStarted,
                         [new(
                             PrototypeCombatEffectKind.GainEnergy,
                             1)],

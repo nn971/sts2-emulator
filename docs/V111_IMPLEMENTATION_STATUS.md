@@ -20,6 +20,9 @@ pinned source boundary and remaining fidelity limits.
 Blood Vial now heals 2 HP on turn 1 at the late player-turn-start hook, rather
 than at combat setup. See
 [mechanics gap 144](reference-builds/v0.111.0-mechanics-gap-144.md).
+Art of War's no-attack bonus now resolves immediately after energy reset and
+before hand draw, using the previous turn's attack count. See
+[mechanics gap 145](reference-builds/v0.111.0-mechanics-gap-145.md).
 
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.
