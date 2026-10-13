@@ -129,8 +129,15 @@ public static class PrototypeNativeGloryEvents
                     [new(PrototypeRunEffectKind.GainMaxHp, 20)])
             ]),
         // FragrantMushroom.AfterObtained deals 15 unblocked,
-        // unpowered damage and upgrades two different eligible cards.
-        new(FragrantMushroomId, "Fragrant Mushroom"),
+        // unpowered damage, then upgrades two distinct eligible cards.
+        // The event handler applies the all-card-type upgrade selection.
+        new(FragrantMushroomId, "Fragrant Mushroom",
+            UpgradeRandomCardsOnAcquisitionCount: 2,
+            RunTriggers:
+            [
+                new(PrototypeRunEventKind.RelicAcquired,
+                    [new(PrototypeRunEffectKind.LoseHp, 15)])
+            ]),
         // RoundTeaParty.EnjoyTea grants this relic and heals to full.
         // RoyalPoison.AfterPlayerTurnStart deals 4 unblockable HP
         // damage to its owner on turn one of every combat.
@@ -301,21 +308,18 @@ public sealed partial class PrototypeGameEngine
             // Pinned AfterObtained performs the damage before any
             // upgrades. A fatal acquisition therefore terminates
             // immediately without upgrading cards.
-            var hpLoss = ReducePlayerHpLoss(player, 15);
-            player = player with
-            {
-                Hp = Math.Max(0, player.Hp - hpLoss)
-            };
             if (player.Hp <= 0)
                 return EndRun(state with { Player = player }, "defeat");
 
+            var upgradeCount = PrototypeContent.Relic(relicId)
+                .UpgradeRandomCardsOnAcquisitionCount;
             var ids = player.Deck
                 .Where(card => CanSelectEventDeckCard(card,
                     PrototypePersistentDeckChoiceKind.Upgrade,
                     null, null, false))
                 .Select(card => card.InstanceId).ToArray();
             PrototypeRng.Shuffle(state.Rng, "event", ids);
-            var upgrades = ids.Take(2).ToHashSet();
+            var upgrades = ids.Take(upgradeCount).ToHashSet();
             player = player with
             {
                 Deck = player.Deck.Select(card =>

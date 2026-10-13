@@ -1278,6 +1278,27 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "FRAGRANT_MUSHROOM"
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.FragrantMushroomId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Relic(
+                PrototypeNativeGloryEvents.FragrantMushroomId) is
+                { UpgradeRandomCardsOnAcquisitionCount: 2 } fragrantMushroom
+            && fragrantMushroom.RunTriggers?.Any(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.RelicAcquired
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.LoseHp
+                    && effect.Amount == 15)) == true
+            && PrototypeNativeGloryEvents.Events.Any(evt =>
+                evt.Id == PrototypeNativeGloryEvents.HungryForMushroomsId
+                && evt.Choices.Any(choice =>
+                    choice.Id == "fragrant_mushroom")))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);

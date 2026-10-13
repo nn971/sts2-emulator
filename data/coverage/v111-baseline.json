@@ -25568,8 +25568,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/FragrantMushroom.cs#0c9bb8fc7e261cbc721e4a361522cba3e00bac1513ba8eff13d030155c24a792"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29447,8 +29447,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 98,
-        "integrated": 99,
+        "implemented": 99,
+        "integrated": 100,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
