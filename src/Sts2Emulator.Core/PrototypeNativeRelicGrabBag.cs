@@ -33,6 +33,8 @@ public static class PrototypeNativeRelicGrabBag
     private static readonly Dictionary<string, PrototypeRelicRarity> Rarities =
         new(StringComparer.Ordinal)
         {
+            [PrototypeNativeSharedRelics.AmethystAubergineId] =
+                PrototypeRelicRarity.Common,
             ["proto.relic.lantern"] = PrototypeRelicRarity.Common,
             ["proto.relic.bag_of_preparation"] = PrototypeRelicRarity.Common,
             [PrototypeNativeSharedRelics.JuzuBraceletId] = PrototypeRelicRarity.Common,
@@ -132,12 +134,16 @@ public static class PrototypeNativeRelicGrabBag
     private static readonly HashSet<string> NotSoldInShops =
         new(StringComparer.Ordinal)
         {
+            PrototypeNativeSharedRelics.AmethystAubergineId,
             "proto.relic.old_coin",
             "proto.relic.lucky_fysh"
         };
 
     public static bool TryGetRarity(string id, out PrototypeRelicRarity rarity) =>
         Rarities.TryGetValue(id, out rarity);
+
+    public static bool IsShopEligible(string id) =>
+        !NotSoldInShops.Contains(id);
 
     public static PrototypeRelicBagState Create(
         PlayerState player, RngBundle rng)
@@ -293,6 +299,17 @@ public static class PrototypeNativeRelicGrabBag
         bool shopEligible = false)
     {
         var bag = world.RelicBag ?? Create(player, rng);
+        if (world.Map.GenerationProfileId ==
+                PrototypeNativeLaterActMap.GloryProfileId
+            && world.Floor >= PrototypeNativeLaterActMap.RoomRows(3) + 1 - 7)
+        {
+            bag = bag with
+            {
+                Common = bag.Common.Where(id =>
+                    id != PrototypeNativeSharedRelics.AmethystAubergineId)
+                    .ToArray()
+            };
+        }
         var rarity = forcedRarity ?? RollRarity(rng, merchant);
         var (remaining, id) = Pull(
             bag, rarity, merchant, player, shopEligible);

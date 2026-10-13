@@ -872,7 +872,8 @@ public sealed record PrototypeRelicDefinition(
     int ConditionalHandDrawMaxCardsPlayedLastTurn = 0,
     int PlayerBlockAfterDrawPileShuffle = 0,
     int RestSiteHealBonus = 0,
-    bool PreventsFirstTurnHandDiscard = false);
+    bool PreventsFirstTurnHandDiscard = false,
+    int CombatVictoryGoldReward = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

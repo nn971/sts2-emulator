@@ -4609,6 +4609,20 @@ public sealed partial class PrototypeGameEngine
                     && PrototypeContent.Enemy(enemy.EnemyId)
                         .RecoverCarriedGoldOnDeath)
                 .Sum(enemy => enemy.StolenGold);
+        var endsAct = room == PrototypeRoomType.Boss
+            && !(world.Act == 3
+                && world.LaterActEncounterBag?.SecondBossEncounterId is not null
+                && world.Floor == PrototypeNativeLaterActMap.RoomRows(3) + 1);
+        var amethystGold = PrototypeNativeAmethystAubergine.GoldBonus(
+            state.Player, room, world.Act, endsAct);
+        if (!nativeOvergrowth && amethystGold > 0)
+        {
+            gold = checked(gold + amethystGold);
+        }
+        var extraGoldRewards = nativeOvergrowth
+            ? PrototypeNativeAmethystAubergine.ExtraRewardOptions(
+                state.Player, recoveredGold, room, world.Act, endsAct)
+            : Array.Empty<int>();
 
         // PotionReward.Populate precedes CardReward.Populate.
         string? potion = nativeOvergrowth
@@ -4793,10 +4807,7 @@ public sealed partial class PrototypeGameEngine
                 relic is null
                 && (relicOptions is null
                     || relicOptions.Length == 0),
-            EndsAct: room == PrototypeRoomType.Boss
-                && !(world.Act == 3
-                    && world.LaterActEncounterBag?.SecondBossEncounterId is not null
-                    && world.Floor == PrototypeNativeLaterActMap.RoomRows(3) + 1),
+            EndsAct: endsAct,
             ExtraCardOptions: extraCardOptions,
             RelicOptions: relicOptions,
             CardOptionsUpgraded: silverCrucible.UpgradeGroups[0],
@@ -4816,8 +4827,10 @@ public sealed partial class PrototypeGameEngine
             ExtraRelicGroupsResolved: nativeOvergrowth
                 ? new bool[extraRelicRewards.Length]
                 : null,
-            ExtraGoldOptions: nativeOvergrowth && recoveredGold > 0 ? [recoveredGold] : null,
-            ExtraGoldGroupsResolved: nativeOvergrowth && recoveredGold > 0 ? [false] : null,
+            ExtraGoldOptions: extraGoldRewards.Length > 0
+                ? extraGoldRewards : null,
+            ExtraGoldGroupsResolved: extraGoldRewards.Length > 0
+                ? new bool[extraGoldRewards.Length] : null,
             ReturnedStolenCards: returnedCards.Length == 0
                 ? null : returnedCards,
             CardRewardGenerators: Enumerable.Repeat<PrototypeCardRewardGenerator?>(

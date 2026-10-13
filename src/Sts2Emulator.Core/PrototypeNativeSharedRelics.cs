@@ -5,6 +5,8 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class PrototypeNativeSharedRelics
 {
+    public const string AmethystAubergineId =
+        "proto.relic.amethyst_aubergine";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
     public const string CandelabraId = "proto.relic.candelabra";
@@ -39,6 +41,10 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Amethyst Aubergine adds a separate 15 Gold reward after fights,
+        // except for the final Glory boss.
+        new(AmethystAubergineId, "Amethyst Aubergine",
+            CombatVictoryGoldReward: 15),
         // Pantograph.BeforeCombatStart heals 25 when the current room is Boss.
         new(PantographId, "Pantograph", HealBeforeBossCombat: 25),
         // JuzuBracelet.ModifyUnknownMapPointRoomTypes removes Monster.

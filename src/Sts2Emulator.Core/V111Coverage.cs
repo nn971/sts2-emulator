@@ -2112,6 +2112,28 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "AMETHYST_AUBERGINE"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.AmethystAubergineId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.AmethystAubergineId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.AmethystAubergineId,
+                out var amethystAubergineRarity)
+            && amethystAubergineRarity == PrototypeRelicRarity.Common
+            && !PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.AmethystAubergineId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.AmethystAubergineId)
+                .CombatVictoryGoldReward == 15
+            && HasAmethystAuberginePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "RINGING_TRIANGLE"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.RingingTriangleId,
@@ -3706,6 +3728,67 @@ public static class V111Coverage
                 { Hand.Length: 0, DiscardPile.Length: 2 }
             && melted.World?.Combat is
                 { Hand.Length: 0, DiscardPile.Length: 2 };
+    }
+
+    private static bool HasAmethystAuberginePath()
+    {
+        const string relicId =
+            PrototypeNativeSharedRelics.AmethystAubergineId;
+        var relic = new RelicInstance(
+            relicId, PrototypeJson.EmptyObject());
+        var active = new PlayerState(30, 30, 0, [], [relic], []);
+        var melted = new PlayerState(30, 30, 0, [],
+            [relic with { IsMelted = true }], []);
+        var ectoplasm = new PlayerState(30, 30, 0, [],
+            [relic, new RelicInstance(
+                "proto.relic.ectoplasm", PrototypeJson.EmptyObject())], []);
+
+        var bag = new PrototypeRelicBagState(
+            [relicId], [], [], []);
+        var beforeTreasureWorld = PrototypeNativeLaterActFixture
+            .Create("coverage-amethyst-before-treasure", 3).World! with
+        {
+            Floor = PrototypeNativeLaterActMap.RoomRows(3) + 1 - 8,
+            RelicBag = bag
+        };
+        var treasureWorld = beforeTreasureWorld with
+        {
+            Floor = PrototypeNativeLaterActMap.RoomRows(3) + 1 - 7
+        };
+        var beforeTreasure = PrototypeNativeRelicGrabBag.Draw(
+            beforeTreasureWorld, new PlayerState(30, 30, 0, [], [], []),
+            PrototypeRng.CreateBundle("coverage-amethyst-before"),
+            merchant: false, forcedRarity: PrototypeRelicRarity.Common);
+        var atTreasure = PrototypeNativeRelicGrabBag.Draw(
+            treasureWorld, new PlayerState(30, 30, 0, [], [], []),
+            PrototypeRng.CreateBundle("coverage-amethyst-treasure"),
+            merchant: false, forcedRarity: PrototypeRelicRarity.Common);
+        var shopWorld = beforeTreasureWorld with { Act = 2, Floor = 1 };
+        var atShop = PrototypeNativeRelicGrabBag.Draw(
+            shopWorld, new PlayerState(30, 30, 0, [], [], []),
+            PrototypeRng.CreateBundle("coverage-amethyst-shop"),
+            merchant: true, forcedRarity: PrototypeRelicRarity.Common);
+
+        return PrototypeNativeAmethystAubergine.GoldBonus(
+                active, PrototypeRoomType.Combat, 1, endsAct: false) == 15
+            && PrototypeNativeAmethystAubergine.GoldBonus(
+                active, PrototypeRoomType.Elite, 2, endsAct: false) == 15
+            && PrototypeNativeAmethystAubergine.GoldBonus(
+                active, PrototypeRoomType.Boss, 2, endsAct: true) == 15
+            && PrototypeNativeAmethystAubergine.GoldBonus(
+                active, PrototypeRoomType.Boss, 3, endsAct: false) == 15
+            && PrototypeNativeAmethystAubergine.GoldBonus(
+                active, PrototypeRoomType.Boss, 3, endsAct: true) == 0
+            && PrototypeNativeAmethystAubergine.GoldBonus(
+                melted, PrototypeRoomType.Combat, 1, endsAct: false) == 0
+            && PrototypeNativeAmethystAubergine.GoldBonus(
+                ectoplasm, PrototypeRoomType.Combat, 1, endsAct: false) == 0
+            && PrototypeNativeAmethystAubergine.ExtraRewardOptions(
+                active, 12, PrototypeRoomType.Combat, 2,
+                endsAct: false).SequenceEqual([12, 15])
+            && beforeTreasure.Id == relicId
+            && atTreasure.Id is null
+            && atShop.Id is null;
     }
 
     private static bool HasDiamondDiademPath()
