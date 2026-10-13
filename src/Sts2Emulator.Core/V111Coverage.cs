@@ -917,6 +917,13 @@ public static class V111Coverage
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "WAR_HISTORIAN_REPY"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeHiveEvents.WarHistorianRepyId,
+                StringComparer.Ordinal))
+            implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "WATERLOGGED_SCRIPTORIUM"
             && missingBranches.Length == 0
             && engineIds.Contains(

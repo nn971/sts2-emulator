@@ -16073,7 +16073,7 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WarHistorianRepy.cs#407e38a628ad60779054bf55c71fcb8cc7f2b93d6a3d942493e4db341eb0a737"
         ],
-        "implementation": "partial",
+        "implementation": "implemented",
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [],
@@ -29393,7 +29393,7 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 59,
+        "implemented": 60,
         "integrated": 62,
         "kind": "events",
         "scope_review_required": 0,
