@@ -186,6 +186,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "legacy_resume_candidates": 0,
         "terminal_history_clears": 0,
         "raw_terminal_status": None,
+        "native_rng_hook_installed": False,
         "native_rng_source_calls": 0,
         "native_rng_unattributed_calls": 0,
         "native_rng_source_coverage": "SOURCE_RNG_UNINSTRUMENTED",
@@ -199,6 +200,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     if records[0].get("data", {}).get("schema") != "native-action-envelope-v1":
         report["reason"] = "Unexpected sidecar schema"
         return report
+    report["native_rng_hook_installed"] = (
+        records[0].get("data", {}).get("native_rng_hook_installed") is True)
+    if report["native_rng_hook_installed"]:
+        report["native_rng_source_coverage"] = (
+            "HOOK_INSTALLED_NO_SOURCE_CALLS_OBSERVED")
     if records[-1].get("type") != "terminal":
         report["reason"] = "Missing terminal record"
         return report
