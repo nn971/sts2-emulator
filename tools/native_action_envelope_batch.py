@@ -13,6 +13,7 @@ from pathlib import Path
 
 from native_action_envelope_audit import audit, load
 from native_rng_boundary_verify import audit as verify_native_rng_primitives
+from native_shuffle_operation_verify import audit as verify_native_shuffles
 
 MECHANIC_KEYS = (
     "card_play", "end_turn", "non_player_or_unknown_action",
@@ -32,6 +33,7 @@ def collect(directory: Path) -> dict:
         records, error = load(path)
         result = audit(records, error)
         primitive = verify_native_rng_primitives(records)
+        shuffles = verify_native_shuffles(records)
         statuses[result["status"]] += 1
         for name, info in result["observed_mechanic_indicators"].items():
             aggregate[name] += info["count"]
@@ -52,6 +54,13 @@ def collect(directory: Path) -> dict:
             "native_monster_ai_scope_installed":
                 result["native_monster_ai_scope_installed"],
             "native_rng_source_calls": result["native_rng_source_calls"],
+            "native_shuffle_status": shuffles["status"],
+            "native_shuffle_source_operations": shuffles["source_shuffles"],
+            "native_shuffle_verified_operations": shuffles["validated_shuffles"],
+            "native_shuffle_errors": shuffles["errors"],
+            "native_shuffle_rng_calls": shuffles["source_shuffle_rng_calls"],
+            "native_shuffle_primitive_calls_correlated":
+                shuffles["primitive_calls_correlated"],
             "native_rng_primitive_status": primitive["status"],
             "native_rng_primitive_validated_calls": primitive["validated_calls"],
             "native_rng_primitive_errors": primitive["errors"],
@@ -80,6 +89,15 @@ def collect(directory: Path) -> dict:
             bool(entry["native_monster_ai_scope_installed"]) for entry in traces),
         "native_rng_hook_installed_sidecars": sum(
             bool(entry["native_rng_hook_installed"]) for entry in traces),
+        "native_shuffle_source_operations": sum(
+            entry["native_shuffle_source_operations"] for entry in traces),
+        "native_shuffle_verified_operations": sum(
+            entry["native_shuffle_verified_operations"] for entry in traces),
+        "native_shuffle_errors": sum(
+            len(entry["native_shuffle_errors"]) for entry in traces),
+        "native_shuffle_primitive_calls_correlated": sum(
+            entry["native_shuffle_primitive_calls_correlated"]
+            for entry in traces),
         "native_rng_primitive_errors": sum(
             len(entry["native_rng_primitive_errors"]) for entry in traces),
         "native_rng_primitive_validated_calls": sum(
