@@ -72,6 +72,12 @@ internal static class NativeV111PassiveBridge
     internal static void NativeRngBoundary(NativeRngBoundaryEvidenceV111 evidence) =>
         _actionEnvelopes?.NativeRngBoundary(evidence);
 
+    internal static bool HasActionSidecar => _actionEnvelopes is not null;
+
+    internal static void NativeShuffleOperation(
+        NativeShuffleOperationEvidenceV111 evidence) =>
+        _actionEnvelopes?.NativeShuffleOperation(evidence);
+
     internal static void NativeRngHookFailure(string exceptionType) =>
         _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
 
@@ -258,6 +264,10 @@ internal static class NativeV111PassiveBridge
             BuildId, runId,
             nativeRngHookInstalled: NativeV111RngHook.IsInstalled,
             nativeMonsterAiScopeInstalled: NativeV111RngHook.HasRollMoveScope);
+        // A source-audited initial shuffle executes before the rendered
+        // combat frame. Buffered evidence must precede later RNG requests
+        // in this sidecar, with its pre-attachment basis clearly marked.
+        NativeV111ShuffleHooks.FlushBufferedInitial();
         _actionEnvelopes.HistoryBaseline(_historyIndex);
         // All 12+3 native named streams are bound to their identity only
         // after a single-player CombatState exists. Earlier setup draws are
