@@ -14,6 +14,7 @@ from pathlib import Path
 from native_action_envelope_audit import audit, load
 from native_rng_boundary_verify import audit as verify_native_rng_primitives
 from native_shuffle_operation_verify import audit as verify_native_shuffles
+from native_initial_hp_verify import audit as verify_initial_hp
 
 MECHANIC_KEYS = (
     "card_play", "end_turn", "non_player_or_unknown_action",
@@ -34,6 +35,7 @@ def collect(directory: Path) -> dict:
         result = audit(records, error)
         primitive = verify_native_rng_primitives(records)
         shuffles = verify_native_shuffles(records)
+        hp = verify_initial_hp(records)
         statuses[result["status"]] += 1
         for name, info in result["observed_mechanic_indicators"].items():
             aggregate[name] += info["count"]
@@ -56,6 +58,10 @@ def collect(directory: Path) -> dict:
             "native_shuffle_scope_installed":
                 result["native_shuffle_scope_installed"],
             "native_rng_source_calls": result["native_rng_source_calls"],
+            "native_initial_hp_status": hp["status"],
+            "native_initial_hp_source_rolls": hp["source_rolls"],
+            "native_initial_hp_validated_rolls": hp["validated_rolls"],
+            "native_initial_hp_errors": hp["errors"],
             "native_shuffle_status": shuffles["status"],
             "native_shuffle_source_operations": shuffles["source_shuffles"],
             "native_shuffle_verified_operations": shuffles["validated_shuffles"],
@@ -93,6 +99,12 @@ def collect(directory: Path) -> dict:
             bool(entry["native_monster_ai_scope_installed"]) for entry in traces),
         "native_rng_hook_installed_sidecars": sum(
             bool(entry["native_rng_hook_installed"]) for entry in traces),
+        "native_initial_hp_source_rolls": sum(
+            entry["native_initial_hp_source_rolls"] for entry in traces),
+        "native_initial_hp_validated_rolls": sum(
+            entry["native_initial_hp_validated_rolls"] for entry in traces),
+        "native_initial_hp_errors": sum(
+            len(entry["native_initial_hp_errors"]) for entry in traces),
         "native_shuffle_source_operations": sum(
             entry["native_shuffle_source_operations"] for entry in traces),
         "native_shuffle_verified_operations": sum(
