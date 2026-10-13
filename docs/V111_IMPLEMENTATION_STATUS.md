@@ -32,6 +32,13 @@ tenth Attack across the run. See
 Rainbow Ring is now in the shared Rare relic pool and grants 1 Strength and 1
 Dexterity once per turn after an Attack, Skill and Power have all been played.
 See [mechanics gap 148](reference-builds/v0.111.0-mechanics-gap-148.md).
+Vambrace doubles Block from the first card that gains Block in combat through
+that card's completed play. Dingy Rug adds the implemented Colorless cards to
+ordinary combat reward generation, Unsettling Lamp doubles eligible debuffs
+from the first card to apply one, and Wing Charm gives Swift to a random
+enchantable card in each generated combat card reward group. See
+[mechanics gap 149](reference-builds/v0.111.0-mechanics-gap-149.md) for the
+source boundary and remaining Colorless-pool and RNG limits.
 
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.

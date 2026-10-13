@@ -147,7 +147,7 @@ public static class PrototypeNativeCardRarityOdds
         GenerateEncounterCards(
             int count, int ascension, PrototypeRoomType room,
             int currentOffsetBasisPoints, RngBundle rng,
-            int act = 1)
+            int act = 1, bool includeColorlessCardRewards = false)
     {
         if (count < 0)
         {
@@ -164,6 +164,10 @@ public static class PrototypeNativeCardRarityOdds
             _ => throw new ArgumentOutOfRangeException(nameof(room))
         };
         var pool = PrototypeContent.NativeSilentRewardCardPool.ToList();
+        if (includeColorlessCardRewards)
+        {
+            pool.AddRange(PrototypeColorlessCards.ImplementedRewardPool);
+        }
         var cards = new List<string>(count);
         var upgrades = new List<bool>(count);
         var offset = currentOffsetBasisPoints;

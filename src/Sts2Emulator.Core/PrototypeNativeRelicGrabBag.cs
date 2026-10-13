@@ -103,6 +103,14 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.RippleBasinId] =
                 PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.VambraceId] =
+                PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.UnsettlingLampId] =
+                PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.DingyRugId] =
+                PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.WingCharmId] =
+                PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.PermafrostId] =
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.ParryingShieldId] =

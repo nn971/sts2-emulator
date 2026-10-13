@@ -17,6 +17,30 @@ public sealed partial class PrototypeGameEngine
         for (var index = 0; index < relics.Length; index++)
         {
             var relic = relics[index];
+            var firstCardBlockMultiplier = PrototypeContent.Relic(
+                relic.RelicId).FirstCardBlockMultiplierPerCombat;
+            if (relic.IsMelted
+                || firstCardBlockMultiplier <= 1
+                || relic.FirstCardBlockMultiplierUsedThisCombat
+                || (relic.FirstCardBlockMultiplierTriggeringCardInstanceId
+                    is { } triggeringCard
+                    && triggeringCard != sourceCardInstanceId))
+            {
+                continue;
+            }
+
+            modified = checked(modified * firstCardBlockMultiplier);
+            relics[index] = relic with
+            {
+                FirstCardBlockMultiplierTriggeringCardInstanceId =
+                    sourceCardInstanceId
+            };
+            changed = true;
+        }
+
+        for (var index = 0; index < relics.Length; index++)
+        {
+            var relic = relics[index];
             if (relic.IsMelted || relic.RelicId != NativePaelRewardsV111.LegionId
                 || relic.PaelsLegionCooldown > 0)
                 continue;
@@ -35,6 +59,100 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (changed ? combat with { Relics = relics } : combat, modified);
+    }
+
+    private static CombatState CompleteFirstCardBlockMultiplier(
+        CombatState combat,
+        long sourceCardInstanceId)
+    {
+        var relics = (CombatRelicState[])combat.RelicStates.Clone();
+        var changed = false;
+        for (var index = 0; index < relics.Length; index++)
+        {
+            var relic = relics[index];
+            if (relic.IsMelted
+                || PrototypeContent.Relic(relic.RelicId)
+                    .FirstCardBlockMultiplierPerCombat <= 1
+                || relic.FirstCardBlockMultiplierTriggeringCardInstanceId
+                    != sourceCardInstanceId)
+            {
+                continue;
+            }
+
+            relics[index] = relic with
+            {
+                FirstCardBlockMultiplierTriggeringCardInstanceId = null,
+                FirstCardBlockMultiplierUsedThisCombat = true
+            };
+            changed = true;
+        }
+
+        return changed ? combat with { Relics = relics } : combat;
+    }
+
+    private static (CombatState Combat, int Amount)
+        ModifyEnemyDebuffWithUnsettlingLamp(
+            CombatState combat,
+            long sourceCardInstanceId,
+            int amount)
+    {
+        var relics = (CombatRelicState[])combat.RelicStates.Clone();
+        var changed = false;
+        for (var index = 0; index < relics.Length; index++)
+        {
+            var relic = relics[index];
+            var multiplier = PrototypeContent.Relic(relic.RelicId)
+                .FirstCardDebuffMultiplierPerCombat;
+            if (relic.IsMelted
+                || multiplier <= 1
+                || relic.FirstCardDebuffMultiplierUsedThisCombat
+                || (relic.FirstCardDebuffMultiplierTriggeringCardInstanceId
+                    is { } triggeringCard
+                    && triggeringCard != sourceCardInstanceId))
+            {
+                continue;
+            }
+
+            amount = checked(amount * multiplier);
+            relics[index] = relic with
+            {
+                FirstCardDebuffMultiplierTriggeringCardInstanceId =
+                    sourceCardInstanceId
+            };
+            changed = true;
+        }
+
+        return (changed ? combat with { Relics = relics } : combat,
+            amount);
+    }
+
+    private static CombatState CompleteFirstCardDebuffMultiplier(
+        CombatState combat,
+        long sourceCardInstanceId)
+    {
+        var relics = (CombatRelicState[])combat.RelicStates.Clone();
+        var changed = false;
+        for (var index = 0; index < relics.Length; index++)
+        {
+            var relic = relics[index];
+            if (relic.IsMelted
+                || PrototypeContent.Relic(relic.RelicId)
+                    .FirstCardDebuffMultiplierPerCombat <= 1
+                || relic.FirstCardDebuffMultiplierTriggeringCardInstanceId
+                    != sourceCardInstanceId)
+            {
+                continue;
+            }
+
+            relics[index] = relic with
+            {
+                FirstCardDebuffMultiplierTriggeringCardInstanceId = null,
+                FirstCardDebuffMultiplierUsedThisCombat = true
+            };
+            changed = true;
+        }
+
+        return changed ? combat with { Relics = relics } : combat;
     }
 
     private static CombatState CompletePaelsLegionCardPlay(

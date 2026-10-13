@@ -19,6 +19,10 @@ public static class PrototypeNativeSharedRelics
     public const string VexingPuzzleboxId =
         "proto.relic.vexing_puzzlebox";
     public const string RainbowRingId = "proto.relic.rainbow_ring";
+    public const string VambraceId = "proto.relic.vambrace";
+    public const string DingyRugId = "proto.relic.dingy_rug";
+    public const string UnsettlingLampId = "proto.relic.unsettling_lamp";
+    public const string WingCharmId = "proto.relic.wing_charm";
     public const string PendulumId = "proto.relic.pendulum";
     public const string RazorToothId = "proto.relic.razor_tooth";
     public const string RippleBasinId = "proto.relic.ripple_basin";
@@ -516,6 +520,18 @@ public static class PrototypeNativeSharedRelics
                         PrototypeCardType.Skill,
                         PrototypeCardType.Power
                     ])
-            ])
+            ]),
+        // Double block from the first owner card that gains Block in combat.
+        // Further Block effects from that same card are doubled before the
+        // relic is spent after the card's complete play series.
+        new(VambraceId, "Vambrace",
+            FirstCardBlockMultiplierPerCombat: 2),
+        // Add eligible Colorless cards to ordinary card rewards.
+        new(DingyRugId, "Dingy Rug"),
+        // Double debuff power from the first card that applies one in combat.
+        new(UnsettlingLampId, "Unsettling Lamp",
+            FirstCardDebuffMultiplierPerCombat: 2),
+        // A card reward gets Swift on one eligible card late in generation.
+        new(WingCharmId, "Wing Charm")
     ];
 }

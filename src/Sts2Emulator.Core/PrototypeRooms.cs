@@ -4761,10 +4761,13 @@ public sealed partial class PrototypeGameEngine
         bool[][]? extraCardUpgradeFlags = null;
         if (nativeOvergrowth)
         {
+            var hasDingyRug = state.Player.ActiveRelics.Any(relic =>
+                relic.RelicId == PrototypeNativeSharedRelics.DingyRugId);
             var offset = world.CardRarityOffsetBasisPoints;
             var first = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                 cardChoiceCount, state.Ascension, room, offset, state.Rng,
-                act: world.Act);
+                act: world.Act,
+                includeColorlessCardRewards: hasDingyRug);
             cardOptions = first.Cards;
             cardUpgradeFlags = first.UpgradeFlags;
             offset = first.NextOffsetBasisPoints;
@@ -4776,7 +4779,8 @@ public sealed partial class PrototypeGameEngine
             {
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                     cardChoiceCount, state.Ascension, room, offset, state.Rng,
-                    act: world.Act);
+                    act: world.Act,
+                    includeColorlessCardRewards: hasDingyRug);
                 extras.Add(next.Cards);
                 extraUpgrades.Add(next.UpgradeFlags);
                 offset = next.NextOffsetBasisPoints;
@@ -4842,7 +4846,10 @@ public sealed partial class PrototypeGameEngine
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                     cardChoiceCount, state.Ascension,
                     PrototypeRoomType.Combat, offset, state.Rng,
-                    act: world.Act);
+                    act: world.Act,
+                    includeColorlessCardRewards: state.Player.ActiveRelics
+                        .Any(relic => relic.RelicId
+                            == PrototypeNativeSharedRelics.DingyRugId));
                 extras.Add(next.Cards);
                 upgrades.Add(next.UpgradeFlags);
                 offset = next.NextOffsetBasisPoints;
@@ -4948,6 +4955,13 @@ public sealed partial class PrototypeGameEngine
             lastingCandy.Reward.CardOptionEnchantments;
         extraCardOptionEnchantments =
             lastingCandy.Reward.ExtraCardOptionEnchantments;
+        var wingCharmResult = ApplyWingCharmToCardRewardOptions(
+            state, cardOptions, extraCardOptions,
+            cardOptionEnchantments, extraCardOptionEnchantments);
+        state = wingCharmResult.State;
+        cardOptionEnchantments = wingCharmResult.CardOptionEnchantments;
+        extraCardOptionEnchantments =
+            wingCharmResult.ExtraCardOptionEnchantments;
         world = world with
         {
             CardRarityOffsetBasisPoints =
@@ -5372,6 +5386,78 @@ public sealed partial class PrototypeGameEngine
                     PrototypeCardEnchantmentKind.Glam)
                 : null;
         }).ToArray();
+    }
+
+    private static (RunState State,
+        PrototypeCardEnchantment?[]? CardOptionEnchantments,
+        PrototypeCardEnchantment?[][]? ExtraCardOptionEnchantments)
+        ApplyWingCharmToCardRewardOptions(
+            RunState state,
+            string[] cardOptions,
+            string[][] extraCardOptions,
+            PrototypeCardEnchantment?[]? cardEnchantments,
+            PrototypeCardEnchantment?[][]? extraEnchantments)
+    {
+        var wingCharmCount = state.Player.ActiveRelics.Count(relic =>
+            relic.RelicId == PrototypeNativeSharedRelics.WingCharmId);
+        if (wingCharmCount == 0)
+        {
+            return (state, cardEnchantments, extraEnchantments);
+        }
+
+        var cardGroups = new[] { cardOptions }.Concat(extraCardOptions)
+            .ToArray();
+        var enchantments = new PrototypeCardEnchantment?[
+            cardGroups.Length][];
+        for (var groupIndex = 0; groupIndex < cardGroups.Length;
+             groupIndex++)
+        {
+            enchantments[groupIndex] = groupIndex == 0
+                ? cardEnchantments is null
+                    ? new PrototypeCardEnchantment?[cardGroups[groupIndex].Length]
+                    : (PrototypeCardEnchantment?[])
+                        cardEnchantments.Clone()
+                : extraEnchantments is null
+                    ? new PrototypeCardEnchantment?[cardGroups[groupIndex].Length]
+                    : (PrototypeCardEnchantment?[])
+                        extraEnchantments[groupIndex - 1].Clone();
+
+            for (var charm = 0; charm < wingCharmCount; charm++)
+            {
+                var eligible = Enumerable.Range(
+                        0, cardGroups[groupIndex].Length)
+                    .Where(optionIndex =>
+                        enchantments[groupIndex][optionIndex] is null
+                        && PrototypeContent.Card(
+                            cardGroups[groupIndex][optionIndex]).Type
+                            is PrototypeCardType.Attack
+                                or PrototypeCardType.Skill
+                                or PrototypeCardType.Power)
+                    .ToArray();
+                if (eligible.Length == 0)
+                    break;
+
+                int selection;
+                if (state.NativeRunRng is not null)
+                {
+                    state = NativeRunRngV111.SampleNextInt(
+                        state, "run.niche", eligible.Length,
+                        out selection);
+                }
+                else
+                {
+                    selection = PrototypeRng.NextInt(
+                        state.Rng, "event", eligible.Length);
+                }
+
+                enchantments[groupIndex][eligible[selection]] =
+                    new PrototypeCardEnchantment(
+                        PrototypeCardEnchantmentKind.Swift, 1);
+            }
+        }
+
+        return (state, enchantments[0],
+            enchantments.Skip(1).ToArray());
     }
 
     internal static PrototypePendingDeckChoiceState?

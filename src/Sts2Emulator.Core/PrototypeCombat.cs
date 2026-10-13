@@ -6121,7 +6121,8 @@ public sealed partial class PrototypeGameEngine
                         combat,
                         targetEnemyId.Value,
                         operation.PowerId,
-                        operation.Amount);
+                        operation.Amount,
+                        cardPlaySeries?.SourceCardInstanceId);
                     break;
 
                 case PrototypeCombatEffectKind.HealPlayer:
@@ -8097,8 +8098,15 @@ public sealed partial class PrototypeGameEngine
 
         if (isLastExecution && resolved.Combat.PendingChoice is null
             && resolved.Player.Hp > 0)
-            resolved = (resolved.Player, CompletePaelsLegionCardPlay(
-                resolved.Combat, series.SourceCardInstanceId));
+        {
+            var completed = CompletePaelsLegionCardPlay(
+                resolved.Combat, series.SourceCardInstanceId);
+            completed = CompleteFirstCardBlockMultiplier(
+                completed, series.SourceCardInstanceId);
+            completed = CompleteFirstCardDebuffMultiplier(
+                completed, series.SourceCardInstanceId);
+            resolved = (resolved.Player, completed);
+        }
 
         if (resolved.Combat.PendingChoice is not null
             || isLastExecution
@@ -10572,7 +10580,8 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         int enemyId,
         string powerId,
-        int stacks)
+        int stacks,
+        long? sourceCardInstanceId = null)
     {
         var enemies = combat.Enemies
             .Select(enemy => enemy.Fork())
@@ -10584,6 +10593,21 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException(
                 $"Enemy {enemyId} is missing.");
+        }
+
+        var definition = PrototypeContent.Power(powerId);
+        var isDebuffApplication =
+            (definition.IsDebuff && stacks > 0)
+            || (definition.NegativeApplicationIsDebuff && stacks < 0);
+        if (sourceCardInstanceId is { } sourceCard
+            && isDebuffApplication
+            && enemies[enemyIndex].Hp > 0
+            && !TryBlockIncomingEnemyDebuff(enemies[enemyIndex]).Blocked)
+        {
+            var modified = ModifyEnemyDebuffWithUnsettlingLamp(
+                combat, sourceCard, stacks);
+            combat = modified.Combat;
+            stacks = modified.Amount;
         }
 
         var result = ApplyEnemyPowerToState(
@@ -12392,8 +12416,16 @@ public sealed partial class PrototypeGameEngine
             && resolved.Combat.PendingChoice is null
             && resolved.Player.Hp > 0)
         {
-            resolved = (resolved.Player, CompletePaelsLegionCardPlay(
-                resolved.Combat, completedSeries.SourceCardInstanceId));
+            var completed = CompletePaelsLegionCardPlay(
+                resolved.Combat,
+                completedSeries.SourceCardInstanceId);
+            completed = CompleteFirstCardBlockMultiplier(
+                completed,
+                completedSeries.SourceCardInstanceId);
+            completed = CompleteFirstCardDebuffMultiplier(
+                completed,
+                completedSeries.SourceCardInstanceId);
+            resolved = (resolved.Player, completed);
             resolved = ApplyVigorousAfterCardPlayed(
                 resolved.Player,
                 resolved.Combat,

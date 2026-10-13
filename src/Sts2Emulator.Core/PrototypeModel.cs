@@ -908,7 +908,9 @@ public sealed record PrototypeRelicDefinition(
     int GoldGainMultiplierDenominator = 1,
     int HealAtFirstUnknownMapPoint = 0,
     int AcquisitionPotionRewardCount = 0,
-    int AcquisitionCardRewardGroupCount = 0);
+    int AcquisitionCardRewardGroupCount = 0,
+    int FirstCardBlockMultiplierPerCombat = 1,
+    int FirstCardDebuffMultiplierPerCombat = 1);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1786,7 +1788,11 @@ public sealed record CombatRelicState(
     bool PaelsLegionTriggeredBlockLastTurn = false,
     long? PaelsLegionAffectedCardPlaySourceId = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool UsedFirstCardPlayModifierThisCombat = false)
+    bool UsedFirstCardPlayModifierThisCombat = false,
+    long? FirstCardBlockMultiplierTriggeringCardInstanceId = null,
+    bool FirstCardBlockMultiplierUsedThisCombat = false,
+    long? FirstCardDebuffMultiplierTriggeringCardInstanceId = null,
+    bool FirstCardDebuffMultiplierUsedThisCombat = false)
 {
     public CombatRelicState Fork() => this with
     {
