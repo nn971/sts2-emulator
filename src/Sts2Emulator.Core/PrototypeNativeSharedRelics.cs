@@ -7,6 +7,7 @@ public static class PrototypeNativeSharedRelics
 {
     public const string BookOfFiveRingsId =
         "proto.relic.book_of_five_rings";
+    public const string BowlerHatId = "proto.relic.bowler_hat";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -69,6 +70,10 @@ public static class PrototypeNativeSharedRelics
                     PersistentEventCountProperty: "CardsAdded",
                     RequiresLivingPlayer: true)
             ]),
+        // Bowler Hat increases owner gold gains by 25 percent.
+        new(BowlerHatId, "Bowler Hat",
+            GoldGainMultiplierNumerator: 5,
+            GoldGainMultiplierDenominator: 4),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),

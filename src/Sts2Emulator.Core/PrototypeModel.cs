@@ -890,7 +890,9 @@ public sealed record PrototypeRelicDefinition(
     bool EtherealizesBasicStrikesAndDefends = false,
     int EnchantedAttackDamageBonus = 0,
     int? PersistentTriggerCountModulo = null,
-    int UpgradedAttackDamageBonus = 0);
+    int UpgradedAttackDamageBonus = 0,
+    int GoldGainMultiplierNumerator = 1,
+    int GoldGainMultiplierDenominator = 1);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

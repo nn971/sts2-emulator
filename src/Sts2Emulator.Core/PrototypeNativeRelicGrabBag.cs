@@ -81,6 +81,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.nunchaku"] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.KusarigamaId] =
                 PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.BowlerHatId] =
+                PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.MiniatureCannonId] =
                 PrototypeRelicRarity.Uncommon,
             ["proto.relic.letter_opener"] = PrototypeRelicRarity.Uncommon,
@@ -168,6 +170,7 @@ public static class PrototypeNativeRelicGrabBag
         new(StringComparer.Ordinal)
         {
             PrototypeNativeSharedRelics.AmethystAubergineId,
+            PrototypeNativeSharedRelics.BowlerHatId,
             "proto.relic.old_coin",
             "proto.relic.lucky_fysh"
         };

@@ -1372,3 +1372,6 @@ Book of Five Rings now heals 20 after each fifth card added to the deck, with
 its saved counter preserved between grants. Its source cutoff at the Act 3
 treasure chest is not yet applied to the relic pool. See
 [mechanics gap 119](reference-builds/v0.111.0-mechanics-gap-119.md).
+Bowler Hat is now an Uncommon non-shop relic and multiplies positive owner
+gold gains by 1.25; its late Act 3 pool cutoff remains open. See
+[mechanics gap 120](reference-builds/v0.111.0-mechanics-gap-120.md).

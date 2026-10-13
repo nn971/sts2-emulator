@@ -1800,6 +1800,31 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BOWLER_HAT"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.BowlerHatId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.BowlerHatId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.BowlerHatId,
+                out var bowlerHatRarity)
+            && bowlerHatRarity == PrototypeRelicRarity.Uncommon
+            && !PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.BowlerHatId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.BowlerHatId) is
+                {
+                    GoldGainMultiplierNumerator: 5,
+                    GoldGainMultiplierDenominator: 4
+                }
+            && HasBowlerHatPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -3588,6 +3613,39 @@ public static class V111Coverage
         return melted.Hp == 10
             && !melted.Relics[0].PersistentState.TryGetProperty(
                 "CardsAdded", out _);
+    }
+
+    private static bool HasBowlerHatPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.BowlerHatId;
+        var bowler = new PlayerState(30, 30, 0, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var ectoplasmId = PrototypeContent.RelicPool.SingleOrDefault(id =>
+            PrototypeContent.Relic(id).PreventGoldGain);
+        if (ectoplasmId is null)
+            return false;
+
+        var blocked = bowler with
+        {
+            Gold = 17,
+            Relics =
+            [
+                new RelicInstance(relicId, PrototypeJson.EmptyObject()),
+                new RelicInstance(ectoplasmId, PrototypeJson.EmptyObject())
+            ]
+        };
+        var melted = bowler with
+        {
+            Gold = 17,
+            Relics =
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject(),
+                IsMelted: true)]
+        };
+        return PrototypeGameEngine.GoldAfterGain(bowler, 1) == 1
+            && PrototypeGameEngine.GoldAfterGain(bowler, 20) == 25
+            && PrototypeGameEngine.GoldAfterGain(bowler, 101) == 126
+            && PrototypeGameEngine.GoldAfterGain(blocked, 101) == 17
+            && PrototypeGameEngine.GoldAfterGain(melted, 100) == 117;
     }
 
     private static bool HasGnarledHammerPath()

@@ -994,10 +994,36 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         player.ActiveRelics.Any(relic => PrototypeContent.Relic(relic.RelicId)
             .PreventGoldGain);
 
-    private static int GoldAfterGain(PlayerState player, int amount) =>
-        amount <= 0 || PreventsGoldGain(player)
-            ? player.Gold
-            : checked(player.Gold + amount);
+    internal static int GoldAfterGain(PlayerState player, int amount)
+    {
+        if (amount <= 0 || PreventsGoldGain(player))
+            return player.Gold;
+
+        decimal modifiedAmount = amount;
+        foreach (var relic in player.ActiveRelics)
+        {
+            var definition = PrototypeContent.Relic(relic.RelicId);
+            if (definition.GoldGainMultiplierNumerator == 1
+                && definition.GoldGainMultiplierDenominator == 1)
+            {
+                continue;
+            }
+            if (definition.GoldGainMultiplierDenominator <= 0
+                || definition.GoldGainMultiplierNumerator < 0)
+            {
+                throw new InvalidOperationException(
+                    $"Relic '{relic.RelicId}' has an invalid gold multiplier.");
+            }
+
+            modifiedAmount = modifiedAmount
+                * definition.GoldGainMultiplierNumerator
+                / definition.GoldGainMultiplierDenominator;
+        }
+
+        // PlayerCmd.GainGold converts the modified decimal amount to integer
+        // gold by truncating toward zero.
+        return checked(player.Gold + (int)modifiedAmount);
+    }
 
     internal static int EnergyPerTurn(PlayerState player, int turn = 1) =>
         PrototypeContent.Rules.BaseEnergy
