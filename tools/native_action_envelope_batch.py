@@ -53,6 +53,8 @@ def collect(directory: Path) -> dict:
             "native_rng_hook_installed": result["native_rng_hook_installed"],
             "native_monster_ai_scope_installed":
                 result["native_monster_ai_scope_installed"],
+            "native_shuffle_scope_installed":
+                result["native_shuffle_scope_installed"],
             "native_rng_source_calls": result["native_rng_source_calls"],
             "native_shuffle_status": shuffles["status"],
             "native_shuffle_source_operations": shuffles["source_shuffles"],
@@ -85,6 +87,8 @@ def collect(directory: Path) -> dict:
         "source_hook_order_parity": "NOT_TESTED",
         "exact_rng_parity": "NOT_TESTED",
         "files_checked": len(files),
+        "native_shuffle_scope_installed_sidecars": sum(
+            bool(entry["native_shuffle_scope_installed"]) for entry in traces),
         "native_monster_ai_scope_installed_sidecars": sum(
             bool(entry["native_monster_ai_scope_installed"]) for entry in traces),
         "native_rng_hook_installed_sidecars": sum(
