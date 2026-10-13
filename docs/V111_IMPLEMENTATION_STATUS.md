@@ -17,9 +17,10 @@ move before their alternating slot openers.
 Vantom's Slippery still caps raw HP loss, but spends a stack only for damage
 events, matching its separate `ModifyHpLostAfterOsty` and `AfterDamageReceived`
 hooks.
-Trash Heap now grants The Boot with its canonical relic identity. The already
-modeled five-damage powered-attack floor remains confined to its event reward;
-The Boot is not added to ordinary relic drops.
+Trash Heap now grants Dream Catcher, Hand Drill, Maw Bank, and The Boot with
+their canonical relic identities. The event rarity keeps these rewards out of
+ordinary relic drops; The Boot's powered-attack floor reuses its existing
+damage modifier.
 
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.

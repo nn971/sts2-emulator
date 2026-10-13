@@ -1127,15 +1127,15 @@ public static class V111Coverage
         if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "DREAM_CATCHER"
             && engineIds.Contains(
-                "proto.native.trash_heap.dream_catcher",
+                PrototypeNativeUnderdocksTrashHeap.DreamCatcherId,
                 StringComparer.Ordinal)
             && PrototypeNativeUnderdocksTrashHeap.RelicIds.Contains(
-                "proto.native.trash_heap.dream_catcher",
+                PrototypeNativeUnderdocksTrashHeap.DreamCatcherId,
                 StringComparer.Ordinal)
             && PrototypeNativeUnderdocksEvents.IsSupported(
                 PrototypeNativeUnderdocksTrashHeap.EventId)
             && PrototypeContent.Relic(
-                "proto.native.trash_heap.dream_catcher")
+                PrototypeNativeUnderdocksTrashHeap.DreamCatcherId)
                 .RestHealCardRewardCount == 3)
         {
             implementation = "implemented";
@@ -1174,6 +1174,24 @@ public static class V111Coverage
                 .MinPoweredAttackHpLoss == 5
             && !PrototypeContent.RelicPool.Contains(
                 PrototypeNativeSharedRelics.TheBootId,
+                StringComparer.Ordinal))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "MAW_BANK"
+            && engineIds.Contains(
+                PrototypeNativeUnderdocksTrashHeap.MawBankId,
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksTrashHeap.RelicIds.Contains(
+                PrototypeNativeUnderdocksTrashHeap.MawBankId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Relic(
+                PrototypeNativeUnderdocksTrashHeap.MawBankId)
+                .GoldOnRoomEntryUntilPurchase == 12
+            && !PrototypeContent.RelicPool.Contains(
+                PrototypeNativeUnderdocksTrashHeap.MawBankId,
                 StringComparer.Ordinal))
         {
             implementation = "implemented";
