@@ -60,9 +60,17 @@ public sealed class NativeShuffleStepFidelityV111Tests
         };
         // Synthetic source-observed input: verify identity and stage replay
         // via an actual end-turn engine step. Native parity remains NOT_TESTED.
-        var sourceInput = cards.OrderBy(c => c.CardId, StringComparer.Ordinal)
-            .ThenBy(c => c.UpgradeLevel)
-            .Select(c => c.InstanceId).ToArray();
+        long[][] observedEligibilities;
+        using (var census = NativeShuffleStepReplayV111.BeginEngineEligibilityProbe())
+        {
+            // This first pass is a SYNTHETIC engine-only test probe. It
+            // exposes cards created by an enemy before the turn's recycle.
+            _ = engine.Step(state, GameAction.Empty("end_turn"));
+            observedEligibilities =
+                census.ProbedEligibleInputs.Select(ids => ids.ToArray()).ToArray();
+        }
+        Assert.Single(observedEligibilities);
+        var sourceInput = observedEligibilities[0].Order().ToArray();
         var native = NativeFisherYatesV111.Execute(
             sourceInput, NativeRngV111.CreateBundle("actual-step-source"),
             new NativeRandomIndexProviderV111());
@@ -166,7 +174,7 @@ public sealed class NativeShuffleStepFidelityV111Tests
             Assert.Equal("REPLAY_INCOMPLETE", outer.Status);
         }
         var independent = NativeShuffleStepReplayV111.ShuffleRecycle(
-            [0, 1, 2, 3], V111RunFactory.Create("legacy").Rng);
+            [0, 1, 2, 3], PrototypeRng.CreateBundle("legacy"));
         Assert.Equal(4, independent.Length);
     }
 }
