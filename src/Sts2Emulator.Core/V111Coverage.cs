@@ -996,6 +996,23 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "DREAM_CATCHER"
+            && engineIds.Contains(
+                "proto.native.trash_heap.dream_catcher",
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksTrashHeap.RelicIds.Contains(
+                "proto.native.trash_heap.dream_catcher",
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksEvents.IsSupported(
+                PrototypeNativeUnderdocksTrashHeap.EventId)
+            && PrototypeContent.Relic(
+                "proto.native.trash_heap.dream_catcher")
+                .RestHealCardRewardCount == 3)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "HAND_DRILL"
             && engineIds.Contains(
                 PrototypeNativeUnderdocksTrashHeap.HandDrillId,

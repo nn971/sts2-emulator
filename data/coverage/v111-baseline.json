@@ -25176,8 +25176,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DreamCatcher.cs#8b0d1e60c9d2b41151cd2e523df3dccd7af610f56b15cac30bdc286aee645af9"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29473,8 +29473,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 80,
-        "integrated": 81,
+        "implemented": 81,
+        "integrated": 82,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
