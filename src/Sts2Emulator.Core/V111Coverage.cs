@@ -123,11 +123,26 @@ public static class V111Coverage
         var engineIds = ids.Order(StringComparer.Ordinal).ToArray();
         var implementation = engineIds.Length == 0 ? "missing" : "partial";
         var integration = "missing";
+        var hasArchaicToothPath = item.Scope == "single-player"
+            && (item.Kind is "cards" or "relics")
+            && (item.Id is "SUPPRESS" or "ARCHAIC_TOOTH")
+            && engineIds.Contains(item.Id == "SUPPRESS"
+                ? PrototypeNativeOrobasRelics.SuppressId
+                : PrototypeNativeOrobasRelics.ArchaicToothId,
+                StringComparer.Ordinal)
+            && HasArchaicToothSuppressPath();
         var hasSuppressAcquisitionPath = item.Scope == "single-player"
             && item.Kind == "cards" && item.Id == "SUPPRESS"
             && engineIds.Contains(PrototypeNativeOrobasRelics.SuppressId,
+                StringComparer.Ordinal) && hasArchaicToothPath;
+        var hasTouchOrobasPath = item.Scope == "single-player"
+            && item.Kind == "relics"
+            && (item.Id is "TOUCH_OF_OROBAS" or "RING_OF_THE_DRAKE")
+            && engineIds.Contains(item.Id == "TOUCH_OF_OROBAS"
+                ? PrototypeNativeOrobasRelics.TouchOfOrobasId
+                : PrototypeNativeOrobasRelics.RingOfTheDrakeId,
                 StringComparer.Ordinal)
-            && HasArchaicToothSuppressPath();
+            && HasTouchOrobasRingUpgradePath();
         if (item.Scope == "single-player" && item.Kind == "cards")
         {
             if (engineIds.Any(id => PrototypeContent.Card(id).MechanicsImplemented
@@ -155,6 +170,26 @@ public static class V111Coverage
                 integration = "integrated";
             if (hasSuppressAcquisitionPath)
                 integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "potions"
+            && (item.Pool is "silent" or "shared")
+            && engineIds.Length == 1
+            && PrototypeNativePotionShop.NativePotionPoolOrder.Contains(
+                engineIds[0], StringComparer.Ordinal)
+            && PrototypeContent.PotionPool.Contains(engineIds[0],
+                StringComparer.Ordinal))
+        {
+            _ = PrototypeContent.Potion(engineIds[0]);
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && ((item.Id == "ARCHAIC_TOOTH" && hasArchaicToothPath)
+                || ((item.Id is "TOUCH_OF_OROBAS" or "RING_OF_THE_DRAKE")
+                    && hasTouchOrobasPath)))
+        {
+            implementation = "implemented";
+            integration = "integrated";
         }
         if (item.Scope == "single-player"
             && item.Kind == "enchantments"
@@ -1038,6 +1073,36 @@ public static class V111Coverage
             && transformed.PersistentState.GetRawText()
                 == original.PersistentState.GetRawText()
             && transformed.Enchantment == original.Enchantment;
+    }
+
+    private static bool HasTouchOrobasRingUpgradePath()
+    {
+        var player = new PlayerState(20, 20, 0, [],
+            [new RelicInstance(PrototypeNativeOrobasRelics.TouchOfOrobasId,
+                PrototypeJson.EmptyObject()),
+             new RelicInstance(PrototypeNativeOrobasRelics.RingOfTheSnakeId,
+                PrototypeJson.EmptyObject())], []);
+        if (!NativeOrobasEventV111.IsChoiceEligible(player,
+                "take_" + PrototypeNativeOrobasRelics.TouchOfOrobasId))
+            return false;
+
+        var upgraded = PrototypeNativeOrobasRelics
+            .ApplyTouchOfOrobasAcquisition(player, 0);
+        var touchChoiceExists = NativeOrobasEventV111.Definition.Choices.Any(
+            choice => choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId
+                    == PrototypeNativeOrobasRelics.TouchOfOrobasId));
+        var ringOfDrake = PrototypeContent.Relic(
+            PrototypeNativeOrobasRelics.RingOfTheDrakeId);
+        return touchChoiceExists
+            && IsIntegratedEvent(NativeOrobasEventV111.EventId)
+            && upgraded.Relics[0].RelicId
+                == PrototypeNativeOrobasRelics.TouchOfOrobasId
+            && upgraded.Relics[1].RelicId
+                == PrototypeNativeOrobasRelics.RingOfTheDrakeId
+            && ringOfDrake.HandDrawBonus == 2
+            && ringOfDrake.HandDrawBonusThroughTurn == 3;
     }
 
     private static string[] MissingBranches(V111InventoryItem item)

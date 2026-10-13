@@ -18456,8 +18456,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/AttackPotion.cs#50fe958c5fe87ce5d20d035c721e1d70f206f6bd5df5dc8ce4750825a8ce6fdf"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18474,8 +18474,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/BeetleJuice.cs#53c71ca25af8eb3d5cf71410eebd8f70d2b1b39a4fe43bed10d028352d880254"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18492,8 +18492,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/BlessingOfTheForge.cs#bad6ee1d3244023a0d661e1e7b2326b4db86cda9eaf3619dd59cc37f084f84d1"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18510,8 +18510,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/BlockPotion.cs#580c18cd744735b84b486937268bcb5ba4e4fb572be1b6b3128c2994c48a79b4"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18562,8 +18562,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/BottledPotential.cs#b33d62737643543772c7313a7b8a99fc6302d7d6224843af8993dea853dc6ffc"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18580,8 +18580,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/Clarity.cs#1b0dfabd142d9fd5d73a008e1cdfe22a1986f6911930019c80b33219a1f68d9b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18598,8 +18598,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/ColorlessPotion.cs#75d7adbc3684dd92dce7975dccc66a03819f80db7ee19a4c3f14d595fe1a14f5"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18632,8 +18632,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/CunningPotion.cs#5ab5515ce125964592181461cb8c0d3f9d607a93c72080523be023e5b6e8db9d"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18650,8 +18650,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/CureAll.cs#94ebfc9713c739957b84759679cce6e3d1925e634afe0c2e36fb63d23a6c0a95"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18668,8 +18668,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/DexterityPotion.cs#d7990f15b1c53ea4b430064b9e528885c39794dd1f6fadbced61a6dd9de008e8"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18686,8 +18686,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/DistilledChaos.cs#05a9406d5460cc5cac371b3873bdf2fee9244262b332912faea67827ba347490"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18704,8 +18704,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/DropletOfPrecognition.cs#8c8980be3664b2f966787818247ecbeb3b937a63930180c9e45c0bd3681fff1a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18722,8 +18722,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/Duplicator.cs#7019f17659ee911ee4cd22f3b7e5434699e123985ab1c2b8712a1656cd088d31"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18740,8 +18740,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/EnergyPotion.cs#350184099602f99cac52a3b564b428620575f79ee1042b5faf63c1b21b1698e2"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18758,8 +18758,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/EntropicBrew.cs#c394959f717caee92718bfc508a88bbfc853c06e61ca6e280cedb1485bbddbee"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18792,8 +18792,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/ExplosiveAmpoule.cs#a7662917b58fc3918e208494aebf029d55fdcb05e6eda2195a66a867a3ba01e5"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18810,8 +18810,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/FairyInABottle.cs#f1cf24bf8230d51b14d9d105ff39690e9ba85c2cc8ceaccb3dae000dbf13911b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18828,8 +18828,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/FirePotion.cs#043a278bd6f46de9164f90c4a34f00d7777142bf45e8bdc1f255effd1e8d67a2"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18846,8 +18846,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/FlexPotion.cs#684ff43aaeeefeb347618e60a079b7e17ceab3b3e7e0118ce3345a5fd37aaeb2"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18880,8 +18880,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/Fortifier.cs#837b3ed1d6c58533548e794e51ba08f2a79fc91c9bbfac441d807844c3737ee8"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18916,8 +18916,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/FruitJuice.cs#63737f83ad6ff0565a4257ab7236060b35767a176d27c841cdb832860d2106d1"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18934,8 +18934,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/FyshOil.cs#f5b3a13806026b5b0f4911824d4b92c692e84a9bb9cad4055cdd459af4e5a266"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18952,8 +18952,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/GamblersBrew.cs#352e98c38cafb34769ddcb8f5fa20a1284646a8a06b67da8ff03109207baf510"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18970,8 +18970,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/GhostInAJar.cs#143d97d69edc884b93c55daa036994c31a39713c799b319c89b56618818dc8e4"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -18988,8 +18988,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/GigantificationPotion.cs#8bdc58a35c79edf462f4723a953a7c31a7d57c2d250c3a899255ffba038ebf00"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19024,8 +19024,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/HeartOfIron.cs#12c271642fcf66b45431263962d631c92893af9ebd4a446708c3d662840d404b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19058,8 +19058,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/LiquidBronze.cs#ca947b1b31789b7fd9d84aa9e0d6a3fd8486ac083b3b3fc160f7aef39d597758"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19076,8 +19076,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/LiquidMemories.cs#4a4696d941800aa56834f685f7cd48c67ab2b2cd2d8a79ab165fcc36952ecaa7"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19094,8 +19094,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/LuckyTonic.cs#437f845d51020ef01a72e69eedb764d48aecbb92b18435f8fe8138b42c642849"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19112,8 +19112,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/MazalethsGift.cs#d422c35de5c3afc21a3917081fb6565490e933401856af8ac0bfff68e384266b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19130,8 +19130,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/OrobicAcid.cs#9d91f0124435368f7dc2744e0326ee7ad6aa75abe9d1ab85c928d4edf3fa2879"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19148,8 +19148,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/PoisonPotion.cs#d0c81d7980e4bfa71537f1147b41113a97b8b86795cf53d84388c89d34c1681f"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19166,8 +19166,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/PotionOfBinding.cs#61cbf688a03ddaaf616bdec4e7da9310cc51787f0ec75c1230507e69ab0c8f47"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19248,8 +19248,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/PowderedDemise.cs#e778c3da95db369db6683ed8e1d06ef1a092578dbdbf7d11f07035da2f231f65"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19266,8 +19266,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/PowerPotion.cs#30a7fa07439e4d13e5e323f8a4072197a2a82ffe01c382bfe6de5eb87900e32f"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19284,8 +19284,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/RadiantTincture.cs#45e36e3668f5b54a6d7a4195bdeac8981ed5cc49ea055599e29d33035dd6911a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19302,8 +19302,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/RegenPotion.cs#0adeee5f2055e46ed5a38b3be6ff5b8bfbe91e7a902505a00ebbe31aaa8529c6"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19320,8 +19320,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/ShacklingPotion.cs#53e86052e754b0aec57e2c4d45c17f690d434e7f97ec8e0a7ab7cd4f4a599953"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19338,8 +19338,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/ShipInABottle.cs#e7186ac626546066a14ff28bb488ad79d4ad4d2bbd1d0f8512a5e56581a8c5a0"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19356,8 +19356,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/SkillPotion.cs#99235b9e8c305193621fc035d10192763283c92ea78414b5f9b19f519ca6beef"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19374,8 +19374,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/SneckoOil.cs#1cf94d78db62d8973208535c690fb680ec36a68ac7f8082076fb01c472431f98"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19408,8 +19408,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/SpeedPotion.cs#b9ad495f23c386c86044bdfa33e54c19fa9d8fc8a8ea8164932ce4869f83344b"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19426,8 +19426,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/StableSerum.cs#865bd368cd2e2aba93a774707c78628e16f29359dffe87fdf0d77783f3bf8d13"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19460,8 +19460,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/StrengthPotion.cs#45fb9e35a16b06190b483f7fcc8972a8fc81c88765ddadc63e148ccc7a908c03"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19478,8 +19478,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/SwiftPotion.cs#8c662f8e3cb9adba655763d4e42bbeda976ba0427e1ed3fac5c5a31369180522"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19496,8 +19496,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/TouchOfInsanity.cs#a5dfe1de21d0c6bfa5b186168cf9e61d8225d3ecc11ab4055f78871610248ad4"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19514,8 +19514,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/VulnerablePotion.cs#adbaf97f893c1fe6a16e42f471e1bf13ebe8664337db990f3c7d693eacb456bf"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -19532,8 +19532,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/WeakPotion.cs#3f573de421ca22fa942dde5e87d54006eeecdf078ad14d36bca0f8c48d4c1730"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -24138,8 +24138,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ArchaicTooth.cs#a2b0e2e32c48689bc16f6c6225687b4c75a995e7ef5006f0cecc10de463d08fa"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -27866,8 +27866,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RingOfTheDrake.cs#41ee243f146f5cff3f1bffaca11425359248e1f5ea88b0ee7034f267f0a6c507"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -28694,8 +28694,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/TouchOfOrobas.cs#383244ea3be8742267dbe023d6cbc59f19fcc2cbd062bec34acd04d9a965bc7c"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29459,8 +29459,8 @@
         "catalogued": 64,
         "eligible": 64,
         "excluded": 0,
-        "implemented": 1,
-        "integrated": 1,
+        "implemented": 49,
+        "integrated": 49,
         "kind": "potions",
         "scope_review_required": 0,
         "validated": 0
@@ -29479,8 +29479,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 30,
-        "integrated": 30,
+        "implemented": 33,
+        "integrated": 33,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

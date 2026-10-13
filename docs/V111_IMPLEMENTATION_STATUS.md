@@ -1040,9 +1040,12 @@ this milestone, rather than a regression failure.
 The reviewed report is [v111-baseline.json](../data/coverage/v111-baseline.json).
 `implemented` for a card means its typed mechanics flag is true; `integrated`
 for ordinary cards/encounters means actual supported pool membership. Event
-and generated acquisition paths require separate evidence and may remain
-conservatively missing. Other categories remain partial until completeness
-evidence is expressed; zero counts do not mean no potion/relic/event behavior.
+and generated acquisition paths require separate evidence: Silent/shared
+potions must be in both the pinned full-unlock order and run pool, while the
+Orobas-only Archaic Tooth and Touch paths must execute their actual starter
+card/relic transformation. These paths remain native-unverified. Other
+categories remain partial until completeness evidence is expressed; zero
+counts do not mean no potion/relic/event behavior.
 
 Scope excludes 37 cards, one relic, one rest option and 19 powers whose audited
 content-owner reference graph reaches only excluded content. Re-audit that
