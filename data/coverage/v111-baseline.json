@@ -24708,17 +24708,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.centennial_puzzle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/CentennialPuzzle.cs#610d506f51cef90c84cded79e508251f3ce462177fa3e7ccda88b8feac2593aa"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CENTENNIAL_PUZZLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29443,8 +29445,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 94,
-        "integrated": 95,
+        "implemented": 95,
+        "integrated": 96,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

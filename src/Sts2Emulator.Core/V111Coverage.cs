@@ -1198,6 +1198,31 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "CENTENNIAL_PUZZLE"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.CentennialPuzzleId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.CentennialPuzzleId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.CentennialPuzzleId,
+                out var centennialRarity)
+            && centennialRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.CentennialPuzzleId).Triggers?
+                .Any(trigger =>
+                    trigger.EventKind
+                        == PrototypeCombatEventKind.PlayerDamaged
+                    && trigger.MaxTriggersPerCounterWindow == 1
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.DrawCards
+                        && effect.Amount == 3)) == true)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);

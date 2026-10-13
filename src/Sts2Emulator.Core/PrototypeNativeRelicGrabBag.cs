@@ -41,6 +41,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.anchor"] = PrototypeRelicRarity.Common,
             ["proto.relic.vajra"] = PrototypeRelicRarity.Common,
             ["proto.relic.blood_vial"] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.CentennialPuzzleId] =
+                PrototypeRelicRarity.Common,
             ["proto.relic.potion_belt"] = PrototypeRelicRarity.Common,
             [PrototypeNativeSilentRelics.SneckoSkullId] = PrototypeRelicRarity.Common,
             [PrototypeNativeSharedRelics.WarPaintId] = PrototypeRelicRarity.Common,

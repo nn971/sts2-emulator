@@ -6,6 +6,8 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeSharedRelics
 {
     public const string AkabekoId = "proto.relic.akabeko";
+    public const string CentennialPuzzleId =
+        "proto.relic.centennial_puzzle";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
     public const string JuzuBraceletId = "proto.relic.juzu_bracelet";
     public const string PearId = "proto.relic.pear";
@@ -64,6 +66,15 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.ApplyPlayerPower, 8,
                         PowerId: VigorId)],
                     TurnEquals: 1)
+            ]),
+        // CentennialPuzzle draws three cards after the owner's first
+        // unblocked damage callback in each combat.
+        new(CentennialPuzzleId, "Centennial Puzzle",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerDamaged,
+                    [new(PrototypeCombatEffectKind.DrawCards, 3)],
+                    MaxTriggersPerCounterWindow: 1)
             ]),
         // TheBoot.ModifyHpLostAfterOstyLate raises an owner-powered attack's
         // unblocked HP loss to 5. The event-rarity relic remains outside the

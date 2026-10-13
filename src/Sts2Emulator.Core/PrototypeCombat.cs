@@ -1855,10 +1855,22 @@ public sealed partial class PrototypeGameEngine
                         Hp = Math.Max(
                             0,
                             player.Hp
-                            - Math.Max(
-                                0,
-                                damage - absorbed))
+                            - Math.Max(0, damage - absorbed))
                     };
+
+                    var unblockedDamage = Math.Max(
+                        0, damage - absorbed);
+                    if (unblockedDamage > 0)
+                    {
+                        var damaged = DispatchPlayerDamageReceived(
+                            player,
+                            combat,
+                            unblockedDamage,
+                            state.Rng,
+                            allowSuspension: true);
+                        player = damaged.Player;
+                        combat = damaged.Combat;
+                    }
 
                     if (player.Hp <= 0)
                     {
@@ -2094,6 +2106,17 @@ public sealed partial class PrototypeGameEngine
                     state.Rng);
                 player = result.Player;
                 combat = result.Combat;
+                if (result.UnblockedPlayerDamage > 0)
+                {
+                    var damaged = DispatchPlayerDamageReceived(
+                        player,
+                        combat,
+                        result.UnblockedPlayerDamage,
+                        state.Rng,
+                        allowSuspension: true);
+                    player = damaged.Player;
+                    combat = damaged.Combat;
+                }
                 break;
             }
 
@@ -3176,7 +3199,10 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static (PlayerState Player, CombatState Combat) ResolveEnemyActions(
+    private static (
+        PlayerState Player,
+        CombatState Combat,
+        int UnblockedPlayerDamage) ResolveEnemyActions(
         PlayerState player,
         CombatState combat,
         int act,
@@ -3189,6 +3215,7 @@ public sealed partial class PrototypeGameEngine
         var block = combat.PlayerBlock;
         var hp = player.Hp;
         var gold = player.Gold;
+        var unblockedPlayerDamage = 0;
 
         for (var index = 0; index < enemies.Count; index++)
         {
@@ -3395,6 +3422,8 @@ public sealed partial class PrototypeGameEngine
                                 Math.Max(0, damage));
                             block -= absorbed;
                             var unblocked = Math.Max(0, damage - absorbed);
+                            unblockedPlayerDamage = checked(
+                                unblockedPlayerDamage + unblocked);
                             // ImbalancedPower.AfterDamageGiven: a fully
                             // blocked attack leaves Bowlbug Rock off-balance.
                             // Headbutt then commits Dizzy on the NEXT
@@ -4260,7 +4289,33 @@ public sealed partial class PrototypeGameEngine
 
         return (
             player with { Hp = hp, Gold = gold },
-            combat);
+            combat,
+            unblockedPlayerDamage);
+    }
+
+    private static (PlayerState Player, CombatState Combat)
+        DispatchPlayerDamageReceived(
+            PlayerState player,
+            CombatState combat,
+            int unblockedDamage,
+            RngBundle rng,
+            int eventDepth = 0,
+            bool allowSuspension = false)
+    {
+        if (unblockedDamage <= 0)
+        {
+            return (player, combat);
+        }
+
+        return DispatchCombatEvent(
+            player,
+            combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerDamaged,
+                Amount: unblockedDamage),
+            rng,
+            eventDepth,
+            allowSuspension);
     }
 
     internal static CombatState ResolveEnemyDeathSummons(
@@ -4752,6 +4807,20 @@ public sealed partial class PrototypeGameEngine
                                     retaliation - absorbed);
                                 player = loss.Player;
                                 combat = loss.Combat;
+                                var unblockedDamage = Math.Max(
+                                    0, retaliation - absorbed);
+                                if (unblockedDamage > 0)
+                                {
+                                    var damaged =
+                                        DispatchPlayerDamageReceived(
+                                            player,
+                                            combat,
+                                            unblockedDamage,
+                                            rng,
+                                            eventDepth + 1);
+                                    player = damaged.Player;
+                                    combat = damaged.Combat;
+                                }
                                 if (player.Hp <= 0)
                                 {
                                     var prevented =
@@ -5053,6 +5122,20 @@ public sealed partial class PrototypeGameEngine
                                                 0,
                                                 retaliation - absorbed))
                                     };
+                                    var unblockedDamage = Math.Max(
+                                        0, retaliation - absorbed);
+                                    if (unblockedDamage > 0)
+                                    {
+                                        var damaged =
+                                            DispatchPlayerDamageReceived(
+                                                player,
+                                                combat,
+                                                unblockedDamage,
+                                                rng,
+                                                eventDepth + 1);
+                                        player = damaged.Player;
+                                        combat = damaged.Combat;
+                                    }
                                     if (player.Hp <= 0)
                                     {
                                         var prevented =
@@ -6056,6 +6139,8 @@ public sealed partial class PrototypeGameEngine
                     var absorbed = Math.Min(
                         combat.PlayerBlock,
                         incoming);
+                    var unblockedDamage = Math.Max(
+                        0, incoming - absorbed);
                     combat = combat with
                     {
                         PlayerBlock =
@@ -6068,6 +6153,17 @@ public sealed partial class PrototypeGameEngine
                         incoming - absorbed);
                     player = loss.Player;
                     combat = loss.Combat;
+                    if (unblockedDamage > 0)
+                    {
+                        var damaged = DispatchPlayerDamageReceived(
+                            player,
+                            combat,
+                            unblockedDamage,
+                            rng,
+                            eventDepth + 1);
+                        player = damaged.Player;
+                        combat = damaged.Combat;
+                    }
                     if (player.Hp <= 0)
                     {
                         var prevented =
@@ -10832,6 +10928,20 @@ public sealed partial class PrototypeGameEngine
                     damage - absorbed);
                 player = loss.Player;
                 combat = loss.Combat;
+                var unblockedDamage = Math.Max(
+                    0, damage - absorbed);
+                if (unblockedDamage > 0)
+                {
+                    var damaged = DispatchPlayerDamageReceived(
+                        player,
+                        combat,
+                        unblockedDamage,
+                        rng,
+                        eventDepth + 1,
+                        allowSuspension);
+                    player = damaged.Player;
+                    combat = damaged.Combat;
+                }
             }
         }
         if (combatEvent.Kind == PrototypeCombatEventKind.CardPlayed

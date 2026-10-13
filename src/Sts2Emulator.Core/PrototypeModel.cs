@@ -309,7 +309,8 @@ public enum PrototypeCombatEventKind
     EnemyDamaged,
     EnemyDefeated,
     PlayerSideTurnStarted,
-    OpeningPlayerTurnStarted
+    OpeningPlayerTurnStarted,
+    PlayerDamaged
 }
 
 public enum PrototypeBlockBreakerKind
