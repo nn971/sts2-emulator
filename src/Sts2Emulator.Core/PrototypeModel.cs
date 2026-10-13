@@ -853,7 +853,8 @@ public sealed record PrototypeRelicDefinition(
     int AppliedEnemyStatusAmountBonus = 0,
     int WeakAttackDamageReductionPercent = 0,
     int UpgradeRandomCardsOnAcquisitionCount = 0,
-    PrototypeCardType? UpgradeRandomCardsOnAcquisitionType = null);
+    PrototypeCardType? UpgradeRandomCardsOnAcquisitionType = null,
+    int RestSiteHealPerFiveCards = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

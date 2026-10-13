@@ -6,6 +6,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeSharedRelics
 {
     public const string AkabekoId = "proto.relic.akabeko";
+    public const string EternalFeatherId = "proto.relic.eternal_feather";
     public const string PearId = "proto.relic.pear";
     public const string StrawberryId = "proto.relic.strawberry";
     public const string WarPaintId = "proto.relic.war_paint";
@@ -14,6 +15,9 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // EternalFeather.AfterRoomEntered heals 3 per five cards on deck.
+        new(EternalFeatherId, "Eternal Feather",
+            RestSiteHealPerFiveCards: 3),
         // WarPaint.AfterObtained randomly upgrades up to two Skills.
         new(WarPaintId, "War Paint",
             UpgradeRandomCardsOnAcquisitionCount: 2,

@@ -17,7 +17,8 @@ public sealed partial class PrototypeGameEngine
             nameof(PurchaseExhaustedState.Purchased), out var purchased)
         && purchased.ValueKind == JsonValueKind.True;
 
-    private static PlayerState ApplyRelicRoomEntryGold(PlayerState player)
+    private static PlayerState ApplyRelicRoomEntryEffects(
+        PlayerState player, PrototypeRoomType room)
     {
         var bonus = player.ActiveRelics.Sum(relic =>
         {
@@ -25,8 +26,18 @@ public sealed partial class PrototypeGameEngine
             return !IsPurchaseExhausted(relic)
                 ? definition.GoldOnRoomEntryUntilPurchase : 0;
         });
-        return bonus > 0
+        player = bonus > 0
             ? player with { Gold = GoldAfterGain(player, bonus) }
+            : player;
+        if (room != PrototypeRoomType.Rest)
+            return player;
+
+        var healPerFiveCards = player.ActiveRelics.Sum(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .RestSiteHealPerFiveCards);
+        var heal = player.Deck.Length / 5 * healPerFiveCards;
+        return heal > 0
+            ? player with { Hp = Math.Min(player.MaxHp, player.Hp + heal) }
             : player;
     }
 

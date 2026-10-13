@@ -62,6 +62,10 @@ Whetstone and War Paint are integrated as Common shared relics, randomly
 upgrading up to two upgradable Attacks or Skills on pickup, respectively.
 The candidate selection uses prototype RNG; see the
 [pinned pickup audit](reference-builds/v0.111.0-whetstone-war-paint.md).
+Eternal Feather heals 3 HP per five deck cards on entering a Rest Site, even
+when the player chooses an option other than healing. It is in the Silent
+uncommon relic queue; see the
+[pinned room-entry audit](reference-builds/v0.111.0-eternal-feather.md).
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

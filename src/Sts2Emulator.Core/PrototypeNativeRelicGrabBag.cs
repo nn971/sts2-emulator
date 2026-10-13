@@ -51,6 +51,7 @@ public static class PrototypeNativeRelicGrabBag
 
             [PrototypeNativeSharedRelics.PearId] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.AkabekoId] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.EternalFeatherId] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.ornamental_fan"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.nunchaku"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.letter_opener"] = PrototypeRelicRarity.Uncommon,

@@ -68,8 +68,8 @@ public sealed partial class PrototypeGameEngine
         {
             World = world,
             Player = CompleteSpoilsMapQuestAtNode(
-                ApplyRelicRoomEntryGold(
-                    ApplyPersistentCardRoomEntry(playerAfterTravel, node)),
+                ApplyRelicRoomEntryEffects(
+                    ApplyPersistentCardRoomEntry(playerAfterTravel, node), room),
                 node)
         };
 

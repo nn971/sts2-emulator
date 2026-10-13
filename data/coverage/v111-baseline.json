@@ -25312,17 +25312,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.eternal_feather"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/EternalFeather.cs#d01b91f28cbd2725e9ce9c3869ca89a3736f9b965265b69540e24e31023a4ac1"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ETERNAL_FEATHER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29471,8 +29473,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 79,
-        "integrated": 80,
+        "implemented": 80,
+        "integrated": 81,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

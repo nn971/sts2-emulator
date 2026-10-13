@@ -1076,6 +1076,25 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "ETERNAL_FEATHER"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.EternalFeatherId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.EternalFeatherId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.EternalFeatherId,
+                out var featherRarity)
+            && featherRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.EternalFeatherId)
+                .RestSiteHealPerFiveCards == 3)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && (item.Id is "WAR_PAINT" or "WHETSTONE")
             && engineIds.Contains(item.Id == "WAR_PAINT"
                 ? PrototypeNativeSharedRelics.WarPaintId

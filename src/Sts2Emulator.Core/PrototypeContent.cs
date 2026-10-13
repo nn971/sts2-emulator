@@ -7560,6 +7560,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.PearId,
         PrototypeNativeSharedRelics.WarPaintId,
         PrototypeNativeSharedRelics.WhetstoneId,
+        PrototypeNativeSharedRelics.EternalFeatherId,
         "proto.relic.potion_belt",
         "proto.relic.snecko_skull",
         "proto.relic.meat_on_the_bone",
