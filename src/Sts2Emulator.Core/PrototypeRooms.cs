@@ -3481,9 +3481,7 @@ public sealed partial class PrototypeGameEngine
                     "A relic prevents resting to heal.");
             }
 
-            var amount = Math.Max(
-                1,
-                (state.Player.MaxHp * PrototypeContent.Rules.RestHealPercent) / 100);
+            var amount = RestSiteHealAmount(state.Player);
             var player = state.Player with
             {
                 Hp = Math.Min(state.Player.MaxHp, state.Player.Hp + amount)

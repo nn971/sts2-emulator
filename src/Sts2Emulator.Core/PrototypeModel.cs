@@ -839,6 +839,7 @@ public sealed record PrototypeRelicDefinition(
     // General run/combat modifier hooks, including event-only relics.
     int GoldOnRoomEntryUntilPurchase = 0,
     int RestHealCardRewardCount = 0,
+    int RestSiteHealBonus = 0,
     int MinPoweredAttackHpLoss = 0,
     int EnemyVulnerableOnBlockBroken = 0,
     string? AfterShuffleGeneratedCardId = null,

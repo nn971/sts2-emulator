@@ -27751,17 +27751,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.regal_pillow"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RegalPillow.cs#1407da39984ffc83cfa10b0fbf34331aceee2e1f68ede5441f27c5bb7362a2ad"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "REGAL_PILLOW",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29442,8 +29444,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 144,
-        "integrated": 145,
+        "implemented": 145,
+        "integrated": 146,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

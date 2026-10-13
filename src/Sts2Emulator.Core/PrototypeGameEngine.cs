@@ -956,6 +956,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             PrototypeContent.Relic(relic.RelicId)
                 .PreventRestHealing);
 
+    internal static int RestSiteHealAmount(PlayerState player) =>
+        Math.Max(
+            1,
+            player.MaxHp * PrototypeContent.Rules.RestHealPercent / 100
+            + player.ActiveRelics.Sum(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .RestSiteHealBonus));
+
     private static bool CanRestCook(PlayerState player) =>
         player.ActiveRelics.Any(relic =>
             relic.RelicId == NativeGloryAncientsV111.MeatCleaverId)

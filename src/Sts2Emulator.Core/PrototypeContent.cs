@@ -7604,6 +7604,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.CentennialPuzzleId,
         PrototypeNativeSharedRelics.JuzuBraceletId,
         PrototypeNativeSharedRelics.FestivePopperId,
+        PrototypeNativeSharedRelics.RegalPillowId,
         PrototypeNativeSharedRelics.StrawberryId,
         PrototypeNativeSharedRelics.PearId,
         PrototypeNativeSharedRelics.PetrifiedToadId,

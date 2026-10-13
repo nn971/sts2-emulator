@@ -11,6 +11,7 @@ public static class PrototypeNativeSharedRelics
     public const string ChandelierId = "proto.relic.chandelier";
     public const string FestivePopperId = "proto.relic.festive_popper";
     public const string GamePieceId = "proto.relic.game_piece";
+    public const string RegalPillowId = "proto.relic.regal_pillow";
     public const string CentennialPuzzleId =
         "proto.relic.centennial_puzzle";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
@@ -124,6 +125,8 @@ public static class PrototypeNativeSharedRelics
                     RequiredSourceCardType: PrototypeCardType.Power,
                     RequiresPlayerSide: true)
             ]),
+        // Regal Pillow adds 15 HP to each rest-site heal.
+        new(RegalPillowId, "Regal Pillow", RestSiteHealBonus: 15),
         // CentennialPuzzle draws three cards after the owner's first
         // unblocked damage callback in each combat.
         new(CentennialPuzzleId, "Centennial Puzzle",

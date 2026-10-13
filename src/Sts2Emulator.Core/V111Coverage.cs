@@ -2066,6 +2066,25 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "REGAL_PILLOW"
+            && engineIds.Contains(PrototypeNativeSharedRelics.RegalPillowId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.RegalPillowId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.RegalPillowId,
+                out var regalPillowRarity)
+            && regalPillowRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.RegalPillowId)
+                .RestSiteHealBonus == 15
+            && HasRegalPillowPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "NINJA_SCROLL"
             && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
                 StringComparer.Ordinal)
@@ -3480,6 +3499,28 @@ public static class V111Coverage
             && attack.Combat.DrawPile.Length == 2
             && melted.Combat.Hand.Length == 0
             && melted.Combat.DrawPile.Length == 2;
+    }
+
+    private static bool HasRegalPillowPath()
+    {
+        var basePlayer = new PlayerState(30, 80, 0, [], [], []);
+        var expectedBase = Math.Max(
+            1,
+            basePlayer.MaxHp * PrototypeContent.Rules.RestHealPercent / 100);
+        var pillow = new RelicInstance(
+            PrototypeNativeSharedRelics.RegalPillowId,
+            PrototypeJson.EmptyObject());
+        var activePlayer = basePlayer with { Relics = [pillow] };
+        var meltedPlayer = basePlayer with
+        {
+            Relics = [pillow with { IsMelted = true }]
+        };
+        return PrototypeGameEngine.RestSiteHealAmount(basePlayer)
+                == expectedBase
+            && PrototypeGameEngine.RestSiteHealAmount(activePlayer)
+                == expectedBase + 15
+            && PrototypeGameEngine.RestSiteHealAmount(meltedPlayer)
+                == expectedBase;
     }
 
     private static bool HasDiamondDiademPath()
