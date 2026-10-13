@@ -293,6 +293,21 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "relics"
+            && item.Id == "CURSED_PEARL"
+            && engineIds.Contains(
+                PrototypeNativeOvergrowthEvents.NeowRelicId("CursedPearl"),
+                StringComparer.Ordinal)
+            && PrototypeNativeOvergrowthEvents.NeowCursedRelicNames
+                .Contains("CursedPearl", StringComparer.Ordinal)
+            && IsIntegratedEvent(
+                PrototypeNativeOvergrowthEvents.NeowEventId)
+            && HasCursedPearlPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "CIRCLET"
             && engineIds.Contains("proto.relic.circlet",
@@ -6618,6 +6633,38 @@ public static class V111Coverage
                 effect.Kind == PrototypeRunEffectKind.GainGold
                 && effect.Amount == 150) == true
             && acquired.Gold == 167;
+    }
+
+    private static bool HasCursedPearlPath()
+    {
+        const string relicId = "proto.native.neow.cursedpearl";
+        const string greedCardId = "proto.native.neow.greed";
+        var choiceExists = PrototypeContent.Event(
+            PrototypeNativeOvergrowthEvents.NeowEventId).Choices.Any(choice =>
+            choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId == relicId));
+        var trigger = PrototypeContent.Relic(relicId).RunTriggers?.SingleOrDefault(
+            item => item.EventKind == PrototypeRunEventKind.RelicAcquired);
+        var player = new PlayerState(30, 30, 7, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        long nextCardInstanceId = 1;
+        var acquired = PrototypeGameEngine.ApplyRelicRunEvent(
+            player,
+            PrototypeRunEventKind.RelicAcquired,
+            acquiredRelicId: relicId,
+            rng: PrototypeRng.CreateBundle("coverage-cursed-pearl"),
+            allocateCardId: () => nextCardInstanceId++);
+        return choiceExists
+            && trigger is { } acquisition
+            && acquisition.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.AddCard
+                && effect.CardId == greedCardId)
+            && acquisition.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainGold
+                && effect.Amount == 333)
+            && acquired.Deck is [{ CardId: greedCardId }]
+            && acquired.Gold == 340;
     }
 
     private static bool HasCompleteWarHistorianRepyBranches(

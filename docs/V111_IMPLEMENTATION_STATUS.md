@@ -1355,3 +1355,6 @@ mid-combat potion procurement or discard action. See
 Golden Pearl's Neow pickup now has executable coverage for its +150 Gold
 acquisition callback. See
 [mechanics gap 114](reference-builds/v0.111.0-mechanics-gap-114.md).
+Cursed Pearl's Neow pickup now has executable coverage for adding Greed and
+granting 333 Gold. See
+[mechanics gap 115](reference-builds/v0.111.0-mechanics-gap-115.md).
