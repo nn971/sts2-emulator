@@ -700,6 +700,9 @@ public sealed partial class PrototypeGameEngine
                 && (evt.Id != PrototypeNativeSlipperyBridge.EventId
                     || PrototypeNativeSlipperyBridge.IsEligible(
                         state.Player, world))
+                && (evt.Id != PrototypeNativeRanwidTheElder.EventId
+                    || PrototypeNativeRanwidTheElder.IsEligible(
+                        state.Player))
                 && world.Act >= evt.MinAct
                 && world.Act <= evt.MaxAct
                 && (evt.Id != PrototypeNativeFakeMerchant.EventId
@@ -823,6 +826,15 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        if (selected.Id == PrototypeNativeRanwidTheElder.EventId)
+        {
+            world = world with
+            {
+                Event = PrototypeNativeRanwidTheElder.RollOffers(
+                    world.Event!, state.Player, state.Rng)
+            };
+        }
+
         if (selected.Id == PrototypeNativeFakeMerchant.EventId)
         {
             world = world with
@@ -910,6 +922,18 @@ public sealed partial class PrototypeGameEngine
                         .TerminalChoicePageIndex(eventState.EventId))
                 return [GameAction.Empty("continue_event")];
             return GetSlipperyBridgeActions(eventState);
+        }
+
+        if (eventState.EventId
+            == PrototypeNativeRanwidTheElder.EventId)
+        {
+            if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                    eventState.EventId)
+                && eventState.NativePageIndex
+                    == PrototypeNativeEventCompletionPages
+                        .TerminalChoicePageIndex(eventState.EventId))
+                return [GameAction.Empty("continue_event")];
+            return GetNativeRanwidActions(eventState);
         }
 
         if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
@@ -1080,6 +1104,10 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId
             == PrototypeNativeSlipperyBridge.EventId)
             return StepSlipperyBridge(state, action);
+
+        if (eventState.EventId
+            == PrototypeNativeRanwidTheElder.EventId)
+            return StepNativeRanwidTheElder(state, action);
 
         if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                 eventState.EventId)

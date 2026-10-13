@@ -53,6 +53,7 @@ public static class PrototypeNativeEventCompletionPages
             or NativeDarvEventV111.EventId
             or PrototypeNativeSharedEvents.ThisOrThatId
             or PrototypeNativeSharedEvents.SymbioteId
+            or PrototypeNativeRanwidTheElder.EventId
             or PrototypeNativeSlipperyBridge.EventId
             or PrototypeNativeFutureOfPotions.EventId
             or PrototypeNativeRelicTrader.EventId
@@ -113,6 +114,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "bird" or "snake" or "torus"
         || eventId == PrototypeNativeSharedEvents.SymbioteId
             && choiceId is "approach" or "kill_with_fire"
+        || eventId == PrototypeNativeRanwidTheElder.EventId
+            && choiceId is "potion" or "gold" or "relic"
         || eventId == PrototypeNativeSlipperyBridge.EventId
             && choiceId == "overcome"
         || eventId == PrototypeNativeDenseVegetation.EventId

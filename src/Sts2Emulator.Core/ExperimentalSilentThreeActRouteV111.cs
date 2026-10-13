@@ -106,6 +106,7 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeFakeMerchant.EventId,
         PrototypeNativeSharedEvents.ThisOrThatId,
         PrototypeNativeSharedEvents.SymbioteId,
+        PrototypeNativeRanwidTheElder.EventId,
         PrototypeNativeSlipperyBridge.EventId,
         PrototypeNativeFutureOfPotions.EventId,
         PrototypeNativeRelicTrader.EventId
@@ -125,6 +126,7 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeFakeMerchant.EventId,
         PrototypeNativeSharedEvents.ThisOrThatId,
         PrototypeNativeSharedEvents.SymbioteId,
+        PrototypeNativeRanwidTheElder.EventId,
         PrototypeNativeSlipperyBridge.EventId,
         PrototypeNativeFutureOfPotions.EventId,
         PrototypeNativeRelicTrader.EventId

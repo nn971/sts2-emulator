@@ -726,13 +726,22 @@ public static class PrototypeStateInvariants
             ValidateSlipperyBridgeEvent(player, eventState);
             return;
         }
+        if (eventState.EventId
+            == PrototypeNativeRanwidTheElder.EventId)
+        {
+            ValidateRanwidTheElderEvent(player, eventState);
+            return;
+        }
         if (eventState.NativeSlipperyBridgeHoldCount != 0
             || eventState.NativeSlipperyBridgeCardInstanceId is not null
             || eventState.NativeSlipperyBridgeSkippedCardInstanceIds
-                is not null)
+                is not null
+            || eventState.NativeRanwidPotionSlot != -1
+            || eventState.NativeRanwidPotionId is not null
+            || eventState.NativeRanwidRelicIndex != -1
+            || eventState.NativeRanwidRelicId is not null)
         {
-            throw new InvalidOperationException(
-                "Slippery Bridge state leaked into another event.");
+            throw new InvalidOperationException("Native event state leaked into another event.");
         }
 
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
@@ -1527,6 +1536,59 @@ public static class PrototypeStateInvariants
         {
             throw new InvalidOperationException(
                 "Slippery Bridge references a missing or unremovable deck card.");
+        }
+    }
+
+    private static void ValidateRanwidTheElderEvent(
+        PlayerState player,
+        EventState eventState)
+    {
+        if (eventState.NativePageIndex
+            == PrototypeNativeEventCompletionPages
+                .TerminalChoicePageIndex(
+                    PrototypeNativeRanwidTheElder.EventId))
+        {
+            if (eventState.ChosenChoiceId is not (
+                    "potion" or "gold" or "relic")
+                || eventState.NativeRanwidPotionSlot != -1
+                || eventState.NativeRanwidPotionId is not null
+                || eventState.NativeRanwidRelicIndex != -1
+                || eventState.NativeRanwidRelicId is not null
+                || eventState.PendingDeckChoice is not null
+                || eventState.PendingPotionReplacement is not null
+                || eventState.RemainingDeckChoices.Length != 0
+                || eventState.RemainingPotionIds.Length != 0
+                || eventState.PendingReward is not null)
+            {
+                throw new InvalidOperationException(
+                    "Ranwid the Elder completion page is inconsistent.");
+            }
+
+            return;
+        }
+
+        if (eventState.NativePageIndex != 0
+            || eventState.ChosenChoiceId is not null
+            || !PrototypeNativeRanwidTheElder.HasValidOffer(eventState)
+            || (uint)eventState.NativeRanwidPotionSlot
+                >= (uint)player.PotionSlots.Length
+            || player.PotionSlots[eventState.NativeRanwidPotionSlot]?.PotionId
+                != eventState.NativeRanwidPotionId
+            || (uint)eventState.NativeRanwidRelicIndex
+                >= (uint)player.Relics.Length
+            || player.Relics[eventState.NativeRanwidRelicIndex].RelicId
+                != eventState.NativeRanwidRelicId
+            || !PrototypeNativeRelicTrader.IsTradable(
+                player.Relics[eventState.NativeRanwidRelicIndex])
+            || player.Gold < 100
+            || eventState.PendingDeckChoice is not null
+            || eventState.PendingPotionReplacement is not null
+            || eventState.RemainingDeckChoices.Length != 0
+            || eventState.RemainingPotionIds.Length != 0
+            || eventState.PendingReward is not null)
+        {
+            throw new InvalidOperationException(
+                "Ranwid the Elder offers are missing or inconsistent.");
         }
     }
 

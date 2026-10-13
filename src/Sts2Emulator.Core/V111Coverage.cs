@@ -645,6 +645,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "RANWID_THE_ELDER"
+            && engineIds.Contains(
+                PrototypeNativeRanwidTheElder.EventId,
+                StringComparer.Ordinal)
+            && HasCompleteRanwidBranches(item))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "THIS_OR_THAT" && missingBranches.Length == 0
             && engineIds.Contains(
                 PrototypeNativeSharedEvents.ThisOrThatId,
@@ -2043,6 +2053,11 @@ public static class V111Coverage
             return HasCompleteSlipperyBridgeBranches(item)
                 ? [] : item.Branches ?? [];
         }
+        if (item.Kind == "events" && item.Id == "RANWID_THE_ELDER")
+        {
+            return HasCompleteRanwidBranches(item)
+                ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events"
             && item.Id == "THE_LEGENDS_WERE_TRUE")
         {
@@ -2189,6 +2204,46 @@ public static class V111Coverage
                 eventId)
             && PrototypeNativeEventCompletionPages.HasTerminalChoice(
                 eventId, "overcome");
+    }
+
+    private static bool HasCompleteRanwidBranches(V111InventoryItem item)
+    {
+        string[] expectedBranches =
+        [
+            "initial/POTION", "initial/POTION_LOCKED",
+            "initial/GOLD", "initial/RELIC", "initial/RELIC_LOCKED",
+            "page/INITIAL", "page/INITIAL/POTION",
+            "page/INITIAL/POTION_LOCKED", "page/INITIAL/GOLD",
+            "page/INITIAL/RELIC", "page/INITIAL/RELIC_LOCKED",
+            "page/POTION", "page/GOLD", "page/RELIC"
+        ];
+        return HasRanwidPath()
+            && item.Branches is { } branches
+            && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                expectedBranches.Order(StringComparer.Ordinal),
+                StringComparer.Ordinal);
+    }
+
+    private static bool HasRanwidPath()
+    {
+        var eventId = PrototypeNativeRanwidTheElder.EventId;
+        var definition = PrototypeContent.Event(eventId);
+        var expectedChoices = new[]
+        {
+            "potion", "potion_locked", "gold", "relic", "relic_locked"
+        };
+        return definition.Choices.Select(choice => choice.Id)
+                .SequenceEqual(expectedChoices, StringComparer.Ordinal)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventId)
+            && new[] { "potion", "gold", "relic" }.All(choice =>
+                PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                    eventId, choice))
+            && PrototypeNativeRelicTrader.IsTradable(
+                new RelicInstance(
+                    "proto.relic.lantern", PrototypeJson.EmptyObject()))
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 2)
+            && ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 3);
     }
 
     private static bool Matches(V111InventoryItem item, string engineId, string name)

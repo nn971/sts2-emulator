@@ -15562,32 +15562,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.shared.ranwid_the_elder"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/RanwidTheElder.cs#2cb29d68f3591ad9960f594ccf08f8b77a1a6ed8b49bd7ded3d1a36a52277d2f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/GOLD",
-          "initial/POTION",
-          "initial/POTION_LOCKED",
-          "initial/RELIC",
-          "initial/RELIC_LOCKED",
-          "page/GOLD",
-          "page/INITIAL",
-          "page/INITIAL/GOLD",
-          "page/INITIAL/POTION",
-          "page/INITIAL/POTION_LOCKED",
-          "page/INITIAL/RELIC",
-          "page/INITIAL/RELIC_LOCKED",
-          "page/POTION",
-          "page/RELIC"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "RANWID_THE_ELDER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29410,8 +29397,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 57,
-        "integrated": 60,
+        "implemented": 58,
+        "integrated": 61,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
