@@ -323,6 +323,22 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "relics"
+            && item.Id == "PRECISE_SCISSORS"
+            && engineIds.Contains(
+                PrototypeNativeOvergrowthEvents.NeowRelicId(
+                    "PreciseScissors"),
+                StringComparer.Ordinal)
+            && PrototypeNativeOvergrowthEvents.NeowPositiveRelicNames
+                .Contains("PreciseScissors", StringComparer.Ordinal)
+            && IsIntegratedEvent(
+                PrototypeNativeOvergrowthEvents.NeowEventId)
+            && HasPreciseScissorsPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "CIRCLET"
             && engineIds.Contains("proto.relic.circlet",
@@ -6707,6 +6723,51 @@ public static class V111Coverage
                     effect.Kind == PrototypeRunEffectKind.AddCard
                     && effect.CardId == cardId)) == true
             && acquired.Deck is [{ CardId: cardId }];
+    }
+
+    private static bool HasPreciseScissorsPath()
+    {
+        const string relicId = "proto.native.neow.precisescissors";
+        const string strikeId = "proto.silent.strike";
+        const string defendId = "proto.silent.defend";
+        var choiceExists = PrototypeContent.Event(
+            PrototypeNativeOvergrowthEvents.NeowEventId).Choices.Any(choice =>
+            choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId == relicId));
+        var acquisition = PrototypeContent.Relic(relicId)
+            .AcquisitionDeckChoice;
+        var player = new PlayerState(30, 30, 7,
+            [
+                new CardInstance(1, strikeId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(2, defendId, 0,
+                    PrototypeJson.EmptyObject())
+            ],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var pending = PrototypeGameEngine.CreateRelicDeckChoice(
+            player, relicId);
+        if (!choiceExists
+            || acquisition is not
+                { Kind: PrototypePersistentDeckChoiceKind.Remove,
+                    Selections: 1 }
+            || pending is not
+                { Kind: PrototypePersistentDeckChoiceKind.Remove,
+                    RemainingSelections: 1,
+                    MinimumSelectionsRemaining: 1,
+                    CandidateCardInstanceIds.Length: 2 })
+        {
+            return false;
+        }
+
+        var resolved = PrototypeGameEngine.ResolveRelicDeckChoice(
+            player,
+            pending,
+            1,
+            PrototypeRng.CreateBundle("coverage-precise-scissors"));
+        return resolved.Remaining is null
+            && resolved.Player.Deck is
+                [{ InstanceId: 2, CardId: defendId }];
     }
 
     private static bool HasCompleteWarHistorianRepyBranches(
