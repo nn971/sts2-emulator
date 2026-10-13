@@ -67,3 +67,58 @@ The native-side RNG call-site probe and source-hook comparator remain **not
 implemented**. The new shared provider journal reports only already migrated
 emulator RNG sites. Neither an empty journal nor a consistent supported
 checkpoint certifies native-game or original conditional-probability parity.
+
+## 2026-10-13: promoted onto current Silent all-Act first-parent branch
+
+The active integration is now `integration/fidelity-rng-on-silent-all-act-v111`
+([draft PR #137](https://github.com/nn971/sts2-emulator/pull/137)).
+Its plan was committed in
+[`UNIFIED_RNG_FIDELITY_ALL_ACT_REBASE_PLAN.md`](UNIFIED_RNG_FIDELITY_ALL_ACT_REBASE_PLAN.md)
+**before** the merge. The first-parent snapshot was `b2c7ae9`; a
+conflict-free second-parent sync subsequently incorporated the newer
+all-Act Future of Potions commit `db751d8` (12 original all-Act
+files, no overlaps). The user's active all-Act source branch, `main`,
+and the local `~/projects/sts2-emulator` checkout remain unchanged.
+
+The newer full game/CLI and combat mechanics were retained. The integration
+ported typed native/scripted/controlled providers and HP→intent serializable
+Nature continuations onto the newer combat selector, exposed isolated
+Nature JSONL operations and their Python `NatureBoundary` bindings,
+and kept the actual-engine Inspector checkpoint importer.
+
+A **separate** `.github/workflows/fidelity-integration.yml` runs
+targeted .NET RNG/Inspector/checkpoint tests, Python capture tests,
+unified-gate rejection tests, and the isolated Nature HP/intent bridge.
+This is necessary because the pinned active all-Act source snapshot's
+**original global CI was already red (296/1,629 failing .NET tests)**.
+The initial integrated global CI showed the **same 296 failing test
+identities**, with no new failures and more passing tests. Those unrelated
+baseline failures belong to the ongoing all-Act development.
+
+New passive source-RNG evidence interface:
+
+- `NativeRngBoundaryEvidenceV111` and
+  `NativeActionEnvelopeRecorder.NativeRngBoundary`: validated
+  single primitive `NextInt` events with source hook provenance,
+  owner/stream/site, bound/index and exact pre/post cursor words.
+- `tools/native_rng_boundary_compare.py`: compares **one explicit
+  native action identity** to an actual-engine single-fixture provider
+  journal, stops at first source/order/candidate/cursor mismatch.
+- The audit and unified gate report native source RNG call counts,
+  missing ownership and unpaired boundaries. Raw `NextInt(n)`
+  agreement with emulator `choose_index` is correctly labelled
+  **primitive bound/index only**, with semantic candidate ordering
+  still unverified.
+- Synthetic .NET/Python unit tests exercise rejection of invalid and
+  frame-inferred RNG events.
+
+**Native RNG source hooks are NOT yet installed** in the game DLL.
+The contracts are implemented and unit-tested, but real native RNG call
+observations still require v0.111 native assembly inspection and
+read-only game-local patch validation. Existing captures continue to
+report `NATIVE_RNG_SOURCE_UNOBSERVED`; no game-wide native RNG,
+source hook order, full mechanics, or original conditional-law parity
+is certified.
+
+Implementation and validation notes:
+[`V111_NATIVE_RNG_BOUNDARY_EVIDENCE.md`](V111_NATIVE_RNG_BOUNDARY_EVIDENCE.md).
