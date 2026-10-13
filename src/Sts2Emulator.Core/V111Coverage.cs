@@ -532,6 +532,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TOY_BOX"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.ToyBoxId,
+                StringComparer.Ordinal)
+            && HasToyBoxPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -3650,6 +3660,208 @@ public static class V111Coverage
             && meltedCards.All(pair => pair.Value.Enchantment
                 == eligibleDeck.Single(card =>
                     card.InstanceId == pair.Key).Enchantment);
+    }
+
+    private static bool HasToyBoxPath()
+    {
+        var relicId = NativeAncientRewardsV111.ToyBoxId;
+        var choiceId = "take_" + relicId;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        var engine = new PrototypeGameEngine();
+        RunState? opening = null;
+        for (var seedIndex = 0; seedIndex < 64; seedIndex++)
+        {
+            var seed = $"coverage-tezcatara-toy-box-{seedIndex}";
+            var fixture = PrototypeNativeLaterActFixture.Create(seed, 2);
+            var candidate = NativeAncientRewardsV111
+                .BeginTezcataraOpening(fixture);
+            NativeAncientRewardsV111.ValidateEventContext(candidate);
+            if (candidate.World?.Event?.OfferedChoiceIds is
+                { Length: 3 } offers
+                && offers[2] == choiceId)
+            {
+                opening = candidate;
+                break;
+            }
+        }
+
+        if (opening is null)
+        {
+            return false;
+        }
+
+        var acquireAction = engine.GetLegalActions(opening)
+            .FirstOrDefault(action => action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == choiceId);
+        if (acquireAction is null)
+        {
+            return false;
+        }
+
+        var acquired = engine.Step(opening, acquireAction).State;
+        var acquiredWorld = acquired.World;
+        var acquiredReward = acquiredWorld?.Reward;
+        if (acquired.Phase != RunPhase.Reward
+            || acquiredReward is not
+                { SourceRoom: "Event:proto.native.ancient.tezcatara",
+                    ExtraRelicRewardIds.Length: 5,
+                    ExtraRelicWaxFlags.Length: 5,
+                    IndependentSelection: true } reward
+            || reward.ExtraRelicWaxFlags.Any(flag => !flag)
+            || reward.ExtraRelicRewardIds.Distinct(
+                StringComparer.Ordinal).Count() != 5
+            || acquiredWorld?.RelicBag is not { } reservedBag
+            || reward.ExtraRelicRewardIds.Any(id =>
+                !PrototypeNativeRelicGrabBag.TryGetRarity(id, out _)
+                || reservedBag.Remaining.Contains(
+                    id, StringComparer.Ordinal)))
+        {
+            return false;
+        }
+
+        var toyBox = acquired.Player.Relics.SingleOrDefault(
+            relic => relic.RelicId == relicId);
+        if (toyBox is null
+            || NativeAncientRewardsV111.ToyBoxCombatsSeen(toyBox) != 0)
+        {
+            return false;
+        }
+
+        var state = acquired;
+        var firstWaxIndex = state.Player.Relics.Length;
+        for (var groupIndex = 0; groupIndex < 5; groupIndex++)
+        {
+            var action = engine.GetLegalActions(state)
+                .FirstOrDefault(candidate =>
+                    candidate.Kind == "take_reward_relic"
+                    && candidate.ReadPayload<ChooseRelicPayload>().Index
+                        == 0);
+            if (action is null)
+            {
+                return false;
+            }
+            state = engine.Step(state, action).State;
+            var acquiredWax = state.Player.Relics
+                .Skip(firstWaxIndex).Take(groupIndex + 1).ToArray();
+            if (acquiredWax.Length != groupIndex + 1
+                || acquiredWax.Any(relic => !relic.IsWax))
+            {
+                return false;
+            }
+        }
+
+        var toyBoxIndex = Array.FindIndex(state.Player.Relics,
+            relic => relic.RelicId == relicId);
+        var waxInventory = state.Player.Relics
+            .Where(relic => relic.IsWax).ToArray();
+        if (toyBoxIndex < 0
+            || waxInventory.Length != 5
+            || NativeAncientRewardsV111.ToyBoxCombatsSeen(
+                state.Player.Relics[toyBoxIndex]) != 0)
+        {
+            return false;
+        }
+
+        var isolatedPlayer = state.Player with
+        {
+            Relics =
+            [state.Player.Relics[toyBoxIndex], .. waxInventory]
+        };
+        var world = state.World! with
+        {
+            ActiveRoom = PrototypeRoomType.Combat,
+            Combat = null,
+            Reward = null,
+            CustomRewardReturn = null,
+            Event = null,
+            LastCombatEndDecisionIndex = null
+        };
+        var lifecycle = state with
+        {
+            Phase = RunPhase.Combat,
+            Player = isolatedPlayer,
+            World = world,
+            DecisionIndex = 1000
+        };
+
+        var meltedAtAcquisition = lifecycle with
+        {
+            DecisionIndex = lifecycle.DecisionIndex + 1,
+            Player = lifecycle.Player with
+            {
+                Relics =
+                [lifecycle.Player.Relics[0] with { IsMelted = true },
+                    .. lifecycle.Player.Relics.Skip(1)]
+            }
+        };
+        var afterMeltedAtAcquisition =
+            NativeAncientRewardsV111.ApplyCombatEnd(meltedAtAcquisition);
+        if (NativeAncientRewardsV111.ToyBoxCombatsSeen(
+                afterMeltedAtAcquisition.Player.Relics[0]) != 0
+            || afterMeltedAtAcquisition.Player.Relics.Skip(1)
+                .Any(relic => relic.IsMelted))
+        {
+            return false;
+        }
+
+        for (var combatCount = 1; combatCount <= 15; combatCount++)
+        {
+            lifecycle = lifecycle with
+            {
+                DecisionIndex = lifecycle.DecisionIndex + 1
+            };
+            lifecycle = NativeAncientRewardsV111.ApplyCombatEnd(
+                lifecycle);
+            var currentToyBox = lifecycle.Player.Relics[0];
+            var currentWax = lifecycle.Player.Relics.Skip(1).ToArray();
+            var expectedMelted = combatCount / 3;
+            if (NativeAncientRewardsV111.ToyBoxCombatsSeen(
+                    currentToyBox) != combatCount
+                || currentWax.Length != 5
+                || currentWax.Take(expectedMelted)
+                    .Any(relic => !relic.IsMelted)
+                || currentWax.Skip(expectedMelted)
+                    .Any(relic => relic.IsMelted))
+            {
+                return false;
+            }
+
+            var repeated = NativeAncientRewardsV111.ApplyCombatEnd(
+                lifecycle);
+            if (NativeAncientRewardsV111.ToyBoxCombatsSeen(
+                    repeated.Player.Relics[0]) != combatCount
+                || repeated.Player.Relics.Skip(1)
+                    .Where(relic => relic.IsWax).Count(relic =>
+                        relic.IsMelted) != expectedMelted)
+            {
+                return false;
+            }
+        }
+
+        lifecycle = lifecycle with
+        {
+            DecisionIndex = lifecycle.DecisionIndex + 1
+        };
+        var capped = NativeAncientRewardsV111.ApplyCombatEnd(lifecycle);
+        return NativeAncientRewardsV111.ToyBoxCombatsSeen(
+                capped.Player.Relics[0]) == 15
+            && capped.Player.Relics.Skip(1).All(relic => relic.IsMelted)
+            && NativeAncientRewardsV111.ToyBoxCombatsSeen(
+                afterMeltedAtAcquisition.Player.Relics[0]) == 0;
     }
 
     private static bool HasStorybookPath()

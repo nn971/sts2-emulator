@@ -307,6 +307,10 @@ edges, saved acquisition act, act gating and mid-act node handoff; see
 Nutritious Soup coverage checks Tezcatara's conditional offer and acquisition
 enchantment across eligible and ineligible Strike instances; see
 [mechanics gap 084](reference-builds/v0.111.0-mechanics-gap-084.md).
+Toy Box coverage follows its Tezcatara reward through five wax relic pickups
+and checks ordered melting through combat fifteen, idempotence, the cap and
+melted-copy suppression; see
+[mechanics gap 085](reference-builds/v0.111.0-mechanics-gap-085.md).
 
 Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
 cards through shared acquisition; Flesh modifies energy reset from turn three;
