@@ -11,6 +11,8 @@ public static class PrototypeNativeSharedRelics
     public const string DragonFruitId = "proto.relic.dragon_fruit";
     public const string ScreamingFlagonId =
         "proto.relic.screaming_flagon";
+    public const string SparklingRougeId =
+        "proto.relic.sparkling_rouge";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -93,6 +95,20 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.DamageEnemy, 20,
                         Target: PrototypeEffectTarget.AllEnemies)],
                     RequiresEmptyHand: true,
+                    RequiresPlayerSide: true)
+            ]),
+        // Gain 1 Strength and 1 Dexterity when the owner's third turn begins.
+        new(SparklingRougeId, "Sparkling Rouge",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                    [
+                        new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                            PowerId: "proto.power.strength"),
+                        new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                            PowerId: "proto.power.dexterity")
+                    ],
+                    TurnEquals: 3,
                     RequiresPlayerSide: true)
             ]),
         // Tiny Mailbox offers two random potions after a Rest heal.

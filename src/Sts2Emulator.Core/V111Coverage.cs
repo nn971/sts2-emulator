@@ -1883,6 +1883,40 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "SPARKLING_ROUGE"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.SparklingRougeId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.SparklingRougeId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.SparklingRougeId,
+                out var sparklingRougeRarity)
+            && sparklingRougeRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.SparklingRougeId).Triggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeCombatEventKind.PlayerSideTurnStarted
+                    && trigger.TurnEquals == 3
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Length == 2
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeCombatEffectKind.ApplyPlayerPower
+                        && effect.Amount == 1
+                        && effect.PowerId == "proto.power.strength")
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeCombatEffectKind.ApplyPlayerPower
+                        && effect.Amount == 1
+                        && effect.PowerId == "proto.power.dexterity")) == true
+            && HasSparklingRougePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -3817,6 +3851,65 @@ public static class V111Coverage
                     playerSideActive: true), 40, 30)
             && HasHp(Dispatch(handEmpty: true, melted: false,
                     playerSideActive: false), 40, 30);
+    }
+
+    private static bool HasSparklingRougePath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.SparklingRougeId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (int Strength, int Dexterity) Dispatch(
+            int turn, bool melted, bool playerSideActive)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: [],
+                IsPlayerSideActive: playerSideActive);
+            var result = PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-sparkling-rouge-{turn}-{melted}-{playerSideActive}"));
+            return (
+                result.Combat.PlayerPowers.Where(power =>
+                    power.PowerId == "proto.power.strength")
+                    .Sum(power => power.Stacks),
+                result.Combat.PlayerPowers.Where(power =>
+                    power.PowerId == "proto.power.dexterity")
+                    .Sum(power => power.Stacks));
+        }
+
+        return Dispatch(turn: 2, melted: false,
+                playerSideActive: true) == (0, 0)
+            && Dispatch(turn: 3, melted: false,
+                playerSideActive: true) == (1, 1)
+            && Dispatch(turn: 3, melted: true,
+                playerSideActive: true) == (0, 0)
+            && Dispatch(turn: 3, melted: false,
+                playerSideActive: false) == (0, 0);
     }
 
     private static bool HasGnarledHammerPath()
