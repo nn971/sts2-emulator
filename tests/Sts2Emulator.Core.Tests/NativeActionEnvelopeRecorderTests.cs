@@ -157,7 +157,7 @@ public sealed class NativeActionEnvelopeRecorderTests
             data.GetProperty("origin").GetString());
         Assert.True(data.GetProperty("source_hook_observed").GetBoolean());
         Assert.Equal(7, data.GetProperty("cursor_before")
-            .GetProperty("counter").GetInt32());
+            .GetProperty("Counter").GetInt32());
         Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
             .GetProperty("status").GetString());
     }
