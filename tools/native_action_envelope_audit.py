@@ -188,6 +188,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "raw_terminal_status": None,
         "native_rng_hook_installed": False,
         "native_monster_ai_scope_installed": False,
+        "native_shuffle_scope_installed": False,
         "native_shuffle_source_operations": 0,
         "native_rng_source_calls": 0,
         "native_rng_unattributed_calls": 0,
@@ -206,6 +207,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         records[0].get("data", {}).get("native_rng_hook_installed") is True)
     report["native_monster_ai_scope_installed"] = (
         records[0].get("data", {}).get("native_monster_ai_scope_installed") is True)
+    report["native_shuffle_scope_installed"] = (
+        records[0].get("data", {}).get("native_shuffle_scope_installed") is True)
     if report["native_rng_hook_installed"]:
         report["native_rng_source_coverage"] = (
             "HOOK_INSTALLED_NO_SOURCE_CALLS_OBSERVED")
