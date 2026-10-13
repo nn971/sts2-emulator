@@ -12343,8 +12343,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/PerfectFit.cs#034bb8bd5daa7b987c0e4f1127f4d432cd029a10aef0fd7dab821b0a131f7a91"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
@@ -29436,8 +29436,8 @@
         "catalogued": 22,
         "eligible": 22,
         "excluded": 0,
-        "implemented": 4,
-        "integrated": 4,
+        "implemented": 5,
+        "integrated": 5,
         "kind": "enchantments",
         "scope_review_required": 0,
         "validated": 0

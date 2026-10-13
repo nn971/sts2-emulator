@@ -693,6 +693,15 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "enchantments"
+            && item.Id == "PERFECT_FIT"
+            && engineIds.Contains("PerfectFit", StringComparer.Ordinal)
+            && HasPerfectFitPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "KIFUDA"
             && engineIds.Contains(
@@ -5035,6 +5044,93 @@ public static class V111Coverage
             && resolvedStrike.MomentumDamageBonus == 10
             && played.Player.Deck[0].Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Momentum, Amount: 5 };
+    }
+
+    private static bool HasPerfectFitPath()
+    {
+        const string eventId =
+            PrototypeNativeHiveEvents.FieldOfManSizedHolesId;
+        const string strikeId = "proto.silent.strike";
+        const string defendId = "proto.silent.defend";
+        var player = new PlayerState(
+            30,
+            30,
+            0,
+            [
+                new CardInstance(1, strikeId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(2, defendId, 0,
+                    PrototypeJson.EmptyObject())
+            ],
+            [],
+            []);
+        var eventDefinition = PrototypeContent.Event(eventId);
+        var enchantChoice = eventDefinition.Choices.SingleOrDefault(
+            choice => choice.Id == "enter_your_hole");
+        if (!ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                eventId, 2)
+            || !PrototypeNativeHiveEvents.IsEligible(
+                eventDefinition,
+                player)
+            || enchantChoice?.DeckChoice is not
+                { Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    Selections: 1,
+                    EnchantmentKind:
+                        PrototypeCardEnchantmentKind.PerfectFit }
+            || !PrototypeGameEngine.CanSelectEventDeckCard(
+                player.Deck[0],
+                PrototypePersistentDeckChoiceKind.Enchant,
+                transformToCardId: null,
+                enchantmentKind:
+                    PrototypeCardEnchantmentKind.PerfectFit,
+                basicCardsOnly: false))
+        {
+            return false;
+        }
+
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [],
+            DrawPile: [],
+            DiscardPile: [11, 12],
+            ExhaustPile: [],
+            Enemies: [],
+            NextCardInstanceId: 13,
+            Cards:
+            [
+                new CombatCardInstance(
+                    11,
+                    1,
+                    strikeId,
+                    0,
+                    false,
+                    PrototypeJson.EmptyObject(),
+                    Enchantment: new(
+                        PrototypeCardEnchantmentKind.PerfectFit)),
+                new CombatCardInstance(
+                    12,
+                    2,
+                    defendId,
+                    0,
+                    false,
+                    PrototypeJson.EmptyObject())
+            ],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Act: 2,
+            PlayPile: []);
+        var draw = PrototypeGameEngine.DrawCards(
+            player,
+            combat,
+            count: 1,
+            PrototypeRng.CreateBundle("coverage-perfect-fit"),
+            fromHandDraw: true);
+        return draw.DrawnCardInstanceIds.SequenceEqual([11L])
+            && draw.Combat.Hand.SequenceEqual([11L])
+            && draw.Combat.DrawPile.SequenceEqual([12L])
+            && draw.Combat.DiscardPile.Length == 0;
     }
 
     private static bool HasKusarigamaPath()

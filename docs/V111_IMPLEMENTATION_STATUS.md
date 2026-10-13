@@ -1414,3 +1414,6 @@ with Adroit, which grants 3 Block each time an enchanted card is played. See
 Punch Dagger is now a Shop relic that enchants one Attack with Momentum. Each
 play adds 5 damage to the next powered attack from that card for the rest of
 combat. See [mechanics gap 132](reference-builds/v0.111.0-mechanics-gap-132.md).
+Perfect Fit is now executable in Hive's Field of Man-Sized Holes event and
+moves its enchanted card to the top after a noninitial draw-pile shuffle. See
+[mechanics gap 133](reference-builds/v0.111.0-mechanics-gap-133.md).
