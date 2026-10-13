@@ -522,6 +522,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "NUTRITIOUS_SOUP"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.NutritiousSoupId,
+                StringComparer.Ordinal)
+            && HasNutritiousSoupPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -3512,6 +3522,134 @@ public static class V111Coverage
             && midActAcquired.World.Map.CurrentNodeId == "2:5:3"
             && PrototypeGoldenPathMapV111.IsActive(
                 midActAcquired.Player, 2);
+    }
+
+    private static bool HasNutritiousSoupPath()
+    {
+        var relicId = NativeAncientRewardsV111.NutritiousSoupId;
+        var choiceId = "take_" + relicId;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        const string strikeId = "proto.silent.strike";
+        const string defendId = "proto.silent.defend";
+        var strikeDefinition = PrototypeContent.Card(strikeId);
+        if (strikeDefinition.Rarity != PrototypeCardRarity.Basic
+            || strikeDefinition.Tags?.Contains(
+                "Strike", StringComparer.Ordinal) != true)
+        {
+            return false;
+        }
+
+        var fixture = PrototypeNativeLaterActFixture.Create(
+            "coverage-tezcatara-soup", 2);
+        var eligibleDeck = new[]
+        {
+            new CardInstance(1, strikeId, 0,
+                PrototypeJson.EmptyObject()),
+            new CardInstance(2, strikeId, 0,
+                PrototypeJson.EmptyObject()),
+            new CardInstance(3, strikeId, 1,
+                PrototypeJson.EmptyObject()),
+            new CardInstance(4, strikeId, 0,
+                PrototypeJson.EmptyObject(),
+                new PrototypeCardEnchantment(
+                    PrototypeCardEnchantmentKind.Sharp)),
+            new CardInstance(5, defendId, 0,
+                PrototypeJson.EmptyObject())
+        };
+        var originalPlayer = fixture.Player with { Deck = eligibleDeck };
+
+        var soupOfferSeen = false;
+        for (var seedIndex = 0; seedIndex < 64 && !soupOfferSeen;
+             seedIndex++)
+        {
+            var seed = $"coverage-tezcatara-soup-{seedIndex}";
+            var opening = NativeAncientRewardsV111.BeginTezcataraOpening(
+                fixture with { RunSeed = seed, Player = originalPlayer });
+            var evt = opening.World?.Event;
+            var offers = evt?.OfferedChoiceIds;
+            if (offers is not { Length: 3 })
+                return false;
+            NativeAncientRewardsV111.ValidateEventContext(opening);
+            if (offers[0] == "take_" + relicId)
+                soupOfferSeen = true;
+        }
+        if (!soupOfferSeen)
+            return false;
+
+        var noStrikePlayer = originalPlayer with
+        {
+            Deck =
+            [new CardInstance(1, defendId, 0,
+                PrototypeJson.EmptyObject())]
+        };
+        var noStrikeOpening =
+            NativeAncientRewardsV111.BeginTezcataraOpening(
+                fixture with
+                {
+                    RunSeed = "coverage-tezcatara-no-basic-strike",
+                    Player = noStrikePlayer
+                });
+        var noStrikeOffers = noStrikeOpening.World?.Event?.OfferedChoiceIds;
+        if (noStrikeOffers is not { Length: 3 }
+            || noStrikeOffers[0] == "take_" + relicId)
+        {
+            return false;
+        }
+        NativeAncientRewardsV111.ValidateEventContext(noStrikeOpening);
+
+        static PlayerState Acquire(
+            string relicId, CardInstance[] deck, bool melted)
+        {
+            var player = new PlayerState(30, 30, 0, deck,
+                [new RelicInstance(relicId,
+                    PrototypeJson.EmptyObject(), IsMelted: melted)], []);
+            return PrototypeGameEngine.ApplyRelicRunEvent(
+                player,
+                PrototypeRunEventKind.RelicAcquired,
+                acquiredRelicId: relicId,
+                rng: PrototypeRng.CreateBundle(
+                    $"coverage-nutritious-soup-{melted}"));
+        }
+
+        var acquired = Acquire(relicId, eligibleDeck, melted: false);
+        var melted = Acquire(relicId, eligibleDeck, melted: true);
+        var acquiredCards = acquired.Deck.ToDictionary(
+            card => card.InstanceId);
+        var meltedCards = melted.Deck.ToDictionary(
+            card => card.InstanceId);
+        return acquiredCards.Count == eligibleDeck.Length
+            && acquiredCards[1].Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.TezcatarasEmber
+            && acquiredCards[2].Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.TezcatarasEmber
+            && acquiredCards[3].Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.TezcatarasEmber
+            && acquiredCards[4].Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.Sharp
+            && acquiredCards[5].Enchantment is null
+            && acquiredCards.All(pair =>
+                pair.Value.CardId == eligibleDeck.Single(card =>
+                    card.InstanceId == pair.Key).CardId
+                && pair.Value.UpgradeLevel == eligibleDeck.Single(card =>
+                    card.InstanceId == pair.Key).UpgradeLevel)
+            && acquiredCards.Where(pair => pair.Key is 1 or 2 or 3)
+                .All(pair => PrototypeCardRules.IsEternal(pair.Value))
+            && meltedCards.All(pair => pair.Value.Enchantment
+                == eligibleDeck.Single(card =>
+                    card.InstanceId == pair.Key).Enchantment);
     }
 
     private static bool HasStorybookPath()

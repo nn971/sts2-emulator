@@ -26927,8 +26927,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/NutritiousSoup.cs#c75f5cc395bf71ec6e2282bf34dc59bbd6c6ef734a44e84529e1852eee719a82"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29460,8 +29460,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 132,
-        "integrated": 133,
+        "implemented": 133,
+        "integrated": 134,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

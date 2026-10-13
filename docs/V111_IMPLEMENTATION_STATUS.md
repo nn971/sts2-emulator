@@ -304,6 +304,9 @@ suppression; see [mechanics gap 082](reference-builds/v0.111.0-mechanics-gap-082
 Golden Compass coverage checks the Tezcatara acquisition, all map rooms and
 edges, saved acquisition act, act gating and mid-act node handoff; see
 [mechanics gap 083](reference-builds/v0.111.0-mechanics-gap-083.md).
+Nutritious Soup coverage checks Tezcatara's conditional offer and acquisition
+enchantment across eligible and ineligible Strike instances; see
+[mechanics gap 084](reference-builds/v0.111.0-mechanics-gap-084.md).
 
 Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
 cards through shared acquisition; Flesh modifies energy reset from turn three;
