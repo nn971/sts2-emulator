@@ -296,6 +296,8 @@ fifth eligible card remains unchanged; see [mechanics gap 079](reference-builds/
 Toasty Mittens coverage resolves the opening and next two turn prompts, checks
 exhaust and Strength progression, and confirms melted-copy suppression; see
 [mechanics gap 080](reference-builds/v0.111.0-mechanics-gap-080.md).
+Seal of Gold coverage checks the affordability boundary, ordered duplicate
+triggers and melted-copy suppression; see [mechanics gap 081](reference-builds/v0.111.0-mechanics-gap-081.md).
 
 Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
 cards through shared acquisition; Flesh modifies energy reset from turn three;

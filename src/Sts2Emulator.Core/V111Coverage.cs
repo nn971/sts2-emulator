@@ -492,6 +492,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "SEAL_OF_GOLD"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.SealOfGoldId,
+                StringComparer.Ordinal)
+            && HasSealOfGoldPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -3176,6 +3186,97 @@ public static class V111Coverage
         return firstTurn.Energy == PrototypeContent.Rules.BaseEnergy + 4
             && laterTurn.Energy == PrototypeContent.Rules.BaseEnergy
             && melted.Energy == PrototypeContent.Rules.BaseEnergy;
+    }
+
+    private static bool HasSealOfGoldPath()
+    {
+        var relicId = NativeAncientRewardsV111.SealOfGoldId;
+        var choiceId = "take_" + relicId;
+        var triggers = PrototypeContent.Relic(relicId).Triggers;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || triggers is not
+                [
+                    { EventKind: PrototypeCombatEventKind.PlayerSideTurnStarted,
+                        Effects:
+                        [
+                            { Kind: PrototypeCombatEffectKind.GainEnergyForGold,
+                                Amount: 1, PlayerGoldCost: 3 }
+                        ] }
+                ])
+        {
+            return false;
+        }
+
+        static (PlayerState Player, CombatState Combat) Dispatch(
+            int gold, params bool[] meltedFlags)
+        {
+            var relicId = NativeAncientRewardsV111.SealOfGoldId;
+            var triggerCount = PrototypeContent.Relic(relicId)
+                .Triggers?.Length ?? 0;
+            var relics = meltedFlags.Select(melted =>
+                new RelicInstance(relicId,
+                    PrototypeJson.EmptyObject(), IsMelted: melted)).ToArray();
+            var player = new PlayerState(30, 30, gold, [], relics, []);
+            var combatRelics = meltedFlags.Select((melted, index) =>
+                new CombatRelicState(index, relicId, index + 1,
+                    new int[triggerCount], IsMelted: melted)).ToArray();
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: PrototypeContent.Rules.BaseEnergy,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics: combatRelics,
+                Act: 2,
+                PlayPile: []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-seal-of-gold-{gold}-{meltedFlags.Length}"));
+        }
+
+        var belowThreshold = Dispatch(2, false);
+        var exactThreshold = Dispatch(3, false);
+        var duplicateShort = Dispatch(5, false, false);
+        var duplicateAffordable = Dispatch(6, false, false);
+        var meltedOnly = Dispatch(3, true);
+        var meltedBeforeActive = Dispatch(3, true, false);
+        var baseEnergy = PrototypeContent.Rules.BaseEnergy;
+        return belowThreshold.Player.Gold == 2
+            && belowThreshold.Combat.Energy == baseEnergy
+            && exactThreshold.Player.Gold == 0
+            && exactThreshold.Combat.Energy == baseEnergy + 1
+            && duplicateShort.Player.Gold == 2
+            && duplicateShort.Combat.Energy == baseEnergy + 1
+            && duplicateAffordable.Player.Gold == 0
+            && duplicateAffordable.Combat.Energy == baseEnergy + 2
+            && meltedOnly.Player.Gold == 3
+            && meltedOnly.Combat.Energy == baseEnergy
+            && meltedBeforeActive.Player.Gold == 0
+            && meltedBeforeActive.Combat.Energy == baseEnergy + 1;
     }
 
     private static bool HasStorybookPath()

@@ -28035,8 +28035,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/SealOfGold.cs#86d900d9284bbb555fd8264679274246d25f43a42a4a0f0c9f30c7aee4cc7a06"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29460,8 +29460,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 129,
-        "integrated": 130,
+        "implemented": 130,
+        "integrated": 131,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
