@@ -1,5 +1,14 @@
 ## Current Silent regional execution update (2026-10-13)
 
+The executable coverage report now recognizes all four configured act routes
+as implemented and integrated. This check validates the Silent route
+configuration, encounter registrations against each act inventory, regional
+event registration (with Colorful Philosophers still deferred), and the
+act-entry Ancient definitions. It records route integration, not complete
+branch coverage or native parity. War Historian Repy is also recognized as
+implemented across its nine inventoried branches. The overall report currently
+records 60/66 events implemented and 62/66 integrated.
+
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.
 Supported Hive and Glory Ancient relic choices now retain their finished page
