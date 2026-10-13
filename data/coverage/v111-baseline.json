@@ -28900,17 +28900,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.venerable_tea_set"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/VenerableTeaSet.cs#f7c950036fcd45178fe5fc5f41bb92a6b4e0af35625bd01696ec26af35c515f6"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "VENERABLE_TEA_SET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29453,8 +29455,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 110,
-        "integrated": 111,
+        "implemented": 111,
+        "integrated": 112,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

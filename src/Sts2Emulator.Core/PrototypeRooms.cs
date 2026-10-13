@@ -4924,14 +4924,6 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState CompleteRoomToMap(RunState state)
     {
-        if (RequireWorld(state).ActiveRoom == PrototypeRoomType.Rest)
-        {
-            state = state with
-            {
-                Player = PrototypeNativeFakeMerchant
-                    .MarkTeaSetsAfterRestSite(state.Player)
-            };
-        }
         state = RecordCompletedRoom(state);
         var world = RequireWorld(state) with
         {

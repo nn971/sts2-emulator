@@ -20,6 +20,12 @@ public sealed partial class PrototypeGameEngine
     private static PlayerState ApplyRelicRoomEntryEffects(
         PlayerState player, PrototypeRoomType room)
     {
+        if (room == PrototypeRoomType.Rest)
+        {
+            player = PrototypeNativeFakeMerchant
+                .MarkTeaSetsAfterRestSite(player);
+        }
+
         var bonus = player.ActiveRelics.Sum(relic =>
         {
             var definition = PrototypeContent.Relic(relic.RelicId);

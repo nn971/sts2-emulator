@@ -312,6 +312,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "VENERABLE_TEA_SET"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.VenerableTeaSetId,
+                StringComparer.Ordinal)
+            && HasVenerableTeaSetPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -1947,6 +1957,31 @@ public static class V111Coverage
                 && trigger.Effects.Any(effect =>
                     effect.Kind == PrototypeCombatEffectKind.GainPlayerBlock
                     && effect.Amount == 7)) == true;
+    }
+
+    private static bool HasVenerableTeaSetPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.VenerableTeaSetId;
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            || rarity != PrototypeRelicRarity.Common)
+        {
+            return false;
+        }
+
+        var player = new PlayerState(20, 20, 0, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var charged = PrototypeNativeFakeMerchant
+            .MarkTeaSetsAfterRestSite(player);
+        var consumed = PrototypeNativeFakeMerchant
+            .ConsumeTeaSetCharges(charged);
+        return PrototypeNativeFakeMerchant.HasTeaSetCharge(
+                charged.Relics.Single())
+            && consumed.Bonus == 2
+            && !PrototypeNativeFakeMerchant.HasTeaSetCharge(
+                consumed.Player.Relics.Single());
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

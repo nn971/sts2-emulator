@@ -226,7 +226,8 @@ public static class PrototypeNativeFakeMerchant
         player.PotionSlots.Any(potion => potion?.PotionId == FoulPotionId);
 
     public static bool HasTeaSetCharge(RelicInstance relic) =>
-        relic.RelicId == FakeTeaSetId
+        (relic.RelicId is FakeTeaSetId
+            or PrototypeNativeSharedRelics.VenerableTeaSetId)
         && !relic.IsMelted
         && relic.PersistentState.ValueKind == JsonValueKind.Object
         && relic.PersistentState.TryGetProperty(
@@ -242,7 +243,8 @@ public static class PrototypeNativeFakeMerchant
         {
             if (!HasTeaSetCharge(relics[i]))
                 continue;
-            bonus++;
+            bonus += relics[i].RelicId
+                == PrototypeNativeSharedRelics.VenerableTeaSetId ? 2 : 1;
             var persistent = JsonNode.Parse(
                 relics[i].PersistentState.GetRawText()) as JsonObject
                 ?? new JsonObject();
@@ -261,7 +263,9 @@ public static class PrototypeNativeFakeMerchant
         var changed = false;
         for (var i = 0; i < relics.Length; i++)
         {
-            if (relics[i].RelicId != FakeTeaSetId || relics[i].IsMelted)
+            if (relics[i].RelicId is not (FakeTeaSetId
+                    or PrototypeNativeSharedRelics.VenerableTeaSetId)
+                || relics[i].IsMelted)
                 continue;
             var persistent = relics[i].PersistentState.ValueKind == JsonValueKind.Object
                 ? JsonNode.Parse(relics[i].PersistentState.GetRawText()) as JsonObject
