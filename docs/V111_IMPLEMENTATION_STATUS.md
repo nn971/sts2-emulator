@@ -72,7 +72,8 @@ source rarity and relic pool parity remain unverified. See the
 [Relic Trader audit](reference-builds/v0.111.0-relic-trader.md).
 After the final Glory boss reward, configured Silent runs now enter The
 Architect's one-choice ending and become victorious after Proceed. The
-profile-specific dialogue and visual scene are omitted from the headless
+ending links to a zero-weight scene encounter with a 9999 HP Architect actor.
+Profile-specific dialogue and animations remain omitted from the headless
 state; see the [ending audit](reference-builds/v0.111.0-the-architect.md).
 Stone of All Time is integrated in Hive. Lift discards the potion chosen on
 event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one

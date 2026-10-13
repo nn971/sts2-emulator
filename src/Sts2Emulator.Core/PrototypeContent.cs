@@ -6428,6 +6428,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryBosses.Enemies)
             .Concat(PrototypeNativeGloryEvents.Enemies)
             .Concat(PrototypeNativeHiveEvents.Enemies)
+            .Concat(PrototypeNativeArchitectEnding.Enemies)
             .Concat(PrototypeNativeFakeMerchant.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
@@ -6841,6 +6842,9 @@ public static class PrototypeContent
         // Punch Off starts this event-only fight directly. Keep its native
         // encounter discoverable without making it an ordinary room offer.
         PrototypeNativePunchOff.Encounter,
+        // The Architect's CanonicalEncounter is a narrative scene with a
+        // 9999 HP creature, not a fight in the configured run route.
+        PrototypeNativeArchitectEnding.Encounter,
         // Event-only combat: four non-stunned Wrigglers. Never included
         // in normal map-combat selection (Weight=0).
         new(

@@ -9,6 +9,9 @@ public static class PrototypeNativeArchitectEnding
 {
     public const string EventId = "proto.native.glory.the_architect";
     public const string ProceedChoiceId = "proceed";
+    public const string ActorId = "proto.native.glory.architect";
+    public const string EncounterId =
+        "proto.native.glory.the_architect_event_encounter";
 
     public static PrototypeEventDefinition Definition { get; } = new(
         EventId,
@@ -17,7 +20,23 @@ public static class PrototypeNativeArchitectEnding
         MinAct: 3,
         MaxAct: 3,
         Weight: 0,
-        OncePerRun: true);
+        OncePerRun: true,
+        CanonicalEncounterId: EncounterId);
+
+    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    [
+        // The native actor exists for dialogue and animations, not combat.
+        new(ActorId, "The Architect", 9999, 0,
+            [new("nothing", [])])
+    ];
+
+    public static PrototypeEncounterDefinition Encounter { get; } = new(
+        EncounterId,
+        PrototypeRoomType.Event,
+        [ActorId],
+        MinAct: 3,
+        MaxAct: 3,
+        Weight: 0);
 
     public static RunState EnterAfterFinalBoss(RunState state)
     {

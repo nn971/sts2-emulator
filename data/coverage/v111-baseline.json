@@ -12580,17 +12580,21 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.battleworn_dummy_event_v1_encounter",
+          "proto.native.glory.battleworn_dummy_event_v2_encounter",
+          "proto.native.glory.battleworn_dummy_event_v3_encounter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/BattlewornDummyEventEncounter.cs#f132304faa301033d2667a40caa3629ad6b3852f43a4c0579206caf581e9ad97"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BATTLEWORN_DUMMY_EVENT_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -13910,17 +13914,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.the_architect_event_encounter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Encounters/TheArchitectEventEncounter.cs#f23a77c49ebdefe04fc08cc77033b6179acb7f11003acd01c70bae87d584b1c3"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "encounters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "THE_ARCHITECT_EVENT_ENCOUNTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -16283,17 +16289,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.glory.architect"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Monsters/Architect.cs#717b49d7efd3e2040daee855abc4483d0e6b22eb6e681875bd5e15a215118634"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "monsters",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ARCHITECT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -18998,8 +19006,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/GlowwaterPotion.cs#26751fde0c77baec49efa65a119c85566458d2a41906f3a664c4f3342a11eb8c"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
@@ -29403,8 +29411,8 @@
         "catalogued": 90,
         "eligible": 90,
         "excluded": 0,
-        "implemented": 87,
-        "integrated": 87,
+        "implemented": 89,
+        "integrated": 89,
         "kind": "encounters",
         "scope_review_required": 0,
         "validated": 0
@@ -29453,8 +29461,8 @@
         "catalogued": 64,
         "eligible": 64,
         "excluded": 0,
-        "implemented": 49,
-        "integrated": 49,
+        "implemented": 50,
+        "integrated": 50,
         "kind": "potions",
         "scope_review_required": 0,
         "validated": 0

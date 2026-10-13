@@ -663,6 +663,14 @@ public static class PrototypeStateInvariants
         }
 
         var active = PrototypeContent.Event(world.Event.EventId);
+        if (active.CanonicalEncounterId is { } encounterId
+            && !PrototypeContent.Encounters.Any(encounter =>
+                StringComparer.Ordinal.Equals(encounter.Id, encounterId)))
+        {
+            throw new InvalidOperationException(
+                $"Event '{active.Id}' references unknown canonical encounter '{encounterId}'.");
+        }
+
         if (world.Act < active.MinAct || world.Act > active.MaxAct
             || (active.Weight <= 0
                 && !NativeAncientRewardsV111.IsOpeningEvent(world)

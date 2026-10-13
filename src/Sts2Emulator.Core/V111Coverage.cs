@@ -108,7 +108,15 @@ public static class V111Coverage
                             == PrototypeNativeDenseVegetation.EncounterId)
                     || (item.Id == "FAKE_MERCHANT_EVENT_ENCOUNTER"
                         && encounter.Id
-                            == PrototypeNativeFakeMerchant.EncounterId))
+                            == PrototypeNativeFakeMerchant.EncounterId)
+                    || (item.Id == "BATTLEWORN_DUMMY_EVENT_ENCOUNTER"
+                        && encounter.Id is
+                            PrototypeNativeGloryEvents.BattlewornV1EncounterId
+                            or PrototypeNativeGloryEvents.BattlewornV2EncounterId
+                            or PrototypeNativeGloryEvents.BattlewornV3EncounterId)
+                    || (item.Id == "THE_ARCHITECT_EVENT_ENCOUNTER"
+                        && encounter.Id
+                            == PrototypeNativeArchitectEnding.EncounterId))
                 .Select(encounter => encounter.Id).ToArray(),
             "events" => PrototypeContent.Events.Values
                 .Where(evt => Matches(item, evt.Id, evt.Name)).Select(evt => evt.Id).ToArray(),
@@ -180,6 +188,33 @@ public static class V111Coverage
                 StringComparer.Ordinal))
         {
             _ = PrototypeContent.Potion(engineIds[0]);
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "potions"
+            && item.Id == "GLOWWATER_POTION"
+            && engineIds.Contains(
+                "proto.native.underdocks.glowwater_potion",
+                StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksEvents.IsSupported(
+                "proto.native.underdocks.drowning_beacon")
+            && PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(
+                "proto.native.underdocks.drowning_beacon")
+            && PrototypeContent.Event(
+                "proto.native.underdocks.drowning_beacon").Choices
+                .Any(choice => choice.Id == "bottle"
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainPotion
+                        && effect.PotionId
+                            == "proto.native.underdocks.glowwater_potion"))
+            && PrototypeContent.Potion(
+                "proto.native.underdocks.glowwater_potion").Effects
+                .SequenceEqual(
+                [
+                    new(PrototypeCombatEffectKind.ExhaustHand, 0),
+                    new(PrototypeCombatEffectKind.DrawCards, 10)
+                ]))
+        {
             implementation = "implemented";
             integration = "integrated";
         }
@@ -303,6 +338,69 @@ public static class V111Coverage
                     .EnemyIds.SequenceEqual(
                         [PrototypeNativeHiveEvents.MysteriousKnightId],
                         StringComparer.Ordinal))
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "BATTLEWORN_DUMMY_EVENT_ENCOUNTER"
+                && engineIds.SequenceEqual(
+                    new[]
+                    {
+                        PrototypeNativeGloryEvents.BattlewornV1EncounterId,
+                        PrototypeNativeGloryEvents.BattlewornV2EncounterId,
+                        PrototypeNativeGloryEvents.BattlewornV3EncounterId
+                    }.Order(StringComparer.Ordinal),
+                    StringComparer.Ordinal)
+                && ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    PrototypeNativeGloryEvents.BattlewornDummyId, 3)
+                && PrototypeContent.Event(
+                    PrototypeNativeGloryEvents.BattlewornDummyId).Choices
+                    .Select(choice => choice.Id)
+                    .SequenceEqual(["setting_1", "setting_2", "setting_3"])
+                && PrototypeContent.Power(
+                    PrototypeNativeGloryEvents.BattlewornTimeLimitId)
+                    .EnemyStacksDecayAtSideTurnEnd == 1
+                && new[]
+                    {
+                        PrototypeNativeGloryEvents.BattleFriendV1Id,
+                        PrototypeNativeGloryEvents.BattleFriendV2Id,
+                        PrototypeNativeGloryEvents.BattleFriendV3Id
+                    }
+                    .All(enemyId => PrototypeContent.Enemy(enemyId)
+                        .StartingPowers?.Any(power =>
+                            power.PowerId
+                                == PrototypeNativeGloryEvents.BattlewornTimeLimitId
+                            && power.Stacks == 3) == true))
+            {
+                // The abstract source encounter only persists RanOutOfTime.
+                // The emulator stores the same escape outcome on its enemy.
+                implementation = "implemented";
+                integration = "integrated";
+            }
+            if (item.Id == "THE_ARCHITECT_EVENT_ENCOUNTER"
+                && engineIds.Contains(
+                    PrototypeNativeArchitectEnding.EncounterId,
+                    StringComparer.Ordinal)
+                && PrototypeNativeArchitectEnding.Definition
+                    .CanonicalEncounterId
+                    == PrototypeNativeArchitectEnding.EncounterId
+                && PrototypeContent.Encounter(
+                    PrototypeNativeArchitectEnding.EncounterId) is
+                    { RoomType: PrototypeRoomType.Event, Weight: 0 }
+                && PrototypeContent.Encounter(
+                    PrototypeNativeArchitectEnding.EncounterId).EnemyIds
+                    .SequenceEqual(
+                        [PrototypeNativeArchitectEnding.ActorId],
+                        StringComparer.Ordinal)
+                && PrototypeContent.Enemy(
+                    PrototypeNativeArchitectEnding.ActorId).MaxHp == 9999
+                && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                    PrototypeNativeArchitectEnding.EventId) == false
+                && PrototypeContent.Event(
+                    PrototypeNativeArchitectEnding.EventId).Choices
+                    .Select(choice => choice.Id)
+                    .SequenceEqual(
+                        [PrototypeNativeArchitectEnding.ProceedChoiceId]))
             {
                 implementation = "implemented";
                 integration = "integrated";

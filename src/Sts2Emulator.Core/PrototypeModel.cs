@@ -1494,7 +1494,8 @@ public sealed record PrototypeEventDefinition(
     int MinAct = 1,
     int MaxAct = int.MaxValue,
     int Weight = 1,
-    bool OncePerRun = true);
+    bool OncePerRun = true,
+    string? CanonicalEncounterId = null);
 
 public sealed record PrototypeMapFloorRule(
     int MinFloor,
