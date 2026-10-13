@@ -8,6 +8,7 @@ public static class PrototypeNativeSharedRelics
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
+    public const string BeatingRemnantId = "proto.relic.beating_remnant";
     public const string GorgetId = "proto.relic.gorget";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
@@ -48,6 +49,9 @@ public static class PrototypeNativeSharedRelics
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),
+        // Beating Remnant caps the owner's HP loss at 20 per combat turn.
+        new(BeatingRemnantId, "Beating Remnant",
+            PlayerHpLossLimitPerTurn: 20),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

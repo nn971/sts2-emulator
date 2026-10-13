@@ -1573,6 +1573,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BEATING_REMNANT"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.BeatingRemnantId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.BeatingRemnantId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.BeatingRemnantId,
+                out var beatingRemnantRarity)
+            && beatingRemnantRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.BeatingRemnantId)
+                .PlayerHpLossLimitPerTurn == 20
+            && HasBeatingRemnantPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -2609,6 +2629,69 @@ public static class V111Coverage
         return saved.Hp == 20
             && PrototypeGameEngine.IsLizardTailUsed(usedRelic)
             && diedAgain.Hp == 0;
+    }
+
+    private static bool HasBeatingRemnantPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.BeatingRemnantId;
+        const string tungstenRodId = PrototypeNativeSharedRelics.TungstenRodId;
+        var remnant = new RelicInstance(
+            relicId, PrototypeJson.EmptyObject());
+        var tungstenRod = new RelicInstance(
+            tungstenRodId, PrototypeJson.EmptyObject());
+        var player = new PlayerState(
+            100, 100, 0, [], [remnant, tungstenRod], []);
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies: [],
+            NextCardInstanceId: 1,
+            Cards: [],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1);
+
+        var first = PrototypeGameEngine.ApplyPlayerHpLoss(
+            player, combat, 15);
+        var second = PrototypeGameEngine.ApplyPlayerHpLoss(
+            first.Player, first.Combat, 15);
+        var blockedByLimit = PrototypeGameEngine.ApplyPlayerHpLoss(
+            second.Player, second.Combat, 4);
+        var nextTurnCombat = blockedByLimit.Combat with
+        {
+            Counters = PrototypeGameEngine.AdvanceTurnCounters(
+                blockedByLimit.Combat.CounterState)
+        };
+        var nextTurn = PrototypeGameEngine.ApplyPlayerHpLoss(
+            blockedByLimit.Player, nextTurnCombat, 5);
+
+        var meltedPlayer = player with
+        {
+            Hp = 100,
+            Relics =
+            [
+                remnant with { IsMelted = true },
+                tungstenRod with { IsMelted = true }
+            ]
+        };
+        var melted = PrototypeGameEngine.ApplyPlayerHpLoss(
+            meltedPlayer, combat, 30);
+
+        return first.UnblockedHpLoss == 14
+            && second.UnblockedHpLoss == 6
+            && second.Player.Hp == 80
+            && blockedByLimit.UnblockedHpLoss == 0
+            && blockedByLimit.Player.Hp == 80
+            && blockedByLimit.Combat.CounterState.HpLostThisTurn == 20
+            && nextTurn.Player.Hp == 76
+            && nextTurn.Combat.CounterState.HpLostThisTurn == 4
+            && melted.UnblockedHpLoss == 30
+            && melted.Player.Hp == 70
+            && melted.Combat.CounterState.HpLostThisTurn == 0;
     }
 
     private static bool HasSlingOfCouragePath()

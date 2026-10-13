@@ -2321,7 +2321,7 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static PrototypeCombatCounters AdvanceTurnCounters(
+    internal static PrototypeCombatCounters AdvanceTurnCounters(
         PrototypeCombatCounters counters) => counters with
     {
         CardsPlayedLastTurn = counters.CardsPlayedThisTurn,
@@ -2335,7 +2335,8 @@ public sealed partial class PrototypeGameEngine
         PlayedCardIdsThisTurn = Array.Empty<long>(),
         PlayedCardTagsThisTurn = Array.Empty<string>(),
         LastOriginalAttackLastTurn = counters.LastOriginalAttackThisTurn?.Fork(),
-        LastOriginalAttackThisTurn = null
+        LastOriginalAttackThisTurn = null,
+        HpLostThisTurn = 0
     };
 
     private static PrototypeQueuedOperation StratagemChoiceOperation(
@@ -9538,13 +9539,25 @@ public sealed partial class PrototypeGameEngine
         return Math.Max(0, amount - reduction);
     }
 
-    private static (PlayerState Player, CombatState Combat, int UnblockedHpLoss)
+    internal static (PlayerState Player, CombatState Combat, int UnblockedHpLoss)
         ApplyPlayerHpLoss(
             PlayerState player,
             CombatState combat,
             int amount)
     {
         amount = ReducePlayerHpLoss(player, amount);
+        var hpLossLimit = player.ActiveRelics
+            .Select(relic => PrototypeContent.Relic(relic.RelicId)
+                .PlayerHpLossLimitPerTurn)
+            .Where(limit => limit > 0)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+        if (hpLossLimit < int.MaxValue)
+        {
+            amount = Math.Min(amount, Math.Max(0,
+                hpLossLimit - Math.Max(0,
+                    combat.CounterState.HpLostThisTurn)));
+        }
         if (amount == 0)
         {
             return (player, combat, 0);
@@ -9587,6 +9600,18 @@ public sealed partial class PrototypeGameEngine
             }, 0);
         }
 
+        if (hpLossLimit < int.MaxValue)
+        {
+            combat = combat with
+            {
+                Counters = combat.CounterState with
+                {
+                    HpLostThisTurn = checked(
+                        Math.Max(0, combat.CounterState.HpLostThisTurn)
+                        + amount)
+                }
+            };
+        }
         return (player with
         {
             Hp = Math.Max(0, player.Hp - amount)

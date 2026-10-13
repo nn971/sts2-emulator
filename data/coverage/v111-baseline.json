@@ -24127,17 +24127,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.beating_remnant"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BeatingRemnant.cs#4b376c76a452bdf3a7b3bdb4e491f74bf163f47c9564d936f5008d5fccbf4ae9"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BEATING_REMNANT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29458,8 +29460,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 152,
-        "integrated": 153,
+        "implemented": 153,
+        "integrated": 154,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

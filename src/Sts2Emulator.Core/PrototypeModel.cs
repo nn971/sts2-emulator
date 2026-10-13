@@ -876,7 +876,8 @@ public sealed record PrototypeRelicDefinition(
     bool PreventsFirstTurnHandDiscard = false,
     int CombatVictoryGoldReward = 0,
     int ExtraEliteRareCardRewardCount = 0,
-    int RestHealPotionRewardCount = 0);
+    int RestHealPotionRewardCount = 0,
+    int PlayerHpLossLimitPerTurn = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -1855,7 +1856,8 @@ public sealed record PrototypeCombatCounters(
     PrototypeCombatCardSnapshot? LastOriginalAttackThisTurn = null,
     PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null,
     int MaulDamageBonus = 0,
-    int CardsPlayedLastTurn = 0)
+    int CardsPlayedLastTurn = 0,
+    int HpLostThisTurn = 0)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();

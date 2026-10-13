@@ -119,6 +119,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.charons_ashes"] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.WhiteStarId] =
                 PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.BeatingRemnantId] =
+                PrototypeRelicRarity.Rare,
             [PrototypeNativeRestSiteRelics.ShovelId] = PrototypeRelicRarity.Rare,
             [PrototypeNativeRestSiteRelics.GiryaId] = PrototypeRelicRarity.Rare,
             ["proto.relic.gambling_chip"] = PrototypeRelicRarity.Rare,
