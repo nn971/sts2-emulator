@@ -2077,6 +2077,36 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "RIPPLE_BASIN"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.RippleBasinId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.RippleBasinId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.RippleBasinId,
+                out var rippleBasinRarity)
+            && rippleBasinRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.RippleBasinId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.RippleBasinId).Triggers is
+                [{ EventKind: PrototypeCombatEventKind.PlayerTurnEnded,
+                    RequiresPlayerSide: true,
+                    MaxAttacksPlayedThisTurn: 0,
+                    Effects:
+                    [
+                        { Kind:
+                            PrototypeCombatEffectKind.GainPlayerBlock,
+                            Amount: 4 }
+                    ] }]
+            && HasRippleBasinPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -4540,6 +4570,66 @@ public static class V111Coverage
             && Unchanged(enemySideResult, enemySide.SourceCardId)
             && Unchanged(maxLevelResult, alreadyUpgraded.SourceCardId,
                 PrototypeContent.Card(attackId).MaxUpgradeLevel);
+    }
+
+    private static bool HasRippleBasinPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.RippleBasinId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Dispatch(
+            int attacksThisTurn, bool melted, bool playerSideActive)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(
+                        0, relicId, 1, new int[triggerCount],
+                        IsMelted: melted)
+                ],
+                Counters: new PrototypeCombatCounters(
+                    AttacksPlayedThisTurn: attacksThisTurn),
+                Act: 1,
+                PlayPile: [],
+                IsPlayerSideActive: playerSideActive);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerTurnEnded),
+                PrototypeRng.CreateBundle(
+                    $"coverage-ripple-basin-{attacksThisTurn}-{melted}-{playerSideActive}"));
+        }
+
+        var noAttacks = Dispatch(
+            attacksThisTurn: 0, melted: false, playerSideActive: true);
+        var oneAttack = Dispatch(
+            attacksThisTurn: 1, melted: false, playerSideActive: true);
+        var melted = Dispatch(
+            attacksThisTurn: 0, melted: true, playerSideActive: true);
+        var enemySide = Dispatch(
+            attacksThisTurn: 0, melted: false, playerSideActive: false);
+
+        return noAttacks.Combat.PlayerBlock == 4
+            && oneAttack.Combat.PlayerBlock == 0
+            && melted.Combat.PlayerBlock == 0
+            && enemySide.Combat.PlayerBlock == 0;
     }
 
     private static bool HasGnarledHammerPath()

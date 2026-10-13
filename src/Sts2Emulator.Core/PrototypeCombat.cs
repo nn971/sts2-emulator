@@ -10527,6 +10527,13 @@ public sealed partial class PrototypeGameEngine
             return false;
         }
 
+        if (trigger.MaxAttacksPlayedThisTurn is { } maxAttacksThisTurn
+            && combat.CounterState.AttacksPlayedThisTurn
+                > maxAttacksThisTurn)
+        {
+            return false;
+        }
+
         if (trigger.RequiresZeroPlayerBlock
             && combat.PlayerBlock != 0)
         {

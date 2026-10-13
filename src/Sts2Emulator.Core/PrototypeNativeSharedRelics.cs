@@ -20,6 +20,7 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.vexing_puzzlebox";
     public const string PendulumId = "proto.relic.pendulum";
     public const string RazorToothId = "proto.relic.razor_tooth";
+    public const string RippleBasinId = "proto.relic.ripple_basin";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -175,6 +176,15 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.UpgradeEventSourceCard, 0)],
                     RequiredSourceCardType: PrototypeCardType.Skill,
                     RequiresPlayerSide: true)
+            ]),
+        // Gain 4 Block at side-turn end if no Attack was played that turn.
+        new(RippleBasinId, "Ripple Basin",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerTurnEnded,
+                    [new(PrototypeCombatEffectKind.GainPlayerBlock, 4)],
+                    RequiresPlayerSide: true,
+                    MaxAttacksPlayedThisTurn: 0)
             ]),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",

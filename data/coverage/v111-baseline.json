@@ -27881,17 +27881,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.ripple_basin"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RippleBasin.cs#82e35ef2a263ca144d7f28e238826bcbd41a1fb8cfe295daffb36d2cd28463b0"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "RIPPLE_BASIN",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29504,8 +29506,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 179,
-        "integrated": 180,
+        "implemented": 180,
+        "integrated": 181,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

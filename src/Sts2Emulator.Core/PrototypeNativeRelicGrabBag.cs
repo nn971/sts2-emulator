@@ -87,6 +87,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.SparklingRougeId] =
                 PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.RippleBasinId] =
+                PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.PermafrostId] =
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.ParryingShieldId] =

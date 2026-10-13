@@ -784,7 +784,8 @@ public sealed record PrototypeRelicTriggerSpec(
     string? RequiredSourceCardTag = null,
     bool RequiresPlayerSide = false,
     bool RequiresEmptyPotionSlots = false,
-    int? MinPlayerBlock = null);
+    int? MinPlayerBlock = null,
+    int? MaxAttacksPlayedThisTurn = null);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,

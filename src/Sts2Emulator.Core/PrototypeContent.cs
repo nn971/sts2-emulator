@@ -7682,6 +7682,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.KusarigamaId,
         PrototypeNativeSharedRelics.BowlerHatId,
         PrototypeNativeSharedRelics.SparklingRougeId,
+        PrototypeNativeSharedRelics.RippleBasinId,
         PrototypeNativeSharedRelics.PermafrostId,
         PrototypeNativeSharedRelics.ParryingShieldId,
         PrototypeNativeSharedRelics.VexingPuzzleboxId,

@@ -1402,3 +1402,6 @@ keeping its counter between combats. See
 Razor Tooth is now a Rare relic and upgrades each owner-played Attack or Skill,
 updating both its combat instance and persistent deck card. See
 [mechanics gap 128](reference-builds/v0.111.0-mechanics-gap-128.md).
+Ripple Basin is now an Uncommon relic and grants 4 Block at the end of its
+owner's side turn when they played no Attacks that turn. See
+[mechanics gap 129](reference-builds/v0.111.0-mechanics-gap-129.md).
