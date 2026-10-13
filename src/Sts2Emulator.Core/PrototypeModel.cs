@@ -880,7 +880,8 @@ public sealed record PrototypeRelicDefinition(
     int RestHealPotionRewardCount = 0,
     int PlayerHpLossLimitPerTurn = 0,
     string? AttackDamageBonusRequiredCardTag = null,
-    int AttackDamageBonusPerCardTag = 0);
+    int AttackDamageBonusPerCardTag = 0,
+    int MaxPlayerBlockRetainedAfterClear = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

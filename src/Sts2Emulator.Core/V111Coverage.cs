@@ -1640,6 +1640,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "STURDY_CLAMP"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.SturdyClampId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.SturdyClampId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.SturdyClampId,
+                out var sturdyClampRarity)
+            && sturdyClampRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.SturdyClampId)
+                .MaxPlayerBlockRetainedAfterClear == 10
+            && HasSturdyClampPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -2906,6 +2926,43 @@ public static class V111Coverage
         return activeStrike == 9
             && activeShiv == 4
             && meltedStrike == 6;
+    }
+
+    private static bool HasSturdyClampPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.SturdyClampId;
+        var relic = new RelicInstance(
+            relicId, PrototypeJson.EmptyObject());
+        var player = new PlayerState(30, 30, 0, [], [relic], []);
+        var meltedPlayer = player with
+        {
+            Relics = [relic with { IsMelted = true }]
+        };
+
+        static CombatState WithBlock(int block) => new(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: block,
+            Hand: [],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies: [],
+            NextCardInstanceId: 1,
+            Cards: [],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1);
+
+        var clamped = PrototypeGameEngine.ApplyPlayerBlockClear(
+            player, WithBlock(17));
+        var belowLimit = PrototypeGameEngine.ApplyPlayerBlockClear(
+            player, WithBlock(6));
+        var melted = PrototypeGameEngine.ApplyPlayerBlockClear(
+            meltedPlayer, WithBlock(17));
+
+        return clamped.PlayerBlock == 10
+            && belowLimit.PlayerBlock == 6
+            && melted.PlayerBlock == 0;
     }
 
     private static bool HasSlingOfCouragePath()

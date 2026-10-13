@@ -28411,17 +28411,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.sturdy_clamp"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/SturdyClamp.cs#944ba6c3ad7040bdb710ed31dd0ff478f8dc212a95674ce42c44e9c8ed704e83"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "STURDY_CLAMP",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29464,8 +29466,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 155,
-        "integrated": 156,
+        "implemented": 156,
+        "integrated": 157,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

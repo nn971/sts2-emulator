@@ -2145,14 +2145,7 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.ResetPlayerBlock:
             {
-                var preventsBlockClear = combat.PlayerPowers.Any(power =>
-                    power.Stacks > 0
-                    && PrototypeContent.Power(power.PowerId)
-                        .PreventsPlayerBlockClear);
-                if (!preventsBlockClear)
-                {
-                    combat = combat with { PlayerBlock = 0 };
-                }
+                combat = ApplyPlayerBlockClear(player, combat);
 
                 var toricShields = combat.ToricShields
                     ?? Array.Empty<PrototypeToricShield>();
@@ -2338,6 +2331,33 @@ public sealed partial class PrototypeGameEngine
         LastOriginalAttackThisTurn = null,
         HpLostThisTurn = 0
     };
+
+    internal static CombatState ApplyPlayerBlockClear(
+        PlayerState player, CombatState combat)
+    {
+        var retainedBlockMax = player.ActiveRelics
+            .Select(relic => PrototypeContent.Relic(relic.RelicId)
+                .MaxPlayerBlockRetainedAfterClear)
+            .Where(maximum => maximum > 0)
+            .DefaultIfEmpty(0)
+            .Min();
+        if (retainedBlockMax > 0)
+        {
+            return combat with
+            {
+                PlayerBlock = Math.Max(0,
+                    Math.Min(combat.PlayerBlock, retainedBlockMax))
+            };
+        }
+
+        var preventsBlockClear = combat.PlayerPowers.Any(power =>
+            power.Stacks > 0
+            && PrototypeContent.Power(power.PowerId)
+                .PreventsPlayerBlockClear);
+        return preventsBlockClear
+            ? combat
+            : combat with { PlayerBlock = 0 };
+    }
 
     private static PrototypeQueuedOperation StratagemChoiceOperation(
         CombatState combat)
