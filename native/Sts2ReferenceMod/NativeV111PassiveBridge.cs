@@ -72,6 +72,9 @@ internal static class NativeV111PassiveBridge
     internal static void NativeRngBoundary(NativeRngBoundaryEvidenceV111 evidence) =>
         _actionEnvelopes?.NativeRngBoundary(evidence);
 
+    internal static void NativeRngScalarBoundary(NativeRngScalarEvidenceV111 evidence) =>
+        _actionEnvelopes?.NativeRngScalarBoundary(evidence);
+
     internal static bool HasActionSidecar => _actionEnvelopes is not null;
 
     internal static void NativeShuffleOperation(
@@ -270,7 +273,9 @@ internal static class NativeV111PassiveBridge
             nativeRngHookInstalled: NativeV111RngHook.IsInstalled,
             nativeMonsterAiScopeInstalled: NativeV111RngHook.HasRollMoveScope,
             nativeShuffleScopeInstalled: NativeV111ShuffleHooks.IsInstalled,
-            nativeInitialHpScopeInstalled: NativeV111InitialHpHooks.IsInstalled);
+            nativeInitialHpScopeInstalled: NativeV111InitialHpHooks.IsInstalled,
+            nativeRngDoubleHookInstalled: NativeV111RngHook.HasDoubleHook,
+            nativeRngBoolHookInstalled: NativeV111RngHook.HasBoolHook);
         // A source-audited initial shuffle executes before the rendered
         // combat frame. Buffered evidence must precede later RNG requests
         // in this sidecar, with its pre-attachment basis clearly marked.
