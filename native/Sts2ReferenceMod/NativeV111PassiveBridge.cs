@@ -64,6 +64,16 @@ internal static class NativeV111PassiveBridge
         Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=" + reason);
     }
 
+    internal static bool ReadyForNativeRngHook => _tree is not null && !_hookDisabled;
+
+    // Source hook callbacks are deliberately separate from rendered-frame
+    // snapshots and CombatHistory publication. No RNG is sampled here.
+    internal static void NativeRngBoundary(NativeRngBoundaryEvidenceV111 evidence) =>
+        _actionEnvelopes?.NativeRngBoundary(evidence);
+
+    internal static void NativeRngHookFailure(string exceptionType) =>
+        _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
+
     internal static void Start()
     {
         string? expected = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_EXPECT_SHA256");
@@ -246,6 +256,15 @@ internal static class NativeV111PassiveBridge
             _currentFile[..^".jsonl".Length] + ".actions.jsonl",
             BuildId, runId);
         _actionEnvelopes.HistoryBaseline(_historyIndex);
+        // All 12+3 native named streams are bound to their identity only
+        // after a single-player CombatState exists. Earlier setup draws are
+        // independently marked as unobserved by the diagnostic contract.
+        try { NativeV111RngHook.BeginCombat(combat); }
+        catch (Exception error)
+        {
+            _actionEnvelopes.ObservationFailure(
+                "native_rng_owner_binding", error.GetType().Name);
+        }
         _panel?.UseSession(_recording, _currentFile);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
@@ -435,6 +454,7 @@ internal static class NativeV111PassiveBridge
 
     private static void EndCombat(string reason)
     {
+        NativeV111RngHook.EndCombat();
         var recording = _recording;
         var actionEnvelopes = _actionEnvelopes;
         if (recording is null && actionEnvelopes is null && _combat is null)
