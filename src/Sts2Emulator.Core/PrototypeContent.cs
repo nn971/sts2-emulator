@@ -7556,6 +7556,7 @@ public static class PrototypeContent
         "proto.relic.anchor",
         "proto.relic.vajra",
         "proto.relic.blood_vial",
+        PrototypeNativeSharedRelics.StrawberryId,
         "proto.relic.potion_belt",
         "proto.relic.snecko_skull",
         "proto.relic.meat_on_the_bone",

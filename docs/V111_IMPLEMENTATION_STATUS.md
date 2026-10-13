@@ -51,6 +51,10 @@ and grants 600 gold on entry. Slowly Find an Exit loses 8 HP and offers a
 random potion. The visible map quest marker, native treasure traversal,
 potion pool and RNG parity remain open; see the
 [pinned event and card audit](reference-builds/v0.111.0-legends-were-true.md).
+Strawberry is integrated as a Common shared relic. Its pickup adds 7 Max HP
+and the emulator includes it in the Silent common relic queue. Relic RNG
+parity remains open; see the
+[pinned Strawberry audit](reference-builds/v0.111.0-strawberry.md).
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

@@ -28398,17 +28398,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.strawberry"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Strawberry.cs#1701eb3115bbdf02d5b64f94b9d1d785bbff2e8587303388834c0299c1251dc6"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "STRAWBERRY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29463,8 +29465,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 75,
-        "integrated": 76,
+        "implemented": 76,
+        "integrated": 77,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

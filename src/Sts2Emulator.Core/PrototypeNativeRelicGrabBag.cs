@@ -35,6 +35,7 @@ public static class PrototypeNativeRelicGrabBag
         {
             ["proto.relic.lantern"] = PrototypeRelicRarity.Common,
             ["proto.relic.bag_of_preparation"] = PrototypeRelicRarity.Common,
+            [PrototypeNativeSharedRelics.StrawberryId] = PrototypeRelicRarity.Common,
             ["proto.relic.happy_flower"] = PrototypeRelicRarity.Common,
             ["proto.relic.anchor"] = PrototypeRelicRarity.Common,
             ["proto.relic.vajra"] = PrototypeRelicRarity.Common,
