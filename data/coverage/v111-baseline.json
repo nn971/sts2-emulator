@@ -25655,17 +25655,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.game_piece"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/GamePiece.cs#5b74b4ab96d1308141757e535a1e08f22aa6a52a80b23cdacc74cfefc9ad5bbf"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "GAME_PIECE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29440,8 +29442,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 143,
-        "integrated": 144,
+        "implemented": 144,
+        "integrated": 145,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

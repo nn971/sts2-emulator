@@ -2040,6 +2040,32 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "GAME_PIECE"
+            && engineIds.Contains(PrototypeNativeSharedRelics.GamePieceId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.GamePieceId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.GamePieceId,
+                out var gamePieceRarity)
+            && gamePieceRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.GamePieceId).Triggers?.Any(
+                trigger => trigger.EventKind
+                    == PrototypeCombatEventKind.CardPlayed
+                    && trigger.RequiresPlayerSide
+                    && trigger.RequiredSourceCardType
+                        == PrototypeCardType.Power
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind.DrawCards
+                        && effect.Amount == 1)) == true
+            && HasGamePiecePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "NINJA_SCROLL"
             && engineIds.Contains(PrototypeNativeSilentRelics.NinjaScrollId,
                 StringComparer.Ordinal)
@@ -3373,6 +3399,87 @@ public static class V111Coverage
         return HasHp(Dispatch(turn: 1, melted: false), 21, 11)
             && HasHp(Dispatch(turn: 2, melted: false), 30, 20)
             && HasHp(Dispatch(turn: 1, melted: true), 30, 20);
+    }
+
+    private static bool HasGamePiecePath()
+    {
+        const string powerCardId = "proto.silent.footwork";
+        const string attackCardId = "proto.silent.strike";
+        var relicId = PrototypeNativeSharedRelics.GamePieceId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Fixture(bool melted)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(
+                30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [2, 3],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 5,
+                Cards:
+                [
+                    new CombatCardInstance(1, 1, powerCardId, 0,
+                        false, PrototypeJson.EmptyObject()),
+                    new CombatCardInstance(2, 2, attackCardId, 0,
+                        false, PrototypeJson.EmptyObject()),
+                    new CombatCardInstance(3, 3, "proto.silent.defend", 0,
+                        false, PrototypeJson.EmptyObject()),
+                    new CombatCardInstance(4, 4, powerCardId, 0,
+                        false, PrototypeJson.EmptyObject())
+                ],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: [1, 4]);
+            return (player, combat);
+        }
+
+        static PrototypeCombatEvent Played(long cardInstanceId, string cardId) =>
+            new(PrototypeCombatEventKind.CardPlayed,
+                SourceCardInstanceId: cardInstanceId,
+                CardId: cardId);
+
+        var (player, combat) = Fixture(melted: false);
+        var first = PrototypeGameEngine.DispatchCombatEvent(
+            player, combat, Played(1, powerCardId),
+            PrototypeRng.CreateBundle("coverage-game-piece-first"));
+        var second = PrototypeGameEngine.DispatchCombatEvent(
+            first.Player, first.Combat, Played(4, powerCardId),
+            PrototypeRng.CreateBundle("coverage-game-piece-second"));
+        var (attackPlayer, attackCombat) = Fixture(melted: false);
+        var attack = PrototypeGameEngine.DispatchCombatEvent(
+            attackPlayer, attackCombat, Played(2, attackCardId),
+            PrototypeRng.CreateBundle("coverage-game-piece-attack"));
+        var (meltedPlayer, meltedCombat) = Fixture(melted: true);
+        var melted = PrototypeGameEngine.DispatchCombatEvent(
+            meltedPlayer, meltedCombat, Played(1, powerCardId),
+            PrototypeRng.CreateBundle("coverage-game-piece-melted"));
+        return first.Combat.Hand.Length == 1
+            && first.Combat.DrawPile.Length == 1
+            && second.Combat.Hand.Length == 2
+            && second.Combat.DrawPile.Length == 0
+            && attack.Combat.Hand.Length == 0
+            && attack.Combat.DrawPile.Length == 2
+            && melted.Combat.Hand.Length == 0
+            && melted.Combat.DrawPile.Length == 2;
     }
 
     private static bool HasDiamondDiademPath()

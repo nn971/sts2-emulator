@@ -10,6 +10,7 @@ public static class PrototypeNativeSharedRelics
     public const string CandelabraId = "proto.relic.candelabra";
     public const string ChandelierId = "proto.relic.chandelier";
     public const string FestivePopperId = "proto.relic.festive_popper";
+    public const string GamePieceId = "proto.relic.game_piece";
     public const string CentennialPuzzleId =
         "proto.relic.centennial_puzzle";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
@@ -113,6 +114,15 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.DamageEnemy, 9,
                         Target: PrototypeEffectTarget.AllEnemies)],
                     TurnEquals: 1)
+            ]),
+        // Game Piece draws one card after each Power card the owner plays.
+        new(GamePieceId, "Game Piece",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CardPlayed,
+                    [new(PrototypeCombatEffectKind.DrawCards, 1)],
+                    RequiredSourceCardType: PrototypeCardType.Power,
+                    RequiresPlayerSide: true)
             ]),
         // CentennialPuzzle draws three cards after the owner's first
         // unblocked damage callback in each combat.
