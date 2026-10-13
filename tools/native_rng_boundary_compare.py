@@ -65,17 +65,33 @@ def compare_native_emulator(
     if not emulator:
         return {**base, "status": "EMULATOR_RNG_PROVIDER_UNOBSERVED"}
 
+    semantic_eligibility_unverified = False
     for i, (native_row, emulator_row) in enumerate(zip(native, emulator)):
         req = key(emulator_row, "request")
+        operation = key(req, "operation_kind")
+        native_operation = key(native_row, "operation_kind")
+        if native_operation != "bounded_integer":
+            return {**base, "status": "UNSUPPORTED_NATIVE_RNG_OPERATION"}
+        if operation == "choose_index":
+            # At the source primitive NextInt we can audit only the bound
+            # and the integer outcome. The semantic candidate ordering
+            # belongs to a separate, source-audited mechanic-level hook.
+            ordered = key(req, "ordered_candidates")
+            if not isinstance(ordered, list) or not ordered:
+                return {**base, "status": "EMULATOR_ELIGIBILITY_UNAVAILABLE"}
+            expected_bound = len(ordered)
+            semantic_eligibility_unverified = True
+        elif operation == "bounded_integer":
+            expected_bound = key(req, "bounded_count")
+        else:
+            return {**base, "status": "UNSUPPORTED_OPERATION_MAPPING"}
         fields = [
             ("site_id", key(native_row, "site_id"), key(req, "site_id")),
             ("stream_id", key(native_row, "stream_id"), key(req, "stream_id")),
             ("owner_id", key(native_row, "owner_id"), key(req, "owner_id")),
             ("call_ordinal", key(native_row, "call_ordinal"), key(req, "ordinal")),
-            ("operation_kind", key(native_row, "operation_kind"),
-             key(req, "operation_kind")),
             ("bounded_count", key(native_row, "bounded_count"),
-             key(req, "bounded_count")),
+             expected_bound),
             ("selected_index", key(native_row, "selected_index"),
              key(emulator_row, "selected_index")),
             ("source_version", key(native_row, "source_version"),
@@ -106,6 +122,9 @@ def compare_native_emulator(
                 "first_mismatch": {
                     "index": base["compared"], "field": "call_count",
                     "native": len(native), "emulator": len(emulator)}}
+    if semantic_eligibility_unverified:
+        return {**base,
+                "status": "OBSERVED_RNG_PRIMITIVE_INDEX_ONLY_ELIGIBILITY_UNVERIFIED"}
     return {**base, "status": "OBSERVED_RNG_CALL_SEQUENCE_CONSISTENT"}
 
 
