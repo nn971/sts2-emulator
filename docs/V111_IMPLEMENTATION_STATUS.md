@@ -1393,3 +1393,6 @@ card played in each combat. See
 Parrying Shield is now an Uncommon relic and deals 6 damage to one random
 enemy at turn end when its owner has at least 10 Block. See
 [mechanics gap 125](reference-builds/v0.111.0-mechanics-gap-125.md).
+Vexing Puzzlebox is now a Rare relic and adds one random Silent card to its
+owner's first-turn hand, free for that turn. See
+[mechanics gap 126](reference-builds/v0.111.0-mechanics-gap-126.md).

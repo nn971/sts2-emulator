@@ -16,6 +16,8 @@ public static class PrototypeNativeSharedRelics
     public const string PermafrostId = "proto.relic.permafrost";
     public const string ParryingShieldId =
         "proto.relic.parrying_shield";
+    public const string VexingPuzzleboxId =
+        "proto.relic.vexing_puzzlebox";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -133,6 +135,18 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.DamageEnemy, 6,
                         Target: PrototypeEffectTarget.RandomEnemy)],
                     MinPlayerBlock: 10,
+                    RequiresPlayerSide: true)
+            ]),
+        // Add one random Silent card to the owner's first-turn hand, free
+        // until the turn ends.
+        new(VexingPuzzleboxId, "Vexing Puzzlebox",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                    [new(
+                        PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand,
+                        1)],
+                    TurnEquals: 1,
                     RequiresPlayerSide: true)
             ]),
         // Tiny Mailbox offers two random potions after a Rest heal.

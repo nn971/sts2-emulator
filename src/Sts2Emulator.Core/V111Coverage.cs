@@ -1985,6 +1985,35 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "VEXING_PUZZLEBOX"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.VexingPuzzleboxId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.VexingPuzzleboxId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.VexingPuzzleboxId,
+                out var vexingPuzzleboxRarity)
+            && vexingPuzzleboxRarity == PrototypeRelicRarity.Rare
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.VexingPuzzleboxId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.VexingPuzzleboxId).Triggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeCombatEventKind.PlayerSideTurnStarted
+                    && trigger.TurnEquals == 1
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Length == 1
+                    && trigger.Effects[0].Kind
+                        == PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand
+                    && trigger.Effects[0].Amount == 1) == true
+            && HasVexingPuzzleboxPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -4178,6 +4207,75 @@ public static class V111Coverage
             && Unchanged(below.Combat.Enemies)
             && Unchanged(melted.Combat.Enemies)
             && Unchanged(enemySide.Combat.Enemies);
+    }
+
+    private static bool HasVexingPuzzleboxPath()
+    {
+        const string relicId =
+            PrototypeNativeSharedRelics.VexingPuzzleboxId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Fixture(
+            int turn, bool melted, bool playerSideActive)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: [],
+                IsPlayerSideActive: playerSideActive);
+            return (player, combat);
+        }
+
+        (PlayerState Player, CombatState Combat) Dispatch(
+            int turn, bool melted, bool playerSideActive = true)
+        {
+            var fixture = Fixture(turn, melted, playerSideActive);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                fixture.Player,
+                fixture.Combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-vexing-puzzlebox-{turn}-{melted}-{playerSideActive}"));
+        }
+
+        var firstTurn = Dispatch(turn: 1, melted: false,
+            playerSideActive: true);
+        var card = firstTurn.Combat.Cards.SingleOrDefault();
+        return card is not null
+            && firstTurn.Combat.Hand.SequenceEqual([card.InstanceId])
+            && PrototypeContent.RewardCardPool.Contains(
+                card.CardId, StringComparer.Ordinal)
+            && card.TemporaryEnergyCost is
+                { Cost: 0 } freeThisTurn
+            && (freeThisTurn.Expiry
+                & PrototypeTemporaryCardCostExpiry.EndOfTurn) != 0
+            && Dispatch(turn: 2, melted: false,
+                playerSideActive: true).Combat.Cards.Length == 0
+            && Dispatch(turn: 1, melted: true,
+                playerSideActive: true).Combat.Cards.Length == 0
+            && Dispatch(turn: 1, melted: false,
+                playerSideActive: false).Combat.Cards.Length == 0;
     }
 
     private static bool HasGnarledHammerPath()

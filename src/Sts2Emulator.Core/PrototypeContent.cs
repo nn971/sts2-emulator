@@ -7682,6 +7682,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.SparklingRougeId,
         PrototypeNativeSharedRelics.PermafrostId,
         PrototypeNativeSharedRelics.ParryingShieldId,
+        PrototypeNativeSharedRelics.VexingPuzzleboxId,
         PrototypeNativeSharedRelics.MiniatureCannonId,
         PrototypeNativeSharedRelics.PenNibId,
         "proto.relic.burning_sticks",

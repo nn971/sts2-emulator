@@ -28973,17 +28973,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.vexing_puzzlebox"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/VexingPuzzlebox.cs#d12af68e178176839e1f32212123257ebd0ceeed35424bd5a3c6c4fa76a29e1f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "VEXING_PUZZLEBOX",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29498,8 +29500,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 176,
-        "integrated": 177,
+        "implemented": 177,
+        "integrated": 178,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

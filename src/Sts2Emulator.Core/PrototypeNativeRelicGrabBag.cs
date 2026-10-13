@@ -89,6 +89,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.ParryingShieldId] =
                 PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.VexingPuzzleboxId] =
+                PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.MiniatureCannonId] =
                 PrototypeRelicRarity.Uncommon,
             ["proto.relic.letter_opener"] = PrototypeRelicRarity.Uncommon,
