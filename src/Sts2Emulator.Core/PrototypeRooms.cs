@@ -67,8 +67,10 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             World = world,
-            Player = ApplyRelicRoomEntryGold(
-                ApplyPersistentCardRoomEntry(playerAfterTravel, node))
+            Player = CompleteSpoilsMapQuestAtNode(
+                ApplyRelicRoomEntryGold(
+                    ApplyPersistentCardRoomEntry(playerAfterTravel, node)),
+                node)
         };
 
         return room switch

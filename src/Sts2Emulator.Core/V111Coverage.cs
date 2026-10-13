@@ -181,6 +181,17 @@ public static class V111Coverage
         }
         if (item.Scope == "single-player"
             && item.Kind == "cards"
+            && item.Id == "SPOILS_MAP"
+            && engineIds.Contains(
+                PrototypeNativeSpoilsMap.CardId,
+                StringComparer.Ordinal)
+            && HasSpoilsMapPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player"
+            && item.Kind == "cards"
             && (item.Id is "DOWSING" or "ABUNDANCE")
             && HasDowsingRodQuestPath()
             && ((item.Id == "DOWSING"
@@ -635,6 +646,17 @@ public static class V111Coverage
                 PrototypeNativeSharedEvents.SymbioteId,
                 StringComparer.Ordinal)
             && HasCorruptedSymbiotePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "THE_LEGENDS_WERE_TRUE"
+            && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
+                StringComparer.Ordinal)
+            && HasSpoilsMapPath())
         {
             implementation = "implemented";
             integration = "integrated";
@@ -1480,6 +1502,73 @@ public static class V111Coverage
             && key.MaxUpgradeLevel == 0;
     }
 
+    private static bool HasSpoilsMapPath()
+    {
+        var eventId = PrototypeNativeOvergrowthEvents
+            .TheLegendsWereTrueId;
+        var definition = PrototypeContent.Event(eventId);
+        var nab = definition.Choices.SingleOrDefault(choice =>
+            choice.Id == "nab_the_map");
+        var exit = definition.Choices.SingleOrDefault(choice =>
+            choice.Id == "slowly_find_an_exit");
+        var card = PrototypeContent.Card(
+            PrototypeNativeSpoilsMap.CardId);
+        var player = new PlayerState(
+            20,
+            20,
+            0,
+            [new CardInstance(
+                1,
+                PrototypeNativeSpoilsMap.CardId,
+                0,
+                PrototypeNativeSpoilsMap.InitialPersistentState())],
+            [],
+            new PotionInstance?[3]);
+        var treasure = new MapNodeState(
+            "spoils-map-coverage",
+            Act: 2,
+            Floor: 3,
+            PrototypeRoomType.Treasure);
+        var assigned = PrototypeGameEngine
+            .AssignSpoilsMapQuestToGeneratedMap(
+                player,
+                new MapState([treasure]),
+                act: 2);
+        var assignedState = PrototypeNativeSpoilsMap.ReadPersistentState(
+            assigned.Player.Deck.Single());
+        var completed = PrototypeGameEngine
+            .CompleteSpoilsMapQuestAtNode(assigned.Player, treasure);
+        return definition.MinAct == 1
+            && definition.MaxAct == 1
+            && PrototypeNativeOvergrowthEvents.RegionEventIds.Contains(
+                eventId, StringComparer.Ordinal)
+            && PrototypeNativeUnderdocksEvents.SupportedRegionEventIds
+                .Contains(eventId, StringComparer.Ordinal)
+            && PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventId)
+            && PrototypeNativeOvergrowthEvents.IsEligible(
+                definition, player)
+            && PrototypeNativeUnderdocksEvents.IsEligible(
+                definition, player)
+            && nab?.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.AddCard
+                && effect.CardId == PrototypeNativeSpoilsMap.CardId) == true
+            && exit?.Effects.Select(effect => effect.Kind).SequenceEqual(
+                [PrototypeRunEffectKind.LoseHp,
+                 PrototypeRunEffectKind.GainRandomPotion]) == true
+            && exit.Effects[0].Amount == 8
+            && card is
+            {
+                MechanicsImplemented: true,
+                Unplayable: true,
+                Type: PrototypeCardType.Quest,
+                MaxUpgradeLevel: 0
+            }
+            && assignedState?.SpoilsActIndex == 1
+            && assignedState.SpoilsNodeId == treasure.NodeId
+            && completed.Gold == 600
+            && completed.Deck.Length == 0;
+    }
+
     private static bool HasCorruptedSymbiotePath()
     {
         var definition = PrototypeContent.Event(
@@ -1544,6 +1633,26 @@ public static class V111Coverage
 
     private static string[] MissingBranches(V111InventoryItem item)
     {
+        if (item.Kind == "events"
+            && item.Id == "THE_LEGENDS_WERE_TRUE")
+        {
+            var expectedBranches = new[]
+            {
+                "initial/NAB_THE_MAP",
+                "initial/SLOWLY_FIND_AN_EXIT",
+                "page/INITIAL",
+                "page/INITIAL/NAB_THE_MAP",
+                "page/INITIAL/SLOWLY_FIND_AN_EXIT",
+                "page/NAB_THE_MAP",
+                "page/SLOWLY_FIND_AN_EXIT"
+            };
+            var supported = HasSpoilsMapPath()
+                && item.Branches is { Length: 7 } branches
+                && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                    expectedBranches.Order(StringComparer.Ordinal),
+                    StringComparer.Ordinal);
+            return supported ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events" && item.Id == "SYMBIOTE")
         {
             var expectedBranches = new[]

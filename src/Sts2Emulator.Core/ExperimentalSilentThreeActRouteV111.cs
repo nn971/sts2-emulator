@@ -338,15 +338,18 @@ public static class ExperimentalSilentThreeActRouteV111
         var nextBag = prepared.SingleOrDefault(bag => bag.Act == nextAct)
             ?? throw new InvalidOperationException(
                 "The next act has no prepared encounter history.");
-        var map = PrototypeNativeLaterActMap.GenerateNative(
+        var generatedMap = PrototypeNativeLaterActMap.GenerateNative(
             state.RunSeed, nextAct, state.Ascension);
+        var spoilsMap = PrototypeGameEngine
+            .AssignSpoilsMapQuestToGeneratedMap(
+                state.Player, generatedMap, nextAct);
         var nextWorld = world with
         {
             Act = nextAct,
             ActIdentity = state.Configuration.Acts[nextAct - 1],
             Floor = 0,
             ActiveRoom = null, Combat = null, Reward = null,
-            Shop = null, Event = null, Map = map,
+            Shop = null, Event = null, Map = spoilsMap.Map,
             ActOneRegion = null, ActOneEncounterPool = null,
             LaterActEncounterBag = nextBag.Fork(),
             PreparedLaterActEncounterBags = prepared
@@ -355,6 +358,7 @@ public static class ExperimentalSilentThreeActRouteV111
         };
         var continued = state with
         {
+            Player = spoilsMap.Player,
             World = nextWorld,
             Phase = RunPhase.MapChoice
         };

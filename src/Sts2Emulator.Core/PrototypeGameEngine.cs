@@ -798,10 +798,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Shop = null,
             Event = null
         };
-        world = world with { Map = GenerateActMap(world.Act, state.Rng) };
+        var generatedMap = GenerateActMap(world.Act, state.Rng);
+        var spoilsMap = AssignSpoilsMapQuestToGeneratedMap(
+            state.Player, generatedMap, world.Act);
+        world = world with { Map = spoilsMap.Map };
 
         return state with
         {
+            Player = spoilsMap.Player,
             World = world,
             Phase = RunPhase.MapChoice
         };
@@ -1006,7 +1010,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 instanceId,
                 cardId,
                 upgradeLevel,
-                PrototypeJson.EmptyObject()));
+                cardId == PrototypeNativeSpoilsMap.CardId
+                    ? PrototypeNativeSpoilsMap.InitialPersistentState()
+                    : PrototypeJson.EmptyObject()));
         player = player with
         {
             Deck = player.Deck.Append(card).ToArray()

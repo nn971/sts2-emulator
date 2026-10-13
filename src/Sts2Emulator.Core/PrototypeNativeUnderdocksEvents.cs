@@ -21,6 +21,7 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.doors_of_light_and_dark",
         "proto.native.underdocks.trash_heap",
         "proto.native.underdocks.waterlogged_scriptorium",
+        PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
         PrototypeNativeSharedEvents.ThisOrThatId
     ];
 
@@ -38,6 +39,7 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.sunken_treasury",
         "proto.native.underdocks.doors_of_light_and_dark",
         "proto.native.underdocks.sunken_statue",
+        PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
         PrototypeNativeSharedEvents.ThisOrThatId
     ];
 
@@ -49,6 +51,8 @@ public static class PrototypeNativeUnderdocksEvents
         PrototypeEventDefinition evt, PlayerState player) =>
         evt.Id switch
         {
+            PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId =>
+                player.Deck.Length > 0 && player.Hp >= 10,
             PrototypeNativeEndlessConveyor.EventId =>
                 player.Gold >= 120,
             "proto.native.underdocks.waterlogged_scriptorium" =>

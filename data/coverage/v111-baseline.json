@@ -10127,19 +10127,21 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.spoils_map"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/SpoilsMap.cs#bb52465415aa2e7df7024e94b04013f8fca94b01d0af47d2f188619528ef99bc"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "cards",
         "missing_branches": [],
         "missing_variants": [
           "base"
         ],
         "native_id": "SPOILS_MAP",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15979,25 +15981,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.the_legends_were_true"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/TheLegendsWereTrue.cs#3810ff9cc6d5d621b9c221edb486151efe8f6affd28a686ae81b060862796cb2"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/NAB_THE_MAP",
-          "initial/SLOWLY_FIND_AN_EXIT",
-          "page/INITIAL",
-          "page/INITIAL/NAB_THE_MAP",
-          "page/INITIAL/SLOWLY_FIND_AN_EXIT",
-          "page/NAB_THE_MAP",
-          "page/SLOWLY_FIND_AN_EXIT"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "THE_LEGENDS_WERE_TRUE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29367,8 +29363,8 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 204,
-        "integrated": 142,
+        "implemented": 205,
+        "integrated": 143,
         "kind": "cards",
         "scope_review_required": 0,
         "validated": 0
@@ -29417,8 +29413,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 55,
-        "integrated": 58,
+        "implemented": 56,
+        "integrated": 59,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0

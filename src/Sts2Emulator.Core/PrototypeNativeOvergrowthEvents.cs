@@ -10,6 +10,8 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeOvergrowthEvents
 {
     public const string NeowEventId = "proto.native.event.neow";
+    public const string TheLegendsWereTrueId =
+        "proto.native.event.the_legends_were_true";
 
     // The default Neow positive/curse subsets from v0.111.0 Neow.cs.
     // This intentionally excludes conditionally-added special choices
@@ -365,6 +367,7 @@ public static class PrototypeNativeOvergrowthEvents
         "proto.native.event.sapphire_seed",
         "proto.native.event.sunken_statue",
         "proto.native.event.tablet_of_truth",
+        TheLegendsWereTrueId,
         "proto.native.event.unrest_site",
         "proto.native.event.wellspring",
         "proto.native.event.whispering_hollow",
@@ -486,6 +489,24 @@ public static class PrototypeNativeOvergrowthEvents
             ],
             MaxAct: 1),
         new(
+            TheLegendsWereTrueId,
+            "The Legends Were True",
+            [
+                new(
+                    "nab_the_map",
+                    "Take Spoils Map",
+                    [new(PrototypeRunEffectKind.AddCard,
+                        CardId: PrototypeNativeSpoilsMap.CardId)]),
+                new(
+                    "slowly_find_an_exit",
+                    "Lose 8 HP and find a potion",
+                    [
+                        new(PrototypeRunEffectKind.LoseHp, 8),
+                        new(PrototypeRunEffectKind.GainRandomPotion)
+                    ])
+            ],
+            MaxAct: 1),
+        new(
             "proto.native.event.unrest_site",
             "Unrest Site",
             [
@@ -566,6 +587,7 @@ public static class PrototypeNativeOvergrowthEvents
     public static bool UsesNativePotionOffer(string eventId) =>
         eventId is "proto.native.event.wellspring"
             or "proto.native.event.whispering_hollow"
+            or TheLegendsWereTrueId
             or PrototypeNativePotionCourier.EventId;
 
     public static bool IsNativeRegionEvent(string id) =>
@@ -576,6 +598,11 @@ public static class PrototypeNativeOvergrowthEvents
         PlayerState player)
     {
         var id = evt.Id;
+        if (id == TheLegendsWereTrueId)
+        {
+            return player.Deck.Length > 0 && player.Hp >= 10;
+        }
+
         if (id == "proto.native.event.unrest_site")
         {
             return player.Hp * 10 <= player.MaxHp * 7;

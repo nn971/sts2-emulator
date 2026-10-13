@@ -19,6 +19,7 @@ public static class PrototypeNativeEventCompletionPages
             or "proto.native.event.sapphire_seed"
             or "proto.native.event.unrest_site"
             or "proto.native.event.byrdonis_nest"
+            or PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId
             or "proto.native.event.wood_carvings"
             or PrototypeNativeDenseVegetation.EventId
             or PrototypeNativeTabletOfTruth.EventId
@@ -105,6 +106,8 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "rest" or "kill"
         || eventId == "proto.native.event.byrdonis_nest"
             && choiceId is "eat" or "take"
+        || eventId == PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId
+            && choiceId is "nab_the_map" or "slowly_find_an_exit"
         || eventId == "proto.native.event.wood_carvings"
             && choiceId is "bird" or "snake" or "torus"
         || eventId == PrototypeNativeSharedEvents.SymbioteId

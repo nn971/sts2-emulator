@@ -45,6 +45,12 @@ Dowsing Rod's Neow pickup, Dowsing's persistent quest progress, and the
 Abundance transformation are now counted as integrated through their actual
 acquisition chain. Abundance's generated Power choice still uses prototype
 card-generation pools and RNG.
+The Legends Were True is integrated in both Act 1 regions. Nab the Map adds
+Spoils Map, which assigns the first generated Hive Treasure node as its quest
+and grants 600 gold on entry. Slowly Find an Exit loses 8 HP and offers a
+random potion. The visible map quest marker, native treasure traversal,
+potion pool and RNG parity remain open; see the
+[pinned event and card audit](reference-builds/v0.111.0-legends-were-true.md).
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two
