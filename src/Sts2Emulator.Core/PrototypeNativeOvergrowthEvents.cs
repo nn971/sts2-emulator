@@ -42,12 +42,13 @@ public static class PrototypeNativeOvergrowthEvents
         NeowPositiveRelicNames
             .Concat(NeowConditionalPositiveRelicNames)
             .Concat(NeowCursedRelicNames)
-            .Where(name => name is not ("Kaleidoscope" or "MassiveScroll"
-                or "NeowsBones"))
+            .Where(name => name is not ("Kaleidoscope" or "MassiveScroll"))
             .ToArray();
 
     public static string[] NeowBonesSupportedRelicNames { get; } =
-        NeowCoveredChoiceRelicNames;
+        NeowCoveredChoiceRelicNames
+            .Where(name => name != "NeowsBones")
+            .ToArray();
 
     public static string NeowRelicId(string nativeClass) =>
         "proto.native.neow." + nativeClass.ToLowerInvariant();

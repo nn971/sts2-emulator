@@ -15452,8 +15452,7 @@
         "integration": "integrated",
         "kind": "events",
         "missing_branches": [
-          "relic/KALEIDOSCOPE",
-          "relic/NEOWS_BONES"
+          "relic/KALEIDOSCOPE"
         ],
         "missing_variants": [],
         "native_id": "NEOW",
