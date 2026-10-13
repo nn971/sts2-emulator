@@ -398,10 +398,14 @@ public static class NativeEngineFidelityV111
             }
 
             var differences = checks.Where(x => !x.Equal).ToArray();
+            bool uncheckedObservablePowers = guards.Any(value =>
+                value.StartsWith("POWER_SEMANTICS_UNVERIFIED:", StringComparison.Ordinal));
             return new NativeEngineFidelityReportV111(
-                differences.Length == 0
-                    ? "CORE_ENGINE_CHECKPOINT_CONSISTENT"
-                    : "CORE_ENGINE_CHECKPOINT_MISMATCH",
+                differences.Length > 0
+                    ? "CORE_ENGINE_CHECKPOINT_MISMATCH"
+                    : uncheckedObservablePowers
+                        ? "CORE_ENGINE_CHECKPOINT_PARTIAL"
+                        : "CORE_ENGINE_CHECKPOINT_CONSISTENT",
                 "NOT_TESTED", true, build, [], guards.ToArray(),
                 checks.ToArray(), differences.FirstOrDefault()?.Path,
                 EmulatorEventJournal: engineEvents);
