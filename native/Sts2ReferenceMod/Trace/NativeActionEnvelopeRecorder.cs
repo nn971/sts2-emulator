@@ -33,7 +33,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         string path, string gameBuild, string runId,
         int queueCapacity = 8192, bool nativeRngHookInstalled = false,
         bool nativeMonsterAiScopeInstalled = false,
-        bool nativeShuffleScopeInstalled = false)
+        bool nativeShuffleScopeInstalled = false,
+        bool nativeInitialHpScopeInstalled = false)
     {
         _gameBuild = gameBuild;
         _writer = new AsyncTraceWriter(path, queueCapacity);
@@ -48,6 +49,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_rng_hook_installed = nativeRngHookInstalled,
                 native_monster_ai_scope_installed = nativeMonsterAiScopeInstalled,
                 native_shuffle_scope_installed = nativeShuffleScopeInstalled,
+                native_initial_hp_scope_installed = nativeInitialHpScopeInstalled,
                 native_rng_capture_scope = nativeRngHookInstalled
                     ? "post_first_observed_combat_frame"
                     : "hook_disabled",
