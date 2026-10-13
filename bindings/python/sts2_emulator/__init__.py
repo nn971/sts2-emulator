@@ -40,6 +40,47 @@ class State:
         return self.session.call("release_many", state_handles=[self.handle])["released"]
 
 
+@dataclass(frozen=True)
+class NatureBoundary:
+    """Isolated source-shaped Nature choice, NOT a playable game State."""
+    session: "Session"
+    handle: str
+    kind: str
+    fingerprint: str
+    pending: dict | None
+    complete: bool
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        return cls(session, payload["natureHandle"], payload["kind"],
+                   payload["fingerprint"], payload["pending"], payload["complete"])
+
+    def resolve(self, selected_index: int):
+        """Create a child by supplying one legal chance index."""
+        result = self.session.call("nature_resolve", nature_handle=self.handle,
+                                   fingerprint=self.fingerprint,
+                                   selected_index=selected_index)
+        return NatureBoundary.from_wire(self.session, result)
+
+    def fork(self):
+        result = self.session.call("nature_fork", nature_handle=self.handle)
+        return NatureBoundary.from_wire(self.session, result)
+
+    def advance(self):
+        """Advance a *completed HP* boundary to committed enemy intents."""
+        result = self.session.call("nature_advance", nature_handle=self.handle)
+        return NatureBoundary.from_wire(self.session, result)
+
+    def save_snapshot(self):
+        """Return an opaque Nature snapshot; distinct from RunState snapshot."""
+        return self.session.call("nature_save", nature_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_nature_many([self])
+
+
+
+
 class Session:
     def __init__(self, command, *, cwd=None):
         if isinstance(command, str):
@@ -111,6 +152,38 @@ class Session:
             payload.append({"state_handle": state.handle, "action_id": action_id})
         result = self.call("step_batch", steps=payload, parallelism=parallelism)
         return [State(self, item["child"]) for item in result["children"]]
+
+    def _require_nature_capability(self):
+        if self.capabilities.get("natureBoundarySchemaId") != (
+                "sts2-v111-nature-isolated-boundary-v1"):
+            raise EmulatorError("Emulator does not expose the opt-in Nature boundary protocol")
+
+    def begin_nature(self, seed: str, *, kind: str,
+                     act: int, encounter_id: str, native_entry: str,
+                     total_floor: int, map_column: int = 3,
+                     map_row: int = 5, ascension: int = 0):
+        """Create an isolated test fixture; no full-run chance stepping."""
+        self._require_nature_capability()
+        if kind not in ("initial_hp", "intents"):
+            raise ValueError("Supported Nature kinds: initial_hp, intents")
+        result = self.call("nature_begin", kind=kind, seed=seed, act=act,
+                           encounter_id=encounter_id, native_entry=native_entry,
+                           total_floor=total_floor, map_column=map_column,
+                           map_row=map_row, ascension=ascension)
+        return NatureBoundary.from_wire(self, result)
+
+    def load_nature_snapshot(self, snapshot: str, *, kind: str):
+        self._require_nature_capability()
+        result = self.call("nature_load", kind=kind, snapshot=snapshot)
+        return NatureBoundary.from_wire(self, result)
+
+    def release_nature_many(self, boundaries):
+        self._require_nature_capability()
+        states = list(boundaries)
+        if any(state.session is not self for state in states):
+            raise ValueError("Nature handle belongs to another session")
+        return self.call("nature_release_many",
+                         nature_handles=[state.handle for state in states])["released"]
 
     def coverage(self):
         return self.call("v111_coverage")["coverage"]
