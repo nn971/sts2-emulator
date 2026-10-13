@@ -996,6 +996,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PHILOSOPHERS_STONE"
+            && engineIds.Contains(
+                "proto.relic.philosophers_stone",
+                StringComparer.Ordinal)
+            && HasPhilosophersStonePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "CHEMICAL_X"
             && engineIds.Contains(
                 "proto.relic.chemical_x",
@@ -1868,6 +1878,23 @@ public static class V111Coverage
         return PrototypeContent.BossRelicPool.Contains(
                 relicId, StringComparer.Ordinal)
             && PrototypeContent.Relic(relicId).PreventsHandDiscard;
+    }
+
+    private static bool HasPhilosophersStonePath()
+    {
+        const string relicId = "proto.relic.philosophers_stone";
+        var definition = PrototypeContent.Relic(relicId);
+        return PrototypeContent.BossRelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            && definition.EnergyPerTurnBonus == 1
+            && definition.Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.CombatStarted
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.ApplyEnemyPower
+                    && effect.Amount == 1
+                    && effect.Target
+                        == PrototypeEffectTarget.AllEnemies
+                    && effect.PowerId == "proto.power.strength")) == true;
     }
 
     private static bool HasSpoilsMapPath()

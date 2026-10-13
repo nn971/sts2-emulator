@@ -7635,6 +7635,7 @@ public static class PrototypeContent
         "proto.relic.astrolabe",
         "proto.relic.coffee_dripper",
         "proto.relic.ectoplasm",
+        "proto.relic.philosophers_stone",
         "proto.relic.fusion_hammer",
         "proto.relic.velvet_choker",
         "proto.relic.runic_pyramid",

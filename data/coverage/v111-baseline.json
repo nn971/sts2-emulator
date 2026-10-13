@@ -27454,8 +27454,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PhilosophersStone.cs#71c53c9bac96a1ebfda53a04a3b36bcfdbd0cffea0ef02d45ee58bd777d1784a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29481,8 +29481,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 90,
-        "integrated": 91,
+        "implemented": 91,
+        "integrated": 92,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
