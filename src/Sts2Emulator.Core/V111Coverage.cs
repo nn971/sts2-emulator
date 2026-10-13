@@ -1093,6 +1093,68 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PETRIFIED_TOAD"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PetrifiedToadId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PetrifiedToadId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PetrifiedToadId,
+                out var toadRarityForRelic)
+            && toadRarityForRelic == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.PetrifiedToadId)
+                .PotionIdBeforeCombat
+                == PrototypeNativeSharedRelics.PotionShapedRockId
+            && PrototypeContent.Potion(
+                PrototypeNativeSharedRelics.PotionShapedRockId) is
+                { IsToken: true, Target: PrototypeCardTarget.Enemy }
+                toadRockPotion
+            && toadRockPotion.Effects.Length == 1
+            && toadRockPotion.Effects[0].Kind
+                == PrototypeCombatEffectKind.DamageEnemy
+            && toadRockPotion.Effects[0].Amount == 15
+            && !PrototypeContent.PotionPool.Contains(
+                PrototypeNativeSharedRelics.PotionShapedRockId,
+                StringComparer.Ordinal))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "potions"
+            && item.Id == "POTION_SHAPED_ROCK"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PotionShapedRockId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Potion(
+                PrototypeNativeSharedRelics.PotionShapedRockId) is
+                { IsToken: true, Target: PrototypeCardTarget.Enemy }
+                potionRock
+            && potionRock.Effects.Length == 1
+            && potionRock.Effects[0].Kind
+                == PrototypeCombatEffectKind.DamageEnemy
+            && potionRock.Effects[0].Amount == 15
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.PetrifiedToadId)
+                .PotionIdBeforeCombat
+                == PrototypeNativeSharedRelics.PotionShapedRockId
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PetrifiedToadId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PetrifiedToadId,
+                out var toadRarityForPotion)
+            && toadRarityForPotion == PrototypeRelicRarity.Uncommon
+            && !PrototypeContent.PotionPool.Contains(
+                PrototypeNativeSharedRelics.PotionShapedRockId,
+                StringComparer.Ordinal))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ETERNAL_FEATHER"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.EternalFeatherId,

@@ -19190,17 +19190,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.potion.shaped_rock"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Potions/PotionShapedRock.cs#82bd66e3895699ceeaa2ed32d00a98975444f491d4f539958110ade4a470e6c2"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "potions",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "POTION_SHAPED_ROCK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -27406,17 +27408,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.petrified_toad"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PetrifiedToad.cs#54ba6448410b752412588b88e03c4304ef980ffedfb30ec6bd0a6c8a9083180e"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PETRIFIED_TOAD",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29453,8 +29457,8 @@
         "catalogued": 64,
         "eligible": 64,
         "excluded": 0,
-        "implemented": 50,
-        "integrated": 50,
+        "implemented": 51,
+        "integrated": 51,
         "kind": "potions",
         "scope_review_required": 0,
         "validated": 0
@@ -29473,8 +29477,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 81,
-        "integrated": 82,
+        "implemented": 82,
+        "integrated": 83,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

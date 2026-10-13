@@ -8,6 +8,8 @@ public static class PrototypeNativeSharedRelics
     public const string AkabekoId = "proto.relic.akabeko";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
     public const string PearId = "proto.relic.pear";
+    public const string PetrifiedToadId = "proto.relic.petrified_toad";
+    public const string PotionShapedRockId = "proto.potion.shaped_rock";
     public const string StrawberryId = "proto.relic.strawberry";
     public const string WarPaintId = "proto.relic.war_paint";
     public const string WhetstoneId = "proto.relic.whetstone";
@@ -15,6 +17,10 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // PetrifiedToad.BeforeCombatStartLate tries to procure a token
+        // Potion Shaped Rock when a potion slot is open.
+        new(PetrifiedToadId, "Petrified Toad",
+            PotionIdBeforeCombat: PotionShapedRockId),
         // EternalFeather.AfterRoomEntered heals 3 per five cards on deck.
         new(EternalFeatherId, "Eternal Feather",
             RestSiteHealPerFiveCards: 3),

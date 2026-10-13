@@ -66,6 +66,10 @@ Eternal Feather heals 3 HP per five deck cards on entering a Rest Site, even
 when the player chooses an option other than healing. It is in the Silent
 uncommon relic queue; see the
 [pinned room-entry audit](reference-builds/v0.111.0-eternal-feather.md).
+Petrified Toad now procures a 15-damage Potion Shaped Rock before each combat
+when potion acquisition is allowed and a slot is open. The token potion is
+excluded from ordinary pools; see the
+[pinned relic and potion audit](reference-builds/v0.111.0-petrified-toad.md).
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

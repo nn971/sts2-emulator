@@ -8580,16 +8580,34 @@ public sealed partial class PrototypeGameEngine
     private static RunState ApplyBeforeCombatStartRelics(RunState state)
     {
         var relicTriggers = state.Player.ActiveRelics
-            .Where(relic => PrototypeContent.Relic(relic.RelicId)
-                .ProcureRandomPotionsBeforeCombat)
+            .Where(relic =>
+            {
+                var definition = PrototypeContent.Relic(relic.RelicId);
+                return definition.ProcureRandomPotionsBeforeCombat
+                    || definition.PotionIdBeforeCombat is not null;
+            })
             .ToArray();
         if (relicTriggers.Length == 0)
             return state;
 
         var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
         var nativeRunRng = state.NativeRunRng?.Fork();
-        foreach (var _ in relicTriggers)
+        foreach (var relic in relicTriggers)
         {
+            var definition = PrototypeContent.Relic(relic.RelicId);
+            if (definition.PotionIdBeforeCombat is { } fixedPotionId)
+            {
+                var slot = Array.IndexOf(slots, null);
+                if (slot >= 0 && !state.Player.ActiveRelics.Any(active =>
+                    PrototypeContent.Relic(active.RelicId)
+                        .PreventPotionAcquisition))
+                {
+                    slots[slot] = new PotionInstance(
+                        fixedPotionId, PrototypeJson.EmptyObject());
+                }
+                continue;
+            }
+
             var openSlot = Array.IndexOf(slots, null);
             while (openSlot >= 0)
             {

@@ -757,7 +757,8 @@ public sealed record PrototypePotionDefinition(
     PrototypeRunEffectSpec[]? RunEffects = null,
     bool AutomaticUsage = false,
     int DeathPreventionHealPercent = 0,
-    bool GrantsExtraTurn = false);
+    bool GrantsExtraTurn = false,
+    bool IsToken = false);
 
 public sealed record PrototypeRelicTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -854,7 +855,8 @@ public sealed record PrototypeRelicDefinition(
     int WeakAttackDamageReductionPercent = 0,
     int UpgradeRandomCardsOnAcquisitionCount = 0,
     PrototypeCardType? UpgradeRandomCardsOnAcquisitionType = null,
-    int RestSiteHealPerFiveCards = 0);
+    int RestSiteHealPerFiveCards = 0,
+    string? PotionIdBeforeCombat = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

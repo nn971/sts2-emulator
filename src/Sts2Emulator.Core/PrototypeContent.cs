@@ -2609,7 +2609,15 @@ public static class PrototypeContent
                     new(
                         PrototypeCombatEffectKind.AutoPlayTopDrawCards,
                         3)
-                ])
+                ]),
+            // TokenPotionPool contains Potion Shaped Rock only; it is
+            // procured by Petrified Toad, never generated for rewards/shops.
+            new PrototypePotionDefinition(
+                PrototypeNativeSharedRelics.PotionShapedRockId,
+                "Potion Shaped Rock",
+                PrototypeCardTarget.Enemy,
+                [new(PrototypeCombatEffectKind.DamageEnemy, 15)],
+                IsToken: true)
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
@@ -7537,7 +7545,8 @@ public static class PrototypeContent
     // Ironclad and the legacy Explosive Potion is absent from the pinned
     // Silent/shared pool. Unsupported source potions stay out.
     public static string[] PotionPool { get; } = Potions.Keys
-        .Where(id => id != "proto.native.neow.ambergris"
+        .Where(id => !Potions[id].IsToken
+            && id != "proto.native.neow.ambergris"
             && id != "proto.native.underdocks.glowwater_potion"
             && id != PrototypeNativePotionCourier.FoulPotionId
             && id != "proto.potion.blood"
@@ -7558,6 +7567,7 @@ public static class PrototypeContent
         "proto.relic.blood_vial",
         PrototypeNativeSharedRelics.StrawberryId,
         PrototypeNativeSharedRelics.PearId,
+        PrototypeNativeSharedRelics.PetrifiedToadId,
         PrototypeNativeSharedRelics.WarPaintId,
         PrototypeNativeSharedRelics.WhetstoneId,
         PrototypeNativeSharedRelics.EternalFeatherId,
