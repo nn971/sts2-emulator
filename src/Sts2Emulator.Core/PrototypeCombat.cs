@@ -10479,6 +10479,12 @@ public sealed partial class PrototypeGameEngine
             return false;
         }
 
+        if (trigger.MinPlayerBlock is { } minPlayerBlock
+            && combat.PlayerBlock < minPlayerBlock)
+        {
+            return false;
+        }
+
         if (trigger.RequiresEmptyPotionSlots
             && combat.PotionStates.Length != 0)
         {

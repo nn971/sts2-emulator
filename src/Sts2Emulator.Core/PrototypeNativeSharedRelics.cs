@@ -14,6 +14,8 @@ public static class PrototypeNativeSharedRelics
     public const string SparklingRougeId =
         "proto.relic.sparkling_rouge";
     public const string PermafrostId = "proto.relic.permafrost";
+    public const string ParryingShieldId =
+        "proto.relic.parrying_shield";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -120,6 +122,17 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.GainPlayerBlock, 7)],
                     MaxTriggersPerCounterWindow: 1,
                     RequiredSourceCardType: PrototypeCardType.Power,
+                    RequiresPlayerSide: true)
+            ]),
+        // At turn end, deal 6 damage to one random enemy with at least
+        // 10 unpowered Block.
+        new(ParryingShieldId, "Parrying Shield",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerTurnEnded,
+                    [new(PrototypeCombatEffectKind.DamageEnemy, 6,
+                        Target: PrototypeEffectTarget.RandomEnemy)],
+                    MinPlayerBlock: 10,
                     RequiresPlayerSide: true)
             ]),
         // Tiny Mailbox offers two random potions after a Rest heal.

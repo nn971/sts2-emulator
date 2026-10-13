@@ -782,7 +782,8 @@ public sealed record PrototypeRelicTriggerSpec(
     bool RequiresEmptyHand = false,
     string? RequiredSourceCardTag = null,
     bool RequiresPlayerSide = false,
-    bool RequiresEmptyPotionSlots = false);
+    bool RequiresEmptyPotionSlots = false,
+    int? MinPlayerBlock = null);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,

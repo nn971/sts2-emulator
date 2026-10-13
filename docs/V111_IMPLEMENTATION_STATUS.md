@@ -1390,3 +1390,6 @@ Sparkling Rouge is now an Uncommon relic and grants its owner 1 Strength and
 Permafrost is now an Uncommon relic and grants 7 Block after the first Power
 card played in each combat. See
 [mechanics gap 124](reference-builds/v0.111.0-mechanics-gap-124.md).
+Parrying Shield is now an Uncommon relic and deals 6 damage to one random
+enemy at turn end when its owner has at least 10 Block. See
+[mechanics gap 125](reference-builds/v0.111.0-mechanics-gap-125.md).

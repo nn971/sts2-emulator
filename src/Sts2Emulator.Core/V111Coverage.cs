@@ -1954,6 +1954,37 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PARRYING_SHIELD"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.ParryingShieldId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.ParryingShieldId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.ParryingShieldId,
+                out var parryingShieldRarity)
+            && parryingShieldRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.ParryingShieldId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.ParryingShieldId).Triggers?.Any(
+                trigger => trigger.EventKind
+                        == PrototypeCombatEventKind.PlayerTurnEnded
+                    && trigger.MinPlayerBlock == 10
+                    && trigger.RequiresPlayerSide
+                    && trigger.Effects.Length == 1
+                    && trigger.Effects[0].Kind
+                        == PrototypeCombatEffectKind.DamageEnemy
+                    && trigger.Effects[0].Amount == 6
+                    && trigger.Effects[0].Target
+                        == PrototypeEffectTarget.RandomEnemy) == true
+            && HasParryingShieldPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -4065,6 +4096,88 @@ public static class V111Coverage
             && attack.Combat.PlayerBlock == 0
             && meltedPower.Combat.PlayerBlock == 0
             && enemySidePower.Combat.PlayerBlock == 0;
+    }
+
+    private static bool HasParryingShieldPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.ParryingShieldId;
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Fixture(
+            int block, bool melted, bool playerSideActive)
+        {
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: block,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 30,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal)),
+                    new EnemyCombatState(2, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: [],
+                IsPlayerSideActive: playerSideActive);
+            return (player, combat);
+        }
+
+        (PlayerState Player, CombatState Combat) Dispatch(
+            int block, bool melted, bool playerSideActive = true)
+        {
+            var fixture = Fixture(block, melted, playerSideActive);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                fixture.Player,
+                fixture.Combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerTurnEnded),
+                PrototypeRng.CreateBundle(
+                    $"coverage-parrying-shield-{block}-{melted}-{playerSideActive}"));
+        }
+
+        var triggered = Dispatch(block: 10, melted: false);
+        var repeated = PrototypeGameEngine.DispatchCombatEvent(
+            triggered.Player,
+            triggered.Combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerTurnEnded),
+            PrototypeRng.CreateBundle("coverage-parrying-shield-repeat"));
+        var below = Dispatch(block: 9, melted: false);
+        var melted = Dispatch(block: 10, melted: true);
+        var enemySide = Dispatch(block: 10, melted: false,
+            playerSideActive: false);
+
+        static bool TookOneHit(EnemyCombatState[] enemies) =>
+            enemies.Count(enemy => enemy.Hp < (enemy.InstanceId == 1 ? 30 : 20)) == 1
+            && enemies.Sum(enemy => enemy.Hp) == 44;
+        static bool TookTwoHits(EnemyCombatState[] enemies) =>
+            enemies.All(enemy => enemy.Hp > 0)
+            && enemies.Sum(enemy => enemy.Hp) == 38;
+        static bool Unchanged(EnemyCombatState[] enemies) =>
+            enemies[0].Hp == 30 && enemies[1].Hp == 20;
+        return TookOneHit(triggered.Combat.Enemies)
+            && TookTwoHits(repeated.Combat.Enemies)
+            && Unchanged(below.Combat.Enemies)
+            && Unchanged(melted.Combat.Enemies)
+            && Unchanged(enemySide.Combat.Enemies);
     }
 
     private static bool HasGnarledHammerPath()

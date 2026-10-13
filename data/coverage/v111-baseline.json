@@ -27301,17 +27301,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.parrying_shield"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ParryingShield.cs#8938397a0a8fb658ea71e6e404340f186c388d8f00074549691e63b8fb209a35"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PARRYING_SHIELD",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29496,8 +29498,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 175,
-        "integrated": 176,
+        "implemented": 176,
+        "integrated": 177,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
