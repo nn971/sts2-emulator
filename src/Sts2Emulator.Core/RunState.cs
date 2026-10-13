@@ -20,7 +20,8 @@ public enum PrototypeCardEnchantmentKind
     Instinct,
     Swift,
     Sharp,
-    Vigorous
+    Vigorous,
+    Corrupted
 }
 
 public sealed record PrototypeCardEnchantment(

@@ -291,6 +291,15 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "enchantments"
+            && item.Id == "CORRUPTED"
+            && engineIds.Contains("Corrupted", StringComparer.Ordinal)
+            && HasCorruptedSymbiotePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "encounters")
         {
             var pools = PrototypeContent.OvergrowthWeakEncounterPool
@@ -620,6 +629,16 @@ public static class V111Coverage
                 PrototypeNativeSharedEvents.ThisOrThatId,
                 StringComparer.Ordinal))
             implementation = "implemented";
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "SYMBIOTE" && missingBranches.Length == 0
+            && engineIds.Contains(
+                PrototypeNativeSharedEvents.SymbioteId,
+                StringComparer.Ordinal)
+            && HasCorruptedSymbiotePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "STONE_OF_ALL_TIME"
             && missingBranches.Length == 0
@@ -1461,8 +1480,91 @@ public static class V111Coverage
             && key.MaxUpgradeLevel == 0;
     }
 
+    private static bool HasCorruptedSymbiotePath()
+    {
+        var definition = PrototypeContent.Event(
+            PrototypeNativeSharedEvents.SymbioteId);
+        var approach = definition.Choices.SingleOrDefault(choice =>
+            choice.Id == "approach");
+        var locked = definition.Choices.SingleOrDefault(choice =>
+            choice.Id == "approach_locked");
+        var transform = definition.Choices.SingleOrDefault(choice =>
+            choice.Id == "kill_with_fire");
+        var attack = new CardInstance(
+            1,
+            "proto.silent.strike",
+            0,
+            PrototypeJson.EmptyObject());
+        var nonAttack = new CardInstance(
+            2,
+            "proto.silent.defend",
+            0,
+            PrototypeJson.EmptyObject());
+        var enchantEligible = PrototypeGameEngine.CanSelectEventDeckCard(
+            attack,
+            PrototypePersistentDeckChoiceKind.Enchant,
+            null,
+            PrototypeCardEnchantmentKind.Corrupted,
+            basicCardsOnly: false);
+        var nonAttackIneligible = !PrototypeGameEngine.CanSelectEventDeckCard(
+            nonAttack,
+            PrototypePersistentDeckChoiceKind.Enchant,
+            null,
+            PrototypeCardEnchantmentKind.Corrupted,
+            basicCardsOnly: false);
+        return definition.MinAct == 2
+            && definition.MaxAct == 3
+            && ExperimentalSilentThreeActRouteV111.HiveEvents.Contains(
+                PrototypeNativeSharedEvents.SymbioteId,
+                StringComparer.Ordinal)
+            && ExperimentalSilentThreeActRouteV111.GloryEvents.Contains(
+                PrototypeNativeSharedEvents.SymbioteId,
+                StringComparer.Ordinal)
+            && definition.Choices.Length == 3
+            && approach?.DeckChoice is
+                {
+                    Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    Selections: 1,
+                    EnchantmentKind:
+                        PrototypeCardEnchantmentKind.Corrupted,
+                    RequiredCardType: PrototypeCardType.Attack
+                }
+            && locked is not null
+            && transform?.DeckChoice is
+                {
+                    Kind: PrototypePersistentDeckChoiceKind.Transform,
+                    Selections: 1
+                }
+            && enchantEligible
+            && nonAttackIneligible
+            && PrototypeNativeEventCompletionPages
+                .HasTerminalChoicePage(
+                    PrototypeNativeSharedEvents.SymbioteId);
+    }
+
     private static string[] MissingBranches(V111InventoryItem item)
     {
+        if (item.Kind == "events" && item.Id == "SYMBIOTE")
+        {
+            var expectedBranches = new[]
+            {
+                "initial/APPROACH",
+                "initial/APPROACH_LOCKED",
+                "initial/KILL_WITH_FIRE",
+                "page/APPROACH",
+                "page/INITIAL",
+                "page/INITIAL/APPROACH",
+                "page/INITIAL/APPROACH_LOCKED",
+                "page/INITIAL/KILL_WITH_FIRE",
+                "page/KILL_WITH_FIRE"
+            };
+            var supported = HasCorruptedSymbiotePath()
+                && item.Branches is { Length: 9 } branches
+                && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                    expectedBranches.Order(StringComparer.Ordinal),
+                    StringComparer.Ordinal);
+            return supported ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events"
             && item.Id == "WAR_HISTORIAN_REPY")
         {

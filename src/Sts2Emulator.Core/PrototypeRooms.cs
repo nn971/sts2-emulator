@@ -1993,6 +1993,10 @@ public sealed partial class PrototypeGameEngine
         PrototypeEventChoiceDefinition choice,
         RunWorldState world)
     {
+        if (world.Event?.EventId == PrototypeNativeSharedEvents.SymbioteId
+            && choice.Id == "approach_locked")
+            return false;
+
         if (world.Event?.EventId == PrototypeNativeSelfHelpBook.EventId
             && !PrototypeNativeSelfHelpBook.IsChoiceAvailable(
                 player, choice.Id))

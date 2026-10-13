@@ -114,6 +114,10 @@ Self-Help Book is integrated as a shared event in all three Acts. It applies
 Sharp 2 to an Attack, Nimble 2 to a block-producing Skill, or Swift 2 to a
 Power, with a Move On path when no eligible card exists. Sharp now adds its
 enchantment amount to each powered Attack hit.
+Symbiote is now in the Hive and Glory event pools. Its Corrupted enchantment
+adds 50% damage to powered Attacks and costs 2 HP when played; its alternative
+transforms one deck card. The transformation still uses prototype card and
+reward RNG pools; see the [Symbiote mechanics audit](reference-builds/v0.111.0-symbiote-corrupted.md).
 Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C# tests
 passed, including the eight synthetic full-route cases and Ancient
 acquisition/assignment coverage. The latest solution build and coverage-baseline

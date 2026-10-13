@@ -6,6 +6,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeSharedEvents
 {
     public const string ThisOrThatId = "proto.native.event.this_or_that";
+    public const string SymbioteId = "proto.native.event.symbiote";
     public const string ClumsyCardId = NativeGloryAncientsV111.ClumsyCardId;
 
     public static PrototypeEventDefinition ThisOrThatDefinition { get; } =
@@ -32,6 +33,37 @@ public static class PrototypeNativeSharedEvents
             MinAct: 1,
             MaxAct: 3);
 
+    public static PrototypeEventDefinition SymbioteDefinition { get; } =
+        new(
+            SymbioteId,
+            "Symbiote",
+            [
+                new(
+                    "approach",
+                    "Enchant a card with Corrupted",
+                    [],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Enchant,
+                        1,
+                        EnchantmentKind:
+                            PrototypeCardEnchantmentKind.Corrupted,
+                        RequiredCardType: PrototypeCardType.Attack)),
+                new(
+                    "approach_locked",
+                    "Approach the Symbiote",
+                    []),
+                new(
+                    "kill_with_fire",
+                    "Transform a card",
+                    [],
+                    new PrototypeEventDeckChoiceSpec(
+                        PrototypePersistentDeckChoiceKind.Transform,
+                        1))
+            ],
+            MinAct: 2,
+            MaxAct: 3);
+
     public static bool IsSupported(string eventId) =>
-        StringComparer.Ordinal.Equals(eventId, ThisOrThatId);
+        StringComparer.Ordinal.Equals(eventId, ThisOrThatId)
+        || StringComparer.Ordinal.Equals(eventId, SymbioteId);
 }

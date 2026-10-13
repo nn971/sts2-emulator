@@ -105,6 +105,7 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeStoneOfAllTime.EventId,
         PrototypeNativeFakeMerchant.EventId,
         PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeSharedEvents.SymbioteId,
         PrototypeNativeFutureOfPotions.EventId,
         PrototypeNativeRelicTrader.EventId
     ];
@@ -122,6 +123,7 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeGloryEvents.BattlewornDummyId,
         PrototypeNativeFakeMerchant.EventId,
         PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeSharedEvents.SymbioteId,
         PrototypeNativeFutureOfPotions.EventId,
         PrototypeNativeRelicTrader.EventId
     ];

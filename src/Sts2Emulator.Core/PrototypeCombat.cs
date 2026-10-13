@@ -6061,6 +6061,27 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.LosePlayerHp:
+                {
+                    var loss = ApplyPlayerHpLoss(
+                        player,
+                        combat,
+                        Math.Max(0, operation.Amount));
+                    player = loss.Player;
+                    combat = loss.Combat;
+                    if (player.Hp <= 0)
+                    {
+                        var prevented = TryUseAutomaticDeathPrevention(
+                            player,
+                            combat,
+                            rng,
+                            eventDepth);
+                        player = prevented.Player;
+                        combat = prevented.Combat;
+                    }
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.GainEnergy:
                     combat = combat with
                     {
@@ -8230,30 +8251,36 @@ public sealed partial class PrototypeGameEngine
         int? actionTargetEnemyId,
         CombatState combat)
     {
-        if (card.Enchantment is not
-            {
-                Kind: PrototypeCardEnchantmentKind.Inky
-            } inky
-            || inky.Amount <= 0)
+        if (card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Inky } inky
+            && inky.Amount > 0)
         {
-            return;
+            var target = ShouldCardTargetAllEnemies(combat, definition)
+                ? PrototypeEffectTarget.AllEnemies
+                : PrototypeEffectTarget.ActionTargetEnemy;
+            EnqueueEffectOperations(
+                operations,
+                new PrototypeCombatEffectSpec(
+                    PrototypeCombatEffectKind.ApplyEnemyStatus,
+                    inky.Amount,
+                    StatusId: "proto.status.weak",
+                    Target: target),
+                upgradeLevel: 0,
+                energySpent: 0,
+                actionTargetEnemyId,
+                combat,
+                sourceKind: PrototypeEffectSourceKind.Card);
         }
 
-        var target = ShouldCardTargetAllEnemies(combat, definition)
-            ? PrototypeEffectTarget.AllEnemies
-            : PrototypeEffectTarget.ActionTargetEnemy;
-        EnqueueEffectOperations(
-            operations,
-            new PrototypeCombatEffectSpec(
-                PrototypeCombatEffectKind.ApplyEnemyStatus,
-                inky.Amount,
-                StatusId: "proto.status.weak",
-                Target: target),
-            upgradeLevel: 0,
-            energySpent: 0,
-            actionTargetEnemyId,
-            combat,
-            sourceKind: PrototypeEffectSourceKind.Card);
+        if (definition.Type == PrototypeCardType.Attack
+            && card.Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.Corrupted)
+        {
+            operations.Enqueue(new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.LosePlayerHp,
+                2,
+                SourceKind: PrototypeEffectSourceKind.Card));
+        }
     }
 
     private static bool ShouldEnemyDeathTriggerFatal(
@@ -9186,6 +9213,14 @@ public sealed partial class PrototypeGameEngine
             == PrototypeCardEnchantmentKind.Instinct)
         {
             modified = checked(modified * 2);
+        }
+
+        if (sourceCard.Enchantment?.Kind
+            == PrototypeCardEnchantmentKind.Corrupted)
+        {
+            // Corrupted multiplies powered Attack damage by 1.5. The
+            // integer prototype rounds fractional damage down.
+            modified = (int)Math.Floor(modified * 1.5m);
         }
 
         return ModifyPlayerOutgoingAttackDamage(

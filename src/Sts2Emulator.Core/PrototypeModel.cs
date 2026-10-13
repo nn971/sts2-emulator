@@ -112,6 +112,7 @@ public enum PrototypeCombatEffectKind
     ApplyPlayerPower,
     ApplyEnemyPower,
     HealPlayer,
+    LosePlayerHp,
     UpgradeHandCards,
     UpgradeAllCards,
     DamagePlayer,

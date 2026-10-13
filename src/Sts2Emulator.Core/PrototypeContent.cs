@@ -6791,6 +6791,7 @@ public static class PrototypeContent
             .Append(PrototypeNativeStoneOfAllTime.Definition)
             .Append(PrototypeNativeFakeMerchant.Definition)
             .Append(PrototypeNativeSharedEvents.ThisOrThatDefinition)
+            .Append(PrototypeNativeSharedEvents.SymbioteDefinition)
             .Append(PrototypeNativeFutureOfPotions.Definition)
             .Append(PrototypeNativeRelicTrader.Definition)
             .Append(PrototypeNativeArchitectEnding.Definition)

@@ -12192,17 +12192,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "Corrupted"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/Corrupted.cs#c39517b397d2ccffdea8d07ba59741a3a73afb8bc6c037602237cfc8f0548c17"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CORRUPTED",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -15833,27 +15835,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.symbiote"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/Symbiote.cs#9e0782698d1be47bfca60adfc36f0102578ded4817e0eb76cb392eb210f34a7c"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/APPROACH",
-          "initial/APPROACH_LOCKED",
-          "initial/KILL_WITH_FIRE",
-          "page/APPROACH",
-          "page/INITIAL",
-          "page/INITIAL/APPROACH",
-          "page/INITIAL/APPROACH_LOCKED",
-          "page/INITIAL/KILL_WITH_FIRE",
-          "page/KILL_WITH_FIRE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "SYMBIOTE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29393,8 +29387,8 @@
         "catalogued": 22,
         "eligible": 22,
         "excluded": 0,
-        "implemented": 1,
-        "integrated": 1,
+        "implemented": 2,
+        "integrated": 2,
         "kind": "enchantments",
         "scope_review_required": 0,
         "validated": 0
@@ -29423,8 +29417,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 54,
-        "integrated": 57,
+        "implemented": 55,
+        "integrated": 58,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
