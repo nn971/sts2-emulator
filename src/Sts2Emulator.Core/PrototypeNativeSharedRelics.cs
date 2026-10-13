@@ -9,6 +9,7 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
     public const string GorgetId = "proto.relic.gorget";
+    public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
@@ -44,6 +45,9 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Tiny Mailbox offers two random potions after a Rest heal.
+        new(TinyMailboxId, "Tiny Mailbox",
+            RestHealPotionRewardCount: 2),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

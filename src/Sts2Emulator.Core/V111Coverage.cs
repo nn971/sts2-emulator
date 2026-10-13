@@ -2112,6 +2112,25 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TINY_MAILBOX"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.TinyMailboxId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.TinyMailboxId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.TinyMailboxId,
+                out var tinyMailboxRarity)
+            && tinyMailboxRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(PrototypeNativeSharedRelics.TinyMailboxId)
+                .RestHealPotionRewardCount == 2
+            && HasTinyMailboxPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "WHITE_STAR"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.WhiteStarId,
@@ -4020,6 +4039,85 @@ public static class V111Coverage
                     == PrototypeCardRarity.Rare)
             && beforeTreasure.Id == relicId
             && atTreasure.Id is null;
+    }
+
+    private static bool HasTinyMailboxPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.TinyMailboxId;
+        var engine = new PrototypeGameEngine();
+
+        RunState AtRest(string seed, bool melted)
+        {
+            var state = PrototypeNativeLaterActFixture.Create(seed, 3);
+            var world = state.World!;
+            var restNode = world.Map.Nodes.First(node =>
+                node.RoomType == PrototypeRoomType.Rest);
+            return state with
+            {
+                Player = state.Player with
+                {
+                    Relics = melted
+                        ?
+                        [
+                            new RelicInstance(
+                                relicId, PrototypeJson.EmptyObject(),
+                                IsMelted: true)
+                        ]
+                        :
+                        [
+                            new RelicInstance(
+                                relicId, PrototypeJson.EmptyObject()),
+                            new RelicInstance(
+                                PrototypeNativeUnderdocksTrashHeap
+                                    .DreamCatcherId,
+                                PrototypeJson.EmptyObject())
+                        ]
+                },
+                World = world with
+                {
+                    Floor = restNode.Floor,
+                    ActiveRoom = PrototypeRoomType.Rest,
+                    Map = world.Map with
+                    {
+                        CurrentNodeId = restNode.NodeId
+                    }
+                },
+                Phase = RunPhase.Rest
+            };
+        }
+
+        var rest = AtRest("coverage-tiny-mailbox", melted: false);
+        var heal = engine.GetLegalActions(rest).First(action =>
+            action.Kind == PrototypeNativeRestSiteActionsV111.Heal);
+        var reward = engine.Step(rest, heal).State;
+        var rewardState = reward.World?.Reward;
+        var options = rewardState?.ExtraPotionOptions
+            ?? Array.Empty<string>();
+        var takeFirst = engine.GetLegalActions(reward).FirstOrDefault(action =>
+            action.Kind == "take_reward_extra_potion"
+            && action.ReadPayload<ChooseExtraPotionRewardPayload>()
+                .GroupIndex == 0);
+        var afterPotion = takeFirst is null
+            ? reward
+            : engine.Step(reward, takeFirst).State;
+
+        var meltedRest = AtRest(
+            "coverage-tiny-mailbox-melted", melted: true);
+        var meltedHeal = engine.GetLegalActions(meltedRest).First(action =>
+            action.Kind == PrototypeNativeRestSiteActionsV111.Heal);
+        var meltedResult = engine.Step(meltedRest, meltedHeal).State;
+        return reward.Phase == RunPhase.Reward
+            && rewardState?.CardOptions.Length == 3
+            && options.Length == 2
+            && options.All(id => PrototypeContent.Potions.ContainsKey(id))
+            && takeFirst is not null
+            && afterPotion.Player.PotionSlots.Any(potion => potion is not null)
+            && afterPotion.World?.Reward?.ExtraPotionGroupsResolved is
+                { Length: 2 } resolved
+            && resolved[0]
+            && !resolved[1]
+            && meltedResult.Phase == RunPhase.MapChoice
+            && meltedResult.World?.Reward is null;
     }
 
     private static bool HasDiamondDiademPath()

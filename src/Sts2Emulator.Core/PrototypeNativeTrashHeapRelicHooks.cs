@@ -82,53 +82,75 @@ public sealed partial class PrototypeGameEngine
     private static RunState EnterRestHealRelicReward(RunState state)
     {
         var world = RequireWorld(state);
-        var rewardCounts = state.Player.ActiveRelics
-            .Select(relic => PrototypeContent.Relic(relic.RelicId)
-                .RestHealCardRewardCount)
-            .Where(count => count > 0).ToArray();
-        if (rewardCounts.Length == 0)
+        var native = UsesNativeRegionalSystems(world);
+        var cardGroups = new List<string[]>();
+        var cardUpgradeGroups = new List<bool[]>();
+        var potionOptions = new List<string>();
+        foreach (var relic in state.Player.ActiveRelics)
         {
-            return CompleteRoomToMap(state);
-        }
+            var definition = PrototypeContent.Relic(relic.RelicId);
+            if (definition.RestHealCardRewardCount > 0)
+            {
+                if (native)
+                {
+                    var next =
+                        PrototypeNativeCardRarityOdds.GenerateEncounterCards(
+                            definition.RestHealCardRewardCount,
+                            state.Ascension, PrototypeRoomType.Combat,
+                            world.CardRarityOffsetBasisPoints, state.Rng,
+                            act: world.Act);
+                    cardGroups.Add(next.Cards);
+                    cardUpgradeGroups.Add(next.UpgradeFlags);
+                    world = world with
+                    {
+                        CardRarityOffsetBasisPoints =
+                            next.NextOffsetBasisPoints
+                    };
+                }
+                else
+                {
+                    cardGroups.Add(PickRewardCards(
+                        world.Act,
+                        definition.RestHealCardRewardCount,
+                        state.Rng));
+                }
+            }
 
-        // Native Dream Catcher adds one ordinary 3-choice CardReward
-        // after the RestSite heal. No card reward is given on train or
-        // smith actions. Each relic adds its own reward group.
-        var native = UsesNativeActOneSystems(world);
-        var groups = new List<string[]>();
-        var upgrades = new List<bool[]>();
-        foreach (var count in rewardCounts)
-        {
-            if (native)
+            if (definition.RestHealPotionRewardCount > 0)
             {
-                var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
-                    count, state.Ascension, PrototypeRoomType.Combat,
-                    world.CardRarityOffsetBasisPoints, state.Rng, act: world.Act);
-                groups.Add(next.Cards);
-                upgrades.Add(next.UpgradeFlags);
-                world = world with { CardRarityOffsetBasisPoints = next.NextOffsetBasisPoints };
-            }
-            else
-            {
-                groups.Add(PickRewardCards(world.Act, count, state.Rng));
+                potionOptions.AddRange(
+                    PrototypeNativePotionShop.PickWeightedDistinct(
+                        state.Rng, "reward",
+                        definition.RestHealPotionRewardCount));
             }
         }
+        if (cardGroups.Count == 0 && potionOptions.Count == 0)
+            return CompleteRoomToMap(state);
+
         var reward = new RewardState(
             SourceRoom: "Rest",
-            CardOptions: groups[0],
+            CardOptions: cardGroups.Count == 0 ? [] : cardGroups[0],
             PotionOption: null,
             RelicOption: null,
-            CardResolved: false,
+            CardResolved: cardGroups.Count == 0,
             PotionResolved: true,
             RelicResolved: true,
             EndsAct: false,
-            ExtraCardOptions: groups.Skip(1).ToArray(),
-            CardOptionUpgradeFlags: native ? upgrades[0] : null,
-            ExtraCardOptionUpgradeFlags: native ? upgrades.Skip(1).ToArray() : null,
-            IndependentSelection: native,
-            ExtraCardGroupsResolved: native ? new bool[groups.Count - 1] : null,
+            ExtraCardOptions: cardGroups.Skip(1).ToArray(),
+            CardOptionUpgradeFlags:
+                native && cardGroups.Count > 0
+                    ? cardUpgradeGroups[0] : null,
+            ExtraCardOptionUpgradeFlags:
+                native ? cardUpgradeGroups.Skip(1).ToArray() : null,
+            IndependentSelection: native || potionOptions.Count > 0,
+            ExtraCardGroupsResolved: native
+                ? new bool[Math.Max(0, cardGroups.Count - 1)] : null,
             ExtraRelicGroupsResolved: native ? [] : null,
-            CardRewardGenerators: groups.Select(_ =>
+            ExtraPotionOptions: potionOptions.Count > 0
+                ? potionOptions.ToArray() : null,
+            ExtraPotionGroupsResolved: potionOptions.Count > 0
+                ? new bool[potionOptions.Count] : null,
+            CardRewardGenerators: cardGroups.Select(_ =>
                 (PrototypeCardRewardGenerator?)new(
                     native
                         ? PrototypeCardRewardGeneratorKind.Encounter

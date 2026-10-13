@@ -875,7 +875,8 @@ public sealed record PrototypeRelicDefinition(
     int RestSiteHealBonus = 0,
     bool PreventsFirstTurnHandDiscard = false,
     int CombatVictoryGoldReward = 0,
-    int ExtraEliteRareCardRewardCount = 0);
+    int ExtraEliteRareCardRewardCount = 0,
+    int RestHealPotionRewardCount = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,

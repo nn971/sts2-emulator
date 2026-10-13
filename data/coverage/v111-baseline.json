@@ -28597,17 +28597,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.tiny_mailbox"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/TinyMailbox.cs#1a182ac3e18b3eecb44a826274b4bfa83e3bef5fc49d3d1745546edcd281d285"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TINY_MAILBOX",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29456,8 +29458,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 151,
-        "integrated": 152,
+        "implemented": 152,
+        "integrated": 153,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

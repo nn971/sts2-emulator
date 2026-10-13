@@ -7590,6 +7590,7 @@ public static class PrototypeContent
         .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [
+        PrototypeNativeSharedRelics.TinyMailboxId,
         PrototypeNativeSharedRelics.WhiteStarId,
         PrototypeNativeSharedRelics.BreadId,
         PrototypeNativeSharedRelics.GorgetId,
