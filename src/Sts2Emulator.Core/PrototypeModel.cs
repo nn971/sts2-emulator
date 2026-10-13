@@ -792,7 +792,8 @@ public sealed record PrototypeRelicTriggerSpec(
     bool RequiresEmptyPotionSlots = false,
     int? MinPlayerBlock = null,
     int? MaxAttacksPlayedThisTurn = null,
-    int? MinEnergySpent = null);
+    int? MinEnergySpent = null,
+    PrototypeCardType[]? RequiredCardTypesPlayedThisTurn = null);
 
 public sealed record PrototypeRelicRunTriggerSpec(
     PrototypeRunEventKind EventKind,
@@ -1890,7 +1891,9 @@ public sealed record PrototypeCombatCounters(
     PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null,
     int MaulDamageBonus = 0,
     int CardsPlayedLastTurn = 0,
-    int HpLostThisTurn = 0)
+    int HpLostThisTurn = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int PowersPlayedThisTurn = 0)
 {
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();

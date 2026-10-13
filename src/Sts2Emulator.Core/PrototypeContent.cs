@@ -7621,6 +7621,7 @@ public static class PrototypeContent
         "proto.relic.vajra",
         "proto.relic.blood_vial",
         PrototypeNativeSharedRelics.CentennialPuzzleId,
+        PrototypeNativeSharedRelics.RainbowRingId,
         PrototypeNativeSharedRelics.JuzuBraceletId,
         PrototypeNativeSharedRelics.FestivePopperId,
         PrototypeNativeSharedRelics.RegalPillowId,

@@ -170,6 +170,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.pocketwatch"] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.GamePieceId] =
                 PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.RainbowRingId] =
+                PrototypeRelicRarity.Rare,
             ["proto.relic.white_beast_statue"] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.BellowsId] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.ChandelierId] =

@@ -2352,6 +2352,7 @@ public sealed partial class PrototypeGameEngine
         AttacksPlayedLastTurn = counters.AttacksPlayedThisTurn,
         AttacksPlayedThisTurn = 0,
         SkillsPlayedThisTurn = 0,
+        PowersPlayedThisTurn = 0,
         CardsDiscardedThisTurn = 0,
         PlayedCardIdsLastTurn = counters.PlayedCardIdsThisTurn,
         PlayedCardIdsThisTurn = Array.Empty<long>(),
@@ -9408,6 +9409,11 @@ public sealed partial class PrototypeGameEngine
                         SkillsPlayedThisTurn =
                             counters.SkillsPlayedThisTurn + 1
                     },
+                    PrototypeCardType.Power => counters with
+                    {
+                        PowersPlayedThisTurn =
+                            counters.PowersPlayedThisTurn + 1
+                    },
                     _ => counters
                 };
 
@@ -10615,6 +10621,21 @@ public sealed partial class PrototypeGameEngine
         if (trigger.MaxAttacksPlayedThisTurn is { } maxAttacksThisTurn
             && combat.CounterState.AttacksPlayedThisTurn
                 > maxAttacksThisTurn)
+        {
+            return false;
+        }
+
+        if (trigger.RequiredCardTypesPlayedThisTurn is { } requiredTypes
+            && requiredTypes.Any(type => type switch
+            {
+                PrototypeCardType.Attack =>
+                    combat.CounterState.AttacksPlayedThisTurn <= 0,
+                PrototypeCardType.Skill =>
+                    combat.CounterState.SkillsPlayedThisTurn <= 0,
+                PrototypeCardType.Power =>
+                    combat.CounterState.PowersPlayedThisTurn <= 0,
+                _ => true
+            }))
         {
             return false;
         }

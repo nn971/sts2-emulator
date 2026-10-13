@@ -18,6 +18,7 @@ public static class PrototypeNativeSharedRelics
         "proto.relic.parrying_shield";
     public const string VexingPuzzleboxId =
         "proto.relic.vexing_puzzlebox";
+    public const string RainbowRingId = "proto.relic.rainbow_ring";
     public const string PendulumId = "proto.relic.pendulum";
     public const string RazorToothId = "proto.relic.razor_tooth";
     public const string RippleBasinId = "proto.relic.ripple_basin";
@@ -493,6 +494,28 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.DamageEnemy, 52,
                         Target: PrototypeEffectTarget.AllEnemies)],
                     TurnEquals: 7)
+            ]),
+        // After playing an Attack, Skill and Power in one turn, gain 1
+        // Strength and 1 Dexterity once for that turn.
+        new(RainbowRingId, "Rainbow Ring",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CardPlayed,
+                    [
+                        new(PrototypeCombatEffectKind.ApplyPlayerPower,
+                            1, PowerId: "proto.power.strength"),
+                        new(PrototypeCombatEffectKind.ApplyPlayerPower,
+                            1, PowerId: "proto.power.dexterity")
+                    ],
+                    ResetCounterEachTurn: true,
+                    MaxTriggersPerCounterWindow: 1,
+                    RequiresPlayerSide: true,
+                    RequiredCardTypesPlayedThisTurn:
+                    [
+                        PrototypeCardType.Attack,
+                        PrototypeCardType.Skill,
+                        PrototypeCardType.Power
+                    ])
             ])
     ];
 }

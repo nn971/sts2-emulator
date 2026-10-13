@@ -29,6 +29,9 @@ grants energy before the hand draw. See
 Nunchaku now carries its Attack count between combats and grants energy on each
 tenth Attack across the run. See
 [mechanics gap 147](reference-builds/v0.111.0-mechanics-gap-147.md).
+Rainbow Ring is now in the shared Rare relic pool and grants 1 Strength and 1
+Dexterity once per turn after an Attack, Skill and Power have all been played.
+See [mechanics gap 148](reference-builds/v0.111.0-mechanics-gap-148.md).
 
 Byrdonis's Territorial Strength now resolves at enemy side-turn end, so a
 stunned or otherwise skipped action no longer suppresses the gain.
