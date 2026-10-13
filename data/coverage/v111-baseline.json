@@ -24485,17 +24485,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.bread"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Bread.cs#06d6fdc5af92ae6c7b28f540fe7e46fc52b8dc31d08369ccfd34dff29ee3e85d"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "BREAD",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29452,8 +29454,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 149,
-        "integrated": 150,
+        "implemented": 150,
+        "integrated": 151,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

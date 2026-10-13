@@ -6229,6 +6229,15 @@ public sealed partial class PrototypeGameEngine
                     };
                     break;
 
+                case PrototypeCombatEffectKind.LoseEnergy:
+                    combat = combat with
+                    {
+                        Energy = Math.Max(
+                            0,
+                            combat.Energy - Math.Max(0, operation.Amount))
+                    };
+                    break;
+
                 case PrototypeCombatEffectKind.BuffMaulDamage:
                     combat = combat with
                     {

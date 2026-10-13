@@ -7,6 +7,7 @@ public static class PrototypeNativeSharedRelics
 {
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
+    public const string BreadId = "proto.relic.bread";
     public const string GorgetId = "proto.relic.gorget";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
@@ -42,6 +43,16 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // Bread removes 2 Energy on turn one, then grants 1 each later turn.
+        new(BreadId, "Bread",
+            EnergyPerTurnBonus: 1,
+            EnergyBonusMinTurn: 2,
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.PlayerSideTurnStarted,
+                    [new(PrototypeCombatEffectKind.LoseEnergy, 2)],
+                    TurnEquals: 1)
+            ]),
         // Gorget grants 4 Plating when combat starts.
         new(GorgetId, "Gorget",
             Triggers:

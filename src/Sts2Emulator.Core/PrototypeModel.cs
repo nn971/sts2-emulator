@@ -136,7 +136,8 @@ public enum PrototypeCombatEffectKind
     ChooseGeneratedColorlessCards,
     CreateRandomCharacterPowerCardsInHand,
     StunEnemy,
-    BuffMaulDamage
+    BuffMaulDamage,
+    LoseEnergy
 }
 
 public enum PrototypeCardKeyword

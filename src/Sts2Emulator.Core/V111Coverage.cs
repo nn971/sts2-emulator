@@ -2112,6 +2112,25 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BREAD"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.BreadId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.BreadId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.BreadId,
+                out var breadRarity)
+            && breadRarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(PrototypeNativeSharedRelics.BreadId)
+                is { EnergyPerTurnBonus: 1, EnergyBonusMinTurn: 2 }
+            && HasBreadPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "GORGET"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.GorgetId,
@@ -3872,6 +3891,63 @@ public static class V111Coverage
                 power.PowerId == "proto.power.plating" && power.Stacks == 4)
             && endTurn.Combat.PlayerBlock == 4
             && meltedStart.Combat.PlayerPowers.Length == 0;
+    }
+
+    private static bool HasBreadPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.BreadId;
+        var relic = new RelicInstance(
+            relicId, PrototypeJson.EmptyObject());
+        var meltedRelic = relic with { IsMelted = true };
+        var active = new PlayerState(30, 30, 0, [], [relic], []);
+        var melted = new PlayerState(30, 30, 0, [], [meltedRelic], []);
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat) Start(
+            PlayerState player, bool isMelted)
+        {
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: isMelted)
+                ],
+                Act: 1,
+                PlayPile: []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-bread-start-{isMelted}"));
+        }
+
+        var activeTurnOne = Start(active, isMelted: false);
+        var meltedTurnOne = Start(melted, isMelted: true);
+        return PrototypeGameEngine.EnergyPerTurn(active) == 3
+            && activeTurnOne.Combat.Energy == 1
+            && PrototypeGameEngine.EnergyPerTurn(active, turn: 2) == 4
+            && PrototypeGameEngine.EnergyPerTurn(active, turn: 3) == 4
+            && meltedTurnOne.Combat.Energy == 3
+            && PrototypeGameEngine.EnergyPerTurn(melted, turn: 2) == 3;
     }
 
     private static bool HasDiamondDiademPath()
