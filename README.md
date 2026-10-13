@@ -48,6 +48,8 @@ Consult [the contract](docs/V111_INTERFACE.md) for `reset_v111`, legal actions, 
 
 ## Documentation map
 
+Start at the [documentation index](docs/INDEX.md) for the organized current contracts, proposed designs, reference evidence and historical plans; see the [development history](docs/HISTORY.md) for the chronological project narrative.
+
 - [Freeze baseline](docs/SILENT_V111_FROZEN_BASELINE.md) — current stable gameplay reference and open gaps.
 - [Next steps](docs/NEXT_STEPS.md) — native fidelity and RNG priorities.
 - [Implementation status](docs/V111_IMPLEMENTATION_STATUS.md) — cumulative source-backed gameplay change ledger.
@@ -56,6 +58,8 @@ Consult [the contract](docs/V111_INTERFACE.md) for `reset_v111`, legal actions, 
 - [RNG](docs/RNG.md) and [desired RNG implementation](docs/DESIRED_RNG_IMPLEMENTATION.md).
 - [Parity testing](docs/PARITY_TESTING.md), [native reference bridge](docs/REFERENCE_BRIDGE.md), [fidelity contract](docs/FIDELITY_CONTRACT.md).
 - [Project status](PROJECT_STATUS.md) — concise current index; the old rolling notes are archived.
+- [Reference note index](docs/reference-builds/INDEX.md) — all pinned source audits and numbered mechanics passes.
+- [Historical archive](docs/archive/INDEX.md) — previous implementation plans and progress logs.
 
 ## Repository responsibility and data policy
 

@@ -6,8 +6,8 @@ The frozen [all-Act Silent gameplay baseline](SILENT_V111_FROZEN_BASELINE.md) is
 
 ## 1. Establish the reference baseline
 
-- Merge the gameplay freeze documentation and the Silent all-Act implementation onto `main`; pin the exact merge SHA and maintain a named snapshot reference.
-- Record baseline build, test failures, coverage classifications and eight synthetic full-route tests.
+- **Completed (2026-10-13):** the Silent gameplay freeze was merged through [PR #141](https://github.com/nn971/sts2-emulator/pull/141); exact reference SHA is [`d6d65cc2a588cdd569e393cf1c7d8a299a43461c`](https://github.com/nn971/sts2-emulator/commit/d6d65cc2a588cdd569e393cf1c7d8a299a43461c) and the matching snapshot branch is `snapshot/silent-v111-all-act-20261013`.
+- Keep the [baseline record](SILENT_V111_FROZEN_BASELINE.md) and [coverage inventory](../data/coverage/v111-baseline.json) linked to the exact frozen revision, including the reported 296 global test failures and eight synthetic full-route cases.
 - Keep a reproducer for any unexpected baseline regression. Gameplay fixes go into scoped PRs, never retrospectively change the frozen reference.
 
 ## 2. Complete native Inspector acceptance
