@@ -26264,17 +26264,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.lava_lamp"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/LavaLamp.cs#ffe3a17d65b89b10d9f6750ef2aa6273fccfe6adac2ea3412a5187af61baf242"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "LAVA_LAMP",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29523,8 +29525,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 188,
-        "integrated": 189,
+        "implemented": 189,
+        "integrated": 190,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

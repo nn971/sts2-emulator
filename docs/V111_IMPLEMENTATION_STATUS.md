@@ -1443,3 +1443,7 @@ The Courier is now a Rare shared relic: it is excluded from shop stock,
 reduces all shop prices by 20%, and refills purchased card, potion, and relic
 slots. See
 [mechanics gap 140](reference-builds/v0.111.0-mechanics-gap-140.md).
+Lava Lamp is now in the shared Shop relic pool. If its owner takes no combat
+damage, eligible options in the fight's card reward groups are upgraded,
+including after Driftwood rerolls. See
+[mechanics gap 141](reference-builds/v0.111.0-mechanics-gap-141.md).

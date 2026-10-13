@@ -4944,6 +4944,8 @@ public sealed partial class PrototypeGameEngine
                         world.Act),
                     whiteStarGroups))
                 .ToArray());
+        reward = CaptureLavaLampCombatReward(
+            state.Player, combat, reward);
         world = world with
         {
             Combat = null,

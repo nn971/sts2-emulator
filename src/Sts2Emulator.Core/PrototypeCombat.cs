@@ -11243,6 +11243,15 @@ public sealed partial class PrototypeGameEngine
             combat = combat with { IsPlayerSideActive = true };
         }
 
+        if (combatEvent.Kind == PrototypeCombatEventKind.PlayerDamaged
+            && combatEvent.Amount > 0
+            && combat.RelicStates.Any(relic =>
+                !relic.IsMelted
+                && relic.RelicId == PrototypeNativeSharedRelics.LavaLampId))
+        {
+            combat = combat with { TookDamageThisCombat = true };
+        }
+
         combat = RecordCombatCounterEvent(combat, combatEvent);
         combat = ResolveNativeGloryBossCardHooks(combat, combatEvent);
         combat = RefreshNativeHiveVitalSpark(combat);

@@ -1970,7 +1970,8 @@ public sealed record CombatState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string? CurrentMapNodeId = null,
     int PotionExtraTurnsPending = 0,
-    bool IsPlayerSideActive = true)
+    bool IsPlayerSideActive = true,
+    bool TookDamageThisCombat = false)
 {
     public CombatState Fork() => this with
     {
@@ -2095,7 +2096,9 @@ public sealed record RewardState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeCardEnchantment?[][]? ExtraCardOptionEnchantments = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool AddRandomCurseAfterReward = false)
+    bool AddRandomCurseAfterReward = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool LavaLampRewardActive = false)
 {
     [System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]

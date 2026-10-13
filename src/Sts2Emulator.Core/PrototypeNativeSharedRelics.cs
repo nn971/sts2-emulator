@@ -47,6 +47,7 @@ public static class PrototypeNativeSharedRelics
     public const string CauldronId = "proto.relic.cauldron";
     public const string OrreryId = "proto.relic.orrery";
     public const string TheCourierId = "proto.relic.the_courier";
+    public const string LavaLampId = "proto.relic.lava_lamp";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
@@ -238,6 +239,8 @@ public static class PrototypeNativeSharedRelics
         new(TheCourierId, "The Courier",
             ShopPriceNumerator: 4,
             ShopPriceDenominator: 5),
+        // Lava Lamp upgrades fight card rewards if the player took no damage.
+        new(LavaLampId, "Lava Lamp"),
         // Beating Remnant caps the owner's HP loss at 20 per combat turn.
         new(BeatingRemnantId, "Beating Remnant",
             PlayerHpLossLimitPerTurn: 20),

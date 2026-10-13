@@ -158,6 +158,7 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        reward = ApplyLavaLampRewardModifier(state.Player, reward);
         return state with { World = world with { Reward = reward } };
     }
 }

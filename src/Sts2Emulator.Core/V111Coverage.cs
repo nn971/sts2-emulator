@@ -663,6 +663,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "LAVA_LAMP"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.LavaLampId,
+                StringComparer.Ordinal)
+            && HasLavaLampPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -8263,6 +8273,86 @@ public static class V111Coverage
             && stateAfterRelic.World?.Shop?.RemovalPrice == 60
             && !stateAfterRelic.World.Shop.RelicOffers.Any(offer =>
                 offer.ItemId == relicId);
+    }
+
+    private static bool HasLavaLampPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.LavaLampId;
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            || rarity != PrototypeRelicRarity.Shop)
+        {
+            return false;
+        }
+
+        var upgradeableCard = PrototypeContent.NativeSilentRewardCardPool
+            .FirstOrDefault(id =>
+                PrototypeContent.Card(id).MaxUpgradeLevel > 0);
+        if (upgradeableCard is null)
+            return false;
+
+        var fixture = PrototypeNativeLaterActFixture.Create(
+            "coverage-lava-lamp", 2);
+        var relic = new RelicInstance(
+            relicId, PrototypeJson.EmptyObject());
+        var player = fixture.Player with
+        {
+            Relics = fixture.Player.Relics.Append(relic).ToArray()
+        };
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies: [],
+            NextCardInstanceId: 1,
+            Cards: [],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Relics:
+            [new CombatRelicState(0, relicId, 1, [])]);
+        var reward = new RewardState(
+            "Combat", [upgradeableCard], null, null,
+            CardResolved: false,
+            PotionResolved: true,
+            RelicResolved: true,
+            EndsAct: false,
+            ExtraCardOptions: [[upgradeableCard]]);
+
+        var noDamage = PrototypeGameEngine.CaptureLavaLampCombatReward(
+            player, combat, reward);
+        if (!noDamage.LavaLampRewardActive
+            || !noDamage.CardUpgradeFlagsForGroup(0)[0]
+            || !noDamage.CardUpgradeFlagsForGroup(1)[0])
+        {
+            return false;
+        }
+
+        var damaged = PrototypeGameEngine.DispatchCombatEvent(
+            player,
+            combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerDamaged, Amount: 1),
+            fixture.Rng.Fork());
+        var damageReward = PrototypeGameEngine.CaptureLavaLampCombatReward(
+            damaged.Player, damaged.Combat, reward);
+        if (!damaged.Combat.TookDamageThisCombat
+            || damageReward.LavaLampRewardActive
+            || damageReward.CardUpgradeFlagsForGroup(0)[0]
+            || damageReward.CardUpgradeFlagsForGroup(1)[0])
+        {
+            return false;
+        }
+
+        var rerolled = PrototypeGameEngine.ApplyLavaLampRewardModifier(
+            player,
+            noDamage with { CardOptions = [upgradeableCard] });
+        return rerolled.CardUpgradeFlagsForGroup(0)[0];
     }
 
     private static bool HasToyBoxPath()
