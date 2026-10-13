@@ -26,3 +26,8 @@ __pycache__/
 # Benchmark output
 BenchmarkDotNet.Artifacts/
 artifacts/
+
+# Native Fidelity Inspector build pins and packaging caches
+native/Sts2ReferenceMod/build-pin.json
+native/Sts2ReferenceMod/.godot/
+native/Sts2ReferenceMod/*.pck

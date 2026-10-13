@@ -143,3 +143,7 @@ and cross-character mechanics remain deferred.
 - retain minimized parity regressions;
 - preserve benchmark history;
 - version public bindings deliberately.
+
+## Unified v111 RNG and native fidelity Inspector
+
+See [isolated integration roadmap](UNIFIED_RNG_FIDELITY_INTEGRATION_PLAN.md); the ongoing Silent all-Act development branch is read-only in this effort. Controlled random outcomes share source-ordered mechanics with the native provider, and independent Inspector captures feed a fail-closed differential checker.

@@ -1,34 +1,316 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/sts2-emulator/trace.schema.json",
-  "title": "STS2 Emulator trace line",
-  "description": "Bootstrap schema for JSONL header/transition records. Tighten as native capture stabilizes.",
+  "title": "STS2 emulator JSONL trace, legacy 0.1 and native 0.2",
+  "description": "0.2 introduces explicit decision/action/event/transition/terminal records with declared coverage.",
   "oneOf": [
     {
       "type": "object",
-      "required": ["type", "trace_schema", "game_build", "bridge_version", "run_id", "run_seed"],
+      "required": [
+        "type",
+        "trace_schema",
+        "game_build",
+        "bridge_version",
+        "run_id",
+        "run_seed"
+      ],
       "properties": {
-        "type": { "const": "header" },
-        "trace_schema": { "type": "string" },
-        "game_build": { "type": "string" },
-        "bridge_version": { "type": "string" },
-        "emulator_version": { "type": ["string", "null"] },
-        "run_id": { "type": "string" },
-        "run_seed": { "type": "string" },
-        "captured_at_utc": { "type": "string" }
+        "type": {
+          "const": "header"
+        },
+        "trace_schema": {
+          "enum": [
+            "0.1",
+            "0.2"
+          ]
+        },
+        "game_build": {
+          "type": "string"
+        },
+        "bridge_version": {
+          "type": "string"
+        },
+        "emulator_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "run_seed": {
+          "type": "string"
+        },
+        "captured_at_utc": {
+          "type": "string"
+        },
+        "capture_mode": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        }
       },
       "additionalProperties": true
     },
     {
       "type": "object",
-      "required": ["type", "decision_index", "phase", "action", "before", "after"],
+      "required": [
+        "type",
+        "decision_index",
+        "phase",
+        "action",
+        "before",
+        "after"
+      ],
       "properties": {
-        "type": { "const": "transition" },
-        "decision_index": { "type": "integer", "minimum": 0 },
-        "phase": { "type": ["string", "integer"] },
-        "action": { "type": "object" },
-        "before": { "$ref": "#/$defs/stateEnvelope" },
-        "after": { "$ref": "#/$defs/stateEnvelope" }
+        "type": {
+          "const": "transition"
+        },
+        "decision_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "phase": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "action": {
+          "type": "object"
+        },
+        "before": {
+          "$ref": "#/$defs/stateEnvelope"
+        },
+        "after": {
+          "$ref": "#/$defs/stateEnvelope"
+        }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "decision_id",
+        "phase",
+        "state",
+        "state_hash",
+        "legal_actions",
+        "observation_hash",
+        "observation_revision",
+        "coverage",
+        "event_seq"
+      ],
+      "properties": {
+        "type": {
+          "const": "decision"
+        },
+        "decision_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phase": {
+          "type": "string"
+        },
+        "state": {
+          "type": "object"
+        },
+        "state_hash": {
+          "type": "string"
+        },
+        "legal_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        },
+        "observation_hash": {
+          "type": "string"
+        },
+        "observation_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "coverage": {
+          "$ref": "#/$defs/coverage"
+        },
+        "event_seq": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "decision_id",
+        "action",
+        "source",
+        "accepted"
+      ],
+      "properties": {
+        "type": {
+          "const": "action"
+        },
+        "decision_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        },
+        "source": {
+          "enum": [
+            "human",
+            "agent",
+            "replay"
+          ]
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "event_seq",
+        "decision_id",
+        "kind",
+        "payload",
+        "origin",
+        "visibility"
+      ],
+      "properties": {
+        "type": {
+          "const": "event"
+        },
+        "event_seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "decision_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "payload": {
+          "type": "object"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "player",
+            "privileged",
+            "diagnostic"
+          ]
+        },
+        "causal_parent": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "decision_id",
+        "before_hash",
+        "first_event_seq",
+        "last_event_seq",
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "const": "transition"
+        },
+        "decision_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "before_hash": {
+          "type": "string"
+        },
+        "after_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "first_event_seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "last_event_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE_CAPTURE",
+            "ERROR"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "type": {
+          "const": "terminal"
+        },
+        "decision_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
       },
       "additionalProperties": true
     }
@@ -36,12 +318,91 @@
   "$defs": {
     "stateEnvelope": {
       "type": "object",
-      "required": ["hash", "state"],
+      "required": [
+        "hash",
+        "state"
+      ],
       "properties": {
-        "hash": { "type": "string" },
-        "state": { "type": "object" }
+        "hash": {
+          "type": "string"
+        },
+        "state": {
+          "type": "object"
+        }
       },
       "additionalProperties": false
+    },
+    "action": {
+      "type": "object",
+      "required": [
+        "kind",
+        "payload"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "verified_fields",
+        "missing_fields",
+        "unsupported_mechanics",
+        "rng_status"
+      ],
+      "properties": {
+        "verified_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "verified_events": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "missing_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "unsupported_mechanics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rng_status": {
+          "enum": [
+            "RNG_UNAUDITED",
+            "ALIGNED",
+            "CHANCE_UNALIGNED"
+          ]
+        },
+        "required_preconditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "legal_actions_complete": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

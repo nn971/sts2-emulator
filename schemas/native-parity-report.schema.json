@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Native fidelity inspector parity report",
+  "type": "object",
+  "required": ["report_schema", "status", "reason", "decision_id",
+               "first_difference", "coverage", "native_prefix"],
+  "properties": {
+    "report_schema": {"const": "0.1"},
+    "status": {"enum": ["MATCH", "MISMATCH", "CHANCE_UNALIGNED",
+                        "UNSUPPORTED", "INVALID_SETUP", "INCOMPLETE_CAPTURE"]},
+    "reason": {"type": "string"},
+    "decision_id": {"type": ["integer", "null"]},
+    "first_difference": {"type": ["object", "null"]},
+    "coverage": {
+      "type": "object",
+      "required": ["verified_fields", "missing_fields", "verified_events", "rng_alignment"]
+    },
+    "native_prefix": {"type": "array", "items": {"type": "object"}}
+  }
+}

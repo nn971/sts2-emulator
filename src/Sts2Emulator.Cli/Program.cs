@@ -13,6 +13,8 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Unassisted legal-action Silent runs in both Act 1 regions; blockers are errors");
     Console.WriteLine("  v111-natural-resume <exact-snapshot.json>");
     Console.WriteLine("                          Resume the same deterministic legal policy from an unmodified saved state");
+    Console.WriteLine("  native-basic-check <fixture.json> [--out <report.json>]  Diagnostic only; NOT parity");
+    Console.WriteLine("  native-visible-step <fixture.json> [--out <report.json>]  Diagnostic only; NOT parity");
     Console.WriteLine("  doctor                 Print runtime and implementation status");
     Console.WriteLine("  hash-demo              Build a tiny synthetic canonical state and hash it");
     Console.WriteLine("  prototype-native-overgrowth-map [seed] [ascension]");
@@ -54,6 +56,89 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
 
 switch (args[0])
 {
+    case "native-visible-step":
+        if (args.Length is not (2 or 4) ||
+            args.Length == 4 && args[2] != "--out")
+        {
+            Console.Error.WriteLine(
+                "Usage: native-visible-step <native-expectation.json> [--out <report.json>]");
+            Environment.ExitCode = 2;
+            break;
+        }
+        try
+        {
+            using var fixture = JsonDocument.Parse(File.ReadAllText(args[1]));
+            var comparison = NativeVisibleSliceComparer.Check(fixture.RootElement);
+            var report = JsonSerializer.Serialize(comparison,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                });
+            Console.WriteLine(report);
+            if (args.Length == 4)
+            {
+                var output = Path.GetFullPath(args[3]);
+                Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+                File.WriteAllText(output, report + Environment.NewLine);
+            }
+            Environment.ExitCode = comparison.Status switch
+            {
+                "VISIBLE_SLICE_CONSISTENT" => 0,
+                "VISIBLE_SLICE_MISMATCH" => 1,
+                _ => 2
+            };
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException
+                                  or JsonException or ArgumentException)
+        {
+            Console.Error.WriteLine("Native visible-state step failed: " + e.Message);
+            Environment.ExitCode = 2;
+        }
+        break;
+
+    case "native-basic-check":
+        if (args.Length is not (2 or 4) ||
+            args.Length == 4 && args[2] != "--out")
+        {
+            Console.Error.WriteLine(
+                "Usage: native-basic-check <native-expectation.json> [--out <report.json>]");
+            Environment.ExitCode = 2;
+            break;
+        }
+        try
+        {
+            using var fixture = JsonDocument.Parse(File.ReadAllText(args[1]));
+            var comparison = NativeBasicRuleComparer.Check(fixture.RootElement);
+            var report = JsonSerializer.Serialize(comparison,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                });
+            Console.WriteLine(report);
+            if (args.Length == 4)
+            {
+                var output = Path.GetFullPath(args[3]);
+                Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+                File.WriteAllText(output, report + Environment.NewLine);
+            }
+            Environment.ExitCode = comparison.Status switch
+            {
+                "RULE_PROJECTION_CONSISTENT" => 0,
+                "RULE_PROJECTION_MISMATCH" => 1,
+                _ => 2
+            };
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException
+                                  or JsonException or ArgumentException)
+        {
+            Console.Error.WriteLine("Native basic-card rule check failed: " + e.Message);
+            Environment.ExitCode = 2;
+        }
+        break;
+
+
     case "replay":
     {
         if (args.Length != 2) throw new ArgumentException("replay requires one normalized canonical JSONL trace.");

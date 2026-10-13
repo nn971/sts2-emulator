@@ -201,3 +201,7 @@ Capture one short real run segment containing at least:
 5. another map choice;
 
 and produce enough canonical/RNG information that repeating the same real-game decisions under the same initial state yields identical trace hashes.
+
+## Unified v111 native Inspector/RNG fidelity
+
+On the isolated integration branch, the native Inspector's independently recorded decision and action-envelope streams are described in [Inspector status](NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_STATUS.md). Their connection to the existing deterministic engine and provider-seam testing is described in [the unified integration plan](UNIFIED_RNG_FIDELITY_INTEGRATION_PLAN.md). History publication order is not necessarily native hook invocation order.
