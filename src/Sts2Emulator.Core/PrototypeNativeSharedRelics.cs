@@ -16,6 +16,7 @@ public static class PrototypeNativeSharedRelics
     public const string GhostSeedId = "proto.relic.ghost_seed";
     public const string RoyalStampId = "proto.relic.royal_stamp";
     public const string MysticLighterId = "proto.relic.mystic_lighter";
+    public const string PenNibId = "proto.relic.pen_nib";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -85,6 +86,17 @@ public static class PrototypeNativeSharedRelics
         // Mystic Lighter adds 9 damage to powered attacks from enchanted cards.
         new(MysticLighterId, "Mystic Lighter",
             EnchantedAttackDamageBonus: 9),
+        // Pen Nib doubles every tenth owner-played Attack. Its persistent
+        // counter wraps after each tenth Attack, while combat trigger counts
+        // can remain monotonic for the duration of the current combat.
+        new(PenNibId, "Pen Nib",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CardPlayed, [],
+                    RequiredSourceCardType: PrototypeCardType.Attack)
+            ],
+            PersistentTriggerCountProperty: "AttacksPlayed",
+            PersistentTriggerCountModulo: 10),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

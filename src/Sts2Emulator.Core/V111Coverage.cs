@@ -1724,6 +1724,33 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PEN_NIB"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PenNibId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PenNibId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PenNibId,
+                out var penNibRarity)
+            && penNibRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.PenNibId) is
+                {
+                    PersistentTriggerCountProperty: "AttacksPlayed",
+                    PersistentTriggerCountModulo: 10
+                } penNibDefinition
+            && penNibDefinition.Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.CardPlayed
+                && trigger.RequiredSourceCardType
+                    == PrototypeCardType.Attack) == true
+            && HasPenNibPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -3217,6 +3244,72 @@ public static class V111Coverage
         return enchantedDamage == 17
             && ordinaryDamage == 6
             && meltedDamage == 8;
+    }
+
+    private static bool HasPenNibPath()
+    {
+        const long strikeInstanceId = 1;
+        const string relicId = PrototypeNativeSharedRelics.PenNibId;
+        const string strikeId = "proto.silent.strike";
+        var persistent = System.Text.Json.JsonSerializer.SerializeToElement(
+            new { AttacksPlayed = 9 });
+        var player = new PlayerState(30, 30, 0, [],
+            [new RelicInstance(relicId, persistent)], []);
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [strikeInstanceId],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies:
+            [
+                new EnemyCombatState(3, "proto.enemy.wriggler", 30,
+                    0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 2,
+            Cards:
+            [
+                new CombatCardInstance(strikeInstanceId, 1, strikeId, 0,
+                    false, PrototypeJson.EmptyObject())
+            ],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Relics:
+            [
+                new CombatRelicState(0, relicId, 1, [9])
+            ],
+            Act: 1,
+            PlayPile: []);
+
+        var tenthAttackDamage = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            combat, strikeInstanceId, 3, 6);
+        var completed = PrototypeGameEngine.DispatchCombatEvent(
+            player,
+            combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.CardPlayed,
+                SourceCardInstanceId: strikeInstanceId,
+                CardId: strikeId,
+                IsPoweredAttack: true),
+            PrototypeRng.CreateBundle("coverage-pen-nib"));
+        var persistedCounter = completed.Player.Relics[0]
+            .PersistentState.GetProperty("AttacksPlayed").GetInt32();
+        var nextAttackDamage = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            completed.Combat, strikeInstanceId, 3, 6);
+        var melted = combat with
+        {
+            Relics = [combat.RelicStates[0] with { IsMelted = true }]
+        };
+        var meltedAttackDamage = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            melted, strikeInstanceId, 3, 6);
+
+        return tenthAttackDamage == 12
+            && completed.Combat.RelicStates[0].TriggerCounts[0] == 10
+            && persistedCounter == 0
+            && nextAttackDamage == 6
+            && meltedAttackDamage == 6;
     }
 
     private static bool HasSlingOfCouragePath()

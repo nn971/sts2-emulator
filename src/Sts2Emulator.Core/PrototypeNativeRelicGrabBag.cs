@@ -88,6 +88,7 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.tingsha"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.joss_paper"] = PrototypeRelicRarity.Uncommon,
             ["proto.relic.tuning_fork"] = PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.PenNibId] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.CandelabraId] =
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.StoneCrackerId] =

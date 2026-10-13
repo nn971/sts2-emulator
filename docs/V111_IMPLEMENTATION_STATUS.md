@@ -1335,3 +1335,6 @@ unpowered damage to a random living enemy; Tough Bandages grants 3 Block. Both
 remain in their native Uncommon/Rare reward pools. Sources:
 [Tingsha.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/Tingsha.cs),
 [ToughBandages.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/ToughBandages.cs).
+Pen Nib is now an Uncommon shared relic. Its saved counter wraps every ten
+owner-played Attacks, and the tenth Attack deals double powered damage. See
+[mechanics gap 109](reference-builds/v0.111.0-mechanics-gap-109.md).

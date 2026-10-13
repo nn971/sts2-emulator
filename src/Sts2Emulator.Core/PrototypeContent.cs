@@ -7676,6 +7676,7 @@ public static class PrototypeContent
         "proto.relic.charons_ashes",
         "proto.relic.joss_paper",
         "proto.relic.tuning_fork",
+        PrototypeNativeSharedRelics.PenNibId,
         "proto.relic.burning_sticks",
         // Forgotten Soul is an Event relic (Grave of the Forgotten),
         // never an ordinary reward/merchant draw.

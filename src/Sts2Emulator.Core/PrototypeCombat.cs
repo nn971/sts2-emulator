@@ -9520,9 +9520,20 @@ public sealed partial class PrototypeGameEngine
             modified = (int)Math.Floor(modified * 1.5m);
         }
 
-        return ModifyPlayerOutgoingAttackDamage(
+        modified = ModifyPlayerOutgoingAttackDamage(
             combat,
             modified);
+        var penNibDoubles = combat.RelicStates.Count(relic =>
+            !relic.IsMelted
+            && relic.RelicId == PrototypeNativeSharedRelics.PenNibId
+            && relic.TriggerCounts.Length > 0
+            && relic.TriggerCounts[0] % 10 == 9);
+        for (var index = 0; index < penNibDoubles; index++)
+        {
+            modified = checked(modified * 2);
+        }
+
+        return modified;
     }
 
     private static int ModifyIncomingAttackDamage(
@@ -10575,13 +10586,25 @@ public sealed partial class PrototypeGameEngine
         int triggerIndex,
         int count)
     {
-        var property = PrototypeContent.Relic(relicState.RelicId)
-            .PersistentTriggerCountProperty;
+        var definition = PrototypeContent.Relic(relicState.RelicId);
+        var property = definition.PersistentTriggerCountProperty;
         if (property is null || triggerIndex != 0
             || relicState.PersistentIndex < 0
             || relicState.PersistentIndex >= player.Relics.Length)
         {
             return player;
+        }
+
+        var persistentCount = count;
+        if (definition.PersistentTriggerCountModulo is { } modulo)
+        {
+            if (modulo <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Relic '{definition.Id}' has an invalid persistent trigger count modulo.");
+            }
+
+            persistentCount %= modulo;
         }
 
         var relics = (RelicInstance[])player.Relics.Clone();
@@ -10593,7 +10616,7 @@ public sealed partial class PrototypeGameEngine
                     System.Text.Json.Nodes.JsonObject
                 ?? new System.Text.Json.Nodes.JsonObject()
             : new System.Text.Json.Nodes.JsonObject();
-        persistent[property] = count;
+        persistent[property] = persistentCount;
         relics[relicState.PersistentIndex] = relic with
         {
             PersistentState = System.Text.Json.JsonSerializer

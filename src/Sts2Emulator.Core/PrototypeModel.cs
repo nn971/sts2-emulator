@@ -884,7 +884,8 @@ public sealed record PrototypeRelicDefinition(
     int AttackDamageBonusPerCardTag = 0,
     int MaxPlayerBlockRetainedAfterClear = 0,
     bool EtherealizesBasicStrikesAndDefends = false,
-    int EnchantedAttackDamageBonus = 0);
+    int EnchantedAttackDamageBonus = 0,
+    int? PersistentTriggerCountModulo = null);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
