@@ -392,6 +392,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BLESSED_ANTLER"
+            && engineIds.Contains(
+                NativeGloryAncientsV111.BlessedAntlerId,
+                StringComparer.Ordinal)
+            && HasBlessedAntlerPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -2370,6 +2380,97 @@ public static class V111Coverage
         var melted = Dispatch(melted: true).Combat;
         return active.Enemies.Sum(enemy => enemy.Hp) == 39
             && melted.Enemies.Sum(enemy => enemy.Hp) == 40;
+    }
+
+    private static bool HasBlessedAntlerPath()
+    {
+        var relicId = NativeGloryAncientsV111.BlessedAntlerId;
+        var definition = PrototypeContent.Relic(relicId);
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(3).Contains(
+                NativeNonupeipeEventV111.EventId, StringComparer.Ordinal)
+            || !HasCompleteAncientRelicBranches(
+                NativeNonupeipeEventV111.EventId, 10)
+            || !NativeNonupeipeEventV111.Definition.Choices.Any(choice =>
+                choice.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainRelic
+                    && effect.RelicId == relicId))
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || definition.EnergyPerTurnBonus != 1
+            || definition.Triggers?.Any(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.BeforeHandDraw
+                && trigger.TurnEquals == 1
+                && trigger.Effects.Any(effect =>
+                    effect.Kind
+                        == PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions
+                    && effect.Amount == 3
+                    && effect.CardId == "proto.status.dazed")) != true)
+        {
+            return false;
+        }
+
+        static (CombatState Combat, int Energy) Dispatch(
+            int turn, bool melted)
+        {
+            var relicId = NativeGloryAncientsV111.BlessedAntlerId;
+            var triggerCount = PrototypeContent.Relic(relicId)
+                .Triggers?.Length ?? 0;
+            var player = new PlayerState(30, 30, 0, [],
+                [new RelicInstance(relicId, PrototypeJson.EmptyObject(),
+                    IsMelted: melted)], []);
+            var energy = PrototypeGameEngine.EnergyPerTurn(player, turn);
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: energy,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 3,
+                PlayPile: []);
+            var dispatched = PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.BeforeHandDraw),
+                PrototypeRng.CreateBundle(
+                    $"coverage-blessed-antler-{turn}-{melted}"))
+                .Combat;
+            return (dispatched, energy);
+        }
+
+        var opening = Dispatch(turn: 1, melted: false);
+        var laterTurn = Dispatch(turn: 2, melted: false);
+        var melted = Dispatch(turn: 1, melted: true);
+        var openingCombat = opening.Combat;
+        return opening.Energy == PrototypeContent.Rules.BaseEnergy + 1
+            && openingCombat.Energy == opening.Energy
+            && openingCombat.DrawPile.Length == 3
+            && openingCombat.Cards.Length == 3
+            && openingCombat.Cards.All(card => card.IsTemporary
+                && card.CardId == "proto.status.dazed")
+            && openingCombat.DrawPile.Order()
+                .SequenceEqual(openingCombat.Cards
+                    .Select(card => card.InstanceId).Order())
+            && laterTurn.Energy == PrototypeContent.Rules.BaseEnergy + 1
+            && laterTurn.Combat.DrawPile.Length == 0
+            && melted.Energy == PrototypeContent.Rules.BaseEnergy
+            && melted.Combat.DrawPile.Length == 0;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)

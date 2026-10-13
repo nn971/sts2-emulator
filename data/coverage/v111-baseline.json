@@ -24340,8 +24340,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BlessedAntler.cs#a1510a9be4bb28f9d34cce3977fcea155ee6a09be7b5e5d1dc68f2a7cf6ceb59"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 118,
-        "integrated": 119,
+        "implemented": 119,
+        "integrated": 120,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

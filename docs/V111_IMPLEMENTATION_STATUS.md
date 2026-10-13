@@ -411,7 +411,8 @@ the Innate, Exhaust Apotheosis card; playing Apotheosis upgrades all other
 upgradable combat cards. Brilliant Scarf's fifth manual card play now costs
 zero energy, using the turn-scoped manual-play counter. Blessed Antler adds
 one energy and inserts three Dazed at random draw-pile positions before the
-first hand draw. Glitter applies Glam to eligible cards in normal and extra
+first hand draw; executable coverage checks its Nonupeipe offer and opening
+trigger. Glitter applies Glam to eligible cards in normal and extra
 combat reward groups; its saved option enchantments survive restore and card
 acquisition. Event-owned reward surfaces and native hook order remain gated.
 Beautiful Bracelet's four-card Swift acquisition now uses run.niche and its

@@ -875,7 +875,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             ? player.Gold
             : checked(player.Gold + amount);
 
-    private static int EnergyPerTurn(PlayerState player, int turn = 1) =>
+    internal static int EnergyPerTurn(PlayerState player, int turn = 1) =>
         PrototypeContent.Rules.BaseEnergy
         + player.ActiveRelics.Sum(relic =>
         {
