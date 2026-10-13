@@ -1,3 +1,5 @@
+> **Current active phase (2026-10-13):** the [Silent all-Act gameplay freeze](SILENT_V111_FROZEN_BASELINE.md) is the stable implementation baseline; the [next steps](NEXT_STEPS.md) prioritize fidelity Inspector and desired RNG architecture. Checked prototype milestones below are historical and do not establish native completeness.
+
 # Emulator roadmap
 
 The active plan is [Complete single-player STS2 emulator roadmap](FULL_IMPLEMENTATION_ROADMAP.md),
