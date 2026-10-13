@@ -70,6 +70,37 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task PreframeInitialHpRollIncludesExactEligibilityAndUnboundCreatureId()
+    {
+        var streams = Sts2Emulator.Core.NativeRngV111.CreateBundle(
+            "native-action-initial-hp");
+        var chosen = new Sts2Emulator.Core.NativeRandomIndexProviderV111()
+            .Resolve(new Sts2Emulator.Core.RandomIndexRequestV111(
+                "combat.initial_unique_hp", "run.niche",
+                "monster_creation:1", 0, [34, 35]), streams);
+        var evidence = new NativeInitialHpRollEvidenceV111(
+            1, "SludgeSpinner", [34, 35], chosen.SelectedIndex,
+            chosen.SelectedValue, false,
+            chosen.NativeCursorBefore!, chosen.NativeCursorAfter!);
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeInitialHpRoll(evidence, bufferedBeforeFirstFrame: true);
+            recorder.Finish("Combat ended", State(3));
+        });
+        var observed = Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "native_initial_hp_roll");
+        var payload = observed.GetProperty("data");
+        Assert.True(payload.GetProperty("recorded_before_first_frame").GetBoolean());
+        Assert.Equal("SludgeSpinner",
+            payload.GetProperty("monster_model_id").GetString());
+        Assert.Equal(2, payload.GetProperty("ordered_eligible_hp").GetArrayLength());
+        Assert.Equal("PRE_ATTACH_CREATURE_ID_UNVERIFIED",
+            payload.GetProperty("native_creature_combat_id_status").GetString());
+        Assert.Equal(JsonValueKind.Null,
+            payload.GetProperty("native_creature_combat_id").ValueKind);
+    }
+
+    [Fact]
     public async Task NativeInitialShuffleSourceIsRecordedWithOrderedSwapAndHookStages()
     {
         var streams = Sts2Emulator.Core.NativeRngV111.CreateBundle(
