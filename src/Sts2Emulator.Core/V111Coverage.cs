@@ -1425,8 +1425,50 @@ public static class V111Coverage
             && acquisitionAddsQuest;
     }
 
+    private static bool HasCompleteWarHistorianRepyBranches(
+        V111InventoryItem item)
+    {
+        string[] expectedBranches =
+        [
+            "initial/UNLOCK_CAGE",
+            "initial/UNLOCK_CHEST",
+            "page/EXTRA_UNLOCK_CAGE",
+            "page/EXTRA_UNLOCK_CHEST",
+            "page/INITIAL",
+            "page/INITIAL/UNLOCK_CAGE",
+            "page/INITIAL/UNLOCK_CHEST",
+            "page/UNLOCK_CAGE",
+            "page/UNLOCK_CHEST"
+        ];
+        var definition = PrototypeContent.Event(
+            PrototypeNativeHiveEvents.WarHistorianRepyId);
+        var key = PrototypeContent.Card(
+            PrototypeNativeHiveEvents.LanternKeyCardId);
+        return item.Branches is { Length: 9 } branches
+            && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                expectedBranches.Order(StringComparer.Ordinal),
+                StringComparer.Ordinal)
+            && IsIntegratedEvent(
+                PrototypeNativeHiveEvents.WarHistorianRepyId)
+            && definition.MinAct == 3
+            && definition.MaxAct == 3
+            && definition.Weight == 0
+            && definition.Choices.Select(choice => choice.Id)
+                .SequenceEqual(["unlock_cage", "unlock_chest"],
+                    StringComparer.Ordinal)
+            && key.Type == PrototypeCardType.Quest
+            && key.Unplayable
+            && key.MaxUpgradeLevel == 0;
+    }
+
     private static string[] MissingBranches(V111InventoryItem item)
     {
+        if (item.Kind == "events"
+            && item.Id == "WAR_HISTORIAN_REPY")
+        {
+            return HasCompleteWarHistorianRepyBranches(item)
+                ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events" && item.Id == "NEOW")
         {
             var supported = PrototypeNativeOvergrowthEvents

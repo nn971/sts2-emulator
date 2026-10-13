@@ -16126,17 +16126,7 @@
         "implementation": "partial",
         "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/UNLOCK_CAGE",
-          "initial/UNLOCK_CHEST",
-          "page/EXTRA_UNLOCK_CAGE",
-          "page/EXTRA_UNLOCK_CHEST",
-          "page/INITIAL",
-          "page/INITIAL/UNLOCK_CAGE",
-          "page/INITIAL/UNLOCK_CHEST",
-          "page/UNLOCK_CAGE",
-          "page/UNLOCK_CHEST"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "WAR_HISTORIAN_REPY",
         "registered": true,
