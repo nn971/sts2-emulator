@@ -255,7 +255,8 @@ internal static class NativeV111PassiveBridge
         _actionEnvelopes = new NativeActionEnvelopeRecorder(
             _currentFile[..^".jsonl".Length] + ".actions.jsonl",
             BuildId, runId,
-            nativeRngHookInstalled: NativeV111RngHook.IsInstalled);
+            nativeRngHookInstalled: NativeV111RngHook.IsInstalled,
+            nativeMonsterAiScopeInstalled: NativeV111RngHook.HasRollMoveScope);
         _actionEnvelopes.HistoryBaseline(_historyIndex);
         // All 12+3 native named streams are bound to their identity only
         // after a single-player CombatState exists. Earlier setup draws are
