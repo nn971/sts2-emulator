@@ -288,6 +288,22 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "CHOSEN_CHEESE"
+            && engineIds.Contains(
+                PrototypeNativeRoomFullOfCheese.ChosenCheeseId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Relic(
+                PrototypeNativeRoomFullOfCheese.ChosenCheeseId)
+                .MaxHpOnCombatVictory == 1
+            && PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(
+                PrototypeNativeRoomFullOfCheese.EventId)
+            && PrototypeNativeUnderdocksEvents.IsSupported(
+                PrototypeNativeRoomFullOfCheese.EventId))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player"
             && item.Kind == "enchantments"
             && item.Id == "VIGOROUS"
@@ -650,6 +666,16 @@ public static class V111Coverage
                 PrototypeNativeRanwidTheElder.EventId,
                 StringComparer.Ordinal)
             && HasCompleteRanwidBranches(item))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "ROOM_FULL_OF_CHEESE"
+            && engineIds.Contains(
+                PrototypeNativeRoomFullOfCheese.EventId,
+                StringComparer.Ordinal)
+            && HasCompleteRoomFullOfCheeseBranches(item))
         {
             implementation = "implemented";
             integration = "integrated";
@@ -2058,6 +2084,11 @@ public static class V111Coverage
             return HasCompleteRanwidBranches(item)
                 ? [] : item.Branches ?? [];
         }
+        if (item.Kind == "events" && item.Id == "ROOM_FULL_OF_CHEESE")
+        {
+            return HasCompleteRoomFullOfCheeseBranches(item)
+                ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events"
             && item.Id == "THE_LEGENDS_WERE_TRUE")
         {
@@ -2244,6 +2275,50 @@ public static class V111Coverage
                     "proto.relic.lantern", PrototypeJson.EmptyObject()))
             && ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 2)
             && ExperimentalSilentThreeActRouteV111.ContainsEvent(eventId, 3);
+    }
+
+    private static bool HasCompleteRoomFullOfCheeseBranches(
+        V111InventoryItem item)
+    {
+        string[] expectedBranches =
+        [
+            "initial/GORGE", "initial/SEARCH", "page/INITIAL",
+            "page/INITIAL/GORGE", "page/INITIAL/SEARCH",
+            "page/GORGE", "page/SEARCH"
+        ];
+        return HasRoomFullOfCheesePath()
+            && item.Branches is { } branches
+            && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                expectedBranches.Order(StringComparer.Ordinal),
+                StringComparer.Ordinal);
+    }
+
+    private static bool HasRoomFullOfCheesePath()
+    {
+        var eventId = PrototypeNativeRoomFullOfCheese.EventId;
+        var definition = PrototypeContent.Event(eventId);
+        var relic = PrototypeContent.Relic(
+            PrototypeNativeRoomFullOfCheese.ChosenCheeseId);
+        return definition.Choices.Select(choice => choice.Id)
+                .SequenceEqual(["gorge", "search"], StringComparer.Ordinal)
+            && definition.MaxAct == 1
+            && PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(eventId)
+            && PrototypeNativeUnderdocksEvents.IsSupported(eventId)
+            && PrototypeNativeUnderdocksEvents.NativeRegionEventIds.Contains(
+                eventId, StringComparer.Ordinal)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventId)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                eventId, "gorge")
+            && PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                eventId, "search")
+            && PrototypeNativeRoomFullOfCheese.CardOfferCount == 8
+            && PrototypeNativeRoomFullOfCheese.CardsToChoose == 2
+            && PrototypeNativeRoomFullOfCheese.SearchHpLoss == 14
+            && PrototypeContent.NativeSilentRewardCardPool.Any(id =>
+                PrototypeContent.Card(id).Rarity
+                    == PrototypeCardRarity.Common)
+            && relic.MaxHpOnCombatVictory == 1;
     }
 
     private static bool Matches(V111InventoryItem item, string engineId, string name)

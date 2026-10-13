@@ -15616,25 +15616,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.room_full_of_cheese"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/RoomFullOfCheese.cs#51b29d7a0008be45cfe19c7f6e45ad6b88dab177fe431ea68120c5af8fe0829c"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/GORGE",
-          "initial/SEARCH",
-          "page/GORGE",
-          "page/INITIAL",
-          "page/INITIAL/GORGE",
-          "page/INITIAL/SEARCH",
-          "page/SEARCH"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "ROOM_FULL_OF_CHEESE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -24800,17 +24794,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.chosen_cheese"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ChosenCheese.cs#cbf74c424e68ccc4178e0379dd2ab26b22e3e289ac6f60eeffc7093c0eb3aa9a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CHOSEN_CHEESE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29397,8 +29393,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 58,
-        "integrated": 61,
+        "implemented": 59,
+        "integrated": 62,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
@@ -29447,8 +29443,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 91,
-        "integrated": 92,
+        "implemented": 92,
+        "integrated": 93,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

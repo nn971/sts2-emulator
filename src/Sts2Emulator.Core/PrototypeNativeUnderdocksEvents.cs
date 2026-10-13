@@ -23,6 +23,7 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.waterlogged_scriptorium",
         PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
         PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeRoomFullOfCheese.EventId,
         PrototypeNativeSlipperyBridge.EventId
     ];
 
@@ -42,6 +43,7 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.sunken_statue",
         PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
         PrototypeNativeSharedEvents.ThisOrThatId,
+        PrototypeNativeRoomFullOfCheese.EventId,
         PrototypeNativeSlipperyBridge.EventId
     ];
 

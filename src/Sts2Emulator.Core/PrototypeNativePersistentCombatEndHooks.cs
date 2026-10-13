@@ -125,6 +125,19 @@ public sealed partial class PrototypeGameEngine
             player = player with { Relics = relics };
         }
 
+        var maxHpGain = player.Relics
+            .Where(relic => !relic.IsMelted)
+            .Sum(relic => PrototypeContent.Relic(relic.RelicId)
+                .MaxHpOnCombatVictory);
+        if (maxHpGain > 0)
+        {
+            player = player with
+            {
+                MaxHp = player.MaxHp + maxHpGain,
+                Hp = player.Hp + maxHpGain
+            };
+        }
+
         return player;
     }
 

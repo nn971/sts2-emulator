@@ -3299,6 +3299,7 @@ public static class PrototypeContent
                         ])
                 ])
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
+            .Concat(PrototypeNativeRoomFullOfCheese.Relics)
             .Concat(PrototypeNativeSilentRelics.Relics)
             .Concat(PrototypeNativeSharedRelics.Relics)
             .Concat(PrototypeNativeFakeMerchant.Relics)

@@ -936,6 +936,12 @@ public sealed partial class PrototypeGameEngine
             return GetNativeRanwidActions(eventState);
         }
 
+        if (eventState.EventId
+            == PrototypeNativeRoomFullOfCheese.EventId)
+        {
+            return GetRoomFullOfCheeseActions(eventState);
+        }
+
         if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
             return GetNativeWarHistorianRepyActions(eventState);
 
@@ -1108,6 +1114,10 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId
             == PrototypeNativeRanwidTheElder.EventId)
             return StepNativeRanwidTheElder(state, action);
+
+        if (eventState.EventId
+            == PrototypeNativeRoomFullOfCheese.EventId)
+            return StepRoomFullOfCheese(state, action);
 
         if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
                 eventState.EventId)
@@ -3758,6 +3768,24 @@ public sealed partial class PrototypeGameEngine
             return actions;
         }
 
+        if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward))
+        {
+            var options = !reward.CardResolved
+                ? reward.CardOptions
+                : reward.FirstPendingExtraCardGroupIndex is var cheeseGroup
+                    && cheeseGroup >= 0
+                    ? reward.ExtraCardOptions![cheeseGroup]
+                    : Array.Empty<string>();
+            if (options.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "Room Full of Cheese has no remaining card selections.");
+            }
+
+            return options.Select((_, index) => GameAction.Create(
+                "take_reward_card", new ChooseCardPayload(index))).ToArray();
+        }
+
         if (!reward.CardResolved && reward.CardBundles is { } bundles)
         {
             // Bundle selection is mandatory, like the native
@@ -3877,6 +3905,12 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var reward = world.Reward
             ?? throw new InvalidOperationException("Reward phase has no reward state.");
+        if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward)
+            && action.Kind != "take_reward_card")
+        {
+            throw new InvalidOperationException(
+                "Room Full of Cheese requires choosing two cards.");
+        }
         if (PrototypeNativeBrainLeech.IsForcedClassCardReward(
                 world.Event, reward)
             && !reward.CardResolved
@@ -4175,6 +4209,11 @@ public sealed partial class PrototypeGameEngine
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
                     state.Rng,
                     reward.CurrentCardOptionEnchantments[payload.Index]);
+                if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward))
+                {
+                    reward = PrototypeNativeRoomFullOfCheese
+                        .RemoveChosenCardOffer(reward, payload.Index);
+                }
             }
             else
             {
@@ -4422,12 +4461,21 @@ public sealed partial class PrototypeGameEngine
             NextCardInstanceId = nextId
         };
 
-        return state with
+        state = state with
         {
             Player = player,
             NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world
         };
+
+        if (PrototypeNativeRoomFullOfCheese.IsCardReward(reward)
+            && reward.CardResolved
+            && reward.FirstPendingExtraCardGroupIndex < 0)
+        {
+            return CompleteReward(state);
+        }
+
+        return state;
     }
 
     private static RunState EnterReward(RunState state)

@@ -372,6 +372,7 @@ public static class PrototypeNativeOvergrowthEvents
         "proto.native.event.wellspring",
         "proto.native.event.whispering_hollow",
         "proto.native.event.wood_carvings",
+        PrototypeNativeRoomFullOfCheese.EventId,
         PrototypeNativeSlipperyBridge.EventId
     ];
 
@@ -572,7 +573,8 @@ public static class PrototypeNativeOvergrowthEvents
                         TransformToCardId: "proto.native.event.toric_toughness",
                         BasicCardsOnly: true))
             ],
-            MaxAct: 1)
+            MaxAct: 1),
+        PrototypeNativeRoomFullOfCheese.Definition
     ];
 
     // These pinned source event handlers select a card with

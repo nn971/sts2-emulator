@@ -858,7 +858,8 @@ public sealed record PrototypeRelicDefinition(
     int RestSiteHealPerFiveCards = 0,
     string? PotionIdBeforeCombat = null,
     bool ExcludesMonsterRoomsFromUnknownMap = false,
-    int HealBeforeBossCombat = 0);
+    int HealBeforeBossCombat = 0,
+    int MaxHpOnCombatVictory = 0);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
