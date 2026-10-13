@@ -26753,17 +26753,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.mystic_lighter"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/MysticLighter.cs#7070800e3ea791d76b6ff3ddf41037d9a007924a3c985f1c35f09d46fb4998e5"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MYSTIC_LIGHTER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29472,8 +29474,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 158,
-        "integrated": 159,
+        "implemented": 159,
+        "integrated": 160,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

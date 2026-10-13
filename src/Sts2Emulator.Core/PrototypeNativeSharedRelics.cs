@@ -15,6 +15,7 @@ public static class PrototypeNativeSharedRelics
     public const string SturdyClampId = "proto.relic.sturdy_clamp";
     public const string GhostSeedId = "proto.relic.ghost_seed";
     public const string RoyalStampId = "proto.relic.royal_stamp";
+    public const string MysticLighterId = "proto.relic.mystic_lighter";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -81,6 +82,9 @@ public static class PrototypeNativeSharedRelics
                 1,
                 EnchantmentKind:
                     PrototypeCardEnchantmentKind.RoyallyApproved)),
+        // Mystic Lighter adds 9 damage to powered attacks from enchanted cards.
+        new(MysticLighterId, "Mystic Lighter",
+            EnchantedAttackDamageBonus: 9),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

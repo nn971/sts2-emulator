@@ -9428,6 +9428,12 @@ public sealed partial class PrototypeGameEngine
                         ? definition.AttackDamageBonusPerCardTag
                         : 0;
             });
+        var enchantedRelicBonus = sourceCard.Enchantment is null
+            ? 0
+            : combat.RelicStates
+                .Where(relic => !relic.IsMelted)
+                .Sum(relic => PrototypeContent.Relic(relic.RelicId)
+                    .EnchantedAttackDamageBonus);
 
         var firstTaggedPlayBonus = combat.PlayerPowers.Sum(
             power =>
@@ -9466,7 +9472,7 @@ public sealed partial class PrototypeGameEngine
                 : 0;
         var modified =
             damage + sharpBonus + vigorousBonus + additive
-            + taggedRelicBonus
+            + taggedRelicBonus + enchantedRelicBonus
             + firstTaggedPlayBonus;
         if (sourceCard.CardId == NativeGloryAncientsV111.MaulCardId)
         {

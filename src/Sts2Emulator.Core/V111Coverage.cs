@@ -1704,6 +1704,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "MYSTIC_LIGHTER"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.MysticLighterId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.MysticLighterId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.MysticLighterId,
+                out var mysticLighterRarity)
+            && mysticLighterRarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.MysticLighterId)
+                .EnchantedAttackDamageBonus == 9
+            && HasMysticLighterPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -3137,6 +3157,66 @@ public static class V111Coverage
                 null,
                 PrototypeCardEnchantmentKind.RoyallyApproved,
                 false);
+    }
+
+    private static bool HasMysticLighterPath()
+    {
+        const long strikeInstanceId = 1;
+        static CombatState Fixture(
+            bool melted, PrototypeCardEnchantment? enchantment)
+        {
+            const long strikeInstanceId = 1;
+            const string relicId =
+                PrototypeNativeSharedRelics.MysticLighterId;
+            const string strikeId = "proto.silent.strike";
+            var card = new CombatCardInstance(
+                strikeInstanceId, 1, strikeId, 0, false,
+                PrototypeJson.EmptyObject(), Enchantment: enchantment);
+            return new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [strikeInstanceId],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(3, "proto.enemy.wriggler", 30,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 2,
+                Cards: [card],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1, [],
+                        IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+        }
+
+        var enchanted = Fixture(
+            false,
+            new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.Sharp, Amount: 2));
+        var ordinary = Fixture(melted: false, enchantment: null);
+        var melted = Fixture(
+            true,
+            new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.Sharp, Amount: 2));
+
+        var enchantedDamage = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            enchanted, strikeInstanceId, 3, 6);
+        var ordinaryDamage = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            ordinary, strikeInstanceId, 3, 6);
+        var meltedDamage = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            melted, strikeInstanceId, 3, 6);
+        return enchantedDamage == 17
+            && ordinaryDamage == 6
+            && meltedDamage == 8;
     }
 
     private static bool HasSlingOfCouragePath()

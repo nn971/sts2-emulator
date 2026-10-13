@@ -7688,7 +7688,8 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.StoneCrackerId,
         PrototypeNativeSharedRelics.SturdyClampId,
         PrototypeNativeSharedRelics.GhostSeedId,
-        PrototypeNativeSharedRelics.RoyalStampId
+        PrototypeNativeSharedRelics.RoyalStampId,
+        PrototypeNativeSharedRelics.MysticLighterId
     ];
 
     public static string[] BossRelicPool { get; } =
