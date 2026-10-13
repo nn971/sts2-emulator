@@ -33,6 +33,9 @@ internal static class NativeV111RngHook
     private static bool _rollMoveScopeInstalled;
     private static bool _doubleHookInstalled;
     private static bool _boolHookInstalled;
+    private static readonly List<(string Id, string Owner, NativeRng Rng)> StreamSources = [];
+    internal static bool StreamCheckpointsEnabled => IsInstalled &&
+        System.Environment.GetEnvironmentVariable("STS2_FIDELITY_RNG_STREAM_CHECKPOINTS") == "1";
 
     internal static bool IsInstalled => _patches is not null;
     internal static bool HasRollMoveScope => IsInstalled && _rollMoveScopeInstalled;
@@ -173,6 +176,7 @@ internal static class NativeV111RngHook
         if (!IsInstalled) return;
         _attached = false;
         Owners.Clear();
+        StreamSources.Clear();
         _observationFailed = false;
         _threadId = System.Environment.CurrentManagedThreadId;
         // Register only identities actually confirmed by the native run/player
@@ -181,17 +185,51 @@ internal static class NativeV111RngHook
         var player = combat.Players.Single();
         var run = player.RunState.Rng;
         foreach (RunRngType type in Enum.GetValues<RunRngType>())
-            Owners.Register(run.GetRng(type), "run." + RunName(type), "run");
+        {
+            var rng = run.GetRng(type);
+            var name = "run." + RunName(type);
+            Owners.Register(rng, name, "run");
+            StreamSources.Add((name, "run", rng));
+        }
         foreach (PlayerRngType type in Enum.GetValues<PlayerRngType>())
-            Owners.Register(player.PlayerRng.GetRng(type),
-                "player." + PlayerName(type), "player:0");
+        {
+            var rng = player.PlayerRng.GetRng(type);
+            var name = "player." + PlayerName(type);
+            Owners.Register(rng, name, "player:0");
+            StreamSources.Add((name, "player:0", rng));
+        }
         _attached = true;
+        CaptureStreamCheckpoint("combat_attach");
     }
 
     internal static void EndCombat()
     {
+        CaptureStreamCheckpoint("combat_end");
         _attached = false;
         Owners.Clear();
+        StreamSources.Clear();
+    }
+
+    internal static void CaptureStreamCheckpoint(string phase)
+    {
+        if (!StreamCheckpointsEnabled || !_attached || _observationFailed)
+            return;
+        if (System.Environment.CurrentManagedThreadId != _threadId)
+        {
+            ObservationFailure(new InvalidOperationException(
+                "RNG checkpoint observed on another native game thread."));
+            return;
+        }
+        try
+        {
+            var evidence = new NativeRngStreamCheckpointV111(
+                phase, StreamSources.Select(s =>
+                    new NativeRngStreamCursorV111(
+                        s.Id, s.Owner, Snapshot(s.Rng))).ToArray());
+            evidence.Validate();
+            NativeV111PassiveBridge.NativeRngStreamCheckpoint(evidence);
+        }
+        catch (Exception error) { ObservationFailure(error); }
     }
 
     private static NativeRngSnapshot Snapshot(NativeRng rng)

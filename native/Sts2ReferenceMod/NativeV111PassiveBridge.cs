@@ -75,6 +75,10 @@ internal static class NativeV111PassiveBridge
     internal static void NativeRngScalarBoundary(NativeRngScalarEvidenceV111 evidence) =>
         _actionEnvelopes?.NativeRngScalarBoundary(evidence);
 
+    internal static void NativeRngStreamCheckpoint(
+        NativeRngStreamCheckpointV111 evidence) =>
+        _actionEnvelopes?.NativeRngStreamCheckpoint(evidence);
+
     internal static bool HasActionSidecar => _actionEnvelopes is not null;
 
     internal static void NativeShuffleOperation(
@@ -275,7 +279,9 @@ internal static class NativeV111PassiveBridge
             nativeShuffleScopeInstalled: NativeV111ShuffleHooks.IsInstalled,
             nativeInitialHpScopeInstalled: NativeV111InitialHpHooks.IsInstalled,
             nativeRngDoubleHookInstalled: NativeV111RngHook.HasDoubleHook,
-            nativeRngBoolHookInstalled: NativeV111RngHook.HasBoolHook);
+            nativeRngBoolHookInstalled: NativeV111RngHook.HasBoolHook,
+            nativeRngStreamCheckpointsEnabled:
+                NativeV111RngHook.StreamCheckpointsEnabled);
         // A source-audited initial shuffle executes before the rendered
         // combat frame. Buffered evidence must precede later RNG requests
         // in this sidecar, with its pre-attachment basis clearly marked.
@@ -355,6 +361,7 @@ internal static class NativeV111PassiveBridge
         _actionEnvelopes?.Start(
             action, action.GetType().FullName ?? action.GetType().Name,
             snapshot, chosen);
+        NativeV111RngHook.CaptureStreamCheckpoint("before_action");
 
         if (_recording is null || _choiceInterrupted || chosen is null) return;
         try
@@ -375,6 +382,7 @@ internal static class NativeV111PassiveBridge
         try
         {
             _actionEnvelopes?.Complete(action, TryActionSnapshot("after_action"));
+            NativeV111RngHook.CaptureStreamCheckpoint("after_action");
         }
         catch (Exception error) { CaptureCallbackFailure("after_action", error); }
         finally
