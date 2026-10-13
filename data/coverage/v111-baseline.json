@@ -24254,8 +24254,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/BigMushroom.cs#164ccada42443b186a3b79cb8ebe3543704d19696aa7b19b75fa5cc07a47fddc"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29447,8 +29447,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 97,
-        "integrated": 98,
+        "implemented": 98,
+        "integrated": 99,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

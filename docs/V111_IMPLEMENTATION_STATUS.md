@@ -32,6 +32,9 @@ mechanic is recorded in
 Royal Poison deals four unblockable HP damage on its owner's first turn of
 each combat after Round Tea Party's Enjoy Tea choice. Melted copies are
 inactive. See [mechanics gap 052](reference-builds/v0.111.0-mechanics-gap-052.md).
+Big Mushroom now applies its acquisition HP gain through the relic run hook;
+its two-card first-turn draw penalty remains active in Glory runs. See
+[mechanics gap 053](reference-builds/v0.111.0-mechanics-gap-053.md).
 
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.

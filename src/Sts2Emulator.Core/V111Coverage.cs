@@ -1257,6 +1257,27 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "BIG_MUSHROOM"
+            && engineIds.Contains(
+                PrototypeNativeGloryEvents.BigMushroomId,
+                StringComparer.Ordinal)
+            && PrototypeContent.Relic(
+                PrototypeNativeGloryEvents.BigMushroomId) is
+                { FirstTurnDrawBonus: -2 } bigMushroom
+            && bigMushroom.RunTriggers?.Any(trigger =>
+                trigger.EventKind == PrototypeRunEventKind.RelicAcquired
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeRunEffectKind.GainMaxHp
+                    && effect.Amount == 20)) == true
+            && PrototypeNativeGloryEvents.Events.Any(evt =>
+                evt.Id == PrototypeNativeGloryEvents.HungryForMushroomsId
+                && evt.Choices.Any(choice =>
+                    choice.Id == "big_mushroom")))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);

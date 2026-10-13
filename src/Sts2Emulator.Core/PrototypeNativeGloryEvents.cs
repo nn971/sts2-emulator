@@ -118,9 +118,16 @@ public static class PrototypeNativeGloryEvents
     [
         // BigMushroom.AfterObtained grants 20 Max HP (also heals
         // 20), then ModifyHandDraw subtracts two on turn one only.
-        // The pickup callback is implemented by the event handler;
-        // this relic is not in the ordinary relic reward pool.
-        new(BigMushroomId, "Big Mushroom", FirstTurnDrawBonus: -2),
+        // BigMushroom.AfterObtained gains 20 Max HP (and heals 20).
+        // ModifyHandDraw subtracts two on turn one only; the pickup run
+        // trigger is event-only and outside the ordinary relic pool.
+        new(BigMushroomId, "Big Mushroom",
+            FirstTurnDrawBonus: -2,
+            RunTriggers:
+            [
+                new(PrototypeRunEventKind.RelicAcquired,
+                    [new(PrototypeRunEffectKind.GainMaxHp, 20)])
+            ]),
         // FragrantMushroom.AfterObtained deals 15 unblocked,
         // unpowered damage and upgrades two different eligible cards.
         new(FragrantMushroomId, "Fragrant Mushroom"),
@@ -289,15 +296,7 @@ public sealed partial class PrototypeGameEngine
             player, PrototypeRunEventKind.RelicAcquired,
             acquiredRelicId: relicId, rng: state.Rng);
 
-        if (choice == "big_mushroom")
-        {
-            player = player with
-            {
-                MaxHp = checked(player.MaxHp + 20),
-                Hp = checked(player.Hp + 20)
-            };
-        }
-        else
+        if (choice == "fragrant_mushroom")
         {
             // Pinned AfterObtained performs the damage before any
             // upgrades. A fatal acquisition therefore terminates
