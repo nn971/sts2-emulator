@@ -1,3 +1,5 @@
+> **Cumulative mechanics ledger (historical chronology).** For the current Silent all-Act gameplay freeze, current gaps, and test status, start with [the 2026-10-13 baseline](SILENT_V111_FROZEN_BASELINE.md). The dated entries below preserve earlier staged claims; the latest registry is `data/coverage/v111-baseline.json` and requires reconciliation after recent additions.
+
 ## Current Silent regional execution update (2026-10-13)
 
 The executable coverage report now recognizes all four configured act routes
