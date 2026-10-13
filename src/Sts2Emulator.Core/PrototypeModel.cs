@@ -139,7 +139,8 @@ public enum PrototypeCombatEffectKind
     StunEnemy,
     BuffMaulDamage,
     LoseEnergy,
-    UpgradeEventSourceCard
+    UpgradeEventSourceCard,
+    IncreaseMomentumDamageBonus
 }
 
 public enum PrototypeCardKeyword
@@ -203,7 +204,10 @@ public sealed record PrototypeCombatCardSnapshot(
     bool EnchantmentTriggeredThisCombat = false,
     PrototypeCardAffliction? Affliction = null,
     int SuppressedUpgradeLevels = 0,
-    int WitherFakeUpgradeLevel = 0)
+    int WitherFakeUpgradeLevel = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int MomentumDamageBonus = 0)
 {
     public PrototypeCombatCardSnapshot Fork() => this with
     {
@@ -1738,7 +1742,10 @@ public sealed record CombatCardInstance(
     int WitherFakeUpgradeLevel = 0,
     // CreateDupe copies (currently History Course). Duplicated attacks
     // are excluded from next-turn History Course history.
-    bool IsHistoryCourseDupe = false)
+    bool IsHistoryCourseDupe = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int MomentumDamageBonus = 0)
 {
     public CombatCardInstance Fork() => this with
     {

@@ -12301,17 +12301,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "Momentum"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/Momentum.cs#fdfcdc593cd17473289558ceca7f8da2b080f30d1371847f49615dae7ef549de"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "MOMENTUM",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -27679,17 +27681,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.punch_dagger"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/PunchDagger.cs#1847afb09cf4b098bce8dfc1d96bcb7abb6f55ab6af4b966f0a57de99a885c74"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "PUNCH_DAGGER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29432,8 +29436,8 @@
         "catalogued": 22,
         "eligible": 22,
         "excluded": 0,
-        "implemented": 3,
-        "integrated": 3,
+        "implemented": 4,
+        "integrated": 4,
         "kind": "enchantments",
         "scope_review_required": 0,
         "validated": 0
@@ -29512,8 +29516,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 182,
-        "integrated": 183,
+        "implemented": 183,
+        "integrated": 184,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

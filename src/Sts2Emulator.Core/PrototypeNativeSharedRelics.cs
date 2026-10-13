@@ -24,6 +24,7 @@ public static class PrototypeNativeSharedRelics
     public const string IntimidatingHelmetId =
         "proto.relic.intimidating_helmet";
     public const string KifudaId = "proto.relic.kifuda";
+    public const string PunchDaggerId = "proto.relic.punch_dagger";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -205,6 +206,14 @@ public static class PrototypeNativeSharedRelics
                 3,
                 EnchantmentKind: PrototypeCardEnchantmentKind.Adroit,
                 EnchantmentAmount: 3)),
+        // Momentum builds 5 damage for each later play of its enchanted Attack.
+        new(PunchDaggerId, "Punch Dagger",
+            AcquisitionDeckChoice: new(
+                PrototypePersistentDeckChoiceKind.Enchant,
+                1,
+                EnchantmentKind: PrototypeCardEnchantmentKind.Momentum,
+                EnchantmentAmount: 5,
+                RequiredCardType: PrototypeCardType.Attack)),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),

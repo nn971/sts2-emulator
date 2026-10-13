@@ -1411,3 +1411,6 @@ plays a card that spends at least 2 Energy. See
 Kifuda is now a Shop relic and requires its owner to enchant three deck cards
 with Adroit, which grants 3 Block each time an enchanted card is played. See
 [mechanics gap 131](reference-builds/v0.111.0-mechanics-gap-131.md).
+Punch Dagger is now a Shop relic that enchants one Attack with Momentum. Each
+play adds 5 damage to the next powered attack from that card for the rest of
+combat. See [mechanics gap 132](reference-builds/v0.111.0-mechanics-gap-132.md).

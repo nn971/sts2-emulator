@@ -6430,6 +6430,32 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                case PrototypeCombatEffectKind.IncreaseMomentumDamageBonus:
+                {
+                    if (sourceCardInstanceId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Momentum growth requires a source card.");
+                    }
+
+                    var sourceCard = RequireCombatCard(
+                        combat,
+                        sourceCardInstanceId.Value);
+                    combat = combat with
+                    {
+                        Cards = combat.Cards.Select(card =>
+                            card.InstanceId == sourceCard.InstanceId
+                                ? card with
+                                {
+                                    MomentumDamageBonus = checked(
+                                        card.MomentumDamageBonus
+                                        + Math.Max(0, operation.Amount))
+                                }
+                                : card).ToArray()
+                    };
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.SetHandCardsEnergyCostUntilTurnEndOrPlayed:
                     combat = SetHandCardsTemporaryEnergyCost(
                         combat,
@@ -6821,7 +6847,9 @@ public sealed partial class PrototypeGameEngine
                             source.Enchantment,
                             source.EnchantmentTriggeredThisCombat,
                             source.Affliction,
-                            source.SuppressedUpgradeLevels),
+                            source.SuppressedUpgradeLevels,
+                            MomentumDamageBonus:
+                                source.MomentumDamageBonus),
                         operation.Amount);
                     if (operation.EventSourceCardKeyword is { } keywordOverride)
                     {
@@ -7794,7 +7822,9 @@ public sealed partial class PrototypeGameEngine
                     snapshot.EnchantmentTriggeredThisCombat,
                 Affliction: snapshot.Affliction,
                 SuppressedUpgradeLevels:
-                    snapshot.SuppressedUpgradeLevels);
+                    snapshot.SuppressedUpgradeLevels,
+                MomentumDamageBonus:
+                    snapshot.MomentumDamageBonus);
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat,
                 instance);
@@ -8558,6 +8588,16 @@ public sealed partial class PrototypeGameEngine
             operations.Enqueue(new PrototypeQueuedOperation(
                 PrototypeCombatEffectKind.GainPlayerBlock,
                 adroit.Amount,
+                SourceKind: PrototypeEffectSourceKind.Card));
+        }
+
+        if (card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Momentum } momentum
+            && momentum.Amount > 0)
+        {
+            operations.Enqueue(new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.IncreaseMomentumDamageBonus,
+                momentum.Amount,
                 SourceKind: PrototypeEffectSourceKind.Card));
         }
 
@@ -9563,6 +9603,10 @@ public sealed partial class PrototypeGameEngine
             { Kind: PrototypeCardEnchantmentKind.Sharp } sharp
                 ? Math.Max(0, sharp.Amount)
                 : 0;
+        var momentumBonus = sourceCard.Enchantment is
+            { Kind: PrototypeCardEnchantmentKind.Momentum } momentum
+                ? Math.Max(0, sourceCard.MomentumDamageBonus)
+                : 0;
         var vigorousBonus = sourceCard.Enchantment is
             {
                 Kind: PrototypeCardEnchantmentKind.Vigorous,
@@ -9571,7 +9615,7 @@ public sealed partial class PrototypeGameEngine
                 ? Math.Max(0, vigorous.Amount)
                 : 0;
         var modified =
-            damage + sharpBonus + vigorousBonus + additive
+            damage + sharpBonus + momentumBonus + vigorousBonus + additive
             + taggedRelicBonus + enchantedRelicBonus
             + upgradedAttackRelicBonus + firstTaggedPlayBonus;
         if (sourceCard.CardId == NativeGloryAncientsV111.MaulCardId)
@@ -9972,7 +10016,9 @@ public sealed partial class PrototypeGameEngine
                 : selectedCard.Affliction,
             action.RestoreSuppressedUpgradesInPayload
                 ? 0
-                : selectedCard.SuppressedUpgradeLevels);
+                : selectedCard.SuppressedUpgradeLevels,
+            MomentumDamageBonus:
+                selectedCard.MomentumDamageBonus);
 
         return AddPlayerPowerInstance(
             combat,
@@ -12495,7 +12541,9 @@ public sealed partial class PrototypeGameEngine
                     card.CardId, card.UpgradeLevel, card.State.Clone(), card.CombatEnergyCostDelta,
                     card.TemporaryEnergyCost, card.KeywordOverrides, card.ReplayCount,
                     card.Enchantment, card.EnchantmentTriggeredThisCombat, card.Affliction,
-                    card.SuppressedUpgradeLevels), selection.CopiesPerSelection);
+                    card.SuppressedUpgradeLevels,
+                    MomentumDamageBonus: card.MomentumDamageBonus),
+                    selection.CopiesPerSelection);
             }
             return combat;
         }

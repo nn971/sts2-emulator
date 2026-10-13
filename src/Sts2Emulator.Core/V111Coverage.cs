@@ -684,6 +684,15 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "enchantments"
+            && item.Id == "MOMENTUM"
+            && engineIds.Contains("Momentum", StringComparer.Ordinal)
+            && HasPunchDaggerPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "KIFUDA"
             && engineIds.Contains(
@@ -707,6 +716,34 @@ public static class V111Coverage
                         PrototypeCardEnchantmentKind.Adroit,
                     EnchantmentAmount: 3 }
             && HasKifudaPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "PUNCH_DAGGER"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.PunchDaggerId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.PunchDaggerId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.PunchDaggerId,
+                out var punchDaggerRarity)
+            && punchDaggerRarity == PrototypeRelicRarity.Shop
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.PunchDaggerId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.PunchDaggerId)
+                .AcquisitionDeckChoice is
+                { Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    Selections: 1,
+                    EnchantmentKind:
+                        PrototypeCardEnchantmentKind.Momentum,
+                    EnchantmentAmount: 5,
+                    RequiredCardType: PrototypeCardType.Attack }
+            && HasPunchDaggerPath())
         {
             implementation = "implemented";
             integration = "integrated";
@@ -4905,6 +4942,99 @@ public static class V111Coverage
         return played.Combat.PlayerBlock == 8
             && played.Player.Deck[1].Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Adroit, Amount: 3 };
+    }
+
+    private static bool HasPunchDaggerPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.PunchDaggerId;
+        const string strikeId = "proto.silent.strike";
+        var player = new PlayerState(
+            30,
+            30,
+            0,
+            [
+                new CardInstance(1, strikeId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(2, "proto.silent.defend", 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(3, "proto.silent.footwork", 0,
+                    PrototypeJson.EmptyObject())
+            ],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())],
+            []);
+        var pending = PrototypeGameEngine.CreateRelicDeckChoice(
+            player,
+            relicId);
+        if (pending is not
+                { Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    RemainingSelections: 1,
+                    MinimumSelectionsRemaining: 1 }
+            || !pending.CandidateCardInstanceIds
+                .SequenceEqual(new long[] { 1 }))
+        {
+            return false;
+        }
+
+        var rng = PrototypeRng.CreateBundle("coverage-punch-dagger");
+        var acquired = PrototypeGameEngine.ResolveRelicDeckChoice(
+            player,
+            pending,
+            1,
+            rng);
+        if (acquired.Remaining is not null
+            || acquired.Player.Deck[0].Enchantment is not
+                { Kind: PrototypeCardEnchantmentKind.Momentum, Amount: 5 })
+        {
+            return false;
+        }
+
+        var enchantedStrike = acquired.Player.Deck[0];
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [11],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies:
+            [
+                new EnemyCombatState(1, "proto.enemy.wriggler", 60,
+                    0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 12,
+            Cards:
+            [
+                new CombatCardInstance(
+                    11,
+                    enchantedStrike.InstanceId,
+                    strikeId,
+                    enchantedStrike.UpgradeLevel,
+                    false,
+                    enchantedStrike.PersistentState,
+                    Enchantment: enchantedStrike.Enchantment)
+            ],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Act: 1,
+            PlayPile: []);
+        var played = PrototypeGameEngine.ResolveCardPlaySeries(
+            acquired.Player,
+            combat,
+            rng,
+            new PrototypeCardPlaySeriesState(
+                SourceCardInstanceId: 11,
+                SourceCardDestination: PrototypeCardZone.DiscardPile,
+                TargetEnemyId: 1,
+                EnergySpent: 1,
+                PlayCount: 2,
+                NextPlayIndex: 0));
+        var resolvedStrike = played.Combat.Cards.Single(
+            card => card.InstanceId == 11);
+        return played.Combat.Enemies.Single(enemy => enemy.InstanceId == 1).Hp == 43
+            && resolvedStrike.MomentumDamageBonus == 10
+            && played.Player.Deck[0].Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Momentum, Amount: 5 };
     }
 
     private static bool HasKusarigamaPath()
