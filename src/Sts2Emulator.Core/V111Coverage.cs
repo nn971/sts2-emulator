@@ -1680,6 +1680,30 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "ROYAL_STAMP"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.RoyalStampId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.RoyalStampId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.RoyalStampId,
+                out var royalStampRarity)
+            && royalStampRarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.RoyalStampId)
+                .AcquisitionDeckChoice is
+                { Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                    Selections: 1,
+                    EnchantmentKind:
+                        PrototypeCardEnchantmentKind.RoyallyApproved }
+            && HasRoyalStampPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -3039,6 +3063,80 @@ public static class V111Coverage
                 melted, 1, PrototypeCardKeyword.Ethereal)
             && !PrototypeGameEngine.CardHasKeyword(
                 melted, 2, PrototypeCardKeyword.Ethereal);
+    }
+
+    private static bool HasRoyalStampPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.RoyalStampId;
+        const string strikeId = "proto.silent.strike";
+        const string defendId = "proto.silent.defend";
+        const string powerId = "proto.silent.footwork";
+        var player = new PlayerState(
+            30, 30, 0,
+            [
+                new CardInstance(1, strikeId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(2, defendId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(3, powerId, 0,
+                    PrototypeJson.EmptyObject())
+            ],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())],
+            []);
+        var pending = PrototypeGameEngine.CreateRelicDeckChoice(
+            player, relicId);
+        if (pending is not
+            { Kind: PrototypePersistentDeckChoiceKind.Enchant,
+                RemainingSelections: 1 }
+            || !pending.CandidateCardInstanceIds
+                .Order().SequenceEqual(new long[] { 1, 2 })
+            || PrototypeGameEngine.CanSelectEventDeckCard(
+                player.Deck[2],
+                PrototypePersistentDeckChoiceKind.Enchant,
+                null,
+                PrototypeCardEnchantmentKind.RoyallyApproved,
+                false))
+        {
+            return false;
+        }
+
+        var enchanted = player.Deck[0] with
+        {
+            Enchantment = new PrototypeCardEnchantment(
+                PrototypeCardEnchantmentKind.RoyallyApproved)
+        };
+        var combat = new CombatState(
+            Turn: 1,
+            Energy: 3,
+            PlayerBlock: 0,
+            Hand: [1],
+            DrawPile: [],
+            DiscardPile: [],
+            ExhaustPile: [],
+            Enemies: [],
+            NextCardInstanceId: 2,
+            Cards:
+            [
+                new CombatCardInstance(1, 1, strikeId, 0, false,
+                    PrototypeJson.EmptyObject(), Enchantment:
+                        enchanted.Enchantment)
+            ],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1,
+            Act: 1,
+            PlayPile: []);
+
+        return PrototypeGameEngine.IsInnate(combat.Cards[0])
+            && PrototypeGameEngine.CardHasKeyword(
+                combat, 1, PrototypeCardKeyword.Innate)
+            && PrototypeGameEngine.CardHasKeyword(
+                combat, 1, PrototypeCardKeyword.Retain)
+            && !PrototypeGameEngine.CanSelectEventDeckCard(
+                enchanted,
+                PrototypePersistentDeckChoiceKind.Enchant,
+                null,
+                PrototypeCardEnchantmentKind.RoyallyApproved,
+                false);
     }
 
     private static bool HasSlingOfCouragePath()

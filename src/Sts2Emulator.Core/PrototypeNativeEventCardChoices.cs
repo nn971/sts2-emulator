@@ -61,6 +61,10 @@ public sealed partial class PrototypeGameEngine
                     != PrototypeCardEnchantmentKind.Corrupted
                     || definition.Type == PrototypeCardType.Attack)
                 && (enchantmentKind
+                    != PrototypeCardEnchantmentKind.RoyallyApproved
+                    || definition.Type is PrototypeCardType.Attack
+                        or PrototypeCardType.Skill)
+                && (enchantmentKind
                     != PrototypeCardEnchantmentKind.Imbued
                     || definition.Type == PrototypeCardType.Skill)
                 && (enchantmentKind

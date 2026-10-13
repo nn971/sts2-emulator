@@ -14,6 +14,7 @@ public static class PrototypeNativeSharedRelics
     public const string StrikeDummyId = "proto.relic.strike_dummy";
     public const string SturdyClampId = "proto.relic.sturdy_clamp";
     public const string GhostSeedId = "proto.relic.ghost_seed";
+    public const string RoyalStampId = "proto.relic.royal_stamp";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -73,6 +74,13 @@ public static class PrototypeNativeSharedRelics
         // Ghost Seed makes basic Strikes and Defends Ethereal in combat.
         new(GhostSeedId, "Ghost Seed",
             EtherealizesBasicStrikesAndDefends: true),
+        // Royal Stamp enchants one Attack or Skill with Innate and Retain.
+        new(RoyalStampId, "Royal Stamp",
+            AcquisitionDeckChoice: new(
+                PrototypePersistentDeckChoiceKind.Enchant,
+                1,
+                EnchantmentKind:
+                    PrototypeCardEnchantmentKind.RoyallyApproved)),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

@@ -12351,17 +12351,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "RoyallyApproved"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Enchantments/RoyallyApproved.cs#52f3ca9b240c7dd21a45c5d7bec899b93032ee0bed1e92dde31ecbd65adb99bc"
         ],
-        "implementation": "missing",
+        "implementation": "partial",
         "integration": "missing",
         "kind": "enchantments",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ROYALLY_APPROVED",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -27887,17 +27889,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.royal_stamp"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RoyalStamp.cs#db15cac7690e55153f7655e880c5f8bbb91cee5f574afa7de93228e8192c423c"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "ROYAL_STAMP",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29468,8 +29472,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 157,
-        "integrated": 158,
+        "implemented": 158,
+        "integrated": 159,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

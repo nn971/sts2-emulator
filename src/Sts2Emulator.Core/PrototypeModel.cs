@@ -145,7 +145,8 @@ public enum PrototypeCardKeyword
 {
     Retain,
     Sly,
-    Ethereal
+    Ethereal,
+    Innate
 }
 
 public enum PrototypeCardAfflictionKind

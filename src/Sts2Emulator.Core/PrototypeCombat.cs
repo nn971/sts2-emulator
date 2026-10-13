@@ -9030,6 +9030,11 @@ public sealed partial class PrototypeGameEngine
         var card = RequireCombatCard(combat, cardInstanceId);
         var baseValue = keyword switch
         {
+            PrototypeCardKeyword.Innate =>
+                PrototypeContent.Card(card.CardId).Innate
+                || (card.UpgradeLevel > 0
+                    && PrototypeContent.Card(card.CardId)
+                        .InnateOnUpgrade),
             PrototypeCardKeyword.Retain =>
                 PrototypeContent.Card(card.CardId).Retain
                 || (card.UpgradeLevel > 0
@@ -9058,6 +9063,11 @@ public sealed partial class PrototypeGameEngine
                 !relic.IsMelted
                 && PrototypeContent.Relic(relic.RelicId)
                     .EtherealizesBasicStrikesAndDefends);
+        var grantedByRoyalStamp =
+            card.Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.RoyallyApproved
+            && (keyword is PrototypeCardKeyword.Innate
+                or PrototypeCardKeyword.Retain);
         var grantedByAffliction =
             keyword == PrototypeCardKeyword.Ethereal
             && card.Affliction?.Kind
@@ -9086,7 +9096,8 @@ public sealed partial class PrototypeGameEngine
         return matching is { Length: > 0 }
             ? matching[^1].Enabled
             : baseValue || grantedByGhostSeed
-                || grantedByAffliction || grantedByPower;
+                || grantedByRoyalStamp || grantedByAffliction
+                || grantedByPower;
     }
 
     private static CombatState ApplyCardKeywordOverride(
@@ -12559,11 +12570,17 @@ public sealed partial class PrototypeGameEngine
         }
     }
 
-    private static bool IsInnate(CombatCardInstance card)
+    internal static bool IsInnate(CombatCardInstance card)
     {
+        var innateOverride = card.KeywordOverrides?.LastOrDefault(item =>
+            item.Keyword == PrototypeCardKeyword.Innate);
+        if (innateOverride is not null)
+            return innateOverride.Enabled;
         var definition = PrototypeContent.Card(card.CardId);
         return definition.Innate
-            || (card.UpgradeLevel > 0 && definition.InnateOnUpgrade);
+            || (card.UpgradeLevel > 0 && definition.InnateOnUpgrade)
+            || card.Enchantment?.Kind
+                == PrototypeCardEnchantmentKind.RoyallyApproved;
     }
 
     private static CombatCardInstance RequireCombatCard(
