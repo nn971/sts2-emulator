@@ -130,7 +130,7 @@ def main() -> int:
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(output, encoding="utf-8")
-    return 2  # An inventory report is a to-do list, not a parity success.
+    return 0  # Report generation succeeded; JSON explicitly says parity NOT_TESTED.
 
 
 if __name__ == "__main__":
