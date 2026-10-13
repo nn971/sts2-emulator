@@ -1154,7 +1154,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             undiscounted);
     }
 
-    private static ShopState RepriceShop(
+    internal static ShopState RepriceShop(
         ShopState shop,
         PlayerState player)
     {

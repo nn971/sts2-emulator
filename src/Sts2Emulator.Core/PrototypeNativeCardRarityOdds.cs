@@ -181,7 +181,8 @@ public static class PrototypeNativeCardRarityOdds
 
     public static string[] GenerateMerchantCards(
         int count, int ascension, PrototypeCardType type,
-        int currentOffsetBasisPoints, RngBundle rng)
+        int currentOffsetBasisPoints, RngBundle rng,
+        IReadOnlyCollection<string>? excluded = null)
     {
         if (count < 0)
         {
@@ -190,8 +191,12 @@ public static class PrototypeNativeCardRarityOdds
         // Merchant cards are individually generated from the same
         // eligible character pool; duplicate models are legal.
         var pool = PrototypeContent.NativeSilentRewardCardPool
-            .Where(id => PrototypeContent.Card(id).Type == type)
+            .Where(id => PrototypeContent.Card(id).Type == type
+                && (excluded is null || !excluded.Contains(id)))
             .ToArray();
+        if (pool.Length == 0 && count > 0)
+            throw new InvalidOperationException(
+                $"No available Silent {type} merchant cards remain.");
         var cards = new string[count];
         for (var i = 0; i < count; i++)
         {

@@ -46,6 +46,7 @@ public static class PrototypeNativeSharedRelics
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string CauldronId = "proto.relic.cauldron";
     public const string OrreryId = "proto.relic.orrery";
+    public const string TheCourierId = "proto.relic.the_courier";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
     public const string BellowsId = "proto.relic.bellows";
@@ -232,6 +233,11 @@ public static class PrototypeNativeSharedRelics
         // Orrery offers five independent three-card rewards on pickup.
         new(OrreryId, "Orrery",
             AcquisitionCardRewardGroupCount: 5),
+        // The Courier discounts merchant prices by 20% and restocks
+        // purchased merchant entries.
+        new(TheCourierId, "The Courier",
+            ShopPriceNumerator: 4,
+            ShopPriceDenominator: 5),
         // Beating Remnant caps the owner's HP loss at 20 per combat turn.
         new(BeatingRemnantId, "Beating Remnant",
             PlayerHpLossLimitPerTurn: 20),

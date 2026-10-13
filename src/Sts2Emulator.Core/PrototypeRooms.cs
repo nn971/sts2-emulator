@@ -2910,6 +2910,18 @@ public sealed partial class PrototypeGameEngine
                     .Select(item => item.OfferId == offer.OfferId ? item with { Sold = true } : item)
                     .ToArray()
             };
+            if (HasTheCourier(player))
+            {
+                var replacement = RestockTheCourierCardOffer(
+                    state, world, shop, offer);
+                shop = shop with
+                {
+                    CardOffers = shop.CardOffers
+                        .Select(item => item.OfferId == offer.OfferId
+                            ? replacement : item)
+                        .ToArray()
+                };
+            }
         }
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_potion"))
         {
@@ -2943,6 +2955,12 @@ public sealed partial class PrototypeGameEngine
             shop = UpdatePotionOffer(
                 shop,
                 offer with { Sold = true });
+            if (HasTheCourier(player))
+            {
+                shop = UpdatePotionOffer(
+                    shop,
+                    RestockTheCourierPotionOffer(state, offer));
+            }
         }
         else if (StringComparer.Ordinal.Equals(
                      action.Kind,
@@ -2984,6 +3002,12 @@ public sealed partial class PrototypeGameEngine
             shop = UpdatePotionOffer(
                 shop,
                 offer with { Sold = true });
+            if (HasTheCourier(player))
+            {
+                shop = UpdatePotionOffer(
+                    shop,
+                    RestockTheCourierPotionOffer(state, offer));
+            }
         }
         else if (StringComparer.Ordinal.Equals(action.Kind, "buy_relic"))
         {
@@ -3010,6 +3034,16 @@ public sealed partial class PrototypeGameEngine
             shop = UpdateRelicOffer(
                 shop,
                 offer with { Sold = true });
+            if (HasTheCourier(player))
+            {
+                var restocked = RestockTheCourierRelicOffer(
+                    state, world, player, offer);
+                world = restocked.World;
+                if (restocked.Offer is { } replacement)
+                {
+                    shop = UpdateRelicOffer(shop, replacement);
+                }
+            }
             shop = RepriceShop(
                 shop,
                 player);
@@ -3029,6 +3063,7 @@ public sealed partial class PrototypeGameEngine
         // positive-gold merchant purchase, including card removal.
         player = ApplyFirstPositiveShopPurchase(
             player, Math.Max(0, goldBeforePurchase - player.Gold));
+        shop = RepriceShop(shop, player);
 
         world = world with
         {

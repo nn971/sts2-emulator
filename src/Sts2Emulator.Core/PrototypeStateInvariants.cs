@@ -1792,6 +1792,10 @@ public static class PrototypeStateInvariants
             StringComparer.Ordinal.Equals(
                 relic.RelicId,
                 NativeGloryAncientsV111.LordsParasolId));
+        var courierHeld = player.Relics.Any(relic =>
+            StringComparer.Ordinal.Equals(
+                relic.RelicId,
+                PrototypeNativeSharedRelics.TheCourierId));
         if ((shop.LordsParasolPurchaseFlowActive
                 || shop.LordsParasolPendingPotionOfferId is not null
                 || shop.LordsParasolRemovalChoicePending)
@@ -1946,7 +1950,7 @@ public static class PrototypeStateInvariants
             }
         }
 
-        if (shop.PotionOffers
+        if (!courierHeld && shop.PotionOffers
             .Select(offer => offer.ItemId)
             .Distinct(StringComparer.Ordinal)
             .Count()

@@ -653,6 +653,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "THE_COURIER"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.TheCourierId,
+                StringComparer.Ordinal)
+            && HasTheCourierPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "STORYBOOK"
             && engineIds.Contains(
                 NativeAncientRewardsV111.StorybookId,
@@ -8116,6 +8126,143 @@ public static class V111Coverage
             && state.World?.Reward is null
             && state.World?.CustomRewardReturn is null
             && state.Player.Deck.Length == startingDeckSize + 4;
+    }
+
+    private static bool HasTheCourierPath()
+    {
+        var relicId = PrototypeNativeSharedRelics.TheCourierId;
+        var definition = PrototypeContent.Relic(relicId);
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            || rarity != PrototypeRelicRarity.Rare
+            || PrototypeNativeRelicGrabBag.IsShopEligible(relicId)
+            || definition.ShopPriceNumerator != 4
+            || definition.ShopPriceDenominator != 5)
+        {
+            return false;
+        }
+
+        var fixture = PrototypeNativeLaterActFixture.Create(
+            "coverage-the-courier", 2);
+        var player = fixture.Player with
+        {
+            Gold = 1000,
+            Relics = fixture.Player.Relics.Append(new RelicInstance(
+                relicId, PrototypeJson.EmptyObject())).ToArray()
+        };
+        var attackId = PrototypeContent.NativeSilentRewardCardPool
+            .FirstOrDefault(id => PrototypeContent.Card(id).Type
+                == PrototypeCardType.Attack);
+        if (attackId is null)
+            return false;
+        const string potionId = "proto.potion.block";
+        const string relicOfferId = "proto.relic.lantern";
+        var rawShop = new ShopState(
+            CardOffers:
+            [new ShopOffer(1, attackId, 101, false, BasePrice: 101)],
+            PotionOffer: new ShopOffer(
+                100, potionId, 61, false, BasePrice: 61),
+            RelicOffer: new ShopOffer(
+                200, relicOfferId, 101, false, BasePrice: 101),
+            RemovalPrice: 75,
+            BaseRemovalPrice: 75);
+        var pricedShop = PrototypeGameEngine.RepriceShop(
+            rawShop, player);
+        if (pricedShop.CardOffers[0].Price != 80
+            || pricedShop.PotionOffer?.Price != 48
+            || pricedShop.RelicOffer?.Price != 80
+            || pricedShop.RemovalPrice != 60)
+        {
+            return false;
+        }
+
+        var shopRng = fixture.Rng.Fork();
+        var relicBag = PrototypeNativeRelicGrabBag.Create(
+            player, shopRng) with
+        {
+            Common = PrototypeNativeRelicGrabBag.Create(
+                    player, PrototypeRng.CreateBundle(
+                        "coverage-the-courier-bag"))
+                .Common
+                .Where(id => id != relicOfferId)
+                .ToArray()
+        };
+        var world = fixture.World! with
+        {
+            ActiveRoom = PrototypeRoomType.Shop,
+            Shop = pricedShop,
+            RelicBag = relicBag
+        };
+        var state = fixture with
+        {
+            Player = player,
+            Rng = shopRng,
+            World = world,
+            Phase = RunPhase.Shop
+        };
+        var engine = new PrototypeGameEngine();
+        if (!engine.GetLegalActions(state).Any(action =>
+                action.Kind == "buy_card"
+                && action.ReadPayload<BuyOfferPayload>().OfferId == 1)
+            || !engine.GetLegalActions(state).Any(action =>
+                action.Kind == "buy_potion"
+                && action.ReadPayload<BuyOfferPayload>().OfferId == 100)
+            || !engine.GetLegalActions(state).Any(action =>
+                action.Kind == "buy_relic"
+                && action.ReadPayload<BuyOfferPayload>().OfferId == 200))
+        {
+            return false;
+        }
+
+        var stateAfterCard = engine.Step(state, GameAction.Create(
+            "buy_card", new BuyOfferPayload(1))).State;
+        var cardOffer = stateAfterCard.World?.Shop?.CardOffers
+            .SingleOrDefault(offer => offer.OfferId == 1);
+        if (cardOffer is not
+                { Sold: false, OnSale: false, BasePrice: > 0 }
+            || cardOffer.ItemId == attackId
+            || PrototypeContent.Card(cardOffer.ItemId).Type
+                != PrototypeCardType.Attack
+            || cardOffer.Price != cardOffer.BasePrice * 4 / 5
+            || stateAfterCard.Player.Gold != 920)
+        {
+            return false;
+        }
+
+        var stateAfterPotion = engine.Step(stateAfterCard,
+            GameAction.Create("buy_potion",
+                new BuyOfferPayload(100))).State;
+        var potionOffer = stateAfterPotion.World?.Shop?.PotionOffers
+            .SingleOrDefault(offer => offer.OfferId == 100);
+        if (potionOffer is not { Sold: false, BasePrice: > 0 }
+            || !PrototypeContent.Potions.ContainsKey(potionOffer.ItemId)
+            || potionOffer.Price != potionOffer.BasePrice * 4 / 5
+            || stateAfterPotion.Player.PotionSlots.Count(
+                potion => potion is not null) != 1)
+        {
+            return false;
+        }
+
+        var stateAfterRelic = engine.Step(stateAfterPotion,
+            GameAction.Create("buy_relic",
+                new BuyOfferPayload(200))).State;
+        var relicOffer = stateAfterRelic.World?.Shop?.RelicOffers
+            .SingleOrDefault(offer => offer.OfferId == 200);
+        return relicOffer is
+                { Sold: false, BasePrice: > 0 }
+            && relicOffer.ItemId != relicOfferId
+            && PrototypeContent.RelicPool.Contains(
+                relicOffer.ItemId, StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                relicOffer.ItemId)
+            && !stateAfterRelic.Player.Relics.Any(relic =>
+                relic.RelicId == relicOffer.ItemId)
+            && relicOffer.Price == relicOffer.BasePrice * 4 / 5
+            && stateAfterRelic.World?.Shop?.RemovalPrice == 60
+            && !stateAfterRelic.World.Shop.RelicOffers.Any(offer =>
+                offer.ItemId == relicId);
     }
 
     private static bool HasToyBoxPath()

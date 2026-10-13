@@ -1439,3 +1439,7 @@ Orrery now offers five independent three-card Silent reward groups on pickup.
 The groups retain per-card upgrade outcomes and resume the interrupted
 reward after taking or skipping cards. See
 [mechanics gap 139](reference-builds/v0.111.0-mechanics-gap-139.md).
+The Courier is now a Rare shared relic: it is excluded from shop stock,
+reduces all shop prices by 20%, and refills purchased card, potion, and relic
+slots. See
+[mechanics gap 140](reference-builds/v0.111.0-mechanics-gap-140.md).

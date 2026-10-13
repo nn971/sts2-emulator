@@ -47,6 +47,8 @@ public static class PrototypeNativeRelicGrabBag
                 PrototypeRelicRarity.Shop,
             [PrototypeNativeSharedRelics.OrreryId] =
                 PrototypeRelicRarity.Shop,
+            [PrototypeNativeSharedRelics.TheCourierId] =
+                PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.TinyMailboxId] =
                 PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.AmethystAubergineId] =
@@ -203,7 +205,8 @@ public static class PrototypeNativeRelicGrabBag
             PrototypeNativeSharedRelics.AmethystAubergineId,
             PrototypeNativeSharedRelics.BowlerHatId,
             "proto.relic.old_coin",
-            "proto.relic.lucky_fysh"
+            "proto.relic.lucky_fysh",
+            PrototypeNativeSharedRelics.TheCourierId
         };
 
     public static bool TryGetRarity(string id, out PrototypeRelicRarity rarity) =>
