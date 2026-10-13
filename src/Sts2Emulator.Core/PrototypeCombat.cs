@@ -6347,6 +6347,60 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount);
                     break;
 
+                case PrototypeCombatEffectKind.UpgradeEventSourceCard:
+                {
+                    if (eventSourceCardInstanceId is null)
+                    {
+                        throw new InvalidOperationException(
+                            "Event-source card upgrade requires a source card.");
+                    }
+
+                    var sourceCard = RequireCombatCard(
+                        combat,
+                        eventSourceCardInstanceId.Value);
+                    var definition = PrototypeContent.Card(
+                        sourceCard.CardId);
+                    if (definition.Type is not
+                            (PrototypeCardType.Attack
+                            or PrototypeCardType.Skill)
+                        || sourceCard.UpgradeLevel
+                            >= definition.MaxUpgradeLevel)
+                    {
+                        break;
+                    }
+
+                    combat = combat with
+                    {
+                        Cards = combat.Cards.Select(card =>
+                            card.InstanceId == sourceCard.InstanceId
+                                ? card with
+                                {
+                                    UpgradeLevel = card.UpgradeLevel + 1
+                                }
+                                : card).ToArray()
+                    };
+
+                    if (sourceCard.PersistentCardInstanceId
+                        is { } persistentCardId)
+                    {
+                        player = player with
+                        {
+                            Deck = player.Deck.Select(card =>
+                                card.InstanceId == persistentCardId
+                                    && card.CardId == sourceCard.CardId
+                                    && card.UpgradeLevel
+                                        < definition.MaxUpgradeLevel
+                                    ? card with
+                                    {
+                                        UpgradeLevel = card.UpgradeLevel + 1
+                                    }
+                                    : card).ToArray()
+                        };
+                    }
+
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.SetHandCardsEnergyCostUntilTurnEndOrPlayed:
                     combat = SetHandCardsTemporaryEnergyCost(
                         combat,

@@ -166,6 +166,7 @@ public static class PrototypeNativeRelicGrabBag
             [PrototypeNativeSharedRelics.TungstenRodId] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.LizardTailId] = PrototypeRelicRarity.Rare,
             [PrototypeNativeSharedRelics.StoneCalendarId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeSharedRelics.RazorToothId] = PrototypeRelicRarity.Rare,
 
             ["proto.relic.lees_waffle"] = PrototypeRelicRarity.Shop,
             ["proto.relic.membership_card"] = PrototypeRelicRarity.Shop,

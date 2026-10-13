@@ -19,6 +19,7 @@ public static class PrototypeNativeSharedRelics
     public const string VexingPuzzleboxId =
         "proto.relic.vexing_puzzlebox";
     public const string PendulumId = "proto.relic.pendulum";
+    public const string RazorToothId = "proto.relic.razor_tooth";
     public const string AmethystAubergineId =
         "proto.relic.amethyst_aubergine";
     public const string BreadId = "proto.relic.bread";
@@ -162,6 +163,19 @@ public static class PrototypeNativeSharedRelics
             ],
             PersistentTriggerCountProperty: "TurnsSeen",
             PersistentTriggerCountModulo: 3),
+        // Upgrade each owner-played Attack or Skill after it resolves.
+        new(RazorToothId, "Razor Tooth",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CardPlayed,
+                    [new(PrototypeCombatEffectKind.UpgradeEventSourceCard, 0)],
+                    RequiredSourceCardType: PrototypeCardType.Attack,
+                    RequiresPlayerSide: true),
+                new(PrototypeCombatEventKind.CardPlayed,
+                    [new(PrototypeCombatEffectKind.UpgradeEventSourceCard, 0)],
+                    RequiredSourceCardType: PrototypeCardType.Skill,
+                    RequiresPlayerSide: true)
+            ]),
         // Tiny Mailbox offers two random potions after a Rest heal.
         new(TinyMailboxId, "Tiny Mailbox",
             RestHealPotionRewardCount: 2),

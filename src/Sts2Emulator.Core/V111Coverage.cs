@@ -2047,6 +2047,36 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "RAZOR_TOOTH"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.RazorToothId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.RazorToothId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.RazorToothId,
+                out var razorToothRarity)
+            && razorToothRarity == PrototypeRelicRarity.Rare
+            && PrototypeNativeRelicGrabBag.IsShopEligible(
+                PrototypeNativeSharedRelics.RazorToothId)
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.RazorToothId).Triggers is
+                { Length: 2 } razorToothTriggers
+            && razorToothTriggers.All(trigger =>
+                trigger.EventKind == PrototypeCombatEventKind.CardPlayed
+                && trigger.RequiresPlayerSide
+                && trigger.Effects is
+                    [{ Kind: PrototypeCombatEffectKind.UpgradeEventSourceCard }])
+            && razorToothTriggers.Select(trigger =>
+                trigger.RequiredSourceCardType).ToHashSet().SetEquals(
+                    [PrototypeCardType.Attack, PrototypeCardType.Skill])
+            && HasRazorToothPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "BOOK_OF_FIVE_RINGS"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.BookOfFiveRingsId,
@@ -4390,6 +4420,126 @@ public static class V111Coverage
             && meltedDraw.Combat.Hand.Length == 0
             && meltedDraw.Player.Relics[0].PersistentState
                 .GetProperty(countProperty).GetInt32() == 2;
+    }
+
+    private static bool HasRazorToothPath()
+    {
+        const string relicId = PrototypeNativeSharedRelics.RazorToothId;
+        const string attackId = "proto.silent.strike";
+        const string skillId = "proto.silent.defend";
+        const string powerId = "proto.silent.footwork";
+        var triggerCount = PrototypeContent.Relic(relicId)
+            .Triggers?.Length ?? 0;
+
+        (PlayerState Player, CombatState Combat, long SourceCardId) Fixture(
+            string cardId, int upgradeLevel = 0, bool melted = false,
+            bool playerSideActive = true, bool persistent = true)
+        {
+            const long persistentCardId = 1;
+            const long sourceCardId = 11;
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            CardInstance[] deck = persistent
+                ? [new CardInstance(
+                    persistentCardId, cardId, upgradeLevel,
+                    PrototypeJson.EmptyObject())]
+                : [];
+            var player = new PlayerState(
+                30, 30, 0, deck, [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies: [],
+                NextCardInstanceId: 12,
+                Cards:
+                [
+                    new CombatCardInstance(
+                        sourceCardId,
+                        persistent ? persistentCardId : null,
+                        cardId,
+                        upgradeLevel,
+                        !persistent,
+                        PrototypeJson.EmptyObject())
+                ],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(
+                        0, relicId, 1, new int[triggerCount],
+                        IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: [],
+                IsPlayerSideActive: playerSideActive);
+            return (player, combat, sourceCardId);
+        }
+
+        (PlayerState Player, CombatState Combat) Dispatch(
+            (PlayerState Player, CombatState Combat, long SourceCardId) fixture,
+            string cardId) => PrototypeGameEngine.DispatchCombatEvent(
+                fixture.Player,
+                fixture.Combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardPlayed,
+                    CardId: cardId,
+                    SourceCardInstanceId: fixture.SourceCardId),
+                PrototypeRng.CreateBundle(
+                    $"coverage-razor-tooth-{cardId}-{fixture.Combat.RelicStates[0].IsMelted}-{fixture.Combat.IsPlayerSideActive}"));
+
+        var attack = Fixture(attackId);
+        var attackUpgrade = Dispatch(attack, attackId);
+        var attackUpgradeAgain = PrototypeGameEngine.DispatchCombatEvent(
+            attackUpgrade.Player,
+            attackUpgrade.Combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.CardPlayed,
+                CardId: attackId,
+                SourceCardInstanceId: attack.SourceCardId),
+            PrototypeRng.CreateBundle("coverage-razor-tooth-attack-again"));
+        var skill = Fixture(skillId);
+        var skillUpgrade = Dispatch(skill, skillId);
+        var power = Fixture(powerId);
+        var powerResult = Dispatch(power, powerId);
+        var melted = Fixture(attackId, melted: true);
+        var meltedResult = Dispatch(melted, attackId);
+        var enemySide = Fixture(attackId, playerSideActive: false);
+        var enemySideResult = Dispatch(enemySide, attackId);
+        var alreadyUpgraded = Fixture(
+            attackId,
+            upgradeLevel: PrototypeContent.Card(attackId).MaxUpgradeLevel);
+        var maxLevelResult = Dispatch(alreadyUpgraded, attackId);
+
+        static bool UpgradedBoth(
+            (PlayerState Player, CombatState Combat) result,
+            long sourceCardId,
+            string cardId) =>
+            result.Combat.Cards.Single(card =>
+                    card.InstanceId == sourceCardId).UpgradeLevel == 1
+            && result.Player.Deck.Single(card =>
+                    card.CardId == cardId).UpgradeLevel == 1;
+
+        static bool Unchanged(
+            (PlayerState Player, CombatState Combat) result,
+            long sourceCardId,
+            int level = 0) =>
+            result.Combat.Cards.Single(card =>
+                card.InstanceId == sourceCardId).UpgradeLevel == level
+            && result.Player.Deck.All(card => card.UpgradeLevel == level);
+
+        return UpgradedBoth(attackUpgrade, attack.SourceCardId, attackId)
+            && UpgradedBoth(skillUpgrade, skill.SourceCardId, skillId)
+            && Unchanged(attackUpgradeAgain, attack.SourceCardId, level: 1)
+            && Unchanged(powerResult, power.SourceCardId)
+            && Unchanged(meltedResult, melted.SourceCardId)
+            && Unchanged(enemySideResult, enemySide.SourceCardId)
+            && Unchanged(maxLevelResult, alreadyUpgraded.SourceCardId,
+                PrototypeContent.Card(attackId).MaxUpgradeLevel);
     }
 
     private static bool HasGnarledHammerPath()

@@ -27723,17 +27723,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.razor_tooth"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RazorTooth.cs#ef30fdb40103dedfb43dc384c0e85933ceb18177a702b83d091cf593f49a9723"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "RAZOR_TOOTH",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29502,8 +29504,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 178,
-        "integrated": 179,
+        "implemented": 179,
+        "integrated": 180,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

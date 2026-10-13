@@ -7664,6 +7664,7 @@ public static class PrototypeContent
         "proto.relic.prayer_wheel",
         "proto.relic.pocketwatch",
         PrototypeNativeSharedRelics.GamePieceId,
+        PrototypeNativeSharedRelics.RazorToothId,
         "proto.relic.white_beast_statue",
         PrototypeNativeSharedRelics.BellowsId,
         PrototypeNativeSharedRelics.ChandelierId,

@@ -138,7 +138,8 @@ public enum PrototypeCombatEffectKind
     CreateRandomCharacterPowerCardsInHand,
     StunEnemy,
     BuffMaulDamage,
-    LoseEnergy
+    LoseEnergy,
+    UpgradeEventSourceCard
 }
 
 public enum PrototypeCardKeyword
