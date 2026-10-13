@@ -109,9 +109,20 @@ public sealed partial class PrototypeGameEngine
         long instanceId,
         string cardId,
         bool upgraded,
-        RngBundle rng)
+        RngBundle rng,
+        PrototypeCardEnchantment? enchantment = null)
     {
         player = AppendCard(player, instanceId, cardId, rng);
+        if (enchantment is not null)
+        {
+            player = player with
+            {
+                Deck = player.Deck.Select(card =>
+                    card.InstanceId == instanceId
+                        ? card with { Enchantment = enchantment with { } }
+                        : card).ToArray()
+            };
+        }
         if (!upgraded)
         {
             return player;

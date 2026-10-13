@@ -5,9 +5,9 @@ public sealed partial class PrototypeGameEngine
     /// <summary>
     /// Underdocks native-shaped ordinary selection. The first three
     /// combats draw from all four weak encounters without replacement.
-    /// Later ordinary fights draw from a restricted implemented normal bag
-    /// without replacement. Unsupported region content does not fall back
-    /// to Overgrowth or legacy prototype encounters.
+    /// Later ordinary fights draw from the complete implemented normal bag,
+    /// refilling it after exhaustion. Unsupported region content does not
+    /// fall back to Overgrowth or legacy prototype encounters.
     /// </summary>
     private static (
         PrototypeEncounterDefinition Encounter,
@@ -44,13 +44,6 @@ public sealed partial class PrototypeGameEngine
             var elites = pool.RemainingEliteEncounterIds
                 ?? throw new InvalidOperationException(
                     "Underdocks elite encounter bag is missing.");
-            if (elites.Length == 0)
-            {
-                throw new NotSupportedException(
-                    "The implemented Underdocks elite bag is exhausted; " +
-                    "remaining elite encounters are not implemented.");
-            }
-
             if (elites.Any(id =>
                     !PrototypeNativeUnderdocks.SupportedEliteEncounterIds
                         .Contains(id, StringComparer.Ordinal)))
@@ -59,16 +52,32 @@ public sealed partial class PrototypeGameEngine
                     "Underdocks elite bag contains unsupported encounters.");
             }
 
+            var availableElites = elites.Length == 0
+                ? (string[])PrototypeNativeUnderdocks
+                    .SupportedEliteEncounterIds.Clone()
+                : elites;
+            var previousElite = world.EncounterIds.Reverse()
+                .FirstOrDefault(id => PrototypeNativeUnderdocks
+                    .SupportedEliteEncounterIds.Contains(
+                        id, StringComparer.Ordinal));
+            var eligibleElites = previousElite is null
+                ? availableElites
+                : availableElites.Where(id => !StringComparer.Ordinal.Equals(
+                    id, previousElite)).ToArray();
+            if (eligibleElites.Length == 0)
+                eligibleElites = availableElites;
             var index = PrototypeRng.NextInt(
-                state.Rng, "combat", elites.Length);
+                state.Rng, "combat", eligibleElites.Length);
+            var selectedElite = eligibleElites[index];
             return (
-                PrototypeContent.Encounter(elites[index]),
+                PrototypeContent.Encounter(selectedElite),
                 world with
                 {
                     ActOneEncounterPool = pool with
                     {
-                        RemainingEliteEncounterIds = elites
-                            .Where((_, i) => i != index)
+                        RemainingEliteEncounterIds = availableElites
+                            .Where(id => !StringComparer.Ordinal.Equals(
+                                id, selectedElite))
                             .ToArray()
                     }
                 });
@@ -87,16 +96,8 @@ public sealed partial class PrototypeGameEngine
             : pool.RemainingNormalEncounterIds
                 ?? throw new InvalidOperationException(
                     "Underdocks normal encounter bag is missing.");
-        if (remaining.Length == 0)
+        if (isWeak && remaining.Length == 0)
         {
-            if (!isWeak)
-            {
-                throw new NotSupportedException(
-                    "The implemented Underdocks normal encounter bag is " +
-                    "exhausted. Remaining native normal encounters are " +
-                    "not implemented; refusing foreign encounter fallback.");
-            }
-
             throw new InvalidOperationException(
                 "Underdocks weak encounter pool was exhausted too early.");
         }
@@ -112,11 +113,27 @@ public sealed partial class PrototypeGameEngine
                 "bag contains an unsupported encounter.");
         }
 
+        var available = !isWeak && remaining.Length == 0
+            ? (string[])PrototypeNativeUnderdocks
+                .SupportedNormalEncounterIds.Clone()
+            : remaining;
+        var previous = world.EncounterIds.Reverse().FirstOrDefault(id =>
+            PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
+                id, StringComparer.Ordinal)
+            || PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Contains(
+                id, StringComparer.Ordinal));
+        var eligible = previous is null
+            ? available
+            : available.Where(id => !StringComparer.Ordinal.Equals(
+                id, previous)).ToArray();
+        if (eligible.Length == 0)
+            eligible = available;
+
         var selected = PrototypeRng.NextInt(
-            state.Rng, "combat", remaining.Length);
-        var encounterId = remaining[selected];
-        var nextRemaining = remaining
-            .Where((_, index) => index != selected)
+            state.Rng, "combat", eligible.Length);
+        var encounterId = eligible[selected];
+        var nextRemaining = available
+            .Where(id => !StringComparer.Ordinal.Equals(id, encounterId))
             .ToArray();
         var nextPool = pool with
         {

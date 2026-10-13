@@ -59,6 +59,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             _ => throw new NotSupportedException($"Prototype phase '{state.Phase}' is unsupported.")
         };
 
+        next = ApplyToyBoxAcquisitionReward(state, next);
+        next = ApplyGlassEyeAcquisitionReward(state, next);
+        next = ApplyNeowRelicPickupRewards(state, next);
+        next = PrototypeGoldenPathMapV111.ApplyAcquisition(state, next);
+        next = NativePaelRewardsV111.SynchronizeLegionPet(next);
+        if (state.World?.Combat is not null && next.World?.Combat is null)
+            next = NativeAncientRewardsV111.ApplyCombatEnd(next);
+
         // Direct event and quest relic obtains bypass a bag draw. Keep
         // the retained regional relic queues disjoint from owned relics
         // at every decision boundary without introducing an RNG call.
@@ -318,8 +326,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 case PrototypeRunEffectKind.GainGold:
                     player = player with
                     {
-                        Gold =
-                            player.Gold + effect.Amount
+                        Gold = GoldAfterGain(player, effect.Amount)
                     };
                     break;
 
@@ -376,7 +383,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         CardInstance? addedCard = null,
         string? acquiredRelicId = null,
         RngBundle? rng = null,
-        RunWorldState? world = null)
+        RunWorldState? world = null,
+        Func<long>? allocateCardId = null,
+        RngBundle? nativeRunRng = null)
     {
         // RelicAcquired models RelicModel.AfterObtained on the newly
         // appended instance, not a broadcast to every owned relic with the
@@ -396,8 +405,98 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             }
 
             var relic = player.Relics[relicIndex];
+            if (relic.IsMelted)
+                continue;
             var definition =
                 PrototypeContent.Relic(relic.RelicId);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeDarvEventV111.CallingBellId)
+            {
+                player = AppendCard(
+                    player,
+                    (allocateCardId ?? throw new InvalidOperationException(
+                        "Calling Bell acquisition requires card IDs."))(),
+                    NativeDarvEventV111.CurseOfTheBellCardId,
+                    rng ?? throw new InvalidOperationException(
+                        "Calling Bell acquisition requires RNG context."));
+            }
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativePaelRewardsV111.WingId)
+                player = NativePaelRewardsV111.SetRewardsSacrificed(player, relicIndex, 0);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeGloryAncientsV111.BeautifulBraceletId)
+                player = NativeGloryAncientsV111.ApplyBeautifulBraceletAcquisition(
+                    player,
+                    rng ?? throw new InvalidOperationException(
+                        "Beautiful Bracelet acquisition requires RNG context."),
+                    nativeRunRng);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeGloryAncientsV111.DistinguishedCapeId)
+            {
+                var acquisitionRng = rng
+                    ?? throw new InvalidOperationException(
+                        "Distinguished Cape acquisition requires RNG context.");
+                var allocate = allocateCardId
+                    ?? throw new InvalidOperationException(
+                        "Distinguished Cape acquisition requires card IDs.");
+                var curseIds = NativeGloryAncientsV111
+                    .ModifierGeneratedCurseIds.ToList();
+                for (var i = 0; i < 2; i++)
+                {
+                    var selectedIndex = nativeRunRng is null
+                        ? PrototypeRng.NextInt(acquisitionRng, "event",
+                            curseIds.Count)
+                        : NativeRngV111.NextInt(nativeRunRng,
+                            "run.niche", curseIds.Count);
+                    var curseId = curseIds[selectedIndex];
+                    curseIds.RemoveAt(selectedIndex);
+                    player = AppendCard(player, allocate(), curseId,
+                        acquisitionRng);
+                }
+
+                for (var i = 0; i < 3; i++)
+                    player = AppendCard(player, allocate(),
+                        NativeGloryAncientsV111.ApparitionCardId,
+                        acquisitionRng);
+            }
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativePaelRewardsV111.ClawId)
+                player = NativePaelRewardsV111.EnchantClawDefends(player);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativePaelRewardsV111.ToothId)
+                player = NativePaelRewardsV111.InitializeTooth(player, relicIndex);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativePaelRewardsV111.LegionId)
+                player = NativePaelRewardsV111.InitializeLegion(player, relicIndex,
+                    rng ?? throw new InvalidOperationException("Pael's Legion acquisition requires RNG context."));
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId)
+                player = NativeAncientRewardsV111.Rekindle(player, relicIndex, acquisition: true);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeAncientRewardsV111.NutritiousSoupId)
+                player = NativeAncientRewardsV111.EnchantSoupStrikes(player);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == NativeAncientRewardsV111.ToyBoxId)
+                player = NativeAncientRewardsV111.InitializeToyBox(player, relicIndex);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == PrototypeNativeOrobasRelics.SandCastleId)
+                player = PrototypeNativeOrobasRelics.ApplySandCastleAcquisition(
+                    player, rng ?? throw new InvalidOperationException(
+                        "Sand Castle acquisition requires RNG context."));
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == PrototypeNativeOrobasRelics.TouchOfOrobasId)
+                player = PrototypeNativeOrobasRelics.ApplyTouchOfOrobasAcquisition(
+                    player, relicIndex);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == PrototypeNativeOrobasRelics.ArchaicToothId)
+                player = PrototypeNativeOrobasRelics.ApplyArchaicToothAcquisition(
+                    player, relicIndex);
+            if (eventKind == PrototypeRunEventKind.RelicAcquired
+                && relic.RelicId == PrototypeNativeOrobasRelics.AlchemicalCofferId)
+                player = PrototypeNativeOrobasRelics.ApplyAlchemicalCofferAcquisition(
+                    player, relicIndex, rng ?? throw new InvalidOperationException(
+                        "Alchemical Coffer acquisition requires RNG context."),
+                    nativeRunRng);
             foreach (var trigger in
                      definition.RunTriggers
                      ?? Array.Empty<PrototypeRelicRunTriggerSpec>())
@@ -427,10 +526,126 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     continue;
                 }
 
-                player = ApplyPlayerRunEffects(
-                    player,
-                    trigger.Effects,
-                    rng);
+                player = ApplyRelicAcquisitionRunEffects(
+                    player, trigger.Effects, rng, allocateCardId);
+            }
+        }
+
+        return player;
+    }
+
+    private static PlayerState ApplyRelicAcquisitionRunEffects(
+        PlayerState player,
+        IEnumerable<PrototypeRunEffectSpec> effects,
+        RngBundle? rng,
+        Func<long>? allocateCardId)
+    {
+        foreach (var effect in effects)
+        {
+            switch (effect.Kind)
+            {
+                case PrototypeRunEffectKind.AddCard:
+                    player = AppendCard(
+                        player,
+                        (allocateCardId ?? throw new InvalidOperationException(
+                            "Card-granting relic acquisition requires an instance allocator."))(),
+                        effect.CardId ?? throw new InvalidOperationException(
+                            "Card grant requires a card ID."),
+                        rng ?? throw new InvalidOperationException(
+                            "Card grant requires RNG context."));
+                    break;
+
+                case PrototypeRunEffectKind.GainRandomRareCard:
+                {
+                    var rewardRng = rng ?? throw new InvalidOperationException(
+                        "Random Rare-card relic acquisition requires RNG context.");
+                    var cardAllocator = allocateCardId
+                        ?? throw new InvalidOperationException(
+                            "Random Rare-card relic acquisition requires an instance allocator.");
+                    var rarePool = PrototypeContent.RewardCardPool
+                        .Where(cardId => PrototypeContent.Card(cardId).Rarity
+                            == PrototypeCardRarity.Rare)
+                        .ToArray();
+                    if (rarePool.Length == 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Random Rare-card reward has an empty pool.");
+                    }
+
+                    var cardId = rarePool[PrototypeRng.NextInt(
+                        rewardRng, "reward", rarePool.Length)];
+                    player = AppendCard(
+                        player, cardAllocator(), cardId, rewardRng);
+                    break;
+                }
+
+                case PrototypeRunEffectKind.GainPotionSlots:
+                    if (effect.Amount <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Potion slot increase must be positive.");
+                    }
+                    player = player with
+                    {
+                        PotionSlots = player.PotionSlots
+                            .Concat(new PotionInstance?[effect.Amount])
+                            .ToArray()
+                    };
+                    break;
+
+                case PrototypeRunEffectKind.GainPotion:
+                case PrototypeRunEffectKind.GainRandomPotion:
+                {
+                    if (!CanAcquirePotion(player))
+                    {
+                        throw new InvalidOperationException(
+                            "Player cannot acquire potions.");
+                    }
+
+                    var slot = Array.IndexOf(player.PotionSlots, null);
+                    if (slot < 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Relic pickup potion reward has no open slot.");
+                    }
+
+                    var potionId = effect.Kind
+                            == PrototypeRunEffectKind.GainRandomPotion
+                        ? PrototypeContent.PotionPool[PrototypeRng.NextInt(
+                            rng ?? throw new InvalidOperationException(
+                                "Random potion relic acquisition requires RNG context."),
+                            "event", PrototypeContent.PotionPool.Length)]
+                        : effect.PotionId ?? throw new InvalidOperationException(
+                            "Potion relic acquisition requires a potion ID.");
+                    _ = PrototypeContent.Potion(potionId);
+                    var slots = (PotionInstance?[])player.PotionSlots.Clone();
+                    slots[slot] = new PotionInstance(
+                        potionId, PrototypeJson.EmptyObject());
+                    player = player with { PotionSlots = slots };
+                    break;
+                }
+
+                case PrototypeRunEffectKind.TransformFirstCardOfId:
+                {
+                    var cardId = effect.CardId ?? throw new InvalidOperationException(
+                        "Transform-first-card effect requires a card ID.");
+                    var first = player.Deck.FirstOrDefault(card =>
+                        StringComparer.Ordinal.Equals(card.CardId, cardId));
+                    if (first is not null)
+                    {
+                        player = TransformPersistentDeckCard(
+                            player,
+                            first.InstanceId,
+                            upgradeResult: false,
+                            rng ?? throw new InvalidOperationException(
+                                "Deck transformation requires RNG context."));
+                    }
+                    break;
+                }
+
+                default:
+                    player = ApplyPlayerRunEffects(player, [effect], rng);
+                    break;
             }
         }
 
@@ -545,6 +760,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             ActiveRoom = null,
             Combat = null,
             Reward = null,
+            CustomRewardReturn = null,
             Shop = null,
             Event = null
         };
@@ -584,17 +800,32 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         player.Deck.FirstOrDefault(card => card.InstanceId == instanceId)
         ?? throw new InvalidOperationException($"Card instance {instanceId} is missing.");
 
-    private static int EnergyPerTurn(PlayerState player) =>
+    private static bool PreventsGoldGain(PlayerState player) =>
+        player.ActiveRelics.Any(relic => PrototypeContent.Relic(relic.RelicId)
+            .PreventGoldGain);
+
+    private static int GoldAfterGain(PlayerState player, int amount) =>
+        amount <= 0 || PreventsGoldGain(player)
+            ? player.Gold
+            : checked(player.Gold + amount);
+
+    private static int EnergyPerTurn(PlayerState player, int turn = 1) =>
         PrototypeContent.Rules.BaseEnergy
-        + player.Relics.Sum(relic => PrototypeContent.Relic(relic.RelicId).EnergyPerTurnBonus);
+        + player.ActiveRelics.Sum(relic =>
+        {
+            var definition = PrototypeContent.Relic(relic.RelicId);
+            return turn >= definition.EnergyBonusMinTurn ? definition.EnergyPerTurnBonus : 0;
+        })
+        + player.ActiveRelics.Count(relic => relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId
+            && NativeAncientRewardsV111.KindleCount(relic) > 0);
 
     private static int FirstTurnDrawBonus(PlayerState player) =>
-        player.Relics.Sum(relic => PrototypeContent.Relic(relic.RelicId).FirstTurnDrawBonus);
+        player.ActiveRelics.Sum(relic => PrototypeContent.Relic(relic.RelicId).FirstTurnDrawBonus);
 
     private static int RewardCardChoiceCount(PlayerState player) =>
         Math.Max(
             0,
-            3 + player.Relics.Sum(relic =>
+            3 + player.ActiveRelics.Sum(relic =>
                 PrototypeContent.Relic(relic.RelicId)
                     .RewardCardChoiceBonus));
 
@@ -602,27 +833,33 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         PlayerState player) =>
         Math.Max(
             0,
-            player.Relics.Sum(relic =>
+            player.ActiveRelics.Sum(relic =>
                 PrototypeContent.Relic(relic.RelicId)
                     .ExtraNormalCombatCardRewardGroups));
 
     private static bool CanAcquirePotion(PlayerState player) =>
-        !player.Relics.Any(relic =>
+        !player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId)
                 .PreventPotionAcquisition);
 
     private static bool CanRestHeal(PlayerState player) =>
-        !player.Relics.Any(relic =>
+        !player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId)
                 .PreventRestHealing);
 
+    private static bool CanRestCook(PlayerState player) =>
+        player.ActiveRelics.Any(relic =>
+            relic.RelicId == NativeGloryAncientsV111.MeatCleaverId)
+        && player.Deck.Count(card =>
+            !PrototypeCardRules.IsEternal(card)) >= 2;
+
     private static bool CanRestUpgrade(PlayerState player) =>
-        !player.Relics.Any(relic =>
+        !player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId)
                 .PreventRestUpgrade);
 
     private static bool HideEnemyIntents(PlayerState player) =>
-        player.Relics.Any(relic =>
+        player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId)
                 .HideEnemyIntents);
 
@@ -633,7 +870,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         long numerator = Math.Max(0, basePrice);
         long denominator = 1;
 
-        foreach (var relic in player.Relics)
+        foreach (var relic in player.ActiveRelics)
         {
             var definition =
                 PrototypeContent.Relic(relic.RelicId);
@@ -657,7 +894,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         PlayerState player,
         int basePrice)
     {
-        var overridePrices = player.Relics
+        var overridePrices = player.ActiveRelics
             .Select(relic =>
                 PrototypeContent.Relic(relic.RelicId)
                     .ShopRemovalPriceOverride)
@@ -727,18 +964,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RngBundle rng)
     {
         var definition = PrototypeContent.Card(cardId);
-        var upgradeLevel = player.Relics.Any(relic =>
-        {
-            var relicDefinition =
-                PrototypeContent.Relic(relic.RelicId);
-            return relicDefinition.UpgradeAddedCardType
-                    == definition.Type
-                && definition.Type is not
-                    PrototypeCardType.Status
-                    and not PrototypeCardType.Curse;
-        })
-            ? 1
-            : 0;
+        var upgradeLevel = InitialAddedCardUpgradeLevel(player, definition);
 
         var card = ApplyNewCardEnchantments(
             player,
@@ -759,12 +985,25 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             rng: rng);
     }
 
+    internal static int InitialAddedCardUpgradeLevel(
+        PlayerState player, PrototypeCardDefinition definition) =>
+        player.ActiveRelics.Any(relic =>
+        {
+            var relicDefinition =
+                PrototypeContent.Relic(relic.RelicId);
+            return relicDefinition.UpgradeAddedCardType
+                    == definition.Type
+                && definition.Type is not
+                    PrototypeCardType.Status
+                    and not PrototypeCardType.Curse;
+        }) ? 1 : 0;
+
     /// <summary>
     /// Apply acquisition-time relic enchantments to persistent cards.
     /// Cards that already carry a persistent enchantment preserve it.
     /// Source: FresnelLens.TryModifyCardBeingAddedToDeck.
     /// </summary>
-    private static CardInstance ApplyNewCardEnchantments(
+    internal static CardInstance ApplyNewCardEnchantments(
         PlayerState player, CardInstance card)
     {
         if (card.Enchantment is not null)
@@ -773,13 +1012,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         }
 
         var definition = PrototypeContent.Card(card.CardId);
-        var gainsBlock = definition.Effects.Any(effect =>
-            effect.Kind is
-                PrototypeCombatEffectKind.GainPlayerBlock
-                or PrototypeCombatEffectKind.GainToricToughnessBlock
-                or PrototypeCombatEffectKind.GainPlayerBlockFromEnemyStatusTotal
-                or PrototypeCombatEffectKind.GainPlayerBlockAndApplyPowerFromActualGain);
-        if (!gainsBlock)
+        if (!PrototypeCardRules.GainsBlock(definition))
         {
             return card;
         }
@@ -788,7 +1021,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         // The pinned Nimble EnchantmentModel is NOT stackable, so the
         // first owned Lens enchants the card; later copies cannot add
         // their amounts again to an already enchanted card.
-        var amount = player.Relics
+        var amount = player.ActiveRelics
             .Select(relic => PrototypeContent.Relic(relic.RelicId)
                 .EnchantNewBlockCardsNimble)
             .FirstOrDefault(value => value > 0);

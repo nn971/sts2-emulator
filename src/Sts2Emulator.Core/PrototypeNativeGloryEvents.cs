@@ -1,9 +1,11 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// v0.111.0 Glory event content, explicitly gated from random selection
-/// until the complete regional event bag is implemented.
-/// Source: HungryForMushrooms, BigMushroom, FragrantMushroom.
+/// v0.111.0 Glory event content for the experimental regional route.
+/// Default runs remain gated until native later-act policy and RNG parity
+/// are complete.
+/// Sources: HungryForMushrooms, BigMushroom, FragrantMushroom,
+/// TeaMaster, BoneTea, EmberTea and TeaOfDiscourtesy.
 /// </summary>
 public static class PrototypeNativeGloryEvents
 {
@@ -19,6 +21,12 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.bad_luck";
     public const string RoundTeaPartyId =
         "proto.native.glory.round_tea_party";
+    public const string TeaMasterId =
+        "proto.native.glory.tea_master";
+    public const string BoneTeaId = "proto.relic.bone_tea";
+    public const string EmberTeaId = "proto.relic.ember_tea";
+    public const string TeaOfDiscourtesyId =
+        "proto.relic.tea_of_discourtesy";
     public const string RoyalPoisonId =
         "proto.native.glory.royal_poison";
     public const string GraveOfTheForgottenId =
@@ -28,6 +36,8 @@ public static class PrototypeNativeGloryEvents
     public const string ForgottenSoulId =
         "proto.relic.forgotten_soul";
     public const string TrialId = "proto.native.glory.trial";
+    public const string TanxId = NativeTanxEventV111.EventId;
+    public const string VakuuId = NativeVakuuEventV111.EventId;
     public const string RegretId = "proto.native.glory.regret";
     public const string ShameId = "proto.native.glory.shame";
     public const string DoubtId = "proto.native.glory.doubt";
@@ -54,6 +64,23 @@ public static class PrototypeNativeGloryEvents
     public const string BattlewornV3EncounterId =
         "proto.native.glory.battleworn_dummy_event_v3_encounter";
 
+    /// <summary>
+    /// Source IsAllowed predicates applied before a Glory event enters the
+    /// experimental route's event draw. Round Tea Party checks current HP;
+    /// Grave of the Forgotten needs a card that can receive Souls Power.
+    /// Other currently registered Glory events have no audited
+    /// player-state eligibility predicate.
+    /// </summary>
+    public static bool IsEligible(PrototypeEventDefinition evt,
+        PlayerState player) =>
+        (evt.Id != RoundTeaPartyId || player.Hp >= 12)
+        && (evt.Id != TeaMasterId || player.Gold >= 150)
+        && (evt.Id != GraveOfTheForgottenId
+            || player.Deck.Any(card =>
+                PrototypeGameEngine.CanSelectEventDeckCard(card,
+                    PrototypePersistentDeckChoiceKind.Enchant, null,
+                    PrototypeCardEnchantmentKind.SoulsPower, false)));
+
 
     public static PrototypeCardDefinition[] Cards { get; } =
     [
@@ -68,21 +95,21 @@ public static class PrototypeNativeGloryEvents
         // unblockable damage and Shame/Doubt's turn-end debuffs.
         new(RegretId, "Regret", -1, PrototypeCardTarget.None, [],
             Unplayable: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
         new(ShameId, "Shame", -1, PrototypeCardTarget.None, [],
             Unplayable: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
         new(DoubtId, "Doubt", -1, PrototypeCardTarget.None, [],
             Unplayable: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse),
         // Native BadLuck: unplayable Eternal Curse, 13 unblockable
         // damage while in hand when the player ends their turn.
         new(BadLuckId, "Bad Luck", -1, PrototypeCardTarget.None, [],
             Unplayable: true, Eternal: true, RewardEligible: false,
-            CanBeGeneratedInCombat: false, MaxUpgradeLevel: 0,
+            MaxUpgradeLevel: 0,
             Rarity: PrototypeCardRarity.Curse, Type: PrototypeCardType.Curse,
             EndTurnDamageIfInHand: 13, EndTurnDamageUnblockable: true)
     ];
@@ -100,11 +127,17 @@ public static class PrototypeNativeGloryEvents
         // RoundTeaParty.EnjoyTea grants this relic and heals to full.
         // RoyalPoison.AfterPlayerTurnStart deals 4 unblockable HP
         // damage to its owner on turn one of every combat.
-        new(RoyalPoisonId, "Royal Poison")
+        new(RoyalPoisonId, "Royal Poison"),
+        new(BoneTeaId, "Bone Tea"),
+        new(EmberTeaId, "Ember Tea"),
+        new(TeaOfDiscourtesyId, "Tea of Discourtesy")
     ];
 
     public static PrototypeEventDefinition[] Events { get; } =
     [
+        NativeTanxEventV111.Definition,
+        NativeVakuuEventV111.Definition,
+        NativeNonupeipeEventV111.Definition,
         new(HungryForMushroomsId, "Hungry for Mushrooms",
         [
             new("big_mushroom", "Obtain Big Mushroom", []),
@@ -119,6 +152,12 @@ public static class PrototypeNativeGloryEvents
         [
             new("enjoy_tea", "Enjoy tea and take Royal Poison", []),
             new("pick_fight", "Pick a fight", [])
+        ], MinAct: 3, MaxAct: 3, Weight: 0),
+        new(TeaMasterId, "Tea Master",
+        [
+            new("bone_tea", "Buy Bone Tea for 50 gold", []),
+            new("ember_tea", "Buy Ember Tea for 150 gold", []),
+            new("tea_of_discourtesy", "Take Tea of Discourtesy", [])
         ], MinAct: 3, MaxAct: 3, Weight: 0),
         // Native IsAllowed requires at least one exhaust-keyword
         // local deck card. Confront grants Decay before selecting one
@@ -227,7 +266,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeNativeGloryEvents.HungryForMushroomsId)
         {
             throw new InvalidOperationException(
-                "Hungry for Mushrooms requires the forced Glory event fixture.");
+                "Hungry for Mushrooms requires its active Glory event.");
         }
         var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
         var relicId = choice switch
@@ -282,6 +321,7 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        return CompleteRoomToMap(state with { Player = player });
+        return PreserveNativeEventCompletionPage(
+            state with { Player = player }, choice);
     }
 }

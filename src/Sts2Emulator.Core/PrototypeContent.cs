@@ -129,7 +129,8 @@ public static class PrototypeContent
             // Native auto-preplay occurs after energy/hand-draw/start hooks.
             new(
                 PrototypeAutomaticStepKind.DispatchCombatEvent,
-                EventKind: PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
+                EventKind: PrototypeCombatEventKind.AutoPrePlayPhaseEntered),
+            new(PrototypeAutomaticStepKind.ResolveLateRelicAutoplay)
         ]);
 
     public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
@@ -212,6 +213,55 @@ public static class PrototypeContent
                 [],
                 Retain: true,
                 Unplayable: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0),
+            // Vakuu's Blood-Soaked Rose adds Enthralled. It prevents
+            // manually playing other cards while it remains in hand, but
+            // can itself be played and is permitted to auto-play.
+            new PrototypeCardDefinition(
+                NativeGloryAncientsV111.EnthralledCardId,
+                "Enthralled",
+                2,
+                PrototypeCardTarget.None,
+                [],
+                Eternal: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Curse,
+                Type: PrototypeCardType.Curse,
+                MaxUpgradeLevel: 0,
+                PreventsOtherManualCardPlaysWhileInHand: true),
+            // Sere Talon adds three copies of Wish. Each exhausts after
+            // returning one selected draw-pile card to hand; upgraded
+            // copies retain instead.
+            new PrototypeCardDefinition(
+                NativeGloryAncientsV111.WishCardId,
+                "Wish",
+                0,
+                PrototypeCardTarget.None,
+                [new(PrototypeCombatEffectKind.ChooseCards, 0,
+                    Selection: new(
+                        PrototypeCardZone.DrawPile, 1, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand))],
+                ExhaustOnUse: true,
+                RetainOnUpgrade: true,
+                RewardEligible: false,
+                Rarity: PrototypeCardRarity.Ancient,
+                Type: PrototypeCardType.Skill,
+                MaxUpgradeLevel: 1),
+            // Preserved Fog's curse enters after its acquisition removals.
+            // Folly is Innate, Ethereal, Eternal, and cannot be played.
+            new PrototypeCardDefinition(
+                NativeGloryAncientsV111.FollyCardId,
+                "Folly",
+                -1,
+                PrototypeCardTarget.None,
+                [],
+                Innate: true,
+                Ethereal: true,
+                Unplayable: true,
+                Eternal: true,
                 RewardEligible: false,
                 Rarity: PrototypeCardRarity.Curse,
                 Type: PrototypeCardType.Curse,
@@ -1906,6 +1956,11 @@ public static class PrototypeContent
             .Concat(PrototypeNativeHiveKnowledgeDemonChoice.Cards)
             .Concat(PrototypeNativeGloryElites.Cards)
             .Concat(PrototypeNativeGloryBosses.Cards)
+            .Concat(NativeAncientRewardsV111.Cards)
+            .Concat(NativePaelRewardsV111.Cards)
+            .Concat(NativeGloryAncientsV111.Cards)
+            .Concat(PrototypeNativeOrobasRelics.Cards)
+            .Concat(NativeDarvEventV111.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
 
@@ -2012,9 +2067,8 @@ public static class PrototypeContent
     public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
         new[]
         {
-            // Neow's Sacrifice grants this event-only potion. The
-            // out-of-combat 50% max-HP heal is supported; its in-combat
-            // extra-turn power requires dedicated turn scheduling.
+            // Neow's Sacrifice grants this event-only potion. Its combat
+            // heal and queued extra player turn use the shared turn pipeline.
             // Native Drowning Beacon event potion: exhaust the whole
             // current hand, then draw ten through the common draw pipeline.
             new PrototypePotionDefinition(
@@ -2032,7 +2086,206 @@ public static class PrototypeContent
                 [],
                 UsableOutsideCombat: true,
                 RunEffects: [new(
-                    PrototypeRunEffectKind.HealPercentMaxHp, 50)]),
+                    PrototypeRunEffectKind.HealPercentMaxHp, 50)],
+                GrantsExtraTurn: true),
+            PrototypeNativePotionCourier.FoulPotion,
+            // Silent unlock potion: create three upgraded Shivs in hand.
+            new PrototypePotionDefinition(
+                "proto.potion.cunning",
+                "Cunning Potion",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.CreateCardsInHand,
+                    3,
+                    CardId: "proto.silent.shiv",
+                    GeneratedCardUpgradeLevel: 1)]),
+            // Shared Uncommon potion: apply one Weak and one Vulnerable to
+            // every living enemy without asking the player to pick a target.
+            new PrototypePotionDefinition(
+                "proto.potion.binding",
+                "Potion of Binding",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        1,
+                        StatusId: "proto.status.weak",
+                        Target: PrototypeEffectTarget.AllEnemies),
+                    new(
+                        PrototypeCombatEffectKind.ApplyEnemyStatus,
+                        1,
+                        StatusId: "proto.status.vulnerable",
+                        Target: PrototypeEffectTarget.AllEnemies)
+                ]),
+            // Shared Rare potion: gain 10 Block now and retain that amount
+            // through the next turn's block reset.
+            new PrototypePotionDefinition(
+                "proto.potion.ship_in_a_bottle",
+                "Ship in a Bottle",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainPlayerBlock, 10),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        10,
+                        PowerId: "proto.power.block_next_turn")
+                ]),
+            // Shared Rare potion: choose one card in the draw pile and move
+            // it to hand through the ordinary suspended card-choice path.
+            new PrototypePotionDefinition(
+                "proto.potion.droplet_of_precognition",
+                "Droplet of Precognition",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ChooseCards,
+                    0,
+                    Selection: new(
+                        PrototypeCardZone.DrawPile,
+                        1,
+                        1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand))]),
+            // Shared Rare potion: put the current hand into the draw pile,
+            // shuffle, then draw five through the standard draw pipeline.
+            new PrototypePotionDefinition(
+                "proto.potion.bottled_potential",
+                "Bottled Potential",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle,
+                        0),
+                    new(PrototypeCombatEffectKind.DrawCards, 5)
+                ]),
+            // Shared Uncommon potion: apply seven Plating using the existing
+            // player-turn block and decay behavior.
+            new PrototypePotionDefinition(
+                "proto.potion.heart_of_iron",
+                "Heart of Iron",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyPlayerPower,
+                    7,
+                    PowerId: "proto.power.plating")]),
+            // Shared Rare potion: temporarily reduce all living enemies'
+            // Strength by seven, restoring it after their next side turn.
+            new PrototypePotionDefinition(
+                "proto.potion.shackling",
+                "Shackling Potion",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyEnemyPower,
+                    7,
+                    PowerId: "proto.power.shackling_potion",
+                    Target: PrototypeEffectTarget.AllEnemies)]),
+            // Shared Rare potion: gain one permanent Strength at the end of
+            // each player turn for the rest of combat.
+            new PrototypePotionDefinition(
+                "proto.potion.mazaleths_gift",
+                "Mazaleth's Gift",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyPlayerPower,
+                    1,
+                    PowerId: "proto.power.ritual")]),
+            // Shared Uncommon potion: gain one Energy immediately, then one
+            // extra Energy at each of the next three Energy resets.
+            new PrototypePotionDefinition(
+                "proto.potion.radiant_tincture",
+                "Radiant Tincture",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.GainEnergy, 1),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        3,
+                        PowerId: "proto.power.radiance")
+                ]),
+            // Shared Rare potion: shrink one enemy for four of its turns,
+            // reducing its powered attack damage by 30% while active.
+            new PrototypePotionDefinition(
+                "proto.potion.beetle_juice",
+                "Beetle Juice",
+                PrototypeCardTarget.Enemy,
+                [new(
+                    PrototypeCombatEffectKind.ApplyEnemyPower,
+                    4,
+                    PowerId: "proto.power.shrink")]),
+            // Shared Rare potion: triple the next powered Attack card's
+            // damage, then consume the power after the full card resolves.
+            new PrototypePotionDefinition(
+                "proto.potion.gigantification",
+                "Gigantification Potion",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyPlayerPower,
+                    1,
+                    PowerId: "proto.power.gigantification")]),
+            // Shared Uncommon potion: draw one now, then draw one extra card
+            // on each of the next three player hands.
+            new PrototypePotionDefinition(
+                "proto.potion.clarity",
+                "Clarity",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.DrawCards, 1),
+                    new(
+                        PrototypeCombatEffectKind.ApplyPlayerPower,
+                        3,
+                        PowerId: "proto.power.clarity")
+                ]),
+            // Shared Common potion: choose one of three distinct implemented
+            // Colorless cards, make it free this turn, or skip the offer.
+            new PrototypePotionDefinition(
+                "proto.potion.colorless",
+                "Colorless Potion",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ChooseGeneratedColorlessCards,
+                    3,
+                    GeneratedChoiceCardsFreeThisTurn: true,
+                    GeneratedChoiceMustPick: false)]),
+            // Shared Uncommon potion: deal nine unblockable HP loss after
+            // each target enemy turn until that enemy is defeated.
+            new PrototypePotionDefinition(
+                "proto.potion.powdered_demise",
+                "Powdered Demise",
+                PrototypeCardTarget.Enemy,
+                [new(
+                    PrototypeCombatEffectKind.ApplyEnemyPower,
+                    9,
+                    PowerId: "proto.power.demise")]),
+            // Shared Rare potion: prevent the next instance of player HP loss.
+            new PrototypePotionDefinition(
+                "proto.potion.lucky_tonic",
+                "Lucky Tonic",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.ApplyPlayerPower,
+                    1,
+                    PowerId: "proto.power.buffer")]),
+            // Shared Rare potion: generate one random Attack, Skill and Power
+            // from Silent's implemented solo pools, free this turn.
+            new PrototypePotionDefinition(
+                "proto.potion.orobic_acid",
+                "Orobic Acid",
+                PrototypeCardTarget.None,
+                [
+                    new(
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterAttackCardsInHand,
+                        1,
+                        GeneratedCharacterCardsFreeThisTurn: true),
+                    new(
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterSkillCardsInHand,
+                        1,
+                        GeneratedCharacterCardsFreeThisTurn: true),
+                    new(
+                        PrototypeCombatEffectKind
+                            .CreateRandomCharacterPowerCardsInHand,
+                        1,
+                        GeneratedCharacterCardsFreeThisTurn: true)
+                ]),
             new PrototypePotionDefinition(
                 "proto.potion.block",
                 "Block Potion",
@@ -2079,6 +2332,16 @@ public static class PrototypeContent
                         PowerId: "proto.power.dexterity")
                 ]),
             new PrototypePotionDefinition(
+                "proto.potion.fysh_oil",
+                "Fysh Oil",
+                PrototypeCardTarget.None,
+                [
+                    new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                        PowerId: "proto.power.strength"),
+                    new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                        PowerId: "proto.power.dexterity")
+                ]),
+            new PrototypePotionDefinition(
                 "proto.potion.explosive",
                 "Explosive Potion",
                 PrototypeCardTarget.None,
@@ -2088,6 +2351,16 @@ public static class PrototypeContent
                         10,
                         Target: PrototypeEffectTarget.AllEnemies)
                 ]),
+            // Separate shared Common model with the same native ten-damage
+            // all-enemy effect as Explosive Potion.
+            new PrototypePotionDefinition(
+                "proto.potion.explosive_ampoule",
+                "Explosive Ampoule",
+                PrototypeCardTarget.None,
+                [new(
+                    PrototypeCombatEffectKind.DamageEnemy,
+                    10,
+                    Target: PrototypeEffectTarget.AllEnemies)]),
             new PrototypePotionDefinition(
                 "proto.potion.energy",
                 "Energy Potion",
@@ -2440,6 +2713,31 @@ public static class PrototypeContent
                         ])
                 ]),
             new PrototypeRelicDefinition(
+                "proto.relic.black_star",
+                "Black Star",
+                ExtraEliteRelicRewardCount: 1),
+            new PrototypeRelicDefinition(
+                "proto.relic.philosophers_stone",
+                "Philosopher's Stone",
+                EnergyPerTurnBonus: 1,
+                Triggers:
+                [
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.CombatStarted,
+                        [
+                            new PrototypeCombatEffectSpec(
+                                PrototypeCombatEffectKind.ApplyEnemyPower,
+                                1,
+                                Target: PrototypeEffectTarget.AllEnemies,
+                                PowerId: "proto.power.strength")
+                        ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.ectoplasm",
+                "Ectoplasm",
+                EnergyPerTurnBonus: 1,
+                PreventGoldGain: true),
+            new PrototypeRelicDefinition(
                 "proto.relic.blood_vial",
                 "Blood Vial",
                 Triggers:
@@ -2451,6 +2749,16 @@ public static class PrototypeContent
                                 PrototypeCombatEffectKind.HealPlayer,
                                 2)
                         ])
+                ]),
+            new PrototypeRelicDefinition(
+                "proto.relic.potion_belt",
+                "Potion Belt",
+                ExtraPotionSlots: 2,
+                RunTriggers:
+                [
+                    new PrototypeRelicRunTriggerSpec(
+                        PrototypeRunEventKind.RelicAcquired,
+                        [new(PrototypeRunEffectKind.GainPotionSlots, 2)])
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.meat_on_the_bone",
@@ -2561,7 +2869,8 @@ public static class PrototypeContent
                 EnchantNewBlockCardsNimble: 2),
             new PrototypeRelicDefinition(
                 "proto.native.event.byrdpip",
-                "Byrdpip"),
+                "Byrdpip",
+                AddsPet: true),
             new PrototypeRelicDefinition(
                 "proto.native.event.sword_of_stone",
                 "Sword of Stone"),
@@ -2733,7 +3042,8 @@ public static class PrototypeContent
                             new(
                                 PrototypeCombatEffectKind.GainPlayerBlock,
                                 3)
-                        ])
+                        ],
+                        RequiresPlayerSide: true)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.tingsha",
@@ -2748,7 +3058,8 @@ public static class PrototypeContent
                                 3,
                                 Target:
                                     PrototypeEffectTarget.RandomEnemy)
-                        ])
+                        ],
+                        RequiresPlayerSide: true)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.hovering_kite",
@@ -2935,12 +3246,12 @@ public static class PrototypeContent
                 Triggers:
                 [
                     new PrototypeRelicTriggerSpec(
-                        PrototypeCombatEventKind.CombatStarted,
+                        PrototypeCombatEventKind.BeforeHandDraw,
                         [new(
                             PrototypeCombatEffectKind.ChooseGeneratedCards,
                             3,
                             GeneratedChoiceCardsFreeThisTurn:
-                                false)])
+                                false)], TurnEquals: 1)
                 ]),
             new PrototypeRelicDefinition(
                 "proto.relic.gambling_chip",
@@ -2948,7 +3259,7 @@ public static class PrototypeContent
                 Triggers:
                 [
                     new PrototypeRelicTriggerSpec(
-                        PrototypeCombatEventKind.CombatStarted,
+                        PrototypeCombatEventKind.OpeningPlayerTurnStarted,
                         [
                             new(
                                 PrototypeCombatEffectKind.ChooseCards,
@@ -2963,9 +3274,16 @@ public static class PrototypeContent
                         ])
                 ])
         }.Concat(PrototypeNativeOvergrowthEvents.NeowRelicDefinitions)
+            .Concat(PrototypeNativeSilentRelics.Relics)
+            .Concat(PrototypeNativeFakeMerchant.Relics)
             .Concat(PrototypeNativeUnderdocksTrashHeap.Relics)
             .Concat(PrototypeNativeHiveEvents.Relics)
             .Concat(PrototypeNativeGloryEvents.Relics)
+            .Concat(NativeAncientRewardsV111.Relics)
+            .Concat(NativePaelRewardsV111.Relics)
+            .Concat(PrototypeNativeOrobasRelics.Relics)
+            .Concat(NativeGloryAncientsV111.Relics)
+            .Concat(NativeDarvEventV111.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
@@ -3135,6 +3453,15 @@ public static class PrototypeContent
                 EnemyStrengthOnApplyPerStack: -1,
                 EnemyStrengthRestoreAtSideTurnEndPerStack: 1),
             new PrototypePowerDefinition(
+                "proto.power.shackling_potion",
+                "Shackling Potion",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                RemoveAtEnemyTurnEnd: true,
+                EnemyStrengthOnApplyPerStack: -1,
+                EnemyStrengthRestoreAtSideTurnEndPerStack: 1),
+            new PrototypePowerDefinition(
                 "proto.power.dexterity",
                 "Dexterity",
                 BlockBonusPerStack: 1,
@@ -3165,6 +3492,33 @@ public static class PrototypeContent
                 AllowNegative: true,
                 PlayerAttackDamageBonusPerStack: 1,
                 RemoveAtPlayerTurnEnd: true),
+            new PrototypePowerDefinition(
+                "proto.power.gigantification",
+                "Gigantification",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                PlayerAttackDamageMultiplierWhileActiveNumerator: 3,
+                RemoveAfterFirstPoweredAttack: true),
+            new PrototypePowerDefinition(
+                "proto.power.clarity",
+                "Clarity",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                HandDrawBonusWhileActive: 1,
+                DecrementAfterHandDraw: true),
+            new PrototypePowerDefinition(
+                "proto.power.demise",
+                "Demise",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                EnemyHpLossAtSideTurnEndPerStack: 1),
+            new PrototypePowerDefinition(
+                "proto.power.buffer",
+                "Buffer",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                PreventsNextHpLoss: true),
             new PrototypePowerDefinition(
                 "proto.power.duplication",
                 "Duplication",
@@ -3656,7 +4010,10 @@ public static class PrototypeContent
                 DoesNotStack: true,
                 IsDebuff: true,
                 PlayerAttackDamageNumerator: 7,
-                PlayerAttackDamageDenominator: 10),
+                PlayerAttackDamageDenominator: 10,
+                EnemyStacksDecayAtSideTurnEnd: 1,
+                EnemyOutgoingPoweredAttackNumerator: 7,
+                EnemyOutgoingPoweredAttackDenominator: 10),
             new PrototypePowerDefinition(
                 "proto.power.artifact",
                 "Artifact",
@@ -3735,6 +4092,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryBosses.Powers)
             .Concat(PrototypeNativeGloryEvents.Powers)
             .Concat(PrototypeNativeHiveEvents.Powers)
+            .Concat(PrototypeNativeFakeMerchant.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
@@ -6067,6 +6425,7 @@ public static class PrototypeContent
             .Concat(PrototypeNativeGloryBosses.Enemies)
             .Concat(PrototypeNativeGloryEvents.Enemies)
             .Concat(PrototypeNativeHiveEvents.Enemies)
+            .Concat(PrototypeNativeFakeMerchant.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
@@ -6418,9 +6777,19 @@ public static class PrototypeContent
         }.Concat(PrototypeNativeOvergrowthEvents.Definitions)
             .Concat(PrototypeNativeUnderdocksEvents.Definitions)
             .Concat(PrototypeNativeLaterActs.Events)
+            .Append(PrototypeNativeBrainLeech.Definition)
+            .Append(PrototypeNativeSelfHelpBook.Definition)
+            .Append(PrototypeNativePotionCourier.Definition)
             .Concat(PrototypeNativeHiveEvents.Definitions)
+            .Append(PrototypeNativeStoneOfAllTime.Definition)
+            .Append(PrototypeNativeFakeMerchant.Definition)
+            .Append(PrototypeNativeSharedEvents.ThisOrThatDefinition)
             .Concat(PrototypeNativeGloryEvents.Events)
             .Append(PrototypeNativeOvergrowthEvents.NeowDefinition)
+            .Append(NativeAncientRewardsV111.TezcataraRewardDefinition)
+            .Append(NativePaelRewardsV111.RewardDefinition)
+            .Append(NativeOrobasEventV111.Definition)
+            .Append(NativeDarvEventV111.Definition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
     public static string[] OvergrowthWeakEncounterPool { get; } =
@@ -6463,6 +6832,9 @@ public static class PrototypeContent
 
     public static PrototypeEncounterDefinition[] Encounters { get; } =
     [
+        // Punch Off starts this event-only fight directly. Keep its native
+        // encounter discoverable without making it an ordinary room offer.
+        PrototypeNativePunchOff.Encounter,
         // Event-only combat: four non-stunned Wrigglers. Never included
         // in normal map-combat selection (Weight=0).
         new(
@@ -7039,7 +7411,8 @@ public static class PrototypeContent
         ..PrototypeNativeGloryElites.Encounters,
         ..PrototypeNativeGloryBosses.Encounters,
         ..PrototypeNativeGloryEvents.Encounters,
-        ..PrototypeNativeHiveEvents.Encounters
+        ..PrototypeNativeHiveEvents.Encounters,
+        ..PrototypeNativeFakeMerchant.Encounters
     ];
 
     public static string[] StartingDeck { get; } =
@@ -7076,6 +7449,22 @@ public static class PrototypeContent
         .Select(card => card.Id)
         .Order(StringComparer.Ordinal)
         .ToArray();
+
+    // Source-ordered equivalent for native-shaped CardFactory generation.
+    // Keep RewardCardPool sorted for the legacy prototype compatibility path.
+    public static string[] NativeSilentRewardCardPool { get; } =
+        NativeSilentCardPool
+            .Where(id =>
+            {
+                var card = Cards[id];
+                return card.MechanicsImplemented
+                    && !card.MultiplayerOnly
+                    && card.RewardEligible
+                    && card.Rarity is PrototypeCardRarity.Common
+                        or PrototypeCardRarity.Uncommon
+                        or PrototypeCardRarity.Rare;
+            })
+            .ToArray();
 
     public static (PrototypeCardRarity Rarity, int Weight)[] RewardRarityWeights(int act) =>
         act switch
@@ -7117,11 +7506,15 @@ public static class PrototypeContent
             ]
         };
 
-    // Named event-only potions can be owned and consumed, but are excluded
-    // from ordinary rewards, merchant inventories and native rarity rolls.
+    // This is the restricted Silent ordinary pool: Blood Potion belongs to
+    // Ironclad and the legacy Explosive Potion is absent from the pinned
+    // Silent/shared pool. Unsupported source potions stay out.
     public static string[] PotionPool { get; } = Potions.Keys
         .Where(id => id != "proto.native.neow.ambergris"
-            && id != "proto.native.underdocks.glowwater_potion")
+            && id != "proto.native.underdocks.glowwater_potion"
+            && id != PrototypeNativePotionCourier.FoulPotionId
+            && id != "proto.potion.blood"
+            && id != "proto.potion.explosive")
         .Order(StringComparer.Ordinal).ToArray();
     public static string[] RelicPool { get; } =
     [
@@ -7135,6 +7528,8 @@ public static class PrototypeContent
         "proto.relic.anchor",
         "proto.relic.vajra",
         "proto.relic.blood_vial",
+        "proto.relic.potion_belt",
+        "proto.relic.snecko_skull",
         "proto.relic.meat_on_the_bone",
         "proto.relic.reptile_trinket",
         "proto.relic.old_coin",
@@ -7152,12 +7547,16 @@ public static class PrototypeContent
         "proto.relic.bag_of_marbles",
         "proto.relic.gremlin_horn",
         "proto.relic.mercury_hourglass",
+        "proto.relic.twisted_funnel",
         "proto.relic.orichalcum",
         "proto.relic.horn_cleat",
         "proto.relic.captains_wheel",
+        "proto.relic.black_star",
+        "proto.relic.paper_krane",
         "proto.relic.kunai",
         "proto.relic.shuriken",
         "proto.relic.ice_cream",
+        "proto.relic.helical_dart",
         "proto.relic.tough_bandages",
         "proto.relic.tingsha",
         "proto.relic.hovering_kite",
@@ -7165,6 +7564,7 @@ public static class PrototypeContent
         "proto.relic.prayer_wheel",
         "proto.relic.white_beast_statue",
         "proto.relic.membership_card",
+        "proto.relic.ninja_scroll",
         "proto.relic.smiling_mask",
         "proto.relic.art_of_war",
         "proto.relic.charons_ashes",
@@ -7182,6 +7582,7 @@ public static class PrototypeContent
         "proto.relic.empty_cage",
         "proto.relic.astrolabe",
         "proto.relic.coffee_dripper",
+        "proto.relic.ectoplasm",
         "proto.relic.fusion_hammer",
         "proto.relic.velvet_choker",
         "proto.relic.runic_dome",

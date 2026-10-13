@@ -1,0 +1,89 @@
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// v0.111.0 Hive event: discard a random potion for 10 Max HP, or lose
+/// 6 HP and enchant an Attack with Vigorous 8.
+/// </summary>
+public static class PrototypeNativeStoneOfAllTime
+{
+    public const string EventId = "proto.native.hive.stone_of_all_time";
+
+    public static PrototypeEventDefinition Definition { get; } = new(
+        EventId,
+        "Stone of All Time",
+        [
+            new(
+                "lift",
+                "Discard a random potion and gain 10 Max HP",
+                []),
+            new(
+                "push",
+                "Lose 6 HP and enchant an Attack with Vigorous 8",
+                [new(PrototypeRunEffectKind.LoseHp, 6)],
+                new PrototypeEventDeckChoiceSpec(
+                    PrototypePersistentDeckChoiceKind.Enchant,
+                    1,
+                    EnchantmentKind: PrototypeCardEnchantmentKind.Vigorous,
+                    EnchantmentAmount: 8))
+        ],
+        MinAct: 2,
+        MaxAct: 2,
+        Weight: 0);
+
+    public static int RollPotionSlot(PlayerState player, RngBundle rng)
+    {
+        var slots = player.PotionSlots
+            .Select((potion, slot) => (Potion: potion, Slot: slot))
+            .Where(item => item.Potion is not null)
+            .Select(item => item.Slot)
+            .ToArray();
+        if (slots.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Stone of All Time requires an owned potion.");
+        }
+
+        return slots[PrototypeRng.NextInt(rng, "event", slots.Length)];
+    }
+}
+
+public sealed partial class PrototypeGameEngine
+{
+    private static RunState StepNativeStoneOfAllTimeLift(RunState state)
+    {
+        var world = RequireWorld(state);
+        var current = world.Event
+            ?? throw new InvalidOperationException(
+                "Stone of All Time has no event state.");
+        if (current.EventId != PrototypeNativeStoneOfAllTime.EventId
+            || current.NativePageIndex != 0
+            || current.ChosenChoiceId is not null
+            || current.NativeEventPotionSlot is not { } slot
+            || slot < 0
+            || slot >= state.Player.PotionSlots.Length
+            || state.Player.PotionSlots[slot] is null)
+        {
+            throw new InvalidOperationException(
+                "Stone of All Time's saved potion is unavailable.");
+        }
+
+        var potions = (PotionInstance?[])state.Player.PotionSlots.Clone();
+        potions[slot] = null;
+        var result = state with
+        {
+            Player = state.Player with
+            {
+                PotionSlots = potions,
+                Hp = state.Player.Hp + 10,
+                MaxHp = state.Player.MaxHp + 10
+            },
+            World = world with
+            {
+                Event = current with { NativeEventPotionSlot = null }
+            }
+        };
+
+        _ = PrototypeRng.NextInt(result.Rng, "event", 100);
+        return PreserveNativeEventCompletionPage(result, "lift");
+    }
+}

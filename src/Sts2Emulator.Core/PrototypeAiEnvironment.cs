@@ -20,7 +20,11 @@ public sealed record PrototypeAiCard(
 
 public sealed record PrototypeAiRelic(
     string RelicId,
-    JsonElement State);
+    JsonElement State,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool IsWax = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool IsMelted = false);
 
 public sealed record PrototypeAiPotion(
     int Slot,
@@ -76,13 +80,28 @@ public sealed record PrototypeAiDeckChoice(
 public sealed record PrototypeAiRewardCardGroup(
     int GroupIndex,
     string[] CardOptions,
-    bool[] OptionUpgradeFlags);
+    bool[] OptionUpgradeFlags,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiCardAcquisitionPreview[]? CardPreviews = null);
+
+public sealed record PrototypeAiCardAcquisitionPreview(
+    string CardId,
+    int UpgradeLevel,
+    PrototypeCardEnchantment? Enchantment);
+
+public sealed record PrototypeAiShopCardOfferPreview(
+    int OfferId,
+    PrototypeAiCardAcquisitionPreview Card);
 
 public sealed record PrototypeAiExtraRelicReward(
     int GroupIndex,
-    string RelicId);
+    string RelicId,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool IsWax = false);
 
+public sealed record PrototypeAiExtraPotionReward(int GroupIndex, string PotionId);
 public sealed record PrototypeAiExtraGoldReward(int GroupIndex, int Amount);
+public sealed record PrototypeAiRewardCardReroll(int GroupIndex);
 
 public sealed record PrototypeAiReward(
     string[] CardOptions,
@@ -101,7 +120,13 @@ public sealed record PrototypeAiReward(
     PrototypeAiRewardCardGroup[]? PendingCardGroups = null,
     PrototypeAiExtraRelicReward[]? PendingExtraRelicRewards = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeAiExtraGoldReward[]? PendingExtraGoldRewards = null);
+    PrototypeAiExtraGoldReward[]? PendingExtraGoldRewards = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiCardAcquisitionPreview[]? CardOptionPreviews = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiRewardCardReroll[]? AvailableCardRerolls = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiExtraPotionReward[]? PendingExtraPotionRewards = null);
 
 public sealed record PrototypeAiEventDeckChoice(
     string ChoiceId,
@@ -170,7 +195,9 @@ public sealed record PrototypeAiShop(
     bool RemovalUsed,
     ShopOffer[]? PotionOffers = null,
     ShopOffer[]? RelicOffers = null,
-    PrototypeAiDeckChoice? PendingDeckChoice = null);
+    PrototypeAiDeckChoice? PendingDeckChoice = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiShopCardOfferPreview[]? CardOfferPreviews = null);
 
 public sealed record PrototypeAiObservation(
     string RulesetId,
@@ -345,6 +372,49 @@ public sealed class PrototypeAiEnvironment
             action.Kind,
             action.Payload.Clone());
 
+    private static PrototypeAiCardAcquisitionPreview[]?
+        CreateCardAcquisitionPreviews(
+            PlayerState player, string[] cardIds, bool[] upgradeFlags)
+    {
+        if (!HasAcquisitionEnchantment(player))
+            return null;
+
+        return cardIds.Select((cardId, index) =>
+        {
+            var definition = PrototypeContent.Card(cardId);
+            var initialUpgrade = Math.Max(
+                PrototypeGameEngine.InitialAddedCardUpgradeLevel(
+                    player, definition),
+                index < upgradeFlags.Length && upgradeFlags[index] ? 1 : 0);
+            var card = PrototypeGameEngine.ApplyNewCardEnchantments(
+                player,
+                new CardInstance(
+                    0, cardId, initialUpgrade,
+                    PrototypeJson.EmptyObject()));
+            return new PrototypeAiCardAcquisitionPreview(
+                cardId, card.UpgradeLevel, card.Enchantment);
+        }).ToArray();
+    }
+
+    private static PrototypeAiShopCardOfferPreview[]?
+        CreateShopCardOfferPreviews(
+            PlayerState player, ShopOffer[] offers)
+    {
+        if (!HasAcquisitionEnchantment(player))
+            return null;
+
+        return offers.Select(offer => new PrototypeAiShopCardOfferPreview(
+            offer.OfferId,
+            CreateCardAcquisitionPreviews(
+                player, [offer.ItemId], [false])![0]))
+            .ToArray();
+    }
+
+    private static bool HasAcquisitionEnchantment(PlayerState player) =>
+        player.ActiveRelics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId)
+                .EnchantNewBlockCardsNimble > 0);
+
     private static PrototypeAiObservation CreateObservation(RunState state)
     {
         var world = state.World;
@@ -371,7 +441,7 @@ public sealed class PrototypeAiEnvironment
             Relics: state.Player.Relics.Select(relic =>
                 new PrototypeAiRelic(
                     relic.RelicId,
-                    relic.PersistentState.Clone())).ToArray(),
+                    relic.PersistentState.Clone(), relic.IsWax, relic.IsMelted)).ToArray(),
             Potions: state.Player.PotionSlots
                 .Select((potion, slot) => potion is null
                     ? null
@@ -440,7 +510,11 @@ public sealed class PrototypeAiEnvironment
                             .Select(index => new PrototypeAiRewardCardGroup(
                                 index,
                                 (string[])world.Reward.CardOptionsForGroup(index).Clone(),
-                                world.Reward.CardUpgradeFlagsForGroup(index)))
+                                world.Reward.CardUpgradeFlagsForGroup(index),
+                                CreateCardAcquisitionPreviews(
+                                    state.Player,
+                                    world.Reward.CardOptionsForGroup(index),
+                                    world.Reward.CardUpgradeFlagsForGroup(index))))
                             .ToArray()
                         : null,
                     world.Reward.IndependentSelection
@@ -449,13 +523,35 @@ public sealed class PrototypeAiEnvironment
                             .Where(index => !world.Reward.IsExtraRelicGroupResolved(index))
                             .Select(index => new PrototypeAiExtraRelicReward(
                                 index,
-                                world.Reward.ExtraRelicRewardIds![index]))
+                                world.Reward.ExtraRelicRewardIds![index],
+                                world.Reward.ExtraRelicWaxFlags?[index] == true))
                             .ToArray()
                         : null,
                     world.Reward.ExtraGoldOptions is { } extraGold
                         ? Enumerable.Range(0, extraGold.Length)
                             .Where(index => !world.Reward.ExtraGoldGroupsResolved![index])
                             .Select(index => new PrototypeAiExtraGoldReward(index, extraGold[index]))
+                            .ToArray()
+                        : null,
+                    CreateCardAcquisitionPreviews(
+                        state.Player,
+                        world.Reward.CurrentCardOptions,
+                        world.Reward.CurrentCardOptionUpgradeFlags),
+                    world.Reward.CardRewardGenerators is { } generators
+                        ? Enumerable.Range(0, generators.Length)
+                            .Where(group => PrototypeGameEngine
+                                .CanRerollRewardCardGroup(state.Player,
+                                    world.Reward, group))
+                            .Select(group => new PrototypeAiRewardCardReroll(group))
+                            .ToArray()
+                        : null,
+                    world.Reward.IndependentSelection
+                        && world.Reward.ExtraPotionOptions is { } extraPotions
+                        ? Enumerable.Range(0, extraPotions.Length)
+                            .Where(index => !world.Reward
+                                .IsExtraPotionGroupResolved(index))
+                            .Select(index => new PrototypeAiExtraPotionReward(
+                                index, extraPotions[index]))
                             .ToArray()
                         : null),
             Shop: world?.Shop is null
@@ -479,7 +575,9 @@ public sealed class PrototypeAiEnvironment
                             world.Shop.PendingDeckChoice.Kind,
                             world.Shop.PendingDeckChoice.RemainingSelections,
                             (long[])world.Shop.PendingDeckChoice
-                                .CandidateCardInstanceIds.Clone())),
+                                .CandidateCardInstanceIds.Clone()),
+                    CreateShopCardOfferPreviews(
+                        state.Player, world.Shop.CardOffers)),
             EventId: world?.Event?.EventId,
             TerminalOutcome: world?.TerminalOutcome,
             Event: world?.Event is null

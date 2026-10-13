@@ -2,6 +2,37 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
+    private static RunState PreserveNativeEventCompletionPage(
+        RunState state, string choiceId)
+    {
+        var world = RequireWorld(state);
+        var eventState = world.Event
+            ?? throw new InvalidOperationException(
+                "A native event result page requires an active event.");
+        if (!PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                eventState.EventId)
+            || !PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                eventState.EventId, choiceId))
+        {
+            throw new InvalidOperationException(
+                $"Event '{eventState.EventId}' has no finished page for '{choiceId}'.");
+        }
+
+        return state with
+        {
+            World = world with
+            {
+                Event = eventState with
+                {
+                    NativePageIndex =
+                        PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                            eventState.EventId),
+                    ChosenChoiceId = choiceId
+                }
+            }
+        };
+    }
+
     /// <summary>
     /// Resume event rewards in a stable order: outstanding potions, then
     /// acquisition-driven relic deck choices, then the event's own deck choice.
@@ -182,8 +213,76 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
+            if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
+                && eventState.NativePageIndex == 0
+                && eventState.ChosenChoiceId == "push")
+            {
+                _ = PrototypeRng.NextInt(state.Rng, "event", 100);
+                return PreserveNativeEventCompletionPage(state, "push");
+            }
+
+            if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                    eventState.EventId)
+                && eventState.NativePageIndex == 0
+                && PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                    eventState.EventId, eventState.ChosenChoiceId))
+            {
+                // These events call SetEventFinished after their effects
+                // resolve. Keep the native completion page resumable.
+                return state with
+                {
+                    World = world with
+                    {
+                        Event = eventState with
+                        {
+                            NativePageIndex =
+                                PrototypeNativeEventCompletionPages
+                                    .TerminalChoicePageIndex(eventState.EventId)
+                        }
+                    }
+                };
+            }
+
             if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
                 return ContinueNativeWarHistorianRepy(state);
+
+            if (eventState.EventId == PrototypeNativeGloryEvents.TrialId
+                && eventState.ChosenChoiceId is
+                    ("merchant_guilty" or "merchant_innocent"
+                    or "noble_guilty" or "noble_innocent"
+                    or "nondescript_guilty" or "nondescript_innocent"))
+            {
+                return PreserveNativeEventCompletionPage(
+                    state, eventState.ChosenChoiceId);
+            }
+
+            if (NativeAncientRewardsV111.IsOpeningEvent(world))
+                return state with
+                {
+                    World = world with { Event = null },
+                    Phase = RunPhase.MapChoice
+                };
+
+            if (NativeTanxEventV111.IsOpeningEvent(world))
+                return state with
+                {
+                    World = world with { Event = null },
+                    Phase = RunPhase.MapChoice
+                };
+
+            if (NativeVakuuEventV111.IsOpeningEvent(world))
+                return state with
+                {
+                    World = world with { Event = null },
+                    Phase = RunPhase.MapChoice
+                };
+
+            if (NativeNonupeipeEventV111.IsOpeningEvent(world))
+                return state with
+                {
+                    World = world with { Event = null },
+                    Phase = RunPhase.MapChoice
+                };
 
             if (StringComparer.Ordinal.Equals(
                     eventState.EventId,
@@ -239,7 +338,13 @@ public sealed partial class PrototypeGameEngine
                 requested.BasicCardsOnly)
                 && (requested.RequiredCardTag is null
                     || PrototypeContent.Card(card.CardId).Tags?.Contains(
-                        requested.RequiredCardTag, StringComparer.Ordinal) == true))
+                        requested.RequiredCardTag, StringComparer.Ordinal) == true)
+                && (requested.RequiredCardType is null
+                    || PrototypeContent.Card(card.CardId).Type
+                        == requested.RequiredCardType.Value)
+                && (!requested.RequiresUpgradable
+                    || card.UpgradeLevel < PrototypeContent.Card(card.CardId).MaxUpgradeLevel))
+            .OrderBy(card => requested.RequiresUpgradable ? card.CardId : string.Empty, StringComparer.Ordinal)
             .Select(card => card.InstanceId)
             .ToArray();
         var selections = Math.Min(
@@ -250,7 +355,11 @@ public sealed partial class PrototypeGameEngine
             : requested with
             {
                 RemainingSelections = selections,
-                CandidateCardInstanceIds = candidates
+                CandidateCardInstanceIds = candidates,
+                MinimumSelectionsRemaining = Math.Min(
+                    requested.MinimumSelectionsRemaining
+                        ?? requested.RemainingSelections,
+                    selections)
             };
     }
 }

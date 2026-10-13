@@ -111,6 +111,7 @@ public static class PrototypeNativeLaterActMap
             throw new ArgumentOutOfRangeException(nameof(ascension));
         var roomRows = RoomRows(act);
         var bossFloor = roomRows + 1;
+        var hasSecondBoss = act == 3 && ascension >= 10;
         var treasureFloor = bossFloor - 7;
         var points = new Dictionary<(int Floor, int Column), Point>();
         Point Get(int floor, int col)
@@ -191,6 +192,8 @@ public static class PrototypeNativeLaterActMap
         {
             Connect(top, boss);
         }
+        if (hasSecondBoss)
+            Connect(boss, Get(bossFloor + 1, 3));
 
         foreach (var point in points.Values)
         {
@@ -207,6 +210,10 @@ public static class PrototypeNativeLaterActMap
                 point.Room = PrototypeRoomType.Rest;
             }
             else if (point.Floor == bossFloor)
+            {
+                point.Room = PrototypeRoomType.Boss;
+            }
+            else if (hasSecondBoss && point.Floor == bossFloor + 1)
             {
                 point.Room = PrototypeRoomType.Boss;
             }

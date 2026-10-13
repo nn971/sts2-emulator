@@ -27,11 +27,19 @@ public static class V111Build
 public sealed record SimulationProfile(
     bool FullyUnlocked, string[] UnlockedCharacters, string[] RevealedEpochs)
 {
+    /// <summary>
+    /// Bosses already discovered by the player before this run. ActModel's
+    /// discovery-order modification uses this history when it replaces the
+    /// randomly preselected Hive/Glory boss.
+    /// </summary>
+    public string[] SeenBossEncounters { get; init; } = [];
+
     public static SimulationProfile Unlocked() => new(true, [], []);
     public SimulationProfile Fork() => this with
     {
         UnlockedCharacters = (string[])UnlockedCharacters.Clone(),
-        RevealedEpochs = (string[])RevealedEpochs.Clone()
+        RevealedEpochs = (string[])RevealedEpochs.Clone(),
+        SeenBossEncounters = (string[])SeenBossEncounters.Clone()
     };
 }
 
@@ -60,8 +68,14 @@ public sealed record RunConfiguration(
 
     public void Validate()
     {
-        if (Acts is null || Profile is null || Profile.UnlockedCharacters is null || Profile.RevealedEpochs is null)
+        if (Acts is null || Profile is null || Profile.UnlockedCharacters is null
+            || Profile.RevealedEpochs is null || Profile.SeenBossEncounters is null)
             throw new InvalidDataException("Run configuration requires explicit route and profile arrays.");
+        if (Profile.SeenBossEncounters.Any(string.IsNullOrWhiteSpace)
+            || Profile.SeenBossEncounters.Distinct(StringComparer.Ordinal).Count()
+                != Profile.SeenBossEncounters.Length)
+            throw new ArgumentException(
+                "Profile boss discovery history must contain distinct non-empty encounter IDs.");
         _ = V111Characters.Get(CharacterId);
         if (Ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(Ascension), "v111 supports Ascension 0 through 10.");
@@ -107,8 +121,10 @@ public sealed record RunConfiguration(
                 if (initialized.ActOneRegion is not null
                     || initialized.ActOneEncounterPool is not null
                     || initialized.LaterActEncounterBag?.Act != initialized.Act
-                    || initialized.Map.GenerationProfileId !=
-                        PrototypeNativeLaterActMap.ProfileId(initialized.Act))
+                    || (initialized.Map.GenerationProfileId !=
+                        PrototypeNativeLaterActMap.ProfileId(initialized.Act)
+                        && !(initialized.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId
+                            && PrototypeGoldenPathMapV111.IsActive(state.Player, initialized.Act))))
                     throw new InvalidDataException(
                         "Later-act route must own its native map profile without Act 1 encounter bags.");
             }
@@ -207,7 +223,29 @@ public static class V111RunFactory
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = input.NativeRunRng?.Fork()
                 ?? NativeRngV111.CreateBundle(input.RunSeed),
-            World = opening.World! with { RulesetId = config.RulesetId, ActIdentity = config.Acts[0] }
+            World = opening.World! with
+            {
+                RulesetId = config.RulesetId,
+                ActIdentity = config.Acts[0],
+                PreparedLaterActEncounterBags = config.UsesExperimentalSilentThreeActRoute
+                    ? BuildPreparedLaterActBags(opening.Rng, config)
+                    : null
+            }
         };
+    }
+
+    private static PrototypeLaterActEncounterBagV111[] BuildPreparedLaterActBags(
+        RngBundle rng, RunConfiguration configuration)
+    {
+        var assigned = ExperimentalSilentThreeActRouteV111
+            .PrepareAncientAssignments(rng, configuration.Ascension,
+                configuration.Profile);
+        return new[] { 2, 3 }.Select((act, index) =>
+            ExperimentalSilentThreeActRouteV111.InitialBag(
+                act, rng, configuration.Ascension, configuration.Profile,
+                assignAncient: false) with
+            {
+                AssignedAncientId = assigned[index]
+            }).ToArray();
     }
 }

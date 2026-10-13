@@ -9,7 +9,7 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("  replay <trace.jsonl>    Replay normalized canonical decisions and stop at first divergence");
     Console.WriteLine("  v111-coverage [--missing] [--check]  Report pinned solo content and evidence gaps");
     Console.WriteLine("  v111-run [seed] [region] [ascension]  Start the explicit v111 mechanics profile");
-    Console.WriteLine("  v111-natural-sweep [runs-per-region] [ascension] [seed-offset] [checkpoint-dir]");
+    Console.WriteLine("  v111-natural-sweep [runs-per-region] [ascension] [seed-offset] [checkpoint-dir] [policy]");
     Console.WriteLine("                          Unassisted legal-action Silent runs in both Act 1 regions; blockers are errors");
     Console.WriteLine("  v111-natural-resume <exact-snapshot.json>");
     Console.WriteLine("                          Resume the same deterministic legal policy from an unmodified saved state");
@@ -92,9 +92,9 @@ switch (args[0])
     }
     case "v111-natural-sweep":
     {
-        if (args.Length > 5)
+        if (args.Length > 6)
             throw new ArgumentException(
-                "v111-natural-sweep accepts count, ascension, offset and checkpoint dir.");
+                "v111-natural-sweep accepts count, ascension, offset, checkpoint dir and policy.");
         var count = args.Length >= 2
             ? int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture)
             : 8;
@@ -105,8 +105,11 @@ switch (args[0])
             ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture)
             : 0;
         var checkpointDirectory = args.Length >= 5 ? args[4] : null;
+        var policy = args.Length >= 6
+            ? args[5]
+            : V111NaturalRunSweep.BaselinePolicy;
         var report = V111NaturalRunSweep.Run(
-            count, ascension, offset, checkpointDirectory);
+            count, ascension, offset, checkpointDirectory, policy);
         V111NaturalRunSweep.Write(report);
         if (report.Blocked > 0)
             Environment.ExitCode = 1;
@@ -115,10 +118,13 @@ switch (args[0])
 
     case "v111-natural-resume":
     {
-        if (args.Length != 2)
+        if (args.Length is < 2 or > 3)
             throw new ArgumentException(
-                "v111-natural-resume requires one exact snapshot filename.");
-        var result = V111NaturalRunSweep.Resume(args[1]);
+                "v111-natural-resume requires a snapshot filename and optional policy.");
+        var policy = args.Length == 3
+            ? args[2]
+            : V111NaturalRunSweep.BaselinePolicy;
+        var result = V111NaturalRunSweep.Resume(args[1], policy);
         V111NaturalRunSweep.Write(result);
         if (result.Blocker is not null)
             Environment.ExitCode = 1;

@@ -51,7 +51,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Relics = player.Relics.Select(relic =>
                 {
-                    if (relic.RelicId != stoneId)
+                    if (relic.RelicId != stoneId || relic.IsMelted)
                     {
                         return relic;
                     }
@@ -81,7 +81,7 @@ public sealed partial class PrototypeGameEngine
             for (var index = 0; index < relics.Length; index++)
             {
                 var relic = relics[index];
-                if (relic.RelicId != rodId)
+                if (relic.RelicId != rodId || relic.IsMelted)
                 {
                     continue;
                 }

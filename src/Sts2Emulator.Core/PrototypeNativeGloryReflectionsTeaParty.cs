@@ -62,7 +62,8 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
-            return CompleteRoomToMap(state with { Player = player });
+            return PreserveNativeEventCompletionPage(
+                state with { Player = player }, choice);
         }
 
         if (choice != "shatter")
@@ -89,11 +90,11 @@ public sealed partial class PrototypeGameEngine
 
         player = AppendCard(player, nextId++,
             PrototypeNativeGloryEvents.BadLuckId, state.Rng);
-        return CompleteRoomToMap(state with
+        return PreserveNativeEventCompletionPage(state with
         {
             Player = player,
             World = world with { NextCardInstanceId = nextId }
-        });
+        }, choice);
     }
 
     private static IReadOnlyList<GameAction>
@@ -148,7 +149,8 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId, rng: state.Rng);
             player = player with { Hp = player.MaxHp };
-            return CompleteRoomToMap(state with { Player = player });
+            return PreserveNativeEventCompletionPage(
+                state with { Player = player }, choice);
         }
 
         if (evt.NativePageIndex != 1 || choice != "continue_fight")
@@ -182,11 +184,11 @@ public sealed partial class PrototypeGameEngine
                 acquiredRelicId: draw.Id, rng: state.Rng);
         }
 
-        return CompleteRoomToMap(state with
+        return PreserveNativeEventCompletionPage(state with
         {
             Player = playerAfterHit,
             World = world
-        });
+        }, choice);
     }
 
     private static RunState ApplyOpeningRoyalPoison(RunState state)

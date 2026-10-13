@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Completes the three source-pinned v0.111 Glory weak encounters
-/// in the forced-combat registry; native Act 3 routing remains gated.
+/// Completes the three source-pinned v0.111 Glory weak encounters selected
+/// from the opt-in route's prepared regional history. Default v111 routing
+/// remains gated.
 /// Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
 /// </summary>
 public static class PrototypeNativeGloryWeak

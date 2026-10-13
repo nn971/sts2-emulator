@@ -1,8 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Source-pinned v0.111.0 Hive summon encounters. Registered for forced
-/// combat tests; native Hive map and encounter-bag integration remains gated.
+/// Source-pinned v0.111.0 Hive summon encounters selected from the prepared
+/// queue in the opt-in three-act route. Default v111 routing remains gated.
 /// </summary>
 public static class PrototypeNativeHiveSummoningNormals
 {

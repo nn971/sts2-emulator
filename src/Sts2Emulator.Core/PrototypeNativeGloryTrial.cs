@@ -145,7 +145,10 @@ public sealed partial class PrototypeGameEngine
             case "noble_innocent":
                 player = AppendCard(player, nextId++,
                     PrototypeNativeGloryEvents.RegretId, state.Rng);
-                player = player with { Gold = checked(player.Gold + 300) };
+                player = player with
+                {
+                    Gold = GoldAfterGain(player, 300)
+                };
                 break;
 
             case "nondescript_guilty":
@@ -155,9 +158,11 @@ public sealed partial class PrototypeGameEngine
                 // Native presents two independently selectable
                 // three-card rewards from the character's pool.
                 var cards1 = PickDistinct(
-                    PrototypeContent.RewardCardPool, 3, state.Rng, "reward");
+                    PrototypeContent.NativeSilentRewardCardPool, 3,
+                    state.Rng, "reward");
                 var cards2 = PickDistinct(
-                    PrototypeContent.RewardCardPool, 3, state.Rng, "reward");
+                    PrototypeContent.NativeSilentRewardCardPool, 3,
+                    state.Rng, "reward");
                 reward = new RewardState(
                     SourceRoom: "Event:" + evt.EventId,
                     CardOptions: [],
@@ -167,7 +172,15 @@ public sealed partial class PrototypeGameEngine
                     PotionResolved: true,
                     RelicResolved: true,
                     EndsAct: false,
-                    ExtraCardOptions: [cards1, cards2]);
+                    ExtraCardOptions: [cards1, cards2],
+                    CardRewardGenerators:
+                    [null,
+                        new PrototypeCardRewardGenerator(
+                            PrototypeCardRewardGeneratorKind.DistinctRewardPool,
+                            world.Act),
+                        new PrototypeCardRewardGenerator(
+                            PrototypeCardRewardGeneratorKind.DistinctRewardPool,
+                            world.Act)]);
                 break;
             }
 

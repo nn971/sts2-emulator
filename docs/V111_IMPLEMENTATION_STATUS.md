@@ -1,9 +1,270 @@
+## Current Silent regional execution update (2026-10-13)
+
+Configured three-act runs now persist Hive and Glory Ancient assignments at
+run start and dispatch all six act-local Ancient openings at act entry.
+Supported Hive and Glory Ancient relic choices now retain their finished page
+after acquisition and queued rewards, then return to map choice without
+counting the opening as a map room.
+Orobas's eight Silent relic offers reuse the existing acquisition
+handlers and continuations. Coffer capacity metadata now records its four
+added potion slots. Potion Belt adds two persistent potion slots on pickup.
+Cross-character card mechanics (including Sea Glass,
+Prismatic Gem's foreign pools and Colorful Philosophers) are postponed by user
+scope. Shared Darv now has revealed-profile assignment and all twelve Silent
+relic branches. Calling Bell adds its Eternal Curse and Common, Uncommon and
+Rare relic rewards; Dusty Tome adds an upgraded Wraith Form; Pandora's Box
+transforms Strike and Defend cards. Ectoplasm and Sozu are offered only in
+Hive. Exact RNG and fidelity inspection are follow-up work; act assignment
+still uses prototype event randomness. Aroma of Chaos preserves its
+choice-specific follow-up page after transforming or upgrading a card. Brain
+Leech is integrated in Overgrowth, Underdocks and Hive: Share Knowledge offers
+five Silent cards and requires one selection, while Rip the Leech Off costs
+5 HP and offers three implemented colorless cards.
+Neow's Lead Paperweight now suspends the opening for a one-of-two supported
+Colorless card reward drawn from all implemented single-player Colorless
+reward cards. Account unlock filtering and native reward RNG remain open.
+Neow now retains the selected positive or cursed option's finished page after
+its relic effect and queued rewards resolve; dismissing the pre-map opening
+returns to map choice without completing a room. Choice generation still
+approximates native unlock filtering and RNG. The implemented opening-choice
+branches are covered except for Neow's Bones' curse-pool placeholder and
+Kaleidoscope's deferred foreign card pools.
+Winged Boots now allows next-row map travel, consuming its three persistent
+uses only when the selected point skips a normal map edge.
+Ring of the Snake is assigned in the Silent starting loadout and adds two
+cards to each combat's opening hand.
+Fake Merchant is integrated into the configured later-act Silent route. Its
+six stocked fake relics can be bought for 50 gold each; throwing Foul Potion
+starts the one-merchant event fight, whose victory offers the fixed 300 gold,
+Fake Merchant's Rug, and all unsold stocked relics. All nine fake relic effects
+are executable, including the Tea Set's next-combat energy after a Rest Site.
+Foul Potion now deals its source 12 damage to all enemies without damaging the
+player. Prototype RNG is used for the inventory and fight, so native parity
+remains open; see the [Fake Merchant implementation note](reference-builds/v0.111.0-fake-merchant.md).
+This or That is registered as a shared event in Overgrowth, Underdocks, Hive,
+and Glory. Its plain choice deals 6 HP damage before awarding the saved 41–68
+gold roll. Its ornate choice obtains a random relic, resolves any relic
+acquisition deck choice, then adds Clumsy.
+Stone of All Time is integrated in Hive. Lift discards the potion chosen on
+event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one
+eligible Attack for Vigorous 8. Vigorous adds its amount to powered Attack
+damage and disables itself after the card's first completed play.
+Infested Automaton is integrated in Hive for Silent. Study adds one eligible
+Power and Touch Core adds one eligible zero cost card when the card generator
+returns one; both choices retain their result page even when no card is added.
+The Lantern Key now retains its return result page and exits to the map after
+the optional quest card reward from its fight.
+Zen Weaver retains its selected result page after the breathing-technique
+reward or after each requested card removal and gold payment completes.
+Battleworn Dummy now retains its Victory or Defeat result page after the
+selected training combat and any setting reward resolve.
+Trial now retains the selected court's outcome page after its curse, relic,
+deck choice, or card reward continuations finish.
+Tea Master is integrated in Glory for runs with at least 150 gold. Bone Tea
+upgrades eligible cards in the opening hand of the next combat, Ember Tea
+grants 2 Strength on each of the next five combat room entries, and Tea of
+Discourtesy inserts two Dazed cards into the next combat's draw pile. The tea
+charge counters persist across combats; event and combat RNG parity remain
+open.
+Silver Crucible now consumes its first three group charges on supported custom
+event card rewards as well as combat rewards.
+Silken Tress now persists its one-shot Glam enchantment through the first
+combat card reward.
+Ambergris now queues its combat extra turn through the shared end-turn
+pipeline, skipping enemy actions while preserving turn counters and snapshots.
+Self-Help Book is integrated as a shared event in all three Acts. It applies
+Sharp 2 to an Attack, Nimble 2 to a block-producing Skill, or Swift 2 to a
+Power, with a Move On path when no eligible card exists. Sharp now adds its
+enchantment amount to each powered Attack hit.
+Before the Darv, Philosopher's Stone, Black Star and Ectoplasm slices, 1,847 C# tests
+passed, including the eight synthetic full-route cases and Ancient
+acquisition/assignment coverage. The latest solution build and coverage-baseline
+check pass. Potion Courier is integrated into Hive and Glory. Morphic Grove
+retains the Group and Loner result pages. Wellspring and Whispering Hollow
+retain their result pages after potion and card continuations. Waterlogged
+Scriptorium now keeps its result page after each optional Steady selection;
+Trash Heap retains its result page after either successful reward, and
+Endless Conveyor retains its Observe Chef/Leave results. Spiraling Whirlpool
+retains its Observe or Drink result after the selected enchantment or healing
+completes. The coverage report
+records 50 integrated event paths, thirty-five complete event implementations,
+and 34 events with complete branch inventories. Sapphire Seed and Unrest Site
+now retain their choice-specific result pages after their effects resolve.
+Jungle Maze Adventure now retains its Solo or Join result page after the
+persisted gold and damage effects resolve; the pinned source confirms its two
+choices and both terminal pages.
+Tablet of Truth now retains its Smash, Give Up, or fifth-Decipher result page;
+Byrdonis Nest and Wood Carvings now retain their choice-specific result pages.
+Punch Off retains its Nab result page after the relic reward resolves. Native
+validation remains unverified.
+
 # v111 implementation status
 
 Target: [FULL_IMPLEMENTATION_ROADMAP.md](FULL_IMPLEMENTATION_ROADMAP.md).
 Pin: v0.111.0 / 41cef1ea and the fingerprint in
 [the reference manifest](../data/reference_builds/v0.111.0-41cef1ea.json).
 This is an intermediate implementation. Final release gates remain open.
+
+Tezcatara now has ten executable reward dependencies behind explicit named
+fixtures: Very Hot Cocoa, Yummy Cookie, Toasty Mittens, Seal of Gold, Pumpkin
+Candle, Storybook, Biiig Hug, Nutritious Soup, Golden Compass and Toy Box. Shared
+side-turn, acquisition, map, shuffle and choice continuations provide their effects.
+Toy Box uses the current restricted relic bag and persists wax/melted lifecycle
+state. The configured Tezcatara opening samples all three complete pools,
+including the conditional Soup offer, and all ten relic choices retain their
+finished page after acquisition continuations. The three draws and ordered
+offers persist through snapshots. Native UpFront assignment, unlock-profile
+filtering and RNG cursor parity remain for the fidelity pass. Opening
+Mittens/Gambling Chip
+callbacks use a separate resumable post-draw stage. Toolbox suspends before
+the opening draw. Storybook grants its card through shared relic acquisition,
+and Toy Box's wax offers resume the acquiring event, shop or parent reward;
+see [Tezcatara dependency audit](reference-builds/v0.111.0-tezcatara-reward-dependencies.md).
+
+Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
+cards through shared acquisition; Flesh modifies energy reset from turn three;
+Blood modifies every hand draw, and Tears carries leftover energy into the next
+side-start bonus. Wing sacrifices card rewards for every-second front-bag relic
+obtains. Claw enchants eligible Defends with Goopy, including persistent growth
+after each play. Growth marks a card for the repeatable Clone rest action. Tooth
+removes five upgradable cards, stores their complete instances, and returns one
+random card upgraded after each surviving combat. Eye exhausts the hand when a
+turn has no manual plays and grants one enemy-skipping extra turn per combat;
+autoplay is tracked separately. Legion saves one of four skins and its combat
+pet identity, doubles positive player card block while ready, then cools down
+for two player turns. Pael's act-entry fixture now builds the three ordered
+source pools, applies the deck and event-pet eligibility rules, samples with
+three persisted native event-context draws, and validates the exact offers and
+cursor after snapshot/fork. Configured run-start assignments dispatch Pael at
+the Hive boundary; native UpFront assignment and offer cursor parity remain
+open. Pael's conditional Legion offer and
+Overgrowth's Byrdonis Nest now use the same source `HasEventPet` rule. See the
+[Pael dependency audit](reference-builds/v0.111.0-pael-reward-dependencies.md).
+
+Latest regional preparation work moves the existing Hive/Glory encounter
+histories to run initialization and persists untouched future-act queues.
+Act entry transfers them without selection draws. See
+[run-start regional history](reference-builds/v0.111.0-upfront-regional-history.md)
+for verification, experimental snapshot compatibility and remaining native
+upfront/Ancient/RNG gaps. Earlier act-entry queue descriptions are historical.
+
+The experimental route now enters both later acts and uses pre-generated
+encounter histories, supported regional events, and map/room dispatch. Current
+event sampling applies audited Hive eligibility plus Glory's Round Tea Party
+HP and Grave of the Forgotten deck predicates. Specific event and encounter
+documents below may describe earlier fixture-only milestones; the
+[regional integration audit](reference-builds/v0.111.0-regional-integration-bags.md)
+and [regional integrity plan](REGIONAL_INTEGRITY_PLAN.md) carry current status.
+Colorful Philosophers and foreign card pools,
+remaining event eligibility, RNG parity, natural full-run victories and live
+oracle traces are still open. The source Ancient assignment call order is
+audited and partially integrated in the [Ancient assignment ledger](reference-builds/v0.111.0-ancient-assignment.md);
+its native UpFront call schedule remains open.
+Orobas remains the least complete Hive Ancient; its three-offer generation and
+ten relic dependencies are pinned in the
+[Orobas dependency audit](reference-builds/v0.111.0-hive-orobas-ancient.md).
+Seven Orobas dependencies have executable effects for Silent: Electric
+Shrymp/Imbued, Radiant Pearl/Luminesce, Sand Castle, Touch of Orobas/Ring of
+the Drake, Archaic Tooth/Suppress, Driftwood's per-group card reroll, and Glass
+Eye's five independently selectable rarity-specific card reward groups.
+Electric Shrymp now suspends acquisition for one eligible Skill, applies
+Imbued to the selected persistent card, and auto-plays it through the opening
+turn pipeline in each combat. Radiant Pearl creates a retained, exhaust-on-play
+Luminesce in each combat;
+Sand Castle upgrades up to six eligible deck instances; Touch replaces Silent's
+starter relic and adds two draws through turn three; Archaic Tooth transforms
+Neutralize while preserving its card-instance data. Alchemical Coffer adds
+four slots and generates four distinct potions from the full-unlock
+Silent/shared pool in pinned source order. With native run RNG enabled it uses
+`run.combat_potion_generation`; Sozu blocks procurement after generation, so
+the source draws still occur. Unlock filtering and live cursor validation
+remain open. Native-shaped card reward and merchant generators also preserve
+the pinned Silent card-pool order, while the legacy prototype pool remains
+sorted. All 48 pinned Silent/shared potion IDs have executable definitions.
+Colorless Potion and Orobic Acid use restricted implemented-card candidate
+pools; native acquisition timing and other-character mappings remain open.
+
+Glory Ancient source offers and their current gates are tracked in the
+[Glory Ancient ledger](reference-builds/v0.111.0-glory-ancients.md). Signet
+Ring is registered as an Ancient relic and grants 888 gold through the shared
+newly-acquired-relic trigger. Looming Fruit adds 31 current and maximum HP
+through the shared acquisition path. Diamond Diadem grants 20 opening Block
+and Blur; Sai grants 7 Block at each player-side turn start. Spiked Gauntlets
+adds one energy and raises Power-card cost by one. These effects are covered
+through reward resolution and combat turns. Crossbow generates a free Attack
+at each player-side turn start through the shared generated-card pipeline.
+Its source-owned pool order and RNG draws remain unverified. This is a
+dependency slice only. Iron Club draws on every fourth card played and stores
+its counter in persistent relic state across combats; a combat test verifies
+the trigger cadence, saved counter and snapshot restoration. Tanx's offer
+pool and event branches are integrated through a named Ancient fixture; the
+configured route now also includes Tanx in normal assignment, with its native
+assignment RNG still pending.
+Throwing Axe repeats the first card played each combat; direct combat coverage
+checks the replay and confirms later cards play once.
+Meat Cleaver adds Cook to rest sites when at least two removable deck cards
+remain. Cooking removes the selected pair and adds 5 current and maximum HP;
+tests cover eligibility and the complete rest-site action.
+Tanx's Whistle adds an Ancient attack to the deck. Whistle costs 2, deals 33
+damage (44 upgraded), exhausts and stuns a surviving target for one turn while
+preserving its committed follow-up move. Acquisition, combat, upgrade,
+snapshot and stun-resume cases are covered. Tri Boomerang now starts an
+acquisition choice for three eligible Attack instances and applies Instinct's
+2x powered-attack damage effect. Acquisition eligibility, snapshot restore,
+and combat damage are covered. Claws now offers an optional, snapshot-safe
+choice of up to six deck transformations into Maul. Maul preserves one upgrade
+and enchantments that its card accepts, attacks twice for 5/6 damage per hit,
+and each play raises every Maul's damage by 2/3 for the combat. Selection,
+cancel-without-transforming, upgrade/enchantment transfer and combat growth
+are covered. War Hammer upgrades up to four distinct upgradable deck cards
+after Elite victories using run.niche when native RNG ownership is enabled;
+native stream selection and snapshot cursor tests are covered. All ten Tanx
+relic effects now have executable dependencies. Tanx's conditional offer pool,
+native event shuffle, persisted RNG cursor and relic-choice branches are
+executable through a named Glory Ancient opening fixture. The configured route
+can assign Tanx at act entry; Tanx remains a forced Ancient opening rather than
+a weighted map event.
+Nonupeipe's conditional offer shuffle and all ten relic branches now execute
+through a named Glory Ancient opening fixture; the configured route now
+includes it in run-start assignment. Vakuu's three source-owned offer pools and native event shuffle
+now run through a named Ancient opening fixture. Lord's Parasol free-purchase
+flow reuses existing card, relic and potion acquisition paths, persists its
+potion-replacement and forced-removal choices, and is covered by a full shop
+entry test. The configured route now includes Vakuu in run-start assignment;
+native assignment RNG remains open.
+Nonupeipe's Jewelry Box branch now follows its persistent acquisition through
+the Innate, Exhaust Apotheosis card; playing Apotheosis upgrades all other
+upgradable combat cards. Brilliant Scarf's fifth manual card play now costs
+zero energy, using the turn-scoped manual-play counter. Blessed Antler adds
+one energy and inserts three Dazed at random draw-pile positions before the
+first hand draw. Glitter applies Glam to eligible cards in normal and extra
+combat reward groups; its saved option enchantments survive restore and card
+acquisition. Event-owned reward surfaces and native hook order remain gated.
+Beautiful Bracelet's four-card Swift acquisition now uses run.niche and its
+two-card draw enchant triggers on the first play per combat. Fiddle adds two
+opening cards and prevents additional draws during the player's turn.
+Blood-Soaked Rose adds one energy and the Eternal Enthralled curse, which
+blocks other manual card plays while it remains in hand. Whispering Earring
+adds one energy and pays to auto-play the first playable hand cards in order
+on turn one, up to the source cap of 13; it reuses the resumable card-play
+pipeline. Sere Talon loses 9 Max HP and adds three Wish cards; Wish exhausts
+after selecting a draw-pile card into hand, and its upgrade grants Retain.
+Preserved Fog removes up to three chosen cards before adding Folly, and Music
+Box copies the first Attack each player turn as Ethereal while preserving the
+played card's instance data. Their acquisition and turn-scoped behavior have
+direct tests. Jeweled Mask moves a preferred non-Innate Power from draw pile
+to hand before turn-one draw and makes it free through end of turn; its native
+combat path consumes `run.combat_card_selection`. Distinguished Cape adds its
+two source-eligible modifier curses and three Apparitions through relic
+acquisition, consuming `run.niche` when native RNG ownership is active.
+Vakuu's offer event and Lord's Parasol shop flow are implemented through the
+named Ancient fixture and normal configured assignment. Fur Coat marks
+up to eight current-act Monster/Elite rooms and reduces initial and summoned
+enemies there to 1 HP while persisting its map selection and content RNG
+snapshot. Delicate Frond now
+generates and procures potions before combat until the slots fill, using
+`run.combat_potion_generation`; Sozu blocks procurement after one generated
+potion. Full native potion-pool and cursor parity remain unverified.
 
 ## Delivered
 
@@ -16,6 +277,11 @@ This is an intermediate implementation. Final release gates remain open.
   include ten special/event encounters outside ordinary act pools. Cards have
   base/upgrade variant IDs; events have known page/option/Ancient IDs. Dynamic
   event branch completeness is explicitly false and requires source auditing.
+  Punch Off's two-Construct, Dense Vegetation's four-Wriggler, Hive Lantern
+  Key's Mysterious Knight, and all three Battleworn training event fights are
+  registered at zero ordinary-map weight and connected to their event choices;
+  coverage reports their native event encounter IDs as integrated without
+  treating them as map-pool fights.
 - Added reproducible coverage by native ID with separate registration,
   implementation, integration and validation dimensions. Metadata registration
   never establishes implementation. Claims derive from typed executable
@@ -208,7 +474,10 @@ This is an intermediate implementation. Final release gates remain open.
   Neow continuations preserve pre-map history. Trash Heap preserves duplicate
   relic rolls as separate instances; duplicate Dream Catchers offer independently
   selectable rest rewards using the shared rarity lifecycle, and fresh Maw Banks
-  retain independent purchase state.
+  retain independent purchase state. Fresnel Lens exposes Nimble +2 on
+  reward/shop card offer previews using the same acquisition hook, including
+  Colorless Fisticuffs' attack-result Block; regressions compare previews with
+  acquired card state and its combat Block result.
 - Corrected v111 Endless Conveyor continuation ordering: the next dish is
   rolled after Jelly Liver deck transformation or Suspicious Condiment potion
   reward resolution. The visible dish ID/number are now exported to consumers;
@@ -291,8 +560,9 @@ This is an intermediate implementation. Final release gates remain open.
   only and stuns on the fifth unblocked hit. The special return is exposed
   as typed reward metadata without giving a duplicate persistent card.
   All four fights remain **gated from real Hive route generation**;
-  their legacy weights are zero. Native CombatCardGeneration RNG,
-  Imbued-card priority and exact reward UI timing remain unverified.
+  their legacy weights are zero. Native CombatCardGeneration RNG and exact
+  reward UI timing remain unverified; Imbued Skills use the source's lowest
+  theft priority class.
   Source details are recorded in the Hive/Glory first-slice audit note.
 - Added **four gated Hive normal encounters** with source-backed
   formations and combat moves: Bowlbugs Normal (Rock plus two different
@@ -312,12 +582,14 @@ This is an intermediate implementation. Final release gates remain open.
   (Protruding Spikes → Spike Explosion → Tongue Lash, including
   native Thorns damage retaliation and removal) and Slumbering
   Beetle (Rock/Silk/Beetle formation, three-turn Slumber countdown,
-  Plating, unblocked-damage early wake and Roll Out Strength growth).
+  Plating, three unblocked-damage callbacks to wake and Roll Out
+  Strength growth). Slumber now decrements from unblocked damage
+  callbacks regardless of attack source; raw HP loss such as poison does
+  not advance it. Tests cover blocked hits, all three counters and poison.
   Added source-backed enemy power presence/absence AI branches so
   sleep and wake actions are committed before observations and
   persist through forks. Native Hive normal encounters now have
   six guarded entries; native Act 2 map and selection remain disabled.
-  Exotic nonattack Slumber wake triggers require later source audit.
 - Implemented **two further gated Hive normal encounters**:
   Hunter Killer with its source-weighted/nonrepeating Bite/Puncture branch
   and Tender's reversible card-completion Strength/Dexterity penalties;
@@ -360,8 +632,10 @@ This is an intermediate implementation. Final release gates remain open.
   split between randomly inserted draw/discard, five-move loop, and
   Frantic Escape increasing Sandpit and its own cost). Source HP,
   Ascension damage breaks and boss formations have synthetic tests.
-  All three remain gated; live-game parity and native enemy-choice
-  prompts still need implementation/audit.
+  Knowledge Demon's mandatory curse selection is a typed, resumable
+  enemy-origin prompt with source-defined option sets and debuff effects.
+  All three remain gated from generic pools; regional route selection,
+  combat RNG parity and live-game validation remain open.
 - Two **gated Glory normal encounters** are now source-backed isolated
   combat models: Frog Knight (Plating, Tongue Lash/Frail, Strike,
   Queen buff, one conditional Beetle Charge) and Slimed Berserker
@@ -400,9 +674,10 @@ This is an intermediate implementation. Final release gates remain open.
   reusing existing typed Chomper/Tunneler and Punch/Cubex enemies.
   The Chomper is explicitly assigned its source-true screaming
   initial phase; Menagerie has independently targetable Punch
-  and two Cubex instances. Both fights remain Weight=0,
-  synthetic fixtures only, and native Act 2/3 progression
-  is not enabled. [Normal formation audit](reference-builds/v0.111.0-normal-formations.md).
+  and two Cubex instances. Construct Menagerie is in the opt-in Glory queue;
+  Tunneler Normal remains a forced fixture because it is absent from Hive's
+  native encounter roster. Both retain Weight=0 in the generic selector.
+  [Normal formation audit](reference-builds/v0.111.0-normal-formations.md).
 - Added source-backed **Owl Magistrate Normal** with
   A0/A8/A9 attack and HP deltas, six-hit Peck, four-move loop,
   Judicial Flight's Soar (halves incoming powered attack damage),
@@ -561,9 +836,10 @@ This is an intermediate implementation. Final release gates remain open.
   The initial choice consumes one Key; in solo runs with further
   Keys the opposite option is offered after rewards, then removes
   all remaining Keys. Cage sets the persistent FreedRepy flag and
-  obtains the event-only History Course relic. Chest gives two
-  optional potion/relic reward pairs with all four values pre-rolled
-  and fork-safe. Native one-screen chest UI, actual reward pools,
+  obtains the event-only History Course relic. Chest presents two
+  potions and two distinct relics together; each offer can be taken
+  or skipped independently, with pre-rolled values and resolution
+  state preserved through snapshots. Prototype pool selection and
   native live trace parity remain explicitly unverified.
   History Course now auto-plays the last non-dupe Attack completed on
   the previous turn at the start of turn 2+, with normal targeting,
@@ -716,6 +992,26 @@ validated as player-power afflictions, and relics obtained directly from
 events must be removed from remaining native relic queues. Neither change
 claims real-game source parity for these systems.
 
+The experimental route now represents Glory's Ascension 10+ Double Boss rule:
+a distinct second boss is persisted in the preselected encounter history, the
+map has a mandatory second boss node, and the first boss reward continues to
+that node. A synthetic A10 route completes both boss combats and reaches
+victory. Boss-selection draw ownership/order and live reward parity remain
+open; see the [double-boss source audit](reference-builds/v0.111.0-glory-double-boss.md).
+
+Eight route integration cases now traverse Act 1 from both Overgrowth and
+Underdocks through their generated maps, encounters, events, rewards and boss
+boundaries before continuing through Hive and Glory. They cover three A0 seeds
+per starting region and one A10 seed per region, including Glory's double boss.
+Synthetic combat finishers keep this a progression/persistence check; it does
+not establish unassisted victory rates, exhaustive event branches or native RNG
+parity.
+
+Underdocks' complete ten-entry normal encounter bag now refills to support the
+native twelve-normal history, and its three-entry elite bag refills for longer
+elite sequences. Selection avoids an immediate repeat when alternatives remain;
+native pre-generated queue order, tag filtering and RNG parity are still open.
+
 **This is expanded implementation access, not completion certification.**
 Knowledge Demon's compulsory curse selection now suspends and resumes the
 actual enemy turn without auto-selection. Additional later-act
@@ -783,3 +1079,34 @@ semantics. No choice is silently selected and choice-only status
 cards do not enter normal rewards. See
 [the source audit](reference-builds/v0.111.0-knowledge-demon-player-choices.md).
 RNG/call-order parity with the real game remains unverified.
+
+## Silent relic: Twisted Funnel
+
+Added the pinned Silent uncommon **Twisted Funnel** to the ordinary relic
+pool. It applies 4 Poison to every living enemy at combat start, matching the
+source's first-player-turn application at the mechanics level. The combat
+event ordering and native trigger timing remain for the later fidelity pass.
+Source: [TwistedFunnel.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/TwistedFunnel.cs).
+Added the Silent shop relic **Ninja Scroll** to the shop rarity pool; before
+the opening hand draw on turn one, it creates three Shivs in hand. Source:
+[NinjaScroll.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/NinjaScroll.cs).
+Added the Silent rare relic **Helical Dart** to the rare relic pool. Each
+played Shiv grants 1 temporary Dexterity for the current player turn, using
+the card tag in the shared relic trigger pipeline. Source:
+[HelicalDart.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/HelicalDart.cs)
+and [HelicalDartPower.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Powers/HelicalDartPower.cs).
+Added **Snecko Skull** to the common relic pool. Each positive Poison
+application the player gives to an enemy gains one additional stack, through
+the shared enemy-status application path. Source:
+[SneckoSkull.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/SneckoSkull.cs).
+Added the Silent rare relic **Paper Krane**. Weak enemy attacks against the
+player use a 60% damage multiplier (the base Weak multiplier is 75%); Weak
+does not reduce enemy non-attack damage. Source:
+[PaperKrane.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/PaperKrane.cs).
+Tingsha and Tough Bandages now require a player-side discard, matching their
+native owner/current-side guard. End-of-turn hand cleanup now dispatches
+discard hooks before player hand-cleanup powers expire. Tingsha deals 3
+unpowered damage to a random living enemy; Tough Bandages grants 3 Block. Both
+remain in their native Uncommon/Rare reward pools. Sources:
+[Tingsha.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/Tingsha.cs),
+[ToughBandages.cs](https://github.com/Flaaax/STS2-source/blob/706ef1c9fa2219220065849fd5265328607ece20/src/Core/Models/Relics/ToughBandages.cs).
