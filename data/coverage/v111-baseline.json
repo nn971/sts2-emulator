@@ -16080,37 +16080,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.native.event.welcome_to_wongos"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Events/WelcomeToWongos.cs#5a1f3c051a170105fe8445321aa7aa0f88e17312de91253e52f041104dd2299e"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "events",
-        "missing_branches": [
-          "initial/BARGAIN_BIN",
-          "initial/BARGAIN_BIN_LOCKED",
-          "initial/FEATURED_ITEM",
-          "initial/FEATURED_ITEM_LOCKED",
-          "initial/LEAVE",
-          "initial/MYSTERY_BOX",
-          "initial/MYSTERY_BOX_LOCKED",
-          "page/AFTER_BUY",
-          "page/AFTER_BUY_BADGE_COUNTER",
-          "page/AFTER_BUY_RECEIVE_BADGE",
-          "page/INITIAL",
-          "page/INITIAL/BARGAIN_BIN",
-          "page/INITIAL/BARGAIN_BIN_LOCKED",
-          "page/INITIAL/FEATURED_ITEM",
-          "page/INITIAL/FEATURED_ITEM_LOCKED",
-          "page/INITIAL/LEAVE",
-          "page/INITIAL/MYSTERY_BOX",
-          "page/INITIAL/MYSTERY_BOX_LOCKED",
-          "page/LEAVE"
-        ],
+        "missing_branches": [],
         "missing_variants": [],
         "native_id": "WELCOME_TO_WONGOS",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29099,33 +29081,37 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.wongos_mystery_ticket"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/WongosMysteryTicket.cs#831872d73d4c25fca471afe636eb65d34677aba0a690239c471573ceb05b8cb9"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "WONGOS_MYSTERY_TICKET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.wongo_customer_appreciation_badge"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/WongoCustomerAppreciationBadge.cs#65ae690a4d9a5f92bf315b86d90e2c4d61c7eb315717a56c6820bc852ce62cad"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "WONGO_CUSTOMER_APPRECIATION_BADGE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29396,8 +29382,8 @@
         "catalogued": 66,
         "eligible": 66,
         "excluded": 0,
-        "implemented": 62,
-        "integrated": 64,
+        "implemented": 63,
+        "integrated": 65,
         "kind": "events",
         "scope_review_required": 0,
         "validated": 0
@@ -29446,8 +29432,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 137,
-        "integrated": 138,
+        "implemented": 139,
+        "integrated": 140,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

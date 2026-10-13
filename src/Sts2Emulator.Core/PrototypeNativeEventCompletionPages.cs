@@ -46,6 +46,7 @@ public static class PrototypeNativeEventCompletionPages
             or PrototypeNativeHiveEvents.ZenWeaverId
             or PrototypeNativeDollRoom.EventId
             or PrototypeNativeCrystalSphere.EventId
+            or PrototypeNativeWongos.EventId
             or NativeAncientRewardsV111.TezcataraId
             or NativePaelRewardsV111.PaelId
             or NativeOrobasEventV111.EventId
@@ -69,7 +70,8 @@ public static class PrototypeNativeEventCompletionPages
 
     public static int TerminalChoicePageIndex(string eventId) =>
         eventId is PrototypeNativeDollRoom.EventId
-            or PrototypeNativeCrystalSphere.EventId ? 2
+            or PrototypeNativeCrystalSphere.EventId
+            or PrototypeNativeWongos.EventId ? 2
             : eventId is PrototypeNativeHiveEvents.ColossalFlowerId
             or PrototypeNativeDenseVegetation.EventId ? 3
             : eventId == PrototypeNativeGloryEvents.BattlewornDummyId ? 4
@@ -186,6 +188,9 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "daughter_of_the_wind" or "mr_struggles" or "fable"
         || eventId == PrototypeNativeCrystalSphere.EventId
             && choiceId is "uncover_future" or "payment_plan"
+        || eventId == PrototypeNativeWongos.EventId
+            && choiceId is "bargain_bin" or "featured_item"
+                or "mystery_box" or "leave"
         || eventId == "proto.native.underdocks.doors_of_light_and_dark"
             && choiceId is "light" or "dark"
         || eventId == "proto.native.underdocks.drowning_beacon"

@@ -744,6 +744,45 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException("Native event state leaked into another event.");
         }
 
+        if (eventState.EventId == PrototypeNativeWongos.EventId)
+        {
+            if (eventState.NativeWongoFeaturedRelicId is null
+                || !PrototypeContent.Relics.ContainsKey(
+                        eventState.NativeWongoFeaturedRelicId)
+                    || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                        eventState.NativeWongoFeaturedRelicId,
+                        out var featuredRarity)
+                    || featuredRarity != PrototypeRelicRarity.Rare)
+            {
+                throw new InvalidOperationException(
+                    "Welcome to Wongos has an invalid featured relic.");
+            }
+            if (eventState.NativeWongoResultPage is not null
+                && eventState.NativeWongoResultPage is not (
+                    "after_buy" or "badge_counter" or "receive_badge"
+                        or "leave"))
+            {
+                throw new InvalidOperationException(
+                    "Welcome to Wongos has an unknown result page.");
+            }
+            if (eventState.NativePageIndex is not (0 or 2)
+                || (eventState.NativePageIndex == 2)
+                    != (eventState.NativeWongoResultPage is not null)
+                || eventState.NativePageIndex == 0
+                    && (eventState.NativeWongoResultPage is null)
+                        != (eventState.ChosenChoiceId is null))
+            {
+                throw new InvalidOperationException(
+                    "Welcome to Wongos result page disagrees with its progress.");
+            }
+        }
+        else if (eventState.NativeWongoFeaturedRelicId is not null
+            || eventState.NativeWongoResultPage is not null)
+        {
+            throw new InvalidOperationException(
+                "Wongos event data leaked into another event.");
+        }
+
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
         {
             if (eventState.NativePageIndex == 0

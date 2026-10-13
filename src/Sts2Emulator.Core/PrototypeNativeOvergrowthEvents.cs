@@ -372,6 +372,7 @@ public static class PrototypeNativeOvergrowthEvents
         "proto.native.event.wellspring",
         "proto.native.event.whispering_hollow",
         "proto.native.event.wood_carvings",
+        PrototypeNativeWongos.EventId,
         PrototypeNativeRoomFullOfCheese.EventId,
         PrototypeNativeSlipperyBridge.EventId
     ];
@@ -646,6 +647,11 @@ public static class PrototypeNativeOvergrowthEvents
         if (id == "proto.native.event.byrdonis_nest")
         {
             return !PrototypeNativeEventPetRules.HasEventPet(player);
+        }
+
+        if (id == PrototypeNativeWongos.EventId)
+        {
+            return player.Gold >= PrototypeNativeWongos.BargainBinCost;
         }
 
         return true;

@@ -27,6 +27,9 @@ public static class V111Build
 public sealed record SimulationProfile(
     bool FullyUnlocked, string[] UnlockedCharacters, string[] RevealedEpochs)
 {
+    /// <summary>Profile-wide Wongos points retained across runs.</summary>
+    public int WongoPoints { get; init; }
+
     /// <summary>
     /// Bosses already discovered by the player before this run. ActModel's
     /// discovery-order modification uses this history when it replaces the
@@ -73,9 +76,10 @@ public sealed record RunConfiguration(
             throw new InvalidDataException("Run configuration requires explicit route and profile arrays.");
         if (Profile.SeenBossEncounters.Any(string.IsNullOrWhiteSpace)
             || Profile.SeenBossEncounters.Distinct(StringComparer.Ordinal).Count()
-                != Profile.SeenBossEncounters.Length)
+                != Profile.SeenBossEncounters.Length
+            || Profile.WongoPoints < 0)
             throw new ArgumentException(
-                "Profile boss discovery history must contain distinct non-empty encounter IDs.");
+                "Profile progress must have distinct boss IDs and non-negative Wongos points.");
         _ = V111Characters.Get(CharacterId);
         if (Ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(Ascension), "v111 supports Ascension 0 through 10.");

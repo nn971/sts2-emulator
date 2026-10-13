@@ -185,7 +185,11 @@ public sealed record PrototypeAiEvent(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     int? CurrentDishNumber = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeAiEventChoiceValue[]? VisibleChoiceValues = null);
+    PrototypeAiEventChoiceValue[]? VisibleChoiceValues = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? FeaturedRelicId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? ResultPageId = null);
 
 public sealed record PrototypeAiShop(
     ShopOffer[] CardOffers,
@@ -620,7 +624,9 @@ public sealed class PrototypeAiEnvironment
                     world.Event.EventId == PrototypeNativeEndlessConveyor.EventId
                         ? world.Event.NativeDishCount
                         : null,
-                    VisibleEventChoiceValues(world.Event, state.Player)),
+                    VisibleEventChoiceValues(world.Event, state.Player),
+                    world.Event.NativeWongoFeaturedRelicId,
+                    world.Event.NativeWongoResultPage),
             MapGenerationProfileId:
                 world?.Map.GenerationProfileId,
             CompletedRooms: world is null
@@ -652,9 +658,26 @@ public sealed class PrototypeAiEnvironment
         {
             return null;
         }
+        if (evt.EventId == PrototypeNativeWongos.EventId
+            && evt.NativePageIndex != 0)
+        {
+            return null;
+        }
 
         return evt.EventId switch
         {
+            PrototypeNativeWongos.EventId =>
+            [
+                new(PrototypeNativeWongos.BargainBinChoiceId,
+                    GoldCost: PrototypeNativeWongos.BargainBinCost),
+                new(PrototypeNativeWongos.FeaturedItemChoiceId,
+                    GoldCost: PrototypeNativeWongos.FeaturedItemCost,
+                    GuaranteedRelicId: evt.NativeWongoFeaturedRelicId),
+                new(PrototypeNativeWongos.MysteryBoxChoiceId,
+                    GoldCost: PrototypeNativeWongos.MysteryBoxCost,
+                    GuaranteedRelicId: PrototypeNativeWongos.MysteryTicketId),
+                new(PrototypeNativeWongos.LeaveChoiceId)
+            ],
             PrototypeNativeCrystalSphere.EventId =>
             [
                 new(PrototypeNativeCrystalSphere.UncoverFutureChoiceId,

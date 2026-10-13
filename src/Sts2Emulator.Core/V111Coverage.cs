@@ -884,6 +884,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "events"
+            && item.Id == "WELCOME_TO_WONGOS"
+            && missingBranches.Length == 0
+            && engineIds.Contains(PrototypeNativeWongos.EventId,
+                StringComparer.Ordinal)
+            && HasWongosPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "events"
             && item.Id == "THE_ARCHITECT"
             && missingBranches.Length == 0
             && engineIds.Contains(
@@ -2091,6 +2101,32 @@ public static class V111Coverage
             && PrototypeContent.Relic(
                 PrototypeNativeOrobasRelics.RingOfTheSnakeId)
                 .FirstTurnDrawBonus == 2)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "WONGOS_MYSTERY_TICKET"
+            && engineIds.Contains(
+                PrototypeNativeWongos.MysteryTicketId,
+                StringComparer.Ordinal)
+            && !PrototypeContent.RelicPool.Contains(
+                PrototypeNativeWongos.MysteryTicketId,
+                StringComparer.Ordinal)
+            && HasWongosPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "WONGO_CUSTOMER_APPRECIATION_BADGE"
+            && engineIds.Contains(
+                PrototypeNativeWongos.AppreciationBadgeId,
+                StringComparer.Ordinal)
+            && !PrototypeContent.RelicPool.Contains(
+                PrototypeNativeWongos.AppreciationBadgeId,
+                StringComparer.Ordinal)
+            && HasWongosPath())
         {
             implementation = "implemented";
             integration = "integrated";
@@ -4682,6 +4718,11 @@ public static class V111Coverage
             return HasCompleteCrystalSphereBranches(item)
                 ? [] : item.Branches ?? [];
         }
+        if (item.Kind == "events" && item.Id == "WELCOME_TO_WONGOS")
+        {
+            return HasCompleteWongosBranches(item)
+                ? [] : item.Branches ?? [];
+        }
         if (item.Kind == "events" && item.Id == "SLIPPERY_BRIDGE")
         {
             return HasCompleteSlipperyBridgeBranches(item)
@@ -5030,6 +5071,280 @@ public static class V111Coverage
             && PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
                 PrototypeNativeCrystalSphere.EventId) == 2
             && HasCrystalSpherePath();
+    }
+
+    private static bool HasCompleteWongosBranches(
+        V111InventoryItem item)
+    {
+        var definition = PrototypeNativeWongos.Definition;
+        return item.Branches is { Length: 19 } branches
+            && branches.Order(StringComparer.Ordinal).SequenceEqual(
+                PrototypeNativeWongos.CoveredBranches
+                    .Order(StringComparer.Ordinal),
+                StringComparer.Ordinal)
+            && IsIntegratedEvent(PrototypeNativeWongos.EventId)
+            && definition.MinAct == 1
+            && definition.MaxAct == 1
+            && definition.OncePerRun
+            && definition.Choices.Select(choice => choice.Id).SequenceEqual(
+                ["bargain_bin", "featured_item", "mystery_box", "leave"],
+                StringComparer.Ordinal)
+            && PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                PrototypeNativeWongos.EventId)
+            && PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                PrototypeNativeWongos.EventId) == 2
+            && HasWongosPath();
+    }
+
+    private static bool HasWongosPath()
+    {
+        static RunState EventFixture(
+            string seed,
+            int gold,
+            int wongoPoints,
+            bool addUpgradedCard = false,
+            ActIdentity firstAct = ActIdentity.Overgrowth)
+        {
+            var profile = SimulationProfile.Unlocked() with
+            {
+                WongoPoints = wongoPoints
+            };
+            var configuration = RunConfiguration.Create(
+                firstAct: firstAct,
+                profile: profile) with
+            {
+                FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
+            };
+            var state = V111RunFactory.Create(seed, configuration);
+            var engine = new PrototypeGameEngine();
+            state = engine.Step(state,
+                engine.GetLegalActions(state).Single()).State;
+            var world = state.World!;
+            var node = world.Map.Nodes.First(item =>
+                item.RoomType == PrototypeRoomType.Unknown
+                && item.NextNodeIds is { Length: > 0 });
+            var player = state.Player with { Gold = gold };
+            if (addUpgradedCard)
+            {
+                var selected = player.Deck.First(card =>
+                    PrototypeContent.Card(card.CardId).MaxUpgradeLevel > 0);
+                player = player with
+                {
+                    Deck = player.Deck.Select(card => card with
+                    {
+                        UpgradeLevel = card.InstanceId == selected.InstanceId
+                            ? 1 : 0
+                    }).ToArray()
+                };
+            }
+
+            var eventState = new EventState(
+                PrototypeNativeWongos.EventId);
+            var initialized = PrototypeNativeWongos.Initialize(
+                world,
+                player,
+                eventState,
+                state.Rng);
+            return state with
+            {
+                Player = player,
+                Phase = RunPhase.Event,
+                World = initialized.World with
+                {
+                    Floor = node.Floor,
+                    ActiveRoom = PrototypeRoomType.Event,
+                    Map = initialized.World.Map with
+                    {
+                        CurrentNodeId = node.NodeId
+                    },
+                    Event = initialized.Event,
+                    EventHistory = world.EventIds.Append(
+                        PrototypeNativeWongos.EventId).ToArray()
+                }
+            };
+        }
+
+        static string[] ChoiceIds(
+            PrototypeGameEngine engine, RunState state) =>
+            engine.GetLegalActions(state)
+                .Where(action => action.Kind == "event_choice")
+                .Select(action => action.ReadPayload<EventChoicePayload>()
+                    .ChoiceId)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+
+        static GameAction Choice(
+            PrototypeGameEngine engine,
+            RunState state,
+            string choiceId) => engine.GetLegalActions(state).Single(action =>
+                action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId
+                    == choiceId);
+
+        static bool TerminalChoicePage(
+            PrototypeGameEngine engine,
+            RunState state,
+            string choiceId,
+            string pageId) =>
+            state.Phase == RunPhase.Event
+            && state.World?.Event is
+                {
+                    NativePageIndex: 2,
+                    NativeWongoResultPage: var resultPage,
+                    ChosenChoiceId: var chosenChoice
+                }
+            && resultPage == pageId
+            && chosenChoice == choiceId
+            && engine.GetLegalActions(state).Single().Kind
+                == "continue_event";
+
+        var engine = new PrototypeGameEngine();
+        if (!PrototypeNativeOvergrowthEvents.RegionEventIds.Contains(
+                PrototypeNativeWongos.EventId, StringComparer.Ordinal)
+            || !PrototypeNativeUnderdocksEvents.IsSupported(
+                PrototypeNativeWongos.EventId)
+            || PrototypeNativeOvergrowthEvents.IsEligible(
+                PrototypeNativeWongos.Definition,
+                new PlayerState(30, 30, 99, [], [], []))
+            || PrototypeNativeUnderdocksEvents.IsEligible(
+                PrototypeNativeWongos.Definition,
+                new PlayerState(30, 30, 99, [], [], [])))
+        {
+            return false;
+        }
+        var bargain = EventFixture(
+            "coverage-wongos-bargain", 100, 0);
+        var featured = bargain.World!.Event!.NativeWongoFeaturedRelicId;
+        if (featured is null
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                featured, out var featuredRarity)
+            || featuredRarity != PrototypeRelicRarity.Rare
+            || !ChoiceIds(engine, bargain).SequenceEqual(
+                ["bargain_bin", "leave"], StringComparer.Ordinal))
+        {
+            return false;
+        }
+        var bargainBought = engine.Step(bargain,
+            Choice(engine, bargain, "bargain_bin")).State;
+        if (bargainBought.Player.Gold != 0
+            || bargainBought.Configuration?.Profile.WongoPoints != 32
+            || bargainBought.Player.Relics.Length
+                != bargain.Player.Relics.Length + 1
+            || !PrototypeNativeRelicGrabBag.TryGetRarity(
+                bargainBought.Player.Relics[^1].RelicId,
+                out var bargainRarity)
+            || bargainRarity != PrototypeRelicRarity.Common
+            || TerminalChoicePage(
+                engine, bargainBought, "bargain_bin", "after_buy") == false)
+        {
+            return false;
+        }
+        var locked = EventFixture("coverage-wongos-locked", 150, 0);
+        if (!ChoiceIds(engine, locked).SequenceEqual(
+                ["bargain_bin", "leave"], StringComparer.Ordinal))
+            return false;
+        var unaffordable = EventFixture(
+            "coverage-wongos-unaffordable", 99, 0);
+        if (!ChoiceIds(engine, unaffordable).SequenceEqual(
+                ["leave"], StringComparer.Ordinal))
+            return false;
+
+        var counter = EventFixture(
+            "coverage-wongos-counter", 200, 2000);
+        var counterFeatured = counter.World!.Event!
+            .NativeWongoFeaturedRelicId;
+        if (counterFeatured is null
+            || !ChoiceIds(engine, counter).Contains(
+                "featured_item", StringComparer.Ordinal))
+            return false;
+        var counterBought = engine.Step(counter,
+            Choice(engine, counter, "featured_item")).State;
+        if (counterBought.Player.Gold != 0
+            || counterBought.Configuration?.Profile.WongoPoints != 2016
+            || counterBought.Player.Relics[^1].RelicId != counterFeatured
+            || TerminalChoicePage(engine, counterBought,
+                "featured_item", "badge_counter") == false
+            || counterBought.Player.Relics.Any(relic =>
+                relic.RelicId == PrototypeNativeWongos.AppreciationBadgeId))
+            return false;
+        var mystery = EventFixture(
+            "coverage-wongos-mystery", 300, 1994,
+            firstAct: ActIdentity.Underdocks);
+        var mysteryBought = engine.Step(mystery,
+            Choice(engine, mystery, "mystery_box")).State;
+        if (mysteryBought.Player.Gold != 0
+            || mysteryBought.Configuration?.Profile.WongoPoints != 2002
+            || !mysteryBought.Player.Relics.Any(relic =>
+                relic.RelicId == PrototypeNativeWongos.MysteryTicketId
+                && relic.PersistentState.TryGetProperty(
+                    "CombatsFinished", out var fights)
+                && fights.GetInt32() == 0)
+            || !mysteryBought.Player.Relics.Any(relic =>
+                relic.RelicId
+                    == PrototypeNativeWongos.AppreciationBadgeId)
+            || TerminalChoicePage(engine, mysteryBought,
+                "mystery_box", "receive_badge") == false)
+        {
+            return false;
+        }
+        var ticketPlayer = mysteryBought.Player;
+        var ticketWorld = mysteryBought.World! with
+        {
+            ActiveRoom = PrototypeRoomType.Combat
+        };
+        var ticketRng = PrototypeRng.CreateBundle(
+            "coverage-wongos-ticket-combats");
+        var fifthFightRewards = new List<string>();
+        for (var fight = 1; fight <= PrototypeNativeWongos.TicketCombats;
+             fight++)
+        {
+            var rewards = new List<string>();
+            ticketPlayer = PrototypeGameEngine.UpdateWongosTicketCombatEnd(
+                ticketPlayer,
+                ref ticketWorld,
+                ticketRng,
+                rewards,
+                out var awarded);
+            if (fight < PrototypeNativeWongos.TicketCombats
+                ? awarded || rewards.Count != 0
+                : !awarded || rewards.Count
+                    != PrototypeNativeWongos.TicketRelicRewards)
+            {
+                return false;
+            }
+            if (fight == PrototypeNativeWongos.TicketCombats)
+                fifthFightRewards = rewards;
+        }
+        ticketPlayer = PrototypeGameEngine.UpdateWongosTicketCombatEnd(
+            ticketPlayer,
+            ref ticketWorld,
+            ticketRng,
+            new List<string>(),
+            out var repeatedReward);
+        var finalTicket = ticketPlayer.Relics.Single(relic =>
+            relic.RelicId == PrototypeNativeWongos.MysteryTicketId);
+        var leave = EventFixture(
+            "coverage-wongos-leave", 150, 0, addUpgradedCard: true);
+        var upgraded = leave.Player.Deck.Single(card =>
+            card.UpgradeLevel == 1);
+        var left = engine.Step(leave,
+            Choice(engine, leave, "leave")).State;
+        return !repeatedReward
+            && fifthFightRewards.Count
+                == PrototypeNativeWongos.TicketRelicRewards
+            && fifthFightRewards.Distinct(StringComparer.Ordinal).Count()
+                == PrototypeNativeWongos.TicketRelicRewards
+            && finalTicket.PersistentState.TryGetProperty(
+                "CombatsFinished", out var totalFights)
+            && totalFights.GetInt32() == PrototypeNativeWongos.TicketCombats + 1
+            && finalTicket.PersistentState.TryGetProperty(
+                "GaveRelic", out var gaveRelic)
+            && gaveRelic.GetBoolean()
+            && left.Player.Gold == leave.Player.Gold
+            && left.Player.Deck.Single(card =>
+                card.InstanceId == upgraded.InstanceId).UpgradeLevel == 0
+            && left.Configuration?.Profile.WongoPoints == 0
+            && TerminalChoicePage(engine, left, "leave", "leave");
     }
 
     private static bool HasCrystalSpherePath()

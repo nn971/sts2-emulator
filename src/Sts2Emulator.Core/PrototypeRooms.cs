@@ -828,6 +828,16 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        if (selected.Id == PrototypeNativeWongos.EventId)
+        {
+            var initialized = PrototypeNativeWongos.Initialize(
+                world,
+                state.Player,
+                world.Event!,
+                state.Rng);
+            world = initialized.World with { Event = initialized.Event };
+        }
+
         if (selected.Id == PrototypeNativeRanwidTheElder.EventId)
         {
             world = world with
@@ -979,6 +989,9 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.EventId == PrototypeNativeDollRoom.EventId)
             return GetNativeDollRoomActions(eventState);
+
+        if (eventState.EventId == PrototypeNativeWongos.EventId)
+            return GetNativeWongosActions(eventState, state.Player);
 
         if (eventState.EventId == PrototypeNativeCrystalSphere.EventId)
             return GetNativeCrystalSphereActions(eventState);
@@ -1160,6 +1173,9 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.EventId == PrototypeNativeDollRoom.EventId)
             return StepNativeDollRoom(state, action);
+
+        if (eventState.EventId == PrototypeNativeWongos.EventId)
+            return StepNativeWongos(state, action);
 
         if (eventState.EventId == PrototypeNativeCrystalSphere.EventId)
             return StepNativeCrystalSphere(state, action);
@@ -4740,10 +4756,18 @@ public sealed partial class PrototypeGameEngine
                     "reward")
                 : null;
 
+        var ticketRelicRewards = new List<string>();
+        var rewardPlayer = UpdateWongosTicketCombatEnd(
+            silverCrucible.Player,
+            ref world,
+            state.Rng,
+            ticketRelicRewards,
+            out _);
         var lavaRock = ApplyLavaRockBossRewards(
-            silverCrucible.Player, room, world.Act,
+            rewardPlayer, room, world.Act,
             relicOptions, state.Rng);
         var extraRelicRewardIds = lavaRock.AdditionalRelicIds.ToList();
+        extraRelicRewardIds.AddRange(ticketRelicRewards);
         if (nativeOvergrowth && room == PrototypeRoomType.Elite)
         {
             var blackStarRewards = state.Player.ActiveRelics.Sum(relic =>
@@ -4807,7 +4831,6 @@ public sealed partial class PrototypeGameEngine
                         PrototypeCardRewardGeneratorKind.RewardPool,
                         world.Act),
                 1 + extraCardOptions.Length).ToArray());
-
         world = world with
         {
             Combat = null,

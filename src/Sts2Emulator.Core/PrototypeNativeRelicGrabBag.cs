@@ -194,7 +194,7 @@ public static class PrototypeNativeRelicGrabBag
 
     public static (PrototypeRelicBagState Bag, string? Id) Pull(
         PrototypeRelicBagState bag, PrototypeRelicRarity rarity,
-        bool merchant, PlayerState player)
+        bool merchant, PlayerState player, bool shopEligible = false)
     {
         // Native empty-queue fallback: Shop -> Common -> Uncommon
         // -> Rare. Rare has no further tier.
@@ -225,7 +225,8 @@ public static class PrototypeNativeRelicGrabBag
             var id = candidates.FirstOrDefault(candidate =>
                 !player.Relics.Any(relic =>
                     StringComparer.Ordinal.Equals(relic.RelicId, candidate))
-                && (!merchant || !NotSoldInShops.Contains(candidate)));
+                && (!(merchant || shopEligible)
+                    || !NotSoldInShops.Contains(candidate)));
             if (id is null)
             {
                 continue;
@@ -273,11 +274,13 @@ public static class PrototypeNativeRelicGrabBag
 
     public static (RunWorldState World, string? Id) Draw(
         RunWorldState world, PlayerState player, RngBundle rng,
-        bool merchant, PrototypeRelicRarity? forcedRarity = null)
+        bool merchant, PrototypeRelicRarity? forcedRarity = null,
+        bool shopEligible = false)
     {
         var bag = world.RelicBag ?? Create(player, rng);
         var rarity = forcedRarity ?? RollRarity(rng, merchant);
-        var (remaining, id) = Pull(bag, rarity, merchant, player);
+        var (remaining, id) = Pull(
+            bag, rarity, merchant, player, shopEligible);
         return (world with { RelicBag = remaining }, id);
     }
 }

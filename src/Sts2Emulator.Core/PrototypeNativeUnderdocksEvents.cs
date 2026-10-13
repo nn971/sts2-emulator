@@ -24,7 +24,8 @@ public static class PrototypeNativeUnderdocksEvents
         PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
         PrototypeNativeSharedEvents.ThisOrThatId,
         PrototypeNativeRoomFullOfCheese.EventId,
-        PrototypeNativeSlipperyBridge.EventId
+        PrototypeNativeSlipperyBridge.EventId,
+        PrototypeNativeWongos.EventId
     ];
 
     public static string[] SupportedRegionEventIds { get; } =
@@ -44,7 +45,8 @@ public static class PrototypeNativeUnderdocksEvents
         PrototypeNativeOvergrowthEvents.TheLegendsWereTrueId,
         PrototypeNativeSharedEvents.ThisOrThatId,
         PrototypeNativeRoomFullOfCheese.EventId,
-        PrototypeNativeSlipperyBridge.EventId
+        PrototypeNativeSlipperyBridge.EventId,
+        PrototypeNativeWongos.EventId
     ];
 
     /// <summary>
@@ -68,6 +70,8 @@ public static class PrototypeNativeUnderdocksEvents
                     PrototypeGameEngine.CanSelectEventDeckCard(
                         card, PrototypePersistentDeckChoiceKind.Enchant,
                         null, PrototypeCardEnchantmentKind.Spiral, true)),
+            PrototypeNativeWongos.EventId =>
+                player.Gold >= PrototypeNativeWongos.BargainBinCost,
             _ => true
         };
 
