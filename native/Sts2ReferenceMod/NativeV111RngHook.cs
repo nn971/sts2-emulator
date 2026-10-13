@@ -318,11 +318,15 @@ internal static class NativeV111RngHook
         {
             var after = Snapshot(rng);
             var (stream, owner, streamOrdinal) = Owners.Next(rng);
-            var scoped = NativeRngCallsiteScopesV111.NextFor(stream);
+            // MonsterModel.RollMove's existing source scope specifically
+            // labels index draws. A bool/double source call within that
+            // method has a creature owner, but no audited index eligibility.
+            // Peeking must not advance NextInt's per-RollMove ordinal.
+            var scopedOwner = NativeRngCallsiteScopesV111.PeekOwnerFor(stream);
             var evidence = new NativeRngScalarEvidenceV111(
-                scoped?.SiteId ?? "UNATTRIBUTED", stream,
-                scoped?.OwnerId ?? owner,
-                scoped?.CallOrdinal ?? streamOrdinal, operation,
+                "UNATTRIBUTED", stream,
+                scopedOwner ?? owner,
+                streamOrdinal, operation,
                 numeric, boolean, state.Before!, after);
             NativeV111PassiveBridge.NativeRngScalarBoundary(evidence);
         }
