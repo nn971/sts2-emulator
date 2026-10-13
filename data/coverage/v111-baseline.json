@@ -25302,8 +25302,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/EmptyCage.cs#5e23c6d3170586d9a334062647dd28c51c50726176e8efa13cc1b959b1618300"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29481,8 +29481,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 85,
-        "integrated": 86,
+        "implemented": 86,
+        "integrated": 87,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

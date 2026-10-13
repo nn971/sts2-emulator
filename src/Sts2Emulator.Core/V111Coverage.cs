@@ -996,6 +996,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "EMPTY_CAGE"
+            && engineIds.Contains(
+                "proto.relic.empty_cage",
+                StringComparer.Ordinal)
+            && HasEmptyCagePath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "FRESNEL_LENS"
             && engineIds.Contains(
                 "proto.native.underdocks.fresnel_lens",
@@ -1754,6 +1764,21 @@ public static class V111Coverage
                 && effect.RelicId == relicId) == true
             && PrototypeContent.Relic(relicId)
                 .EnchantNewBlockCardsNimble == 2;
+    }
+
+    private static bool HasEmptyCagePath()
+    {
+        const string relicId = "proto.relic.empty_cage";
+        var definition = PrototypeContent.Relic(relicId);
+        return PrototypeContent.BossRelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            && definition.AcquisitionDeckChoice is
+            {
+                Kind: PrototypePersistentDeckChoiceKind.Remove,
+                Selections: 2
+            }
+            && definition.CardIdAfterAcquisitionDeckChoices is null
+            && definition.AcquisitionHpLossAfterDeckChoices == 0;
     }
 
     private static bool HasSpoilsMapPath()
