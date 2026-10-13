@@ -38,7 +38,7 @@ internal static class NativeV111RngHook
     internal static void TryInstall()
     {
         if (IsInstalled) return;
-        if (Environment.GetEnvironmentVariable("STS2_FIDELITY_RNG_HOOK") != "1")
+        if (System.Environment.GetEnvironmentVariable("STS2_FIDELITY_RNG_HOOK") != "1")
             return;
         if (!NativeV111PassiveBridge.ReadyForNativeRngHook)
         {
@@ -106,7 +106,10 @@ internal static class NativeV111RngHook
         }
         catch (Exception error)
         {
-            try { harmony?.UnpatchSelf(); }
+            // The game's pinned Harmony exposes UnpatchAll(ownerId),
+            // while UnpatchSelf() is absent. Restrict cleanup to our ID so
+            // failure during installation cannot remove unrelated game mods.
+            try { harmony?.UnpatchAll("nn971.sts2-inspector.native-rng-v111"); }
             catch (Exception) { /* original game must still run */ }
             _patches = null;
             _rollMoveScopeInstalled = false;
@@ -121,7 +124,7 @@ internal static class NativeV111RngHook
         _attached = false;
         Owners.Clear();
         _observationFailed = false;
-        _threadId = Environment.CurrentManagedThreadId;
+        _threadId = System.Environment.CurrentManagedThreadId;
         // Register only identities actually confirmed by the native run/player
         // RNG sets, not guessed from counter changes. The caller has already
         // established single-player combat and the v0.111 binary pin.
@@ -151,7 +154,7 @@ internal static class NativeV111RngHook
     private static CallState Capture(NativeRng rng, int min, int max)
     {
         if (!_attached || _observationFailed ||
-            Environment.CurrentManagedThreadId != _threadId ||
+            System.Environment.CurrentManagedThreadId != _threadId ||
             max <= min)
             return default;
         long count = (long)max - min;
@@ -184,7 +187,7 @@ internal static class NativeV111RngHook
     {
         __state = null;
         if (!_attached || _observationFailed ||
-            Environment.CurrentManagedThreadId != _threadId) return;
+            System.Environment.CurrentManagedThreadId != _threadId) return;
         try
         {
             var combatId = __instance.Creature.CombatId;
