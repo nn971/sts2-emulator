@@ -856,7 +856,8 @@ public sealed record PrototypeRelicDefinition(
     int UpgradeRandomCardsOnAcquisitionCount = 0,
     PrototypeCardType? UpgradeRandomCardsOnAcquisitionType = null,
     int RestSiteHealPerFiveCards = 0,
-    string? PotionIdBeforeCombat = null);
+    string? PotionIdBeforeCombat = null,
+    bool ExcludesMonsterRoomsFromUnknownMap = false);
 
 public sealed record PrototypePowerTriggerSpec(
     PrototypeCombatEventKind EventKind,
@@ -2501,11 +2502,15 @@ public sealed record PrototypeUnknownRoomOddsState(
 {
     public const int Scale = 1000;
 
-    public PrototypeUnknownRoomOddsState After(PrototypeRoomType rolled) =>
+    public PrototypeUnknownRoomOddsState After(
+        PrototypeRoomType rolled,
+        bool monsterRoomAvailable = true) =>
         this with
         {
-            MonsterWeight = rolled == PrototypeRoomType.Combat
-                ? 100 : MonsterWeight + 100,
+            MonsterWeight = !monsterRoomAvailable
+                ? MonsterWeight
+                : rolled == PrototypeRoomType.Combat
+                    ? 100 : MonsterWeight + 100,
             TreasureWeight = rolled == PrototypeRoomType.Treasure
                 ? 20 : TreasureWeight + 20,
             ShopWeight = rolled == PrototypeRoomType.Shop

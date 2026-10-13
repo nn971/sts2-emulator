@@ -7,6 +7,7 @@ public static class PrototypeNativeSharedRelics
 {
     public const string AkabekoId = "proto.relic.akabeko";
     public const string EternalFeatherId = "proto.relic.eternal_feather";
+    public const string JuzuBraceletId = "proto.relic.juzu_bracelet";
     public const string PearId = "proto.relic.pear";
     public const string PetrifiedToadId = "proto.relic.petrified_toad";
     public const string PotionShapedRockId = "proto.potion.shaped_rock";
@@ -17,6 +18,9 @@ public static class PrototypeNativeSharedRelics
 
     public static PrototypeRelicDefinition[] Relics { get; } =
     [
+        // JuzuBracelet.ModifyUnknownMapPointRoomTypes removes Monster.
+        new(JuzuBraceletId, "Juzu Bracelet",
+            ExcludesMonsterRoomsFromUnknownMap: true),
         // PetrifiedToad.BeforeCombatStartLate tries to procure a token
         // Potion Shaped Rock when a potion slot is open.
         new(PetrifiedToadId, "Petrified Toad",

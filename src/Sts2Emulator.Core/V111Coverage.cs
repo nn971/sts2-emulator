@@ -1093,6 +1093,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "JUZU_BRACELET"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.JuzuBraceletId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.JuzuBraceletId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.JuzuBraceletId,
+                out var juzuRarity)
+            && juzuRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.JuzuBraceletId)
+                .ExcludesMonsterRoomsFromUnknownMap
+            && HasJuzuUnknownRoomPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "PETRIFIED_TOAD"
             && engineIds.Contains(
                 PrototypeNativeSharedRelics.PetrifiedToadId,
@@ -1671,6 +1691,26 @@ public static class V111Coverage
             && key.Type == PrototypeCardType.Quest
             && key.Unplayable
             && key.MaxUpgradeLevel == 0;
+    }
+
+    private static bool HasJuzuUnknownRoomPath()
+    {
+        var before = new PrototypeUnknownRoomOddsState(
+            MonsterWeight: 250,
+            TreasureWeight: 20,
+            ShopWeight: 30);
+        var afterEvent = before.After(
+            PrototypeRoomType.Event,
+            monsterRoomAvailable: false);
+        var afterTreasure = before.After(
+            PrototypeRoomType.Treasure,
+            monsterRoomAvailable: false);
+        return afterEvent.MonsterWeight == 250
+            && afterEvent.TreasureWeight == 40
+            && afterEvent.ShopWeight == 60
+            && afterTreasure.MonsterWeight == 250
+            && afterTreasure.TreasureWeight == 20
+            && afterTreasure.ShopWeight == 60;
     }
 
     private static bool HasSpoilsMapPath()

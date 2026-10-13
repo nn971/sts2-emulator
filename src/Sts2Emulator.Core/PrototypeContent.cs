@@ -7565,6 +7565,7 @@ public static class PrototypeContent
         "proto.relic.anchor",
         "proto.relic.vajra",
         "proto.relic.blood_vial",
+        PrototypeNativeSharedRelics.JuzuBraceletId,
         PrototypeNativeSharedRelics.StrawberryId,
         PrototypeNativeSharedRelics.PearId,
         PrototypeNativeSharedRelics.PetrifiedToadId,

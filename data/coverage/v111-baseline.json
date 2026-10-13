@@ -26154,17 +26154,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.juzu_bracelet"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/JuzuBracelet.cs#241aa3308a6bbca80cab15e1b218230841a9ea5e40a81e8cd47fea205d1452a6"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "JUZU_BRACELET",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29477,8 +29479,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 82,
-        "integrated": 83,
+        "implemented": 83,
+        "integrated": 84,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

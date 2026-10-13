@@ -49,9 +49,10 @@ public sealed partial class PrototypeGameEngine
         // Its event replacement also applies to existing Event nodes.
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? PrototypeGoldenPathMapV111.IsActive(state.Player, world.Act)
-                ? ResolveUnknownMapRoom(ref world, state.Rng, eventOnly: true)
+                ? ResolveUnknownMapRoom(ref world, state.Rng, state.Player,
+                    eventOnly: true)
                 : forceRepy ? PrototypeRoomType.Event
-                : ResolveUnknownMapRoom(ref world, state.Rng)
+                : ResolveUnknownMapRoom(ref world, state.Rng, state.Player)
             : node.RoomType;
 
         world = world with
