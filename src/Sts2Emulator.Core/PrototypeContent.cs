@@ -3282,6 +3282,7 @@ public static class PrototypeContent
             .Concat(NativeAncientRewardsV111.Relics)
             .Concat(NativePaelRewardsV111.Relics)
             .Concat(PrototypeNativeOrobasRelics.Relics)
+            .Concat(PrototypeNativeRestSiteRelics.Relics)
             .Concat(NativeGloryAncientsV111.Relics)
             .Concat(NativeDarvEventV111.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
@@ -7573,7 +7574,9 @@ public static class PrototypeContent
         // Forgotten Soul is an Event relic (Grave of the Forgotten),
         // never an ordinary reward/merchant draw.
         "proto.relic.toolbox",
-        "proto.relic.gambling_chip"
+        "proto.relic.gambling_chip",
+        PrototypeNativeRestSiteRelics.ShovelId,
+        PrototypeNativeRestSiteRelics.GiryaId
     ];
 
     public static string[] BossRelicPool { get; } =

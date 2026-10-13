@@ -25767,17 +25767,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.girya"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Girya.cs#15d115ec16da25982fb9f8d363eda8c639b6c2797ae9a5c66c0e8bd1ca08bc10"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "GIRYA",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -28135,17 +28137,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.shovel"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/Shovel.cs#21947d0774964a18e0484d101f3cc4a1aca142b4d448092665820226143006a8"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SHOVEL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29181,113 +29185,127 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "rest_clone"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Entities/RestSite/CloneRestSiteOption.cs#81da984eb85375319f5cb6e8ec0eca5f9a66b10f49ed7ab1d650a00e60bf828f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "rest_site_options",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "CLONE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "rest_cook"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Entities/RestSite/CookRestSiteOption.cs#b2fd9abf9e647800d6e95dcf2bf47adb94a0f545e5d161c7c105938b3fcf6694"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "rest_site_options",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "COOK",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "rest_dig"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Entities/RestSite/DigRestSiteOption.cs#923698f1ddd31e2048f2c5bd2d2c06b2454d37e637fe38dd03b530433e84a2a8"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "rest_site_options",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "DIG",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "rest_hatch"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Entities/RestSite/HatchRestSiteOption.cs#fb9b1328ff92bb42bbcf43ecab3694629fb5c936ef2f097cae22e0db097f3ea1"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "rest_site_options",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "HATCH",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "rest_heal"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Entities/RestSite/HealRestSiteOption.cs#167debfa61b18e90a2db5912eb07b04577610af95427c5800cc2ed7e3b8fcbef"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "rest_site_options",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "HEAL",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "rest_kindle"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Entities/RestSite/KindleRestSiteOption.cs#8619c9b1e4be155e4a50c8972f694e12783c8f881d28948abc27a2eb3f12017a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "rest_site_options",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "KINDLE",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "rest_lift"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Entities/RestSite/LiftRestSiteOption.cs#b9da153f43520ca7a27cc6a9caf6bcf9ab4700fcaf826f25d205cf160dd00d3f"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "rest_site_options",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "LIFT",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29309,17 +29327,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "rest_upgrade"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Entities/RestSite/SmithRestSiteOption.cs#975eb89ede38878bfd1a855f67c60f4c866662b0e880f9779b9c0c612d3000af"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "rest_site_options",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "SMITH",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       }
@@ -29462,8 +29482,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 28,
-        "integrated": 28,
+        "implemented": 30,
+        "integrated": 30,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0
@@ -29472,8 +29492,8 @@
         "catalogued": 8,
         "eligible": 8,
         "excluded": 1,
-        "implemented": 0,
-        "integrated": 0,
+        "implemented": 8,
+        "integrated": 8,
         "kind": "rest_site_options",
         "scope_review_required": 0,
         "validated": 0

@@ -77,6 +77,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.white_beast_statue"] = PrototypeRelicRarity.Rare,
             ["proto.relic.art_of_war"] = PrototypeRelicRarity.Rare,
             ["proto.relic.charons_ashes"] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeRestSiteRelics.ShovelId] = PrototypeRelicRarity.Rare,
+            [PrototypeNativeRestSiteRelics.GiryaId] = PrototypeRelicRarity.Rare,
             ["proto.relic.gambling_chip"] = PrototypeRelicRarity.Rare,
 
             ["proto.relic.lees_waffle"] = PrototypeRelicRarity.Shop,

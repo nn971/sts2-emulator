@@ -395,6 +395,13 @@ public sealed partial class PrototypeGameEngine
             combat = ApplyPlayerPower(
                 combat, "proto.power.strength", 2);
         }
+        var giryaStrength = PrototypeNativeRestSiteRelics
+            .CombatStrengthBonus(state.Player);
+        if (giryaStrength > 0)
+        {
+            combat = ApplyPlayerPower(
+                combat, "proto.power.strength", giryaStrength);
+        }
 
         // Bind the native owner before combat entry hooks and the first
         // intent commitment. HP and all initial enemy maxima now use

@@ -112,6 +112,7 @@ public static class V111Coverage
                 .Select(encounter => encounter.Id).ToArray(),
             "events" => PrototypeContent.Events.Values
                 .Where(evt => Matches(item, evt.Id, evt.Name)).Select(evt => evt.Id).ToArray(),
+            "rest_site_options" => RestSiteOptionEngineIds(item.Id),
             "characters" => V111Characters.All.Where(character => Normalize(character.Id) == normalized)
                 .Select(character => character.Id).ToArray(),
             "acts" => Enum.GetNames<ActIdentity>().Where(act => Normalize(act) == normalized),
@@ -937,11 +938,52 @@ public static class V111Coverage
             implementation = "excluded";
             integration = "excluded";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "rest_site_options"
+            && engineIds.Length == 1)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id is "SHOVEL" or "GIRYA"
+            && engineIds.Length == 1
+            && PrototypeContent.RelicPool.Contains(engineIds[0],
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                engineIds[0], out var restRelicRarity)
+            && restRelicRarity == PrototypeRelicRarity.Rare)
+        {
+            var player = new PlayerState(1, 1, 0, [],
+                [new RelicInstance(engineIds[0], PrototypeJson.EmptyObject())],
+                []);
+            var supported = item.Id == "SHOVEL"
+                ? PrototypeNativeRestSiteRelics.CanDig(player)
+                    && PrototypeNativeRestSiteActionsV111.ForNativeOption(
+                        "DIG") == PrototypeNativeRestSiteActionsV111.Dig
+            : PrototypeNativeRestSiteRelics.CanLift(player)
+                && PrototypeNativeRestSiteRelics.CombatStrengthBonus(
+                    PrototypeNativeRestSiteRelics.Lift(player)) == 1
+                && PrototypeNativeRestSiteActionsV111.ForNativeOption(
+                    "LIFT") == PrototypeNativeRestSiteActionsV111.Lift;
+            if (supported)
+            {
+                implementation = "implemented";
+                integration = "integrated";
+            }
+        }
         return new V111CoverageItem(item.Kind, item.Id, item.Scope, engineIds,
             true, engineIds.Length > 0, implementation, integration, "unverified",
             item.Variants ?? [],
             missingBranches,
             item.Source is null ? [] : [$"{V111Build.SourceCommit}:{item.Source}#{item.SourceSha256}"]);
+    }
+
+    private static string[] RestSiteOptionEngineIds(string optionId)
+    {
+        var actionId = PrototypeNativeRestSiteActionsV111
+            .ForNativeOption(optionId);
+        return actionId is null ? [] : [actionId];
     }
 
     private static string[] MissingBranches(V111InventoryItem item)

@@ -3164,15 +3164,29 @@ public sealed partial class PrototypeGameEngine
         var actions = new List<GameAction>();
         if (CanHatchByrdonisEgg(state.Player))
         {
-            actions.Add(GameAction.Empty("rest_hatch"));
+            actions.Add(GameAction.Empty(
+                PrototypeNativeRestSiteActionsV111.Hatch));
         }
         if (state.Player.Relics.Any(relic => relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId))
-            actions.Add(GameAction.Empty("rest_kindle"));
+            actions.Add(GameAction.Empty(
+                PrototypeNativeRestSiteActionsV111.Kindle));
         if (state.Player.ActiveRelics.Any(relic => relic.RelicId == NativePaelRewardsV111.GrowthId))
-            actions.Add(GameAction.Empty("rest_clone"));
+            actions.Add(GameAction.Empty(
+                PrototypeNativeRestSiteActionsV111.Clone));
         if (CanRestHeal(state.Player))
         {
-            actions.Add(GameAction.Empty("rest_heal"));
+            actions.Add(GameAction.Empty(
+                PrototypeNativeRestSiteActionsV111.Heal));
+        }
+        if (PrototypeNativeRestSiteRelics.CanDig(state.Player))
+        {
+            actions.Add(GameAction.Empty(
+                PrototypeNativeRestSiteActionsV111.Dig));
+        }
+        if (PrototypeNativeRestSiteRelics.CanLift(state.Player))
+        {
+            actions.Add(GameAction.Empty(
+                PrototypeNativeRestSiteActionsV111.Lift));
         }
 
         var cookableCards = CanRestCook(state.Player)
@@ -3188,7 +3202,7 @@ public sealed partial class PrototypeGameEngine
                  second++)
             {
                 actions.Add(GameAction.Create(
-                    "rest_cook",
+                    PrototypeNativeRestSiteActionsV111.Cook,
                     new SelectCardsPayload(
                         [cookableCards[first], cookableCards[second]])));
             }
@@ -3215,9 +3229,26 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepRest(RunState state, GameAction action)
     {
-        if (action.Kind == "rest_clone")
+        if (action.Kind == PrototypeNativeRestSiteActionsV111.Clone)
             return ClonePaelRestCards(state);
-        if (action.Kind == "rest_kindle")
+        if (StringComparer.Ordinal.Equals(action.Kind,
+                PrototypeNativeRestSiteActionsV111.Dig))
+            return BeginRestDigReward(state);
+        if (StringComparer.Ordinal.Equals(action.Kind,
+                PrototypeNativeRestSiteActionsV111.Lift))
+        {
+            if (!PrototypeNativeRestSiteRelics.CanLift(state.Player))
+            {
+                throw new InvalidOperationException(
+                    "Lifting requires Girya with an unused lift.");
+            }
+
+            return CompleteRoomToMap(state with
+            {
+                Player = PrototypeNativeRestSiteRelics.Lift(state.Player)
+            });
+        }
+        if (action.Kind == PrototypeNativeRestSiteActionsV111.Kindle)
         {
             var index = Array.FindIndex(state.Player.Relics,
                 relic => relic.RelicId == NativeAncientRewardsV111.PumpkinCandleId);
@@ -3228,7 +3259,8 @@ public sealed partial class PrototypeGameEngine
                 Player = NativeAncientRewardsV111.Rekindle(state.Player, index)
             });
         }
-        if (StringComparer.Ordinal.Equals(action.Kind, "rest_hatch"))
+        if (StringComparer.Ordinal.Equals(action.Kind,
+                PrototypeNativeRestSiteActionsV111.Hatch))
         {
             if (!CanHatchByrdonisEgg(state.Player))
             {
@@ -3242,7 +3274,8 @@ public sealed partial class PrototypeGameEngine
             });
         }
 
-        if (StringComparer.Ordinal.Equals(action.Kind, "rest_cook"))
+        if (StringComparer.Ordinal.Equals(action.Kind,
+                PrototypeNativeRestSiteActionsV111.Cook))
         {
             if (!CanRestCook(state.Player))
             {
@@ -3279,7 +3312,8 @@ public sealed partial class PrototypeGameEngine
             return CompleteRoomToMap(state with { Player = player });
         }
 
-        if (StringComparer.Ordinal.Equals(action.Kind, "rest_heal"))
+        if (StringComparer.Ordinal.Equals(action.Kind,
+                PrototypeNativeRestSiteActionsV111.Heal))
         {
             if (!CanRestHeal(state.Player))
             {
@@ -3321,7 +3355,7 @@ public sealed partial class PrototypeGameEngine
             return CompleteRoomToMap(state);
         }
 
-        RequireKind(action, "rest_upgrade");
+        RequireKind(action, PrototypeNativeRestSiteActionsV111.Smith);
         if (!CanRestUpgrade(state.Player))
         {
             throw new InvalidOperationException(
@@ -3356,6 +3390,51 @@ public sealed partial class PrototypeGameEngine
 
         state = state with { Player = state.Player with { Deck = deck } };
         return CompleteRoomToMap(state);
+    }
+
+    private static RunState BeginRestDigReward(RunState state)
+    {
+        if (!PrototypeNativeRestSiteRelics.CanDig(state.Player))
+        {
+            throw new InvalidOperationException("Digging requires Shovel.");
+        }
+
+        var world = RequireWorld(state);
+        string? relicId;
+        if (UsesNativeRegionalSystems(world))
+        {
+            var draw = PrototypeNativeRelicGrabBag.Draw(
+                world, state.Player, state.Rng, merchant: false);
+            world = draw.World;
+            relicId = draw.Id;
+        }
+        else
+        {
+            relicId = PickUnownedEventRelic(state.Player, state.Rng);
+        }
+
+        if (relicId is null)
+        {
+            throw new InvalidOperationException(
+                "No source-eligible relic remains for Shovel to dig up.");
+        }
+
+        return state with
+        {
+            World = world with
+            {
+                Reward = new RewardState(
+                    SourceRoom: "Rest",
+                    CardOptions: [],
+                    PotionOption: null,
+                    RelicOption: relicId,
+                    CardResolved: true,
+                    PotionResolved: true,
+                    RelicResolved: false,
+                    EndsAct: false)
+            },
+            Phase = RunPhase.Reward
+        };
     }
 
     private static IReadOnlyList<GameAction> GetRewardActions(RunState state)

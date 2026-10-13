@@ -20,6 +20,12 @@ choice-specific follow-up page after transforming or upgrading a card. Brain
 Leech is integrated in Overgrowth, Underdocks and Hive: Share Knowledge offers
 five Silent cards and requires one selection, while Rip the Leech Off costs
 5 HP and offers three implemented colorless cards.
+Shovel and Girya now enter the shared Silent relic pool. Shovel's Dig reward
+uses the run relic bag and the ordinary relic acquisition continuation;
+Girya's Lift count persists on the relic, caps at three, and grants that much
+Strength at each combat entry. All eight single-player rest-site option
+identifiers now map to executable actions. See the
+[rest-site Dig and Lift slice](reference-builds/v0.111.0-rest-site-dig-lift.md).
 Neow's Lead Paperweight now suspends the opening for a one-of-two supported
 Colorless card reward drawn from all implemented single-player Colorless
 reward cards. Account unlock filtering and native reward RNG remain open.
