@@ -36,6 +36,8 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
         status = "NATIVE_RNG_PRIMITIVE_MISMATCH"
     elif corpus.get("native_rng_stream_conflicts", 0) > 0:
         status = "NATIVE_RNG_STREAM_ORDER_CONFLICT"
+    elif corpus.get("native_rng_checkpoint_errors", 0) > 0:
+        status = "NATIVE_RNG_STREAM_CHECKPOINT_MISMATCH"
     elif engine_error:
         status = "ENGINE_EXECUTION_UNAVAILABLE"
     elif captures == 0 and strict.get("trace_count", 0) == 0:
@@ -43,6 +45,8 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
     elif mismatched:
         status = "REAL_ENGINE_CHECKPOINT_MISMATCH"
     elif corpus.get("native_rng_stream_gaps", 0) > 0:
+        status = "NATIVE_RNG_STREAM_GAPS_REQUIRE_REVIEW"
+    elif corpus.get("native_rng_checkpoint_unobserved_advances", 0) > 0:
         status = "NATIVE_RNG_STREAM_GAPS_REQUIRE_REVIEW"
     elif engine is None or stepped == 0:
         status = "ENGINE_COMPARISON_NOT_COMPLETED"
@@ -86,6 +90,12 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
                 corpus.get("native_rng_primitive_errors", 0),
             "native_rng_stream_conflicts":
                 corpus.get("native_rng_stream_conflicts", 0),
+            "native_rng_checkpoint_count":
+                corpus.get("native_rng_checkpoint_count", 0),
+            "native_rng_checkpoint_errors":
+                corpus.get("native_rng_checkpoint_errors", 0),
+            "native_rng_checkpoint_unobserved_advances":
+                corpus.get("native_rng_checkpoint_unobserved_advances", 0),
             "native_rng_stream_gaps":
                 corpus.get("native_rng_stream_gaps", 0),
             "native_rng_stream_pairs_checked":
@@ -184,7 +194,8 @@ def main() -> int:
         "REAL_ENGINE_CHECKPOINT_MISMATCH", "NATIVE_RNG_PRIMITIVE_MISMATCH",
         "NATIVE_SHUFFLE_SOURCE_MISMATCH",
         "NATIVE_INITIAL_HP_SOURCE_MISMATCH",
-        "NATIVE_RNG_STREAM_ORDER_CONFLICT") else (
+        "NATIVE_RNG_STREAM_ORDER_CONFLICT",
+        "NATIVE_RNG_STREAM_CHECKPOINT_MISMATCH") else (
         2 if report["status"] != "SUPPORTED_CHECKPOINTS_AGREE_NOT_FULL_GAME_PARITY"
         else 0)
 
