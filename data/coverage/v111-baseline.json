@@ -28321,17 +28321,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.stone_cracker"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/StoneCracker.cs#db55f01feb6e71321b027eb0a3446fac1c1c00fb375b9c7084f3ea85dd673752"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "STONE_CRACKER",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29460,8 +29462,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 153,
-        "integrated": 154,
+        "implemented": 154,
+        "integrated": 155,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

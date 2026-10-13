@@ -7683,7 +7683,8 @@ public static class PrototypeContent
         PrototypeNativeRestSiteRelics.ShovelId,
         PrototypeNativeRestSiteRelics.GiryaId,
         PrototypeNativeSharedRelics.TungstenRodId,
-        PrototypeNativeSharedRelics.BeatingRemnantId
+        PrototypeNativeSharedRelics.BeatingRemnantId,
+        PrototypeNativeSharedRelics.StoneCrackerId
     ];
 
     public static string[] BossRelicPool { get; } =

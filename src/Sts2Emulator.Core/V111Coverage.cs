@@ -1593,6 +1593,32 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "STONE_CRACKER"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.StoneCrackerId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.StoneCrackerId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.StoneCrackerId,
+                out var stoneCrackerRarity)
+            && stoneCrackerRarity == PrototypeRelicRarity.Uncommon
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.StoneCrackerId).Triggers?
+                .Any(trigger =>
+                    trigger.EventKind
+                        == PrototypeCombatEventKind.CombatStarted
+                    && trigger.Effects.Any(effect =>
+                        effect.Kind == PrototypeCombatEffectKind
+                            .UpgradeRandomDrawPileCards
+                        && effect.Amount == 2)) == true
+            && HasStoneCrackerPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -2692,6 +2718,114 @@ public static class V111Coverage
             && melted.UnblockedHpLoss == 30
             && melted.Player.Hp == 70
             && melted.Combat.CounterState.HpLostThisTurn == 0;
+    }
+
+    private static bool HasStoneCrackerPath()
+    {
+        static (PlayerState Player, CombatState Combat) Fixture(bool melted)
+        {
+            const string relicId =
+                PrototypeNativeSharedRelics.StoneCrackerId;
+            const string strikeId = "proto.silent.strike";
+            const string defendId = "proto.silent.defend";
+            const string dazedId = "proto.status.dazed";
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var cards = new[]
+            {
+                new CombatCardInstance(1, 1, strikeId, 0, false,
+                    PrototypeJson.EmptyObject()),
+                new CombatCardInstance(2, 2, defendId, 0, false,
+                    PrototypeJson.EmptyObject()),
+                new CombatCardInstance(3, 3, strikeId, 0, false,
+                    PrototypeJson.EmptyObject()),
+                new CombatCardInstance(4, 4, dazedId, 0, false,
+                    PrototypeJson.EmptyObject()),
+                new CombatCardInstance(5, 5, strikeId, 1, false,
+                    PrototypeJson.EmptyObject()),
+                new CombatCardInstance(6, 6, defendId, 0, false,
+                    PrototypeJson.EmptyObject())
+            };
+            var deck = new[]
+            {
+                new CardInstance(1, strikeId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(2, defendId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(3, strikeId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(4, dazedId, 0,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(5, strikeId, 1,
+                    PrototypeJson.EmptyObject()),
+                new CardInstance(6, defendId, 0,
+                    PrototypeJson.EmptyObject())
+            };
+            var player = new PlayerState(
+                40, 40, 0, deck, [relic], []);
+            var combat = new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [6],
+                DrawPile: [1, 2, 3, 4, 5],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 7,
+                Cards: cards,
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1, new int[1],
+                        IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+            return (player, combat);
+        }
+
+        static (PlayerState Player, CombatState Combat) Dispatch(
+            PlayerState player, CombatState combat, string seed) =>
+            PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CombatStarted),
+                PrototypeRng.CreateBundle(seed));
+
+        var (player, combat) = Fixture(melted: false);
+        var active = Dispatch(
+            player, combat, "coverage-stone-cracker-active");
+        var upgradedDrawCards = active.Combat.Cards.Count(card =>
+            card.InstanceId is 1 or 2 or 3
+            && card.UpgradeLevel == 1);
+        var untouchedCards = active.Combat.Cards.Where(card =>
+            card.InstanceId is 4 or 5 or 6).ToArray();
+
+        var (meltedPlayer, meltedCombat) = Fixture(melted: true);
+        var melted = Dispatch(
+            meltedPlayer,
+            meltedCombat,
+            "coverage-stone-cracker-melted");
+
+        return upgradedDrawCards == 2
+            && untouchedCards.Single(card => card.InstanceId == 4)
+                .UpgradeLevel == 0
+            && untouchedCards.Single(card => card.InstanceId == 5)
+                .UpgradeLevel == 1
+            && untouchedCards.Single(card => card.InstanceId == 6)
+                .UpgradeLevel == 0
+            && active.Player.Deck.SequenceEqual(player.Deck)
+            && melted.Combat.Cards.All(card => card.UpgradeLevel ==
+                meltedCombat.Cards.Single(original =>
+                    original.InstanceId == card.InstanceId).UpgradeLevel)
+            && melted.Player.Deck.SequenceEqual(meltedPlayer.Deck);
     }
 
     private static bool HasSlingOfCouragePath()

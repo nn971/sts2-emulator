@@ -88,6 +88,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.tuning_fork"] = PrototypeRelicRarity.Uncommon,
             [PrototypeNativeSharedRelics.CandelabraId] =
                 PrototypeRelicRarity.Uncommon,
+            [PrototypeNativeSharedRelics.StoneCrackerId] =
+                PrototypeRelicRarity.Uncommon,
 
             ["proto.relic.meat_on_the_bone"] = PrototypeRelicRarity.Rare,
             ["proto.relic.old_coin"] = PrototypeRelicRarity.Rare,

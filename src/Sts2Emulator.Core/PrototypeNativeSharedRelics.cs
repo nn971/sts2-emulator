@@ -10,6 +10,7 @@ public static class PrototypeNativeSharedRelics
     public const string BreadId = "proto.relic.bread";
     public const string BeatingRemnantId = "proto.relic.beating_remnant";
     public const string GorgetId = "proto.relic.gorget";
+    public const string StoneCrackerId = "proto.relic.stone_cracker";
     public const string TinyMailboxId = "proto.relic.tiny_mailbox";
     public const string WhiteStarId = "proto.relic.white_star";
     public const string AkabekoId = "proto.relic.akabeko";
@@ -52,6 +53,13 @@ public static class PrototypeNativeSharedRelics
         // Beating Remnant caps the owner's HP loss at 20 per combat turn.
         new(BeatingRemnantId, "Beating Remnant",
             PlayerHpLossLimitPerTurn: 20),
+        // Stone Cracker temporarily upgrades two random eligible draw-pile cards.
+        new(StoneCrackerId, "Stone Cracker",
+            Triggers:
+            [
+                new(PrototypeCombatEventKind.CombatStarted,
+                    [new(PrototypeCombatEffectKind.UpgradeRandomDrawPileCards, 2)])
+            ]),
         // White Star adds one separate all-Rare card reward after elites.
         new(WhiteStarId, "White Star",
             ExtraEliteRareCardRewardCount: 1),

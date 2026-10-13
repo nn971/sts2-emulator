@@ -6121,6 +6121,41 @@ public sealed partial class PrototypeGameEngine
                     };
                     break;
 
+                case PrototypeCombatEffectKind.UpgradeRandomDrawPileCards:
+                {
+                    var candidates = combat.DrawPile
+                        .Where(instanceId =>
+                        {
+                            var card = RequireCombatCard(
+                                combat, instanceId);
+                            var definition = PrototypeContent.Card(
+                                card.CardId);
+                            return card.UpgradeLevel
+                                    < definition.MaxUpgradeLevel
+                                && definition.Type is not
+                                    (PrototypeCardType.Status
+                                    or PrototypeCardType.Curse);
+                        })
+                        .ToArray();
+                    if (operation.Amount <= 0 || candidates.Length == 0)
+                        break;
+
+                    PrototypeRng.Shuffle(rng, "combat", candidates);
+                    var selected = candidates
+                        .Take(operation.Amount).ToHashSet();
+                    combat = combat with
+                    {
+                        Cards = combat.Cards.Select(card =>
+                            selected.Contains(card.InstanceId)
+                                ? card with
+                                {
+                                    UpgradeLevel = card.UpgradeLevel + 1
+                                }
+                                : card).ToArray()
+                    };
+                    break;
+                }
+
                 case PrototypeCombatEffectKind.UpgradeAllCards:
                     combat = combat with
                     {
