@@ -387,7 +387,7 @@
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Abundance.cs#f6879193db6bbd9128c4a4324154f9f8028e92d9414190c7a7631ad08357cba3"
         ],
         "implementation": "implemented",
-        "integration": "missing",
+        "integration": "integrated",
         "kind": "cards",
         "missing_branches": [],
         "missing_variants": [
@@ -3685,8 +3685,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Cards/Dowsing.cs#efa16b4a87b27351a03a7805489286a2d99874933141ad59ec738c9070d7108e"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "cards",
         "missing_branches": [],
         "missing_variants": [
@@ -25162,8 +25162,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/DowsingRod.cs#79f8f4d199b48bd53ec0329fd292733cd0c1c7b7c1eb1618891b1e9cc56ecfc9"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29383,8 +29383,8 @@
         "catalogued": 558,
         "eligible": 558,
         "excluded": 37,
-        "implemented": 203,
-        "integrated": 140,
+        "implemented": 204,
+        "integrated": 142,
         "kind": "cards",
         "scope_review_required": 0,
         "validated": 0
@@ -29483,8 +29483,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 74,
-        "integrated": 75,
+        "implemented": 75,
+        "integrated": 76,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

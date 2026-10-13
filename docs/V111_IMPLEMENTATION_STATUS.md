@@ -41,6 +41,10 @@ branches are covered except for Kaleidoscope's deferred foreign card pools.
 Neow's Bones adds one random Curse from the ten-card modifier-generated Curse
 pool after both relic pickups and any relic acquisition continuations resolve;
 its draw still uses prototype reward RNG, with native stream parity deferred.
+Dowsing Rod's Neow pickup, Dowsing's persistent quest progress, and the
+Abundance transformation are now counted as integrated through their actual
+acquisition chain. Abundance's generated Power choice still uses prototype
+card-generation pools and RNG.
 Winged Boots now allows next-row map travel, consuming its three persistent
 uses only when the selected point skips a normal map edge.
 Ring of the Snake is assigned in the Silent starting loadout and adds two

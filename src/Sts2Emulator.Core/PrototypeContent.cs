@@ -317,7 +317,9 @@ public static class PrototypeContent
                 Unplayable: true,
                 Rarity: PrototypeCardRarity.Quest,
                 RewardEligible: false,
-                MechanicsImplemented: false,
+                // Progress and completion are handled by the persistent
+                // visible-Unknown room-entry hook; this card has no play.
+                MechanicsImplemented: true,
                 Type: PrototypeCardType.Quest,
                 MaxUpgradeLevel: 0),
             // Dowsing's quest completion transforms into Abundance:

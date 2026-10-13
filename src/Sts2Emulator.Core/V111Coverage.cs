@@ -179,6 +179,36 @@ public static class V111Coverage
             if (hasSuppressAcquisitionPath)
                 integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "cards"
+            && (item.Id is "DOWSING" or "ABUNDANCE")
+            && HasDowsingRodQuestPath()
+            && ((item.Id == "DOWSING"
+                    && engineIds.Contains(
+                        "proto.native.neow.dowsing",
+                        StringComparer.Ordinal)
+                    && PrototypeContent.Card(
+                        "proto.native.neow.dowsing") is
+                        { MechanicsImplemented: true, Unplayable: true,
+                            MaxUpgradeLevel: 0 })
+                || (item.Id == "ABUNDANCE"
+                    && engineIds.Contains(
+                        "proto.native.neow.abundance",
+                        StringComparer.Ordinal)
+                    && PrototypeContent.Card(
+                        "proto.native.neow.abundance") is
+                        { MechanicsImplemented: true, MaxUpgradeLevel: 1 }
+                    && PrototypeContent.Card(
+                        "proto.native.neow.abundance").Effects.Any(effect =>
+                        effect.Kind
+                            == PrototypeCombatEffectKind.ChooseGeneratedCards
+                            && effect.Amount == 3
+                            && effect.GeneratedChoiceCardsUpgraded
+                            && effect.GeneratedChoiceMustPick))))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "potions"
             && (item.Pool is "silent" or "shared")
             && engineIds.Length == 1
@@ -222,6 +252,17 @@ public static class V111Coverage
             && ((item.Id == "ARCHAIC_TOOTH" && hasArchaicToothPath)
                 || ((item.Id is "TOUCH_OF_OROBAS" or "RING_OF_THE_DRAKE")
                     && hasTouchOrobasPath)))
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player"
+            && item.Kind == "relics"
+            && item.Id == "DOWSING_ROD"
+            && engineIds.Contains(
+                PrototypeNativeOvergrowthEvents.NeowRelicId("DowsingRod"),
+                StringComparer.Ordinal)
+            && HasDowsingRodQuestPath())
         {
             implementation = "implemented";
             integration = "integrated";
@@ -1356,6 +1397,32 @@ public static class V111Coverage
                 == PrototypeNativeOrobasRelics.RingOfTheDrakeId
             && ringOfDrake.HandDrawBonus == 2
             && ringOfDrake.HandDrawBonusThroughTurn == 3;
+    }
+
+    private static bool HasDowsingRodQuestPath()
+    {
+        const string cardId = "proto.native.neow.dowsing";
+        var relicId = PrototypeNativeOvergrowthEvents
+            .NeowRelicId("DowsingRod");
+        var relic = PrototypeContent.Relic(relicId);
+        var choiceExists = PrototypeContent.Event(
+            PrototypeNativeOvergrowthEvents.NeowEventId).Choices.Any(choice =>
+            choice.Id == "take_" + relicId
+            && choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId == relicId));
+        var acquisitionAddsQuest = relic.RunTriggers?.Any(trigger =>
+            trigger.EventKind == PrototypeRunEventKind.RelicAcquired
+            && trigger.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.AddCard
+                && effect.CardId == cardId)) == true;
+        return PrototypeNativeOvergrowthEvents
+                .NeowCoveredChoiceRelicNames.Contains(
+                    "DowsingRod", StringComparer.Ordinal)
+            && IsIntegratedEvent(
+                PrototypeNativeOvergrowthEvents.NeowEventId)
+            && choiceExists
+            && acquisitionAddsQuest;
     }
 
     private static string[] MissingBranches(V111InventoryItem item)
