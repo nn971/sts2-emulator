@@ -104,6 +104,16 @@ public static class NativeEngineFidelityV111
             guards = guards.Distinct(StringComparer.Ordinal).ToList();
 
             var blockers = new List<string>();
+            // Some native actions contain multiple CardPlayStarted history
+            // entries (e.g. Defend played twice for one energy payment).
+            // Until the native trigger/source and hidden relic/card
+            // continuation are known, one bare engine play_card step is
+            // not a valid causal comparison of this action.
+            if (Get(fixture, "native_events") is
+                { ValueKind: JsonValueKind.Array } observedEvents &&
+                observedEvents.EnumerateArray().Count(e =>
+                    ReadString(e, "kind") == "card_play_started") > 1)
+                blockers.Add("UNVERIFIED_MULTI_CARD_PLAY_TRIGGER_FROM_NATIVE_HISTORY");
             if (Get(originalPlayer, "powers") is not { } playerPowers ||
                 playerPowers.ValueKind != JsonValueKind.Array || playerPowers.GetArrayLength() != 0)
                 blockers.Add("UNSUPPORTED_PLAYER_POWERS");
