@@ -36,3 +36,34 @@
 5. Test complete combat and whole-run trajectories with both providers, source hook-order parity and chance transcript parity, then calibrate conditional probability laws and measure throughput.
 
 The [integration plan](UNIFIED_RNG_FIDELITY_INTEGRATION_PLAN.md) is the source of acceptance gates. Experimental Nature network training and multiplayer content remain out of scope.
+
+## Integrated checker command (evidence-only unless engine executes)
+
+`tools/unified_native_rng_fidelity_gate.py` now orchestrates the native
+action-envelope corpus audit, strict-trace triage, independently closed
+decision-prefix fixture extraction, and optionally the **actual** .NET engine
+fixture comparer. It never repairs raw traces, presumes hidden engine state,
+or infers RNG/hook parity.
+
+In an **isolated checkout outside `~/projects`** containing this integration
+branch and a previously built CLI DLL:
+
+```fish
+set trace /mnt/d/SteamLibrary/sts2-inspector-traces
+python tools/unified_native_rng_fidelity_gate.py "$trace" \\
+    --fixtures-dir "$trace/fixtures" \\
+    --engine-dll src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll \\
+    --region Overgrowth --ascension 0 \\
+    --out "$trace/unified-native-fidelity-report.json"
+```
+
+Without `--engine-dll`, it produces a native-evidence report but **cannot**
+return an engine agreement. It refuses stale/foreign fixture files not
+generated from the current closed-prefix manifest. An actual engine mismatch
+takes precedence over incomplete capture, while incomplete/unsupported
+mechanics cannot be labelled a successful complete fidelity check.
+
+The native-side RNG call-site probe and source-hook comparator remain **not
+implemented**. The new shared provider journal reports only already migrated
+emulator RNG sites. Neither an empty journal nor a consistent supported
+checkpoint certifies native-game or original conditional-probability parity.
