@@ -176,3 +176,47 @@ fidelity test has yet certified this attribution.**
 
 Local procedure and exact capture fields:
 [`V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md`](V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md).
+
+
+### 2026-10-13: actual-engine scripted shuffle replay gate
+
+The integrated real `PrototypeGameEngine.Step` now has a **strictly
+opt-in** source-shuffle replay seam at the two ordinary
+discard-to-draw recycle paths (`DrawCards`, `AutoPlayTopDrawCards`).
+Normal AI training and no-replay engine behavior continue using
+`PrototypeRng.Shuffle`; the scoped source provider never silently
+substitutes native post-states. The replay compares source-mapped
+eligible cards at the **actual engine shuffle boundary**, all recorded
+Fisher–Yates swaps, the engine's computed pre-hook order and its
+`ApplyPerfectFitShuffleOrder` post-hook order. Mismatches carry an
+explicit stage and source/engine IDs.
+
+`NativeShuffleSourceImportV111` accepts only real v0.111 source
+`native_shuffle_operation` events with an **explicit one-to-one
+native card object token → emulator instance ID mapping**, unique
+registered source card IDs, source-stated prior state eligibility,
+and independently recomputed xoshiro256** transitions/results.
+It rejects duplicate identities, missing source cards, missing
+operations, incorrect source bounds, invalid models or cursors.
+
+`NativeShuffleStepFidelityV111.Compare` executes a **real**
+`PrototypeGameEngine.Step`, preserving generated cards, enemy
+mechanics and subsequent card piles; the opt-in diagnostic
+`BeginEngineEligibilityProbe` captures synthetic engine-only
+candidate lists for tests and is **never native evidence**.
+Dedicated end-turn test exercises recycling **after an enemy
+generated an extra card**, proving the scope attaches at the
+actual shuffle boundary rather than a guessed turn-start pool.
+The new CLI `native-shuffle-step-fidelity` consumes
+`native-shuffle-step-fixture-v1` input and returns the first
+observed shuffle-stage mismatch and compact real engine successor.
+
+Full fixture contract and replay limits:
+[`V111_NATIVE_SHUFFLE_ENGINE_STEP_REPLAY.md`](V111_NATIVE_SHUFFLE_ENGINE_STEP_REPLAY.md).
+A full combat imported from native game remains pending verified
+pre-state reconstruction, stable source→engine card/creature identity
+linking, complete native powers/relics/hooks and initial RNG cursors.
+`NativeGameParity` and `ExactNativeRngParity` remain
+`NOT_TESTED` in every replay report. Old native trace has no
+source shuffle-operation records, so the real-game acceptance gate
+requires a new source-captured shuffle record when ready.
