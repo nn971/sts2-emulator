@@ -133,7 +133,9 @@ public sealed class NativeShuffleStepReplayV111 : IDisposable
         long[] input = (long[])engineEligibleInput.Clone();
         if (!input.Order().SequenceEqual(expected.OrderedSourceInput.Order()))
             throw new InvalidOperationException(
-                "SOURCE_SHUFFLE_ELIGIBLE_CARD_IDENTITIES_MISMATCH: Step provided a different card multiset.");
+                "SOURCE_SHUFFLE_ELIGIBLE_CARD_IDENTITIES_MISMATCH: engine=[" +
+                string.Join(",", input) + "], source=[" +
+                string.Join(",", expected.OrderedSourceInput) + "].");
 
         // Native replay uses the source's explicitly verified ordering.
         // The input never comes from an observed *after* state.
