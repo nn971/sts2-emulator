@@ -288,6 +288,8 @@ and Toy Box's wax offers resume the acquiring event, shop or parent reward;
 see [Tezcatara dependency audit](reference-builds/v0.111.0-tezcatara-reward-dependencies.md).
 Biiig Hug coverage checks its Tezcatara reward, four-card removal selection,
 Soot insertion after discard recycling, and melted-copy behavior.
+Very Hot Cocoa coverage checks its Tezcatara reward, turn-one Energy grant,
+later-turn gating, and melted-copy behavior.
 
 Pael now has named Horn, Flesh, Blood, Tears, Wing, Claw, Growth, Tooth, Eye and Legion reward fixtures. Horn adds two Relax
 cards through shared acquisition; Flesh modifies energy reset from turn three;

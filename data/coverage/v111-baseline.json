@@ -28932,8 +28932,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/VeryHotCocoa.cs#c9e2450c2468814b974250fab23da84995ccff39938cfa0cbf96c401551a16b5"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29463,8 +29463,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 125,
-        "integrated": 126,
+        "implemented": 126,
+        "integrated": 127,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

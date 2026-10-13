@@ -462,6 +462,16 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "VERY_HOT_COCOA"
+            && engineIds.Contains(
+                NativeAncientRewardsV111.VeryHotCocoaId,
+                StringComparer.Ordinal)
+            && HasVeryHotCocoaPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Length == 1
             && HasSupportedBossRelicPath(item.Id, engineIds[0]))
         {
@@ -3043,6 +3053,80 @@ public static class V111Coverage
                 .Contains(soot.InstanceId)
             && melted.Combat.Cards.Length == 1
             && melted.Combat.NextCardInstanceId == 2;
+    }
+
+    private static bool HasVeryHotCocoaPath()
+    {
+        var relicId = NativeAncientRewardsV111.VeryHotCocoaId;
+        var choiceId = "take_" + relicId;
+        if (!ExperimentalSilentThreeActRouteV111.AncientPool(2).Contains(
+                NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal)
+            || !NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Any(choice => choice.Id == choiceId
+                    && choice.Effects.Any(effect =>
+                        effect.Kind == PrototypeRunEffectKind.GainRelic
+                        && effect.RelicId == relicId))
+            || NativeAncientRewardsV111.TezcataraRewardDefinition.Choices
+                .Length != NativeAncientRewardsV111.Relics.Length
+            || PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            || PrototypeContent.Relic(relicId).Triggers?.Any(trigger =>
+                trigger.EventKind
+                    == PrototypeCombatEventKind.PlayerSideTurnStarted
+                && trigger.TurnEquals == 1
+                && trigger.Effects.Any(effect =>
+                    effect.Kind == PrototypeCombatEffectKind.GainEnergy
+                    && effect.Amount == 4)) != true)
+        {
+            return false;
+        }
+
+        static CombatState Dispatch(int turn, bool melted)
+        {
+            var relicId = NativeAncientRewardsV111.VeryHotCocoaId;
+            var triggerCount = PrototypeContent.Relic(relicId)
+                .Triggers?.Length ?? 0;
+            var relic = new RelicInstance(
+                relicId, PrototypeJson.EmptyObject(), IsMelted: melted);
+            var player = new PlayerState(30, 30, 0, [], [relic], []);
+            var combat = new CombatState(
+                Turn: turn,
+                Energy: PrototypeContent.Rules.BaseEnergy,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(1, "proto.enemy.wriggler", 20, 0,
+                        0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 1,
+                Cards: [],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [new CombatRelicState(0, relicId, 1,
+                    new int[triggerCount], IsMelted: melted)],
+                Act: 2,
+                PlayPile: []);
+            return PrototypeGameEngine.DispatchCombatEvent(
+                player,
+                combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PlayerSideTurnStarted),
+                PrototypeRng.CreateBundle(
+                    $"coverage-very-hot-cocoa-{turn}-{melted}")).Combat;
+        }
+
+        var firstTurn = Dispatch(turn: 1, melted: false);
+        var laterTurn = Dispatch(turn: 2, melted: false);
+        var melted = Dispatch(turn: 1, melted: true);
+        return firstTurn.Energy == PrototypeContent.Rules.BaseEnergy + 4
+            && laterTurn.Energy == PrototypeContent.Rules.BaseEnergy
+            && melted.Energy == PrototypeContent.Rules.BaseEnergy;
     }
 
     private static bool HasSwordOfStoneJadePath(string nativeId)
