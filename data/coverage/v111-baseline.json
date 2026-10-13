@@ -25799,8 +25799,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/GoldenPearl.cs#e130e8e60098aafeffdc71183191584be762a20a985cad003c02442289f8f01a"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29484,8 +29484,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 164,
-        "integrated": 165,
+        "implemented": 165,
+        "integrated": 166,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

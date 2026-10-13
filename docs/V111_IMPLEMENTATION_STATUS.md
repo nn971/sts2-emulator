@@ -1352,3 +1352,6 @@ Belt Buckle is now a Shop relic, granting 2 Dexterity when its owner has no
 potions at combat start or after using the last one. The emulator has no
 mid-combat potion procurement or discard action. See
 [mechanics gap 113](reference-builds/v0.111.0-mechanics-gap-113.md).
+Golden Pearl's Neow pickup now has executable coverage for its +150 Gold
+acquisition callback. See
+[mechanics gap 114](reference-builds/v0.111.0-mechanics-gap-114.md).

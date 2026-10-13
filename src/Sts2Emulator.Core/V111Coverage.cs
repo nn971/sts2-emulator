@@ -278,6 +278,21 @@ public static class V111Coverage
             implementation = "implemented";
             integration = "integrated";
         }
+        if (item.Scope == "single-player"
+            && item.Kind == "relics"
+            && item.Id == "GOLDEN_PEARL"
+            && engineIds.Contains(
+                PrototypeNativeOvergrowthEvents.NeowRelicId("GoldenPearl"),
+                StringComparer.Ordinal)
+            && PrototypeNativeOvergrowthEvents.NeowPositiveRelicNames
+                .Contains("GoldenPearl", StringComparer.Ordinal)
+            && IsIntegratedEvent(
+                PrototypeNativeOvergrowthEvents.NeowEventId)
+            && HasGoldenPearlPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
         if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "CIRCLET"
             && engineIds.Contains("proto.relic.circlet",
@@ -6580,6 +6595,29 @@ public static class V111Coverage
                 PrototypeNativeOvergrowthEvents.NeowEventId)
             && choiceExists
             && acquisitionAddsQuest;
+    }
+
+    private static bool HasGoldenPearlPath()
+    {
+        const string relicId = "proto.native.neow.goldenpearl";
+        var choiceExists = PrototypeContent.Event(
+            PrototypeNativeOvergrowthEvents.NeowEventId).Choices.Any(choice =>
+            choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId == relicId));
+        var trigger = PrototypeContent.Relic(relicId).RunTriggers?.SingleOrDefault(
+            item => item.EventKind == PrototypeRunEventKind.RelicAcquired);
+        var player = new PlayerState(30, 30, 17, [],
+            [new RelicInstance(relicId, PrototypeJson.EmptyObject())], []);
+        var acquired = PrototypeGameEngine.ApplyRelicRunEvent(
+            player,
+            PrototypeRunEventKind.RelicAcquired,
+            acquiredRelicId: relicId);
+        return choiceExists
+            && trigger?.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainGold
+                && effect.Amount == 150) == true
+            && acquired.Gold == 167;
     }
 
     private static bool HasCompleteWarHistorianRepyBranches(
