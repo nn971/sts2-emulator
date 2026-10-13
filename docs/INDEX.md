@@ -12,7 +12,7 @@ The [Silent all-Act gameplay baseline](SILENT_V111_FROZEN_BASELINE.md) is the fr
 
 ## Engine, content and consumer contracts
 
-- [Architecture](ARCHITECTURE.md), [state model](STATE_MODEL.md), [repository charter](PURPOSE.md), [architecture decisions](adr/).
+- [Architecture](ARCHITECTURE.md), [state model](STATE_MODEL.md), [repository charter](PURPOSE.md), [architecture decisions](adr/INDEX.md).
 - [V111 consumer interface](V111_INTERFACE.md), [AI observation interface](AI_INTERFACE.md), [subrepository integration](SUBREPO_INTEGRATION.md).
 - [Silent card inventory](SILENT_CARD_CATALOG.md) and [colorless card generation](COLORLESS_GENERATION.md).
 - [Implementation status](V111_IMPLEMENTATION_STATUS.md) — pointer to the archived cumulative status ledger; the [machine-readable coverage](../data/coverage/v111-baseline.json) supplies item classifications.
