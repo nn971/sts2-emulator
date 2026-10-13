@@ -5393,6 +5393,49 @@ public sealed partial class PrototypeGameEngine
         }).ToArray();
     }
 
+    private static RunState ApplyWingCharmToNewEventCardReward(
+        RunState previous,
+        RunState next)
+    {
+        if (previous.Phase == RunPhase.Reward
+            || next.Phase != RunPhase.Reward
+            || next.World?.Reward is not { } reward
+            || !reward.SourceRoom.StartsWith(
+                "Event:", StringComparison.Ordinal)
+            || (reward.CardOptions.Length == 0
+                && !(reward.ExtraCardOptions?.Any(group =>
+                    group.Length > 0) ?? false)))
+        {
+            return next;
+        }
+
+        var result = ApplyWingCharmToCardRewardOptions(
+            next,
+            reward.CardOptions,
+            reward.ExtraCardOptions ?? Array.Empty<string[]>(),
+            reward.CardOptionEnchantments,
+            reward.ExtraCardOptionEnchantments);
+        if (ReferenceEquals(result.State, next))
+        {
+            return next;
+        }
+
+        var world = RequireWorld(result.State);
+        return result.State with
+        {
+            World = world with
+            {
+                Reward = reward with
+                {
+                    CardOptionEnchantments =
+                        result.CardOptionEnchantments,
+                    ExtraCardOptionEnchantments =
+                        result.ExtraCardOptionEnchantments
+                }
+            }
+        };
+    }
+
     private static (RunState State,
         PrototypeCardEnchantment?[]? CardOptionEnchantments,
         PrototypeCardEnchantment?[][]? ExtraCardOptionEnchantments)

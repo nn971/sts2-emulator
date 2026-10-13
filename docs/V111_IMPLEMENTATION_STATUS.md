@@ -37,7 +37,8 @@ that card's completed play. Dingy Rug adds implemented Colorless cards to
 combat, Rest Site heal, and Orrery rewards; its pool also carries into
 Driftwood rerolls and Lasting Candy Power options. Unsettling Lamp doubles
 eligible debuffs from the first card to apply one. Wing Charm gives Swift to a
-random enchantable card in combat, Rest Site heal, and Orrery reward groups.
+random enchantable card in combat, Rest Site heal, Orrery, rerolled, and
+event-owned reward groups.
 See
 [mechanics gap 149](reference-builds/v0.111.0-mechanics-gap-149.md) for the
 source boundary and remaining Colorless-pool and RNG limits.
