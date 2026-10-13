@@ -32,12 +32,19 @@ public sealed class NativeShuffleStepFidelityV111Tests
             card.InstanceId, card.InstanceId, card.CardId,
             card.UpgradeLevel, false, card.PersistentState.Clone())).ToArray();
         var ids = cards.Select(c => c.InstanceId).ToArray();
+        static string Normalize(string value) => new(
+            value.Where(char.IsLetterOrDigit)
+                 .Select(char.ToUpperInvariant).ToArray());
+        var simpleEnemy = V111Coverage.Create().Items.Single(item =>
+            item.Kind == "monsters" &&
+            Normalize(item.NativeId) == Normalize("LEAF_SLIME_S") &&
+            item.Registered && item.EngineIds.Length == 1).EngineIds[0];
         var combat = new CombatState(
             Turn: 1, Energy: 3, PlayerBlock: 0,
             Hand: [], DrawPile: [], DiscardPile: ids,
             ExhaustPile: [],
             Enemies: [new EnemyCombatState(
-                InstanceId: 1, EnemyId: "proto.enemy.phrog_parasite",
+                InstanceId: 1, EnemyId: simpleEnemy,
                 Hp: 120, MaxHp: 120, Block: 0, MoveIndex: 0,
                 Statuses: new Dictionary<string, int>(), Powers: [])],
             NextCardInstanceId: ids.Max() + 1, Cards: cards,
@@ -159,7 +166,7 @@ public sealed class NativeShuffleStepFidelityV111Tests
             Assert.Equal("REPLAY_INCOMPLETE", outer.Status);
         }
         var independent = NativeShuffleStepReplayV111.ShuffleRecycle(
-            [0, 1, 2, 3], NativeRngV111.CreateBundle("legacy"));
+            [0, 1, 2, 3], V111RunFactory.Create("legacy").Rng);
         Assert.Equal(4, independent.Length);
     }
 }
