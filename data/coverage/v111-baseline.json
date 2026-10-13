@@ -24804,8 +24804,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/ChemicalX.cs#51eeb60e471b2a4c44523822aa52515dd9740580621b2bc807418789ab45c7ba"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -27980,8 +27980,8 @@
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/RunicPyramid.cs#872632e4196b24167fe7a681827829d05486b29b4483467aa0c33f383ef5a3e3"
         ],
-        "implementation": "partial",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
@@ -29481,8 +29481,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 88,
-        "integrated": 89,
+        "implemented": 90,
+        "integrated": 91,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

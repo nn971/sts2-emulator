@@ -96,7 +96,8 @@ public static class PrototypeNativeRelicGrabBag
             ["proto.relic.membership_card"] = PrototypeRelicRarity.Shop,
             ["proto.relic.burning_sticks"] = PrototypeRelicRarity.Shop,
             ["proto.relic.toolbox"] = PrototypeRelicRarity.Shop,
-            [PrototypeNativeSilentRelics.NinjaScrollId] = PrototypeRelicRarity.Shop
+            [PrototypeNativeSilentRelics.NinjaScrollId] = PrototypeRelicRarity.Shop,
+            ["proto.relic.chemical_x"] = PrototypeRelicRarity.Shop
         };
 
     private static readonly HashSet<string> NotSoldInShops =

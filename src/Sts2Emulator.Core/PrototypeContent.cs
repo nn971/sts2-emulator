@@ -7613,6 +7613,7 @@ public static class PrototypeContent
         "proto.relic.prayer_wheel",
         "proto.relic.white_beast_statue",
         "proto.relic.membership_card",
+        "proto.relic.chemical_x",
         "proto.relic.ninja_scroll",
         "proto.relic.smiling_mask",
         "proto.relic.art_of_war",
@@ -7636,6 +7637,7 @@ public static class PrototypeContent
         "proto.relic.ectoplasm",
         "proto.relic.fusion_hammer",
         "proto.relic.velvet_choker",
+        "proto.relic.runic_pyramid",
         "proto.relic.runic_dome",
         "proto.relic.snecko_eye"
     ];

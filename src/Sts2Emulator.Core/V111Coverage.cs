@@ -996,6 +996,26 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "CHEMICAL_X"
+            && engineIds.Contains(
+                "proto.relic.chemical_x",
+                StringComparer.Ordinal)
+            && HasChemicalXPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "RUNIC_PYRAMID"
+            && engineIds.Contains(
+                "proto.relic.runic_pyramid",
+                StringComparer.Ordinal)
+            && HasRunicPyramidPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "MUMMIFIED_HAND"
             && engineIds.Contains(
                 "proto.relic.mummified_hand",
@@ -1830,6 +1850,25 @@ public static class V111Coverage
         && PrototypeNativeRelicGrabBag.TryGetRarity(
             relicId, out var rarity)
         && rarity == PrototypeRelicRarity.Rare;
+
+    private static bool HasChemicalXPath()
+    {
+        const string relicId = "proto.relic.chemical_x";
+        return PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                relicId, out var rarity)
+            && rarity == PrototypeRelicRarity.Shop
+            && PrototypeContent.Relic(relicId).XValueBonus == 2;
+    }
+
+    private static bool HasRunicPyramidPath()
+    {
+        const string relicId = "proto.relic.runic_pyramid";
+        return PrototypeContent.BossRelicPool.Contains(
+                relicId, StringComparer.Ordinal)
+            && PrototypeContent.Relic(relicId).PreventsHandDiscard;
+    }
 
     private static bool HasSpoilsMapPath()
     {
