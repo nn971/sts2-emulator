@@ -1619,6 +1619,27 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "STRIKE_DUMMY"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.StrikeDummyId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.StrikeDummyId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.StrikeDummyId,
+                out var strikeDummyRarity)
+            && strikeDummyRarity == PrototypeRelicRarity.Common
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.StrikeDummyId) is
+                { AttackDamageBonusRequiredCardTag: "Strike",
+                    AttackDamageBonusPerCardTag: 3 }
+            && HasStrikeDummyPath())
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && item.Id == "ROYAL_POISON"
             && engineIds.Contains(
                 PrototypeNativeGloryEvents.RoyalPoisonId,
@@ -2826,6 +2847,65 @@ public static class V111Coverage
                 meltedCombat.Cards.Single(original =>
                     original.InstanceId == card.InstanceId).UpgradeLevel)
             && melted.Player.Deck.SequenceEqual(meltedPlayer.Deck);
+    }
+
+    private static bool HasStrikeDummyPath()
+    {
+        const string strikeId = "proto.silent.strike";
+        const string shivId = "proto.silent.shiv";
+        const int strikeInstanceId = 1;
+        const int shivInstanceId = 2;
+
+        CombatState Fixture(bool melted)
+        {
+            const string relicId =
+                PrototypeNativeSharedRelics.StrikeDummyId;
+            var triggerCount = PrototypeContent.Relic(relicId)
+                .Triggers?.Length ?? 0;
+            return new CombatState(
+                Turn: 1,
+                Energy: 3,
+                PlayerBlock: 0,
+                Hand: [],
+                DrawPile: [],
+                DiscardPile: [],
+                ExhaustPile: [],
+                Enemies:
+                [
+                    new EnemyCombatState(3, "proto.enemy.wriggler", 30,
+                        0, 0, new Dictionary<string, int>(StringComparer.Ordinal))
+                ],
+                NextCardInstanceId: 3,
+                Cards:
+                [
+                    new CombatCardInstance(strikeInstanceId, 1, strikeId, 0,
+                        false, PrototypeJson.EmptyObject()),
+                    new CombatCardInstance(shivInstanceId, 2, shivId, 0,
+                        false, PrototypeJson.EmptyObject())
+                ],
+                PlayerPowers: [],
+                NextPowerApplicationOrder: 1,
+                Relics:
+                [
+                    new CombatRelicState(0, relicId, 1,
+                        new int[triggerCount], IsMelted: melted)
+                ],
+                Act: 1,
+                PlayPile: []);
+        }
+
+        var activeCombat = Fixture(melted: false);
+        var activeStrike = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            activeCombat, strikeInstanceId, 3, 6);
+        var activeShiv = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            activeCombat, shivInstanceId, 3, 4);
+        var meltedCombat = Fixture(melted: true);
+        var meltedStrike = PrototypeGameEngine.ModifyPlayerAttackDamage(
+            meltedCombat, strikeInstanceId, 3, 6);
+
+        return activeStrike == 9
+            && activeShiv == 4
+            && meltedStrike == 6;
     }
 
     private static bool HasSlingOfCouragePath()

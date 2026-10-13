@@ -7594,6 +7594,7 @@ public static class PrototypeContent
         PrototypeNativeSharedRelics.WhiteStarId,
         PrototypeNativeSharedRelics.BreadId,
         PrototypeNativeSharedRelics.GorgetId,
+        PrototypeNativeSharedRelics.StrikeDummyId,
         PrototypeNativeSharedRelics.AmethystAubergineId,
         "proto.relic.lantern",
         "proto.relic.ink_bottle",

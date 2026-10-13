@@ -28393,17 +28393,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.strike_dummy"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/StrikeDummy.cs#1a780effd408cedb8b2f9f30958a8b4786125a997af55fe57b97f5919fb3610a"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "STRIKE_DUMMY",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29462,8 +29464,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 154,
-        "integrated": 155,
+        "implemented": 155,
+        "integrated": 156,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

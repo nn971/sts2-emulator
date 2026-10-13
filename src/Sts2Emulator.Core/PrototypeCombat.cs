@@ -9334,7 +9334,7 @@ public sealed partial class PrototypeGameEngine
             && enemy.Statuses.GetValueOrDefault(statusId) > 0;
     }
 
-    private static int ModifyPlayerAttackDamage(
+    internal static int ModifyPlayerAttackDamage(
         CombatState combat,
         long? sourceCardInstanceId,
         int targetEnemyId,
@@ -9375,6 +9375,18 @@ public sealed partial class PrototypeGameEngine
 
             return generic + tagged;
         });
+        var taggedRelicBonus = combat.RelicStates
+            .Where(relic => !relic.IsMelted)
+            .Sum(relic =>
+            {
+                var definition = PrototypeContent.Relic(relic.RelicId);
+                return definition.AttackDamageBonusPerCardTag != 0
+                    && definition.AttackDamageBonusRequiredCardTag is
+                        { } requiredTag
+                    && tags.Contains(requiredTag, StringComparer.Ordinal)
+                        ? definition.AttackDamageBonusPerCardTag
+                        : 0;
+            });
 
         var firstTaggedPlayBonus = combat.PlayerPowers.Sum(
             power =>
@@ -9413,6 +9425,7 @@ public sealed partial class PrototypeGameEngine
                 : 0;
         var modified =
             damage + sharpBonus + vigorousBonus + additive
+            + taggedRelicBonus
             + firstTaggedPlayBonus;
         if (sourceCard.CardId == NativeGloryAncientsV111.MaulCardId)
         {
