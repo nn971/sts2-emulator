@@ -179,8 +179,10 @@ public sealed partial class PrototypeGameEngine
 
             if (eventState.DeferredHpLoss > 0)
             {
+                var hpLoss = ReducePlayerHpLoss(
+                    state.Player, eventState.DeferredHpLoss);
                 var hp = Math.Max(
-                    0, state.Player.Hp - eventState.DeferredHpLoss);
+                    0, state.Player.Hp - hpLoss);
                 state = state with
                 {
                     Player = state.Player with { Hp = hp },

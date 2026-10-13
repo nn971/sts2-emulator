@@ -62,10 +62,11 @@ public sealed partial class PrototypeGameEngine
         // Damage grows by one on each immersion; a fatal choice remains
         // legal, as in the source event's death-warning page.
         var damage = checked(3 + evt.NativePageIndex);
+        var hpLoss = ReducePlayerHpLoss(state.Player, damage);
         var player = state.Player with
         {
             MaxHp = checked(state.Player.MaxHp + 2),
-            Hp = Math.Max(0, state.Player.Hp + 2 - damage)
+            Hp = Math.Max(0, state.Player.Hp + 2 - hpLoss)
         };
         var next = state with
         {

@@ -160,9 +160,10 @@ public sealed partial class PrototypeGameEngine
         // The first click only opens a follow-up page. The second
         // causes eleven unblockable, unpowered damage, THEN obtains
         // one relic from the front of the persistent reward grab bag.
+        var hpLoss = ReducePlayerHpLoss(state.Player, 11);
         var playerAfterHit = state.Player with
         {
-            Hp = Math.Max(0, state.Player.Hp - 11)
+            Hp = Math.Max(0, state.Player.Hp - hpLoss)
         };
         state = state with { Player = playerAfterHit };
         if (playerAfterHit.Hp == 0)
@@ -202,9 +203,10 @@ public sealed partial class PrototypeGameEngine
         // (there is no PlayerTurnStarted pipeline dispatch on turn one).
         // Implement only RoyalPoison's pinned owner-scoped hook here;
         // the native callback is triggered once per relic instance.
+        var hpLoss = ReducePlayerHpLoss(state.Player, checked(4 * count));
         var player = state.Player with
         {
-            Hp = Math.Max(0, state.Player.Hp - checked(4 * count))
+            Hp = Math.Max(0, state.Player.Hp - hpLoss)
         };
         var damaged = state with { Player = player };
         if (player.Hp <= 0)

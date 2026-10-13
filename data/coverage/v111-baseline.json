@@ -28740,17 +28740,19 @@
       },
       {
         "catalogued": true,
-        "engine_ids": [],
+        "engine_ids": [
+          "proto.relic.tungsten_rod"
+        ],
         "evidence": [
           "706ef1c9fa2219220065849fd5265328607ece20:src/Core/Models/Relics/TungstenRod.cs#b79fe26e7bcaeb914ac93cd7bc3be2706a2b8c2525d49e342ec6f76d23502b08"
         ],
-        "implementation": "missing",
-        "integration": "missing",
+        "implementation": "implemented",
+        "integration": "integrated",
         "kind": "relics",
         "missing_branches": [],
         "missing_variants": [],
         "native_id": "TUNGSTEN_ROD",
-        "registered": false,
+        "registered": true,
         "scope": "single-player",
         "validation": "unverified"
       },
@@ -29445,8 +29447,8 @@
         "catalogued": 297,
         "eligible": 297,
         "excluded": 1,
-        "implemented": 95,
-        "integrated": 96,
+        "implemented": 96,
+        "integrated": 97,
         "kind": "relics",
         "scope_review_required": 0,
         "validated": 0

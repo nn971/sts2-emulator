@@ -176,9 +176,10 @@ public sealed partial class PrototypeGameEngine
             }
             case "dive":
             {
+                var hpLoss = ReducePlayerHpLoss(state.Player, 8);
                 var player = state.Player with
                 {
-                    Hp = Math.Max(0, state.Player.Hp - 8)
+                    Hp = Math.Max(0, state.Player.Hp - hpLoss)
                 };
                 state = state with { Player = player };
                 if (player.Hp == 0)

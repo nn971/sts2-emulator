@@ -1223,6 +1223,25 @@ public static class V111Coverage
             integration = "integrated";
         }
         if (item.Scope == "single-player" && item.Kind == "relics"
+            && item.Id == "TUNGSTEN_ROD"
+            && engineIds.Contains(
+                PrototypeNativeSharedRelics.TungstenRodId,
+                StringComparer.Ordinal)
+            && PrototypeContent.RelicPool.Contains(
+                PrototypeNativeSharedRelics.TungstenRodId,
+                StringComparer.Ordinal)
+            && PrototypeNativeRelicGrabBag.TryGetRarity(
+                PrototypeNativeSharedRelics.TungstenRodId,
+                out var tungstenRodRarity)
+            && tungstenRodRarity == PrototypeRelicRarity.Rare
+            && PrototypeContent.Relic(
+                PrototypeNativeSharedRelics.TungstenRodId)
+                .PlayerHpLossReduction == 1)
+        {
+            implementation = "implemented";
+            integration = "integrated";
+        }
+        if (item.Scope == "single-player" && item.Kind == "relics"
             && engineIds.Any(id =>
             {
                 var relic = PrototypeContent.Relic(id);

@@ -218,7 +218,8 @@ public sealed partial class PrototypeGameEngine
                 "Slippery Bridge choice does not match the current page.");
         }
 
-        var hpLoss = 3 + eventState.NativeSlipperyBridgeHoldCount;
+        var hpLoss = ReducePlayerHpLoss(state.Player,
+            3 + eventState.NativeSlipperyBridgeHoldCount);
         var hp = Math.Max(0, state.Player.Hp - hpLoss);
         var skipped = (eventState
                 .NativeSlipperyBridgeSkippedCardInstanceIds

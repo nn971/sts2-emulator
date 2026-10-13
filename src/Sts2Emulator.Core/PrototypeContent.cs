@@ -7629,7 +7629,8 @@ public static class PrototypeContent
         "proto.relic.toolbox",
         "proto.relic.gambling_chip",
         PrototypeNativeRestSiteRelics.ShovelId,
-        PrototypeNativeRestSiteRelics.GiryaId
+        PrototypeNativeRestSiteRelics.GiryaId,
+        PrototypeNativeSharedRelics.TungstenRodId
     ];
 
     public static string[] BossRelicPool { get; } =

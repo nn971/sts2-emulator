@@ -34,7 +34,8 @@ public sealed partial class PrototypeGameEngine
         {
             if (choiceId == "trudge")
             {
-                var hpAfter = Math.Max(0, state.Player.Hp - 8);
+                var hpLoss = ReducePlayerHpLoss(state.Player, 8);
+                var hpAfter = Math.Max(0, state.Player.Hp - hpLoss);
                 if (hpAfter == 0)
                 {
                     return EndRun(state with

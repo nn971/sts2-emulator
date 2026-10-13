@@ -1495,11 +1495,12 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 case PrototypeRunEffectKind.LoseHp:
+                    var hpLoss = ReducePlayerHpLoss(player, effect.Amount);
                     player = player with
                     {
                         Hp = Math.Max(
                             0,
-                            player.Hp - effect.Amount)
+                            player.Hp - hpLoss)
                     };
                     // Native CreatureCmd.Damage stops the event when
                     // it kills the player. Do not execute subsequent
@@ -4065,11 +4066,13 @@ public sealed partial class PrototypeGameEngine
             if (reward.PendingDeckChoice is null
                 && deckChoice.HpLossAfterChoices > 0)
             {
+                var hpLoss = ReducePlayerHpLoss(
+                    player, deckChoice.HpLossAfterChoices);
                 player = player with
                 {
                     Hp = Math.Max(
                         0,
-                        player.Hp - deckChoice.HpLossAfterChoices)
+                        player.Hp - hpLoss)
                 };
                 if (player.Hp == 0)
                 {

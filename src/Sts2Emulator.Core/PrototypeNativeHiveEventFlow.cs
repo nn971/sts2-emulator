@@ -67,7 +67,8 @@ public sealed partial class PrototypeGameEngine
             return FinishColossalFlower(state, eventState, choice);
         }
 
-        var hp = Math.Max(0, state.Player.Hp - damages[stage]);
+        var hpLoss = ReducePlayerHpLoss(state.Player, damages[stage]);
+        var hp = Math.Max(0, state.Player.Hp - hpLoss);
         var player = state.Player with { Hp = hp };
         state = state with { Player = player };
         if (hp == 0)

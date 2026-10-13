@@ -160,10 +160,12 @@ public sealed partial class PrototypeGameEngine
                 $"Room Full of Cheese choice '{choiceId}' is unavailable.");
         }
 
+        var hpLoss = ReducePlayerHpLoss(
+            state.Player, PrototypeNativeRoomFullOfCheese.SearchHpLoss);
         var player = state.Player with
         {
             Hp = Math.Max(0, state.Player.Hp
-                - PrototypeNativeRoomFullOfCheese.SearchHpLoss)
+                - hpLoss)
         };
         if (player.Hp == 0)
         {

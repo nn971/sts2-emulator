@@ -1850,16 +1850,13 @@ public sealed partial class PrototypeGameEngine
                         PlayerBlock =
                             combat.PlayerBlock - absorbed
                     };
-                    player = player with
-                    {
-                        Hp = Math.Max(
-                            0,
-                            player.Hp
-                            - Math.Max(0, damage - absorbed))
-                    };
-
-                    var unblockedDamage = Math.Max(
-                        0, damage - absorbed);
+                    var loss = ApplyPlayerHpLoss(
+                        player,
+                        combat,
+                        Math.Max(0, damage - absorbed));
+                    player = loss.Player;
+                    combat = loss.Combat;
+                    var unblockedDamage = loss.UnblockedHpLoss;
                     if (unblockedDamage > 0)
                     {
                         var damaged = DispatchPlayerDamageReceived(
@@ -3422,8 +3419,6 @@ public sealed partial class PrototypeGameEngine
                                 Math.Max(0, damage));
                             block -= absorbed;
                             var unblocked = Math.Max(0, damage - absorbed);
-                            unblockedPlayerDamage = checked(
-                                unblockedPlayerDamage + unblocked);
                             // ImbalancedPower.AfterDamageGiven: a fully
                             // blocked attack leaves Bowlbug Rock off-balance.
                             // Headbutt then commits Dizzy on the NEXT
@@ -3442,7 +3437,16 @@ public sealed partial class PrototypeGameEngine
                                 unblockedAttackHits++;
                             }
                             var aliveBeforeHit = hp > 0;
-                            hp = Math.Max(0, hp - unblocked);
+                            var playerLoss = ApplyPlayerHpLoss(
+                                player with { Hp = hp },
+                                combat,
+                                unblocked);
+                            player = playerLoss.Player;
+                            combat = playerLoss.Combat;
+                            hp = player.Hp;
+                            unblockedPlayerDamage = checked(
+                                unblockedPlayerDamage
+                                + playerLoss.UnblockedHpLoss);
                             if (effect.IsAttack && unblocked > 0
                                 && aliveBeforeHit)
                             {
@@ -4807,8 +4811,7 @@ public sealed partial class PrototypeGameEngine
                                     retaliation - absorbed);
                                 player = loss.Player;
                                 combat = loss.Combat;
-                                var unblockedDamage = Math.Max(
-                                    0, retaliation - absorbed);
+                                var unblockedDamage = loss.UnblockedHpLoss;
                                 if (unblockedDamage > 0)
                                 {
                                     var damaged =
@@ -5113,17 +5116,15 @@ public sealed partial class PrototypeGameEngine
                                         PlayerBlock =
                                             combat.PlayerBlock - absorbed
                                     };
-                                    player = player with
-                                    {
-                                        Hp = Math.Max(
-                                            0,
-                                            player.Hp
-                                            - Math.Max(
-                                                0,
-                                                retaliation - absorbed))
-                                    };
-                                    var unblockedDamage = Math.Max(
-                                        0, retaliation - absorbed);
+                                    var loss = ApplyPlayerHpLoss(
+                                        player,
+                                        combat,
+                                        Math.Max(
+                                            0, retaliation - absorbed));
+                                    player = loss.Player;
+                                    combat = loss.Combat;
+                                    var unblockedDamage =
+                                        loss.UnblockedHpLoss;
                                     if (unblockedDamage > 0)
                                     {
                                         var damaged =
@@ -6139,8 +6140,6 @@ public sealed partial class PrototypeGameEngine
                     var absorbed = Math.Min(
                         combat.PlayerBlock,
                         incoming);
-                    var unblockedDamage = Math.Max(
-                        0, incoming - absorbed);
                     combat = combat with
                     {
                         PlayerBlock =
@@ -6153,12 +6152,12 @@ public sealed partial class PrototypeGameEngine
                         incoming - absorbed);
                     player = loss.Player;
                     combat = loss.Combat;
-                    if (unblockedDamage > 0)
+                    if (loss.UnblockedHpLoss > 0)
                     {
                         var damaged = DispatchPlayerDamageReceived(
                             player,
                             combat,
-                            unblockedDamage,
+                            loss.UnblockedHpLoss,
                             rng,
                             eventDepth + 1);
                         player = damaged.Player;
@@ -9483,16 +9482,25 @@ public sealed partial class PrototypeGameEngine
             true);
     }
 
-    private static (PlayerState Player, CombatState Combat)
+    private static int ReducePlayerHpLoss(PlayerState player, int amount)
+    {
+        amount = Math.Max(0, amount);
+        var reduction = player.ActiveRelics.Sum(relic =>
+            Math.Max(0, PrototypeContent.Relic(relic.RelicId)
+                .PlayerHpLossReduction));
+        return Math.Max(0, amount - reduction);
+    }
+
+    private static (PlayerState Player, CombatState Combat, int UnblockedHpLoss)
         ApplyPlayerHpLoss(
             PlayerState player,
             CombatState combat,
             int amount)
     {
-        amount = Math.Max(0, amount);
+        amount = ReducePlayerHpLoss(player, amount);
         if (amount == 0)
         {
-            return (player, combat);
+            return (player, combat, 0);
         }
 
         var buffer = combat.PlayerPowers
@@ -9529,13 +9537,13 @@ public sealed partial class PrototypeGameEngine
             return (player, combat with
             {
                 PlayerPowers = powers.ToArray()
-            });
+            }, 0);
         }
 
         return (player with
         {
             Hp = Math.Max(0, player.Hp - amount)
-        }, combat);
+        }, combat, amount);
     }
 
     private static CombatState ApplyPlayerPower(
@@ -10928,14 +10936,12 @@ public sealed partial class PrototypeGameEngine
                     damage - absorbed);
                 player = loss.Player;
                 combat = loss.Combat;
-                var unblockedDamage = Math.Max(
-                    0, damage - absorbed);
-                if (unblockedDamage > 0)
+                if (loss.UnblockedHpLoss > 0)
                 {
                     var damaged = DispatchPlayerDamageReceived(
                         player,
                         combat,
-                        unblockedDamage,
+                        loss.UnblockedHpLoss,
                         rng,
                         eventDepth + 1,
                         allowSuspension);

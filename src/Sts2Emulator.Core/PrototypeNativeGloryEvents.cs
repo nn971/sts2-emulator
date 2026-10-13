@@ -301,7 +301,11 @@ public sealed partial class PrototypeGameEngine
             // Pinned AfterObtained performs the damage before any
             // upgrades. A fatal acquisition therefore terminates
             // immediately without upgrading cards.
-            player = player with { Hp = Math.Max(0, player.Hp - 15) };
+            var hpLoss = ReducePlayerHpLoss(player, 15);
+            player = player with
+            {
+                Hp = Math.Max(0, player.Hp - hpLoss)
+            };
             if (player.Hp <= 0)
                 return EndRun(state with { Player = player }, "defeat");
 

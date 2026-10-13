@@ -25,6 +25,10 @@ Centennial Puzzle is implemented as a common shared relic: the first
 unblocked player damage event in combat draws three cards. See the
 [pinned relic audit](reference-builds/v0.111.0-mechanics-gap-050.md) for the
 event timing boundary retained for later fidelity work.
+Tungsten Rod is implemented as a Rare shared relic: it reduces each owner HP
+loss by one across combat and configured event/run effects. Its pinned
+mechanic is recorded in
+[mechanics gap 051](reference-builds/v0.111.0-mechanics-gap-051.md).
 
 Configured three-act runs now persist Hive and Glory Ancient assignments at
 run start and dispatch all six act-local Ancient openings at act entry.

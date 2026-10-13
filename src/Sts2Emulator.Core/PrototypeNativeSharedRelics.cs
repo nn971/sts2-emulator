@@ -16,6 +16,7 @@ public static class PrototypeNativeSharedRelics
     public const string PotionShapedRockId = "proto.potion.shaped_rock";
     public const string StrawberryId = "proto.relic.strawberry";
     public const string TheBootId = "proto.relic.the_boot";
+    public const string TungstenRodId = "proto.relic.tungsten_rod";
     public const string WarPaintId = "proto.relic.war_paint";
     public const string WhetstoneId = "proto.relic.whetstone";
     public const string VigorId = "proto.power.vigor";
@@ -76,6 +77,9 @@ public static class PrototypeNativeSharedRelics
                     [new(PrototypeCombatEffectKind.DrawCards, 3)],
                     MaxTriggersPerCounterWindow: 1)
             ]),
+        // TungstenRod.ModifyHpLostAfterOsty reduces every HP loss to its owner by 1.
+        new(TungstenRodId, "Tungsten Rod",
+            PlayerHpLossReduction: 1),
         // TheBoot.ModifyHpLostAfterOstyLate raises an owner-powered attack's
         // unblocked HP loss to 5. The event-rarity relic remains outside the
         // ordinary relic pool and is awarded by Trash Heap.
