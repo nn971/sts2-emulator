@@ -2702,12 +2702,14 @@ public static class PrototypeContent
                 Triggers:
                 [
                     new PrototypeRelicTriggerSpec(
-                        PrototypeCombatEventKind.PlayerTurnStarted,
+                        PrototypeCombatEventKind.PlayerSideTurnStarted,
                         [new PrototypeCombatEffectSpec(
                             PrototypeCombatEffectKind.GainEnergy,
                             1)],
                         EveryNth: 3)
-                ]),
+                ],
+                PersistentTriggerCountProperty: "TurnsSeen",
+                PersistentTriggerCountModulo: 3),
             new PrototypeRelicDefinition(
                 "proto.relic.anchor",
                 "Anchor",
