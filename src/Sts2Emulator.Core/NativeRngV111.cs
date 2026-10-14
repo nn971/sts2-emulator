@@ -88,6 +88,8 @@ public static class NativeRngV111
 
     public static ulong NextUInt64(RngBundle bundle, string streamId)
     {
+        ControlledChanceGuardV111.RequireMigrated(
+            "native_rng." + streamId, "next_uint64");
         var index = RequireStream(bundle, streamId);
         var current = ToSnapshot(bundle.Streams[index]);
         var result = unchecked(BitOperations.RotateLeft(unchecked(current.State1 * 5), 7) * 9);
