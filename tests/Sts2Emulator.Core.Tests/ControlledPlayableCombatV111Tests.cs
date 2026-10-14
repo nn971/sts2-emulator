@@ -94,14 +94,19 @@ public sealed class ControlledPlayableCombatV111Tests
             ControlledPlayableCombatEngineV111.Save(next));
         Assert.Equal(next.Fingerprint, restored.Fingerprint);
 
-        // The real end-turn pipeline requests a fresh enemy intent.
-        // With no migrated continuation for this site, a child cannot
-        // be published and the original player boundary remains intact.
-        var end = frame.LegalActions.Single(x => x.Kind == "end_turn");
-        var failure = Assert.Throws<NotSupportedException>(() =>
-            ControlledPlayableCombatEngineV111.Step(entry, end.ActionId));
-        Assert.Contains("UNSUPPORTED_CONTROLLED_CHANCE", failure.Message);
-        Assert.Contains("site=", failure.Message);
+        // End-turn is allowed when every invoked mechanic is deterministic.
+        // Fail-closed behavior is tested at the two RNG roots, which any
+        // unmigrated random action would eventually reach.
+        using (ControlledChanceGuardV111.Enter())
+        {
+            var proto = Assert.Throws<NotSupportedException>(() =>
+                PrototypeRng.NextInt(entry.Run.Rng, "combat", 2));
+            Assert.Contains("UNSUPPORTED_CONTROLLED_CHANCE", proto.Message);
+            Assert.Contains("site=prototype_rng.combat", proto.Message);
+            var native = Assert.Throws<NotSupportedException>(() =>
+                NativeRngV111.NextInt(NativeRngV111.CreateBundle(seed), "run.niche", 2));
+            Assert.Contains("site=native_rng.run.niche", native.Message);
+        }
         Assert.Equal(before, entry.Fingerprint);
     }
 
