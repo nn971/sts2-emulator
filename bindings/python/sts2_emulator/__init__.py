@@ -92,6 +92,59 @@ class NatureBoundary:
 
 
 
+
+@dataclass(frozen=True)
+class ControlledCombat:
+    """Opt-in playable combat fixture, with source-controlled opening shuffle.
+
+    Only deterministic player actions are currently executable. Unmigrated
+    chance sites fail explicitly; this is not full Nature gameplay support.
+    """
+    session: "Session"
+    handle: str
+    fingerprint: str
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        return cls(session, payload["controlledHandle"], payload["fingerprint"])
+
+    def trace(self):
+        return self.session.call("controlled_trace", controlled_handle=self.handle)
+
+    def resolve(self, selected_index: int):
+        return ControlledCombat.from_wire(self.session,
+            self.session.call("controlled_resolve", controlled_handle=self.handle,
+                              fingerprint=self.fingerprint,
+                              selected_index=selected_index))
+
+    def observe(self):
+        result = self.session.call("controlled_observe",
+                                   controlled_handle=self.handle,
+                                   policy_id="prototype-fair-v0")
+        return json.loads(result["payloadJson"])
+
+    def actions(self):
+        return self.session.call("controlled_legal_actions",
+                                 controlled_handle=self.handle)["actions"]
+
+    def step(self, action_id: str):
+        return ControlledCombat.from_wire(self.session,
+            self.session.call("controlled_step",
+                              controlled_handle=self.handle, action_id=action_id))
+
+    def fork(self):
+        return ControlledCombat.from_wire(self.session,
+            self.session.call("controlled_fork", controlled_handle=self.handle))
+
+    def save_snapshot(self):
+        """Privileged hidden snapshot; NEVER a fair player observation."""
+        return self.session.call("controlled_save",
+                                 controlled_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_controlled_many([self])
+
+
 class Session:
     def __init__(self, command, *, cwd=None):
         if isinstance(command, str):
@@ -182,6 +235,32 @@ class Session:
                            total_floor=total_floor, map_column=map_column,
                            map_row=map_row, ascension=ascension)
         return NatureBoundary.from_wire(self, result)
+
+    def begin_controlled_combat(self, completed_intents: NatureBoundary,
+                                *, seed: str):
+        """Join a completed controlled HP→intent prefix with a playable fixture."""
+        self._require_nature_capability()
+        if self.capabilities.get("controlledChanceSchemaId") != (
+                "sts2-v111-controlled-playable-fixture-v1"):
+            raise EmulatorError("Emulator lacks playable Nature fixture capability")
+        if completed_intents.session is not self or not completed_intents.complete:
+            raise ValueError("Expected completed Nature intent from this session")
+        if completed_intents.kind != "intents":
+            raise ValueError("Controlled combat begins after intent commitments")
+        response = self.call("controlled_begin",
+                             nature_handle=completed_intents.handle, seed=seed)
+        return ControlledCombat.from_wire(self, response)
+
+    def load_controlled_snapshot(self, snapshot: str):
+        return ControlledCombat.from_wire(self,
+            self.call("controlled_load", snapshot=snapshot))
+
+    def release_controlled_many(self, states):
+        states = list(states)
+        if any(x.session is not self for x in states):
+            raise ValueError("Controlled handle belongs to another session")
+        return self.call("controlled_release_many",
+                         controlled_handles=[x.handle for x in states])["released"]
 
     def load_nature_snapshot(self, snapshot: str, *, kind: str):
         self._require_nature_capability()
