@@ -16,6 +16,8 @@ internal static class PrototypeAiJsonlServer
 
     public const string NatureBoundarySchemaId =
         "sts2-v111-nature-isolated-boundary-v1";
+    public const string ControlledChanceSchemaId =
+        ControlledPlayableCombatEngineV111.SchemaId;
 
     public static void Run(TextReader input, TextWriter output)
     {
@@ -34,6 +36,25 @@ internal static class PrototypeAiJsonlServer
         var natureIntents = new Dictionary<string, ControlledIntentStateV111>(
             StringComparer.Ordinal);
         long nextNatureHandle = 1;
+        var controlledStates = new Dictionary<string, ControlledPlayableCombatV111>(
+            StringComparer.Ordinal);
+        long nextControlledHandle = 1;
+
+        string StoreControlled(ControlledPlayableCombatV111 state)
+        {
+            string handle = "c" + nextControlledHandle++;
+            controlledStates.Add(handle, state.Fork());
+            return handle;
+        }
+
+        ControlledPlayableCombatV111 RequireControlled(JsonElement request)
+        {
+            var handle = RequiredString(request, "controlled_handle");
+            return controlledStates.TryGetValue(handle, out var value)
+                ? value
+                : throw new InvalidOperationException(
+                    "Unknown controlled handle: " + handle);
+        }
 
         string StoreNature(ControlledInitialHpStateV111 state)
         {
@@ -131,6 +152,16 @@ internal static class PrototypeAiJsonlServer
                             natureBoundaryScope = "isolated-combat-entry-only",
                             natureEventMetadataSchemaId = NatureBoundaryMetadataV111.SchemaId,
                             naturePlayable = false,
+                            controlledChanceSchemaId = ControlledChanceSchemaId,
+                            controlledChanceScope = "isolated-playable-combat-opening-v1",
+                            controlledChanceSupportedSites = new[]
+                            {
+                                ControlledPlayableCombatEngineV111.ShuffleSite
+                            },
+                            controlledChanceLimitations =
+                                "Opening HP/intents from Nature; scripted shuffle; " +
+                                "real deterministic combat actions; unowned RNG errors; " +
+                                "native opening hooks and in-flight action suspension pending.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
                             snapshotSchemaId = RunSnapshot.SchemaId,
@@ -380,6 +411,160 @@ internal static class PrototypeAiJsonlServer
                         }
                         else throw new NotSupportedException(
                             "Unsupported Nature snapshot kind.");
+                        break;
+                    }
+
+                    case "controlled_begin":
+                    {
+                        // Only a completed HP→intent chain may supply enemy
+                        // state. The source provenance is checked before any
+                        // playable state handle is published.
+                        var sourceHandle = RequiredString(request, "nature_handle");
+                        if (!natureIntents.TryGetValue(sourceHandle, out var intents))
+                            throw new InvalidOperationException(
+                                "controlled_begin requires an intent Nature handle.");
+                        var state = ControlledPlayableCombatEngineV111.Begin(
+                            intents, RequiredString(request, "seed"));
+                        var handle = StoreControlled(state);
+                        var view = NatureBoundaryMetadataV111.Describe(state);
+                        Write(new { requestId, ok = true,
+                            schemaId = ControlledChanceSchemaId,
+                            controlledHandle = handle, fingerprint = state.Fingerprint,
+                            parent = sourceHandle, phase = "opening_shuffle",
+                            pending = view.Pending, transcript = view.Transcript,
+                            terminal = false });
+                        break;
+                    }
+
+                    case "controlled_resolve":
+                    {
+                        var parentHandle = RequiredString(request, "controlled_handle");
+                        var parent = RequireControlled(request);
+                        int selectedIndex = OptionalInt(request, "selected_index")
+                            ?? throw new ArgumentException("Missing selected_index.");
+                        var next = ControlledPlayableCombatEngineV111.Resolve(
+                            parent, RequiredString(request, "fingerprint"), selectedIndex);
+                        var handle = StoreControlled(next);
+                        var view = NatureBoundaryMetadataV111.Describe(next);
+                        Write(new { requestId, ok = true,
+                            schemaId = ControlledChanceSchemaId,
+                            parent = parentHandle, controlledHandle = handle,
+                            fingerprint = next.Fingerprint,
+                            phase = view.Kind, pending = view.Pending,
+                            transcript = view.Transcript,
+                            terminal = next.Run.Phase == RunPhase.Terminal });
+                        break;
+                    }
+
+                    case "controlled_trace":
+                    {
+                        var current = RequireControlled(request);
+                        var view = NatureBoundaryMetadataV111.Describe(current);
+                        Write(new { requestId, ok = true,
+                            schemaId = view.SchemaId, kind = view.Kind,
+                            fingerprint = view.Fingerprint,
+                            pending = view.Pending, transcript = view.Transcript,
+                            playerActionIds = current.PlayerActions,
+                            complete = view.Complete });
+                        break;
+                    }
+
+                    case "controlled_observe":
+                    {
+                        var current = RequireControlled(request);
+                        var policy = RequiredString(request, "policy_id");
+                        if (policy != FairPolicyId)
+                            throw new NotSupportedException(
+                                "Controlled combat uses the existing fair policy.");
+                        if (!current.AtPlayerBoundary)
+                            throw new InvalidOperationException(
+                                "Nature shuffle is pending; player observation unavailable.");
+                        var frame = environment.Observe(current.Run);
+                        Write(new { requestId, ok = true,
+                            policyId = policy, schemaId = frame.SchemaId,
+                            payloadJson = CanonicalJson.Serialize(frame.Observation),
+                            observationHash = frame.ObservationHash,
+                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
+                            terminal = current.Run.Phase == RunPhase.Terminal });
+                        break;
+                    }
+
+                    case "controlled_legal_actions":
+                    {
+                        var current = RequireControlled(request);
+                        if (!current.AtPlayerBoundary)
+                            throw new InvalidOperationException(
+                                "Nature shuffle is pending; player choices unavailable.");
+                        var frame = environment.Observe(current.Run);
+                        Write(new { requestId, ok = true,
+                            actions = frame.LegalActions.Select(ActionWire).ToArray() });
+                        break;
+                    }
+
+                    case "controlled_step":
+                    {
+                        var parentHandle = RequiredString(request, "controlled_handle");
+                        var current = RequireControlled(request);
+                        var next = ControlledPlayableCombatEngineV111.Step(
+                            current, RequiredString(request, "action_id"));
+                        var handle = StoreControlled(next);
+                        Write(new { requestId, ok = true,
+                            schemaId = ControlledChanceSchemaId,
+                            parent = parentHandle, controlledHandle = handle,
+                            fingerprint = next.Fingerprint,
+                            phase = next.Run.Phase.ToString(),
+                            terminal = next.Run.Phase == RunPhase.Terminal });
+                        break;
+                    }
+
+                    case "controlled_fork":
+                    {
+                        var parentHandle = RequiredString(request, "controlled_handle");
+                        var current = RequireControlled(request);
+                        var next = current.Fork();
+                        var handle = StoreControlled(next);
+                        Write(new { requestId, ok = true, parent = parentHandle,
+                            controlledHandle = handle, fingerprint = next.Fingerprint });
+                        break;
+                    }
+
+                    case "controlled_save":
+                    {
+                        var current = RequireControlled(request);
+                        Write(new { requestId, ok = true,
+                            schemaId = ControlledChanceSchemaId,
+                            snapshot = ControlledPlayableCombatEngineV111.Save(current) });
+                        break;
+                    }
+
+                    case "controlled_load":
+                    {
+                        var next = ControlledPlayableCombatEngineV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreControlled(next);
+                        Write(new { requestId, ok = true,
+                            schemaId = ControlledChanceSchemaId,
+                            controlledHandle = handle, fingerprint = next.Fingerprint,
+                            phase = next.Pending is null ? "player" : "opening_shuffle" });
+                        break;
+                    }
+
+                    case "controlled_release_many":
+                    {
+                        if (!request.TryGetProperty("controlled_handles", out var elements) ||
+                            elements.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException("controlled_handles must be an array.");
+                        var handles = elements.EnumerateArray().Select(element =>
+                            element.ValueKind == JsonValueKind.String
+                                ? element.GetString()
+                                : throw new ArgumentException("Invalid controlled handle")).ToArray();
+                        if (handles.Any(string.IsNullOrWhiteSpace))
+                            throw new ArgumentException("Empty controlled handle.");
+                        int released = 0;
+                        foreach (var handle in handles)
+                            if (controlledStates.Remove(handle!))
+                                released++;
+                        Write(new { requestId, ok = true, released });
                         break;
                     }
 
