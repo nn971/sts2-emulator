@@ -81,6 +81,8 @@ public static class PrototypeRng
             throw new ArgumentOutOfRangeException(nameof(maxExclusive));
         }
 
+        ControlledChanceGuardV111.RequireMigrated(
+            "prototype_rng." + streamId, "next_int");
         var value = NextUInt64(bundle, streamId);
         return (int)(value % (ulong)maxExclusive);
     }
