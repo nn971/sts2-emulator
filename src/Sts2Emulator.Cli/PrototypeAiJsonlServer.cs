@@ -129,6 +129,8 @@ internal static class PrototypeAiJsonlServer
                             publicEnemyIntentId = PublicEnemyIntentId,
                             natureBoundarySchemaId = NatureBoundarySchemaId,
                             natureBoundaryScope = "isolated-combat-entry-only",
+                            natureEventMetadataSchemaId = NatureBoundaryMetadataV111.SchemaId,
+                            naturePlayable = false,
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
                             snapshotSchemaId = RunSnapshot.SchemaId,
@@ -254,6 +256,29 @@ internal static class PrototypeAiJsonlServer
                         }
                         else throw new InvalidOperationException(
                             "Unknown Nature handle: " + handle);
+                        break;
+                    }
+
+                    case "nature_inspect":
+                    {
+                        // The chance controller may inspect support/ordered
+                        // outcomes and replay provenance, not the player's
+                        // hidden exact state. Ordinary fair observe remains
+                        // exclusive to playable state handles.
+                        var handle = RequiredString(request, "nature_handle");
+                        NatureBoundaryViewV111 view;
+                        if (natureHp.TryGetValue(handle, out var hp))
+                            view = NatureBoundaryMetadataV111.Describe(hp);
+                        else if (natureIntents.TryGetValue(handle, out var intents))
+                            view = NatureBoundaryMetadataV111.Describe(intents);
+                        else throw new InvalidOperationException(
+                            "Unknown Nature handle: " + handle);
+                        Write(new { requestId, ok = true,
+                            schemaId = NatureBoundaryMetadataV111.SchemaId,
+                            kind = view.Kind, mode = view.Mode,
+                            natureHandle = handle, fingerprint = view.Fingerprint,
+                            complete = view.Complete,
+                            pending = view.Pending, transcript = view.Transcript });
                         break;
                     }
 

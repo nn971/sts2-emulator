@@ -71,6 +71,17 @@ class NatureBoundary:
         result = self.session.call("nature_advance", nature_handle=self.handle)
         return NatureBoundary.from_wire(self.session, result)
 
+    def inspect(self):
+        """Return source-site chance support and deterministic replay metadata.
+
+        This is Nature-facing information, never a fair player observation
+        or a playable combat handle. Reference probabilities are unverified.
+        """
+        if self.session.capabilities.get("natureEventMetadataSchemaId") != (
+                "sts2-v111-nature-event-metadata-v1"):
+            raise EmulatorError("Emulator does not support Nature event metadata")
+        return self.session.call("nature_inspect", nature_handle=self.handle)
+
     def save_snapshot(self):
         """Return an opaque Nature snapshot; distinct from RunState snapshot."""
         return self.session.call("nature_save", nature_handle=self.handle)["snapshot"]
