@@ -32,10 +32,14 @@ def main():
         entry = session.begin_controlled_combat(intents, seed=SEED)
         assert entry.trace()["pending"]["siteId"] == (
             "controlled.fixture.opening_shuffle.swap_index")
-        denied = session.call("controlled_observe",
-                              controlled_handle=entry.handle,
-                              policy_id="prototype-fair-v0")
-        assert not denied["ok"]
+        try:
+            session.call("controlled_observe",
+                         controlled_handle=entry.handle,
+                         policy_id="prototype-fair-v0")
+        except EmulatorError as error:
+            assert "shuffle is pending" in str(error)
+        else:
+            raise AssertionError("Pending shuffle exposed a player observation")
         fork = entry.fork()
         saved = entry.save_snapshot()
         restored = session.load_controlled_snapshot(saved)
