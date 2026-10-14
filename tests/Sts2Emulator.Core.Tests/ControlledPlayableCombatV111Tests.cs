@@ -1,0 +1,145 @@
+using System.Text.Json;
+using Sts2Emulator.Core;
+
+namespace Sts2Emulator.Core.Tests;
+
+public sealed class ControlledPlayableCombatV111Tests
+{
+    private static ControlledIntentStateV111 Completed(string seed)
+    {
+        var pre = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
+            seed, 2, PrototypeNativeHiveNormals.MytesNormalId,
+            "MytesNormal", 21, mapColumn: 3, mapRow: 5);
+        var hp = ControlledInitialHpV111.Begin(
+            pre.Combat, pre.Formation, pre.NativeStreams);
+        while (!hp.Complete)
+            hp = ControlledInitialHpV111.Resolve(hp, hp.Fingerprint, 0);
+        var intents = ControlledIntentsV111.BeginAfterControlledHp(hp);
+        while (!intents.Complete)
+            intents = ControlledIntentsV111.Resolve(
+                intents, intents.Fingerprint, 0);
+        return intents;
+    }
+
+    private static ControlledPlayableCombatV111 CompleteShuffle(
+        ControlledPlayableCombatV111 pending)
+    {
+        while (!pending.AtPlayerBoundary)
+            pending = ControlledPlayableCombatEngineV111.Resolve(
+                pending, pending.Fingerprint, 0);
+        return pending;
+    }
+
+    [Fact]
+    public void ControlledHpIntentsFlowIntoActualPlayableCombatWithFairActions()
+    {
+        const string seed = "nature-143-playable";
+        var source = Completed(seed);
+        var first = ControlledPlayableCombatEngineV111.Begin(source, seed);
+        Assert.NotNull(first.Pending);
+        Assert.Equal(ControlledPlayableCombatEngineV111.ShuffleSite,
+            first.Pending!.SiteId);
+        Assert.Equal("run.shuffle", first.Pending.StreamId);
+        Assert.Equal("bounded_integer", first.Pending.OperationKind);
+        Assert.Null(first.Run.World!.Combat!.NativeRng);
+        Assert.Equal(source.Combat.Enemies.Select(x =>
+                (x.Hp, x.MaxHp, x.PlannedMoveIndex, x.PlannedNextAiStateId)),
+            first.Run.World.Combat.Enemies.Select(x =>
+                (x.Hp, x.MaxHp, x.PlannedMoveIndex, x.PlannedNextAiStateId)));
+        var before = first.Fingerprint;
+        Assert.Throws<InvalidOperationException>(() =>
+            ControlledPlayableCombatEngineV111.Resolve(first, "stale", 0));
+        Assert.Throws<ArgumentException>(() =>
+            ControlledPlayableCombatEngineV111.Resolve(
+                first, before, first.Pending.SupportCount));
+        Assert.Equal(before, first.Fingerprint);
+
+        var player = CompleteShuffle(first);
+        Assert.True(player.AtPlayerBoundary);
+        Assert.Equal(RunPhase.Combat, player.Run.Phase);
+        Assert.Equal(5, player.Run.World!.Combat!.Hand.Length);
+        Assert.Equal(player.Run.Player.Deck.Length,
+            player.Run.World.Combat.Cards.Length);
+        var environment = new PrototypeAiEnvironment();
+        var frame = environment.Observe(player.Run);
+        Assert.NotEmpty(frame.LegalActions);
+        Assert.Equal(PrototypeAiEnvironment.SchemaId, frame.SchemaId);
+        Assert.Equal(player.Run.Player.Hp, frame.Observation.Hp);
+        Assert.Equal(player.Run.World.Combat.Hand.Length,
+            frame.Observation.Combat!.Hand.Length);
+        var trace = NatureBoundaryMetadataV111.Describe(player);
+        Assert.Equal(source.PriorHpTranscript!.Length + source.Transcript.Length +
+            first.Run.World.Combat.DrawPile.Length - 1, trace.Transcript.Length);
+        Assert.Null(trace.Pending);
+    }
+
+    [Fact]
+    public void DeterministicPlayerActionsPreserveSourceIntentsAndRandomActionsFailClosed()
+    {
+        const string seed = "nature-143-action";
+        var entry = CompleteShuffle(
+            ControlledPlayableCombatEngineV111.Begin(Completed(seed), seed));
+        var frame = new PrototypeAiEnvironment().Observe(entry.Run);
+        var candidate = frame.LegalActions.FirstOrDefault(x =>
+            x.Kind == "play_card");
+        Assert.NotNull(candidate);
+        var before = entry.Fingerprint;
+        var next = ControlledPlayableCombatEngineV111.Step(
+            entry, candidate!.ActionId);
+        Assert.Equal(before, entry.Fingerprint);
+        Assert.Equal(entry.PlayerActions.Length + 1, next.PlayerActions.Length);
+        Assert.Equal(entry.Run.DecisionIndex + 1, next.Run.DecisionIndex);
+        Assert.NotEqual(before, next.Fingerprint);
+        var restored = ControlledPlayableCombatEngineV111.Restore(
+            ControlledPlayableCombatEngineV111.Save(next));
+        Assert.Equal(next.Fingerprint, restored.Fingerprint);
+
+        // The real end-turn pipeline requests a fresh enemy intent.
+        // With no migrated continuation for this site, a child cannot
+        // be published and the original player boundary remains intact.
+        var end = frame.LegalActions.Single(x => x.Kind == "end_turn");
+        var failure = Assert.Throws<NotSupportedException>(() =>
+            ControlledPlayableCombatEngineV111.Step(entry, end.ActionId));
+        Assert.Contains("UNSUPPORTED_CONTROLLED_CHANCE", failure.Message);
+        Assert.Contains("site=", failure.Message);
+        Assert.Equal(before, entry.Fingerprint);
+    }
+
+    [Fact]
+    public void SaveRestoreRejectsTamperingAndForksRemainIndependent()
+    {
+        const string seed = "nature-143-snapshot";
+        var start = ControlledPlayableCombatEngineV111.Begin(Completed(seed), seed);
+        var original = start.Fingerprint;
+        var altered = start.Fork();
+        altered.Run.World!.Combat!.DrawPile[0] = 123456789;
+        Assert.Throws<InvalidDataException>(() =>
+            ControlledPlayableCombatEngineV111.Restore(JsonSerializer.Serialize(altered)));
+        Assert.Equal(original, start.Fingerprint);
+        var a = ControlledPlayableCombatEngineV111.Resolve(
+            start, start.Fingerprint, 0);
+        var b = ControlledPlayableCombatEngineV111.Resolve(
+            start, start.Fingerprint, start.Pending!.SupportCount - 1);
+        Assert.NotEqual(a.Fingerprint, b.Fingerprint);
+        Assert.Equal(a.Fingerprint,
+            ControlledPlayableCombatEngineV111.Restore(
+                ControlledPlayableCombatEngineV111.Save(a)).Fingerprint);
+        Assert.Equal(original, start.Fingerprint);
+    }
+
+    [Fact]
+    public void FifteenIndependentControlledEntrypointsAreScheduleDeterministic()
+    {
+        static string Run(int i)
+        {
+            string seed = "nature-playable-worker-" + i;
+            var state = CompleteShuffle(
+                ControlledPlayableCombatEngineV111.Begin(Completed(seed), seed));
+            return state.Fingerprint;
+        }
+        var serial = Enumerable.Range(0, 15).Select(Run).ToArray();
+        var concurrent = new string[15];
+        Parallel.For(0, 15, i => concurrent[i] = Run(i));
+        Assert.Equal(serial, concurrent);
+    }
+}
