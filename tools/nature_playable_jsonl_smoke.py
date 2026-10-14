@@ -50,7 +50,8 @@ def main():
                 before["pending"]["eventId"])
         assert entry.trace()["kind"] == "player"
         player = entry.observe()
-        assert player["phase"] == "Combat"
+        # Fair observation uses canonical snake_case JSON and numeric RunPhase.
+        assert player["phase"] == 3  # RunPhase.Combat
         assert player["combat"] is not None
         assert player["combat"]["hand"]
         actions = entry.actions()
