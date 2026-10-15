@@ -37,7 +37,7 @@ public sealed class SemanticCombatDrawV111Tests
         Assert.Equal("UNVERIFIED", state.Pending.ProbabilityStatus);
         Assert.Equal(initial.CounterState.CardsDrawnThisCombat,
             state.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
-        Assert.Empty(state.Run.World.Combat.Hand);
+        Assert.Empty(state.Run.World!.Combat!.Hand);
         Assert.Equal(source.DecisionIndex, state.Run.DecisionIndex);
         var prior = state.Fingerprint;
         Assert.Throws<InvalidOperationException>(() =>
@@ -55,17 +55,17 @@ public sealed class SemanticCombatDrawV111Tests
                 state, state.Fingerprint, position);
             Assert.Equal(initial.CounterState.CardsDrawnThisCombat + i + 1,
                 state.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
-            Assert.Equal(i + 1, state.Run.World.Combat.Hand.Length);
-            Assert.Equal(selected, state.Run.World.Combat.Hand);
+            Assert.Equal(i + 1, state.Run.World!.Combat!.Hand.Length);
+            Assert.Equal(selected, state.Run.World!.Combat!.Hand);
             Assert.Equal(initial.DrawPile.Length - i - 1,
-                state.Run.World.Combat.DrawPile.Length);
+                state.Run.World!.Combat!.DrawPile.Length);
             Assert.Equal(i + 1, state.Transcript.Length);
         }
         Assert.True(state.AtBoundary);
         Assert.Null(state.Pending);
         Assert.Equal(source.DecisionIndex, state.Run.DecisionIndex);
-        Assert.Empty(source.World.Combat.Hand);
-        Assert.Equal(initial.DrawPile.Length, source.World.Combat.DrawPile.Length);
+        Assert.Empty(source.World!.Combat!.Hand);
+        Assert.Equal(initial.DrawPile.Length, source.World!.Combat!.DrawPile.Length);
         Assert.Equal(3, state.Transcript.Select(x =>
             x.SelectedCardInstanceId).Distinct().Count());
         Assert.All(state.Transcript, x =>
@@ -163,8 +163,8 @@ public sealed class SemanticCombatDrawV111Tests
                     first, first.Fingerprint, j);
                 Assert.True(second.AtBoundary);
                 Assert.Equal(2, second.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
-                Assert.Equal(2, second.Run.World.Combat.Hand.Length);
-                pairs.Add(string.Join(",", second.Run.World.Combat.Hand));
+                Assert.Equal(2, second.Run.World!.Combat!.Hand.Length);
+                pairs.Add(string.Join(",", second.Run.World!.Combat!.Hand));
             }
         }
         Assert.Equal(6, pairs.Count);
