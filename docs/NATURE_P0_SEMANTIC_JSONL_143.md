@@ -139,3 +139,50 @@ still an independent P0 task.
 **Do P0 before additional card-effect/Nature chance-site expansion.**
 Frozen all-Act Silent `main` and the old
 `sts2-v111-controlled-playable-fixture-v1` API remain unchanged.
+
+## 2026-10-16 incremental P0: independent engine-owned seeded opening
+
+The separate `semantic_begin_seeded` entry removes the **external**
+`nature_begin` / `nature_advance` / `controlled_begin` / legacy
+shuffle-ticket setup chain for the first restricted experiment. Inputs are
+`seed`, `act`, `encounter_id`, `native_entry`, `total_floor`,
+optional `ascension`, `first_monster_combat_id`, `map_column` and
+`map_row`. In Python:
+
+```python
+combat = session.begin_seeded_semantic_combat(
+    "pilot-seed", act=2,
+    encounter_id="proto.native.hive.encounter.exoskeletons_normal",
+    native_entry="ExoskeletonsNormal", total_floor=20,
+    map_column=3, map_row=5)
+```
+
+- The engine constructs the same isolated source-shaped Hive/Glory formation,
+  samples unique monster HP on `run.niche`, runs the true source-shaped
+  intent eligibility evaluator with `run.monster_ai` bounded tickets,
+  and resolves the existing Fisher–Yates opening on `run.shuffle`.
+  All setup tickets are **engine-owned**. No HP or shuffle options are exposed
+  to the external Nature model, and the already committed deck imports into
+  fixed private semantic positions with no second Nature shuffle.
+- `hello.semanticSeededOpeningProvider` and each semantic status's
+  `sourceOpeningProvider` explicitly say
+  `engine-owned-seeded-source-shaped-unverified-v1`. The old
+  `semantic_begin` and `precommitted-fixture-v1` still work.
+- Seeded entry parameters are persisted privately in the semantic snapshot.
+  `semantic_load` reconstructs **the opening from its original seed and
+  encounter parameters** before replaying every player/Nature transition.
+  Modifying entry parameters or past outcomes breaks exact-state replay.
+  Forks and worker processes own independent RNG copies.
+- The Python smoke test `tools/nature_semantic_seeded_jsonl_smoke.py`
+  verifies seeded handshake, fair observation, deterministic next-turn
+  continuation, snapshot round-trip, and transcript equivalence between
+  **one and fifteen independent external JSONL processes**.
+
+**Scope / outstanding P0:** This is a seed-reproducible *isolated fixture*,
+not yet an audited full game start or native combat entry; initial card draw
+and other entry hooks still follow the existing restricted opening and native
+source law has status `UNVERIFIED`. The P0 independent handshake requirement
+is partially addressed, while source-filtered *semantic* intent IDs/weights,
+a validated non-Nature native/default provider for all remaining RNG,
+and true terminal combat plus held-out native baseline remain open. CI smoke
+evidence must not be interpreted as decision-grade Nature training performance.

@@ -10,6 +10,16 @@ public sealed record SemanticPilotTransitionV111(
     string Kind, string? ActionId = null, int? SelectedIndex = null);
 
 /// <summary>
+/// Independently replayable source-shaped setup provenance. These explicit
+/// encounter parameters initialize the opening using engine-owned seeded
+/// streams. The fixture still omits full native combat-entry hooks.
+/// </summary>
+public sealed record SemanticSeededEntryV111(
+    string Seed, int Act, string EncounterId, string NativeEncounterEntry,
+    int TotalFloor, int Ascension, long FirstMonsterCombatId,
+    int? MapColumn, int? MapRow);
+
+/// <summary>
 /// First external playable semantic boundary. Initial opening order is
 /// already committed by the separate controlled fixture: this provider
 /// copies those exact hidden positions without issuing new Nature tickets.
@@ -23,6 +33,12 @@ public sealed record SemanticPilotCombatV111(
     string Mode = "sts2-v111-semantic-playable-p0-v1")
 {
     public const string SchemaId = "sts2-v111-semantic-playable-p0-v1";
+    /// <summary>
+    /// Null for legacy precommitted fixtures. Seeded entries are verified by
+    /// regenerating the entire source-shaped opening on snapshot restoration.
+    /// This field is provider-private and never part of fair observation.
+    /// </summary>
+    public SemanticSeededEntryV111? SeededEntry { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingEndTurn is null &&
@@ -82,6 +98,71 @@ public static class SemanticPilotCombatEngineV111
         var state = new SemanticPilotCombatV111(
             source.Fork(), run, null, [],
             source.Origin.Formation.NativeEncounterEntry);
+        Validate(state);
+        return state;
+    }
+
+    /// <summary>
+    /// Build a playable two-site session without asking an external worker to
+    /// choose HP, initial intent tickets or opening Fisher-Yates swaps.
+    /// Source-shaped eligibility and the pinned native RNG codec decide these
+    /// setup events on separately owned streams. The later player/Nature
+    /// protocol remains identical; opening order is imported as known and
+    /// will never be randomized again by a Nature draw ticket.
+    ///
+    /// This is an isolated seeded Hive/Glory fixture, not a claim that all
+    /// native route history, entry hooks or opening draw effects are audited.
+    /// </summary>
+    public static SemanticPilotCombatV111 BeginSeeded(
+        SemanticSeededEntryV111 entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entry.Seed);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entry.EncounterId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entry.NativeEncounterEntry);
+        if (entry.Act is not (2 or 3) || entry.TotalFloor < 0 ||
+            entry.FirstMonsterCombatId < 1)
+            throw new ArgumentOutOfRangeException(nameof(entry),
+                "Seeded Nature combat supports positive monster IDs and Hive/Glory.");
+        var prepared = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
+            entry.Seed, entry.Act, entry.EncounterId,
+            entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
+            entry.FirstMonsterCombatId, entry.MapColumn, entry.MapRow);
+        var rng = prepared.NativeStreams.Fork();
+        var hp = ControlledInitialHpV111.Begin(
+            prepared.Combat, prepared.Formation, prepared.NativeStreams);
+        while (!hp.Complete)
+        {
+            var pending = hp.Pending!;
+            var choice = NativeRngV111.NextInt(
+                rng, pending.StreamId, pending.SupportCount);
+            hp = ControlledInitialHpV111.Resolve(hp, hp.Fingerprint, choice);
+        }
+        var intents = ControlledIntentsV111.BeginAfterControlledHp(hp);
+        while (!intents.Complete)
+        {
+            var pending = intents.Pending!;
+            var choice = NativeRngV111.NextInt(
+                rng, pending.StreamId, pending.SupportCount);
+            intents = ControlledIntentsV111.Resolve(
+                intents, intents.Fingerprint, choice);
+        }
+        var opening = ControlledPlayableCombatEngineV111.Begin(
+            intents, entry.Seed);
+        while (!opening.AtPlayerBoundary)
+        {
+            var pending = opening.Pending ??
+                throw new InvalidDataException(
+                    "Engine-owned opening encountered an unsupported chance site.");
+            if (pending.SiteId != ControlledPlayableCombatEngineV111.ShuffleSite)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_OPENING site=" + pending.SiteId);
+            var choice = NativeRngV111.NextInt(
+                rng, pending.StreamId, pending.SupportCount);
+            opening = ControlledPlayableCombatEngineV111.Resolve(
+                opening, opening.Fingerprint, choice);
+        }
+        var state = Begin(opening) with { SeededEntry = entry };
         Validate(state);
         return state;
     }
@@ -222,6 +303,13 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Semantic playable and end-turn continuation diverged.");
         }
+        if (state.SeededEntry is { } entry &&
+            (entry.Seed != state.OpeningSource.Seed ||
+             entry.Act != state.OpeningSource.Origin.Combat.Act ||
+             entry.NativeEncounterEntry != state.NativeEncounterEntry ||
+             entry.TotalFloor != state.OpeningSource.Origin.Formation.TotalFloor))
+            throw new InvalidDataException(
+                "Seeded Nature entry provenance disagrees with its opening.");
         if (state.AtPlayerBoundary)
             SemanticPlayerActionEngineV111.ValidateBoundary(state.Run);
         if (state.CombatTerminal && state.PendingEndTurn is not null)
@@ -241,7 +329,9 @@ public static class SemanticPilotCombatEngineV111
         var saved = JsonSerializer.Deserialize<SemanticPilotCombatV111>(json)
             ?? throw new InvalidDataException("Null semantic playable snapshot.");
         Validate(saved);
-        var replay = Begin(saved.OpeningSource);
+        var replay = saved.SeededEntry is { } entry
+            ? BeginSeeded(entry)
+            : Begin(saved.OpeningSource);
         foreach (var transition in saved.History)
         {
             replay = transition.Kind switch
