@@ -13699,7 +13699,8 @@ public sealed partial class PrototypeGameEngine
         int RemainingCount = 0,
         bool ShuffleSelectionPending = false,
         bool ControlledRecyclePending = false,
-        bool ControlledDrawCostPending = false);
+        bool ControlledDrawCostPending = false,
+        bool ControlledSemanticDrawPending = false);
 
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
@@ -13709,7 +13710,8 @@ public sealed partial class PrototypeGameEngine
         bool fromHandDraw,
         int eventDepth = 0,
         bool controlledRecycleSuspension = false,
-        bool controlledDrawCostSuspension = false)
+        bool controlledDrawCostSuspension = false,
+        bool controlledSemanticDrawSuspension = false)
     {
         const int maxHandSize = 10;
         var drawnCardInstanceIds = new List<long>();
@@ -13744,6 +13746,10 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                if (combat.SemanticDeck is not null)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                        "operation=source_timed_shuffle_continuation");
                 if (ControlledChanceGuardV111.Active &&
                     !controlledRecycleSuspension)
                     throw new NotSupportedException(
@@ -13785,9 +13791,38 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
-            var index = draw.Count - 1;
-            var cardInstanceId = draw[index];
-            draw.RemoveAt(index);
+            long cardInstanceId;
+            if (combat.SemanticDeck is { } semantic)
+            {
+                if (!ControlledChanceGuardV111.Active ||
+                    !controlledSemanticDrawSuspension)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
+                        "operation=missing_semantic_continuation");
+                var members = SemanticDeckEngineV111.AllCardInstanceIds(semantic);
+                if (!members.Order().SequenceEqual(draw.Order()))
+                    throw new InvalidDataException(
+                        "Semantic draw-pile state diverged from physical instances.");
+                semantic = SemanticDeckEngineV111.Require(semantic, 0, "draw");
+                if (semantic.Pending is not null)
+                    return new PrototypeDrawCardsResult(
+                        player, combat with { SemanticDeck = semantic },
+                        drawnCardInstanceIds.ToArray(),
+                        RemainingCount: count - drawNumber,
+                        ControlledSemanticDrawPending: true);
+                (semantic, cardInstanceId) =
+                    SemanticDeckEngineV111.DrawKnown(semantic);
+                if (!draw.Remove(cardInstanceId))
+                    throw new InvalidDataException(
+                        "Revealed card instance is absent from the draw pile.");
+                combat = combat with { SemanticDeck = semantic };
+            }
+            else
+            {
+                var index = draw.Count - 1;
+                cardInstanceId = draw[index];
+                draw.RemoveAt(index);
+            }
 
             combat = combat with
             {
@@ -13812,6 +13847,10 @@ public sealed partial class PrototypeGameEngine
                 && cardDefinition.Cost.Amount >= 0;
             var hasSlither = card.Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Slither };
+            if (combat.SemanticDeck is not null && (needsRelicCost || hasSlither))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
+                    "operation=drawn_card_cost_continuation");
             if (ControlledChanceGuardV111.Active && (needsRelicCost || hasSlither))
             {
                 if (!controlledDrawCostSuspension)

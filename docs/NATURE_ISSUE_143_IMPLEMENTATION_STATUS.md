@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152 and #155 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154. Issue #143 stays OPEN for semantic deck gameplay/JSONL integration, weighted visible intents, remaining chance sites, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152 and #155 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -155,3 +155,26 @@ permutations and 15 workers. See
 The kernel is **not yet wired** into the normal `DrawCards`/opening-hand/
 automatic-pipeline mechanics or JSONL; integration and true native parity
 remain explicitly pending.
+
+
+## Real `DrawCards` semantic draw segment (PR #157)
+
+The separate semantic deck state now has a guarded actual-mechanics bridge
+through `PrototypeGameEngine.DrawCards`. Each *unknown* physical card is
+selected by Nature before it enters hand; the same original draw kernel
+executes its deterministic `CardDrawn` hooks and counters, then requests
+the next card. The physical pile and provider's constrained instances
+must match at every draw. A narrow `SemanticCombatDrawEngineV111`
+envelope stores the conditioned source combat, semantic transcript and
+remaining draw count; restore replays the source state and *all* selected
+card identities through actual mechanics before checking the entire
+snapshot. No legacy Nature opening-shuffle swap tickets are consumed.
+
+This is still a **draw-segment fixture**, not a full player-driven
+combat or JSONL semantic mode. Source-timed discard recycle/on-shuffle
+hooks, drawn Snecko/Slither costs and nested choice continuations
+explicitly fail closed, and opening/end-turn player-action integration
+remains. Focused tests cover one-card draw-hook timing, identity support,
+state tampering, saved mid-action replay, 2-from-3 complete enumeration,
+and deterministic 15-worker sessions. Details:
+[Nature real combat semantic draw](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
