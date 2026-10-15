@@ -1830,6 +1830,19 @@ public sealed record PrototypeControlledPoolShuffleV111(
     };
 }
 
+/// <summary>Nature-owned hand-cost operation with an ordered per-card cursor.
+/// Saved eligibility is checked against live hand instances.</summary>
+public sealed record PrototypeControlledRandomCostV111(
+    PrototypeQueuedOperation Operation, long[] EligibleCardInstanceIds,
+    int NextCardIndex = 0)
+{
+    public PrototypeControlledRandomCostV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        EligibleCardInstanceIds = (long[])EligibleCardInstanceIds.Clone()
+    };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -1851,7 +1864,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeControlledTargetChoiceV111? ControlledTarget = null,
     PrototypeControlledGeneratedCardV111? ControlledGeneration = null,
     PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null,
-    PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null)
+    PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null,
+    PrototypeControlledRandomCostV111? ControlledRandomCost = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1870,7 +1884,8 @@ public sealed record PendingCombatChoiceState(
         ControlledTarget = ControlledTarget?.Fork(),
         ControlledGeneration = ControlledGeneration?.Fork(),
         ControlledDrawInsertion = ControlledDrawInsertion?.Fork(),
-        ControlledPoolShuffle = ControlledPoolShuffle?.Fork()
+        ControlledPoolShuffle = ControlledPoolShuffle?.Fork(),
+        ControlledRandomCost = ControlledRandomCost?.Fork()
     };
 }
 
