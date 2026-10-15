@@ -27,13 +27,33 @@ public sealed record ControlledPlayableCombatV111(
     public RandomIndexDecisionV111[] RecycleTranscript { get; init; } = [];
     // Chronological live chance transcript, interleaving intents/recycles.
     public RandomIndexDecisionV111[] LiveTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] TargetTranscript { get; init; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
-        Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
+        TargetPending ?? Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool AtPlayerBoundary =>
-        ActivePending is null && TurnIntents is null && Recycle is null;
+    public RandomIndexRequestV111? TargetPending
+    {
+        get
+        {
+            var context = Run.World?.Combat?.PendingChoice?.ControlledTarget;
+            if (context is null) return null;
+            return new RandomIndexRequestV111(
+                context.Kind == "sly_auto_play"
+                    ? "combat.sly_autoplay.random_enemy"
+                    : "combat.effect.random_enemy",
+                "run.combat_targets",
+                context.SlyCardInstanceId is { } cardId
+                    ? "card:" + cardId : "effect_operation",
+                TargetTranscript.Length,
+                context.EligibleEnemyInstanceIds,
+                OperationKind: "choose_index");
+        }
+    }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool AtPlayerBoundary => ActivePending is null &&
+        TurnIntents is null && Recycle is null;
     [System.Text.Json.Serialization.JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
     public ControlledPlayableCombatV111 Fork() => this with
@@ -53,6 +73,7 @@ public sealed record ControlledPlayableCombatV111(
         TurnTranscript = DeepCopy(TurnTranscript),
         RecycleTranscript = DeepCopy(RecycleTranscript),
         LiveTranscript = DeepCopy(LiveTranscript),
+        TargetTranscript = DeepCopy(TargetTranscript),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
@@ -150,6 +171,8 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException(
                 "Stale controlled chance fingerprint.");
         VerifyStage(state);
+        if (state.TargetPending is not null)
+            return ResolveTarget(state, selectedIndex);
         if (state.Recycle is not null)
             return ResolveRecycle(state, selectedIndex);
         if (state.TurnIntents is not null)
@@ -201,6 +224,26 @@ public static class ControlledPlayableCombatEngineV111
         {
             Run = result,
             PlayerActions = state.PlayerActions.Append(actionId).ToArray()
+        };
+        return StartPendingTurn(next);
+    }
+
+    private static ControlledPlayableCombatV111 ResolveTarget(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var request = state.TargetPending ??
+            throw new InvalidOperationException("No controlled target ticket.");
+        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
+            .Resolve(request, state.Origin.ReferenceStreams);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledRandomTarget(
+                state.Run.Fork(), selectedIndex);
+        var next = state.Fork() with
+        {
+            Run = result,
+            TargetTranscript = state.TargetTranscript.Append(choice).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
         };
         return StartPendingTurn(next);
     }
@@ -373,13 +416,16 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidDataException(
                 "Unconsumed or out-of-order live Nature transcript.");
         if (!current.TurnTranscript.SequenceEqual(stored.TurnTranscript) ||
-            !current.RecycleTranscript.SequenceEqual(stored.RecycleTranscript))
+            !current.RecycleTranscript.SequenceEqual(stored.RecycleTranscript) ||
+            !current.TargetTranscript.SequenceEqual(stored.TargetTranscript))
         {
             // Records hold arrays; canonical comparison below is decisive.
             if (CanonicalJson.Sha256(current.TurnTranscript) !=
                     CanonicalJson.Sha256(stored.TurnTranscript) ||
                 CanonicalJson.Sha256(current.RecycleTranscript) !=
-                    CanonicalJson.Sha256(stored.RecycleTranscript))
+                    CanonicalJson.Sha256(stored.RecycleTranscript) ||
+                CanonicalJson.Sha256(current.TargetTranscript) !=
+                    CanonicalJson.Sha256(stored.TargetTranscript))
                 throw new InvalidDataException("Chance transcripts diverged.");
         }
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
@@ -395,11 +441,32 @@ public static class ControlledPlayableCombatEngineV111
             state.Run.World?.Combat is null && state.Pending is not null ||
             state.ShuffleTranscript is null || state.PlayerActions is null ||
             state.TurnTranscript is null || state.RecycleTranscript is null ||
-            state.LiveTranscript is null || state.Origin is null ||
+            state.LiveTranscript is null || state.TargetTranscript is null ||
+            state.Origin is null ||
             (state.TurnIntents is not null && state.Pending is not null) ||
             (state.Recycle is not null &&
                 (state.Pending is not null || state.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
+        var controlledTarget = state.Run.World?.Combat?.PendingChoice?.ControlledTarget;
+        if (controlledTarget is not null)
+        {
+            var combat = state.Run.World?.Combat ??
+                throw new InvalidDataException("Target choice lacks combat state.");
+            var eligible = combat.Enemies
+                .Where(enemy => enemy.Hp > 0 &&
+                    (controlledTarget.Kind != "sly_auto_play" || !enemy.Escaped))
+                .Select(enemy => enemy.InstanceId).ToArray();
+            if (state.Recycle is not null || state.TurnIntents is not null ||
+                state.Pending is not null ||
+                controlledTarget.Kind is not ("effect_random_enemy" or "sly_auto_play") ||
+                eligible.Length == 0 ||
+                !eligible.SequenceEqual(controlledTarget.EligibleEnemyInstanceIds) ||
+                (controlledTarget.Kind == "sly_auto_play" &&
+                    (controlledTarget.SlyCardInstanceId is not { } cardId ||
+                     !combat.DiscardPile.Contains(cardId))))
+                throw new InvalidDataException(
+                    "Malformed or stale controlled target-choice support.");
+        }
         var expected = MakePending(state.NextShuffleIndex, state.ShuffleTranscript.Length);
         if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(state.Pending))
             throw new InvalidDataException("Controlled shuffle stage is stale.");

@@ -4834,6 +4834,31 @@ public sealed partial class PrototypeGameEngine
                     continue;
                 }
 
+                if (ControlledChanceGuardV111.Active)
+                {
+                    var suspended = new PrototypeChoiceResolutionContinuationState(
+                        SourceCardInstanceId: sourceCardInstanceId,
+                        SourceCardDestination: sourceCardDestination,
+                        Operations: (new[]
+                        {
+                            operation with
+                            {
+                                TargetEnemyId = null,
+                                TargetMode = PrototypeEffectTarget.ActionTargetEnemy
+                            }
+                        }).Concat(operations).ToArray(),
+                        PendingDiscardEvents: [],
+                        PendingSlyCardInstanceIds: [],
+                        CompletionEvents: completionEvents ?? [],
+                        CardPlaySeries: cardPlaySeries,
+                        MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                        RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                        SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                        EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                    return (player, MakeControlledRandomTargetChoice(
+                        combat, "effect_random_enemy", liveEnemies,
+                        suspended));
+                }
                 targetEnemyId = liveEnemies[
                     PrototypeRng.NextInt(
                         rng,
@@ -11851,6 +11876,31 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (ControlledChanceGuardV111.Active)
+            {
+                var slyDefinition = PrototypeContent.Card(
+                    RequireCombatCard(combat, slyCardId).CardId);
+                if (slyDefinition.Target == PrototypeCardTarget.Enemy)
+                {
+                    var eligible = combat.Enemies
+                        .Where(enemy => enemy.Hp > 0 && !enemy.Escaped)
+                        .Select(enemy => enemy.InstanceId).ToArray();
+                    if (eligible.Length > 0)
+                    {
+                        var remaining = continuation with
+                        {
+                            PendingDiscardEvents = [],
+                            PendingSlyCardInstanceIds = continuation
+                                .PendingSlyCardInstanceIds.Skip(slyIndex + 1)
+                                .ToArray()
+                        };
+                        return (player, MakeControlledRandomTargetChoice(
+                            combat, "sly_auto_play", eligible,
+                            remaining, slyCardId));
+                    }
+                }
+            }
+
             var autoPlayed = AutoPlaySlyCard(
                 player,
                 combat,
@@ -12020,11 +12070,137 @@ public sealed partial class PrototypeGameEngine
                     parent)
             };
 
+    private static CombatState MakeControlledRandomTargetChoice(
+        CombatState combat, string kind, int[] eligible,
+        PrototypeChoiceResolutionContinuationState continuation,
+        long? slyCardInstanceId = null)
+    {
+        if (!ControlledChanceGuardV111.Active ||
+            eligible.Length == 0 || eligible.Distinct().Count() != eligible.Length ||
+            combat.PendingChoice is not null)
+            throw new InvalidOperationException(
+                "Controlled random target suspension requires a unique live support.");
+        return combat with
+        {
+            PendingChoice = new PendingCombatChoiceState(
+                ChoiceId: "controlled_random_target",
+                SourceCardInstanceId: continuation.SourceCardInstanceId,
+                SourceCardDestination: continuation.SourceCardDestination,
+                Selection: new PrototypeCardSelectionSpec(
+                    PrototypeCardZone.Hand, 0, 0,
+                    PrototypeCardSelectionResolutionKind.MoveToDiscard),
+                CandidateCardInstanceIds: [],
+                Continuation: [],
+                CompletionEvents: [],
+                OuterChoiceContinuation: continuation.Fork(),
+                ControlledTarget: new PrototypeControlledTargetChoiceV111(
+                    kind, (int[])eligible.Clone(), slyCardInstanceId))
+        };
+    }
+
+    /// <summary>
+    /// Resume from an effect/Sly target choice within the live combat engine.
+    /// The already-applied card/discard/event effects are preserved. The
+    /// selected target is injected into the saved first operation or Sly
+    /// autoplay; then the original queued continuation is resumed.
+    /// </summary>
+    internal static RunState ResumeControlledRandomTarget(
+        RunState state, int selectedIndex)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled targeting requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException("No combat for target choice.");
+        var pending = combat.PendingChoice ??
+            throw new InvalidOperationException("Missing target choice.");
+        if (pending.ChoiceId != "controlled_random_target" ||
+            pending.ControlledTarget is not { } target ||
+            pending.OuterChoiceContinuation is not { } continuation)
+            throw new InvalidOperationException(
+                "The pending combat choice belongs to the player.");
+        var eligible = target.EligibleEnemyInstanceIds;
+        if (selectedIndex < 0 || selectedIndex >= eligible.Length)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+        var currentEligible = combat.Enemies
+            .Where(e => e.Hp > 0 && (target.Kind != "sly_auto_play" || !e.Escaped))
+            .Select(e => e.InstanceId).ToArray();
+        if (!currentEligible.SequenceEqual(eligible))
+            throw new InvalidDataException(
+                "Saved target support disagrees with current live enemies.");
+
+        combat = combat with { PendingChoice = null };
+        (PlayerState Player, CombatState Combat) resolved;
+        if (target.Kind == "effect_random_enemy")
+        {
+            if (continuation.Operations.Length == 0)
+                throw new InvalidDataException("Missing suspended target operation.");
+            var fixedOperation = continuation.Operations[0] with
+            {
+                TargetEnemyId = eligible[selectedIndex],
+                TargetMode = PrototypeEffectTarget.ActionTargetEnemy
+            };
+            resolved = ResumeChoiceResolutionContinuation(
+                state.Player, combat, state.Rng, continuation with
+                {
+                    Operations = (new[] { fixedOperation })
+                        .Concat(continuation.Operations.Skip(1)).ToArray()
+                });
+        }
+        else if (target.Kind == "sly_auto_play")
+        {
+            if (target.SlyCardInstanceId is not { } cardId)
+                throw new InvalidDataException("Sly choice lost its source card.");
+            resolved = AutoPlaySlyCard(
+                state.Player, combat, cardId, state.Rng, selectedIndex);
+            if (resolved.Combat.PendingChoice is not null)
+                resolved = (resolved.Player, AttachOuterChoiceContinuation(
+                    resolved.Combat, continuation));
+            else
+                resolved = ResumeChoiceResolutionContinuation(
+                    resolved.Player, resolved.Combat, state.Rng, continuation);
+        }
+        else
+            throw new InvalidDataException("Unknown controlled target kind.");
+
+        var result = state with
+        {
+            Player = resolved.Player,
+            World = world with { Combat = resolved.Combat }
+        };
+        if (resolved.Combat.PendingChoice is null &&
+            resolved.Combat.AutomaticPipelineContinuation is { } automatic)
+        {
+            result = result with
+            {
+                World = result.World! with
+                {
+                    Combat = resolved.Combat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }
+                }
+            };
+            result = automatic.OpeningStage is { } openingStage
+                ? ResumeOpeningCombat(result, openingStage)
+                : ResumeAutomaticPipeline(result,
+                    automatic.NextStepIndex,
+                    automatic.PendingPostDispatchEventKind);
+        }
+        if (result.Phase == RunPhase.Combat &&
+            result.World?.Combat is { } live &&
+            AllEnemiesDefeated(live))
+            return EnterCombatReward(result);
+        return result;
+    }
+
     private static (PlayerState Player, CombatState Combat) AutoPlaySlyCard(
         PlayerState player,
         CombatState combat,
         long cardInstanceId,
-        RngBundle rng)
+        RngBundle rng,
+        int? controlledSelectedIndex = null)
     {
         if (!combat.DiscardPile.Contains(cardInstanceId))
         {
@@ -12062,8 +12238,16 @@ public sealed partial class PrototypeGameEngine
                 // intercepted earlier by the end-of-combat guard.
                 return (player, combat);
             }
-            var selectedIndex = PrototypeRng.NextInt(
-                rng, "combat", eligible.Length);
+            if (ControlledChanceGuardV111.Active &&
+                controlledSelectedIndex is null)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_CONTROLLED_CHANCE site=combat.sly_autoplay.target " +
+                    "operation=choose_index requires a saved target continuation.");
+            var selectedIndex = controlledSelectedIndex ??
+                PrototypeRng.NextInt(rng, "combat", eligible.Length);
+            if (selectedIndex < 0 || selectedIndex >= eligible.Length)
+                throw new InvalidOperationException(
+                    "Selected Sly enemy index is outside current support.");
             autoPlayTarget = eligible[selectedIndex].InstanceId;
             combat = combat with
             {
