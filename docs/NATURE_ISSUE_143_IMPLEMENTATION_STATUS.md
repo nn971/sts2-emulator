@@ -308,3 +308,30 @@ Further work: other cards/potions, source-authentic deck mutations,
 opening-hand and card-effect draws, nested chance hooks, public JSONL
 schema, weighted intents and terminal training rollouts. Source/native
 probability law remains UNVERIFIED.
+
+
+## Source-shaped card-selection deck mutations (PR #164)
+
+The original `PrototypeGameEngine.ApplyCardSelection` now updates
+`CombatState.SemanticDeck` when a player selects known card instances
+from hand/discard/exhaust to **`MoveToDrawTop`**, preserving source
+ordering (the last physical append is the first card drawn). The
+existing unresolved pool and earlier revealed position constraints
+remain unchanged; subsequent `DrawCards` consumes the fixed top card
+without requiring a Nature identity ticket. Explicit
+`MoveToHand`/`MoveToDiscard`/`MoveToExhaust` selections from
+a draw pile also update the provider for **previously revealed
+position-known** instances. Hidden-position removals fail before
+publishing a new action result.
+
+`SemanticCardSelectionEngineV111` replays a legal real
+`select_cards` action from a source-shaped *already-pending*
+choice checkpoint. Tests cover forced multi-card top order,
+next-turn card-draw hook/candidate behavior, peek-revealed
+removals, forged hidden pool rejection, complete source replay
+and independent 15-worker outcomes. Focused CI covers this
+versioned choice-resolution slice; see
+[Nature semantic card selection](NATURE_SEMANTIC_CARD_SELECTION_143.md).
+The parent player action that **creates** this nested choice, generic
+scry/random-position selection, random insertions and card-effect
+draws remain separate integration milestones.
