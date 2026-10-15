@@ -165,7 +165,6 @@ public static class SemanticDeckEngineV111
         });
     }
 
-    [JsonIgnore]
     public static SemanticDeckEventV111? Inspect(SemanticDeckStateV111 state)
     {
         Validate(state);
