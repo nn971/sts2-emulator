@@ -57,7 +57,7 @@ public sealed class SemanticPilotCombatV111Tests
             Opening("semantic-p0-real-action-to-action"));
         var before = state.Fingerprint;
         var actions = new PrototypeAiEnvironment().Observe(state.Run).LegalActions;
-        var endTurn = Assert.Single(actions.Where(a => a.Kind == "end_turn"));
+        var endTurn = Assert.Single(actions, a => a.Kind == "end_turn");
         state = SemanticPilotCombatEngineV111.Step(
             state, state.Fingerprint, endTurn.ActionId);
         Assert.NotEqual(before, state.Fingerprint);
@@ -136,7 +136,7 @@ public sealed class SemanticPilotCombatV111Tests
             var state = SemanticPilotCombatEngineV111.Begin(
                 Opening("semantic-p0-worker-" + worker));
             var action = Assert.Single(new PrototypeAiEnvironment()
-                .Observe(state.Run).LegalActions.Where(a => a.Kind == "end_turn"));
+                .Observe(state.Run).LegalActions, a => a.Kind == "end_turn");
             state = SemanticPilotCombatEngineV111.Step(
                 state, state.Fingerprint, action.ActionId);
             var steps = 0;
