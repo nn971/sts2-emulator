@@ -147,7 +147,8 @@ public sealed class SemanticAutomaticHandDrawV111Tests
                 state = SemanticCombatDrawEngineV111.Resolve(
                     state, state.Fingerprint, 0);
         }
-        Assert.Equal(PrototypeContent.Rules.HandSize,
+        // Snecko Eye also increases the number of cards drawn per hand.
+        Assert.Equal(state.RequestedCount,
             state.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
         Assert.Equal(PrototypeGameEngine.SemanticHandDrawStepIndex + 1,
             state.Run.World.Combat.AutomaticPipelineContinuation!.NextStepIndex);
