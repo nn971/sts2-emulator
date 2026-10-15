@@ -84,6 +84,24 @@ public static class SemanticEndTurnEngineV111
     public static SemanticEndTurnV111 BeginFromPlayerAction(
         RunState playerBoundary, string nativeEncounterEntry)
     {
+        var (continuation, _) = BeginFromPlayerActionOrTerminal(
+            playerBoundary, nativeEncounterEntry);
+        return continuation ?? throw new InvalidOperationException(
+            "The supported end-turn reached a terminal combat outcome; " +
+            "consume the terminal result using BeginFromPlayerActionOrTerminal.");
+    }
+
+    /// <summary>
+    /// Execute exactly one real legal player end_turn. Enemy actions and
+    /// automatic hooks can already defeat the player or kill the final enemy
+    /// before the next-turn AdvanceTurn RNG boundary. Preserve those genuine
+    /// combat terminal transitions without forcing a nonexistent intent
+    /// or hand-draw continuation.
+    /// </summary>
+    public static (SemanticEndTurnV111? Continuation, RunState Result)
+        BeginFromPlayerActionOrTerminal(
+        RunState playerBoundary, string nativeEncounterEntry)
+    {
         ArgumentNullException.ThrowIfNull(playerBoundary);
         if (playerBoundary.Phase != RunPhase.Combat ||
             playerBoundary.World?.Combat is not { IsPlayerTurn: true,
@@ -102,12 +120,15 @@ public static class SemanticEndTurnEngineV111
         using (ControlledChanceGuardV111.Enter())
             advanced = environment.Step(
                 playerBoundary.Fork(), actions[0].ActionId).State;
+        if (advanced.Phase is RunPhase.Terminal or RunPhase.Reward)
+            return (null, advanced);
         var state = BeginAtAdvanceTurn(advanced, nativeEncounterEntry);
-        return state with
+        var continuation = state with
         {
             PlayerActionSource = playerBoundary.Fork(),
             PlayerActionId = actions[0].ActionId
         };
+        return (continuation, continuation.Run);
     }
 
     public static SemanticEndTurnV111 Resolve(
