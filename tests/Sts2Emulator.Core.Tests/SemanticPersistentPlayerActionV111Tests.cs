@@ -62,7 +62,8 @@ public sealed class SemanticPersistentPlayerActionV111Tests
         var combat = run.World!.Combat!;
         var cards = combat.Cards
             .Where(c => combat.Hand.Contains(c.InstanceId) &&
-                (c.CardId == "DEFEND_SILENT" || c.CardId == "STRIKE_SILENT"))
+                (c.CardId == "proto.silent.defend" ||
+                 c.CardId == "proto.silent.strike"))
             .Select(c => c.InstanceId).ToHashSet();
         var actions = new PrototypeAiEnvironment().Observe(run).LegalActions;
         var action = actions.FirstOrDefault(a =>
@@ -164,8 +165,11 @@ public sealed class SemanticPersistentPlayerActionV111Tests
         var run = first.Run.Fork();
         var world = run.World!;
         var combat = world.Combat!;
-        Assert.NotEmpty(combat.DiscardPile);
-        long known = combat.DiscardPile[0];
+        Assert.True(combat.Hand.Length >= 2);
+        // Condition a source-consistent fixed-top placement by moving one
+        // existing physical hand card into the draw pile. The separate
+        // action must still have a playable basic card in hand.
+        long known = combat.Hand[^1];
         var deck = SemanticDeckEngineV111.PlaceTop(
             combat.SemanticDeck!, known);
         run = run with
@@ -176,7 +180,7 @@ public sealed class SemanticPersistentPlayerActionV111Tests
                 {
                     SemanticDeck = deck,
                     DrawPile = combat.DrawPile.Append(known).ToArray(),
-                    DiscardPile = combat.DiscardPile.Skip(1).ToArray()
+                    Hand = combat.Hand.SkipLast(1).ToArray()
                 }
             }
         };
