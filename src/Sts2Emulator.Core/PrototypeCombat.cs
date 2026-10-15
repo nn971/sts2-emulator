@@ -4874,6 +4874,38 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            // The first truly random generated card in this operation is
+            // an in-flight Nature boundary. Earlier queue operations and
+            // combat hooks are already reflected in `combat`; only the
+            // remaining operations are saved for later continuation.
+            if (ControlledChanceGuardV111.Active &&
+                operation.Amount > 0 &&
+                ControlledGeneratedCardPool(operation) is { } generationPool)
+            {
+                if (generationPool.Length == 0)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_CONTROLLED_CHANCE site=combat.generated_card " +
+                        "operation=choose_index empty_eligible_pool");
+                var tail = (operation.Amount > 1
+                        ? new[] { operation with { Amount = operation.Amount - 1 } }
+                        : Array.Empty<PrototypeQueuedOperation>())
+                    .Concat(operations).ToArray();
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: tail,
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                return (player, MakeControlledGeneratedCardChoice(
+                    combat, operation, generationPool, continuation));
+            }
+
             NativeEngineEventJournalV111.Record(
                 "effect_operation", operation.Kind.ToString(),
                 sourceCardInstanceId: sourceCardInstanceId,

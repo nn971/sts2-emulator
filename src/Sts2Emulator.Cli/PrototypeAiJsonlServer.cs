@@ -160,13 +160,14 @@ internal static class PrototypeAiJsonlServer
                                 ControlledTurnIntentEngineV111.SiteId,
                                 ControlledRecycleShuffleEngineV111.SiteId,
                                 "combat.effect.random_enemy",
-                                "combat.sly_autoplay.random_enemy"
+                                "combat.sly_autoplay.random_enemy",
+                                "combat.generated_card.select"
                             },
                             controlledChanceLimitations =
-                                "Opt-in HP/intents, opening shuffle, next-turn intents, " +
-                                "hand-draw recycle, random-enemy card effects and targeted " +
-                                "Sly autoplay; other chance sites fail closed; native " +
-                                "entry and conditional laws unverified.",
+                                "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
+                                "random-enemy and Sly targeting, and five source-shaped " +
+                                "generated-card effects; all other chance sites fail closed. " +
+                                "Native entry and conditional laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
                             snapshotSchemaId = RunSnapshot.SchemaId,
