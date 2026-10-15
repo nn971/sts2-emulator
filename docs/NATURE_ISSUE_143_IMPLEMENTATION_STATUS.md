@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#147 merged; PR #148 adds real random-effect and targeted Sly auto-play suspension. Issue #143 remains open for remaining combat chance sites and complete terminal-rollout coverage.
+**Status:** PRs #144–#148 merged into the isolated integration branch; PR #149 adds live random generated-card choices. Issue #143 remains open for full chance-site coverage, source-native parity and controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -26,12 +26,12 @@ The response includes `schemaId`, `kind`, `mode`, `natureHandle`, `fingerprint`,
 | Gate | Status | Work |
 | --- | --- | --- |
 | G0: playable controlled RunState + fair observation | **PARTIAL (#145)** | A real `RunState` with starter player/deck and unchanged controlled enemy HP/intent can play deterministic actions after Nature resolves shuffle; the fixture bypasses native combat-start hooks and is not equivalent to arbitrary full-run state. |
-| G1: mechanically resumed action→chance→action | **PARTIAL (#145/#146)** | Besides opening shuffle, the real end-turn pipeline suspends immediately before `AdvanceTurn` intent commitments, persists preceding enemy effects, resolves repeated Nature tickets, and continues after the saved index. Other in-action/nested chance sites remain blocked. |
-| G2: live chance-site coverage | **PARTIAL (#145/#146)** | Opening shuffle and end-turn next-intent decisions have typed control. Legacy RNG calls within other effects fail with `UNSUPPORTED_CONTROLLED_CHANCE site=... operation=...` before the transaction publishes a child. Formation, draw/reshuffle, targeting, summons and nested hooks remain unmigrated. |
+| G1: mechanically resumed action→chance→action | **PARTIAL (#145–#149)** | Mechanically resumed opening shuffle, next-turn intents, hand-draw recycle, random enemy/Sly targeting and five random generated-card operations; other nested sites remain. |
+| G2: live chance-site coverage | **PARTIAL (#145–#149)** | Supported source-shaped sites now include per-card generated-card selection for Chaos-like, zero-cost, and random Attack/Skill/Power effects. Distinct/full pool shuffles, draw insertions, randomized costs, summons and nested random hooks remain unimplemented. |
 | G3: extended chance operations | **PARTIAL** | `choose_index` and compact `bounded_integer` exist. Other source-shaped operation types need requests and execution integration. |
-| G4: stable event IDs and transcript | **PARTIAL (#144/#146)** | Typed events now interleave controlled initial HP, intents, shuffle, and the first mid-action next-turn intent decisions, with ordered replay, source site and support identity. Other live RNG events remain unmigrated. |
-| G5: fair player boundary | **PARTIAL (#145)** | `controlled_observe` exposes only the standard `prototype-fair-v0` observation, after all opening chance requests resolve; Nature metadata remains separately accessible to the chance controller. |
-| G6: 15-worker isolation | **PARTIAL (#144/#145/#146)** | Deterministic 15-worker tests now cover next-turn intent suspension as well as opening fixture; full controlled terminal rollout and throughput remain incomplete. |
+| G4: stable event IDs and transcript | **PARTIAL (#144–#149)** | Stable ordered events carry initial HP/intents, opening shuffle, turns, recycle, targets, and card generation. Generation events expose the ordered source card model pool to Nature. |
+| G5: fair player boundary | **PARTIAL (#145–#149)** | The normal fair player observation is accessible only at player boundaries; generated-card support is Nature-facing metadata. |
+| G6: 15-worker isolation | **PARTIAL (#144–#149)** | Deterministic 15-worker tests now cover generated-card choices as well as earlier sites. Full combat-through-terminal performance tests remain. |
 | G7: conditional native chance law | **DEFERRED** | Explicitly `UNVERIFIED`; source law and importance-sampling weights require separate calibration. |
 
 ## Engineering sequencing
@@ -72,3 +72,10 @@ The controlled end-turn pipeline now saves the already-executed pre-draw hooks a
 The real `ResolveOperations` kernel suspends at `combat.effect.random_enemy`, preserving prior operations and nested choice/card continuations. The ordered source-shaped `choose_index` request exposes currently eligible enemy instance IDs. A Nature resolution supplies the selected enemy to the saved operation, then continues the original effect chain. Discard-induced targeted Sly auto-play suspends analogously at `combat.sly_autoplay.random_enemy` and persists the selected index/target to the standard `AutoPlayTargetRolls` combat history. Target support is validated against the live enemy formation, and fair player observations are withheld until the pending chance resolves.
 
 This extension preserves the chronological `LiveTranscript` and exact replay across player actions, target decisions, intent and shuffle decisions. Focused Ricochet and Storm of Steel/Sly tests use explicit combat-fixture card substitutions; initial native run/deck acquisition is not claimed. See [the target-choice design and coverage](NATURE_RANDOM_TARGET_143.md). Other dynamic chance and nested operations still need migration. All original conditional laws remain `UNVERIFIED`.
+
+
+## PR #149: live random generated-card effects
+
+The actual `ResolveOperations` queue now creates Nature chance boundaries for five source-shaped single-card generation effects: free random character cards, zero-cost cards, random Attack, random Skill, and random Power. The selected card is created exactly once, then the original queued effects and card/event/choice continuation resume; multi-card generation creates successive chance events. The `choose_index` request uses the original ordered source eligibility pool. Nature also receives a detached `pending.candidateCardIds` array, while the player's ordinary fair observation remains separate. Pool identity is included in the event owner fingerprint.
+
+Tests exercise all three consecutive Orobic Acid generation effects in actual combat using an explicitly injected fixture potion, plus malformed support rejection, independent branches and 15-worker deterministic choices. The test fixture is not a claim of native initial potion acquisition, and unchanged starter-state snapshot replay remains the authoritative provenance contract. Original source laws remain `UNVERIFIED`. See [the generation-specific implementation note](NATURE_GENERATED_CARD_143.md).
