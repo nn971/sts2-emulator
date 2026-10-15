@@ -115,7 +115,7 @@ public sealed class ControlledDrawCostV111Tests
         Assert.Equal("slither",
             next.Run.World!.Combat!.PendingChoice!.ControlledDrawCost!.Stage);
         Assert.Equal(cardId,
-            next.Run.World.Combat.PendingChoice.ControlledDrawCost.CardInstanceId);
+            next.Run.World!.Combat!.PendingChoice!.ControlledDrawCost!.CardInstanceId);
         Assert.Equal("combat.card_draw.slither_energy_cost",
             NatureBoundaryMetadataV111.Describe(next).Pending!.SiteId);
         Assert.Equal(1, next.Run.World.Combat.Cards.Single(c =>
