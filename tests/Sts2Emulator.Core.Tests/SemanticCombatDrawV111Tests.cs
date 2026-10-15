@@ -310,6 +310,49 @@ public sealed class SemanticCombatDrawV111Tests
     }
 
     [Fact]
+    public void FifteenWorkersHaveScheduleIndependentRealRecycleEpochs()
+    {
+        static string Rollout(int worker)
+        {
+            var source = SourceCombat("semantic-real-recycle-15-" + worker);
+            var combat = source.World!.Combat!;
+            var ids = combat.DrawPile;
+            source = source with
+            {
+                World = source.World with
+                {
+                    Combat = combat with
+                    {
+                        DrawPile = ids.Take(2).ToArray(),
+                        DiscardPile = ids.Skip(2).ToArray()
+                    }
+                }
+            };
+            var state = SemanticCombatDrawEngineV111.Begin(source, 5);
+            var events = new List<string>();
+            while (!state.AtBoundary)
+            {
+                var pending = state.Pending!;
+                events.Add(pending.EventId);
+                state = SemanticCombatDrawEngineV111.Resolve(
+                    state, state.Fingerprint,
+                    worker % pending.CandidateCardInstanceIds.Length);
+            }
+            Assert.Equal(5, events.Count);
+            Assert.Equal(1, state.Run.World!.Combat!.SemanticDeck!.ShuffleEpoch);
+            Assert.Equal(5, state.Run.World.Combat.CounterState.CardsDrawnThisCombat);
+            Assert.Equal(state.Fingerprint,
+                SemanticCombatDrawEngineV111.Restore(
+                    SemanticCombatDrawEngineV111.Save(state)).Fingerprint);
+            return state.Fingerprint + ":" + string.Join("|", events);
+        }
+        var serial = Enumerable.Range(0, 15).Select(Rollout).ToArray();
+        var parallel = new string[15];
+        Parallel.For(0, 15, worker => parallel[worker] = Rollout(worker));
+        Assert.Equal(serial, parallel);
+    }
+
+    [Fact]
     public void SemanticRecycleRejectsStratagemBeforeAnyDiscardMutation()
     {
         var source = SourceCombat("semantic-recycle-stratagem");
