@@ -1,0 +1,329 @@
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// Opt-in Nature continuation for source-shaped full-pool combat generation.
+/// A whole eligible list is shuffled even when the effect takes one card.
+/// Hook and outer operation effects executed before the first swap persist.
+/// </summary>
+public sealed partial class PrototypeGameEngine
+{
+    private static string[]? SourceGeneratedPoolForShuffle(
+        CombatState combat, PrototypeQueuedOperation op, long? sourceCardInstanceId)
+    {
+        if (op.Kind == PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand)
+            return PrototypeContent.NativeSilentCardPool.Where(id =>
+            {
+                var card = PrototypeContent.Card(id);
+                return card.Rarity == PrototypeCardRarity.Common
+                    && card.MechanicsImplemented && card.CanBeGeneratedInCombat
+                    && !card.MultiplayerOnly;
+            }).ToArray();
+        if (op.Kind == PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand)
+        {
+            var sourceId = sourceCardInstanceId is null ? null
+                : RequireCombatCard(combat, sourceCardInstanceId.Value).CardId;
+            return PrototypeColorlessCards.ImplementedCombatGenerationPool
+                .Where(id => !StringComparer.Ordinal.Equals(id, sourceId))
+                .ToArray();
+        }
+
+        if (op.Kind is not (PrototypeCombatEffectKind.ChooseGeneratedCards or
+            PrototypeCombatEffectKind.ChooseGeneratedColorlessCards))
+            return null;
+
+        var source = op.Kind == PrototypeCombatEffectKind.ChooseGeneratedColorlessCards
+            ? PrototypeColorlessCards.ImplementedCombatGenerationPool
+            : op.GeneratedChoiceCharacterCards
+                ? PrototypeContent.NativeSilentCardPool
+                : PrototypeContent.RewardCardPool;
+        return source.Where(id =>
+        {
+            var definition = PrototypeContent.Card(id);
+            return (op.GeneratedChoiceCardType is null
+                    || definition.Type == op.GeneratedChoiceCardType.Value)
+                && definition.CanBeGeneratedInCombat
+                && (!op.GeneratedChoiceCharacterCards ||
+                    definition.Rarity is not (
+                        PrototypeCardRarity.Basic or PrototypeCardRarity.Ancient or
+                        PrototypeCardRarity.Event))
+                && definition.MechanicsImplemented && !definition.MultiplayerOnly;
+        }).ToArray();
+    }
+
+    private static int ControlledPoolSelectedCount(
+        CombatState combat, PrototypeQueuedOperation op, int poolCount)
+    {
+        var count = op.Kind switch
+        {
+            PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand
+                when op.SourcePowerApplicationOrder is { } order =>
+                combat.PlayerPowers.Single(power =>
+                    power.ApplicationOrder == order).StoredValue,
+            PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand =>
+                Math.Min(Math.Max(0, op.Amount),
+                    Math.Max(0, 10 - combat.Hand.Length)),
+            _ => op.Amount
+        };
+        return Math.Min(Math.Max(0, count), poolCount);
+    }
+
+    private static bool TryMakeControlledPoolShuffleChoice(
+        CombatState combat, PrototypeQueuedOperation operation,
+        long? sourceCardInstanceId,
+        PrototypeChoiceResolutionContinuationState continuation,
+        out CombatState suspended)
+    {
+        suspended = combat;
+        if (!ControlledChanceGuardV111.Active)
+            return false;
+        var pool = SourceGeneratedPoolForShuffle(
+            combat, operation, sourceCardInstanceId);
+        if (pool is null || pool.Length <= 1)
+            return false;
+        var count = ControlledPoolSelectedCount(combat, operation, pool.Length);
+        if (count == 0)
+            return false;
+        if (combat.PendingChoice is not null ||
+            pool.Distinct(StringComparer.Ordinal).Count() != pool.Length)
+            throw new InvalidOperationException(
+                "Controlled pool shuffle requires a unique live candidate pool.");
+        suspended = combat with
+        {
+            PendingChoice = new PendingCombatChoiceState(
+                ChoiceId: "controlled_pool_shuffle",
+                SourceCardInstanceId: continuation.SourceCardInstanceId,
+                SourceCardDestination: continuation.SourceCardDestination,
+                Selection: new PrototypeCardSelectionSpec(
+                    PrototypeCardZone.Hand, 0, 0,
+                    PrototypeCardSelectionResolutionKind.MoveToDiscard),
+                CandidateCardInstanceIds: [],
+                Continuation: [],
+                CompletionEvents: [],
+                OuterChoiceContinuation: continuation.Fork(),
+                ControlledPoolShuffle: new PrototypeControlledPoolShuffleV111(
+                    operation with { }, (string[])pool.Clone(),
+                    (string[])pool.Clone(), pool.Length - 1, count))
+        };
+        return true;
+    }
+
+    internal static bool ValidateControlledPoolShuffle(
+        CombatState combat, PrototypeControlledPoolShuffleV111 pool,
+        long? sourceCardInstanceId)
+    {
+        if (pool.OriginalCardIds is null || pool.CurrentCardIds is null ||
+            pool.NextSwapIndex < 1 ||
+            pool.NextSwapIndex >= pool.OriginalCardIds.Length ||
+            pool.CurrentCardIds.Length != pool.OriginalCardIds.Length ||
+            pool.SelectedCount <= 0)
+            return false;
+        string[]? source;
+        int expectedCount;
+        try
+        {
+            source = SourceGeneratedPoolForShuffle(
+                combat, pool.Operation, sourceCardInstanceId);
+            expectedCount = ControlledPoolSelectedCount(
+                combat, pool.Operation, source?.Length ?? 0);
+        }
+        catch (Exception e) when (e is InvalidOperationException or KeyNotFoundException)
+        {
+            return false;
+        }
+        return source is not null &&
+            pool.OriginalCardIds.SequenceEqual(source) &&
+            pool.SelectedCount == expectedCount &&
+            pool.CurrentCardIds.Order(StringComparer.Ordinal)
+                .SequenceEqual(source.Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Select one source-order swap and continue from that exact position.
+    /// After the final swap, construct generated cards exactly once and
+    /// resume the previously saved operations/choice logic.
+    /// </summary>
+    internal static RunState ResumeControlledPoolShuffle(
+        RunState state, int chosen)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled pool shuffle requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException("Missing combat in pool shuffle.");
+        var pending = combat.PendingChoice ??
+            throw new InvalidOperationException("No pending pool shuffle.");
+        if (pending.ChoiceId != "controlled_pool_shuffle" ||
+            pending.ControlledPoolShuffle is not { } shuffle ||
+            pending.OuterChoiceContinuation is not { } continuation ||
+            !ValidateControlledPoolShuffle(combat, shuffle, pending.SourceCardInstanceId))
+            throw new InvalidDataException("Saved pool shuffle is not source-reachable.");
+        if (chosen < 0 || chosen > shuffle.NextSwapIndex)
+            throw new ArgumentOutOfRangeException(nameof(chosen));
+        var values = (string[])shuffle.CurrentCardIds.Clone();
+        (values[shuffle.NextSwapIndex], values[chosen]) =
+            (values[chosen], values[shuffle.NextSwapIndex]);
+        if (shuffle.NextSwapIndex > 1)
+            return state with
+            {
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        PendingChoice = pending with
+                        {
+                            ControlledPoolShuffle = shuffle with
+                            {
+                                CurrentCardIds = values,
+                                NextSwapIndex = shuffle.NextSwapIndex - 1
+                            }
+                        }
+                    }
+                }
+            };
+
+        combat = combat with { PendingChoice = null };
+        var op = shuffle.Operation;
+        if (op.Kind is (PrototypeCombatEffectKind.ChooseGeneratedCards or
+            PrototypeCombatEffectKind.ChooseGeneratedColorlessCards))
+        {
+            var ids = new List<long>();
+            foreach (var cardId in values.Take(shuffle.SelectedCount))
+            {
+                var card = new CombatCardInstance(
+                    InstanceId: combat.NextCardInstanceId,
+                    PersistentCardInstanceId: null,
+                    CardId: cardId,
+                    UpgradeLevel: op.GeneratedChoiceCardsUpgraded ? 1 : 0,
+                    IsTemporary: true,
+                    State: PrototypeJson.EmptyObject(),
+                    TemporaryEnergyCost: op.GeneratedChoiceCardsFreeThisTurn
+                        ? new PrototypeTemporaryCardCost(0,
+                            PrototypeTemporaryCardCostExpiry.EndOfTurn |
+                            PrototypeTemporaryCardCostExpiry.WhenPlayed)
+                        : null,
+                    KeywordOverrides: op.GeneratedChoiceCardsRetain
+                        ? [new PrototypeCardKeywordOverride(
+                            PrototypeCardKeyword.Retain, true,
+                            PrototypeCardKeywordOverrideExpiry.None)]
+                        : null);
+                card = ApplyActiveSourceBoundAfflictionToCard(combat, card);
+                ids.Add(card.InstanceId);
+                combat = combat with
+                {
+                    NextCardInstanceId = combat.NextCardInstanceId + 1,
+                    Cards = combat.Cards.Append(card).ToArray(),
+                    ChoicePool = combat.ChoiceCardIds.Append(card.InstanceId).ToArray()
+                };
+            }
+            combat = combat with
+            {
+                PendingChoice = new PendingCombatChoiceState(
+                    ChoiceId: "select_cards",
+                    SourceCardInstanceId: continuation.SourceCardInstanceId,
+                    SourceCardDestination: continuation.SourceCardDestination,
+                    Selection: new PrototypeCardSelectionSpec(
+                        PrototypeCardZone.ChoicePool,
+                        op.GeneratedChoiceMustPick ? 1 : 0, 1,
+                        PrototypeCardSelectionResolutionKind.MoveToHand,
+                        RemoveUnselectedFromSource: true),
+                    CandidateCardInstanceIds: ids.ToArray(),
+                    Continuation: (PrototypeQueuedOperation[])
+                        continuation.Operations.Clone(),
+                    CompletionEvents: (PrototypeCombatEvent[])
+                        continuation.CompletionEvents.Clone(),
+                    CardPlaySeries: continuation.CardPlaySeries,
+                    MoveSourceCardOnCompletion: continuation.MoveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: continuation.RemoveSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: continuation.SourceCardAlreadyMoved,
+                    EventDispatchContinuation:
+                        continuation.EventDispatchContinuation?.Fork())
+            };
+            return state with { World = world with { Combat = combat } };
+        }
+
+        foreach (var cardId in values.Take(shuffle.SelectedCount))
+        {
+            if (op.Kind == PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand)
+            {
+                if (combat.Hand.Length >= 10)
+                    break;
+                var card = new CombatCardInstance(
+                    combat.NextCardInstanceId, null, cardId, 0, true,
+                    PrototypeJson.EmptyObject());
+                card = ApplyActiveSourceBoundAfflictionToCard(combat, card);
+                combat = combat with
+                {
+                    NextCardInstanceId = combat.NextCardInstanceId + 1,
+                    Cards = combat.Cards.Append(card).ToArray(),
+                    Hand = combat.Hand.Append(card.InstanceId).ToArray()
+                };
+            }
+            else
+                combat = AddGeneratedCardCopies(combat,
+                    new PrototypeCombatCardSnapshot(
+                        cardId, 0, PrototypeJson.EmptyObject()), 1);
+        }
+        var resolved = ResumeChoiceResolutionContinuation(
+            state.Player, combat, state.Rng, continuation);
+        var updated = state with
+        {
+            Player = resolved.Player,
+            World = world with { Combat = resolved.Combat }
+        };
+        if (resolved.Combat.PendingChoice is null &&
+            resolved.Combat.AutomaticPipelineContinuation is { } automatic)
+        {
+            updated = updated with
+            {
+                World = updated.World! with
+                {
+                    Combat = resolved.Combat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }
+                }
+            };
+            updated = automatic.OpeningStage is { } openingStage
+                ? ResumeOpeningCombat(updated, openingStage)
+                : ResumeAutomaticPipeline(updated,
+                    automatic.NextStepIndex,
+                    automatic.PendingPostDispatchEventKind);
+        }
+        if (updated.Phase == RunPhase.Combat &&
+            updated.World?.Combat is { } live &&
+            AllEnemiesDefeated(live))
+            return EnterCombatReward(updated);
+        return updated;
+    }
+
+    /// <summary>
+    /// Narrow internal diagnostic entry for operations absent from a natural
+    /// Silent starter fixture. It uses the actual effect kernel, not copied
+    /// mechanics, so source eligibility and hooks are shared.
+    /// </summary>
+    internal static RunState BeginControlledPoolShuffleFixture(
+        RunState state, PrototypeQueuedOperation operation)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled pool fixture requires the RNG guard.");
+        if (operation.Kind is not (
+            PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand or
+            PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand or
+            PrototypeCombatEffectKind.ChooseGeneratedCards or
+            PrototypeCombatEffectKind.ChooseGeneratedColorlessCards))
+            throw new ArgumentException("Expected a full-pool generation shuffle.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException("No combat for fixture.");
+        var resolved = ResolveOperations(state.Player, combat,
+            new Queue<PrototypeQueuedOperation>([operation]), state.Rng,
+            moveSourceCardOnCompletion: false);
+        return state with
+        {
+            Player = resolved.Player,
+            World = world with { Combat = resolved.Combat }
+        };
+    }
+}
