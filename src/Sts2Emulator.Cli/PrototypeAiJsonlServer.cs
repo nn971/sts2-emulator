@@ -163,7 +163,8 @@ internal static class PrototypeAiJsonlServer
                                 "combat.sly_autoplay.random_enemy",
                                 "combat.generated_card.select",
                                 "combat.random_draw_attack.card_model",
-                                "combat.draw_pile.random_insert_index"
+                                "combat.draw_pile.random_insert_index",
+                                "combat.generation.full_pool_shuffle.swap_index"
                             },
                             controlledChanceLimitations =
                                 "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
