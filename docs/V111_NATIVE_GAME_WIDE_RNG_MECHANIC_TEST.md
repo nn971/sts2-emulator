@@ -259,3 +259,49 @@ Upload the fresh `*.actions.jsonl`, two `*.json` verification reports,
 and the hook installation log. Native effects and all implemented mechanics
 still need their own differential tests; this pass certifies only the
 source RNG observation of the exercised operations.
+
+## Relationship to issue #143 and the revised semantic Nature design (Oct 15)
+
+**Authoritative specification:** [Desired RNG Implementation](DESIRED_RNG_IMPLEMENTATION.md),
+updated in PR #154 and incorporated into the independent playable Nature
+work tracked in [issue #143](https://github.com/nn971/sts2-emulator/issues/143).
+The source-level `NextFloat` probe in this Inspector branch is a
+**read-only native RNG primitive audit**. Its emission is not a Nature
+`weighted_enemy_intent` choice, and it must not create an additional
+controlled-chance ticket or change the emulator provider state.
+
+The following contracts stay separate:
+
+- **Native fidelity mode:** faithfully observe one `Rng.NextFloat(float,float)`
+  source step, its original bounds/result, persistent RNG owner and exact
+  xoshiro cursor. A sample taken inside `MonsterModel.RollMove` establishes
+  source RNG consumption and creature attribution. This by itself does
+  not establish the conditional weights, eligible moves, or resulting intent.
+- **Semantic controlled-Nature mode (#143):** select from an
+  explicitly enumerated legal weighted intent support computed by the
+  common mechanics engine at the actual commitment boundary, retaining
+  enemy move history, anti-repeat filters and visibility. An intent
+  selected here becomes public before the next player choice. The source
+  RNG cursor is neither advanced nor shadowed merely to match a
+  counterfactual Nature outcome; `probabilityStatus=UNVERIFIED` remains
+  until the reference law is audited.
+- **Provider-owned deck state:** native RNG may commit the shuffled deck
+  order ahead of time, while an opt-in Nature provider can maintain
+  unresolved constrained card-instance positions and issue `draw_card`
+  or `reveal_card` events on demand. Exact insertions, returned known-top
+  cards and previously revealed positions remain forced. The **legacy**
+  controlled fixture's Fisher–Yates swap tickets and the new semantic
+  deck provider's deferred-card tickets are separate protocols and
+  must never both charge the same shuffle realization.
+- **Mechanical fidelity:** use the actual effects, hook order, pending
+  continuations and fair player observation for both modes. Native RNG
+  cursor agreement, mechanically legal controlled outcomes and
+  calibrated conditional chance laws are **separate** acceptance gates.
+
+PR #153 is stacked on the older Inspector checkpoint review line (#140),
+while issue #143 advances in the dedicated integration head (#137).
+Review the changes together when integrating: preserve all current
+`controlled_*`/semantic-deck capabilities and existing versioned
+protocols; do not silently import old chance semantics from the
+source-probe branch. This experiment never changes game RNG results,
+Nature handles, controlled continuations or the four-Act gameplay branch.
