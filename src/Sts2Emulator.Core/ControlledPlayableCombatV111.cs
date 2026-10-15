@@ -23,12 +23,17 @@ public sealed record ControlledPlayableCombatV111(
     // post-enemy-action combat state and the current pure selector stage.
     public ControlledTurnIntentsV111? TurnIntents { get; init; }
     public RandomIndexDecisionV111[] TurnTranscript { get; init; } = [];
+    public ControlledRecycleShuffleV111? Recycle { get; init; }
+    public RandomIndexDecisionV111[] RecycleTranscript { get; init; } = [];
+    // Chronological live chance transcript, interleaving intents/recycles.
+    public RandomIndexDecisionV111[] LiveTranscript { get; init; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
-        TurnIntents?.Pending ?? Pending;
+        Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool AtPlayerBoundary => ActivePending is null && TurnIntents is null;
+    public bool AtPlayerBoundary =>
+        ActivePending is null && TurnIntents is null && Recycle is null;
     [System.Text.Json.Serialization.JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
     public ControlledPlayableCombatV111 Fork() => this with
@@ -44,18 +49,24 @@ public sealed record ControlledPlayableCombatV111(
         }).ToArray(),
         PlayerActions = (string[])PlayerActions.Clone(),
         TurnIntents = TurnIntents?.Fork(),
-        TurnTranscript = TurnTranscript.Select(d => d with
-        {
-            Request = d.Request with
-            {
-                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
+        Recycle = Recycle?.Fork(),
+        TurnTranscript = DeepCopy(TurnTranscript),
+        RecycleTranscript = DeepCopy(RecycleTranscript),
+        LiveTranscript = DeepCopy(LiveTranscript),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
         }
     };
+
+    private static RandomIndexDecisionV111[] DeepCopy(RandomIndexDecisionV111[] decisions) =>
+        decisions.Select(d => d with
+        {
+            Request = d.Request with
+            {
+                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
+            }
+        }).ToArray();
 }
 
 public static class ControlledPlayableCombatEngineV111
@@ -139,6 +150,8 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException(
                 "Stale controlled chance fingerprint.");
         VerifyStage(state);
+        if (state.Recycle is not null)
+            return ResolveRecycle(state, selectedIndex);
         if (state.TurnIntents is not null)
             return ResolveTurnIntents(state, selectedIndex);
         var fresh = state.Fork();
@@ -200,8 +213,21 @@ public static class ControlledPlayableCombatEngineV111
             combat.AutomaticPipelineContinuation is not { } continuation)
             return state;
         int index = continuation.NextStepIndex;
-        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
-            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length)
+            throw new InvalidOperationException("Saved combat pipeline cursor is invalid.");
+        if (continuation.ControlledDrawRemaining is not null)
+        {
+            if (PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+                    PrototypeAutomaticStepKind.DrawPlayerHand ||
+                state.Recycle is not null || state.TurnIntents is not null ||
+                combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0)
+                throw new InvalidDataException("Malformed saved controlled recycle boundary.");
+            var recycle = ControlledRecycleShuffleEngineV111.Begin(
+                combat.DiscardPile, state.RecycleTranscript.Length);
+            var next = state with { Recycle = recycle };
+            return recycle.Complete ? FinishRecycle(next) : next;
+        }
+        if (PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
                 PrototypeAutomaticStepKind.AdvanceTurn)
             return state;
         if (state.TurnIntents is not null)
@@ -230,9 +256,47 @@ public static class ControlledPlayableCombatEngineV111
         {
             TurnIntents = nextIntents,
             TurnTranscript = state.TurnTranscript.Append(
+                nextIntents.Transcript[^1]).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(
                 nextIntents.Transcript[^1]).ToArray()
         };
         return nextIntents.Complete ? FinishTurnIntents(fresh) : fresh;
+    }
+
+    private static ControlledPlayableCombatV111 ResolveRecycle(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var stage = state.Recycle ??
+            throw new InvalidOperationException("Missing recycle stage.");
+        var next = ControlledRecycleShuffleEngineV111.Resolve(
+            stage, selectedIndex, state.Origin.ReferenceStreams);
+        var choice = next.Transcript[^1];
+        var updated = state.Fork() with
+        {
+            Recycle = next,
+            RecycleTranscript = state.RecycleTranscript.Append(choice).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
+        };
+        return next.Complete ? FinishRecycle(updated) : updated;
+    }
+
+    private static ControlledPlayableCombatV111 FinishRecycle(
+        ControlledPlayableCombatV111 state)
+    {
+        var stage = state.Recycle ??
+            throw new InvalidOperationException("Missing recycle stage.");
+        if (!stage.Complete)
+            throw new InvalidOperationException("Nature recycle swaps are pending.");
+        ControlledRecycleShuffleEngineV111.Validate(stage);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledDrawAfterRecycle(
+                state.Run.Fork(), stage.Shuffled);
+        return StartPendingTurn(state with
+        {
+            Recycle = null,
+            Run = result
+        });
     }
 
     private static ControlledPlayableCombatV111 FinishTurnIntents(
@@ -282,14 +346,17 @@ public static class ControlledPlayableCombatEngineV111
                     "Unreachable controlled shuffle transcript.");
             current = Resolve(current, current.Fingerprint, decision.SelectedIndex);
         }
-        int turnCursor = 0;
+        int liveCursor = 0;
         foreach (var action in stored.PlayerActions)
         {
+            if (!current.AtPlayerBoundary)
+                throw new InvalidDataException(
+                    "Player action attempted before Nature resolved prior chance.");
             current = Step(current, action);
-            while (current.TurnIntents?.Pending is not null &&
-                turnCursor < stored.TurnTranscript.Length)
+            while (current.ActivePending is not null &&
+                liveCursor < stored.LiveTranscript.Length)
             {
-                var recorded = stored.TurnTranscript[turnCursor++];
+                var recorded = stored.LiveTranscript[liveCursor++];
                 recorded.Validate();
                 if (recorded.ProviderMode != "controlled-v111" ||
                     recorded.ProbabilityStatus != "UNVERIFIED" ||
@@ -298,13 +365,23 @@ public static class ControlledPlayableCombatEngineV111
                     CanonicalJson.Sha256(recorded.Request) !=
                         CanonicalJson.Sha256(current.ActivePending))
                     throw new InvalidDataException(
-                        "Unreachable controlled next-turn choice.");
-                current = Resolve(current, current.Fingerprint,
-                    recorded.SelectedIndex);
+                        "Unreachable live Nature decision in replay.");
+                current = Resolve(current, current.Fingerprint, recorded.SelectedIndex);
             }
         }
-        if (turnCursor != stored.TurnTranscript.Length)
-            throw new InvalidDataException("Unconsumed controlled turn transcript.");
+        if (liveCursor != stored.LiveTranscript.Length)
+            throw new InvalidDataException(
+                "Unconsumed or out-of-order live Nature transcript.");
+        if (!current.TurnTranscript.SequenceEqual(stored.TurnTranscript) ||
+            !current.RecycleTranscript.SequenceEqual(stored.RecycleTranscript))
+        {
+            // Records hold arrays; canonical comparison below is decisive.
+            if (CanonicalJson.Sha256(current.TurnTranscript) !=
+                    CanonicalJson.Sha256(stored.TurnTranscript) ||
+                CanonicalJson.Sha256(current.RecycleTranscript) !=
+                    CanonicalJson.Sha256(stored.RecycleTranscript))
+                throw new InvalidDataException("Chance transcripts diverged.");
+        }
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
             throw new InvalidDataException(
                 "Controlled playable snapshot diverges from its provenance.");
@@ -317,12 +394,26 @@ public static class ControlledPlayableCombatEngineV111
             state.Run.Phase is not (RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
             state.Run.World?.Combat is null && state.Pending is not null ||
             state.ShuffleTranscript is null || state.PlayerActions is null ||
-            state.TurnTranscript is null || state.Origin is null ||
-            (state.TurnIntents is not null && state.Pending is not null))
+            state.TurnTranscript is null || state.RecycleTranscript is null ||
+            state.LiveTranscript is null || state.Origin is null ||
+            (state.TurnIntents is not null && state.Pending is not null) ||
+            (state.Recycle is not null &&
+                (state.Pending is not null || state.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
         var expected = MakePending(state.NextShuffleIndex, state.ShuffleTranscript.Length);
         if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(state.Pending))
             throw new InvalidDataException("Controlled shuffle stage is stale.");
+        if (state.Recycle is { } recycle)
+        {
+            ControlledRecycleShuffleEngineV111.Validate(recycle);
+            var combat = state.Run.World?.Combat;
+            if (combat is null ||
+                !combat.DiscardPile.SequenceEqual(recycle.Baseline) ||
+                combat.DrawPile.Length != 0 ||
+                combat.AutomaticPipelineContinuation?.ControlledDrawRemaining is not > 0)
+                throw new InvalidDataException(
+                    "Recycle chance state disagrees with suspended draw.");
+        }
         if (state.TurnIntents is { } intent)
         {
             ControlledTurnIntentEngineV111.Validate(intent);
