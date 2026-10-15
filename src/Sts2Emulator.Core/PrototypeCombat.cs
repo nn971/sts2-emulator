@@ -1645,7 +1645,8 @@ public sealed partial class PrototypeGameEngine
 
         var player = state.Player;
         var drawn = DrawCards(player, combat, continuation.ControlledDrawRemaining.Value,
-            state.Rng, fromHandDraw: true);
+            state.Rng, fromHandDraw: true,
+            controlledRecycleSuspension: true);
         player = drawn.Player;
         combat = drawn.Combat;
         if (drawn.ShuffleSelectionPending)
@@ -2370,7 +2371,8 @@ public sealed partial class PrototypeGameEngine
                     Math.Max(0, PrototypeContent.Rules.HandSize
                         + handDrawBonus),
                     state.Rng,
-                    fromHandDraw: true);
+                    fromHandDraw: true,
+                    controlledRecycleSuspension: ControlledChanceGuardV111.Active);
                 player = drawn.Player;
                 combat = drawn.Combat;
                 if (drawn.ControlledRecyclePending)
@@ -13370,7 +13372,8 @@ public sealed partial class PrototypeGameEngine
         int count,
         RngBundle rng,
         bool fromHandDraw,
-        int eventDepth = 0)
+        int eventDepth = 0,
+        bool controlledRecycleSuspension = false)
     {
         const int maxHandSize = 10;
         var drawnCardInstanceIds = new List<long>();
@@ -13405,6 +13408,11 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
+                if (ControlledChanceGuardV111.Active &&
+                    !controlledRecycleSuspension)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
+                        "operation=shuffle_recycle outside resumable hand-draw stage");
                 if (ControlledChanceGuardV111.Active)
                     return new PrototypeDrawCardsResult(
                         player, combat, drawnCardInstanceIds.ToArray(),
