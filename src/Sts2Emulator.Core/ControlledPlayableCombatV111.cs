@@ -614,6 +614,41 @@ public static class ControlledPlayableCombatEngineV111
                  poolCombat?.PendingChoice?.SourceCardInstanceId)))
             throw new InvalidDataException(
                 "Saved full-pool shuffle disagrees with source eligibility.");
+        if (pool is not null)
+        {
+            // Replay only pure swap arithmetic to establish reachability.
+            // No card hooks or earlier operations are re-executed here.
+            int consumed = pool.OriginalCardIds.Length - 1 - pool.NextSwapIndex;
+            if (consumed < 0 || consumed > state.PoolShuffleTranscript.Length)
+                throw new InvalidDataException(
+                    "Pool shuffle cursor exceeds recorded Nature decisions.");
+            var current = (string[])pool.OriginalCardIds.Clone();
+            var active = state.PoolShufflePending!;
+            var offset = state.PoolShuffleTranscript.Length - consumed;
+            for (int step = 0; step < consumed; step++)
+            {
+                var recorded = state.PoolShuffleTranscript[offset + step];
+                recorded.Validate();
+                var expectedRequest = active with
+                {
+                    Ordinal = offset + step,
+                    BoundedCount = pool.OriginalCardIds.Length - step
+                };
+                if (recorded.ProviderMode != "controlled-v111" ||
+                    recorded.NativeCursorBefore is not null ||
+                    recorded.NativeCursorAfter is not null ||
+                    CanonicalJson.Sha256(recorded.Request) !=
+                        CanonicalJson.Sha256(expectedRequest))
+                    throw new InvalidDataException(
+                        "Pool shuffle swap transcript is not source-reachable.");
+                var i = pool.OriginalCardIds.Length - 1 - step;
+                (current[i], current[recorded.SelectedIndex]) =
+                    (current[recorded.SelectedIndex], current[i]);
+            }
+            if (!current.SequenceEqual(pool.CurrentCardIds))
+                throw new InvalidDataException(
+                    "Saved pool permutation disagrees with its Nature swap prefix.");
+        }
         var insertionCombat = state.Run.World?.Combat;
         var insertion = insertionCombat?.PendingChoice?.ControlledDrawInsertion;
         if (insertion is not null &&
