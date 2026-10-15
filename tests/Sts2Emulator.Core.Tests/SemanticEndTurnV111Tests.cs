@@ -79,9 +79,9 @@ public sealed class SemanticEndTurnV111Tests
         var state = SemanticEndTurnEngineV111.BeginFromPlayerAction(source, entry);
         Assert.NotNull(state.PlayerActionSource);
         Assert.False(state.AtPlayerBoundary);
-        Assert.Equal(PrototypeContent.Rules.EndTurnPipeline[
-            state.Origin.World!.Combat!.AutomaticPipelineContinuation!.NextStepIndex].Kind,
-            PrototypeAutomaticStepKind.AdvanceTurn);
+        Assert.Equal(PrototypeAutomaticStepKind.AdvanceTurn,
+            PrototypeContent.Rules.EndTurnPipeline[
+                state.Origin.World!.Combat!.AutomaticPipelineContinuation!.NextStepIndex].Kind);
         var first = state.Fingerprint;
         Assert.Throws<InvalidOperationException>(() =>
             SemanticEndTurnEngineV111.Resolve(state, "stale", 0));
