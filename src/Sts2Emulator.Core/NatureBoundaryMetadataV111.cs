@@ -46,7 +46,8 @@ public static class NatureBoundaryMetadataV111
             .Concat(state.Origin.Transcript)
             .Concat(state.ShuffleTranscript)
             .Concat(state.LiveTranscript).ToArray();
-        var kind = state.Recycle is not null ? "draw_recycle"
+        var kind = state.TargetPending is not null ? "random_target"
+            : state.Recycle is not null ? "draw_recycle"
             : state.TurnIntents is not null ? "next_turn_intent"
             : state.Pending is not null ? "opening_shuffle" : "player";
         return Build(kind, state.Mode, state.Fingerprint,
