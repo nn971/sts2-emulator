@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections import Counter
 from pathlib import Path
 
@@ -189,6 +190,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_rng_hook_installed": False,
         "native_rng_double_hook_installed": False,
         "native_rng_bool_hook_installed": False,
+        "native_rng_float_hook_installed": False,
         "native_rng_stream_checkpoints_enabled": False,
         "native_rng_stream_checkpoint_count": 0,
         "native_monster_ai_scope_installed": False,
@@ -198,6 +200,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_shuffle_source_operations": 0,
         "native_rng_source_calls": 0,
         "native_rng_scalar_source_calls": 0,
+        "native_rng_float_source_calls": 0,
         "native_rng_unattributed_calls": 0,
         "native_rng_source_coverage": "SOURCE_RNG_UNINSTRUMENTED",
         "incomplete_observations": [],
@@ -216,6 +219,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         records[0].get("data", {}).get("native_rng_double_hook_installed") is True)
     report["native_rng_bool_hook_installed"] = (
         records[0].get("data", {}).get("native_rng_bool_hook_installed") is True)
+    report["native_rng_float_hook_installed"] = (
+        records[0].get("data", {}).get("native_rng_float_hook_installed") is True)
     report["native_rng_stream_checkpoints_enabled"] = (
         records[0].get("data", {}).get("native_rng_stream_checkpoints_enabled") is True)
     report["native_monster_ai_scope_installed"] = (
@@ -370,11 +375,20 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             kind = data.get("operation_kind")
             scalar = data.get("selected_double")
             boolean = data.get("selected_bool")
+            float_value = data.get("selected_float")
+            float_min = data.get("float_min")
+            float_max = data.get("float_max")
             value_valid = (
                 (kind == "unit_double" and type(scalar) in (float, int)
                  and 0 <= scalar < 1 and boolean is None)
                 or (kind == "boolean" and type(boolean) is bool
-                    and scalar is None))
+                    and scalar is None)
+                or (kind == "range_float" and scalar is None and boolean is None
+                    and all(type(x) in (float, int) for x in
+                            (float_value, float_min, float_max))
+                    and all(math.isfinite(x) for x in
+                            (float_value, float_min, float_max))
+                    and float_min <= float_max))
             if (data.get("origin") != "source_primitive_hook"
                 or data.get("source_hook_observed") is not True
                 or data.get("source_version") != "v0.111.0"
@@ -387,6 +401,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 return report
             report["native_rng_source_calls"] += 1
             report["native_rng_scalar_source_calls"] += 1
+            if kind == "range_float":
+                report["native_rng_float_source_calls"] += 1
             report["native_rng_source_coverage"] = "SOURCE_RNG_CALLS_OBSERVED"
             if (data.get("attributed") is not True
                 or any(data.get(name) in (None, "", "UNATTRIBUTED")
