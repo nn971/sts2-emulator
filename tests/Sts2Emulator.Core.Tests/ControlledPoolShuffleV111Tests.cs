@@ -144,6 +144,46 @@ public sealed class ControlledPoolShuffleV111Tests
     }
 
     [Fact]
+    public void JackOfAllTradesResumesTheActualColorlessCardPlay()
+    {
+        var before = Prepared("nature-pool-jack");
+        var combat = before.Run.World!.Combat!;
+        var sourceId = combat.Hand[0];
+        var cardId = "proto.colorless.jack_of_all_trades";
+        before = before with
+        {
+            Run = before.Run with
+            {
+                World = before.Run.World with
+                {
+                    Combat = combat with
+                    {
+                        Cards = combat.Cards.Select(card =>
+                            card.InstanceId == sourceId
+                                ? card with { CardId = cardId } : card).ToArray()
+                    }
+                }
+            }
+        };
+        var play = new PrototypeAiEnvironment().Observe(before.Run)
+            .LegalActions.Single(action => action.Kind == "play_card" &&
+                action.Payload.GetProperty("CardInstanceId").GetInt64() == sourceId);
+        var pending = ControlledPlayableCombatEngineV111.Step(
+            before, play.ActionId);
+        var stage = pending.Run.World!.Combat!.PendingChoice!
+            .ControlledPoolShuffle!;
+        Assert.DoesNotContain(cardId, stage.OriginalCardIds);
+        Assert.True(stage.OriginalCardIds.Length > 1);
+        var sourceCount = pending.Run.World.Combat.Cards.Length;
+        var after = Drain(pending);
+        Assert.Equal(sourceCount + 1, after.Run.World!.Combat!.Cards.Length);
+        Assert.Contains(after.Run.World.Combat.Cards.Last().CardId,
+            stage.OriginalCardIds);
+        Assert.Equal(before.Run.DecisionIndex + 1, after.Run.DecisionIndex);
+        Assert.NotEmpty(new PrototypeAiEnvironment().Observe(after.Run).LegalActions);
+    }
+
+    [Fact]
     public void DistinctCommonCardsUseWholePoolEvenIfOnlyOneIsCreated()
     {
         var state = Prepared("nature-pool-common");
