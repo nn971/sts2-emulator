@@ -226,8 +226,9 @@ public sealed class SemanticCombatDrawV111Tests
         {
             Assert.Equal(0, state.Run.World!.Combat!.SemanticDeck!.ShuffleEpoch);
             firstEpochIds.Add(state.Pending!.EventId);
+            // The second draw has only one eligible card remaining.
             state = SemanticCombatDrawEngineV111.Resolve(
-                state, state.Fingerprint, i);
+                state, state.Fingerprint, 0);
             Assert.Equal(i + 1,
                 state.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
         }
