@@ -29,3 +29,5 @@ jobs:
         run: python tools/nature_jsonl_smoke.py
       - name: Nature playable-entry fixture smoke
         run: python tools/nature_playable_jsonl_smoke.py
+      - name: Nature live end-turn suspension and replay
+        run: python tools/nature_live_turn_jsonl_smoke.py
