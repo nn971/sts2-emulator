@@ -31,12 +31,38 @@ public sealed record ControlledPlayableCombatV111(
     public RandomIndexDecisionV111[] GeneratedCardTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] DrawInsertionTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] PoolShuffleTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] RandomCostTranscript { get; init; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
-        PoolShufflePending ?? DrawInsertionPending ??
+        RandomCostPending ?? PoolShufflePending ?? DrawInsertionPending ??
         GeneratedCardPending ?? TargetPending ??
         Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RandomIndexRequestV111? RandomCostPending
+    {
+        get
+        {
+            var cost = Run.World?.Combat?.PendingChoice?.ControlledRandomCost;
+            if (cost is null) return null;
+            var single = cost.Operation.Kind ==
+                PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed;
+            return new RandomIndexRequestV111(
+                single ? "combat.random_hand_card.select"
+                       : "combat.random_hand_card.energy_cost",
+                "prototype.combat",
+                "effect:" + cost.Operation.Kind +
+                    ":hand:" + CanonicalJson.Sha256(cost.EligibleCardInstanceIds) +
+                    ":index:" + cost.NextCardIndex,
+                RandomCostTranscript.Length,
+                single
+                    ? Enumerable.Range(0, cost.EligibleCardInstanceIds.Length).ToArray()
+                    : [],
+                OperationKind: single ? "choose_index" : "bounded_integer",
+                BoundedCount: single ? null : Math.Max(1, cost.Operation.Amount));
+        }
+    }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? PoolShufflePending
     {
@@ -148,6 +174,7 @@ public sealed record ControlledPlayableCombatV111(
         GeneratedCardTranscript = DeepCopy(GeneratedCardTranscript),
         DrawInsertionTranscript = DeepCopy(DrawInsertionTranscript),
         PoolShuffleTranscript = DeepCopy(PoolShuffleTranscript),
+        RandomCostTranscript = DeepCopy(RandomCostTranscript),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
@@ -245,6 +272,8 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException(
                 "Stale controlled chance fingerprint.");
         VerifyStage(state);
+        if (state.RandomCostPending is not null)
+            return ResolveRandomCost(state, selectedIndex);
         if (state.PoolShufflePending is not null)
             return ResolvePoolShuffle(state, selectedIndex);
         if (state.DrawInsertionPending is not null)
@@ -304,6 +333,27 @@ public static class ControlledPlayableCombatEngineV111
         {
             Run = result,
             PlayerActions = state.PlayerActions.Append(actionId).ToArray()
+        };
+        return StartPendingTurn(next);
+    }
+
+    private static ControlledPlayableCombatV111 ResolveRandomCost(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var request = state.RandomCostPending ??
+            throw new InvalidOperationException("Missing random-cost ticket.");
+        var decision = new ControlledRandomIndexProviderV111(selectedIndex)
+            .Resolve(request, state.Origin.ReferenceStreams);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledRandomCost(
+                state.Run.Fork(), selectedIndex);
+        var next = state.Fork() with
+        {
+            Run = result,
+            RandomCostTranscript = state.RandomCostTranscript
+                .Append(decision).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(decision).ToArray()
         };
         return StartPendingTurn(next);
     }
@@ -563,7 +613,8 @@ public static class ControlledPlayableCombatEngineV111
             !current.TargetTranscript.SequenceEqual(stored.TargetTranscript) ||
             !current.GeneratedCardTranscript.SequenceEqual(stored.GeneratedCardTranscript) ||
             !current.DrawInsertionTranscript.SequenceEqual(stored.DrawInsertionTranscript) ||
-            !current.PoolShuffleTranscript.SequenceEqual(stored.PoolShuffleTranscript))
+            !current.PoolShuffleTranscript.SequenceEqual(stored.PoolShuffleTranscript) ||
+            !current.RandomCostTranscript.SequenceEqual(stored.RandomCostTranscript))
         {
             // Records hold arrays; canonical comparison below is decisive.
             if (CanonicalJson.Sha256(current.TurnTranscript) !=
@@ -577,7 +628,9 @@ public static class ControlledPlayableCombatEngineV111
                 CanonicalJson.Sha256(current.DrawInsertionTranscript) !=
                     CanonicalJson.Sha256(stored.DrawInsertionTranscript) ||
                 CanonicalJson.Sha256(current.PoolShuffleTranscript) !=
-                    CanonicalJson.Sha256(stored.PoolShuffleTranscript))
+                    CanonicalJson.Sha256(stored.PoolShuffleTranscript) ||
+                CanonicalJson.Sha256(current.RandomCostTranscript) !=
+                    CanonicalJson.Sha256(stored.RandomCostTranscript))
                 throw new InvalidDataException("Chance transcripts diverged.");
         }
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
@@ -596,11 +649,25 @@ public static class ControlledPlayableCombatEngineV111
             state.LiveTranscript is null || state.TargetTranscript is null ||
             state.GeneratedCardTranscript is null ||
             state.DrawInsertionTranscript is null ||
-            state.PoolShuffleTranscript is null || state.Origin is null ||
+            state.PoolShuffleTranscript is null ||
+            state.RandomCostTranscript is null || state.Origin is null ||
             (state.TurnIntents is not null && state.Pending is not null) ||
             (state.Recycle is not null &&
                 (state.Pending is not null || state.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
+        var costCombat = state.Run.World?.Combat;
+        var randomCost = costCombat?.PendingChoice?.ControlledRandomCost;
+        if (randomCost is not null &&
+            (state.Pending is not null || state.Recycle is not null ||
+             state.TurnIntents is not null ||
+             costCombat?.PendingChoice?.ControlledTarget is not null ||
+             costCombat?.PendingChoice?.ControlledGeneration is not null ||
+             costCombat?.PendingChoice?.ControlledDrawInsertion is not null ||
+             costCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
+             !PrototypeGameEngine.ValidateControlledRandomCost(
+                 costCombat!, randomCost)))
+            throw new InvalidDataException(
+                "Saved hand-cost ticket disagrees with source eligibility.");
         var poolCombat = state.Run.World?.Combat;
         var pool = poolCombat?.PendingChoice?.ControlledPoolShuffle;
         if (pool is not null &&
