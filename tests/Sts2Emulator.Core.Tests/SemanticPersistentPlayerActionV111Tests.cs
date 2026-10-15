@@ -101,9 +101,9 @@ public sealed class SemanticPersistentPlayerActionV111Tests
             playerAction.Run.World!.Combat!.SemanticDeck!.Fingerprint);
         Assert.Equal(run.World!.Combat!.DrawPile,
             playerAction.Run.World.Combat.DrawPile);
-        Assert.Equal(publicBefore,
-            SemanticDeckEngineV111.Observe(
-                playerAction.Run.World.Combat.SemanticDeck!));
+        Assert.Equal(CanonicalJson.Sha256(publicBefore),
+            CanonicalJson.Sha256(SemanticDeckEngineV111.Observe(
+                playerAction.Run.World.Combat.SemanticDeck!)));
         Assert.Equal(playerAction.Fingerprint,
             SemanticPlayerActionEngineV111.Restore(
                 SemanticPlayerActionEngineV111.Save(playerAction)).Fingerprint);
