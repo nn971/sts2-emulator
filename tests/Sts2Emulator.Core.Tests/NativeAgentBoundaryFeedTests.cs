@@ -120,7 +120,7 @@ public sealed class NativeAgentBoundaryFeedTests
         Assert.Null(feed.Current());
         feed.Publish(Decision());
         Assert.NotNull(feed.Current());
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             feed.Publish(Decision(0)));
         Assert.Throws<InvalidOperationException>(() =>
             feed.Publish(Decision(2, 3, extraAction: "unknown")));
