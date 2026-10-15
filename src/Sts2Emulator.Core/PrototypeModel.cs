@@ -1768,6 +1768,21 @@ public sealed record PrototypeChoiceResolutionContinuationState(
     };
 }
 
+/// <summary>
+/// Internal Nature-owned random-target suspension. Eligible IDs belong to
+/// enemies, never card identities or the public player choice menu.
+/// </summary>
+public sealed record PrototypeControlledTargetChoiceV111(
+    string Kind,
+    int[] EligibleEnemyInstanceIds,
+    long? SlyCardInstanceId = null)
+{
+    public PrototypeControlledTargetChoiceV111 Fork() => this with
+    {
+        EligibleEnemyInstanceIds = (int[])EligibleEnemyInstanceIds.Clone()
+    };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -1785,7 +1800,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     long[]? SequentialSelectedCardInstanceIds = null,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
-    PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null)
+    PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null,
+    PrototypeControlledTargetChoiceV111? ControlledTarget = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1800,7 +1816,8 @@ public sealed record PendingCombatChoiceState(
                 ? null
                 : (long[])SequentialSelectedCardInstanceIds.Clone(),
         EventDispatchContinuation = EventDispatchContinuation?.Fork(),
-        OuterChoiceContinuation = OuterChoiceContinuation?.Fork()
+        OuterChoiceContinuation = OuterChoiceContinuation?.Fork(),
+        ControlledTarget = ControlledTarget?.Fork()
     };
 }
 
