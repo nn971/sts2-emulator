@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#150 merged into the isolated RNG/Inspector integration branch; PR #151 adds full-pool card generation shuffle continuations for potion/card choices and distinct generators. Issue #143 stays OPEN until remaining RNG site migration, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#151 merged into the isolated RNG/Inspector integration branch; a follow-up random hand-cost continuation slice is under review. Issue #143 stays OPEN until remaining RNG site migration, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -27,7 +27,7 @@ The response includes `schemaId`, `kind`, `mode`, `natureHandle`, `fingerprint`,
 | --- | --- | --- |
 | G0: playable controlled RunState + fair observation | **PARTIAL (#145)** | A real `RunState` with starter player/deck and unchanged controlled enemy HP/intent can play deterministic actions after Nature resolves shuffle; the fixture bypasses native combat-start hooks and is not equivalent to arbitrary full-run state. |
 | G1: mechanically resumed action→chance→action | **PARTIAL (#145–#151)** | In addition to earlier live mechanics, all source-filtered card generation pools can now suspend for each full Fisher–Yates swap and resume original choice/direct-generation effects without repeating earlier hooks. |
-| G2: live chance-site coverage | **PARTIAL (#145–#151)** | Four generated-choice and distinct-card operation kinds now own full-pool shuffle tickets, including Attack/Skill/Power and Colorless Potions, Discovery and Jack of All Trades. Enemy-side insertion, random costs and nested summon/death remain. |
+| G2: live chance-site coverage | **PARTIAL (#145–#152)** | Four generated-choice and distinct-card operation kinds now own full-pool shuffle tickets, including Attack/Skill/Power and Colorless Potions, Discovery and Jack of All Trades. Enemy-side insertion, random costs and nested summon/death remain. |
 | G3: extended chance operations | **PARTIAL** | `choose_index` and compact `bounded_integer` exist. Other source-shaped operation types need requests and execution integration. |
 | G4: stable event IDs and transcript | **PARTIAL (#144–#151)** | Nature events include exact current eligible card-model order and bounded full-pool swaps. Every partial permutation is independently replayed against the recorded swap prefix and original eligibility, with stable source/stream identity. |
 | G5: fair player boundary | **PARTIAL (#145–#151)** | Player choices resume through original select_cards boundary after Nature completes shuffle; candidate pool is privileged Nature metadata and fair player observation remains gated. |
@@ -93,3 +93,22 @@ Tests exercise both mechanics through a narrow guarded internal diagnostic entry
 The real `ResolveOperations` pipeline now suspends before full-pool Fisher–Yates shuffles used by `ChooseGeneratedCards`, `ChooseGeneratedColorlessCards`, `CreateDistinctColorlessCardsInHand` and `CreateDistinctCharacterCommonCardsInHand`. The controller gets a typed, bounded swap event for **every** eligible card in the complete source-filtered pool even when the game selects only one or three. The saved card-event/choice continuation resumes once after the last swap; choice effects restore the ordinary player `select_cards` action, while direct generation adds the selected prefix to hand. All partial permutations are checked against recorded swaps, guarding against invalid reordered snapshots.
 
 Focused tests exercise real Attack and Colorless Potion effect kernels using explicit fixture-injected potion inventory, distinct common generation through an internal operation fixture, forged permutation rejection and 15-worker deterministic execution. Native-provenance potion acquisition and full controlled snapshot replay from those modified fixtures remain unverified; source laws are `UNVERIFIED`. Details in [the full-pool continuation contract](NATURE_FULL_POOL_GENERATION_143.md).
+
+
+## Next slice: controlled hand-cost operations (#143)
+
+The real `ResolveOperations` kernel suspends before choosing a random
+positive-cost hand card for a temporary cost change and before each bounded
+cost roll in `RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed`. All already
+applied effects, parent card/choice/event continuation and remaining queued
+operations are preserved. An all-hand reroll visits eligible card instances
+once in their original hand order. Every outstanding ticket is source-validated;
+Nature sees only explicit `choose_index` or `bounded_integer` support,
+with `UNVERIFIED` source probability status.
+
+Coverage is established with narrow actual-operation fixtures, including
+invalid cursor/support rejection, independent forks and schedule-independent
+15-worker tests. These starter-fixture diagnostic entrances do not establish
+unmodified player-action replay provenance. Draw-triggered relic/Slither
+random costs, random pile selection shortlists, enemy-side insertion,
+death/summon continuations, native laws and full terminal rollout remain.
