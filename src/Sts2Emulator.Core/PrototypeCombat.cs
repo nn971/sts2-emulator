@@ -4874,6 +4874,35 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            // Draw-pile insertion has two Nature-owned stages when the card
+            // itself is random: choose its source model, then its insertion
+            // position. Fixed-card insertion needs only the position stage.
+            if (ControlledChanceGuardV111.Active &&
+                operation.Amount > 0 &&
+                operation.Kind is (
+                    PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions
+                    or PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile))
+            {
+                var tail = (operation.Amount > 1
+                        ? new[] { operation with { Amount = operation.Amount - 1 } }
+                        : Array.Empty<PrototypeQueuedOperation>())
+                    .Concat(operations).ToArray();
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: tail,
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                return (player, MakeControlledDrawInsertionChoice(
+                    combat, operation, continuation));
+            }
+
             // The first truly random generated card in this operation is
             // an in-flight Nature boundary. Earlier queue operations and
             // combat hooks are already reflected in `combat`; only the

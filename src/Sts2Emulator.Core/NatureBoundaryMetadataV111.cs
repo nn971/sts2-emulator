@@ -47,20 +47,24 @@ public static class NatureBoundaryMetadataV111
             .Concat(state.Origin.Transcript)
             .Concat(state.ShuffleTranscript)
             .Concat(state.LiveTranscript).ToArray();
+        var insertion = state.Run.World?.Combat?.PendingChoice?.ControlledDrawInsertion;
         var generation = state.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
-        var kind = generation is not null ? "generated_card"
+        var kind = insertion is not null ? "draw_insertion"
+            : generation is not null ? "generated_card"
             : state.TargetPending is not null ? "random_target"
             : state.Recycle is not null ? "draw_recycle"
             : state.TurnIntents is not null ? "next_turn_intent"
             : state.Pending is not null ? "opening_shuffle" : "player";
         var view = Build(kind, state.Mode, state.Fingerprint,
             state.ActivePending, history);
-        return generation is not null && view.Pending is { } pending
+        var candidateModels = insertion is { Stage: "card_model" }
+            ? insertion.CandidateCardIds : generation?.CandidateCardIds;
+        return candidateModels is not null && view.Pending is { } pending
             ? view with
             {
                 Pending = pending with
                 {
-                    CandidateCardIds = (string[])generation.CandidateCardIds.Clone()
+                    CandidateCardIds = (string[])candidateModels.Clone()
                 }
             } : view;
     }

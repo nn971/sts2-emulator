@@ -1798,6 +1798,21 @@ public sealed record PrototypeControlledGeneratedCardV111(
     };
 }
 
+/// <summary>Nature-owned source operation suspended before draw pile insertion.
+/// Pending card models are never materialized until Nature selects a position.
+/// </summary>
+public sealed record PrototypeControlledDrawInsertionV111(
+    PrototypeQueuedOperation Operation, string Stage, string? SelectedCardId,
+    string[] CandidateCardIds, long[] EligibleDrawPile)
+{
+    public PrototypeControlledDrawInsertionV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        CandidateCardIds = (string[])CandidateCardIds.Clone(),
+        EligibleDrawPile = (long[])EligibleDrawPile.Clone()
+    };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -1817,7 +1832,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
     PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null,
     PrototypeControlledTargetChoiceV111? ControlledTarget = null,
-    PrototypeControlledGeneratedCardV111? ControlledGeneration = null)
+    PrototypeControlledGeneratedCardV111? ControlledGeneration = null,
+    PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1834,7 +1850,8 @@ public sealed record PendingCombatChoiceState(
         EventDispatchContinuation = EventDispatchContinuation?.Fork(),
         OuterChoiceContinuation = OuterChoiceContinuation?.Fork(),
         ControlledTarget = ControlledTarget?.Fork(),
-        ControlledGeneration = ControlledGeneration?.Fork()
+        ControlledGeneration = ControlledGeneration?.Fork(),
+        ControlledDrawInsertion = ControlledDrawInsertion?.Fork()
     };
 }
 

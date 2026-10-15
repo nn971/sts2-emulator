@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#148 merged into the isolated integration branch; PR #149 adds live random generated-card choices. Issue #143 remains open for full chance-site coverage, source-native parity and controlled terminal rollouts.
+**Status:** PRs #144–#149 merged into the isolated integration branch; PR #150 adds fixed-card and random-Attack draw-position insertion continuations. Issue #143 remains open for full chance-site coverage, source-native parity, and end-to-end controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -26,12 +26,12 @@ The response includes `schemaId`, `kind`, `mode`, `natureHandle`, `fingerprint`,
 | Gate | Status | Work |
 | --- | --- | --- |
 | G0: playable controlled RunState + fair observation | **PARTIAL (#145)** | A real `RunState` with starter player/deck and unchanged controlled enemy HP/intent can play deterministic actions after Nature resolves shuffle; the fixture bypasses native combat-start hooks and is not equivalent to arbitrary full-run state. |
-| G1: mechanically resumed action→chance→action | **PARTIAL (#145–#149)** | Mechanically resumed opening shuffle, next-turn intents, hand-draw recycle, random enemy/Sly targeting and five random generated-card operations; other nested sites remain. |
-| G2: live chance-site coverage | **PARTIAL (#145–#149)** | Supported source-shaped sites now include per-card generated-card selection for Chaos-like, zero-cost, and random Attack/Skill/Power effects. Distinct/full pool shuffles, draw insertions, randomized costs, summons and nested random hooks remain unimplemented. |
+| G1: mechanically resumed action→chance→action | **PARTIAL (#145–#150)** | Saved continuation stages now include card identity and bounded insertion position for two draw-pile-generation operations in the actual effect kernel. The new sites are exercised via an internal operation fixture; existing action-based stages retain their JSONL coverage. |
+| G2: live chance-site coverage | **PARTIAL (#145–#150)** | In addition to earlier combat sites, `CreateGeneratedCardsAtRandomDrawPositions` and `CreateRandomFreeAttacksInDrawPile` now expose controlled position or model-plus-position tickets. Enemy draw/discard insertion, full-pool shuffles, randomized costs, summons and nested hooks remain open. |
 | G3: extended chance operations | **PARTIAL** | `choose_index` and compact `bounded_integer` exist. Other source-shaped operation types need requests and execution integration. |
-| G4: stable event IDs and transcript | **PARTIAL (#144–#149)** | Stable ordered events carry initial HP/intents, opening shuffle, turns, recycle, targets, and card generation. Generation events expose the ordered source card model pool to Nature. |
+| G4: stable event IDs and transcript | **PARTIAL (#144–#150)** | Ordered Nature events and strict source support include dual-stage draw-pile insertion with pile identity fingerprint and candidate Attack card IDs. These fixture-origin tests are not action-based snapshot provenance. |
 | G5: fair player boundary | **PARTIAL (#145–#149)** | The normal fair player observation is accessible only at player boundaries; generated-card support is Nature-facing metadata. |
-| G6: 15-worker isolation | **PARTIAL (#144–#149)** | Deterministic 15-worker tests now cover generated-card choices as well as earlier sites. Full combat-through-terminal performance tests remain. |
+| G6: 15-worker isolation | **PARTIAL (#144–#150)** | Deterministic 15-worker coverage now also exercises draw insertion, including both model and index selection; full terminal rollout and throughput remain incomplete. |
 | G7: conditional native chance law | **DEFERRED** | Explicitly `UNVERIFIED`; source law and importance-sampling weights require separate calibration. |
 
 ## Engineering sequencing
@@ -79,3 +79,10 @@ This extension preserves the chronological `LiveTranscript` and exact replay acr
 The actual `ResolveOperations` queue now creates Nature chance boundaries for five source-shaped single-card generation effects: free random character cards, zero-cost cards, random Attack, random Skill, and random Power. The selected card is created exactly once, then the original queued effects and card/event/choice continuation resume; multi-card generation creates successive chance events. The `choose_index` request uses the original ordered source eligibility pool. Nature also receives a detached `pending.candidateCardIds` array, while the player's ordinary fair observation remains separate. Pool identity is included in the event owner fingerprint.
 
 Tests exercise all three consecutive Orobic Acid generation effects in actual combat using an explicitly injected fixture potion, plus malformed support rejection, independent branches and 15-worker deterministic choices. The test fixture is not a claim of native initial potion acquisition, and unchanged starter-state snapshot replay remains the authoritative provenance contract. Original source laws remain `UNVERIFIED`. See [the generation-specific implementation note](NATURE_GENERATED_CARD_143.md).
+
+
+## PR #150: generated-card random draw-pile placement
+
+The real combat `ResolveOperations` kernel now suspends at two additional source-defined effects. A generated fixed card has one bounded insertion-position ticket; a generated random Attack has a source-ordered model-selection ticket followed by a position ticket. The original operation and continuation queue are preserved, so card materialization and each insertion occur exactly once. Multi-insertion operations issue successive choices, and the player remains outside the fair decision boundary until the operation completes. See [draw-insertion implementation notes](NATURE_DRAW_INSERTION_143.md).
+
+Tests exercise both mechanics through a narrow guarded internal diagnostic entry on a real combat `RunState`. Neither operation is currently reached by a standard Silent starter card action, so this does not establish full JSONL `controlled_step` or native-entry replay provenance. Remaining enemy-side insertion and other random-effect continuations remain explicitly unsupported. Law status is `UNVERIFIED`.
