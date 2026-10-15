@@ -13890,9 +13890,20 @@ public sealed partial class PrototypeGameEngine
             var hasSlither = card.Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Slither };
             if (combat.SemanticDeck is not null && (needsRelicCost || hasSlither))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
-                    "operation=drawn_card_cost_continuation");
+            {
+                if (!controlledSemanticDrawSuspension)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
+                        "operation=missing_semantic_cost_continuation");
+                combat = MakeControlledDrawCostChoice(
+                    combat, cardInstanceId, count - drawNumber - 1,
+                    fromHandDraw, eventDepth, needsRelicCost
+                        ? randomizedCostUpperBound : 0, hasSlither);
+                return new PrototypeDrawCardsResult(
+                    player, combat, drawnCardInstanceIds.ToArray(),
+                    RemainingCount: count - drawNumber - 1,
+                    ControlledDrawCostPending: true);
+            }
             if (ControlledChanceGuardV111.Active && (needsRelicCost || hasSlither))
             {
                 if (!controlledDrawCostSuspension)
@@ -13950,6 +13961,12 @@ public sealed partial class PrototypeGameEngine
                 eventDepth);
             player = dispatched.Player;
             combat = dispatched.Combat;
+            if (combat.SemanticDeck is not null &&
+                (combat.PendingChoice is not null ||
+                 combat.PendingKnowledgeDemonChoice is not null))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=nested_choice_continuation");
         }
 
         return new PrototypeDrawCardsResult(
