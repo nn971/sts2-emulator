@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152, #155–#157 and #159–#163 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152, #155–#157 and #159–#164 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -310,7 +310,7 @@ schema, weighted intents and terminal training rollouts. Source/native
 probability law remains UNVERIFIED.
 
 
-## Source-shaped card-selection deck mutations (PR #164)
+## Source-shaped card-selection deck mutations (merged PR #164)
 
 The original `PrototypeGameEngine.ApplyCardSelection` now updates
 `CombatState.SemanticDeck` when a player selects known card instances
