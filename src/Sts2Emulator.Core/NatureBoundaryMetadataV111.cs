@@ -44,9 +44,12 @@ public static class NatureBoundaryMetadataV111
         ControlledPlayableCombatEngineV111.VerifyStage(state);
         var history = (state.Origin.PriorHpTranscript ?? [])
             .Concat(state.Origin.Transcript)
-            .Concat(state.ShuffleTranscript).ToArray();
-        return Build(state.Pending is null ? "player" : "opening_shuffle",
-            state.Mode, state.Fingerprint, state.Pending, history);
+            .Concat(state.ShuffleTranscript)
+            .Concat(state.TurnTranscript).ToArray();
+        var kind = state.TurnIntents is not null ? "next_turn_intent"
+            : state.Pending is not null ? "opening_shuffle" : "player";
+        return Build(kind, state.Mode, state.Fingerprint,
+            state.ActivePending, history);
     }
 
     private static NatureBoundaryViewV111 Build(
