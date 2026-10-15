@@ -7,11 +7,110 @@
 
 This document records the **desired RNG implementation** for the next emulator architecture milestone. It specifies what we want to build; it does **not** claim that these interfaces, migrations, or probability calibrations are implemented today. The existing v111 native RNG work should be extended rather than discarded.
 
+## 0. Architecture update: stochastic state and semantic Nature (2026-10-15)
+
+**Decision:** unify the *mechanical* interface while allowing the native and
+Nature providers to store different private stochastic state. The native
+provider retains exact source-seeded RNG streams, committed permutations and
+other hidden values. Nature may represent the same game state by unresolved,
+constrained random objects and select outcomes when the mechanics actually
+need them. Both providers execute the same card, enemy, relic, potion,
+visibility and trigger rules. The native stream/cursor audit remains intact.
+
+### State ownership and operation contract
+
+The engine owns all actual game objects, their instance identities, zone
+membership, enemy AI memory, hook order, eligibility and visibility rules.
+The provider owns stochastic realization/constraint data associated with
+those objects. A shared semantic operation layer covers:
+
+- **Initialize/commit:** shuffled decks, weighted enemy-intent selections,
+  random offers or multi-pick pools. Native may commit an exact realization
+  immediately; Nature can retain unresolved legal possibilities.
+- **Resolve/reveal:** request one card instance when drawing or revealing an
+  unresolved top card; resolve one random target, weighted intent, cost,
+  generated card or pool selection when that choice is needed. Revealing a
+  previously committed value does not create an additional Nature event.
+- **Deterministic update:** put a card on top/bottom, insert at an exact or
+  randomly chosen position, remove/return/move a specific instance, peek,
+  scry, reorder, exhaust and transform. Preserve forced positions and all
+  information already shown to the player.
+- **Reset:** a source-triggered reshuffle replaces the relevant unresolved
+  permutation constraints; apply on-shuffle relic/card hooks at the original
+  time, before any subsequent draw.
+
+Semantic decisions have their own event IDs, support, conditioning state
+and transcript; native primitive calls retain separate source stream/cursor
+provenance. A native Fisher–Yates shuffle can consume many primitive draws
+while Nature may generate one `draw_card` event per later unknown card.
+Do **not** expose both shuffle-swap and deferred-card decisions for the same
+randomization in one controlled trace or multiply their likelihoods twice.
+Consecutive draws and automatic draws each resolve one card before executing
+its `CardDrawn` hooks and subsequent effects.
+
+The deferred draw-pile representation must support exact known prefixes/
+suffixes and constrained hidden positions, not only an unordered multiset:
+an inserted/returned known-top card is forced next, partial peeks/scry lock
+revealed identities, and an insertion into the middle constrains the
+remaining relative order. Preserve card **instance** identity, enchantments
+and mutable attributes. Implement a general constraint representation or
+support a proven restricted set of operations with explicit unsupported
+errors. Never silently relax constraints to a uniform unknown bag. All
+provider-private state must round-trip through fork/save/load/replay.
+
+### Enemy intents: observable result, internal history, exposed weights
+
+The next enemy intent is visible when the player chooses an action. The
+emulator retains the enemy's previous moves, AI phase/counters, anti-repeat
+filters and other transition state and computes the **current** eligible
+intent candidates with their source-defined weights at the original
+commitment boundary. Expose to Nature `enemy_intent` metadata with stable
+enemy/intent IDs, eligible candidate ordering, nonnegative raw weights,
+normalization/total weight, and explicit probability provenance
+(`UNVERIFIED` until source-audited). Use the normalized weights as
+reference probabilities only when the actual source selection law has been
+verified. After Nature selects an intent, commit and reveal it through
+the ordinary engine path; subsequent player actions see the committed
+intent. Future AI state updates belong to mechanics, not Nature.
+
+The existing bounded-integer/source-shaped intent tickets may continue
+internally for exact native RNG parity; they are distinct from Nature's
+weighted **semantic intent** choice. Likewise, a multi-card reward offer or
+generated-card pool can be selected sequentially without replacement while
+preserving the complete offer before any player-choice boundary.
+
+### Scope and scheduling
+
+- **Map:** the player sees the Act map. Preserve native source generation and
+  visibility; postpone externally controlled map generation.
+- **Rewards, shops, encounter formations:** continue ordinary audited
+  source-site migrations; no special hidden-state architecture milestone.
+- **Cross-stream RNG correlations:** no new structural Nature dependency.
+  Counterfactual controlled rollouts need legality and mechanical
+  consistency. Any later claim of *original-game* importance-weighted
+  unbiasedness still requires a stated, justified event reference law;
+  do not label an unverified model as exact.
+- **Integration:** preserve isolated #143 work, the active Silent all-Act
+  branch, and existing native compatibility. Introduce opt-in semantic
+  schema/capability negotiation; do not silently reinterpret old controlled
+  Fisher–Yates transcripts.
+
+**Implementation order / acceptance:** (1) native exact vs deferred Nature
+provider-owned state and typed semantic events; (2) intent weighted support
+and visible-commit timing; (3) deck shuffle/recycle/draw/forced-top and
+bottom/insertion/peek/scry with draw-time card hooks; (4) distinct multi-pick
+offers and generated pools; (5) fork/replay and 15-worker deterministic
+stress. Enumerate small decks to compare sequential draws against
+once-shuffled distributions, including constrained insertions, partially
+revealed order, and multiple draw hooks. Verify native seeded shuffle counts,
+stream cursors and intent parity independently. Unsupported deck operations
+fail atomically and explain the missing capability.
+
 ## 1. Governing decision
 
 Separate **mechanical execution** from **the selection of random outcomes**.
 
-Conceptually, a player action executes ordinary game rules and ordered hooks. At each source-authentic random-choice call site, the mechanics request an outcome from a provider. The mechanics then resume using that outcome. Native RNG and externally controlled Nature use the *same* mechanical continuation.
+Conceptually, a player action executes ordinary game rules and ordered hooks. The mechanics invoke semantic stochastic operations at source-authentic effect and visibility boundaries. A provider may resolve immediately or maintain private committed/unresolved state until a value is needed. The mechanics then resume using the selected outcome. Native RNG and externally controlled Nature use the *same* mechanical continuation.
 
 ```text
 Player action
@@ -41,7 +140,7 @@ For training, mechanically legal outcomes are sufficient to build and test the a
 | Component | Responsibility |
 | --- | --- |
 | Game mechanics | Execute card/enemy/relic/potion/map/event/reward effects, ordered hooks, choices, and state changes. |
-| Random-operation layer | Define typed source-authentic requests, stable call-site identity, stream ownership, eligibility, validation, and outcome application. |
+| Random-operation layer | Define typed semantic operations and private stochastic-state transitions alongside source-authentic primitive requests, stable call-site identity, stream ownership, eligibility, validation, and outcome application. |
 | Native provider | Resolve using v111 named/context streams and native primitive algorithms, mutating the correct stream state. |
 | Controlled provider | Pause at a choice, accept an external legal outcome, record intervention provenance, and resume mechanically. |
 | Trace/replay provider | Consume a recorded choice transcript, asserting call-site/order/eligibility agreement. |
@@ -132,8 +231,8 @@ Move call sites gradually, using small parity-protected batches:
 2. **`run.monster_ai` committed intent**: preserve move-state eligibility, no-repeat conditions, and commit timing.
 3. **Encounter-local formation picks**: `NativeActOneWeakCombatEntryV111` and `NativeEncounterFormationFactoryV111`, including Slimes Weak's three draws and Corpse Slugs Weak's rotation.
 4. **Monster-local and summoned-unit randomness**: retain stream-owner/combat-ID identity across creation, death, hatch, and replay.
-5. **Shuffle, card selection, random targets, generated cards/costs, and reward streams** in audited source call order.
-6. **Act map, events, shops, treasures, encounter selection, and other context streams**, then remaining single-player content.
+5. **Source-timed shuffle/recycle, deferred-Nature individual card draw/reveal, forced draw-pile placements, semantic weighted intents, card selection, random targets, generated cards/costs, and reward streams**; native primitive call order is audited independently.
+6. **Native Act map, events, shops, treasures, encounter selection, and other context streams**, then remaining single-player content. Defer controlled Nature map generation.
 
 Per migration, the native provider must give identical old/new selected results, exact hashes, named stream counters and final native stream words on the same seeds. Controlled mode must pass legality and hook-order tests. Keep unrevised mechanics explicitly marked as native-only/unsupported in controlled mode; never silently fall back to an unrelated prototype RNG.
 
@@ -178,7 +277,7 @@ Measure native transition/whole-run throughput against the pre-refactor baseline
 | **D2 — First migrated mechanics** | Monster HP, committed enemy intents, then audited formation picks. | Seeded native result/cursor parity + controlled fixed-outcome hook parity. |
 | **D3 — Serializable choice boundaries** | Suspend/resume controlled choice in existing engine continuation framework; pending IDs, fork/save/load. | Nested calls and interrupted enemy-turn/trigger chains replay identically. |
 | **D4 — Consumer protocol** | Add opt-in capability/version negotiation, controlled advance/resolve, traces, optional enumerator and Python binding. | Full supported combat segments under native and scripted Nature; legacy `step` unchanged. |
-| **D5 — Broad RNG migration** | Draw/shuffle, targeting, generation, reward, room/map and remaining mechanics. | Each audited mechanic supports both providers; unsupported contexts fail explicitly. |
+| **D5 — Broad RNG migration** | Provider-owned deck state with per-draw Nature events, weighted semantic intent, targeting, without-replacement generation, reward and remaining mechanics. Preserve native maps; defer Nature-map control. | Exact native shuffle parity plus constrained Nature deck/intent hooks, fair observations, and explicit unsupported operations. |
 | **D6 — Reference-law audit** | Conditional probability research, model/version tags, statistical and exact-support checks. | Probability-sensitive consumers can certify target law and compute valid ratios. |
 | **D7 — Optimization** | Batch event resolution, lower overhead, cheap forks, provenance/reporting. | Reproducible performance and accuracy regressions. |
 
