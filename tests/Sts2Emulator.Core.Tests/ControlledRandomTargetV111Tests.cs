@@ -60,7 +60,7 @@ public sealed class ControlledRandomTargetV111Tests
         var handId = state.Run.World!.Combat!.Hand[0];
         var action = environment.Observe(state.Run).LegalActions
             .First(a => a.Kind == "play_card" &&
-                a.Payload.TryGetProperty("card_instance_id", out var id) &&
+                a.Payload.TryGetProperty("CardInstanceId", out var id) &&
                 id.GetInt64() == handId);
         var root = state.Fingerprint;
         var pending = ControlledPlayableCombatEngineV111.Step(state, action.ActionId);
