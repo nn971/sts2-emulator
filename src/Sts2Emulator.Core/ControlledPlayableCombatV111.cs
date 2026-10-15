@@ -18,8 +18,17 @@ public sealed record ControlledPlayableCombatV111(
     RandomIndexRequestV111? Pending,
     string Mode = "controlled-v111-playable-fixture-v1")
 {
+    // All ticket decisions are preserved in a single chance transcript.
+    // The in-flight intent checkpoint additionally stores the unmodified
+    // post-enemy-action combat state and the current pure selector stage.
+    public ControlledTurnIntentsV111? TurnIntents { get; init; }
+    public RandomIndexDecisionV111[] TurnTranscript { get; init; } = [];
+
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool AtPlayerBoundary => Pending is null;
+    public RandomIndexRequestV111? ActivePending =>
+        TurnIntents?.Pending ?? Pending;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool AtPlayerBoundary => ActivePending is null && TurnIntents is null;
     [System.Text.Json.Serialization.JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
     public ControlledPlayableCombatV111 Fork() => this with
@@ -34,6 +43,14 @@ public sealed record ControlledPlayableCombatV111(
             }
         }).ToArray(),
         PlayerActions = (string[])PlayerActions.Clone(),
+        TurnIntents = TurnIntents?.Fork(),
+        TurnTranscript = TurnTranscript.Select(d => d with
+        {
+            Request = d.Request with
+            {
+                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
+            }
+        }).ToArray(),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
@@ -115,13 +132,15 @@ public static class ControlledPlayableCombatEngineV111
         ControlledPlayableCombatV111 state,
         string fingerprint, int selectedIndex)
     {
-        if (state.Pending is null)
+        if (state.ActivePending is null)
             throw new InvalidOperationException(
                 "Controlled state is awaiting a player action, not Nature.");
         if (!StringComparer.Ordinal.Equals(state.Fingerprint, fingerprint))
             throw new InvalidOperationException(
                 "Stale controlled chance fingerprint.");
         VerifyStage(state);
+        if (state.TurnIntents is not null)
+            return ResolveTurnIntents(state, selectedIndex);
         var fresh = state.Fork();
         var request = fresh.Pending!;
         var decision = new ControlledRandomIndexProviderV111(selectedIndex)
@@ -165,11 +184,74 @@ public static class ControlledPlayableCombatEngineV111
         RunState result;
         using (ControlledChanceGuardV111.Enter())
             result = environment.Step(input, actionId).State;
-        return state.Fork() with
+        var next = state.Fork() with
         {
             Run = result,
             PlayerActions = state.PlayerActions.Append(actionId).ToArray()
         };
+        return StartPendingTurn(next);
+    }
+
+    private static ControlledPlayableCombatV111 StartPendingTurn(
+        ControlledPlayableCombatV111 state)
+    {
+        if (state.Run.Phase != RunPhase.Combat ||
+            state.Run.World?.Combat is not { } combat ||
+            combat.AutomaticPipelineContinuation is not { } continuation)
+            return state;
+        int index = continuation.NextStepIndex;
+        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
+            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+                PrototypeAutomaticStepKind.AdvanceTurn)
+            return state;
+        if (state.TurnIntents is not null)
+            throw new InvalidOperationException("Nested intent stage already pending.");
+        if (combat.Enemies.Length != state.Origin.Formation.Enemies.Length ||
+            combat.Enemies.Where((e, i) =>
+                e.EnemyId != state.Origin.Formation.Enemies[i].EnemyId ||
+                e.InstanceId != state.Origin.Formation.MonsterContexts[i].CombatId)
+                .Any())
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE site=combat.next_turn_intent.formation_changed operation=formation");
+        var intents = ControlledTurnIntentEngineV111.Begin(
+            combat, state.Origin.Formation.NativeEncounterEntry);
+        var next = state with { TurnIntents = intents };
+        return intents.Complete ? FinishTurnIntents(next) : next;
+    }
+
+    private static ControlledPlayableCombatV111 ResolveTurnIntents(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var current = state.TurnIntents ??
+            throw new InvalidOperationException("Turn-intent stage missing.");
+        var nextIntents = ControlledTurnIntentEngineV111.Resolve(
+            current, selectedIndex, state.Origin.ReferenceStreams);
+        var fresh = state.Fork() with
+        {
+            TurnIntents = nextIntents,
+            TurnTranscript = state.TurnTranscript.Append(
+                nextIntents.Transcript[^1]).ToArray()
+        };
+        return nextIntents.Complete ? FinishTurnIntents(fresh) : fresh;
+    }
+
+    private static ControlledPlayableCombatV111 FinishTurnIntents(
+        ControlledPlayableCombatV111 state)
+    {
+        var current = state.TurnIntents ??
+            throw new InvalidOperationException("No turn intents to commit.");
+        if (!current.Complete)
+            throw new InvalidOperationException("Nature intent tickets still pending.");
+        ControlledTurnIntentEngineV111.Validate(current);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
+                state.Run.Fork(), current.Combat.Fork());
+        return StartPendingTurn(state with
+        {
+            TurnIntents = null,
+            Run = result
+        });
     }
 
     public static string Save(ControlledPlayableCombatV111 state)
@@ -200,8 +282,29 @@ public static class ControlledPlayableCombatEngineV111
                     "Unreachable controlled shuffle transcript.");
             current = Resolve(current, current.Fingerprint, decision.SelectedIndex);
         }
+        int turnCursor = 0;
         foreach (var action in stored.PlayerActions)
+        {
             current = Step(current, action);
+            while (current.TurnIntents?.Pending is not null &&
+                turnCursor < stored.TurnTranscript.Length)
+            {
+                var recorded = stored.TurnTranscript[turnCursor++];
+                recorded.Validate();
+                if (recorded.ProviderMode != "controlled-v111" ||
+                    recorded.ProbabilityStatus != "UNVERIFIED" ||
+                    recorded.NativeCursorBefore is not null ||
+                    recorded.NativeCursorAfter is not null ||
+                    CanonicalJson.Sha256(recorded.Request) !=
+                        CanonicalJson.Sha256(current.ActivePending))
+                    throw new InvalidDataException(
+                        "Unreachable controlled next-turn choice.");
+                current = Resolve(current, current.Fingerprint,
+                    recorded.SelectedIndex);
+            }
+        }
+        if (turnCursor != stored.TurnTranscript.Length)
+            throw new InvalidDataException("Unconsumed controlled turn transcript.");
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
             throw new InvalidDataException(
                 "Controlled playable snapshot diverges from its provenance.");
@@ -214,11 +317,21 @@ public static class ControlledPlayableCombatEngineV111
             state.Run.Phase is not (RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
             state.Run.World?.Combat is null && state.Pending is not null ||
             state.ShuffleTranscript is null || state.PlayerActions is null ||
-            state.Origin is null)
+            state.TurnTranscript is null || state.Origin is null ||
+            (state.TurnIntents is not null && state.Pending is not null))
             throw new InvalidDataException("Malformed controlled playable stage.");
         var expected = MakePending(state.NextShuffleIndex, state.ShuffleTranscript.Length);
         if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(state.Pending))
             throw new InvalidDataException("Controlled shuffle stage is stale.");
+        if (state.TurnIntents is { } intent)
+        {
+            ControlledTurnIntentEngineV111.Validate(intent);
+            if (state.Run.World?.Combat is not { } combat ||
+                CanonicalJson.Sha256(combat) !=
+                    CanonicalJson.Sha256(intent.BaselineCombat))
+                throw new InvalidDataException(
+                    "Controlled turn-intent checkpoint lost its precommit state.");
+        }
     }
 
     private static RandomIndexRequestV111? MakePending(int index, int ordinal) =>

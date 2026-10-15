@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** isolated event-metadata foundation merged (#144); opt-in playable opening-combat fixture under review (#145). Issue #143 stays open until arbitrary live action/chance suspension and coverage gates are met.
+**Status:** isolated event-metadata foundation (#144) and playable opening-combat fixture (#145) merged; PR #146 adds one live end-turn chance suspension point. Issue #143 stays open until arbitrary action/chance suspension and coverage gates are met.
 
 ## Delivered by the event-metadata slice
 
@@ -26,12 +26,12 @@ The response includes `schemaId`, `kind`, `mode`, `natureHandle`, `fingerprint`,
 | Gate | Status | Work |
 | --- | --- | --- |
 | G0: playable controlled RunState + fair observation | **PARTIAL (#145)** | A real `RunState` with starter player/deck and unchanged controlled enemy HP/intent can play deterministic actions after Nature resolves shuffle; the fixture bypasses native combat-start hooks and is not equivalent to arbitrary full-run state. |
-| G1: mechanically resumed action→chance→action | **PARTIAL (#145)** | Persistent Fisher–Yates opening swaps can be resolved sequentially without replay, followed by real player actions. Mid-player-action and nested automatic-hook suspension remain blocked. |
-| G2: live chance-site coverage | **PARTIAL (#145)** | Opening shuffle has controlled index selections. Real combat action RNG calls are guarded, report `UNSUPPORTED_CONTROLLED_CHANCE site=... operation=...`, and cannot create child handles. Formation, further draws/reshuffles, targets and nested hooks still need migration. |
+| G1: mechanically resumed action→chance→action | **PARTIAL (#145/#146)** | Besides opening shuffle, the real end-turn pipeline suspends immediately before `AdvanceTurn` intent commitments, persists preceding enemy effects, resolves repeated Nature tickets, and continues after the saved index. Other in-action/nested chance sites remain blocked. |
+| G2: live chance-site coverage | **PARTIAL (#145/#146)** | Opening shuffle and end-turn next-intent decisions have typed control. Legacy RNG calls within other effects fail with `UNSUPPORTED_CONTROLLED_CHANCE site=... operation=...` before the transaction publishes a child. Formation, draw/reshuffle, targeting, summons and nested hooks remain unmigrated. |
 | G3: extended chance operations | **PARTIAL** | `choose_index` and compact `bounded_integer` exist. Other source-shaped operation types need requests and execution integration. |
-| G4: stable event IDs and transcript | **PARTIAL, this change** | Isolated HP→intent events have typed provenance. In-flight gameplay events must be added when G1 exists. |
+| G4: stable event IDs and transcript | **PARTIAL (#144/#146)** | Typed events now interleave controlled initial HP, intents, shuffle, and the first mid-action next-turn intent decisions, with ordered replay, source site and support identity. Other live RNG events remain unmigrated. |
 | G5: fair player boundary | **PARTIAL (#145)** | `controlled_observe` exposes only the standard `prototype-fair-v0` observation, after all opening chance requests resolve; Nature metadata remains separately accessible to the chance controller. |
-| G6: 15-worker isolation | **PARTIAL (#144/#145)** | Both isolated HP/intent and opening playable entry have 15-worker deterministic scheduling tests; full combat-through-terminal throughput remains to implement. |
+| G6: 15-worker isolation | **PARTIAL (#144/#145/#146)** | Deterministic 15-worker tests now cover next-turn intent suspension as well as opening fixture; full controlled terminal rollout and throughput remain incomplete. |
 | G7: conditional native chance law | **DEFERRED** | Explicitly `UNVERIFIED`; source law and importance-sampling weights require separate calibration. |
 
 ## Engineering sequencing
@@ -53,3 +53,11 @@ The new `controlledChanceSchemaId` identifies the **limited** `sts2-v111-control
 This is a **gameplay-capable fixture**, initialized from the legacy run's starter player/deck, not a source-authentic native combat opening. Combat-start relic hooks, initial card effects, future shuffle/draw and nested random events still need correct stage-by-stage resumable engine support. For example, a guarded `end_turn` action that reaches an unmigrated RNG draw fails explicitly; that entire action is aborted atomically. True mid-action suspension will require a persisted mechanical continuation, not rerunning the whole action.
 
 `natureBoundaryScope=isolated-combat-entry-only` and `naturePlayable=false` remain unchanged for backwards-compatible isolated Nature handles. The new controlled fixture is a separate opt-in capability. The probability status remains `UNVERIFIED`.
+
+## PR #146: live end-turn intent continuation
+
+The `controlled_step` command now runs the real end-turn pipeline through enemy actions and end-turn effects, stopping at the next-turn `AdvanceTurn` commitment **before** its first RNG call. The saved `RunState` includes all earlier hooks and a typed automatic-pipeline index. `controlled_resolve` sequentially commits the source-shaped intent tickets by the pure `EvaluateEnemyIntentChoice` callback. After the last ticket, `ResumeControlledTurnAfterIntents` performs turn-increment/postwork precisely once and resumes at the following automatic stage. The HP/decision indices and earlier side effects stay stable across Nature branches; no earlier gameplay hooks are rerun.
+
+Versioning remains `sts2-v111-controlled-playable-fixture-v1` with the additional supported site `combat.next_turn_intent.index_draw`. `controlled_trace`, `controlled_step` and `controlled_load` report `next_turn_intent` and a pending typed finite event as appropriate. Only after that event resolves is the normal `prototype-fair-v0` observation accessible again. Snapshots verify replay against the joint ordered player/chance transcript, and strict stale/index validation keeps rejected requests atomic.
+
+**Limit:** This is a single mechanically meaningful suspension stage inside live player end-turn, not generic .NET stack capture. RNG calls before that stage (enemy effects) or after it (draw/reshuffle, random cost, targeting or nested hooks) still fail closed. They need additional explicit stage/operation continuations in later patches. All native chance-law probabilities remain `UNVERIFIED`.
