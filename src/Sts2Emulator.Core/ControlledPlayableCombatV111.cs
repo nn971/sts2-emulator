@@ -28,10 +28,29 @@ public sealed record ControlledPlayableCombatV111(
     // Chronological live chance transcript, interleaving intents/recycles.
     public RandomIndexDecisionV111[] LiveTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] TargetTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] GeneratedCardTranscript { get; init; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
-        TargetPending ?? Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
+        GeneratedCardPending ?? TargetPending ??
+        Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RandomIndexRequestV111? GeneratedCardPending
+    {
+        get
+        {
+            var choice = Run.World?.Combat?.PendingChoice?.ControlledGeneration;
+            if (choice is null) return null;
+            var pool = choice.CandidateCardIds;
+            return new RandomIndexRequestV111(
+                "combat.generated_card.select", "prototype.combat",
+                "card:" + (Run.World!.Combat!.PendingChoice!.SourceCardInstanceId?.ToString()
+                    ?? "effect") + ":pool:" + CanonicalJson.Sha256(pool),
+                GeneratedCardTranscript.Length,
+                Enumerable.Range(0, pool.Length).ToArray(),
+                OperationKind: "choose_index");
+        }
+    }
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? TargetPending
     {
@@ -74,6 +93,7 @@ public sealed record ControlledPlayableCombatV111(
         RecycleTranscript = DeepCopy(RecycleTranscript),
         LiveTranscript = DeepCopy(LiveTranscript),
         TargetTranscript = DeepCopy(TargetTranscript),
+        GeneratedCardTranscript = DeepCopy(GeneratedCardTranscript),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
@@ -171,6 +191,8 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException(
                 "Stale controlled chance fingerprint.");
         VerifyStage(state);
+        if (state.GeneratedCardPending is not null)
+            return ResolveGeneratedCard(state, selectedIndex);
         if (state.TargetPending is not null)
             return ResolveTarget(state, selectedIndex);
         if (state.Recycle is not null)
@@ -224,6 +246,27 @@ public static class ControlledPlayableCombatEngineV111
         {
             Run = result,
             PlayerActions = state.PlayerActions.Append(actionId).ToArray()
+        };
+        return StartPendingTurn(next);
+    }
+
+    private static ControlledPlayableCombatV111 ResolveGeneratedCard(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var request = state.GeneratedCardPending ??
+            throw new InvalidOperationException("Missing generated-card Nature ticket.");
+        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
+            .Resolve(request, state.Origin.ReferenceStreams);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledGeneratedCard(
+                state.Run.Fork(), selectedIndex);
+        var next = state.Fork() with
+        {
+            Run = result,
+            GeneratedCardTranscript = state.GeneratedCardTranscript
+                .Append(choice).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
         };
         return StartPendingTurn(next);
     }
@@ -417,7 +460,8 @@ public static class ControlledPlayableCombatEngineV111
                 "Unconsumed or out-of-order live Nature transcript.");
         if (!current.TurnTranscript.SequenceEqual(stored.TurnTranscript) ||
             !current.RecycleTranscript.SequenceEqual(stored.RecycleTranscript) ||
-            !current.TargetTranscript.SequenceEqual(stored.TargetTranscript))
+            !current.TargetTranscript.SequenceEqual(stored.TargetTranscript) ||
+            !current.GeneratedCardTranscript.SequenceEqual(stored.GeneratedCardTranscript))
         {
             // Records hold arrays; canonical comparison below is decisive.
             if (CanonicalJson.Sha256(current.TurnTranscript) !=
@@ -425,7 +469,9 @@ public static class ControlledPlayableCombatEngineV111
                 CanonicalJson.Sha256(current.RecycleTranscript) !=
                     CanonicalJson.Sha256(stored.RecycleTranscript) ||
                 CanonicalJson.Sha256(current.TargetTranscript) !=
-                    CanonicalJson.Sha256(stored.TargetTranscript))
+                    CanonicalJson.Sha256(stored.TargetTranscript) ||
+                CanonicalJson.Sha256(current.GeneratedCardTranscript) !=
+                    CanonicalJson.Sha256(stored.GeneratedCardTranscript))
                 throw new InvalidDataException("Chance transcripts diverged.");
         }
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
@@ -442,11 +488,19 @@ public static class ControlledPlayableCombatEngineV111
             state.ShuffleTranscript is null || state.PlayerActions is null ||
             state.TurnTranscript is null || state.RecycleTranscript is null ||
             state.LiveTranscript is null || state.TargetTranscript is null ||
-            state.Origin is null ||
+            state.GeneratedCardTranscript is null || state.Origin is null ||
             (state.TurnIntents is not null && state.Pending is not null) ||
             (state.Recycle is not null &&
                 (state.Pending is not null || state.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
+        var generated = state.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
+        if (generated is not null &&
+            (state.Pending is not null || state.Recycle is not null ||
+             state.TurnIntents is not null ||
+             state.Run.World?.Combat?.PendingChoice?.ControlledTarget is not null ||
+             !PrototypeGameEngine.ValidateControlledGenerationSupport(generated)))
+            throw new InvalidDataException(
+                "Malformed or stale controlled generated-card candidate pool.");
         var controlledTarget = state.Run.World?.Combat?.PendingChoice?.ControlledTarget;
         if (controlledTarget is not null)
         {
