@@ -231,3 +231,33 @@ smokes inspect the candidates and resolve intents by ID, including the
 15-independent-process equivalence check. This is still a restricted
 playable two-site API; authentic opening hooks, native/default non-Nature
 chance parity, and terminal combat remain separate P0 gates.
+
+## 2026-10-16 P0: terminal-aware real end_turn transition
+
+The actual guarded `end_turn` executes enemy attacks, powers, relic hooks
+and subsequent automatic pipeline stages until its source-defined next
+boundary. A fatal enemy action can reach `RunPhase.Terminal` **before**
+the next turn's `AdvanceTurn` intent hook. The two-site semantic pilot
+must return that true terminal RunState immediately, with
+`boundary="terminal"`, `terminal=true`, `outcome="defeat"`,
+and exit HP taken from the real player, without issuing an invented next
+intent or draw event. The same applies to a genuine reward/victory outcome
+from end-turn effects.
+
+`SemanticEndTurnEngineV111.BeginFromPlayerActionOrTerminal` now executes
+the ordinary end-turn mechanics **once**, returning either a supported
+pending intent/draw continuation or the finished terminal state.
+The existing `BeginFromPlayerAction` continuation-only API remains
+source-compatible for nonterminal checkpoints, and an explicit exception
+identifies a terminal run for callers that require a continuation.
+The external semantic JSONL `semantic_step` and Python binding preserve
+the exact terminal state, replay history, stale fingerprints, public
+observation gating and independent session handles.
+
+A regression drives an independently seeded restricted combat from an
+ordinary fair player boundary, repeatedly chooses the legal `end_turn`
+action and legal Nature intents/draws, and checks for genuine defeat,
+the absence of phantom pending randomness, final exit HP and complete
+snapshot reconstruction. This establishes a narrow real **defeat**
+terminal path only when CI passes; complete victory and a sufficiently
+broad encounter/player policy evaluation are still acceptance work.
