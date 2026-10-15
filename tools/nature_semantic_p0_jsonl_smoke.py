@@ -85,8 +85,15 @@ def main():
                 n_intents += 1
                 assert event["ownerId"].startswith("creature:")
                 assert event["supportCount"] >= 1
-                assert event["rawEligibleWeights"] is None
-                selected = 0
+                assert event["semanticIntentSupportSchemaId"] == (
+                    "sts2-v111-semantic-weighted-intent-v1")
+                assert event["semanticCandidates"]
+                assert event["totalRawWeight"] == event["supportCount"]
+                assert sum(event["rawEligibleWeights"]) == event["totalRawWeight"]
+                assert all(c["rawWeight"] > 0 and c["intentId"] and c["moveId"]
+                           for c in event["semanticCandidates"])
+                assert not event["weightsVerified"]
+                selected = event["semanticCandidates"][0]["intentId"]
             else:
                 n_draws += 1
                 assert event["candidates"]
@@ -96,7 +103,9 @@ def main():
                 assert event["shuffleEpoch"] >= 0
                 selected = 0
             prior = advanced.fingerprint
-            advanced = advanced.resolve(selected)
+            advanced = (advanced.resolve_intent(selected)
+                        if event["kind"] == "enemy_intent"
+                        else advanced.resolve(selected))
             assert advanced.fingerprint != prior
             assert advanced.fingerprint == session.load_semantic_snapshot(
                 advanced.save_snapshot()).fingerprint
