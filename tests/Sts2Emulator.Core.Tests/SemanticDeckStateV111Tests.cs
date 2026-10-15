@@ -254,6 +254,55 @@ public sealed class SemanticDeckStateV111Tests
         Assert.Equal(1.0, paths.Values.Sum(), 12);
     }
 
+
+    [Fact]
+    public void SourceRecycleMakesNewEpochWithPerfectFitPriorityGroups()
+    {
+        var state = SemanticDeckEngineV111.BeginNature([1, 2]);
+        (state, _) = SemanticDeckEngineV111.DrawKnown(
+            SemanticDeckEngineV111.Resolve(
+                SemanticDeckEngineV111.Require(state, 0, "draw"),
+                SemanticDeckEngineV111.Require(state, 0, "draw").Fingerprint, 0));
+        (state, _) = SemanticDeckEngineV111.DrawKnown(
+            SemanticDeckEngineV111.Resolve(
+                SemanticDeckEngineV111.Require(state, 0, "draw"),
+                SemanticDeckEngineV111.Require(state, 0, "draw").Fingerprint, 0));
+        Assert.Equal(0, state.Count);
+        var recycled = SemanticDeckEngineV111.RecycleNature(
+            state, [2L, 1L, 7L, 8L], [1L, 7L]);
+        Assert.Equal(1, recycled.ShuffleEpoch);
+        Assert.Equal(4, recycled.Count);
+        Assert.Equal(2, recycled.Pools.Length);
+        Assert.Equal(recycled.Slots[0].PoolId, recycled.Slots[1].PoolId);
+        Assert.NotEqual(recycled.Slots[1].PoolId, recycled.Slots[2].PoolId);
+        Assert.Equal(new long[] { 1L, 7L },
+            SemanticDeckEngineV111.Require(recycled, 0, "draw")
+                .Pending!.CandidateCardInstanceIds);
+        Assert.Equal(2, recycled.Transcript!.Length);
+        Assert.Equal(recycled.Fingerprint,
+            SemanticDeckEngineV111.Restore(
+                SemanticDeckEngineV111.Save(recycled)).Fingerprint);
+    }
+
+    [Fact]
+    public void RecycleRejectsWrongMembershipAndPendingOrNonemptyPileAtomically()
+    {
+        var original = SemanticDeckEngineV111.BeginNature([1, 2]);
+        var fingerprint = original.Fingerprint;
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticDeckEngineV111.RecycleNature(original, [3L]));
+        Assert.Throws<ArgumentException>(() =>
+            SemanticDeckEngineV111.RecycleNature(
+                SemanticDeckEngineV111.BeginNature([]), [4L, 5L], [6L]));
+        Assert.Throws<ArgumentException>(() =>
+            SemanticDeckEngineV111.RecycleNature(
+                SemanticDeckEngineV111.BeginNature([]), [4L, 4L]));
+        var pending = SemanticDeckEngineV111.Require(original, 0, "draw");
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticDeckEngineV111.RecycleNature(pending, [3L]));
+        Assert.Equal(fingerprint, original.Fingerprint);
+    }
+
     [Fact]
     public void FifteenWorkersUseIsolatedStateAndStableSemanticEventIds()
     {

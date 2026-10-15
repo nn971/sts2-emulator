@@ -318,6 +318,53 @@ public static class SemanticDeckEngineV111
         });
     }
 
+    /// <summary>
+    /// The source-time draw-pile exhaustion transition: recycle the actual
+    /// discard identities into a NEW deferred shuffle epoch. The optional
+    /// Perfect Fit subset is forced to occupy the top of the shuffled pile
+    /// (with independent unknown permutations inside each subset).
+    /// Source-triggered shuffle hooks are executed by the combat engine
+    /// before the next draw; this helper consumes no RNG primitives.
+    /// </summary>
+    public static SemanticDeckStateV111 RecycleNature(
+        SemanticDeckStateV111 state,
+        IReadOnlyCollection<long> discardCardInstanceIds,
+        IReadOnlyCollection<long>? perfectFitTopCardInstanceIds = null)
+    {
+        Validate(state);
+        AssertIdle(state);
+        ArgumentNullException.ThrowIfNull(discardCardInstanceIds);
+        if (state.Mode != SemanticDeckStateV111.NatureMode || state.Count != 0)
+            throw new InvalidOperationException(
+                "Semantic recycle requires an exhausted Nature draw pile.");
+        var cards = discardCardInstanceIds.ToArray();
+        ValidateUnique(cards);
+        var prioritized = perfectFitTopCardInstanceIds?.ToArray() ?? [];
+        ValidateUnique(prioritized);
+        var priority = prioritized.ToHashSet();
+        if (!priority.IsSubsetOf(cards))
+            throw new ArgumentException(
+                "Perfect Fit priority cards must belong to the recycled discard.");
+        var top = cards.Where(priority.Contains).ToArray();
+        var ordinary = cards.Where(id => !priority.Contains(id)).ToArray();
+        var epoch = checked(state.ShuffleEpoch + 1);
+        var topPool = "shuffle:" + epoch + ":perfect_fit";
+        var ordinaryPool = "shuffle:" + epoch + ":ordinary";
+        var pools = new List<SemanticDeckPoolV111>();
+        if (top.Length > 0)
+            pools.Add(new SemanticDeckPoolV111(topPool, top));
+        if (ordinary.Length > 0)
+            pools.Add(new SemanticDeckPoolV111(ordinaryPool, ordinary));
+        return Checked(state with
+        {
+            Slots = top.Select(_ => SemanticDeckSlotV111.Unknown(topPool))
+                .Concat(ordinary.Select(_ =>
+                    SemanticDeckSlotV111.Unknown(ordinaryPool))).ToArray(),
+            Pools = pools.ToArray(),
+            ShuffleEpoch = epoch
+        });
+    }
+
     /// <summary>Native RNG has already committed the exact permutation;
     /// hand its top-first result to the same state representation.</summary>
     public static SemanticDeckStateV111 CommitNativeShuffle(

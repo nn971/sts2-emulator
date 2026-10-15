@@ -178,3 +178,20 @@ remains. Focused tests cover one-card draw-hook timing, identity support,
 state tampering, saved mid-action replay, 2-from-3 complete enumeration,
 and deterministic 15-worker sessions. Details:
 [Nature real combat semantic draw](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
+
+
+## Semantic source-timed recycle with Perfect Fit priority (next #143 slice)
+
+Within the isolated real `SemanticCombatDrawV111` segment, actual
+`DrawCards` exhaustion now recycles discard instances into a *new
+unresolved semantic shuffle epoch*, then resumes the original physical
+draw and `CardDrawn` pipeline. The source Perfect Fit enchantment
+reorders eligible cards toward the top by introducing distinct deferred
+Perfect Fit and ordinary pools; Nature reveals each eligible instance
+when drawn. The source-aligned native stream implementation remains
+unchanged, and controlled Nature uses no shadow Fisher–Yates tickets.
+Current Stratagem player selection and relic after-shuffle random card
+insertion fail explicitly before recycling. Tests cover repeated
+source-timed draws, Perfect Fit support, snapshot round-trip and
+invalid nested shuffle scenarios. Scope:
+[Nature semantic recycle](NATURE_SEMANTIC_RECYCLE_143.md).
