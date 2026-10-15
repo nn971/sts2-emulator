@@ -541,7 +541,7 @@ internal static class PrototypeAiJsonlServer
                                 "semantic_begin requires a valid completed controlled_handle.");
                         var next = SemanticPilotCombatEngineV111.Begin(source);
                         var handle = StoreSemantic(next);
-                        Write(new { requestId,
+                        Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle) });
                         break;
                     }
@@ -549,7 +549,7 @@ internal static class PrototypeAiJsonlServer
                     case "semantic_status":
                     {
                         var current = RequireSemantic(request);
-                        Write(new { requestId,
+                        Write(new { requestId, ok = true,
                             result = SemanticResult(current,
                                 RequiredString(request, "semantic_handle")) });
                         break;
@@ -583,7 +583,7 @@ internal static class PrototypeAiJsonlServer
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "action_id"));
                         var handle = StoreSemantic(next);
-                        Write(new { requestId,
+                        Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
                         break;
                     }
@@ -597,7 +597,7 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request, "selected_index") ??
                                 throw new ArgumentException("Missing selected_index."));
                         var handle = StoreSemantic(next);
-                        Write(new { requestId,
+                        Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
                         break;
                     }
@@ -607,7 +607,7 @@ internal static class PrototypeAiJsonlServer
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var next = RequireSemantic(request).Fork();
                         var handle = StoreSemantic(next);
-                        Write(new { requestId,
+                        Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
                         break;
                     }
@@ -626,7 +626,7 @@ internal static class PrototypeAiJsonlServer
                         var state = SemanticPilotCombatEngineV111.Restore(
                             RequiredString(request, "snapshot"));
                         var handle = StoreSemantic(state);
-                        Write(new { requestId,
+                        Write(new { requestId, ok = true,
                             result = SemanticResult(state, handle) });
                         break;
                     }
