@@ -128,6 +128,71 @@ public sealed class SemanticPilotCombatV111Tests
                 SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
     }
 
+    private static SemanticSeededEntryV111 Seeded(string seed) =>
+        new(seed, 2, PrototypeNativeHiveNormals.ExoskeletonsNormalId,
+            "ExoskeletonsNormal", 20, 0, 1, 3, 5);
+
+    [Fact]
+    public void SeededSemanticEntryRequiresOnlyTwoExternalChanceSitesAndReplays()
+    {
+        var entry = Seeded("semantic-p0-seeded-opening");
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        Assert.True(state.AtPlayerBoundary);
+        Assert.Equal(entry, state.SeededEntry);
+        Assert.Null(state.IntentPending);
+        Assert.Null(state.DrawPending);
+        Assert.Equal(0, state.Run.World!.Combat!.SemanticDeck!.ShuffleEpoch);
+        Assert.Empty(state.Run.World.Combat.SemanticDeck.Transcript!);
+        Assert.Empty(state.Run.World.Combat.SemanticDeck.Pools);
+        Assert.Equal(state.Run.World.Combat.DrawPile.Reverse(),
+            state.Run.World.Combat.SemanticDeck.Slots.Select(
+                x => x.KnownCardInstanceId!.Value));
+        Assert.Equal(state.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+
+        var action = Assert.Single(new PrototypeAiEnvironment()
+            .Observe(state.Run).LegalActions, a => a.Kind == "end_turn");
+        state = SemanticPilotCombatEngineV111.Step(
+            state, state.Fingerprint, action.ActionId);
+        int intents = 0;
+        for (var count = 0; !state.AtPlayerBoundary && !state.CombatTerminal; count++)
+        {
+            Assert.True(count < 120);
+            Assert.True(state.IntentPending is not null ||
+                state.DrawPending is not null);
+            if (state.IntentPending is not null) intents++;
+            state = SemanticPilotCombatEngineV111.Resolve(
+                state, state.Fingerprint, 0);
+        }
+        Assert.True(intents > 0);
+        Assert.True(state.AtPlayerBoundary || state.CombatTerminal);
+        Assert.Equal(state.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+    }
+
+    [Fact]
+    public void SeededOpeningProvenanceRejectsTamperedReplayAndMatchesFifteenWorkers()
+    {
+        var entry = Seeded("semantic-p0-seeded-multiworker");
+        var initial = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        var forged = initial with
+        {
+            SeededEntry = entry with { TotalFloor = entry.TotalFloor + 1 }
+        };
+        Assert.Throws<InvalidDataException>(() =>
+            SemanticPilotCombatEngineV111.Restore(
+                System.Text.Json.JsonSerializer.Serialize(forged)));
+        var single = Enumerable.Range(0, 15).Select(_ =>
+            SemanticPilotCombatEngineV111.BeginSeeded(entry).Fingerprint).ToArray();
+        var parallel = new string[15];
+        Parallel.For(0, 15, i => parallel[i] =
+            SemanticPilotCombatEngineV111.BeginSeeded(entry).Fingerprint);
+        Assert.Equal(single, parallel);
+        Assert.All(parallel, value => Assert.Equal(initial.Fingerprint, value));
+    }
+
     [Fact]
     public void FifteenWorkersRemainDeterministicAfterRealSemanticIntentTurns()
     {
