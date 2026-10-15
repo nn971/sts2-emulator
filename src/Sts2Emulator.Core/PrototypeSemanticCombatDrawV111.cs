@@ -59,9 +59,11 @@ public sealed partial class PrototypeGameEngine
         var deck = combat.SemanticDeck ??
             throw new InvalidOperationException("Semantic provider is absent.");
         SemanticDeckEngineV111.Validate(deck);
+        var pending = combat.PendingChoice;
+        var cost = pending?.ControlledDrawCost;
         if (deck.Pending is not null ||
             combat.AutomaticPipelineContinuation is not null ||
-            combat.PendingChoice is not { ControlledDrawCost: { } cost } pending ||
+            cost is null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             cost.RemainingCount < 0 || cost.EventDepth != 0 ||
             !ValidateControlledDrawCost(
@@ -80,7 +82,7 @@ public sealed partial class PrototypeGameEngine
         {
             combat = combat with
             {
-                PendingChoice = pending with
+                PendingChoice = pending! with
                 {
                     ControlledDrawCost = cost with { Stage = "slither" }
                 }
