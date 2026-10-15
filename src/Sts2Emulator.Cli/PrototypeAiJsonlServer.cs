@@ -18,6 +18,8 @@ internal static class PrototypeAiJsonlServer
         "sts2-v111-nature-isolated-boundary-v1";
     public const string ControlledChanceSchemaId =
         ControlledPlayableCombatEngineV111.SchemaId;
+    public const string SemanticChanceSchemaId =
+        SemanticPilotCombatV111.SchemaId;
 
     public static void Run(TextReader input, TextWriter output)
     {
@@ -39,6 +41,98 @@ internal static class PrototypeAiJsonlServer
         var controlledStates = new Dictionary<string, ControlledPlayableCombatV111>(
             StringComparer.Ordinal);
         long nextControlledHandle = 1;
+        var semanticStates = new Dictionary<string, SemanticPilotCombatV111>(
+            StringComparer.Ordinal);
+        long nextSemanticHandle = 1;
+
+        string StoreSemantic(SemanticPilotCombatV111 state)
+        {
+            var handle = "m" + nextSemanticHandle++;
+            semanticStates.Add(handle, state.Fork());
+            return handle;
+        }
+
+        SemanticPilotCombatV111 RequireSemantic(JsonElement request)
+        {
+            var handle = RequiredString(request, "semantic_handle");
+            return semanticStates.TryGetValue(handle, out var state)
+                ? state
+                : throw new InvalidOperationException(
+                    "Unknown semantic session handle: " + handle);
+        }
+
+        object? DescribeSemanticPending(SemanticPilotCombatV111 state)
+        {
+            if (state.IntentPending is { } intent)
+                return new
+                {
+                    kind = "enemy_intent",
+                    siteId = intent.SiteId,
+                    streamId = intent.StreamId,
+                    ownerId = intent.OwnerId,
+                    ordinal = intent.Ordinal,
+                    operationKind = intent.OperationKind,
+                    supportCount = intent.SupportCount,
+                    eligibleIndices = Enumerable.Range(0, intent.SupportCount),
+                    rawEligibleWeights = (int[]?)null,
+                    weightsVerified = false,
+                    probabilityStatus = "UNVERIFIED",
+                    supportFingerprint = CanonicalJson.Sha256(intent),
+                    sourceScope = "opaque_eligible_selector_ticket"
+                };
+            if (state.DrawPending is { } drawn)
+            {
+                var combat = state.Run.World?.Combat ??
+                    throw new InvalidDataException("Draw event missing its combat.");
+                return new
+                {
+                    kind = "draw_card",
+                    schemaId = drawn.SchemaId,
+                    eventId = drawn.EventId,
+                    siteId = drawn.SiteId,
+                    streamId = drawn.StreamId,
+                    ownerId = drawn.OwnerId,
+                    ordinal = drawn.Ordinal,
+                    shuffleEpoch = combat.SemanticDeck!.ShuffleEpoch,
+                    topOffset = drawn.TopOffset,
+                    operationKind = drawn.OperationKind,
+                    supportFingerprint = drawn.SupportFingerprint,
+                    constraintFingerprint = combat.SemanticDeck.Fingerprint,
+                    probabilityStatus = drawn.ProbabilityStatus,
+                    candidates = drawn.CandidateCardInstanceIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            cardInstanceId = id,
+                            cardModelId = combat.Cards.Single(c =>
+                                c.InstanceId == id).CardId
+                        }).ToArray()
+                };
+            }
+            return null;
+        }
+
+        object SemanticResult(
+            SemanticPilotCombatV111 state, string handle,
+            string? parent = null)
+        {
+            return new
+            {
+                ok = true, schemaId = SemanticChanceSchemaId,
+                semanticHandle = handle, parent,
+                fingerprint = state.Fingerprint,
+                boundary = state.CombatTerminal ? "terminal" :
+                    state.AtPlayerBoundary ? "player" : "nature",
+                pending = DescribeSemanticPending(state),
+                terminal = state.CombatTerminal,
+                outcome = state.CombatOutcome,
+                exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,
+                chanceSites = new[] { "enemy_intent", "draw_card" },
+                otherChanceProvider = "engine-owned-deterministic-unverified-v1",
+                sourceOpeningProvider = "precommitted-fixture-v1",
+                probabilityStatus = "UNVERIFIED"
+            };
+        }
 
         string StoreControlled(ControlledPlayableCombatV111 state)
         {
@@ -153,6 +247,18 @@ internal static class PrototypeAiJsonlServer
                             natureEventMetadataSchemaId = NatureBoundaryMetadataV111.SchemaId,
                             naturePlayable = false,
                             controlledChanceSchemaId = ControlledChanceSchemaId,
+                            semanticChanceSchemaId = SemanticChanceSchemaId,
+                            semanticPlayable = true,
+                            semanticPlayableScope =
+                                "post-committed-opening-fixture-restricted-Silent-combat",
+                            semanticControlledSites = new[]
+                            {
+                                "enemy_intent", "draw_card"
+                            },
+                            semanticOtherChanceProvider =
+                                "engine-owned-deterministic-unverified-v1",
+                            semanticOpeningProvider = "precommitted-fixture-v1",
+                            semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
                             controlledChanceSupportedSites = new[]
                             {
@@ -420,6 +526,127 @@ internal static class PrototypeAiJsonlServer
                         }
                         else throw new NotSupportedException(
                             "Unsupported Nature snapshot kind.");
+                        break;
+                    }
+
+                    case "semantic_begin":
+                    {
+                        // P0 migration boundary: a previously completed
+                        // source-shaped opening fixture. Opening shuffle
+                        // positions are retained as engine-committed known
+                        // positions, never offered as deferred Nature choices.
+                        var sourceHandle = RequiredString(request, "controlled_handle");
+                        if (!controlledStates.TryGetValue(sourceHandle, out var source))
+                            throw new InvalidOperationException(
+                                "semantic_begin requires a valid completed controlled_handle.");
+                        var next = SemanticPilotCombatEngineV111.Begin(source);
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId,
+                            result = SemanticResult(next, handle) });
+                        break;
+                    }
+
+                    case "semantic_status":
+                    {
+                        var current = RequireSemantic(request);
+                        Write(new { requestId,
+                            result = SemanticResult(current,
+                                RequiredString(request, "semantic_handle")) });
+                        break;
+                    }
+
+                    case "semantic_observe":
+                    {
+                        var current = RequireSemantic(request);
+                        if (RequiredString(request, "policy_id") != FairPolicyId)
+                            throw new NotSupportedException(
+                                "Semantic observation requires the existing fair policy.");
+                        if (!current.AtPlayerBoundary)
+                            throw new InvalidOperationException(
+                                "Semantic observation is available only at a player boundary.");
+                        var frame = environment.Observe(current.Run);
+                        Write(new { requestId, ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            policyId = FairPolicyId,
+                            payloadJson = CanonicalJson.Serialize(frame.Observation),
+                            observationHash = frame.ObservationHash,
+                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
+                            terminal = false });
+                        break;
+                    }
+
+                    case "semantic_step":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.Step(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "action_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.Resolve(
+                            current, RequiredString(request, "fingerprint"),
+                            OptionalInt(request, "selected_index") ??
+                                throw new ArgumentException("Missing selected_index."));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_fork":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var next = RequireSemantic(request).Fork();
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_save":
+                    {
+                        var state = RequireSemantic(request);
+                        Write(new { requestId, ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            snapshot = SemanticPilotCombatEngineV111.Save(state) });
+                        break;
+                    }
+
+                    case "semantic_load":
+                    {
+                        var state = SemanticPilotCombatEngineV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreSemantic(state);
+                        Write(new { requestId,
+                            result = SemanticResult(state, handle) });
+                        break;
+                    }
+
+                    case "semantic_release_many":
+                    {
+                        if (!request.TryGetProperty("semantic_handles", out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "semantic_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException("Invalid semantic handle.");
+                            if (semanticStates.Remove(element.GetString()!))
+                                released++;
+                        }
+                        Write(new { requestId, ok = true, released });
                         break;
                     }
 
