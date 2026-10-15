@@ -204,7 +204,7 @@ public sealed class SemanticCombatDrawCostV111Tests
             }
             Assert.True(state.AtBoundary);
             Assert.Equal(1, state.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
-            Assert.Equal(1, state.Transcript.Length);
+            Assert.Single(state.Transcript);
             Assert.Equal(2, state.CostTranscript.Length);
             return state.Fingerprint + ":" + string.Join("|", seen);
         }
