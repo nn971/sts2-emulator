@@ -201,6 +201,138 @@ public sealed class SemanticCombatDrawV111Tests
         Assert.Equal(serial, concurrent);
     }
 
+
+    [Fact]
+    public void RealDrawRecycleStartsFreshNatureEpochAfterEarlierCardDrawnHooks()
+    {
+        var source = SourceCombat("semantic-recycle-real-events");
+        var combat = source.World!.Combat!;
+        var original = combat.DrawPile.ToArray();
+        source = source with
+        {
+            World = source.World with
+            {
+                Combat = combat with
+                {
+                    DrawPile = original.Take(2).ToArray(),
+                    DiscardPile = original.Skip(2).ToArray()
+                }
+            }
+        };
+        var expectedRng = CanonicalJson.Sha256(source.Rng);
+        var state = SemanticCombatDrawEngineV111.Begin(source, 4);
+        var firstEpochIds = new HashSet<string>();
+        for (int i = 0; i < 2; i++)
+        {
+            Assert.Equal(0, state.Run.World!.Combat!.SemanticDeck!.ShuffleEpoch);
+            firstEpochIds.Add(state.Pending!.EventId);
+            state = SemanticCombatDrawEngineV111.Resolve(
+                state, state.Fingerprint, i);
+            Assert.Equal(i + 1,
+                state.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
+        }
+
+        var newCombat = state.Run.World!.Combat!;
+        Assert.Equal(1, newCombat.SemanticDeck!.ShuffleEpoch);
+        Assert.Empty(newCombat.DiscardPile);
+        Assert.Equal(original.Length - 2, newCombat.DrawPile.Length);
+        Assert.Equal(original.Length - 2,
+            state.Pending!.CandidateCardInstanceIds.Length);
+        Assert.DoesNotContain(state.Pending.EventId, firstEpochIds);
+        Assert.Equal(2, newCombat.Hand.Length);
+        Assert.Equal(2, state.Transcript.Length);
+        for (int i = 2; i < 4; i++)
+        {
+            state = SemanticCombatDrawEngineV111.Resolve(
+                state, state.Fingerprint, i % state.Pending!.CandidateCardInstanceIds.Length);
+            Assert.Equal(i + 1,
+                state.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
+        }
+        Assert.True(state.AtBoundary);
+        Assert.Equal(4, state.Run.World!.Combat!.Hand.Length);
+        Assert.Equal(4, state.Run.World.Combat.Hand.Distinct().Count());
+        Assert.Equal(expectedRng, CanonicalJson.Sha256(state.Run.Rng));
+        Assert.Equal(state.Fingerprint,
+            SemanticCombatDrawEngineV111.Restore(
+                SemanticCombatDrawEngineV111.Save(state)).Fingerprint);
+        Assert.Empty(source.World!.Combat!.Hand);
+        Assert.Equal(2, source.World.Combat.DrawPile.Length);
+    }
+
+    [Fact]
+    public void RealPerfectFitShufflePinsTheEnchantedCardBeforeRemainingUnknowns()
+    {
+        var source = SourceCombat("semantic-perfect-fit-recycle");
+        var combat = source.World!.Combat!;
+        var original = combat.DrawPile;
+        var perfectId = original[3];
+        source = source with
+        {
+            World = source.World with
+            {
+                Combat = combat with
+                {
+                    DrawPile = original.Take(2).ToArray(),
+                    DiscardPile = original.Skip(2).ToArray(),
+                    Cards = combat.Cards.Select(c => c.InstanceId == perfectId
+                        ? c with
+                        {
+                            Enchantment = new PrototypeCardEnchantment(
+                                PrototypeCardEnchantmentKind.PerfectFit)
+                        }
+                        : c).ToArray()
+                }
+            }
+        };
+        var state = SemanticCombatDrawEngineV111.Begin(source, 4);
+        state = SemanticCombatDrawEngineV111.Resolve(
+            state, state.Fingerprint, 0);
+        state = SemanticCombatDrawEngineV111.Resolve(
+            state, state.Fingerprint, 0);
+        Assert.Equal(1, state.Run.World!.Combat!.SemanticDeck!.ShuffleEpoch);
+        Assert.Equal(new long[] { perfectId },
+            state.Pending!.CandidateCardInstanceIds);
+        var relicDraw = SemanticCombatDrawEngineV111.Resolve(
+            state, state.Fingerprint, 0);
+        Assert.Equal(perfectId, relicDraw.Run.World!.Combat!.Hand[^1]);
+        Assert.Equal(original.Length - 3,
+            relicDraw.Pending!.CandidateCardInstanceIds.Length);
+        Assert.DoesNotContain(perfectId,
+            relicDraw.Pending.CandidateCardInstanceIds);
+        var replay = SemanticCombatDrawEngineV111.Restore(
+            SemanticCombatDrawEngineV111.Save(relicDraw));
+        Assert.Equal(relicDraw.Fingerprint, replay.Fingerprint);
+        var done = SemanticCombatDrawEngineV111.Resolve(
+            relicDraw, relicDraw.Fingerprint, 0);
+        Assert.True(done.AtBoundary);
+        Assert.Equal(4, done.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
+    }
+
+    [Fact]
+    public void SemanticRecycleRejectsStratagemBeforeAnyDiscardMutation()
+    {
+        var source = SourceCombat("semantic-recycle-stratagem");
+        var combat = source.World!.Combat!;
+        source = source with
+        {
+            World = source.World with
+            {
+                Combat = combat with
+                {
+                    DrawPile = [],
+                    DiscardPile = combat.DrawPile.ToArray(),
+                    PlayerPowers = combat.PlayerPowers.Append(
+                        new PrototypePowerInstanceState(
+                            "proto.power.stratagem", 1, 0)).ToArray()
+                }
+            }
+        };
+        var fingerprint = CanonicalJson.Sha256(source);
+        Assert.Throws<NotSupportedException>(() =>
+            SemanticCombatDrawEngineV111.Begin(source, 1));
+        Assert.Equal(fingerprint, CanonicalJson.Sha256(source));
+    }
+
     [Fact]
     public void UnsupportedDrawCostsFailClosedBeforePublishingState()
     {
