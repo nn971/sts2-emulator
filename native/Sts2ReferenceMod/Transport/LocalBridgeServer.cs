@@ -25,19 +25,36 @@ public sealed class LocalBridgeServer : IAsyncDisposable
     private readonly DecisionCoordinator _controller;
     private readonly EventJournal _journal;
     private readonly byte[] _expectedToken;
+    private readonly bool _spectatorOnly;
+    private readonly NativeAgentBoundaryFeed? _agentFeed;
     private Task? _loop;
 
     public LocalBridgeServer(
-        DecisionCoordinator controller, EventJournal journal, string bearerToken, int port = 39221)
+        DecisionCoordinator controller, EventJournal journal, string bearerToken,
+        int port = 39221, bool spectatorOnly = false,
+        NativeAgentBoundaryFeed? agentFeed = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bearerToken);
         if (port is < 1024 or > 65535)
             throw new ArgumentOutOfRangeException(nameof(port));
         _controller = controller;
         _journal = journal;
+        _spectatorOnly = spectatorOnly;
+        _agentFeed = agentFeed;
+        if (spectatorOnly && agentFeed is null)
+            throw new ArgumentException("Spectator transport requires a public feed.");
         _expectedToken = Encoding.UTF8.GetBytes("Bearer " + bearerToken);
         _server.Prefixes.Add("http://127.0.0.1:" + port + "/");
     }
+
+    /// <summary>
+    /// The native game uses spectator-only mode. No transport path can submit
+    /// player actions, request pause/step, or serve privileged event journals.
+    /// </summary>
+    public LocalBridgeServer(NativeAgentBoundaryFeed feed, string bearerToken,
+        int port = 39221)
+        : this(new DecisionCoordinator(), new EventJournal(), bearerToken,
+            port, spectatorOnly: true, agentFeed: feed) { }
 
     public void Start()
     {
@@ -72,6 +89,23 @@ public sealed class LocalBridgeServer : IAsyncDisposable
 
             var method = context.Request.HttpMethod;
             var path = context.Request.Url?.AbsolutePath;
+            if (_spectatorOnly)
+            {
+                if (method == "GET" && path == "/v1/agent/status")
+                    await SendAsync(context, 200, _agentFeed!.Read().Status).ConfigureAwait(false);
+                else if (method == "GET" && path == "/v1/agent/boundary")
+                    await SendAsync(context, 200, _agentFeed!.Read()).ConfigureAwait(false);
+                else
+                    await SendAsync(context, 403, new
+                    {
+                        error = "NATIVE_SPECTATOR_READ_ONLY",
+                        supported_endpoints = new[]
+                        {
+                            "GET /v1/agent/status", "GET /v1/agent/boundary"
+                        }
+                    }).ConfigureAwait(false);
+                return;
+            }
             if (method == "GET" && path == "/v1/status")
             {
                 await SendAsync(context, 200,

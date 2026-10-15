@@ -25,6 +25,8 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
     private TextEdit? _content;
     private Button? _back;
     private Button? _forward;
+    private string _sourceStatus = "RNG source hook: UNKNOWN";
+    private string _agentStatus = "Agent spectator: DISABLED";
 
     public override void _Ready()
     {
@@ -73,7 +75,7 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         column.AddChild(_content);
         column.AddChild(new Label
         {
-            Text = "Read-only capture. Pause/Step/Resume/Stop require audited native dispatch."
+            Text = "Human-play observer: game action dispatch remains unmodified."
         });
     }
 
@@ -85,6 +87,19 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         _lastCount = -1;
         _lastEventSeq = -1;
         Refresh();
+    }
+
+    public void SetCaptureCapabilities(bool integerHook, bool floatHook,
+        bool spectatorEnabled)
+    {
+        _sourceStatus = "RNG native source: int " +
+            (integerHook ? "HOOKED" : "UNAVAILABLE") + " / float " +
+            (floatHook ? "HOOKED" : "UNAVAILABLE") +
+            " (parity verification offline)";
+        _agentStatus = "Agent spectator: " +
+            (spectatorEnabled ? "READ-ONLY LOCAL FEED" : "DISABLED") +
+            " / action injection DISABLED";
+        if (Visible) Refresh();
     }
 
     public void Toggle() { Visible = !Visible; if (Visible) Refresh(); }
@@ -115,7 +130,7 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         _back.Disabled = _cursor == 0;
         _forward.Disabled = count == 0 || _cursor == count - 1;
         _status.Text = (_session?.IsIncomplete == true ? "INCOMPLETE_CAPTURE" : "Native-only capture")
-            + " · RNG unaudited · parity unchecked";
+            + " · " + _sourceStatus + " · " + _agentStatus + " · parity NOT_TESTED";
         if (count == 0)
         {
             _decision.Text = "Awaiting first stable native combat decision";
