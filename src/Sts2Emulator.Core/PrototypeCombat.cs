@@ -1482,6 +1482,14 @@ public sealed partial class PrototypeGameEngine
                 ?? throw new InvalidOperationException(
                     "Combat unexpectedly disappeared.");
 
+            // The draw routine returns after applying all earlier cards
+            // and effects, before recycling the discard pile. Resume at
+            // the same real pipeline index without replaying pre-draw hooks.
+            if (ControlledChanceGuardV111.Active &&
+                currentCombat.AutomaticPipelineContinuation?
+                    .ControlledDrawRemaining is not null)
+                return state;
+
             if (currentCombat.PendingChoice is not null
                 || currentCombat.PendingKnowledgeDemonChoice is not null)
             {
@@ -1584,6 +1592,93 @@ public sealed partial class PrototypeGameEngine
         var resumed = state with
         {
             World = world with { Combat = advanced }
+        };
+        return ResumeAutomaticPipeline(resumed, index + 1);
+    }
+
+    /// <summary>
+    /// Resume a pending DrawPlayerHand recycle using Nature's pre-hook shuffle.
+    /// The saved combat includes all preceding drawn cards, draw triggers and
+    /// BeforeHandDraw effects. The original stage is never restarted.
+    /// </summary>
+    internal static RunState ResumeControlledDrawAfterRecycle(
+        RunState state, long[] selectedPreHookOrder)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled recycle resumption requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException("Missing combat for recycle.");
+        var continuation = combat.AutomaticPipelineContinuation ??
+            throw new InvalidOperationException("Missing draw continuation.");
+        var index = continuation.NextStepIndex;
+        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
+            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+                PrototypeAutomaticStepKind.DrawPlayerHand ||
+            continuation.ControlledDrawRemaining is not > 0 ||
+            continuation.OpeningStage is not null ||
+            continuation.PendingPostDispatchEventKind is not null ||
+            combat.DrawPile.Length != 0 ||
+            combat.DiscardPile.Length == 0)
+            throw new InvalidOperationException("Invalid suspended draw stage.");
+        var eligible = combat.DiscardPile;
+        if (selectedPreHookOrder is null ||
+            selectedPreHookOrder.Length != eligible.Length ||
+            !selectedPreHookOrder.Order().SequenceEqual(eligible.Order()))
+            throw new InvalidOperationException(
+                "Nature shuffle must preserve all eligible card identities.");
+
+        var postHook = NativeShuffleStepReplayV111.CheckPostHook(
+            ApplyPerfectFitShuffleOrder(combat, (long[])selectedPreHookOrder.Clone()));
+        combat = ApplyRelicAfterShuffleCards(combat with
+        {
+            DrawPile = postHook,
+            DiscardPile = []
+        }, state.Rng);
+        // Stratagem is itself a player-selection continuation whose
+        // parent must be wired separately. Fail before publishing a child.
+        if (combat.PlayerPowers.Any(power =>
+            power.PowerId == "proto.power.stratagem" && power.Stacks > 0))
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE site=combat.recycle.stratagem operation=choose_cards");
+
+        var player = state.Player;
+        var drawn = DrawCards(player, combat, continuation.ControlledDrawRemaining.Value,
+            state.Rng, fromHandDraw: true);
+        player = drawn.Player;
+        combat = drawn.Combat;
+        if (drawn.ShuffleSelectionPending)
+            throw new InvalidOperationException(
+                "Controlled recycle unexpectedly entered a Stratagem choice.");
+
+        if (drawn.ControlledRecyclePending)
+            return state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        AutomaticPipelineContinuation = continuation with
+                        {
+                            ControlledDrawRemaining = drawn.RemainingCount
+                        }
+                    }
+                }
+            };
+        combat = RemovePlayerPowers(
+            combat, definition => definition.RemoveAfterHandDraw);
+        combat = DecrementPlayerPowers(
+            combat, definition => definition.DecrementAfterHandDraw);
+
+        var resumed = state with
+        {
+            Player = player,
+            World = world with
+            {
+                Combat = combat with { AutomaticPipelineContinuation = null }
+            }
         };
         return ResumeAutomaticPipeline(resumed, index + 1);
     }
@@ -2278,6 +2373,29 @@ public sealed partial class PrototypeGameEngine
                     fromHandDraw: true);
                 player = drawn.Player;
                 combat = drawn.Combat;
+                if (drawn.ControlledRecyclePending)
+                {
+                    int index = Array.FindIndex(
+                        PrototypeContent.Rules.EndTurnPipeline,
+                        step => step.Kind ==
+                            PrototypeAutomaticStepKind.DrawPlayerHand);
+                    if (index < 0 || combat.DrawPile.Length != 0 ||
+                        combat.DiscardPile.Length == 0)
+                        throw new InvalidOperationException(
+                            "Invalid controlled draw recycle boundary.");
+                    return state with
+                    {
+                        Player = player,
+                        World = world with
+                        {
+                            Combat = combat with
+                            {
+                                AutomaticPipelineContinuation = new(
+                                    index, ControlledDrawRemaining: drawn.RemainingCount)
+                            }
+                        }
+                    };
+                }
                 if (drawn.ShuffleSelectionPending)
                 {
                     var pendingDraw = new Queue<PrototypeQueuedOperation>(
@@ -13243,7 +13361,8 @@ public sealed partial class PrototypeGameEngine
         CombatState Combat,
         long[] DrawnCardInstanceIds,
         int RemainingCount = 0,
-        bool ShuffleSelectionPending = false);
+        bool ShuffleSelectionPending = false,
+        bool ControlledRecyclePending = false);
 
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
@@ -13285,6 +13404,12 @@ public sealed partial class PrototypeGameEngine
                 {
                     break;
                 }
+
+                if (ControlledChanceGuardV111.Active)
+                    return new PrototypeDrawCardsResult(
+                        player, combat, drawnCardInstanceIds.ToArray(),
+                        RemainingCount: count - drawNumber,
+                        ControlledRecyclePending: true);
 
                 var recycled = NativeShuffleStepReplayV111.ShuffleRecycle(
                     discard.ToArray(), rng);
