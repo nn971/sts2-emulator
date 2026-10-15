@@ -74,15 +74,63 @@ def rollout():
         return result
 
 
+def terminal_rollout():
+    # A complete real combat, with only legal player end_turn actions and
+    # legal source-filtered intent or physical-card draw Nature choices.
+    # This is mechanical terminal coverage, not a learning evaluation.
+    with Session(COMMAND) as session:
+        combat = session.begin_seeded_semantic_combat(
+            SEED + "-defeat", act=2,
+            encounter_id="proto.native.hive.encounter.exoskeletons_normal",
+            native_entry="ExoskeletonsNormal", total_floor=20,
+            map_column=3, map_row=5)
+        turns = events = 0
+        trace = []
+        while not combat.terminal:
+            assert combat.boundary == "player"
+            assert turns < 40, "Real combat did not terminate"
+            end = next(a for a in combat.actions() if a["kind"] == "end_turn")
+            combat = combat.step(end["actionId"])
+            turns += 1
+            while combat.boundary == "nature":
+                assert events < 1200, "Unfinished terminal combat chance events"
+                event = combat.pending
+                assert event["kind"] in ("enemy_intent", "draw_card")
+                assert event["probabilityStatus"] == "UNVERIFIED"
+                trace.append((event["kind"], event["supportFingerprint"]))
+                if event["kind"] == "enemy_intent":
+                    combat = combat.resolve_intent(
+                        event["semanticCandidates"][0]["intentId"])
+                else:
+                    combat = combat.resolve(0)
+                events += 1
+        assert combat.boundary == "terminal"
+        assert combat.outcome == "defeat", combat.status()
+        assert combat.exit_hp is not None and combat.exit_hp <= 0
+        assert combat.pending is None
+        assert session.load_semantic_snapshot(
+            combat.save_snapshot()).fingerprint == combat.fingerprint
+        status = combat.status()
+        assert status["terminal"] and status["exitHp"] == combat.exit_hp
+        return turns, tuple(trace), combat.fingerprint, combat.exit_hp
+
+
 def main():
     baseline = rollout()
     with ThreadPoolExecutor(max_workers=15) as pool:
         independent = list(pool.map(lambda _: rollout(), range(15)))
     assert all(value == baseline for value in independent), (
         "Seeded Nature session differs across independent JSONL processes")
-    print("PASS: seeded Nature opening + action/chance resume; "
-          "1 vs 15 independent process transcript equality; replay; "
-          "external Nature sites only intent/draw; source law UNVERIFIED")
+    terminal = terminal_rollout()
+    with ThreadPoolExecutor(max_workers=15) as pool:
+        terminal_workers = list(pool.map(
+            lambda _: terminal_rollout(), range(15)))
+    assert all(value == terminal for value in terminal_workers), (
+        "Terminal combat differs across independent JSONL processes")
+    print("PASS: seeded Nature opening, 1 vs 15 independent process "
+          "first-turn and full-terminal transcript equality; "
+          f"defeat after {terminal[0]} turns, exit HP {terminal[3]}; "
+          "replay; only intent/draw Nature; source law UNVERIFIED")
 
 
 if __name__ == "__main__":

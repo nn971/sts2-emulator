@@ -235,6 +235,58 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void SeededCombatEndTurnsCanReachActualDefeatWithoutPhantomIntent()
+    {
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(
+            Seeded("semantic-p0-real-terminal-defeat"));
+        Assert.True(state.AtPlayerBoundary);
+        int turns = 0;
+        int intentChoices = 0;
+        while (!state.CombatTerminal && turns < 40)
+        {
+            Assert.True(state.AtPlayerBoundary);
+            var end = Assert.Single(new PrototypeAiEnvironment()
+                .Observe(state.Run).LegalActions,
+                action => action.Kind == "end_turn");
+            state = SemanticPilotCombatEngineV111.Step(
+                state, state.Fingerprint, end.ActionId);
+            turns++;
+            for (int choices = 0; !state.AtPlayerBoundary && !state.CombatTerminal;
+                 choices++)
+            {
+                Assert.True(choices < 100, "Unfinished real turn continuation.");
+                if (state.IntentPending is not null)
+                {
+                    var support = ControlledTurnIntentEngineV111
+                        .DescribePendingSemanticIntent(
+                            state.PendingEndTurn!.Intents!)!;
+                    state = SemanticPilotCombatEngineV111.ResolveIntent(
+                        state, state.Fingerprint, support.Candidates[0].IntentId);
+                    intentChoices++;
+                }
+                else if (state.DrawPending is not null)
+                    state = SemanticPilotCombatEngineV111.Resolve(
+                        state, state.Fingerprint, 0);
+                else
+                    throw new InvalidDataException("Missing supported two-site ticket.");
+            }
+        }
+        Assert.True(intentChoices > 0);
+        Assert.True(state.CombatTerminal, "Expected an actual terminal fight.");
+        Assert.Equal("defeat", state.CombatOutcome);
+        Assert.True(state.Run.Player.Hp <= 0);
+        Assert.Null(state.PendingEndTurn);
+        Assert.Null(state.IntentPending);
+        Assert.Null(state.DrawPending);
+        Assert.Equal(state.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticPilotCombatEngineV111.Step(
+                state, state.Fingerprint, "end_turn"));
+    }
+
+    [Fact]
     public void FifteenWorkersRemainDeterministicAfterRealSemanticIntentTurns()
     {
         static string Rollout(int worker)
