@@ -29,11 +29,38 @@ public sealed record ControlledPlayableCombatV111(
     public RandomIndexDecisionV111[] LiveTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] TargetTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] GeneratedCardTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] DrawInsertionTranscript { get; init; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
-        GeneratedCardPending ?? TargetPending ??
+        DrawInsertionPending ?? GeneratedCardPending ?? TargetPending ??
         Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RandomIndexRequestV111? DrawInsertionPending
+    {
+        get
+        {
+            var choice = Run.World?.Combat?.PendingChoice?.ControlledDrawInsertion;
+            if (choice is null) return null;
+            var owner = "card:" +
+                (Run.World!.Combat!.PendingChoice!.SourceCardInstanceId?.ToString()
+                    ?? "effect") + ":op:" + choice.Operation.Kind;
+            if (choice.Stage == "card_model")
+                return new RandomIndexRequestV111(
+                    "combat.random_draw_attack.card_model", "prototype.combat",
+                    owner + ":pool:" + CanonicalJson.Sha256(choice.CandidateCardIds),
+                    DrawInsertionTranscript.Length,
+                    Enumerable.Range(0, choice.CandidateCardIds.Length).ToArray(),
+                    OperationKind: "choose_index");
+            return new RandomIndexRequestV111(
+                "combat.draw_pile.random_insert_index", "prototype.combat",
+                owner + ":model:" + choice.SelectedCardId +
+                    ":pile:" + CanonicalJson.Sha256(choice.EligibleDrawPile),
+                DrawInsertionTranscript.Length, [],
+                OperationKind: "bounded_integer",
+                BoundedCount: choice.EligibleDrawPile.Length + 1);
+        }
+    }
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? GeneratedCardPending
     {
@@ -94,6 +121,7 @@ public sealed record ControlledPlayableCombatV111(
         LiveTranscript = DeepCopy(LiveTranscript),
         TargetTranscript = DeepCopy(TargetTranscript),
         GeneratedCardTranscript = DeepCopy(GeneratedCardTranscript),
+        DrawInsertionTranscript = DeepCopy(DrawInsertionTranscript),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
@@ -191,6 +219,8 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException(
                 "Stale controlled chance fingerprint.");
         VerifyStage(state);
+        if (state.DrawInsertionPending is not null)
+            return ResolveDrawInsertion(state, selectedIndex);
         if (state.GeneratedCardPending is not null)
             return ResolveGeneratedCard(state, selectedIndex);
         if (state.TargetPending is not null)
@@ -246,6 +276,27 @@ public static class ControlledPlayableCombatEngineV111
         {
             Run = result,
             PlayerActions = state.PlayerActions.Append(actionId).ToArray()
+        };
+        return StartPendingTurn(next);
+    }
+
+    private static ControlledPlayableCombatV111 ResolveDrawInsertion(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var request = state.DrawInsertionPending ??
+            throw new InvalidOperationException("Missing draw insertion ticket.");
+        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
+            .Resolve(request, state.Origin.ReferenceStreams);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledDrawInsertion(
+                state.Run.Fork(), selectedIndex);
+        var next = state.Fork() with
+        {
+            Run = result,
+            DrawInsertionTranscript = state.DrawInsertionTranscript
+                .Append(choice).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
         };
         return StartPendingTurn(next);
     }
@@ -461,7 +512,8 @@ public static class ControlledPlayableCombatEngineV111
         if (!current.TurnTranscript.SequenceEqual(stored.TurnTranscript) ||
             !current.RecycleTranscript.SequenceEqual(stored.RecycleTranscript) ||
             !current.TargetTranscript.SequenceEqual(stored.TargetTranscript) ||
-            !current.GeneratedCardTranscript.SequenceEqual(stored.GeneratedCardTranscript))
+            !current.GeneratedCardTranscript.SequenceEqual(stored.GeneratedCardTranscript) ||
+            !current.DrawInsertionTranscript.SequenceEqual(stored.DrawInsertionTranscript))
         {
             // Records hold arrays; canonical comparison below is decisive.
             if (CanonicalJson.Sha256(current.TurnTranscript) !=
@@ -471,7 +523,9 @@ public static class ControlledPlayableCombatEngineV111
                 CanonicalJson.Sha256(current.TargetTranscript) !=
                     CanonicalJson.Sha256(stored.TargetTranscript) ||
                 CanonicalJson.Sha256(current.GeneratedCardTranscript) !=
-                    CanonicalJson.Sha256(stored.GeneratedCardTranscript))
+                    CanonicalJson.Sha256(stored.GeneratedCardTranscript) ||
+                CanonicalJson.Sha256(current.DrawInsertionTranscript) !=
+                    CanonicalJson.Sha256(stored.DrawInsertionTranscript))
                 throw new InvalidDataException("Chance transcripts diverged.");
         }
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
@@ -488,11 +542,23 @@ public static class ControlledPlayableCombatEngineV111
             state.ShuffleTranscript is null || state.PlayerActions is null ||
             state.TurnTranscript is null || state.RecycleTranscript is null ||
             state.LiveTranscript is null || state.TargetTranscript is null ||
-            state.GeneratedCardTranscript is null || state.Origin is null ||
+            state.GeneratedCardTranscript is null ||
+            state.DrawInsertionTranscript is null || state.Origin is null ||
             (state.TurnIntents is not null && state.Pending is not null) ||
             (state.Recycle is not null &&
                 (state.Pending is not null || state.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
+        var insertionCombat = state.Run.World?.Combat;
+        var insertion = insertionCombat?.PendingChoice?.ControlledDrawInsertion;
+        if (insertion is not null &&
+            (state.Pending is not null || state.Recycle is not null ||
+             state.TurnIntents is not null ||
+             insertionCombat?.PendingChoice?.ControlledTarget is not null ||
+             insertionCombat?.PendingChoice?.ControlledGeneration is not null ||
+             !PrototypeGameEngine.ValidateControlledDrawInsertion(
+                 insertionCombat!, insertion)))
+            throw new InvalidDataException(
+                "Draw insertion chance disagrees with source eligibility.");
         var generated = state.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
         if (generated is not null &&
             (state.Pending is not null || state.Recycle is not null ||
