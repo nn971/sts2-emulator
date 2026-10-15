@@ -2943,7 +2943,8 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static (int? MoveIndex, string? NextAiStateId) EvaluateEnemyIntentChoice(
         IReadOnlyList<EnemyCombatState> formation,
-        int index, string? nativeEntry, Func<int, int> nextIndex)
+        int index, string? nativeEntry, Func<int, int> nextIndex,
+        Action<SemanticIntentCandidateV111[]>? inspectCandidates = null)
     {
         var enemy = formation[index];
         var definition = PrototypeContent.Enemy(enemy.EnemyId);
@@ -2983,7 +2984,8 @@ public sealed partial class PrototypeGameEngine
                         }
                     }
                     : enemy;
-        var selected = SelectEnemyMove(definition, evaluating, formation, nextIndex);
+        var selected = SelectEnemyMove(
+            definition, evaluating, formation, nextIndex, inspectCandidates);
         int moveIndex = Array.IndexOf(definition.Moves, selected.Move);
         if (moveIndex < 0)
             throw new InvalidOperationException(
@@ -3009,7 +3011,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeEnemyDefinition definition,
             EnemyCombatState enemy,
             IReadOnlyList<EnemyCombatState> formation,
-            Func<int, int> nextIndex)
+            Func<int, int> nextIndex,
+        Action<SemanticIntentCandidateV111[]>? inspectCandidates = null)
     {
         if (definition.Moves.Length == 0)
         {
@@ -3102,6 +3105,12 @@ public sealed partial class PrototypeGameEngine
                         $"Enemy '{definition.Id}' has no legal random moves.");
                 }
 
+                inspectCandidates?.Invoke(candidates.Select((move, position) =>
+                    new SemanticIntentCandidateV111(
+                        "move:" + move.Id + ":index:" + position,
+                        move.Id,
+                        Array.IndexOf(definition.Moves, move),
+                        1, position)).ToArray());
                 return (
                     candidates[nextIndex(candidates.Length)],
                     enemy.AiStateId);
@@ -3112,7 +3121,8 @@ public sealed partial class PrototypeGameEngine
                     definition,
                     enemy,
                     formation,
-                    nextIndex);
+                    nextIndex,
+                    inspectCandidates);
 
             default:
                 throw new ArgumentOutOfRangeException(
@@ -3127,7 +3137,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeEnemyDefinition definition,
             EnemyCombatState enemy,
             IReadOnlyList<EnemyCombatState> formation,
-            Func<int, int> nextIndex)
+            Func<int, int> nextIndex,
+            Action<SemanticIntentCandidateV111[]>? inspectCandidates = null)
     {
         var ai = definition.Ai
             ?? throw new InvalidOperationException(
@@ -3198,6 +3209,25 @@ public sealed partial class PrototypeGameEngine
                     var totalWeight =
                         legal.Sum(branch =>
                             branch.Weight);
+                    if (inspectCandidates is not null)
+                    {
+                        var start = 0;
+                        var support = legal.Select((branch, branchIndex) =>
+                        {
+                            // IsEnemyAiBranchLegal already verified the
+                            // branch targets a concrete Move state.
+                            var moveIndex = states[branch.TargetStateId]
+                                .MoveIndex!.Value;
+                            var candidate = new SemanticIntentCandidateV111(
+                                "state:" + state.Id + ":branch:" +
+                                    branch.TargetStateId + ":index:" + branchIndex,
+                                definition.Moves[moveIndex].Id, moveIndex,
+                                branch.Weight, start);
+                            start = checked(start + branch.Weight);
+                            return candidate;
+                        }).ToArray();
+                        inspectCandidates(support);
+                    }
                     var roll = nextIndex(totalWeight);
                     var selected = legal[^1];
                     foreach (var branch in legal)
