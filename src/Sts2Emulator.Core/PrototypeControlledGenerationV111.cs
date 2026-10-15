@@ -66,6 +66,13 @@ public sealed partial class PrototypeGameEngine
         }).ToArray();
     }
 
+    internal static bool ValidateControlledGenerationSupport(
+        PrototypeControlledGeneratedCardV111 choice) =>
+        choice.Operation.Amount > 0 &&
+        ControlledGeneratedCardPool(choice.Operation) is { } expected &&
+        expected.Length > 0 &&
+        choice.CandidateCardIds.SequenceEqual(expected);
+
     private static CombatState MakeControlledGeneratedCardChoice(
         CombatState combat, PrototypeQueuedOperation operation,
         string[] candidates,
