@@ -87,8 +87,9 @@ public static class SemanticEndTurnEngineV111
         ArgumentNullException.ThrowIfNull(playerBoundary);
         if (playerBoundary.Phase != RunPhase.Combat ||
             playerBoundary.World?.Combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null, PendingChoice: null,
-                SemanticDeck: null })
+                AutomaticPipelineContinuation: null, PendingChoice: null } starting ||
+            starting.PendingKnowledgeDemonChoice is not null ||
+            !IsSupportedSemanticSourceDeck(starting))
             throw new InvalidOperationException(
                 "Expected a real player-choice combat boundary.");
         var environment = new PrototypeAiEnvironment();
@@ -166,9 +167,7 @@ public static class SemanticEndTurnEngineV111
             throw new InvalidOperationException("Next-turn combat disappeared.");
         if (combat.AutomaticPipelineContinuation?.NextStepIndex !=
                 PrototypeGameEngine.SemanticHandDrawStepIndex ||
-            combat.DrawPile.Length != 0 ||
-            combat.DiscardPile.Length == 0 ||
-            combat.SemanticDeck is not null ||
+            !IsSupportedSemanticSourceDeck(combat) ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
@@ -322,6 +321,22 @@ public static class SemanticEndTurnEngineV111
         }
     }
 
+    /// <summary>The first turn accepts only a truly empty, uncommitted
+    /// draw pile. Later turns reuse the existing provider-owned constraints
+    /// unchanged, including a nonempty unresolved pile. Source mechanics
+    /// must preserve physical card-instance membership exactly.</summary>
+    private static bool IsSupportedSemanticSourceDeck(CombatState combat)
+    {
+        if (combat.SemanticDeck is not { } deck)
+            return combat.DrawPile.Length == 0 &&
+                combat.DiscardPile.Length > 0;
+        SemanticDeckEngineV111.Validate(deck);
+        return deck.Mode == SemanticDeckStateV111.NatureMode &&
+            deck.Pending is null &&
+            SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order());
+    }
+
     private static void ValidateOrigin(RunState run)
     {
         if (run.Phase != RunPhase.Combat ||
@@ -337,11 +352,9 @@ public static class SemanticEndTurnEngineV111
             checkpoint.ControlledSemanticDrawRequested is not null ||
             checkpoint.OpeningStage is not null ||
             checkpoint.PendingPostDispatchEventKind is not null ||
-            combat.SemanticDeck is not null ||
+            !IsSupportedSemanticSourceDeck(combat) ||
             combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null ||
-            combat.DrawPile.Length != 0 ||
-            combat.DiscardPile.Length == 0)
+            combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidOperationException(
                 "Semantic end-turn requires an exhausted draw pile at the " +
                 "genuine post-enemy-action AdvanceTurn checkpoint.");
