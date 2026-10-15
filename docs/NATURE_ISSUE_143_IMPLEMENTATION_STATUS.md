@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152, #155–#157 and #159–#161 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152, #155–#157 and #159–#162 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -249,7 +249,7 @@ continued elsewhere. A full player end-turn `step` → Nature →
 next `step` controller and JSONL bridge are not yet complete.
 
 
-## First restricted real end-turn action-to-action Nature path (PR #162)
+## First restricted real end-turn action-to-action Nature path (merged PR #162)
 
 A separately versioned `sts2-v111-semantic-end-turn-v1` controller
 connects the real `PrototypeAiEnvironment.Step(end_turn)` action
