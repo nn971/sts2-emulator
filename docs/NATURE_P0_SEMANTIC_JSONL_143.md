@@ -186,3 +186,48 @@ is partially addressed, while source-filtered *semantic* intent IDs/weights,
 a validated non-Nature native/default provider for all remaining RNG,
 and true terminal combat plus held-out native baseline remain open. CI smoke
 evidence must not be interpreted as decision-grade Nature training performance.
+
+## 2026-10-16 P0: filtered semantic enemy-intent support
+
+At a genuine suspended `enemy_intent` source call, the original
+`PrototypeGameEngine.EvaluateEnemyIntentChoice` now optionally reports its
+already-filtered move candidates without consuming an RNG ticket. The
+`UniformRandomAfterOpener` policy supplies one raw weight per legal move;
+state-machine `Random` states supply the actual positive branch weights
+**after** anti-repeat, phase, summoning and formation filters. Conditional
+states are traversed by the source selector first. This inspection replays
+only the pure, already-recorded selector prefix and never runs gameplay hooks
+or advances the native RNG. Encounter/enemy-specific move policies are
+handled by the original move selector.
+
+`hello.semanticIntentSupportSchemaId` =
+`sts2-v111-semantic-weighted-intent-v1`. The existing pending
+`enemy_intent` object now carries `semanticCandidates` in source branch
+order, with stable `intentId`, `moveId`, `moveIndex`,
+`rawWeight`, `ticketStart`; also `rawEligibleWeights`,
+`totalRawWeight` and `semanticSupportFingerprint`. The sum of weights
+must equal the source primitive pending support count, and contiguous
+`ticketStart` intervals partition it. Each candidate is a **legal
+branch outcome**, allowing two distinct weighted branches to share one
+move ID while retaining different next-AI state effects.
+
+`semantic_resolve_intent(semantic_handle, fingerprint, intent_id)` chooses
+one eligible semantic branch via its ticket interval and resumes the original
+mechanics. Python: `combat.resolve_intent(event["semanticCandidates"][i]["intentId"])`.
+Old `semantic_resolve` with an integer source ticket remains compatible,
+including replay/fork/save. A stale fingerprint or forged candidate ID fails
+before publishing a new handle.
+
+**Probability status:** these are raw weights produced by the emulator's
+source-shaped selector, **not** independently audited original-game
+conditional probabilities. `weightsVerified=false` and
+`probabilityStatus="UNVERIFIED"` remain explicit until N5 source-law
+calibration. Pure deterministic intent commitments require no random ticket;
+they are already committed in visible player observations.
+
+Regression evidence: the focused C# gate exercises ID-to-ticket equivalence,
+raw-weight sums, replay and invalid choices. Both prior and seeded JSONL
+smokes inspect the candidates and resolve intents by ID, including the
+15-independent-process equivalence check. This is still a restricted
+playable two-site API; authentic opening hooks, native/default non-Nature
+chance parity, and terminal combat remain separate P0 gates.
