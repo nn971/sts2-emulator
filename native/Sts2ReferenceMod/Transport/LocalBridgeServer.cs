@@ -92,13 +92,9 @@ public sealed class LocalBridgeServer : IAsyncDisposable
             if (_spectatorOnly)
             {
                 if (method == "GET" && path == "/v1/agent/status")
-                    await SendAsync(context, 200, _agentFeed!.Status()).ConfigureAwait(false);
+                    await SendAsync(context, 200, _agentFeed!.Read().Status).ConfigureAwait(false);
                 else if (method == "GET" && path == "/v1/agent/boundary")
-                    await SendAsync(context, 200, new
-                    {
-                        status = _agentFeed!.Status(),
-                        boundary = _agentFeed.Current()
-                    }).ConfigureAwait(false);
+                    await SendAsync(context, 200, _agentFeed!.Read()).ConfigureAwait(false);
                 else
                     await SendAsync(context, 403, new
                     {

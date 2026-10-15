@@ -78,6 +78,9 @@ public sealed class NativeAgentBoundaryFeedTests
             .GetProperty("payload").GetProperty("target_id").GetString());
         Assert.Equal(2, boundary.LegalActions.GetArrayLength());
         Assert.Equal("HUMAN_ONLY", boundary.ControlMode);
+        var consistent = feed.Read();
+        Assert.True(consistent.Status.PlayerBoundaryAvailable);
+        Assert.Equal(consistent.Status.DecisionId, consistent.Boundary!.DecisionId);
         Assert.Equal("NOT_TESTED", boundary.NativeGameParity);
         Assert.Equal("PARTIAL_CARD_PLAY_AND_END_TURN_ONLY", boundary.LegalMenuCoverage);
         Assert.NotEqual(OriginalPrivateHash, boundary.PublicHash);
@@ -94,6 +97,9 @@ public sealed class NativeAgentBoundaryFeedTests
         feed.Publish(Decision());
         Assert.True(feed.Status().PlayerBoundaryAvailable);
         feed.Withhold("ACTION_RESOLVING");
+        var withheld = feed.Read();
+        Assert.False(withheld.Status.PlayerBoundaryAvailable);
+        Assert.Null(withheld.Boundary);
         Assert.Null(feed.Current());
         Assert.False(feed.Status().PlayerBoundaryAvailable);
         feed.Withhold("UNSUPPORTED_NESTED_CHOICE");

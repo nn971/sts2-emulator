@@ -88,19 +88,21 @@ public sealed class NativeAgentBoundaryFeed
         }
     }
 
-    public NativeAgentFeedStatus Status()
+    /// <summary>One atomic readiness + boundary publication snapshot.</summary>
+    public NativeAgentFeedRead Read()
     {
         lock (_sync)
-            return new NativeAgentFeedStatus(SchemaId, _phase,
-                _sessionId is not null, _current is not null,
-                _current?.DecisionId, "HUMAN_ONLY", false,
-                "PARTIAL_NATIVE_COMBAT_OBSERVATION", "NOT_TESTED");
+            return new NativeAgentFeedRead(
+                new NativeAgentFeedStatus(SchemaId, _phase,
+                    _sessionId is not null, _current is not null,
+                    _current?.DecisionId, "HUMAN_ONLY", false,
+                    "PARTIAL_NATIVE_COMBAT_OBSERVATION", "NOT_TESTED"),
+                _current);
     }
 
-    public NativeAgentVisibleBoundary? Current()
-    {
-        lock (_sync) return _current;
-    }
+    public NativeAgentFeedStatus Status() => Read().Status;
+
+    public NativeAgentVisibleBoundary? Current() => Read().Boundary;
 
     private static JsonElement ProjectVisibleState(JsonElement state)
     {
@@ -199,3 +201,6 @@ public sealed record NativeAgentVisibleBoundary(
     long DecisionId, long Revision, string PublicHash,
     JsonElement Observation, JsonElement LegalActions, string LegalMenuCoverage,
     string NativeGameParity, string ControlMode);
+
+public sealed record NativeAgentFeedRead(
+    NativeAgentFeedStatus Status, NativeAgentVisibleBoundary? Boundary);
