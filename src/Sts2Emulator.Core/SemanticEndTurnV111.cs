@@ -312,11 +312,6 @@ public static class SemanticEndTurnEngineV111
         if (state.HandDraw is { } hand)
         {
             SemanticCombatDrawEngineV111.Validate(hand);
-            if (CanonicalJson.Sha256(state.IntentTranscript) ==
-                CanonicalJson.Sha256(Array.Empty<RandomIndexDecisionV111>()))
-            {
-                // Zero-ticket deterministic intent commitments are valid.
-            }
             if (!state.Complete &&
                 CanonicalJson.Sha256(state.Run) != CanonicalJson.Sha256(hand.Run))
                 throw new InvalidDataException(
