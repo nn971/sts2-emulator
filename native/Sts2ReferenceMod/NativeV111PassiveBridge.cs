@@ -356,6 +356,10 @@ internal static class NativeV111PassiveBridge
                 "native_rng_owner_binding", error.GetType().Name);
         }
         _panel?.UseSession(_recording, _currentFile);
+        _panel?.SetCaptureCapabilities(
+            NativeV111RngHook.IsInstalled,
+            NativeV111RngHook.HasFloatHook,
+            _agentBridge is not null);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
         Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=RECORDING_STARTED; " +
