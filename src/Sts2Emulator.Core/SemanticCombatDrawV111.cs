@@ -18,13 +18,50 @@ public sealed record SemanticCombatDrawV111(
     [JsonIgnore] public SemanticDeckEventV111? Pending =>
         Run.World?.Combat?.SemanticDeck is { } deck
             ? SemanticDeckEngineV111.Inspect(deck) : null;
-    [JsonIgnore] public bool AtBoundary => Pending is null && RemainingCount == 0;
+    /// <summary>Cost chance follows the *already committed* card instance.
+    /// Bound reflects the current source Snecko/Slither stage.</summary>
+    [JsonIgnore] public RandomIndexRequestV111? CostPending
+    {
+        get
+        {
+            var cost = Run.World?.Combat?.PendingChoice?.ControlledDrawCost;
+            if (cost is null) return null;
+            var card = Run.World!.Combat!.Cards.Single(x =>
+                x.InstanceId == cost.CardInstanceId);
+            var relic = cost.Stage == "relic";
+            return new RandomIndexRequestV111(
+                relic ? "combat.card_draw.relic_energy_cost"
+                      : "combat.card_draw.slither_energy_cost",
+                "semantic.combat", "card_instance:" + card.InstanceId +
+                    ":model:" + card.CardId + ":stage:" + cost.Stage,
+                CostTranscript.Length, [],
+                OperationKind: "bounded_integer",
+                BoundedCount: relic ? cost.RelicMaxExclusive : 4);
+        }
+    }
+    [JsonIgnore] public string? CostEventId => CostPending is { } request
+        ? CanonicalJson.Sha256(new
+        {
+            schema = SchemaId,
+            checkpoint = Fingerprint,
+            request
+        }) : null;
+    [JsonIgnore] public bool AtBoundary =>
+        Pending is null && CostPending is null && RemainingCount == 0;
     [JsonIgnore] public SemanticDeckChoiceV111[] Transcript =>
         Run.World?.Combat?.SemanticDeck?.Transcript ?? [];
+    public RandomIndexDecisionV111[] CostTranscript { get; init; } = [];
 
     public SemanticCombatDrawV111 Fork() => this with
     {
-        Origin = Origin.Fork(), Run = Run.Fork()
+        Origin = Origin.Fork(), Run = Run.Fork(),
+        CostTranscript = CostTranscript.Select(x => x with
+        {
+            Request = x.Request with
+            {
+                OrderedCandidates = (int[])x.Request.OrderedCandidates.Clone()
+            }
+        }).ToArray()
     };
 }
 
@@ -79,6 +116,33 @@ public static class SemanticCombatDrawEngineV111
         var run = state.Run.Fork();
         var world = run.World!;
         var combat = world.Combat!;
+
+        if (state.CostPending is { } costRequest)
+        {
+            costRequest.Validate();
+            if (selectedIndex < 0 || selectedIndex >= costRequest.SupportCount)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            // The chosen cost does not consume the native combat RNG cursor:
+            // it is an explicit counterfactual Nature decision.
+            var decision = new RandomIndexDecisionV111(
+                costRequest, selectedIndex, "semantic-controlled-v1");
+            decision.Validate();
+            RunState advancedCost;
+            int costRemaining;
+            using (ControlledChanceGuardV111.Enter())
+                (advancedCost, costRemaining) =
+                    PrototypeGameEngine.ResumeSemanticCombatDrawCost(
+                        run, selectedIndex);
+            var costNext = state with
+            {
+                Run = advancedCost,
+                RemainingCount = costRemaining,
+                CostTranscript = state.CostTranscript.Append(decision).ToArray()
+            };
+            Validate(costNext);
+            return costNext;
+        }
+
         var deck = combat.SemanticDeck!;
         if (deck.Pending is null || state.RemainingCount <= 0)
             throw new InvalidOperationException("No semantic draw card pending.");
@@ -119,10 +183,40 @@ public static class SemanticCombatDrawEngineV111
         Validate(stored);
         var reconstructed = Begin(
             stored.Origin, stored.RequestedCount, stored.FromHandDraw);
-        foreach (var decision in stored.Transcript)
+        int deckCursor = 0;
+        int costCursor = 0;
+        while (deckCursor < stored.Transcript.Length ||
+               costCursor < stored.CostTranscript.Length)
         {
+            if (reconstructed.CostPending is { } currentCost)
+            {
+                if (costCursor >= stored.CostTranscript.Length)
+                    throw new InvalidDataException(
+                        "Missing semantic drawn-cost decision in replay.");
+                var cost = stored.CostTranscript[costCursor];
+                cost.Validate();
+                if (cost.ProviderMode != "semantic-controlled-v1" ||
+                    cost.ProbabilityStatus != "UNVERIFIED" ||
+                    !Equals(cost.Request, currentCost))
+                    throw new InvalidDataException(
+                        "Semantic drawn-cost transcript diverges from source request.");
+                // Record equality: requests contain a zero-length candidate
+                // array; compare its contents explicitly as well.
+                if (!cost.Request.OrderedCandidates.SequenceEqual(
+                        currentCost.OrderedCandidates))
+                    throw new InvalidDataException(
+                        "Semantic drawn-cost candidate payload is inconsistent.");
+                reconstructed = Resolve(
+                    reconstructed, reconstructed.Fingerprint, cost.SelectedIndex);
+                costCursor++;
+                continue;
+            }
             if (reconstructed.Pending is not { } pending ||
-                pending.EventId != decision.EventId ||
+                deckCursor >= stored.Transcript.Length)
+                throw new InvalidDataException(
+                    "Semantic draw/cost stage mismatch in provenance replay.");
+            var decision = stored.Transcript[deckCursor];
+            if (pending.EventId != decision.EventId ||
                 pending.Ordinal != decision.Ordinal ||
                 pending.SiteId != decision.SiteId ||
                 !pending.CandidateCardInstanceIds.SequenceEqual(
@@ -133,6 +227,7 @@ public static class SemanticCombatDrawEngineV111
                     "Semantic draw transcript disagrees with replayed mechanics.");
             reconstructed = Resolve(
                 reconstructed, reconstructed.Fingerprint, decision.SelectedIndex);
+            deckCursor++;
         }
         if (CanonicalJson.Sha256(reconstructed) != CanonicalJson.Sha256(stored))
             throw new InvalidDataException(
@@ -154,11 +249,31 @@ public static class SemanticCombatDrawEngineV111
             state.Run.Phase != RunPhase.Combat ||
             state.Run.World?.Combat is not { } combat ||
             combat.SemanticDeck is not { } deck ||
-            combat.PendingChoice is not null ||
             combat.AutomaticPipelineContinuation is not null ||
-            (state.RemainingCount > 0) != (deck.Pending is not null))
+            combat.PendingKnowledgeDemonChoice is not null ||
+            state.CostTranscript is null)
             throw new InvalidDataException("Invalid semantic combat draw stage.");
         SemanticDeckEngineV111.Validate(deck);
+        var cost = combat.PendingChoice?.ControlledDrawCost;
+        if ((combat.PendingChoice is not null && cost is null) ||
+            (cost is not null &&
+             (deck.Pending is not null ||
+              cost.RemainingCount != state.RemainingCount ||
+              cost.EventDepth != 0 ||
+              !PrototypeGameEngine.ValidateControlledDrawCost(
+                  state.Run.Player, combat, cost with { FromHandDraw = true }))) ||
+            (deck.Pending is null && cost is null && state.RemainingCount != 0) ||
+            (deck.Pending is not null && state.RemainingCount <= 0))
+            throw new InvalidDataException(
+                "Semantic deck/drawn-cost checkpoint is inconsistent.");
+        foreach (var decision in state.CostTranscript)
+        {
+            decision.Validate();
+            if (decision.ProviderMode != "semantic-controlled-v1" ||
+                decision.ProbabilityStatus != "UNVERIFIED")
+                throw new InvalidDataException(
+                    "Unexpected semantic drawn-cost transcript provenance.");
+        }
         if (deck.Mode != SemanticDeckStateV111.NatureMode ||
             !SemanticDeckEngineV111.AllCardInstanceIds(deck)
                 .Order().SequenceEqual(combat.DrawPile.Order()))
