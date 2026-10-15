@@ -224,8 +224,8 @@ public static class ControlledPlayableCombatEngineV111
                 throw new InvalidDataException("Malformed saved controlled recycle boundary.");
             var recycle = ControlledRecycleShuffleEngineV111.Begin(
                 combat.DiscardPile, state.RecycleTranscript.Length);
-            var next = state with { Recycle = recycle };
-            return recycle.Complete ? FinishRecycle(next) : next;
+            var recycleState = state with { Recycle = recycle };
+            return recycle.Complete ? FinishRecycle(recycleState) : recycleState;
         }
         if (PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
                 PrototypeAutomaticStepKind.AdvanceTurn)
