@@ -378,10 +378,10 @@ public sealed class SemanticCombatDrawV111Tests
     }
 
     [Fact]
-    public void UnsupportedDrawCostsFailClosedBeforePublishingState()
+    public void SneckoDrawCostNowResumesIntoTheNormalDrawnEvent()
     {
-        var source = SourceCombat("semantic-real-unsupported-cost");
-        var original = CanonicalJson.Sha256(source);
+        var source = SourceCombat("semantic-real-snecko-cost");
+        var combat = source.World!.Combat!;
         source = source with
         {
             Player = source.Player with
@@ -391,14 +391,43 @@ public sealed class SemanticCombatDrawV111Tests
                         PrototypeJson.EmptyObject())).ToArray()
             }
         };
-        var before = CanonicalJson.Sha256(source);
-        var state = SemanticCombatDrawEngineV111.Begin(source, 1);
-        Assert.Throws<NotSupportedException>(() =>
-            SemanticCombatDrawEngineV111.Resolve(
-                state, state.Fingerprint, 0));
-        Assert.Equal(before, CanonicalJson.Sha256(source));
-        Assert.Equal(original,
-            CanonicalJson.Sha256(SourceCombat("semantic-real-unsupported-cost")));
-        Assert.Empty(state.Run.World!.Combat!.Hand);
+        var nativeBefore = CanonicalJson.Sha256(source.Rng);
+        var state = SemanticCombatDrawEngineV111.Begin(source, 2);
+        Assert.NotNull(state.Pending);
+        Assert.Null(state.CostPending);
+        var cardId = state.Pending!.CandidateCardInstanceIds[0];
+        state = SemanticCombatDrawEngineV111.Resolve(
+            state, state.Fingerprint, 0);
+        Assert.Null(state.Pending);
+        Assert.Equal("combat.card_draw.relic_energy_cost",
+            state.CostPending!.SiteId);
+        Assert.Equal(4, state.CostPending.SupportCount);
+        Assert.Contains(cardId, state.Run.World!.Combat!.Hand);
+        Assert.Equal(combat.CounterState.CardsDrawnThisCombat,
+            state.Run.World.Combat.CounterState.CardsDrawnThisCombat);
+        var pending = state.Fingerprint;
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticCombatDrawEngineV111.Resolve(state, "stale", 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            SemanticCombatDrawEngineV111.Resolve(state, pending, 4));
+        state = SemanticCombatDrawEngineV111.Resolve(state, pending, 2);
+        Assert.Equal(2, state.Run.World!.Combat!.Cards
+            .Single(c => c.InstanceId == cardId).TemporaryEnergyCost!.Cost);
+        Assert.Equal(combat.CounterState.CardsDrawnThisCombat + 1,
+            state.Run.World.Combat.CounterState.CardsDrawnThisCombat);
+        Assert.Single(state.CostTranscript);
+        Assert.NotNull(state.Pending); // the second card is not yet chosen
+        state = SemanticCombatDrawEngineV111.Resolve(state, state.Fingerprint, 0);
+        Assert.NotNull(state.CostPending);
+        state = SemanticCombatDrawEngineV111.Resolve(state, state.Fingerprint, 1);
+        Assert.True(state.AtBoundary);
+        Assert.Equal(2, state.Transcript.Length);
+        Assert.Equal(2, state.CostTranscript.Length);
+        Assert.Equal(nativeBefore, CanonicalJson.Sha256(state.Run.Rng));
+        Assert.Equal(state.Fingerprint,
+            SemanticCombatDrawEngineV111.Restore(
+                SemanticCombatDrawEngineV111.Save(state)).Fingerprint);
+        Assert.Empty(source.World!.Combat!.Hand);
     }
+
 }
