@@ -508,11 +508,13 @@ internal static class PrototypeAiJsonlServer
                         var next = ControlledPlayableCombatEngineV111.Step(
                             current, RequiredString(request, "action_id"));
                         var handle = StoreControlled(next);
+                        var boundary = NatureBoundaryMetadataV111.Describe(next);
                         Write(new { requestId, ok = true,
                             schemaId = ControlledChanceSchemaId,
                             parent = parentHandle, controlledHandle = handle,
                             fingerprint = next.Fingerprint,
-                            phase = next.Run.Phase.ToString(),
+                            phase = boundary.Kind, pending = boundary.Pending,
+                            transcript = boundary.Transcript,
                             terminal = next.Run.Phase == RunPhase.Terminal });
                         break;
                     }
@@ -542,10 +544,12 @@ internal static class PrototypeAiJsonlServer
                         var next = ControlledPlayableCombatEngineV111.Restore(
                             RequiredString(request, "snapshot"));
                         var handle = StoreControlled(next);
+                        var view = NatureBoundaryMetadataV111.Describe(next);
                         Write(new { requestId, ok = true,
                             schemaId = ControlledChanceSchemaId,
                             controlledHandle = handle, fingerprint = next.Fingerprint,
-                            phase = next.Pending is null ? "player" : "opening_shuffle" });
+                            phase = view.Kind, pending = view.Pending,
+                            terminal = next.Run.Phase == RunPhase.Terminal });
                         break;
                     }
 
