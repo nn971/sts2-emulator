@@ -129,7 +129,9 @@ internal static class PrototypeAiJsonlServer
                 exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,
                 chanceSites = new[] { "enemy_intent", "draw_card" },
                 otherChanceProvider = "engine-owned-deterministic-unverified-v1",
-                sourceOpeningProvider = "precommitted-fixture-v1",
+                sourceOpeningProvider = state.SeededEntry is null
+                    ? "precommitted-fixture-v1"
+                    : "engine-owned-seeded-source-shaped-unverified-v1",
                 probabilityStatus = "UNVERIFIED"
             };
         }
@@ -258,6 +260,8 @@ internal static class PrototypeAiJsonlServer
                             semanticOtherChanceProvider =
                                 "engine-owned-deterministic-unverified-v1",
                             semanticOpeningProvider = "precommitted-fixture-v1",
+                            semanticSeededOpeningProvider =
+                                "engine-owned-seeded-source-shaped-unverified-v1",
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
                             controlledChanceSupportedSites = new[]
@@ -540,6 +544,31 @@ internal static class PrototypeAiJsonlServer
                             throw new InvalidOperationException(
                                 "semantic_begin requires a valid completed controlled_handle.");
                         var next = SemanticPilotCombatEngineV111.Begin(source);
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle) });
+                        break;
+                    }
+
+                    case "semantic_begin_seeded":
+                    {
+                        // Only intent and deferred draws can reach the
+                        // external Nature policy. The opening is generated
+                        // independently by engine-owned seeded streams,
+                        // without externally selected HP or shuffle tickets.
+                        var entry = new SemanticSeededEntryV111(
+                            RequiredString(request, "seed"),
+                            OptionalInt(request, "act") ??
+                                throw new ArgumentException("Missing act."),
+                            RequiredString(request, "encounter_id"),
+                            RequiredString(request, "native_entry"),
+                            OptionalInt(request, "total_floor") ??
+                                throw new ArgumentException("Missing total_floor."),
+                            OptionalInt(request, "ascension") ?? 0,
+                            OptionalInt(request, "first_monster_combat_id") ?? 1,
+                            OptionalInt(request, "map_column"),
+                            OptionalInt(request, "map_row"));
+                        var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle) });
