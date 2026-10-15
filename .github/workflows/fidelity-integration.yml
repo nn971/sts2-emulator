@@ -31,3 +31,5 @@ jobs:
         run: python tools/nature_playable_jsonl_smoke.py
       - name: Nature live end-turn suspension and replay
         run: python tools/nature_live_turn_jsonl_smoke.py
+      - name: Nature live draw-recycle suspension and replay
+        run: python tools/nature_live_recycle_jsonl_smoke.py
