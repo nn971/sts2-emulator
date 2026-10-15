@@ -117,8 +117,8 @@ public sealed class ControlledRandomTargetV111Tests
         Assert.Single(right.Run.World!.Combat!.AutoPlayTargetRolls!);
         Assert.Equal(cardId, left.Run.World.Combat.AutoPlayTargetRolls![0].CardInstanceId);
         Assert.NotEqual(
-            left.Run.World.Combat.AutoPlayTargetRolls[0].TargetEnemyInstanceId,
-            right.Run.World.Combat.AutoPlayTargetRolls[0].TargetEnemyInstanceId);
+            left.Run.World!.Combat!.AutoPlayTargetRolls![0].TargetEnemyInstanceId,
+            right.Run.World!.Combat!.AutoPlayTargetRolls![0].TargetEnemyInstanceId);
         Assert.Equal(source.Run.DecisionIndex + 1, left.Run.DecisionIndex);
     }
 
