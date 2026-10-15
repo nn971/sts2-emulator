@@ -337,6 +337,26 @@ class Session:
         return SemanticCombat.from_wire(self, self.call(
             "semantic_begin", controlled_handle=completed_opening.handle))
 
+    def begin_seeded_semantic_combat(
+            self, seed: str, *, act: int, encounter_id: str,
+            native_entry: str, total_floor: int, ascension: int = 0,
+            first_monster_combat_id: int = 1,
+            map_column: int = 3, map_row: int = 5):
+        """Begin a two-site pilot without external opening chance tickets.
+
+        Setup uses source-shaped RNG streams in an isolated Hive/Glory
+        fixture. Full native route/entry parity is still unverified.
+        """
+        if self.capabilities.get("semanticSeededOpeningProvider") != (
+                "engine-owned-seeded-source-shaped-unverified-v1"):
+            raise EmulatorError("Emulator lacks seeded semantic entry")
+        return SemanticCombat.from_wire(self, self.call(
+            "semantic_begin_seeded", seed=seed, act=act,
+            encounter_id=encounter_id, native_entry=native_entry,
+            total_floor=total_floor, ascension=ascension,
+            first_monster_combat_id=first_monster_combat_id,
+            map_column=map_column, map_row=map_row))
+
     def load_semantic_snapshot(self, snapshot: str):
         if self.capabilities.get("semanticChanceSchemaId") != (
                 "sts2-v111-semantic-playable-p0-v1"):
