@@ -48,8 +48,12 @@ public sealed record SemanticCombatDrawV111(
         }) : null;
     [JsonIgnore] public bool AtBoundary =>
         Pending is null && CostPending is null && RemainingCount == 0;
+    // The provider's transcript survives across turns. Only decisions
+    // newly made during THIS draw segment are replayed by this envelope.
     [JsonIgnore] public SemanticDeckChoiceV111[] Transcript =>
-        Run.World?.Combat?.SemanticDeck?.Transcript ?? [];
+        (Run.World?.Combat?.SemanticDeck?.Transcript ?? [])
+            .Skip(Origin.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0)
+            .ToArray();
     public RandomIndexDecisionV111[] CostTranscript { get; init; } = [];
 
     public SemanticCombatDrawV111 Fork() => this with
@@ -117,8 +121,12 @@ public static class SemanticCombatDrawEngineV111
         var sourceCombat = source.World?.Combat;
         if (source.Phase != RunPhase.Combat ||
             sourceCombat is null ||
-            sourceCombat.SemanticDeck is not null ||
             sourceCombat.PendingChoice is not null ||
+            (sourceCombat.SemanticDeck is { } existing &&
+             (existing.Pending is not null ||
+              existing.Mode != SemanticDeckStateV111.NatureMode ||
+              !SemanticDeckEngineV111.AllCardInstanceIds(existing)
+                  .Order().SequenceEqual(sourceCombat.DrawPile.Order()))) ||
             sourceCombat.PendingKnowledgeDemonChoice is not null ||
             sourceCombat.AutomaticPipelineContinuation is not { } cursor ||
             cursor.NextStepIndex != PrototypeGameEngine.SemanticHandDrawStepIndex ||
@@ -137,8 +145,9 @@ public static class SemanticCombatDrawEngineV111
             {
                 Combat = world.Combat! with
                 {
-                    SemanticDeck = SemanticDeckEngineV111.BeginNature(
-                        world.Combat!.DrawPile)
+                    SemanticDeck = sourceCombat.SemanticDeck?.Fork() ??
+                        SemanticDeckEngineV111.BeginNature(
+                            world.Combat!.DrawPile)
                 }
             }
         };
@@ -297,7 +306,15 @@ public static class SemanticCombatDrawEngineV111
             state.RemainingCount > state.RequestedCount ||
             state.Origin.Phase != RunPhase.Combat ||
             state.Origin.World?.Combat is not { } originCombat ||
-            originCombat.SemanticDeck is not null ||
+            (!state.AutomaticHandDraw && originCombat.SemanticDeck is not null) ||
+            (state.AutomaticHandDraw &&
+             originCombat.SemanticDeck is { } prior &&
+             (prior.Pending is not null ||
+              prior.Mode != SemanticDeckStateV111.NatureMode ||
+              !SemanticDeckEngineV111.AllCardInstanceIds(prior)
+                  .Order().SequenceEqual(originCombat.DrawPile.Order()) ||
+              (state.Run.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0) <
+                  (prior.Transcript?.Length ?? 0))) ||
             originCombat.PendingChoice is not null ||
             (!state.AutomaticHandDraw &&
              originCombat.AutomaticPipelineContinuation is not null) ||
