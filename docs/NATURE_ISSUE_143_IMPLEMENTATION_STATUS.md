@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152 and #155 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152, #155–#157 and #159 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -180,7 +180,7 @@ and deterministic 15-worker sessions. Details:
 [Nature real combat semantic draw](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
 
 
-## Semantic source-timed recycle with Perfect Fit priority (next #143 slice)
+## Semantic source-timed recycle with Perfect Fit priority (merged PR #159)
 
 Within the isolated real `SemanticCombatDrawV111` segment, actual
 `DrawCards` exhaustion now recycles discard instances into a *new
