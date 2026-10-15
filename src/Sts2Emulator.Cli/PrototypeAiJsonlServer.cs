@@ -153,15 +153,17 @@ internal static class PrototypeAiJsonlServer
                             natureEventMetadataSchemaId = NatureBoundaryMetadataV111.SchemaId,
                             naturePlayable = false,
                             controlledChanceSchemaId = ControlledChanceSchemaId,
-                            controlledChanceScope = "isolated-playable-combat-opening-v1",
+                            controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
                             controlledChanceSupportedSites = new[]
                             {
-                                ControlledPlayableCombatEngineV111.ShuffleSite
+                                ControlledPlayableCombatEngineV111.ShuffleSite,
+                                ControlledTurnIntentEngineV111.SiteId,
+                                ControlledRecycleShuffleEngineV111.SiteId
                             },
                             controlledChanceLimitations =
-                                "Opening HP/intents from Nature; scripted shuffle; " +
-                                "real deterministic combat actions; unowned RNG errors; " +
-                                "native opening hooks and in-flight action suspension pending.",
+                                "Opt-in HP/intents, opening shuffle, live next-turn intents, " +
+                                "and end-turn hand-draw recycle; other in-action chance " +
+                                "sites fail closed; native entry hooks and parity unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
                             snapshotSchemaId = RunSnapshot.SchemaId,
