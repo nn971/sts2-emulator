@@ -4874,6 +4874,29 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            // Source TakeRandom/GetDistinctForCombat shuffles its entire
+            // eligible pool, including entries beyond the eventual prefix.
+            // Stop before the first swap, preserving the preceding hooks.
+            if (ControlledChanceGuardV111.Active)
+            {
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: operations.ToArray(),
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                if (TryMakeControlledPoolShuffleChoice(
+                    combat, operation, sourceCardInstanceId,
+                    continuation, out var suspended))
+                    return (player, suspended);
+            }
+
             // Draw-pile insertion has two Nature-owned stages when the card
             // itself is random: choose its source model, then its insertion
             // position. Fixed-card insertion needs only the position stage.
