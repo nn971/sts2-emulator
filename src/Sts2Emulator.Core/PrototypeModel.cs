@@ -1783,6 +1783,21 @@ public sealed record PrototypeControlledTargetChoiceV111(
     };
 }
 
+/// <summary>
+/// Private Nature-owned card-generation choice. The ordered source pool is
+/// preserved by identity and is never part of the fair player observation.
+/// </summary>
+public sealed record PrototypeControlledGeneratedCardV111(
+    PrototypeQueuedOperation Operation,
+    string[] CandidateCardIds)
+{
+    public PrototypeControlledGeneratedCardV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        CandidateCardIds = (string[])CandidateCardIds.Clone()
+    };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -1801,7 +1816,8 @@ public sealed record PendingCombatChoiceState(
     long[]? SequentialSelectedCardInstanceIds = null,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
     PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null,
-    PrototypeControlledTargetChoiceV111? ControlledTarget = null)
+    PrototypeControlledTargetChoiceV111? ControlledTarget = null,
+    PrototypeControlledGeneratedCardV111? ControlledGeneration = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1817,7 +1833,8 @@ public sealed record PendingCombatChoiceState(
                 : (long[])SequentialSelectedCardInstanceIds.Clone(),
         EventDispatchContinuation = EventDispatchContinuation?.Fork(),
         OuterChoiceContinuation = OuterChoiceContinuation?.Fork(),
-        ControlledTarget = ControlledTarget?.Fork()
+        ControlledTarget = ControlledTarget?.Fork(),
+        ControlledGeneration = ControlledGeneration?.Fork()
     };
 }
 
