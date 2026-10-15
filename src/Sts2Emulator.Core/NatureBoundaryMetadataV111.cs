@@ -45,8 +45,9 @@ public static class NatureBoundaryMetadataV111
         var history = (state.Origin.PriorHpTranscript ?? [])
             .Concat(state.Origin.Transcript)
             .Concat(state.ShuffleTranscript)
-            .Concat(state.TurnTranscript).ToArray();
-        var kind = state.TurnIntents is not null ? "next_turn_intent"
+            .Concat(state.LiveTranscript).ToArray();
+        var kind = state.Recycle is not null ? "draw_recycle"
+            : state.TurnIntents is not null ? "next_turn_intent"
             : state.Pending is not null ? "opening_shuffle" : "player";
         return Build(kind, state.Mode, state.Fingerprint,
             state.ActivePending, history);
