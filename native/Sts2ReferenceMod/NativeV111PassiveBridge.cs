@@ -281,7 +281,8 @@ internal static class NativeV111PassiveBridge
             nativeRngDoubleHookInstalled: NativeV111RngHook.HasDoubleHook,
             nativeRngBoolHookInstalled: NativeV111RngHook.HasBoolHook,
             nativeRngStreamCheckpointsEnabled:
-                NativeV111RngHook.StreamCheckpointsEnabled);
+                NativeV111RngHook.StreamCheckpointsEnabled,
+            nativeRngFloatHookInstalled: NativeV111RngHook.HasFloatHook);
         // A source-audited initial shuffle executes before the rendered
         // combat frame. Buffered evidence must precede later RNG requests
         // in this sidecar, with its pre-attachment basis clearly marked.

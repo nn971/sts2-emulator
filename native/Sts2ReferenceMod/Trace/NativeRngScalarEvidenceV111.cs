@@ -12,15 +12,26 @@ public sealed record NativeRngScalarEvidenceV111(
     string OperationKind, double? SelectedDouble, bool? SelectedBool,
     NativeRngSnapshot CursorBefore, NativeRngSnapshot CursorAfter,
     string Origin = "source_primitive_hook",
-    string SourceVersion = "v0.111.0")
+    string SourceVersion = "v0.111.0",
+    float? FloatMin = null, float? FloatMax = null,
+    float? SelectedFloat = null)
 {
     public void Validate()
     {
         bool valueValid = OperationKind switch
         {
             "unit_double" => SelectedDouble is >= 0.0 and < 1.0
-                && !SelectedBool.HasValue,
-            "boolean" => SelectedBool.HasValue && !SelectedDouble.HasValue,
+                && !SelectedBool.HasValue && !FloatMin.HasValue
+                && !FloatMax.HasValue && !SelectedFloat.HasValue,
+            "boolean" => SelectedBool.HasValue && !SelectedDouble.HasValue
+                && !FloatMin.HasValue && !FloatMax.HasValue
+                && !SelectedFloat.HasValue,
+            "range_float" => !SelectedBool.HasValue && !SelectedDouble.HasValue
+                && FloatMin.HasValue && FloatMax.HasValue && SelectedFloat.HasValue
+                && float.IsFinite(FloatMin.Value)
+                && float.IsFinite(FloatMax.Value)
+                && float.IsFinite(SelectedFloat.Value)
+                && FloatMin.Value <= FloatMax.Value,
             _ => false
         };
         if (!valueValid ||
