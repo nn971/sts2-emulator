@@ -200,7 +200,7 @@ public static class SemanticEndTurnEngineV111
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
                 "operation=not_at_next_player_boundary");
         var actions = new PrototypeAiEnvironment().Observe(result).LegalActions;
-        if (actions.Count == 0)
+        if (!actions.Any())
             throw new InvalidOperationException(
                 "The next player boundary has no available legal actions.");
         return state with { Run = result, Complete = true };
