@@ -13746,48 +13746,90 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
-                if (combat.SemanticDeck is not null)
-                    throw new NotSupportedException(
-                        "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
-                        "operation=source_timed_shuffle_continuation");
-                if (ControlledChanceGuardV111.Active &&
-                    !controlledRecycleSuspension)
-                    throw new NotSupportedException(
-                        "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
-                        "operation=shuffle_recycle outside resumable hand-draw stage");
-                if (ControlledChanceGuardV111.Active)
-                    return new PrototypeDrawCardsResult(
-                        player, combat, drawnCardInstanceIds.ToArray(),
-                        RemainingCount: count - drawNumber,
-                        ControlledRecyclePending: true);
+                if (combat.SemanticDeck is { } deferred)
+                {
+                    if (!ControlledChanceGuardV111.Active ||
+                        !controlledSemanticDrawSuspension)
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                            "operation=missing_semantic_continuation");
+                    if (combat.PlayerPowers.Any(power =>
+                        power.PowerId == "proto.power.stratagem" &&
+                        power.Stacks > 0))
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                            "operation=stratagem_player_selection");
+                    // In native mode AfterShuffleGeneratedCardId creates a
+                    // new card and inserts it at a random index. That needs
+                    // its own two-stage semantic continuation; reject
+                    // before consuming the recycled pile or changing RNG.
+                    if (combat.RelicStates.Where(relic => !relic.IsMelted)
+                        .Any(relic => PrototypeContent.Relic(relic.RelicId)
+                            .AfterShuffleGeneratedCardId is not null))
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                            "operation=after_shuffle_random_insertion");
 
-                var recycled = NativeShuffleStepReplayV111.ShuffleRecycle(
-                    discard.ToArray(), rng);
-                discard.Clear();
-                draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
-                    ApplyPerfectFitShuffleOrder(
-                        combat, recycled)));
-                combat = ApplyRelicAfterShuffleCards(combat with
-                {
-                    DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
-                }, rng);
-                draw = combat.DrawPile.ToList();
-                var stratagem = combat.PlayerPowers.Sum(power =>
-                    power.PowerId == "proto.power.stratagem"
-                        ? Math.Max(0, power.Stacks) : 0);
-                if (stratagem > 0 && combat.Hand.Length < maxHandSize)
-                {
-                    // Persist the recycled draw pile before prompting.
-                    // The suspended draw resumes after this choice.
+                    var perfectFit = discard.Where(id =>
+                        RequireCombatCard(combat, id).Enchantment?.Kind
+                            == PrototypeCardEnchantmentKind.PerfectFit)
+                        .ToArray();
+                    // Ordinary source-time shuffle plus deterministic
+                    // Perfect Fit top-priority hook. Nature commits only
+                    // constraints now; individual card identities remain
+                    // unresolved until their actual draw/reveal.
+                    deferred = SemanticDeckEngineV111.RecycleNature(
+                        deferred, discard, perfectFit);
+                    draw.AddRange(discard);
+                    discard.Clear();
                     combat = combat with
                     {
+                        SemanticDeck = deferred,
                         DrawPile = draw.ToArray(),
-                        DiscardPile = discard.ToArray()
+                        DiscardPile = []
                     };
-                    return new PrototypeDrawCardsResult(
-                        player, combat, drawnCardInstanceIds.ToArray(),
-                        RemainingCount: count - drawNumber,
-                        ShuffleSelectionPending: true);
+                }
+                else
+                {
+                    if (ControlledChanceGuardV111.Active &&
+                        !controlledRecycleSuspension)
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
+                            "operation=shuffle_recycle outside resumable hand-draw stage");
+                    if (ControlledChanceGuardV111.Active)
+                        return new PrototypeDrawCardsResult(
+                            player, combat, drawnCardInstanceIds.ToArray(),
+                            RemainingCount: count - drawNumber,
+                            ControlledRecyclePending: true);
+
+                    var recycled = NativeShuffleStepReplayV111.ShuffleRecycle(
+                        discard.ToArray(), rng);
+                    discard.Clear();
+                    draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
+                        ApplyPerfectFitShuffleOrder(
+                            combat, recycled)));
+                    combat = ApplyRelicAfterShuffleCards(combat with
+                    {
+                        DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
+                    }, rng);
+                    draw = combat.DrawPile.ToList();
+                    var stratagem = combat.PlayerPowers.Sum(power =>
+                        power.PowerId == "proto.power.stratagem"
+                            ? Math.Max(0, power.Stacks) : 0);
+                    if (stratagem > 0 && combat.Hand.Length < maxHandSize)
+                    {
+                        // Persist the recycled draw pile before prompting.
+                        // The suspended draw resumes after this choice.
+                        combat = combat with
+                        {
+                            DrawPile = draw.ToArray(),
+                            DiscardPile = discard.ToArray()
+                        };
+                        return new PrototypeDrawCardsResult(
+                            player, combat, drawnCardInstanceIds.ToArray(),
+                            RemainingCount: count - drawNumber,
+                            ShuffleSelectionPending: true);
+                    }
                 }
             }
 
