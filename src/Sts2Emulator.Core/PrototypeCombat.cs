@@ -4926,6 +4926,28 @@ public sealed partial class PrototypeGameEngine
                     combat, operation, continuation));
             }
 
+            // Suspend before the first random hand-card selection or cost roll.
+            // The saved tail and parent continuations resume exactly once.
+            if (ControlledChanceGuardV111.Active &&
+                ControlledRandomCostCandidates(combat, operation) is
+                    { Length: > 0 } eligibleCosts)
+            {
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: operations.ToArray(),
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                return (player, MakeControlledRandomCostChoice(
+                    combat, operation, eligibleCosts, continuation));
+            }
+
             // The first truly random generated card in this operation is
             // an in-flight Nature boundary. Earlier queue operations and
             // combat hooks are already reflected in `combat`; only the
