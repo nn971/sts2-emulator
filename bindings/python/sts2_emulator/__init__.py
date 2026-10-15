@@ -203,6 +203,19 @@ class SemanticCombat:
                 "semantic_resolve", semantic_handle=self.handle,
                 fingerprint=self.fingerprint, selected_index=selected_index))
 
+    def resolve_intent(self, intent_id: str):
+        """Choose a filtered, weighted semantic enemy move by stable ID.
+
+        The declared raw weights are source-shaped and remain UNVERIFIED
+        as calibrated reference probabilities.
+        """
+        if not self.pending or self.pending["kind"] != "enemy_intent":
+            raise EmulatorError("Expected an enemy_intent Nature event")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_intent", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, intent_id=intent_id))
+
     def fork(self):
         return SemanticCombat.from_wire(
             self.session, self.session.call(
