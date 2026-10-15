@@ -53,7 +53,17 @@ def rollout():
             assert event["kind"] in ("enemy_intent", "draw_card")
             assert event["probabilityStatus"] == "UNVERIFIED"
             transcript.append((event["kind"], event["supportFingerprint"]))
-            combat = combat.resolve(0)
+            if event["kind"] == "enemy_intent":
+                candidates = event["semanticCandidates"]
+                assert event["semanticIntentSupportSchemaId"] == (
+                    "sts2-v111-semantic-weighted-intent-v1")
+                assert candidates and event["weightsVerified"] is False
+                assert event["totalRawWeight"] == event["supportCount"]
+                assert sum(c["rawWeight"] for c in candidates) == (
+                    event["totalRawWeight"])
+                combat = combat.resolve_intent(candidates[0]["intentId"])
+            else:
+                combat = combat.resolve(0)
             count += 1
         assert any(kind == "enemy_intent" for kind, _ in transcript)
         assert combat.boundary in ("player", "terminal")
