@@ -64,7 +64,7 @@ public static class ControlledTurnIntentEngineV111
         });
     }
 
-    private sealed class InspectIntentBoundary : Exception;
+    private sealed class InspectIntentBoundary : Exception { }
 
     /// <summary>
     /// Inspect exactly the current suspended source ticket. Replay any prior
