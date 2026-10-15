@@ -89,7 +89,7 @@ public sealed class ControlledPoolShuffleV111Tests
         Assert.Equal(initial.Length, first.Pending.SupportCount);
         Assert.Equal(initial, first.Pending.CandidateCardIds);
         Assert.Equal("UNVERIFIED", first.Pending.ProbabilityStatus);
-        Assert.Equal(0, source.ChoiceCardIds.Length);
+        Assert.Empty(source.ChoiceCardIds);
         Assert.Throws<InvalidOperationException>(() =>
             ControlledPlayableCombatEngineV111.Resolve(pending, "stale", 0));
         Assert.Throws<ArgumentException>(() =>
