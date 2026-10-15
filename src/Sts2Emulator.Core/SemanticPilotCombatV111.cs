@@ -185,9 +185,9 @@ public static class SemanticPilotCombatEngineV111
         RunState result;
         if (action.Kind == "end_turn")
         {
-            endTurn = SemanticEndTurnEngineV111.BeginFromPlayerAction(
-                source, current.NativeEncounterEntry);
-            result = endTurn.Run;
+            (endTurn, result) =
+                SemanticEndTurnEngineV111.BeginFromPlayerActionOrTerminal(
+                    source, current.NativeEncounterEntry);
         }
         else if (action.Kind == "play_card")
         {
