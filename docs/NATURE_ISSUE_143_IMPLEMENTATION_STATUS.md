@@ -221,3 +221,29 @@ This is still a conditioned real-draw segment. Nested `CardDrawn`
 pending choices, Stratagem and after-shuffle random insertions, plus
 opening/automatic/player-step/JSONL semantic rollout, remain separate
 gates.
+
+
+## Semantic DrawPlayerHand automatic-stage checkpoint (PR #161)
+
+The opt-in `SemanticCombatDrawEngineV111.BeginAutomaticHandDraw`
+enters the **original** `ResolveAutomaticStep(DrawPlayerHand)` from
+a saved source-shaped pipeline checkpoint, executes `BeforeHandDraw`
+and all ordinary draw-count/hand-bonus rules exactly once, then stores
+a distinct `ControlledSemanticDrawRemaining` cursor. Subsequent
+per-card identity, Snecko and Slither Nature decisions resume
+`DrawCards` directly. Completion executes `RemoveAfterHandDraw`
+and `DecrementAfterHandDraw` cleanup once and persists the
+**next automatic-step index** for later whole-action resumption.
+
+The automatic-stage mode is separately tagged in the replayable
+semantic draw envelope; restoration replays the original stage from
+the checkpoint, verifies the interleaved Nature transcript and
+compares complete `RunState` including stage cursor. Tests cover
+card-draw timing, Snecko's extra hand cards, staged costs, recycle,
+invalid cursor, and 15 workers. See
+[Nature semantic automatic hand draw](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).
+
+This remains a **single original automatic pipeline stage**, with
+prior enemy-intent resolution and later automatic steps supplied/
+continued elsewhere. A full player end-turn `step` → Nature →
+next `step` controller and JSONL bridge are not yet complete.

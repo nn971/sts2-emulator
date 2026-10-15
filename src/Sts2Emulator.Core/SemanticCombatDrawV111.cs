@@ -11,7 +11,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record SemanticCombatDrawV111(
     RunState Origin, RunState Run, int RequestedCount, int RemainingCount,
-    bool FromHandDraw)
+    bool FromHandDraw, bool AutomaticHandDraw = false)
 {
     public const string SchemaId = "sts2-v111-semantic-real-combat-draw-v1";
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
@@ -104,6 +104,56 @@ public static class SemanticCombatDrawEngineV111
         return result;
     }
 
+    /// <summary>
+    /// Enter the genuine BeforeHandDraw / DrawPlayerHand automatic pipeline
+    /// stage from an existing, source-shaped checkpoint. Previous enemy
+    /// turns, intent choices and preceding automatic steps belong to
+    /// the supplied source; neither they nor BeforeHandDraw are rerun on
+    /// subsequent Nature resolutions.
+    /// </summary>
+    public static SemanticCombatDrawV111 BeginAutomaticHandDraw(RunState source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var sourceCombat = source.World?.Combat;
+        if (source.Phase != RunPhase.Combat ||
+            sourceCombat is null ||
+            sourceCombat.SemanticDeck is not null ||
+            sourceCombat.PendingChoice is not null ||
+            sourceCombat.PendingKnowledgeDemonChoice is not null ||
+            sourceCombat.AutomaticPipelineContinuation is not { } cursor ||
+            cursor.NextStepIndex != PrototypeGameEngine.SemanticHandDrawStepIndex ||
+            cursor.ControlledDrawRemaining is not null ||
+            cursor.ControlledDrawCostRemaining is not null ||
+            cursor.ControlledSemanticDrawRemaining is not null ||
+            cursor.OpeningStage is not null ||
+            cursor.PendingPostDispatchEventKind is not null)
+            throw new InvalidOperationException(
+                "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.");
+        var origin = source.Fork();
+        var world = origin.World!;
+        var attached = origin with
+        {
+            World = world with
+            {
+                Combat = world.Combat! with
+                {
+                    SemanticDeck = SemanticDeckEngineV111.BeginNature(
+                        world.Combat!.DrawPile)
+                }
+            }
+        };
+        RunState run;
+        int requested;
+        int remaining;
+        using (ControlledChanceGuardV111.Enter())
+            (run, requested, remaining) =
+                PrototypeGameEngine.BeginSemanticAutomaticHandDraw(attached);
+        var result = new SemanticCombatDrawV111(
+            origin, run, requested, remaining, true, AutomaticHandDraw: true);
+        Validate(result);
+        return result;
+    }
+
     /// <summary>Nature chooses a physical instance at the saved draw site;
     /// the normal mechanical DrawCards routine then performs the draw,
     /// cost checks and CardDrawn hooks before another Nature request.</summary>
@@ -181,8 +231,9 @@ public static class SemanticCombatDrawEngineV111
         var stored = JsonSerializer.Deserialize<SemanticCombatDrawV111>(json)
             ?? throw new InvalidDataException("Null semantic combat draw.");
         Validate(stored);
-        var reconstructed = Begin(
-            stored.Origin, stored.RequestedCount, stored.FromHandDraw);
+        var reconstructed = stored.AutomaticHandDraw
+            ? BeginAutomaticHandDraw(stored.Origin)
+            : Begin(stored.Origin, stored.RequestedCount, stored.FromHandDraw);
         int deckCursor = 0;
         int costCursor = 0;
         while (deckCursor < stored.Transcript.Length ||
@@ -247,17 +298,40 @@ public static class SemanticCombatDrawEngineV111
             state.Origin.Phase != RunPhase.Combat ||
             state.Origin.World?.Combat is not { } originCombat ||
             originCombat.SemanticDeck is not null ||
-            originCombat.AutomaticPipelineContinuation is not null ||
             originCombat.PendingChoice is not null ||
+            (!state.AutomaticHandDraw &&
+             originCombat.AutomaticPipelineContinuation is not null) ||
+            (state.AutomaticHandDraw &&
+             (originCombat.AutomaticPipelineContinuation is not { } initial ||
+              initial.NextStepIndex != PrototypeGameEngine.SemanticHandDrawStepIndex ||
+              initial.ControlledSemanticDrawRemaining is not null)) ||
             state.Run.Phase != RunPhase.Combat ||
             state.Run.World?.Combat is not { } combat ||
             combat.SemanticDeck is not { } deck ||
-            combat.AutomaticPipelineContinuation is not null ||
+            (!state.AutomaticHandDraw &&
+             combat.AutomaticPipelineContinuation is not null) ||
             combat.PendingKnowledgeDemonChoice is not null ||
             state.CostTranscript is null)
             throw new InvalidDataException("Invalid semantic combat draw stage.");
         SemanticDeckEngineV111.Validate(deck);
         var cost = combat.PendingChoice?.ControlledDrawCost;
+        if (state.AutomaticHandDraw)
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            bool awaiting = deck.Pending is not null || cost is not null;
+            if (cursor is null ||
+                (awaiting &&
+                 (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
+                  cursor.ControlledSemanticDrawRemaining != state.RemainingCount ||
+                  cursor.ControlledSemanticDrawRequested != state.RequestedCount)) ||
+                (!awaiting &&
+                 (state.RemainingCount != 0 ||
+                  cursor.NextStepIndex !=
+                      PrototypeGameEngine.SemanticHandDrawStepIndex + 1 ||
+                  cursor.ControlledSemanticDrawRemaining is not null)))
+                throw new InvalidDataException(
+                    "Semantic automatic hand-draw cursor is inconsistent.");
+        }
         if ((combat.PendingChoice is not null && cost is null) ||
             (cost is not null &&
              (deck.Pending is not null ||

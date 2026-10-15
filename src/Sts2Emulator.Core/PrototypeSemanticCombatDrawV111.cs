@@ -20,8 +20,12 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("No combat to draw from.");
         if (combat.SemanticDeck is null)
             throw new InvalidOperationException("Missing semantic deck provider.");
+        bool automatic = IsSemanticAutomaticHandDraw(combat);
         if (combat.PendingChoice is not null ||
-            combat.AutomaticPipelineContinuation is not null)
+            (combat.AutomaticPipelineContinuation is not null && !automatic) ||
+            (automatic && (!fromHandDraw ||
+                           combat.AutomaticPipelineContinuation!
+                               .ControlledSemanticDrawRemaining != count)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
                 "operation=nested_choice_or_automatic_pipeline");
@@ -32,13 +36,17 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
                 "operation=unsupported_nested_stage");
-        return (run with
+        var advanced = run with
         {
             Player = result.Player,
             World = world with { Combat = result.Combat }
-        }, result.ControlledSemanticDrawPending ||
-           result.ControlledDrawCostPending
-            ? result.RemainingCount : 0);
+        };
+        bool pending = result.ControlledSemanticDrawPending ||
+            result.ControlledDrawCostPending;
+        return automatic
+            ? CommitSemanticAutomaticHandDrawProgress(
+                advanced, result.RemainingCount, pending)
+            : (advanced, pending ? result.RemainingCount : 0);
     }
 
     /// <summary>
@@ -61,8 +69,13 @@ public sealed partial class PrototypeGameEngine
         SemanticDeckEngineV111.Validate(deck);
         var pending = combat.PendingChoice;
         var cost = pending?.ControlledDrawCost;
+        bool automatic = IsSemanticAutomaticHandDraw(combat);
         if (deck.Pending is not null ||
-            combat.AutomaticPipelineContinuation is not null ||
+            (combat.AutomaticPipelineContinuation is not null && !automatic) ||
+            (automatic && (
+                !cost!.FromHandDraw ||
+                combat.AutomaticPipelineContinuation!
+                    .ControlledSemanticDrawRemaining != cost.RemainingCount)) ||
             cost is null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             cost.RemainingCount < 0 || cost.EventDepth != 0 ||
@@ -120,12 +133,16 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
                 "operation=unsupported_post_cost_stage");
-        return (run with
+        var advanced = run with
         {
             Player = continued.Player,
             World = world with { Combat = continued.Combat }
-        }, continued.ControlledSemanticDrawPending ||
-           continued.ControlledDrawCostPending
-            ? continued.RemainingCount : 0);
+        };
+        bool hasPending = continued.ControlledSemanticDrawPending ||
+            continued.ControlledDrawCostPending;
+        return automatic
+            ? CommitSemanticAutomaticHandDrawProgress(
+                advanced, continued.RemainingCount, hasPending)
+            : (advanced, hasPending ? continued.RemainingCount : 0);
     }
 }

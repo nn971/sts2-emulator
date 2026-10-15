@@ -384,7 +384,12 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     PrototypeOpeningCombatStage? OpeningStage = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     int? ControlledDrawRemaining = null,
-    int? ControlledDrawCostRemaining = null);
+    int? ControlledDrawCostRemaining = null,
+    // Separately versioned semantic Nature cursor: it tracks one ordinary
+    // DrawPlayerHand invocation after BeforeHandDraw, independent of the
+    // legacy Fisher-Yates swap and drawn-cost continuation markers.
+    int? ControlledSemanticDrawRemaining = null,
+    int? ControlledSemanticDrawRequested = null);
 
 /// <summary>
 /// A source-owned, blocking choice in the enemy-side action pipeline.
