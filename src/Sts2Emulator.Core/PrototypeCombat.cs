@@ -1441,7 +1441,8 @@ public sealed partial class PrototypeGameEngine
     private static RunState ResumeAutomaticPipeline(
         RunState state,
         int startIndex,
-        PrototypeCombatEventKind? pendingPostDispatchEventKind = null)
+        PrototypeCombatEventKind? pendingPostDispatchEventKind = null,
+        bool stopBeforeSemanticHandDraw = false)
     {
         if (pendingPostDispatchEventKind is not null)
         {
@@ -1469,6 +1470,15 @@ public sealed partial class PrototypeGameEngine
         {
             var automaticStep =
                 PrototypeContent.Rules.EndTurnPipeline[index];
+            // Opt-in semantic hand-draw handoff. Everything before this
+            // source stage has already executed in the original engine.
+            // The hand stage itself runs later via the genuine
+            // ResolveAutomaticStep(DrawPlayerHand) continuation.
+            if (ControlledChanceGuardV111.Active &&
+                stopBeforeSemanticHandDraw &&
+                automaticStep.Kind == PrototypeAutomaticStepKind.DrawPlayerHand)
+                return SetAutomaticPipelineContinuation(
+                    state, index, pendingPostDispatchEventKind: null);
             // A controlled end-turn preserves every preceding hook result.
             // The next-turn intent stage is a separate continuation boundary:
             // Nature commits its finite tickets before this stage's postwork.
@@ -1574,7 +1584,8 @@ public sealed partial class PrototypeGameEngine
     /// next real pipeline index under the same fail-closed RNG guard.
     /// </summary>
     internal static RunState ResumeControlledTurnAfterIntents(
-        RunState state, CombatState committed)
+        RunState state, CombatState committed,
+        bool stopBeforeSemanticHandDraw = false)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -1597,7 +1608,8 @@ public sealed partial class PrototypeGameEngine
         {
             World = world with { Combat = advanced }
         };
-        return ResumeAutomaticPipeline(resumed, index + 1);
+        return ResumeAutomaticPipeline(resumed, index + 1,
+            stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
     }
 
     /// <summary>
