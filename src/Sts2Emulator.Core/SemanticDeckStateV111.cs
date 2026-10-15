@@ -351,6 +351,14 @@ public static class SemanticDeckEngineV111
                     x.i, x.slot.KnownCardInstanceId!.Value)).ToArray());
     }
 
+    /// <summary>Used only by mechanics to validate physical card-zone
+    /// identity, never exposed in the fair player observation.</summary>
+    public static long[] AllCardInstanceIds(SemanticDeckStateV111 state)
+    {
+        Validate(state);
+        return AllCards(state);
+    }
+
     public static string Save(SemanticDeckStateV111 state)
     {
         Validate(state);
