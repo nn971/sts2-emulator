@@ -163,13 +163,14 @@ internal static class PrototypeAiJsonlServer
                                 "combat.sly_autoplay.random_enemy",
                                 "combat.generated_card.select",
                                 "combat.random_draw_attack.card_model",
-                                "combat.draw_pile.random_insert_index"
+                                "combat.draw_pile.random_insert_index",
+                                "combat.generation.full_pool_shuffle.swap_index"
                             },
                             controlledChanceLimitations =
                                 "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
-                                "random-enemy and Sly targeting, and five source-shaped " +
-                                "generated-card effects; all other chance sites fail closed. " +
-                                "Native entry and conditional laws unverified.",
+                                "random-enemy and Sly targeting, five generated-card " +
+                                "effects, draw insertion, and full-pool generation shuffles; " +
+                                "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
                             snapshotSchemaId = RunSnapshot.SchemaId,

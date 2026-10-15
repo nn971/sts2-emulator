@@ -30,11 +30,36 @@ public sealed record ControlledPlayableCombatV111(
     public RandomIndexDecisionV111[] TargetTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] GeneratedCardTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] DrawInsertionTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] PoolShuffleTranscript { get; init; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
-        DrawInsertionPending ?? GeneratedCardPending ?? TargetPending ??
+        PoolShufflePending ?? DrawInsertionPending ??
+        GeneratedCardPending ?? TargetPending ??
         Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RandomIndexRequestV111? PoolShufflePending
+    {
+        get
+        {
+            var combat = Run.World?.Combat;
+            var shuffle = combat?.PendingChoice?.ControlledPoolShuffle;
+            if (shuffle is null) return null;
+            return new RandomIndexRequestV111(
+                "combat.generation.full_pool_shuffle.swap_index",
+                shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+                    combat!.NativeRng?.RunStreams is not null
+                    ? "run.combat_card_generation" : "prototype.combat",
+                "card:" +
+                    (combat!.PendingChoice!.SourceCardInstanceId?.ToString() ??
+                        "effect") + ":operation:" + shuffle.Operation.Kind +
+                    ":pool:" + CanonicalJson.Sha256(shuffle.OriginalCardIds),
+                PoolShuffleTranscript.Length, [],
+                OperationKind: "bounded_integer",
+                BoundedCount: shuffle.NextSwapIndex + 1);
+        }
+    }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? DrawInsertionPending
     {
@@ -122,6 +147,7 @@ public sealed record ControlledPlayableCombatV111(
         TargetTranscript = DeepCopy(TargetTranscript),
         GeneratedCardTranscript = DeepCopy(GeneratedCardTranscript),
         DrawInsertionTranscript = DeepCopy(DrawInsertionTranscript),
+        PoolShuffleTranscript = DeepCopy(PoolShuffleTranscript),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
@@ -219,6 +245,8 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException(
                 "Stale controlled chance fingerprint.");
         VerifyStage(state);
+        if (state.PoolShufflePending is not null)
+            return ResolvePoolShuffle(state, selectedIndex);
         if (state.DrawInsertionPending is not null)
             return ResolveDrawInsertion(state, selectedIndex);
         if (state.GeneratedCardPending is not null)
@@ -276,6 +304,27 @@ public static class ControlledPlayableCombatEngineV111
         {
             Run = result,
             PlayerActions = state.PlayerActions.Append(actionId).ToArray()
+        };
+        return StartPendingTurn(next);
+    }
+
+    private static ControlledPlayableCombatV111 ResolvePoolShuffle(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var request = state.PoolShufflePending ??
+            throw new InvalidOperationException("Missing pool-shuffle ticket.");
+        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
+            .Resolve(request, state.Origin.ReferenceStreams);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledPoolShuffle(
+                state.Run.Fork(), selectedIndex);
+        var next = state.Fork() with
+        {
+            Run = result,
+            PoolShuffleTranscript = state.PoolShuffleTranscript
+                .Append(choice).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
         };
         return StartPendingTurn(next);
     }
@@ -513,7 +562,8 @@ public static class ControlledPlayableCombatEngineV111
             !current.RecycleTranscript.SequenceEqual(stored.RecycleTranscript) ||
             !current.TargetTranscript.SequenceEqual(stored.TargetTranscript) ||
             !current.GeneratedCardTranscript.SequenceEqual(stored.GeneratedCardTranscript) ||
-            !current.DrawInsertionTranscript.SequenceEqual(stored.DrawInsertionTranscript))
+            !current.DrawInsertionTranscript.SequenceEqual(stored.DrawInsertionTranscript) ||
+            !current.PoolShuffleTranscript.SequenceEqual(stored.PoolShuffleTranscript))
         {
             // Records hold arrays; canonical comparison below is decisive.
             if (CanonicalJson.Sha256(current.TurnTranscript) !=
@@ -525,7 +575,9 @@ public static class ControlledPlayableCombatEngineV111
                 CanonicalJson.Sha256(current.GeneratedCardTranscript) !=
                     CanonicalJson.Sha256(stored.GeneratedCardTranscript) ||
                 CanonicalJson.Sha256(current.DrawInsertionTranscript) !=
-                    CanonicalJson.Sha256(stored.DrawInsertionTranscript))
+                    CanonicalJson.Sha256(stored.DrawInsertionTranscript) ||
+                CanonicalJson.Sha256(current.PoolShuffleTranscript) !=
+                    CanonicalJson.Sha256(stored.PoolShuffleTranscript))
                 throw new InvalidDataException("Chance transcripts diverged.");
         }
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
@@ -543,11 +595,60 @@ public static class ControlledPlayableCombatEngineV111
             state.TurnTranscript is null || state.RecycleTranscript is null ||
             state.LiveTranscript is null || state.TargetTranscript is null ||
             state.GeneratedCardTranscript is null ||
-            state.DrawInsertionTranscript is null || state.Origin is null ||
+            state.DrawInsertionTranscript is null ||
+            state.PoolShuffleTranscript is null || state.Origin is null ||
             (state.TurnIntents is not null && state.Pending is not null) ||
             (state.Recycle is not null &&
                 (state.Pending is not null || state.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
+        var poolCombat = state.Run.World?.Combat;
+        var pool = poolCombat?.PendingChoice?.ControlledPoolShuffle;
+        if (pool is not null &&
+            (state.Pending is not null || state.Recycle is not null ||
+             state.TurnIntents is not null ||
+             poolCombat?.PendingChoice?.ControlledTarget is not null ||
+             poolCombat?.PendingChoice?.ControlledGeneration is not null ||
+             poolCombat?.PendingChoice?.ControlledDrawInsertion is not null ||
+             !PrototypeGameEngine.ValidateControlledPoolShuffle(
+                 poolCombat!, pool,
+                 poolCombat?.PendingChoice?.SourceCardInstanceId)))
+            throw new InvalidDataException(
+                "Saved full-pool shuffle disagrees with source eligibility.");
+        if (pool is not null)
+        {
+            // Replay only pure swap arithmetic to establish reachability.
+            // No card hooks or earlier operations are re-executed here.
+            int consumed = pool.OriginalCardIds.Length - 1 - pool.NextSwapIndex;
+            if (consumed < 0 || consumed > state.PoolShuffleTranscript.Length)
+                throw new InvalidDataException(
+                    "Pool shuffle cursor exceeds recorded Nature decisions.");
+            var current = (string[])pool.OriginalCardIds.Clone();
+            var active = state.PoolShufflePending!;
+            var offset = state.PoolShuffleTranscript.Length - consumed;
+            for (int step = 0; step < consumed; step++)
+            {
+                var recorded = state.PoolShuffleTranscript[offset + step];
+                recorded.Validate();
+                var expectedRequest = active with
+                {
+                    Ordinal = offset + step,
+                    BoundedCount = pool.OriginalCardIds.Length - step
+                };
+                if (recorded.ProviderMode != "controlled-v111" ||
+                    recorded.NativeCursorBefore is not null ||
+                    recorded.NativeCursorAfter is not null ||
+                    CanonicalJson.Sha256(recorded.Request) !=
+                        CanonicalJson.Sha256(expectedRequest))
+                    throw new InvalidDataException(
+                        "Pool shuffle swap transcript is not source-reachable.");
+                var i = pool.OriginalCardIds.Length - 1 - step;
+                (current[i], current[recorded.SelectedIndex]) =
+                    (current[recorded.SelectedIndex], current[i]);
+            }
+            if (!current.SequenceEqual(pool.CurrentCardIds))
+                throw new InvalidDataException(
+                    "Saved pool permutation disagrees with its Nature swap prefix.");
+        }
         var insertionCombat = state.Run.World?.Combat;
         var insertion = insertionCombat?.PendingChoice?.ControlledDrawInsertion;
         if (insertion is not null &&

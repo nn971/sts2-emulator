@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#149 merged into the isolated integration branch; PR #150 adds fixed-card and random-Attack draw-position insertion continuations. Issue #143 remains open for full chance-site coverage, source-native parity, and end-to-end controlled terminal rollouts.
+**Status:** PRs #144–#150 merged into the isolated RNG/Inspector integration branch; PR #151 adds full-pool card generation shuffle continuations for potion/card choices and distinct generators. Issue #143 stays OPEN until remaining RNG site migration, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -26,12 +26,12 @@ The response includes `schemaId`, `kind`, `mode`, `natureHandle`, `fingerprint`,
 | Gate | Status | Work |
 | --- | --- | --- |
 | G0: playable controlled RunState + fair observation | **PARTIAL (#145)** | A real `RunState` with starter player/deck and unchanged controlled enemy HP/intent can play deterministic actions after Nature resolves shuffle; the fixture bypasses native combat-start hooks and is not equivalent to arbitrary full-run state. |
-| G1: mechanically resumed action→chance→action | **PARTIAL (#145–#150)** | Saved continuation stages now include card identity and bounded insertion position for two draw-pile-generation operations in the actual effect kernel. The new sites are exercised via an internal operation fixture; existing action-based stages retain their JSONL coverage. |
-| G2: live chance-site coverage | **PARTIAL (#145–#150)** | In addition to earlier combat sites, `CreateGeneratedCardsAtRandomDrawPositions` and `CreateRandomFreeAttacksInDrawPile` now expose controlled position or model-plus-position tickets. Enemy draw/discard insertion, full-pool shuffles, randomized costs, summons and nested hooks remain open. |
+| G1: mechanically resumed action→chance→action | **PARTIAL (#145–#151)** | In addition to earlier live mechanics, all source-filtered card generation pools can now suspend for each full Fisher–Yates swap and resume original choice/direct-generation effects without repeating earlier hooks. |
+| G2: live chance-site coverage | **PARTIAL (#145–#151)** | Four generated-choice and distinct-card operation kinds now own full-pool shuffle tickets, including Attack/Skill/Power and Colorless Potions, Discovery and Jack of All Trades. Enemy-side insertion, random costs and nested summon/death remain. |
 | G3: extended chance operations | **PARTIAL** | `choose_index` and compact `bounded_integer` exist. Other source-shaped operation types need requests and execution integration. |
-| G4: stable event IDs and transcript | **PARTIAL (#144–#150)** | Ordered Nature events and strict source support include dual-stage draw-pile insertion with pile identity fingerprint and candidate Attack card IDs. These fixture-origin tests are not action-based snapshot provenance. |
-| G5: fair player boundary | **PARTIAL (#145–#149)** | The normal fair player observation is accessible only at player boundaries; generated-card support is Nature-facing metadata. |
-| G6: 15-worker isolation | **PARTIAL (#144–#150)** | Deterministic 15-worker coverage now also exercises draw insertion, including both model and index selection; full terminal rollout and throughput remain incomplete. |
+| G4: stable event IDs and transcript | **PARTIAL (#144–#151)** | Nature events include exact current eligible card-model order and bounded full-pool swaps. Every partial permutation is independently replayed against the recorded swap prefix and original eligibility, with stable source/stream identity. |
+| G5: fair player boundary | **PARTIAL (#145–#151)** | Player choices resume through original select_cards boundary after Nature completes shuffle; candidate pool is privileged Nature metadata and fair player observation remains gated. |
+| G6: 15-worker isolation | **PARTIAL (#144–#151)** | Deterministic 15-worker tests cover full-pool shuffle prefixes alongside earlier chance sites. Full combat-to-terminal throughput remains untested. |
 | G7: conditional native chance law | **DEFERRED** | Explicitly `UNVERIFIED`; source law and importance-sampling weights require separate calibration. |
 
 ## Engineering sequencing
@@ -86,3 +86,10 @@ Tests exercise all three consecutive Orobic Acid generation effects in actual co
 The real combat `ResolveOperations` kernel now suspends at two additional source-defined effects. A generated fixed card has one bounded insertion-position ticket; a generated random Attack has a source-ordered model-selection ticket followed by a position ticket. The original operation and continuation queue are preserved, so card materialization and each insertion occur exactly once. Multi-insertion operations issue successive choices, and the player remains outside the fair decision boundary until the operation completes. See [draw-insertion implementation notes](NATURE_DRAW_INSERTION_143.md).
 
 Tests exercise both mechanics through a narrow guarded internal diagnostic entry on a real combat `RunState`. Neither operation is currently reached by a standard Silent starter card action, so this does not establish full JSONL `controlled_step` or native-entry replay provenance. Remaining enemy-side insertion and other random-effect continuations remain explicitly unsupported. Law status is `UNVERIFIED`.
+
+
+## PR #151: complete source-shaped generation-pool shuffle
+
+The real `ResolveOperations` pipeline now suspends before full-pool Fisher–Yates shuffles used by `ChooseGeneratedCards`, `ChooseGeneratedColorlessCards`, `CreateDistinctColorlessCardsInHand` and `CreateDistinctCharacterCommonCardsInHand`. The controller gets a typed, bounded swap event for **every** eligible card in the complete source-filtered pool even when the game selects only one or three. The saved card-event/choice continuation resumes once after the last swap; choice effects restore the ordinary player `select_cards` action, while direct generation adds the selected prefix to hand. All partial permutations are checked against recorded swaps, guarding against invalid reordered snapshots.
+
+Focused tests exercise real Attack and Colorless Potion effect kernels using explicit fixture-injected potion inventory, distinct common generation through an internal operation fixture, forged permutation rejection and 15-worker deterministic execution. Native-provenance potion acquisition and full controlled snapshot replay from those modified fixtures remain unverified; source laws are `UNVERIFIED`. Details in [the full-pool continuation contract](NATURE_FULL_POOL_GENERATION_143.md).

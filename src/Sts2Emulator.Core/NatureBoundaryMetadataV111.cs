@@ -47,9 +47,11 @@ public static class NatureBoundaryMetadataV111
             .Concat(state.Origin.Transcript)
             .Concat(state.ShuffleTranscript)
             .Concat(state.LiveTranscript).ToArray();
+        var pool = state.Run.World?.Combat?.PendingChoice?.ControlledPoolShuffle;
         var insertion = state.Run.World?.Combat?.PendingChoice?.ControlledDrawInsertion;
         var generation = state.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
-        var kind = insertion is not null ? "draw_insertion"
+        var kind = pool is not null ? "generation_pool_shuffle"
+            : insertion is not null ? "draw_insertion"
             : generation is not null ? "generated_card"
             : state.TargetPending is not null ? "random_target"
             : state.Recycle is not null ? "draw_recycle"
@@ -57,8 +59,9 @@ public static class NatureBoundaryMetadataV111
             : state.Pending is not null ? "opening_shuffle" : "player";
         var view = Build(kind, state.Mode, state.Fingerprint,
             state.ActivePending, history);
-        var candidateModels = insertion is { Stage: "card_model" }
-            ? insertion.CandidateCardIds : generation?.CandidateCardIds;
+        var candidateModels = pool?.CurrentCardIds ??
+            (insertion is { Stage: "card_model" }
+                ? insertion.CandidateCardIds : generation?.CandidateCardIds);
         return candidateModels is not null && view.Pending is { } pending
             ? view with
             {

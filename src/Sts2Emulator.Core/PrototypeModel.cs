@@ -1813,6 +1813,23 @@ public sealed record PrototypeControlledDrawInsertionV111(
     };
 }
 
+/// <summary>
+/// Source-ordered full-pool generation shuffle waiting on a Nature swap.
+/// The exact source eligibility, partial permutation and saved effect queue
+/// are private; only the bounded swap ticket and ordered card IDs go to Nature.
+/// </summary>
+public sealed record PrototypeControlledPoolShuffleV111(
+    PrototypeQueuedOperation Operation, string[] OriginalCardIds,
+    string[] CurrentCardIds, int NextSwapIndex, int SelectedCount)
+{
+    public PrototypeControlledPoolShuffleV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        OriginalCardIds = (string[])OriginalCardIds.Clone(),
+        CurrentCardIds = (string[])CurrentCardIds.Clone()
+    };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -1833,7 +1850,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null,
     PrototypeControlledTargetChoiceV111? ControlledTarget = null,
     PrototypeControlledGeneratedCardV111? ControlledGeneration = null,
-    PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null)
+    PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null,
+    PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1851,7 +1869,8 @@ public sealed record PendingCombatChoiceState(
         OuterChoiceContinuation = OuterChoiceContinuation?.Fork(),
         ControlledTarget = ControlledTarget?.Fork(),
         ControlledGeneration = ControlledGeneration?.Fork(),
-        ControlledDrawInsertion = ControlledDrawInsertion?.Fork()
+        ControlledDrawInsertion = ControlledDrawInsertion?.Fork(),
+        ControlledPoolShuffle = ControlledPoolShuffle?.Fork()
     };
 }
 
