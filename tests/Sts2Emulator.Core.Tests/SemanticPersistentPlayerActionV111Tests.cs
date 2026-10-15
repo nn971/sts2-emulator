@@ -71,7 +71,11 @@ public sealed class SemanticPersistentPlayerActionV111Tests
             cards.Contains(play.CardInstanceId));
         return action?.ActionId ??
             throw new InvalidOperationException(
-                "Prepared Silent hand lacks a playable Strike/Defend.");
+                "Prepared Silent hand lacks a playable Strike/Defend. " +
+                "energy=" + combat.Energy +
+                "; hand=" + string.Join(",", combat.Cards.Where(c =>
+                    combat.Hand.Contains(c.InstanceId)).Select(c => c.CardId)) +
+                "; legal=" + string.Join(",", actions.Select(x => x.Kind)));
     }
 
     private static SemanticEndTurnV111 FirstEndTurn(
