@@ -25,6 +25,9 @@ internal static class NativeV111RngHook
     private readonly record struct CallState(
         bool Active, NativeRngSnapshot? Before, int Min, int Bound);
 
+    private readonly record struct FloatCallState(
+        bool Active, NativeRngSnapshot? Before, float Min, float Max);
+
     private static readonly NativeRngSourceRegistryV111 Owners = new();
     private static Harmony? _patches;
     private static bool _attached;
@@ -33,6 +36,7 @@ internal static class NativeV111RngHook
     private static bool _rollMoveScopeInstalled;
     private static bool _doubleHookInstalled;
     private static bool _boolHookInstalled;
+    private static bool _floatHookInstalled;
     private static readonly List<(string Id, string Owner, NativeRng Rng)> StreamSources = [];
     internal static bool StreamCheckpointsEnabled => IsInstalled &&
         System.Environment.GetEnvironmentVariable("STS2_FIDELITY_RNG_STREAM_CHECKPOINTS") == "1";
@@ -41,6 +45,7 @@ internal static class NativeV111RngHook
     internal static bool HasRollMoveScope => IsInstalled && _rollMoveScopeInstalled;
     internal static bool HasDoubleHook => IsInstalled && _doubleHookInstalled;
     internal static bool HasBoolHook => IsInstalled && _boolHookInstalled;
+    internal static bool HasFloatHook => IsInstalled && _floatHookInstalled;
 
     internal static void TryInstall()
     {
@@ -86,6 +91,10 @@ internal static class NativeV111RngHook
             _boolHookInstalled = TryInstallScalar(
                 harmony, nameof(NativeRng.NextBool),
                 nameof(PrefixScalar), nameof(PostfixBool));
+            // NextFloat(max) delegates to NextFloat(0f, max) in the pinned
+            // game source. Hook ONLY the two-float overload to observe the
+            // one actual xoshiro draw exactly once, including min == max.
+            _floatHookInstalled = TryInstallFloat(harmony);
             // Additional source-level causal identity for enemy intentions.
             // MonsterModel.RollMove is synchronous and delegates directly to
             // MoveStateMachine.RollMove(..., RunRng.MonsterAi) in pinned v111.
@@ -129,7 +138,9 @@ internal static class NativeV111RngHook
                 "; double_source_hook=" +
                 (_doubleHookInstalled ? "INSTALLED" : "UNAVAILABLE") +
                 "; bool_source_hook=" +
-                (_boolHookInstalled ? "INSTALLED" : "UNAVAILABLE"));
+                (_boolHookInstalled ? "INSTALLED" : "UNAVAILABLE") +
+                "; float_source_hook=" +
+                (_floatHookInstalled ? "INSTALLED" : "UNAVAILABLE"));
         }
         catch (Exception error)
         {
@@ -142,6 +153,7 @@ internal static class NativeV111RngHook
             _rollMoveScopeInstalled = false;
             _doubleHookInstalled = false;
             _boolHookInstalled = false;
+            _floatHookInstalled = false;
             GD.PushError("[Sts2ReferenceMod] RNG_HOOK_STATUS=INSTALL_FAILED;" +
                 " reason=" + error.GetType().Name + "; exact RNG fidelity NOT_TESTED");
         }
@@ -167,6 +179,29 @@ internal static class NativeV111RngHook
         {
             GD.PushError("[Sts2ReferenceMod] SCALAR_RNG_HOOK_STATUS=UNAVAILABLE;" +
                 " method=" + methodName + ";reason=" + error.GetType().Name);
+            return false;
+        }
+    }
+
+    private static bool TryInstallFloat(Harmony harmony)
+    {
+        const BindingFlags methods = BindingFlags.Static | BindingFlags.NonPublic;
+        try
+        {
+            var target = AccessTools.Method(typeof(NativeRng),
+                nameof(NativeRng.NextFloat), [typeof(float), typeof(float)])
+                ?? throw new MissingMethodException("Rng.NextFloat(float,float)");
+            harmony.Patch(target,
+                prefix: new HarmonyMethod(typeof(NativeV111RngHook)
+                    .GetMethod(nameof(PrefixFloat), methods)!),
+                postfix: new HarmonyMethod(typeof(NativeV111RngHook)
+                    .GetMethod(nameof(PostfixFloat), methods)!));
+            return true;
+        }
+        catch (Exception error)
+        {
+            GD.PushError("[Sts2ReferenceMod] SCALAR_RNG_HOOK_STATUS=UNAVAILABLE;" +
+                " method=NextFloat(float,float);reason=" + error.GetType().Name);
             return false;
         }
     }
@@ -284,6 +319,29 @@ internal static class NativeV111RngHook
         NativeRng __instance, bool __result, CallState __state) =>
         ObserveScalar(__instance, "boolean", null, __result, __state);
 
+    private static FloatCallState CaptureFloat(NativeRng rng, float min, float max)
+    {
+        // Rng.NextFloat(float max) is a wrapper, not a second RNG step.
+        // Native accepts equal bounds and still consumes a full step.
+        // NaN/Infinity are not JSON-safe; leave such a source call outside
+        // validated coverage instead of writing fictitious evidence.
+        if (!_attached || _observationFailed ||
+            System.Environment.CurrentManagedThreadId != _threadId ||
+            !float.IsFinite(min) || !float.IsFinite(max) || min > max)
+            return default;
+        try { return new FloatCallState(true, Snapshot(rng), min, max); }
+        catch (Exception error) { ObservationFailure(error); return default; }
+    }
+
+    private static void PrefixFloat(NativeRng __instance, float min, float max,
+        out FloatCallState __state) =>
+        __state = CaptureFloat(__instance, min, max);
+
+    private static void PostfixFloat(
+        NativeRng __instance, float __result, FloatCallState __state) =>
+        ObserveScalar(__instance, "range_float", null, null, __state.Active,
+            __state.Before, __result, __state.Min, __state.Max);
+
     private static void PrefixRollMove(
         MonsterModel __instance, out IDisposable? __state)
     {
@@ -349,23 +407,31 @@ internal static class NativeV111RngHook
     }
 
     private static void ObserveScalar(NativeRng rng, string operation,
-        double? numeric, bool? boolean, CallState state)
+        double? numeric, bool? boolean, CallState state) =>
+        ObserveScalar(rng, operation, numeric, boolean,
+            state.Active, state.Before);
+
+    private static void ObserveScalar(NativeRng rng, string operation,
+        double? numeric, bool? boolean, bool active,
+        NativeRngSnapshot? before,
+        float? selectedFloat = null, float? floatMin = null, float? floatMax = null)
     {
-        if (!state.Active || _observationFailed || !_attached) return;
+        if (!active || _observationFailed || !_attached) return;
         try
         {
             var after = Snapshot(rng);
             var (stream, owner, streamOrdinal) = Owners.Next(rng);
-            // MonsterModel.RollMove's existing source scope specifically
-            // labels index draws. A bool/double source call within that
-            // method has a creature owner, but no audited index eligibility.
-            // Peeking must not advance NextInt's per-RollMove ordinal.
+            // RollMove's source scope is labeled for INDEX draws. For
+            // NextFloat and other scalar calls, preserve its native creature
+            // owner but do not claim indexed eligibility or increment that
+            // index-call ordinal. Float result/weight semantics are separately
+            // recorded and verified from the original primitive source call.
             var scopedOwner = NativeRngCallsiteScopesV111.PeekOwnerFor(stream);
             var evidence = new NativeRngScalarEvidenceV111(
-                "UNATTRIBUTED", stream,
-                scopedOwner ?? owner,
-                streamOrdinal, operation,
-                numeric, boolean, state.Before!, after);
+                "UNATTRIBUTED", stream, scopedOwner ?? owner,
+                streamOrdinal, operation, numeric, boolean,
+                before!, after, FloatMin: floatMin, FloatMax: floatMax,
+                SelectedFloat: selectedFloat);
             NativeV111PassiveBridge.NativeRngScalarBoundary(evidence);
         }
         catch (Exception error) { ObservationFailure(error); }

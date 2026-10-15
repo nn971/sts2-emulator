@@ -1,6 +1,7 @@
 """Actual pinned xoshiro and sampling assertions for native RNG source calls."""
 import copy
 import sys
+import struct
 import unittest
 from pathlib import Path
 
@@ -247,6 +248,87 @@ class NativeRngBoundaryVerifyTests(unittest.TestCase):
         self.assertEqual("NATIVE_RNG_PRIMITIVE_MISMATCH",
                          corrupted["status"])
         self.assertEqual(1, corrupted["primitive_error_count"])
+
+    def test_nextfloat_range_observes_exact_source_one_step(self):
+        data = sample()
+        words = initial_state(971)
+        number = (rotate((words[1] * 5) & MASK, 7) * 9) & MASK
+        unit = (number >> 11) * (1 / (1 << 53))
+        f32 = lambda x: struct.unpack("<f", struct.pack("<f", x))[0]
+        min_value, max_value = f32(-1.25), f32(4.5)
+        value = f32(unit * f32(max_value - min_value) + min_value)
+        data.update(operation_kind="range_float", selected_double=None,
+                    selected_bool=None, float_min=min_value,
+                    float_max=max_value, selected_float=value,
+                    stream_id="run.monster_ai")
+        data.pop("bounded_count")
+        data.pop("selected_index")
+        self.assertIsNone(verify_scalar_call(data))
+        report = audit([{"type": "native_rng_scalar_boundary", "data": data}])
+        self.assertEqual("OBSERVED_NATIVE_RNG_PRIMITIVES_VALID", report["status"])
+        self.assertEqual(1, report["float_calls"])
+        self.assertEqual(1, report["validated_calls"])
+
+    def test_nextfloat_equal_bounds_still_advances_one_step(self):
+        data = sample()
+        data.update(operation_kind="range_float", selected_double=None,
+                    selected_bool=None, float_min=2.5, float_max=2.5,
+                    selected_float=2.5)
+        self.assertIsNone(verify_scalar_call(data))
+        data["cursor_after"]["Counter"] += 1
+        self.assertEqual("INVALID_NATIVE_CURSOR", verify_scalar_call(data))
+
+    def test_nextfloat_detects_tampered_result_bounds_and_origin(self):
+        data = sample()
+        data.update(operation_kind="range_float", selected_double=None,
+                    selected_bool=None, float_min=1.0, float_max=1.0,
+                    selected_float=1.0)
+        self.assertIsNone(verify_scalar_call(data))
+        data["selected_float"] = 2.0
+        self.assertEqual("SCALAR_FLOAT_RESULT_MISMATCH", verify_scalar_call(data))
+        data["selected_float"] = 1.0
+        data["float_min"] = 3.0
+        self.assertEqual("INVALID_SCALAR_VALUE", verify_scalar_call(data))
+        data["float_min"] = 1.0
+        data["origin"] = "frame_cursor_difference"
+        self.assertEqual("UNVERIFIED_SCALAR_SOURCE_OR_OPERATION",
+                         verify_scalar_call(data))
+        data["origin"] = "source_primitive_hook"
+        data["selected_float"] = float("nan")
+        self.assertEqual("INVALID_SCALAR_VALUE", verify_scalar_call(data))
+        data["selected_float"] = 1.125  # valid binary32, incorrect result
+        self.assertEqual("SCALAR_FLOAT_RESULT_MISMATCH", verify_scalar_call(data))
+        data["selected_float"] = 1.000000001 # cannot roundtrip float32
+        self.assertEqual("INVALID_SCALAR_VALUE", verify_scalar_call(data))
+
+    def test_float_and_integer_share_monster_ai_stream_without_overlap(self):
+        first = sample()
+        first["stream_id"] = "run.monster_ai"
+        next_words = advance(initial_state(971))
+        second = {
+            "origin": "source_primitive_hook",
+            "source_version": "v0.111.0",
+            "source_hook_observed": True,
+            "operation_kind": "range_float",
+            "site_id": "UNATTRIBUTED",
+            "stream_id": "run.monster_ai",
+            "owner_id": "creature:1",
+            "selected_double": None,
+            "selected_bool": None,
+            "float_min": 5.0,
+            "float_max": 5.0,
+            "selected_float": 5.0,
+            "cursor_before": {"Counter": 16, **{
+                "State" + str(i): x for i, x in enumerate(next_words)}},
+            "cursor_after": {"Counter": 17, **{
+                "State" + str(i): x for i, x in enumerate(advance(next_words))}},
+        }
+        r = audit([{"type": "native_rng_boundary", "data": first},
+                   {"type": "native_rng_scalar_boundary", "data": second}])
+        self.assertEqual(1, r["stream_pairs_contiguous"])
+        self.assertEqual(0, r["stream_gap_count"])
+        self.assertEqual(1, r["float_calls"])
+        self.assertEqual("OBSERVED_NATIVE_RNG_PRIMITIVES_VALID", r["status"])
 
     def test_scalar_unknown_and_known_streams_are_not_confused(self):
         first = sample()

@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import struct
 from pathlib import Path
 
 from native_rng_stream_audit import MASK, advance, rotate
@@ -58,9 +59,9 @@ def verify_call(data: dict) -> str | None:
 
 
 def verify_scalar_call(data: dict) -> str | None:
-    """Verify zero-argument native NextDouble / NextBool return and one step."""
+    """Verify pinned native NextDouble, NextBool or ranged NextFloat and one step."""
     if (data.get("origin") != "source_primitive_hook"
-        or data.get("operation_kind") not in ("unit_double", "boolean")
+        or data.get("operation_kind") not in ("unit_double", "boolean", "range_float")
         or data.get("source_version") != "v0.111.0"
         or data.get("source_hook_observed") is not True):
         return "UNVERIFIED_SCALAR_SOURCE_OR_OPERATION"
@@ -89,12 +90,35 @@ def verify_scalar_call(data: dict) -> str | None:
             return "INVALID_SCALAR_VALUE"
         if actual != next_double:
             return "SCALAR_DOUBLE_RESULT_MISMATCH"
-    else:
+    elif kind == "boolean":
         actual = data.get("selected_bool")
         if type(actual) is not bool or data.get("selected_double") is not None:
             return "INVALID_SCALAR_VALUE"
         if actual != (int(next_double * 2) == 0):
             return "SCALAR_BOOL_RESULT_MISMATCH"
+    else:
+        minimum, maximum = data.get("float_min"), data.get("float_max")
+        actual = data.get("selected_float")
+        if (any(type(x) not in (int, float) or not math.isfinite(x)
+                for x in (minimum, maximum, actual))
+            or data.get("selected_double") is not None
+            or data.get("selected_bool") is not None):
+            return "INVALID_SCALAR_VALUE"
+        try:
+            # Pinned Rng.NextFloat(float,float) calculates the DIFFERENCE
+            # in float32, converts that difference to double, multiplies
+            # MegaRandom.NextDouble, adds min in double, and converts the
+            # final result back to float32. No extra PRNG step is taken.
+            f32 = lambda x: struct.unpack("<f", struct.pack("<f", x))[0]
+            if any(f32(x) != x for x in (minimum, maximum, actual)):
+                return "INVALID_SCALAR_VALUE"
+            if minimum > maximum:
+                return "INVALID_SCALAR_VALUE"
+            expected = f32(next_double * f32(maximum - minimum) + minimum)
+        except (OverflowError, struct.error):
+            return "INVALID_SCALAR_VALUE"
+        if actual != expected:
+            return "SCALAR_FLOAT_RESULT_MISMATCH"
     return None
 
 
@@ -111,6 +135,7 @@ def audit(records: list[dict]) -> dict:
     gaps = []
     count = 0
     scalar_count = 0
+    float_count = 0
     continuous_pairs = 0
     checked_pairs = 0
     # The native owner registry identifies persistent run/player Rng instances
@@ -126,6 +151,9 @@ def audit(records: list[dict]) -> dict:
         if typ == "native_rng_scalar_boundary":
             scalar_count += 1
         data = entry.get("data") or {}
+        if (typ == "native_rng_scalar_boundary" and isinstance(data, dict)
+            and data.get("operation_kind") == "range_float"):
+            float_count += 1
         error = ((verify_scalar_call(data)
                   if typ == "native_rng_scalar_boundary" else verify_call(data))
                  if isinstance(data, dict) else "INVALID_SOURCE_EVENT")
@@ -186,6 +214,7 @@ def audit(records: list[dict]) -> dict:
         "source_calls": count,
         "bounded_calls": count - scalar_count,
         "scalar_calls": scalar_count,
+        "float_calls": float_count,
         "validated_calls": count - len(errors),
         "primitive_error_count": len(errors),
         "errors": errors[:20],

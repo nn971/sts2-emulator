@@ -84,6 +84,8 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
             "native_rng_source_calls": corpus.get("native_rng_source_calls", 0),
             "native_rng_scalar_source_calls":
                 corpus.get("native_rng_scalar_source_calls", 0),
+            "native_rng_float_source_calls":
+                corpus.get("native_rng_float_source_calls", 0),
             "native_rng_primitive_validated_calls":
                 corpus.get("native_rng_primitive_validated_calls", 0),
             "native_rng_primitive_errors":

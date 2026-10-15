@@ -190,3 +190,118 @@ accidental local environment values. **Do not upload the game's DLLs.**
 Keep all statuses `NOT_TESTED` until independent evidence satisfies
 the specific gate. Recording 15 stream snapshots is one necessary layer
 for a comprehensive test, not the final layer.
+
+## 2026-10-15: NextFloat replay to close the monster-AI RNG gap
+
+Use the **new isolated review branch**
+`feature/v111-native-nextfloat-source-fidelity` instead of the older
+checkpoint-readiness branch in the clone command above. Rerun
+`scripts/build-native-inspector.fish "$GAME_ROOT"` against your installed
+`sts2.dll`, then restart Steam's game process. The usual
+`STS2_FIDELITY_CAPTURE=1`, `STS2_FIDELITY_RNG_HOOK=1`,
+`STS2_FIDELITY_RNG_STREAM_CHECKPOINTS=1`, and full
+`STS2_FIDELITY_EXPECT_SHA256` pin remain required.
+
+The pinned source has `Rng.NextFloat(float max)` delegate to
+`NextFloat(float min,float max)`; the latter consumes one xoshiro step,
+including when the bounds are equal. The new observer hooks only the
+**two-argument method**, so a one-argument call emits one event.
+`RandomBranchState.GetNextState` calls `NextFloat(max)` to sample the
+weighted monster-intent interval. Hook installation logs now include
+`float_source_hook=INSTALLED|UNAVAILABLE`, and the sidecar header has
+`native_rng_float_hook_installed`.
+
+**Targeted smoke test:** play a Silent combat with enemies whose moves
+vary stochastically (preferably matching the earlier multi-enemy test),
+allow multiple enemy turns, then close/end combat so the sidecar flushes.
+Perform the analysis on **only the fresh capture(s)**, avoiding older
+sidecars which predate this hook:
+
+```fish
+set trace /mnt/d/SteamLibrary/sts2-inspector-traces
+set sidecar (ls -t "$trace"/passive-*.actions.jsonl | head -n 1)
+python tools/native_rng_boundary_verify.py "$sidecar" \
+    --out "$sidecar.primitives.json"
+python tools/native_rng_checkpoint_audit.py "$sidecar" \
+    --out "$sidecar.checkpoints.json"
+jq '{status, source_calls, scalar_calls, float_calls,
+     primitive_error_count, stream_conflict_count, stream_gap_count}' \
+    "$sidecar.primitives.json"
+jq '{status, checkpoint_count, error_count,
+    monster_ai: .streams["run.monster_ai"],
+    unobserved_rng_advances}' "$sidecar.checkpoints.json"
+jq -c 'select(.type == "native_rng_scalar_boundary" and
+    .data.operation_kind == "range_float") |
+    {ordinal, action_id, stream: .data.stream_id,
+     owner: .data.owner_id, bounds: [.data.float_min, .data.float_max],
+     value: .data.selected_float}' "$sidecar"
+```
+
+The **previous authentic combat recording** had 55 verified integer calls,
+88 native 15-stream checkpoints and **nine unobserved monster-AI
+advances**. This is a *baseline diagnostic*, not an identical-seed replay.
+On the new capture, require:
+
+- `float_source_hook=INSTALLED` in the game log and
+  `native_rng_float_hook_installed=true` in the sidecar header;
+- `range_float` source events on `run.monster_ai` for every weighted
+  random intent roll actually exercised;
+- zero `primitive_error_count` and zero `stream_conflict_count`;
+- zero unexplained `run.monster_ai` advances **within captured checkpoint
+  windows**, or explicit investigation of any remaining gap;
+- the sampled native float values and xoshiro transitions checked exactly
+  by the verifier, while original move weights/candidate pools remain
+  semantically `NOT_TESTED` until separate native eligibility evidence exists.
+
+If the new `run.monster_ai` gap closes, continue with additional acts,
+status/power interactions and other streams via the full coverage plan.
+Upload the fresh `*.actions.jsonl`, two `*.json` verification reports,
+and the hook installation log. Native effects and all implemented mechanics
+still need their own differential tests; this pass certifies only the
+source RNG observation of the exercised operations.
+
+## Relationship to issue #143 and the revised semantic Nature design (Oct 15)
+
+**Authoritative specification:** [Desired RNG Implementation](DESIRED_RNG_IMPLEMENTATION.md),
+updated in PR #154 and incorporated into the independent playable Nature
+work tracked in [issue #143](https://github.com/nn971/sts2-emulator/issues/143).
+The source-level `NextFloat` probe in this Inspector branch is a
+**read-only native RNG primitive audit**. Its emission is not a Nature
+`weighted_enemy_intent` choice, and it must not create an additional
+controlled-chance ticket or change the emulator provider state.
+
+The following contracts stay separate:
+
+- **Native fidelity mode:** faithfully observe one `Rng.NextFloat(float,float)`
+  source step, its original bounds/result, persistent RNG owner and exact
+  xoshiro cursor. A sample taken inside `MonsterModel.RollMove` establishes
+  source RNG consumption and creature attribution. This by itself does
+  not establish the conditional weights, eligible moves, or resulting intent.
+- **Semantic controlled-Nature mode (#143):** select from an
+  explicitly enumerated legal weighted intent support computed by the
+  common mechanics engine at the actual commitment boundary, retaining
+  enemy move history, anti-repeat filters and visibility. An intent
+  selected here becomes public before the next player choice. The source
+  RNG cursor is neither advanced nor shadowed merely to match a
+  counterfactual Nature outcome; `probabilityStatus=UNVERIFIED` remains
+  until the reference law is audited.
+- **Provider-owned deck state:** native RNG may commit the shuffled deck
+  order ahead of time, while an opt-in Nature provider can maintain
+  unresolved constrained card-instance positions and issue `draw_card`
+  or `reveal_card` events on demand. Exact insertions, returned known-top
+  cards and previously revealed positions remain forced. The **legacy**
+  controlled fixture's Fisher–Yates swap tickets and the new semantic
+  deck provider's deferred-card tickets are separate protocols and
+  must never both charge the same shuffle realization.
+- **Mechanical fidelity:** use the actual effects, hook order, pending
+  continuations and fair player observation for both modes. Native RNG
+  cursor agreement, mechanically legal controlled outcomes and
+  calibrated conditional chance laws are **separate** acceptance gates.
+
+PR #153 is stacked on the older Inspector checkpoint review line (#140),
+while issue #143 advances in the dedicated integration head (#137).
+Review the changes together when integrating: preserve all current
+`controlled_*`/semantic-deck capabilities and existing versioned
+protocols; do not silently import old chance semantics from the
+source-probe branch. This experiment never changes game RNG results,
+Nature handles, controlled continuations or the four-Act gameplay branch.

@@ -148,6 +148,26 @@ class NativeRngBoundaryCompareTests(unittest.TestCase):
         self.assertEqual(1, result["native_stream_gap_count"])
         self.assertEqual(1, result["compared"])
 
+    def test_ranged_float_is_verified_then_rejected_as_unsupported_emulator_provider(self):
+        original = row()
+        data = original["data"]
+        data["operation_kind"] = "range_float"
+        data["selected_double"] = None
+        data["selected_bool"] = None
+        data["selected_float"] = 2.5
+        data["float_min"] = 2.5
+        data["float_max"] = 2.5
+        data.pop("selected_index")
+        data.pop("bounded_count")
+        original["type"] = "native_rng_scalar_boundary"
+        r = compare_native_emulator([original], engine(), 4)
+        self.assertEqual("UNSUPPORTED_NATIVE_RNG_OPERATION", r["status"])
+        data["selected_float"] = 2.0
+        r = compare_native_emulator([original], engine(), 4)
+        self.assertEqual("NATIVE_RNG_PRIMITIVE_MISMATCH", r["status"])
+        self.assertEqual("SCALAR_FLOAT_RESULT_MISMATCH",
+                         r["first_mismatch"]["type"])
+
     def test_scalar_source_call_must_not_be_ignored_during_action_pairing(self):
         single = row()
         scalar = row()

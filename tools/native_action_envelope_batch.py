@@ -59,6 +59,8 @@ def collect(directory: Path) -> dict:
                 result["native_rng_double_hook_installed"],
             "native_rng_bool_hook_installed":
                 result["native_rng_bool_hook_installed"],
+            "native_rng_float_hook_installed":
+                result["native_rng_float_hook_installed"],
             "native_rng_stream_checkpoints_enabled":
                 result["native_rng_stream_checkpoints_enabled"],
             "native_rng_checkpoint_status": checkpoints["status"],
@@ -77,6 +79,8 @@ def collect(directory: Path) -> dict:
             "native_rng_source_calls": result["native_rng_source_calls"],
             "native_rng_scalar_source_calls":
                 result["native_rng_scalar_source_calls"],
+            "native_rng_float_source_calls":
+                result["native_rng_float_source_calls"],
             "native_initial_hp_status": hp["status"],
             "native_initial_hp_source_rolls": hp["source_rolls"],
             "native_initial_hp_validated_rolls": hp["validated_rolls"],
@@ -132,6 +136,8 @@ def collect(directory: Path) -> dict:
             bool(entry["native_rng_double_hook_installed"]) for entry in traces),
         "native_rng_bool_hook_installed_sidecars": sum(
             bool(entry["native_rng_bool_hook_installed"]) for entry in traces),
+        "native_rng_float_hook_installed_sidecars": sum(
+            bool(entry["native_rng_float_hook_installed"]) for entry in traces),
         "native_rng_stream_checkpoints_enabled_sidecars": sum(
             bool(entry["native_rng_stream_checkpoints_enabled"]) for entry in traces),
         "native_rng_checkpoint_count": sum(
@@ -171,6 +177,8 @@ def collect(directory: Path) -> dict:
             entry["native_rng_source_calls"] for entry in traces),
         "native_rng_scalar_source_calls": sum(
             entry["native_rng_scalar_source_calls"] for entry in traces),
+        "native_rng_float_source_calls": sum(
+            entry["native_rng_float_source_calls"] for entry in traces),
         "native_rng_unattributed_calls": sum(
             entry["native_rng_unattributed_calls"] for entry in traces),
         "statuses": dict(statuses),

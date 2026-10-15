@@ -40,6 +40,65 @@ public sealed class NativeRngScalarEvidenceV111Tests
     }
 
     [Fact]
+    public void RangedFloatSourceRequiresExactTypedBoundsIncludingEqualBounds()
+    {
+        var good = new NativeRngScalarEvidenceV111(
+            "UNATTRIBUTED", "run.monster_ai", "creature:7", 0,
+            "range_float", null, null, Before, After,
+            FloatMin: 2.5f, FloatMax: 2.5f, SelectedFloat: 2.5f);
+        good.Validate();
+        Assert.False(good.Attributed);
+        Assert.Throws<ArgumentException>(() =>
+            (good with { FloatMax = 1.0f }).Validate());
+        Assert.Throws<ArgumentException>(() =>
+            (good with { SelectedFloat = float.NaN }).Validate());
+        Assert.Throws<ArgumentException>(() =>
+            (good with { SelectedDouble = 0.1 }).Validate());
+        Assert.Throws<ArgumentException>(() =>
+            (good with { SelectedFloat = null }).Validate());
+    }
+
+    [Fact]
+    public async Task OriginalRangedFloatResultAndBoundsAreSerializedInActionSidecar()
+    {
+        string file = Path.Combine(Path.GetTempPath(),
+            "sts2-nextfloat-" + Guid.NewGuid().ToString("N") + ".jsonl");
+        try
+        {
+            var recorder = new NativeActionEnvelopeRecorder(
+                file, "synthetic-sha", "synthetic-run",
+                nativeRngHookInstalled: true,
+                nativeRngFloatHookInstalled: true);
+            recorder.NativeRngScalarBoundary(new(
+                "UNATTRIBUTED", "run.monster_ai", "creature:2", 0,
+                "range_float", null, null, Before, After,
+                FloatMin: -1.25f, FloatMax: 4.5f, SelectedFloat: 0.75f));
+            recorder.Finish("Combat ended", null);
+            await recorder.DisposeAsync();
+            var records = File.ReadAllLines(file)
+                .Select(x => JsonDocument.Parse(x).RootElement.Clone()).ToArray();
+            Assert.True(records[0].GetProperty("data")
+                .GetProperty("native_rng_float_hook_installed").GetBoolean());
+            var ev = Assert.Single(records, x => x.GetProperty("type")
+                .GetString() == "native_rng_scalar_boundary");
+            Assert.Equal("Rng.NextFloat(float,float)",
+                ev.GetProperty("native_type").GetString());
+            var data = ev.GetProperty("data");
+            Assert.Equal("range_float", data.GetProperty("operation_kind").GetString());
+            Assert.Equal(-1.25f, data.GetProperty("float_min").GetSingle());
+            Assert.Equal(4.5f, data.GetProperty("float_max").GetSingle());
+            Assert.Equal(0.75f, data.GetProperty("selected_float").GetSingle());
+            Assert.Equal("UNATTRIBUTED", data.GetProperty("site_id").GetString());
+            Assert.Equal("creature:2", data.GetProperty("owner_id").GetString());
+        }
+        finally
+        {
+            if (File.Exists(file)) File.Delete(file);
+            if (File.Exists(file + ".incomplete")) File.Delete(file + ".incomplete");
+        }
+    }
+
+    [Fact]
     public async Task SourceScalarEventKeepsExecutorChronology()
     {
         string path = Path.Combine(Path.GetTempPath(),

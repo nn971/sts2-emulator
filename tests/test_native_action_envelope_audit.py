@@ -265,6 +265,54 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertTrue(result["native_rng_double_hook_installed"])
         self.assertTrue(result["native_rng_bool_hook_installed"])
 
+    def test_real_nextfloat_header_and_source_evidence_accepted(self):
+        records = sample()
+        records[0]["data"].update(native_rng_float_hook_installed=True)
+        records.insert(-1, {"type": "native_rng_scalar_boundary",
+            "action_id": None,
+            "data": {
+                "site_id": "UNATTRIBUTED", "stream_id": "run.monster_ai",
+                "owner_id": "creature:1", "call_ordinal": 0,
+                "operation_kind": "range_float",
+                "selected_double": None, "selected_bool": None,
+                "selected_float": 2.5, "float_min": 2.5, "float_max": 2.5,
+                "cursor_before": {"Counter": 4},
+                "cursor_after": {"Counter": 5},
+                "source_version": "v0.111.0",
+                "origin": "source_primitive_hook", "attributed": False,
+                "source_hook_observed": True
+            }})
+        for i, record in enumerate(records):
+            record["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, result["native_rng_float_source_calls"])
+        self.assertTrue(result["native_rng_float_hook_installed"])
+
+    def test_ranged_float_missing_bounds_and_nonfinite_values_fail(self):
+        records = sample()
+        base = {
+            "type": "native_rng_scalar_boundary",
+            "data": {"source_version": "v0.111.0",
+                     "origin": "source_primitive_hook",
+                     "source_hook_observed": True,
+                     "operation_kind": "range_float",
+                     "selected_double": None, "selected_bool": None,
+                     "selected_float": 0.5,
+                     "float_min": 0.0, "float_max": 1.0,
+                     "cursor_before": {"Counter": 0},
+                     "cursor_after": {"Counter": 1}}
+        }
+        for invalid in ({"float_max": None},
+                        {"selected_float": float("inf")},
+                        {"float_min": 2.0}):
+            trial = [dict(row) for row in records]
+            altered = {"type": base["type"], "data": {**base["data"], **invalid}}
+            trial.insert(-1, altered)
+            for i, row in enumerate(trial):
+                row["ordinal"] = i + 1
+            self.assertEqual("INCOMPLETE_CAPTURE", audit(trial)["status"])
+
     def test_frame_derived_scalar_source_is_rejected(self):
         records = sample()
         records.insert(-1, {"type": "native_rng_scalar_boundary",

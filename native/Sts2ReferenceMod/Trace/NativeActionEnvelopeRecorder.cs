@@ -37,7 +37,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeInitialHpScopeInstalled = false,
         bool nativeRngDoubleHookInstalled = false,
         bool nativeRngBoolHookInstalled = false,
-        bool nativeRngStreamCheckpointsEnabled = false)
+        bool nativeRngStreamCheckpointsEnabled = false,
+        bool nativeRngFloatHookInstalled = false)
     {
         _gameBuild = gameBuild;
         _writer = new AsyncTraceWriter(path, queueCapacity);
@@ -52,6 +53,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_rng_hook_installed = nativeRngHookInstalled,
                 native_rng_double_hook_installed = nativeRngDoubleHookInstalled,
                 native_rng_bool_hook_installed = nativeRngBoolHookInstalled,
+                native_rng_float_hook_installed = nativeRngFloatHookInstalled,
                 native_rng_stream_checkpoints_enabled = nativeRngStreamCheckpointsEnabled,
                 native_monster_ai_scope_installed = nativeMonsterAiScopeInstalled,
                 native_shuffle_scope_installed = nativeShuffleScopeInstalled,
@@ -326,8 +328,13 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         Write(new NativeActionEnvelopeRecord(
             "native_rng_scalar_boundary", Next(),
             _activeOrder.Count == 0 ? null : _activeOrder[^1],
-            NativeType: evidence.OperationKind == "unit_double"
-                ? "Rng.NextDouble()" : "Rng.NextBool()",
+            NativeType: evidence.OperationKind switch
+            {
+                "unit_double" => "Rng.NextDouble()",
+                "boolean" => "Rng.NextBool()",
+                "range_float" => "Rng.NextFloat(float,float)",
+                _ => "Rng.UNKNOWN"
+            },
             Data: JsonSerializer.SerializeToElement(new
             {
                 site_id = evidence.SiteId,
@@ -337,6 +344,9 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 operation_kind = evidence.OperationKind,
                 selected_double = evidence.SelectedDouble,
                 selected_bool = evidence.SelectedBool,
+                selected_float = evidence.SelectedFloat,
+                float_min = evidence.FloatMin,
+                float_max = evidence.FloatMax,
                 cursor_before = evidence.CursorBefore,
                 cursor_after = evidence.CursorAfter,
                 source_version = evidence.SourceVersion,

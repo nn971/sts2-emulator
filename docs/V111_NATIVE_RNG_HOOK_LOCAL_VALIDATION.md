@@ -140,3 +140,33 @@ unsigned/long draws, chaotic/context RNGs and pre-attachment calls
 still require independent source capture or explicit gaps. The two
 zero-argument new probes cover some Gaussian inner draws and boolean
 effects, but do not prove every composed RNG caller was observed.
+
+## 2026-10-15: NextFloat(float,float) source callback
+
+Added **optional** `Rng.NextFloat(float min,float max)` Harmony
+prefix/postfix on the dedicated review branch
+`feature/v111-native-nextfloat-source-fidelity`. It records the unmodified
+native return float, the original float32 bounds and exact 256-bit
+xoshiro snapshots. The one-argument `NextFloat(max)` wrapper itself
+is not patched: it delegates to `NextFloat(0f,max)` and must be counted
+as only one native RNG call. Equality of bounds is allowed and consumes
+one RNG step. `NextGaussianFloat` wraps Gaussian double and requires
+separate analysis; this hook does not claim to cover all RNG primitives.
+
+The sidecar event retains `type=native_rng_scalar_boundary` with
+`operation_kind=range_float`, `float_min`, `float_max` and
+`selected_float`, the real actor when `RollMove` scope exists, and
+`site_id=UNATTRIBUTED` until the actual weighted eligible move pool
+is independently instrumented. The native float arithmetic is verified
+as `float32(unit_xoshiro_double * float32(max-min) + min)`, so
+binary32 conversion is tested and a changed float result fails closed.
+
+New game log field: `float_source_hook=INSTALLED|UNAVAILABLE`.
+New header field: `native_rng_float_hook_installed`.
+Corpus field: `native_rng_float_source_calls`.
+Primitive verifier field: `float_calls`.
+
+See `docs/V111_NATIVE_GAME_WIDE_RNG_MECHANIC_TEST.md` for the precise
+replay commands and acceptance conditions against the previously observed
+nine `run.monster_ai` uninstrumented steps. Native pinned DLL compiler
+and runtime attachment still require the user's game-local run.
