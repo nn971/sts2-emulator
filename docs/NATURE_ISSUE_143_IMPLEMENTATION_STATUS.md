@@ -195,3 +195,29 @@ insertion fail explicitly before recycling. Tests cover repeated
 source-timed draws, Perfect Fit support, snapshot round-trip and
 invalid nested shuffle scenarios. Scope:
 [Nature semantic recycle](NATURE_SEMANTIC_RECYCLE_143.md).
+
+## Semantic per-card Snecko/Slither cost continuation (PR #160)
+
+The opt-in conditioned `SemanticCombatDrawEngineV111` now supports
+draw-time Snecko/relic and Slither **after** a deferred card identity is
+committed but **before** its normal `CardDrawn` hook. It suspends for
+source-bounded relic cost first, then the 0–3 Slither overwrite if the
+same physical card has Slither. The saved remaining draw count resumes
+through the actual `DrawCards` loop without repeating prior draws or
+hooks. The player's physical hand, card-instance identity, energy-cost
+mutation, and deferred deck position state are saved and forked intact.
+
+A separate serialized semantic cost transcript tracks each bounded
+random cost. Snapshot restore replays **interleaved card-identity and
+cost choices** from the conditioned source snapshot, validating
+eligible bounds/source owner/ordinal and complete mechanics state.
+Focused regressions include one-card terminal cost decisions,
+two-card Snecko draws, effect-style `FromHandDraw=false`, combined
+Snecko+Slither, forged cost contexts and 15-worker deterministic
+replay. Source probability provenance remains `UNVERIFIED`.
+See [Nature semantic drawn costs](NATURE_SEMANTIC_DRAW_COST_143.md).
+
+This is still a conditioned real-draw segment. Nested `CardDrawn`
+pending choices, Stratagem and after-shuffle random insertions, plus
+opening/automatic/player-step/JSONL semantic rollout, remain separate
+gates.
