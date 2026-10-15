@@ -247,3 +247,33 @@ This remains a **single original automatic pipeline stage**, with
 prior enemy-intent resolution and later automatic steps supplied/
 continued elsewhere. A full player end-turn `step` → Nature →
 next `step` controller and JSONL bridge are not yet complete.
+
+
+## First restricted real end-turn action-to-action Nature path (PR #162)
+
+A separately versioned `sts2-v111-semantic-end-turn-v1` controller
+connects the real `PrototypeAiEnvironment.Step(end_turn)` action
+through the saved post-enemy-action `AdvanceTurn` checkpoint,
+source-shaped controlled enemy intent choices, the genuine intermediate
+automatic pipeline, the semantic `DrawPlayerHand` continuation,
+and the **remaining real turn-start automatic steps**. It validates that
+the result is a genuine player decision with legal actions and no
+outstanding continuation. The separate `BeginAtAdvanceTurn` entry
+supports testing/source-shaped checkpoints. Source and action
+fingerprints, enemy intent tickets, per-card draw identities,
+Snecko/Slither costs and the complete next player state all round-trip
+with full mechanical replay; 15-worker deterministic tests included.
+
+**Hidden-state restriction:** entry requires an exhausted draw pile
+at the actual AdvanceTurn checkpoint and a nonempty discard. Hence
+the next hand draw creates a **genuine fresh source-time recycle**
+without double counting an earlier precommitted shuffle through both
+legacy swaps and newly deferred card identities. A previously committed
+nonempty pile explicitly fails until its original order constraints
+can be retained by a persistent provider across gameplay actions.
+
+See [Nature semantic end-turn](NATURE_SEMANTIC_END_TURN_143.md).
+This achieves one restricted **real `step` → Nature choices →
+next `step`** flow. Further player actions using a persistent semantic
+deck, opening-hand/card-effect draws, full terminal episodes, weighted
+intents and the externally negotiated semantic JSONL bridge remain open.
