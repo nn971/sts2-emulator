@@ -1999,7 +1999,10 @@ public sealed record CombatState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string? CurrentMapNodeId = null,
     int PotionExtraTurnsPending = 0,
-    bool IsPlayerSideActive = true)
+    bool IsPlayerSideActive = true,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    SemanticDeckStateV111? SemanticDeck = null)
 {
     public CombatState Fork() => this with
     {
@@ -2009,6 +2012,7 @@ public sealed record CombatState(
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
         NativeRng = NativeRng?.Fork(),
+        SemanticDeck = SemanticDeck?.Fork(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
         PlayerPowers = PlayerPowers.Select(power => power.Fork()).ToArray(),
         Relics = Relics is null
