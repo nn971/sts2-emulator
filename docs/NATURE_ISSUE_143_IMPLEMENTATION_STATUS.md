@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152 merged into the isolated RNG/Inspector integration branch; a follow-up live draw-triggered cost continuation is under review. The revised semantic RNG design was merged to main in PR #154 and is treated as the future opt-in architecture, separate from this legacy controlled fixture. Issue #143 stays OPEN until remaining RNG site migration, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152 and #155 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154. Issue #143 stays OPEN for the new semantic deck/intent providers, unfinished chance sites, native parity and full terminal controlled rollouts. Issue #143 stays OPEN until remaining RNG site migration, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
