@@ -1469,6 +1469,13 @@ public sealed partial class PrototypeGameEngine
         {
             var automaticStep =
                 PrototypeContent.Rules.EndTurnPipeline[index];
+            // A controlled end-turn preserves every preceding hook result.
+            // The next-turn intent stage is a separate continuation boundary:
+            // Nature commits its finite tickets before this stage's postwork.
+            if (ControlledChanceGuardV111.Active &&
+                automaticStep.Kind == PrototypeAutomaticStepKind.AdvanceTurn)
+                return SetAutomaticPipelineContinuation(
+                    state, index, pendingPostDispatchEventKind: null);
             state = ResolveAutomaticStep(state, automaticStep);
 
             var currentCombat = RequireWorld(state).Combat
@@ -1547,6 +1554,49 @@ public sealed partial class PrototypeGameEngine
             }
         };
     }
+
+    /// <summary>
+    /// Resume after Nature has committed all next-turn intent tickets.
+    /// Earlier enemy actions/status hooks remain applied in the RunState.
+    /// This method performs AdvanceTurn postwork once and continues from the
+    /// next real pipeline index under the same fail-closed RNG guard.
+    /// </summary>
+    internal static RunState ResumeControlledTurnAfterIntents(
+        RunState state, CombatState committed)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled turn-intent resumption requires the RNG guard.");
+        var world = RequireWorld(state);
+        var original = world.Combat ??
+            throw new InvalidOperationException("No combat to resume.");
+        var continuation = original.AutomaticPipelineContinuation ??
+            throw new InvalidOperationException("Missing saved turn pipeline cursor.");
+        int index = continuation.NextStepIndex;
+        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
+            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+                PrototypeAutomaticStepKind.AdvanceTurn ||
+            continuation.OpeningStage is not null ||
+            continuation.PendingPostDispatchEventKind is not null)
+            throw new InvalidOperationException("Not an AdvanceTurn chance boundary.");
+        var advanced = CompleteAdvanceTurnAfterCommittedIntents(
+            committed with { AutomaticPipelineContinuation = null });
+        var resumed = state with
+        {
+            World = world with { Combat = advanced }
+        };
+        return ResumeAutomaticPipeline(resumed, index + 1);
+    }
+
+    private static CombatState CompleteAdvanceTurnAfterCommittedIntents(
+        CombatState combat) => combat with
+    {
+        Turn = combat.Turn + 1,
+        PlayerPowers = combat.PlayerPowers.Select(power =>
+            PrototypeContent.Power(power.PowerId).SnapshotGenerationStacksAtTurnStart
+                ? power with { StoredValue = power.Stacks } : power).ToArray(),
+        Counters = AdvanceTurnCounters(combat.CounterState)
+    };
 
     private static RunState SetAutomaticPipelineContinuation(
         RunState state,
@@ -2098,17 +2148,9 @@ public sealed partial class PrototypeGameEngine
             }
 
             case PrototypeAutomaticStepKind.AdvanceTurn:
-                // EnemyTurnEnd statuses, summons, and formation changes have
-                // completed. Select/commit the next enemy moves BEFORE the
-                // next player turn begins, never during Observe().
-                combat = CommitEnemyIntents(combat, state.Rng) with
-                {
-                    Turn = combat.Turn + 1,
-                    PlayerPowers = combat.PlayerPowers.Select(power =>
-                        PrototypeContent.Power(power.PowerId).SnapshotGenerationStacksAtTurnStart
-                            ? power with { StoredValue = power.Stacks } : power).ToArray(),
-                    Counters = AdvanceTurnCounters(combat.CounterState)
-                };
+                // The controlled pipeline suspends *before* this stage.
+                combat = CompleteAdvanceTurnAfterCommittedIntents(
+                    CommitEnemyIntents(combat, state.Rng));
                 break;
 
             case PrototypeAutomaticStepKind.ResetPlayerBlock:
