@@ -195,17 +195,20 @@ public static class SemanticCombatDrawEngineV111
                         "Missing semantic drawn-cost decision in replay.");
                 var cost = stored.CostTranscript[costCursor];
                 cost.Validate();
+                var requested = cost.Request;
                 if (cost.ProviderMode != "semantic-controlled-v1" ||
                     cost.ProbabilityStatus != "UNVERIFIED" ||
-                    !Equals(cost.Request, currentCost))
-                    throw new InvalidDataException(
-                        "Semantic drawn-cost transcript diverges from source request.");
-                // Record equality: requests contain a zero-length candidate
-                // array; compare its contents explicitly as well.
-                if (!cost.Request.OrderedCandidates.SequenceEqual(
+                    requested.SiteId != currentCost.SiteId ||
+                    requested.StreamId != currentCost.StreamId ||
+                    requested.OwnerId != currentCost.OwnerId ||
+                    requested.Ordinal != currentCost.Ordinal ||
+                    requested.SourceVersion != currentCost.SourceVersion ||
+                    requested.OperationKind != currentCost.OperationKind ||
+                    requested.BoundedCount != currentCost.BoundedCount ||
+                    !requested.OrderedCandidates.SequenceEqual(
                         currentCost.OrderedCandidates))
                     throw new InvalidDataException(
-                        "Semantic drawn-cost candidate payload is inconsistent.");
+                        "Semantic drawn-cost transcript diverges from source request.");
                 reconstructed = Resolve(
                     reconstructed, reconstructed.Fingerprint, cost.SelectedIndex);
                 costCursor++;
