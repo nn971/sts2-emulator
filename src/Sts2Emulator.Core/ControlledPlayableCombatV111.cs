@@ -448,14 +448,25 @@ public static class ControlledPlayableCombatEngineV111
                 (state.Pending is not null || state.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
         var controlledTarget = state.Run.World?.Combat?.PendingChoice?.ControlledTarget;
-        if (controlledTarget is not null &&
-            (state.Recycle is not null || state.TurnIntents is not null ||
-             state.Pending is not null ||
-             controlledTarget.EligibleEnemyInstanceIds.Length == 0 ||
-             controlledTarget.EligibleEnemyInstanceIds.Distinct().Count() !=
-                 controlledTarget.EligibleEnemyInstanceIds.Length))
-            throw new InvalidDataException(
-                "Malformed controlled target-choice snapshot.");
+        if (controlledTarget is not null)
+        {
+            var combat = state.Run.World?.Combat ??
+                throw new InvalidDataException("Target choice lacks combat state.");
+            var eligible = combat.Enemies
+                .Where(enemy => enemy.Hp > 0 &&
+                    (controlledTarget.Kind != "sly_auto_play" || !enemy.Escaped))
+                .Select(enemy => enemy.InstanceId).ToArray();
+            if (state.Recycle is not null || state.TurnIntents is not null ||
+                state.Pending is not null ||
+                controlledTarget.Kind is not ("effect_random_enemy" or "sly_auto_play") ||
+                eligible.Length == 0 ||
+                !eligible.SequenceEqual(controlledTarget.EligibleEnemyInstanceIds) ||
+                (controlledTarget.Kind == "sly_auto_play" &&
+                    (controlledTarget.SlyCardInstanceId is not { } cardId ||
+                     !combat.DiscardPile.Contains(cardId))))
+                throw new InvalidDataException(
+                    "Malformed or stale controlled target-choice support.");
+        }
         var expected = MakePending(state.NextShuffleIndex, state.ShuffleTranscript.Length);
         if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(state.Pending))
             throw new InvalidDataException("Controlled shuffle stage is stale.");
