@@ -277,3 +277,34 @@ This achieves one restricted **real `step` → Nature choices →
 next `step`** flow. Further player actions using a persistent semantic
 deck, opening-hand/card-effect draws, full terminal episodes, weighted
 intents and the externally negotiated semantic JSONL bridge remain open.
+
+
+## Persistent provider-owned deck across player actions and turns (PR #163)
+
+The real `CombatState.SemanticDeck` now survives supported player
+actions and subsequent `DrawPlayerHand` automatic stages **without
+reinitializing unresolved positional card pools or replaying previous
+Nature shuffle choices**. `SemanticPlayerActionEngineV111` runs
+source-audited basic Silent Strike/Defend through the genuine AI action
+engine under the controlled chance guard, accepts only unchanged
+physical draw-pile sequence and identical private deck state, and
+replays the complete action from a saved source snapshot.
+
+`SemanticEndTurnEngineV111` now accepts an existing, valid, idle
+semantic provider on the next `end_turn`, including a **nonempty**
+draw pile. The authentic next hand draw reuses the provider's previous
+known and unknown positions, and source-time discard recycling still
+creates a new shuffle epoch when needed. The original empty-pile
+first-entry rule continues to prevent counting both legacy swaps and
+semantic per-card identities. Each hand-draw segment's ticket list now
+starts at its source transcript offset, while the provider carries the
+full cumulative multi-turn history; complete source replay remains
+deterministic. Tests cover two full real end turns with an intervening
+basic card play, retained known-top constraints, complete provenance,
+tampered physical/private zones and 15-worker parallel equality.
+See [Nature persistent semantic deck](NATURE_SEMANTIC_PERSISTENT_DECK_143.md).
+
+Further work: other cards/potions, source-authentic deck mutations,
+opening-hand and card-effect draws, nested chance hooks, public JSONL
+schema, weighted intents and terminal training rollouts. Source/native
+probability law remains UNVERIFIED.
