@@ -35,3 +35,5 @@ jobs:
         run: python tools/nature_live_recycle_jsonl_smoke.py
       - name: P0 playable semantic intent/draw Python JSONL handshake and replay
         run: python tools/nature_semantic_p0_jsonl_smoke.py
+      - name: P0 independent seeded semantic JSONL setup and 15-process equality
+        run: python tools/nature_semantic_seeded_jsonl_smoke.py
