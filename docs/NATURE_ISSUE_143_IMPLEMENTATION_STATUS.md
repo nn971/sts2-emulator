@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152, #155–#157 and #159–#164 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152, #155–#157 and #159–#165 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -335,3 +335,36 @@ versioned choice-resolution slice; see
 The parent player action that **creates** this nested choice, generic
 scry/random-position selection, random insertions and card-effect
 draws remain separate integration milestones.
+
+
+## P0 reprioritization: first external two-site playable semantic JSONL (merged PR #165)
+
+Issue #143 was raised to **P0** on 2026-10-16 as the next
+`sts2-ai` Nature training blocker, requiring the first real
+Silent combat pilot to optimize only **enemy intents and deferred
+card identities**. Additional unrelated chance-site breadth is now
+P1 until the external executable protocol is viable.
+
+Merged #165 adds `sts2-v111-semantic-playable-p0-v1`, a distinct,
+versioned JSONL/Python `semantic_*` session capability with real
+player-only observations and legal actions, Nature pending intent/draw
+metadata, physical draw card-model labels, strict parent fingerprints,
+opaque forkable session handles and complete save/load mechanical
+replay. Precommitted opening deck order becomes private *known*
+semantic positions, not newly issued Nature draw choices; later
+source-time recycle remains deferred. Drawn Snecko/Slither cost
+picks are currently an **explicitly marked unverified engine-owned
+fallback**, not optimized Nature sites. Focused **173/173 C# tests**
+and the first live Python semantic JSONL session smoke passed,
+including older Inspector and Nature protocol checks.
+
+**The new interface still requires a completed older controlled
+opening fixture** and opaque source intent index tickets; it has
+not yet demonstrated a source-authentic full battle through terminal,
+weighted filtered intent supports or calibrated native/default
+fallback. This is a *P0 interoperability milestone*, not P0
+acceptance or training evidence. Next: independent initial combat
+handshake, raw filtered intent weights/IDs, provider parity, and one
+fully replayable true-terminal Silent pilot with deterministic 1-vs-15
+external worker comparison. See
+[Nature P0 semantic JSONL](NATURE_P0_SEMANTIC_JSONL_143.md).
