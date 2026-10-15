@@ -120,8 +120,8 @@ public sealed class ControlledGeneratedCardV111Tests
         var right = ControlledPlayableCombatEngineV111.Resolve(pending, original, upper);
         Assert.NotEqual(left.Fingerprint, right.Fingerprint);
         Assert.Equal(original, pending.Fingerprint);
-        Assert.Equal(1, left.GeneratedCardTranscript.Length);
-        Assert.Equal(1, right.GeneratedCardTranscript.Length);
+        Assert.Single(left.GeneratedCardTranscript);
+        Assert.Single(right.GeneratedCardTranscript);
         Assert.NotEqual(left.Run.World!.Combat!.Cards.Last().CardId,
             right.Run.World!.Combat!.Cards.Last().CardId);
     }
