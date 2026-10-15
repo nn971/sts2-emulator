@@ -381,7 +381,9 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     int NextStepIndex,
     PrototypeCombatEventKind? PendingPostDispatchEventKind = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeOpeningCombatStage? OpeningStage = null);
+    PrototypeOpeningCombatStage? OpeningStage = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? ControlledDrawRemaining = null);
 
 /// <summary>
 /// A source-owned, blocking choice in the enemy-side action pipeline.
