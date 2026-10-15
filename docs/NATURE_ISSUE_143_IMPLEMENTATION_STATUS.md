@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#151 merged into the isolated RNG/Inspector integration branch; a follow-up random hand-cost continuation slice is under review. Issue #143 stays OPEN until remaining RNG site migration, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152 merged into the isolated RNG/Inspector integration branch; a follow-up live draw-triggered cost continuation is under review. The revised semantic RNG design was merged to main in PR #154 and is treated as the future opt-in architecture, separate from this legacy controlled fixture. Issue #143 stays OPEN until remaining RNG site migration, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -112,3 +112,22 @@ invalid cursor/support rejection, independent forks and schedule-independent
 unmodified player-action replay provenance. Draw-triggered relic/Slither
 random costs, random pile selection shortlists, enemy-side insertion,
 death/summon continuations, native laws and full terminal rollout remain.
+
+
+## New slice: draw-triggered relic/Slither costs
+
+During the actual automatic `DrawPlayerHand` pipeline, an already-drawn
+physical card now suspends before randomizing its cost. Snecko Eye cost
+and Slither enchantment cost become successive Nature tickets when both
+are present; `CardDrawn` dispatch occurs once after the final cost roll,
+then the saved remaining hand draw resumes without replaying prior hooks.
+Earlier cards and source instance identity remain unchanged. The latest
+desired RNG plan (PR #154 on main) requires a separate opt-in semantic
+provider-owned draw-pile protocol, with native exact order and deferred
+Nature per-card draw identities. This legacy fixture continues to expose
+its *old* controlled shuffle swaps; it adds no second identity chance on
+top. See [draw-cost coverage](NATURE_DRAW_COST_143.md).
+
+Additional gates remain: opening/action-triggered draw-cost support,
+nested `CardDrawn` hooks, semantic deck state/forced positions, weighted
+visible intents, true native parity and 15-worker terminal rollouts.

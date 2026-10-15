@@ -47,11 +47,13 @@ public static class NatureBoundaryMetadataV111
             .Concat(state.Origin.Transcript)
             .Concat(state.ShuffleTranscript)
             .Concat(state.LiveTranscript).ToArray();
+        var drawCost = state.Run.World?.Combat?.PendingChoice?.ControlledDrawCost;
         var randomCost = state.Run.World?.Combat?.PendingChoice?.ControlledRandomCost;
         var pool = state.Run.World?.Combat?.PendingChoice?.ControlledPoolShuffle;
         var insertion = state.Run.World?.Combat?.PendingChoice?.ControlledDrawInsertion;
         var generation = state.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
-        var kind = randomCost is not null ? "random_card_cost"
+        var kind = drawCost is not null ? "drawn_card_cost"
+            : randomCost is not null ? "random_card_cost"
             : pool is not null ? "generation_pool_shuffle"
             : insertion is not null ? "draw_insertion"
             : generation is not null ? "generated_card"

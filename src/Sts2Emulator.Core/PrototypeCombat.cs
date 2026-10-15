@@ -1486,8 +1486,10 @@ public sealed partial class PrototypeGameEngine
             // and effects, before recycling the discard pile. Resume at
             // the same real pipeline index without replaying pre-draw hooks.
             if (ControlledChanceGuardV111.Active &&
-                currentCombat.AutomaticPipelineContinuation?
-                    .ControlledDrawRemaining is not null)
+                (currentCombat.AutomaticPipelineContinuation?
+                    .ControlledDrawRemaining is not null ||
+                 currentCombat.AutomaticPipelineContinuation?
+                    .ControlledDrawCostRemaining is not null))
                 return state;
 
             if (currentCombat.PendingChoice is not null
@@ -1646,13 +1648,30 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var drawn = DrawCards(player, combat, continuation.ControlledDrawRemaining.Value,
             state.Rng, fromHandDraw: true,
-            controlledRecycleSuspension: true);
+            controlledRecycleSuspension: true,
+            controlledDrawCostSuspension: true);
         player = drawn.Player;
         combat = drawn.Combat;
         if (drawn.ShuffleSelectionPending)
             throw new InvalidOperationException(
                 "Controlled recycle unexpectedly entered a Stratagem choice.");
 
+        if (drawn.ControlledDrawCostPending)
+            return state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        AutomaticPipelineContinuation = continuation with
+                        {
+                            ControlledDrawRemaining = null,
+                            ControlledDrawCostRemaining = drawn.RemainingCount
+                        }
+                    }
+                }
+            };
         if (drawn.ControlledRecyclePending)
             return state with
             {
@@ -1663,7 +1682,8 @@ public sealed partial class PrototypeGameEngine
                     {
                         AutomaticPipelineContinuation = continuation with
                         {
-                            ControlledDrawRemaining = drawn.RemainingCount
+                            ControlledDrawRemaining = drawn.RemainingCount,
+                            ControlledDrawCostRemaining = null
                         }
                     }
                 }
@@ -2372,9 +2392,33 @@ public sealed partial class PrototypeGameEngine
                         + handDrawBonus),
                     state.Rng,
                     fromHandDraw: true,
-                    controlledRecycleSuspension: ControlledChanceGuardV111.Active);
+                    controlledRecycleSuspension: ControlledChanceGuardV111.Active,
+                    controlledDrawCostSuspension: ControlledChanceGuardV111.Active);
                 player = drawn.Player;
                 combat = drawn.Combat;
+                if (drawn.ControlledDrawCostPending)
+                {
+                    int stageIndex = Array.FindIndex(
+                        PrototypeContent.Rules.EndTurnPipeline,
+                        step => step.Kind ==
+                            PrototypeAutomaticStepKind.DrawPlayerHand);
+                    if (stageIndex < 0 || combat.PendingChoice?.ControlledDrawCost is null)
+                        throw new InvalidOperationException(
+                            "Controlled draw-cost stage lost its pending card.");
+                    return state with
+                    {
+                        Player = player,
+                        World = world with
+                        {
+                            Combat = combat with
+                            {
+                                AutomaticPipelineContinuation = new(
+                                    stageIndex,
+                                    ControlledDrawCostRemaining: drawn.RemainingCount)
+                            }
+                        }
+                    };
+                }
                 if (drawn.ControlledRecyclePending)
                 {
                     int index = Array.FindIndex(
@@ -13654,7 +13698,8 @@ public sealed partial class PrototypeGameEngine
         long[] DrawnCardInstanceIds,
         int RemainingCount = 0,
         bool ShuffleSelectionPending = false,
-        bool ControlledRecyclePending = false);
+        bool ControlledRecyclePending = false,
+        bool ControlledDrawCostPending = false);
 
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
@@ -13663,7 +13708,8 @@ public sealed partial class PrototypeGameEngine
         RngBundle rng,
         bool fromHandDraw,
         int eventDepth = 0,
-        bool controlledRecycleSuspension = false)
+        bool controlledRecycleSuspension = false,
+        bool controlledDrawCostSuspension = false)
     {
         const int maxHandSize = 10;
         var drawnCardInstanceIds = new List<long>();
@@ -13761,10 +13807,27 @@ public sealed partial class PrototypeGameEngine
                     .Max();
             var cardDefinition =
                 PrototypeContent.Card(card.CardId);
-            if (randomizedCostUpperBound > 0
-                && cardDefinition.Cost.Kind
-                    == PrototypeCardCostKind.Fixed
-                && cardDefinition.Cost.Amount >= 0)
+            var needsRelicCost = randomizedCostUpperBound > 0
+                && cardDefinition.Cost.Kind == PrototypeCardCostKind.Fixed
+                && cardDefinition.Cost.Amount >= 0;
+            var hasSlither = card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Slither };
+            if (ControlledChanceGuardV111.Active && (needsRelicCost || hasSlither))
+            {
+                if (!controlledDrawCostSuspension)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
+                        "effect_draw operation=draw_card_cost");
+                combat = MakeControlledDrawCostChoice(
+                    combat, cardInstanceId, count - drawNumber - 1,
+                    fromHandDraw, eventDepth, needsRelicCost
+                        ? randomizedCostUpperBound : 0, hasSlither);
+                return new PrototypeDrawCardsResult(
+                    player, combat, drawnCardInstanceIds.ToArray(),
+                    RemainingCount: count - drawNumber - 1,
+                    ControlledDrawCostPending: true);
+            }
+            if (needsRelicCost)
             {
                 combat = SetCardTemporaryEnergyCost(
                     combat,

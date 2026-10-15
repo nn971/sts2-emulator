@@ -383,7 +383,8 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeOpeningCombatStage? OpeningStage = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    int? ControlledDrawRemaining = null);
+    int? ControlledDrawRemaining = null,
+    int? ControlledDrawCostRemaining = null);
 
 /// <summary>
 /// A source-owned, blocking choice in the enemy-side action pipeline.
@@ -1843,6 +1844,17 @@ public sealed record PrototypeControlledRandomCostV111(
     };
 }
 
+/// <summary>Drawn card already moved to hand. Nature must resolve optional
+/// relic cost then Slither cost before dispatching CardDrawn exactly once.
+/// RemainingCount excludes this card and keeps its physical draw order.</summary>
+public sealed record PrototypeControlledDrawCostV111(
+    long CardInstanceId, int RemainingCount, bool FromHandDraw,
+    int EventDepth, int RelicMaxExclusive, bool HasSlither,
+    string Stage)
+{
+    public PrototypeControlledDrawCostV111 Fork() => this with { };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -1865,7 +1877,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeControlledGeneratedCardV111? ControlledGeneration = null,
     PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null,
     PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null,
-    PrototypeControlledRandomCostV111? ControlledRandomCost = null)
+    PrototypeControlledRandomCostV111? ControlledRandomCost = null,
+    PrototypeControlledDrawCostV111? ControlledDrawCost = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1885,7 +1898,8 @@ public sealed record PendingCombatChoiceState(
         ControlledGeneration = ControlledGeneration?.Fork(),
         ControlledDrawInsertion = ControlledDrawInsertion?.Fork(),
         ControlledPoolShuffle = ControlledPoolShuffle?.Fork(),
-        ControlledRandomCost = ControlledRandomCost?.Fork()
+        ControlledRandomCost = ControlledRandomCost?.Fork(),
+        ControlledDrawCost = ControlledDrawCost?.Fork()
     };
 }
 
