@@ -128,6 +128,21 @@ public static class SemanticDeckEngineV111
         return state;
     }
 
+    /// <summary>
+    /// Transfer a previously source-committed deck order into the semantic
+    /// protocol WITHOUT rerandomizing that order or emitting Nature tickets.
+    /// Used only after a distinct, complete opening-shuffle fixture.
+    /// Later source-triggered recycle creates genuinely unresolved slots.
+    /// </summary>
+    public static SemanticDeckStateV111 FromCommittedOpening(
+        IReadOnlyCollection<long> orderedTopFirst)
+    {
+        var committed = BeginNative(orderedTopFirst);
+        var nature = committed with { Mode = SemanticDeckStateV111.NatureMode };
+        Validate(nature);
+        return nature;
+    }
+
     /// <summary>Require a card at a position. TopOffset=0 is the next draw;
     /// greater offsets are used only for a peek or scry. Known results can
     /// be reused, never rerolled. The returned state contains any pending

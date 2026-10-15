@@ -145,6 +145,78 @@ class ControlledCombat:
         return self.session.release_controlled_many([self])
 
 
+@dataclass(frozen=True)
+class SemanticCombat:
+    """Versioned two-site Nature session.
+
+    This first P0 bridge is seeded from an already completed source
+    controlled opening. Source-committed opening cards keep their hidden
+    exact order; only fresh intent/draw events reach Nature. The fair
+    policy observation is returned separately from Nature event support.
+    """
+    session: "Session"
+    handle: str
+    fingerprint: str
+    boundary: str
+    pending: dict | None
+    terminal: bool
+    outcome: str | None
+    exit_hp: int | None
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        data = payload["result"]
+        return cls(
+            session, data["semanticHandle"], data["fingerprint"],
+            data["boundary"], data["pending"], data["terminal"],
+            data["outcome"], data["exitHp"])
+
+    def status(self):
+        return self.session.call(
+            "semantic_status", semantic_handle=self.handle)["result"]
+
+    def observe(self):
+        """Fair player-only observation: never a privileged Nature event."""
+        result = self.session.call(
+            "semantic_observe", semantic_handle=self.handle,
+            policy_id="prototype-fair-v0")
+        return json.loads(result["payloadJson"])
+
+    def actions(self):
+        result = self.session.call(
+            "semantic_observe", semantic_handle=self.handle,
+            policy_id="prototype-fair-v0")
+        return result["actions"]
+
+    def step(self, action_id: str):
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_step", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, action_id=action_id))
+
+    def resolve(self, selected_index: int):
+        if not self.pending or self.pending["kind"] not in (
+                "enemy_intent", "draw_card"):
+            raise EmulatorError("Expected a two-site semantic Nature event")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, selected_index=selected_index))
+
+    def fork(self):
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_fork", semantic_handle=self.handle))
+
+    def save_snapshot(self):
+        """Privileged exact snapshot, never valid as a fair observation."""
+        return self.session.call(
+            "semantic_save", semantic_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_semantic_many([self])
+
+
 class Session:
     def __init__(self, command, *, cwd=None):
         if isinstance(command, str):
@@ -250,6 +322,34 @@ class Session:
         response = self.call("controlled_begin",
                              nature_handle=completed_intents.handle, seed=seed)
         return ControlledCombat.from_wire(self, response)
+
+    def begin_semantic_combat(self, completed_opening: ControlledCombat):
+        """P0 interoperability: the opening fixture must be fully committed.
+
+        The initial legacy shuffle is treated as an already committed
+        source order; it cannot be selected as a Nature draw event.
+        """
+        if self.capabilities.get("semanticChanceSchemaId") != (
+                "sts2-v111-semantic-playable-p0-v1"):
+            raise EmulatorError("Emulator does not expose semantic gameplay")
+        if completed_opening.session is not self:
+            raise ValueError("Opening handle belongs to another session")
+        return SemanticCombat.from_wire(self, self.call(
+            "semantic_begin", controlled_handle=completed_opening.handle))
+
+    def load_semantic_snapshot(self, snapshot: str):
+        if self.capabilities.get("semanticChanceSchemaId") != (
+                "sts2-v111-semantic-playable-p0-v1"):
+            raise EmulatorError("Emulator does not expose semantic gameplay")
+        return SemanticCombat.from_wire(self, self.call(
+            "semantic_load", snapshot=snapshot))
+
+    def release_semantic_many(self, states):
+        states = list(states)
+        if any(s.session is not self for s in states):
+            raise ValueError("Semantic handle belongs to another session")
+        return self.call("semantic_release_many",
+                         semantic_handles=[s.handle for s in states])["released"]
 
     def load_controlled_snapshot(self, snapshot: str):
         return ControlledCombat.from_wire(self,
