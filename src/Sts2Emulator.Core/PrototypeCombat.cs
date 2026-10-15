@@ -1489,7 +1489,9 @@ public sealed partial class PrototypeGameEngine
                 (currentCombat.AutomaticPipelineContinuation?
                     .ControlledDrawRemaining is not null ||
                  currentCombat.AutomaticPipelineContinuation?
-                    .ControlledDrawCostRemaining is not null))
+                    .ControlledDrawCostRemaining is not null ||
+                 currentCombat.AutomaticPipelineContinuation?
+                    .ControlledSemanticDrawRemaining is not null))
                 return state;
 
             if (currentCombat.PendingChoice is not null
@@ -2385,17 +2387,53 @@ public sealed partial class PrototypeGameEngine
                             : 0)
                     + PrototypeNativeOrobasRelics.HandDrawBonusForTurn(
                         player, combat.Turn);
+                int requestedHandDraw = Math.Max(0,
+                    PrototypeContent.Rules.HandSize + handDrawBonus);
                 var drawn = DrawCards(
                     player,
                     combat,
-                    Math.Max(0, PrototypeContent.Rules.HandSize
-                        + handDrawBonus),
+                    requestedHandDraw,
                     state.Rng,
                     fromHandDraw: true,
                     controlledRecycleSuspension: ControlledChanceGuardV111.Active,
-                    controlledDrawCostSuspension: ControlledChanceGuardV111.Active);
+                    controlledDrawCostSuspension: ControlledChanceGuardV111.Active,
+                    controlledSemanticDrawSuspension:
+                        ControlledChanceGuardV111.Active &&
+                        combat.SemanticDeck is not null);
                 player = drawn.Player;
                 combat = drawn.Combat;
+                if (combat.SemanticDeck is not null &&
+                    (drawn.ControlledSemanticDrawPending ||
+                     drawn.ControlledDrawCostPending))
+                {
+                    int stageIndex = Array.FindIndex(
+                        PrototypeContent.Rules.EndTurnPipeline,
+                        step => step.Kind ==
+                            PrototypeAutomaticStepKind.DrawPlayerHand);
+                    if (stageIndex < 0 ||
+                        (drawn.ControlledSemanticDrawPending &&
+                         combat.SemanticDeck.Pending is null) ||
+                        (drawn.ControlledDrawCostPending &&
+                         combat.PendingChoice?.ControlledDrawCost is null))
+                        throw new InvalidDataException(
+                            "Semantic hand-draw stage lost its suspended request.");
+                    return state with
+                    {
+                        Player = player,
+                        World = world with
+                        {
+                            Combat = combat with
+                            {
+                                AutomaticPipelineContinuation = new(
+                                    stageIndex,
+                                    ControlledSemanticDrawRemaining:
+                                        drawn.RemainingCount,
+                                    ControlledSemanticDrawRequested:
+                                        requestedHandDraw)
+                            }
+                        }
+                    };
+                }
                 if (drawn.ControlledDrawCostPending)
                 {
                     int stageIndex = Array.FindIndex(
