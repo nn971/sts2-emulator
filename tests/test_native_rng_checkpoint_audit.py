@@ -80,6 +80,40 @@ class NativeRngCheckpointAuditTests(unittest.TestCase):
         self.assertEqual(1, r["streams"][name]["native_rng_advances"])
         self.assertEqual(0, r["error_count"])
 
+    def test_nextfloat_source_explains_exactly_one_monster_ai_advance(self):
+        name = "run.monster_ai"
+        state = initial_state(971 + sorted(EXPECTED).index(name))
+        number = (rotate((state[1] * 5) & MASK, 7) * 9) & MASK
+        unit = (number >> 11) * (1 / (1 << 53))
+        import struct
+        f32 = lambda x: struct.unpack("<f", struct.pack("<f", x))[0]
+        source = {
+            "type": "native_rng_scalar_boundary",
+            "data": {
+                "operation_kind": "range_float",
+                "origin": "source_primitive_hook",
+                "source_version": "v0.111.0",
+                "source_hook_observed": True,
+                "stream_id": name,
+                "site_id": "UNATTRIBUTED",
+                "owner_id": "creature:1",
+                "float_min": 0.0,
+                "float_max": 10.0,
+                "selected_float": f32(unit * 10.0),
+                "selected_double": None,
+                "selected_bool": None,
+                "cursor_before": cursor(0, state),
+                "cursor_after": cursor(1, advance(state))
+            }
+        }
+        report = audit([checkpoint("combat_attach"), source,
+                        checkpoint("combat_end", {name: 1})])
+        self.assertEqual("OBSERVED_PERSISTENT_STREAM_ADVANCES_ACCOUNTED_FOR",
+                         report["status"])
+        self.assertEqual(1, report["streams"][name]["hook_observed_advances"])
+        self.assertEqual(0, report["streams"][name]["unobserved_advances"])
+        self.assertEqual(0, report["error_count"])
+
     def test_missing_instrumented_primitive_is_reported_not_silenced(self):
         name = "run.shuffle"
         r = audit([checkpoint("combat_attach"),
