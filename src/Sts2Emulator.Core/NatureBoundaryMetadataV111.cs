@@ -7,7 +7,8 @@ public sealed record NatureBoundaryEventV111(
     int Ordinal, string OperationKind, string SourceVersion,
     int[] OrderedCandidates, int? BoundedCount, int SupportCount,
     string SupportFingerprint, string ProbabilityStatus = "UNVERIFIED",
-    string? ReferenceLawId = null);
+    string? ReferenceLawId = null,
+    string[]? CandidateCardIds = null);
 
 public sealed record NatureReplayChoiceV111(
     string EventId, string SiteId, string StreamId, string OwnerId,
@@ -46,12 +47,22 @@ public static class NatureBoundaryMetadataV111
             .Concat(state.Origin.Transcript)
             .Concat(state.ShuffleTranscript)
             .Concat(state.LiveTranscript).ToArray();
-        var kind = state.TargetPending is not null ? "random_target"
+        var generation = state.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
+        var kind = generation is not null ? "generated_card"
+            : state.TargetPending is not null ? "random_target"
             : state.Recycle is not null ? "draw_recycle"
             : state.TurnIntents is not null ? "next_turn_intent"
             : state.Pending is not null ? "opening_shuffle" : "player";
-        return Build(kind, state.Mode, state.Fingerprint,
+        var view = Build(kind, state.Mode, state.Fingerprint,
             state.ActivePending, history);
+        return generation is not null && view.Pending is { } pending
+            ? view with
+            {
+                Pending = pending with
+                {
+                    CandidateCardIds = (string[])generation.CandidateCardIds.Clone()
+                }
+            } : view;
     }
 
     private static NatureBoundaryViewV111 Build(
