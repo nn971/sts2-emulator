@@ -128,6 +128,47 @@ public sealed class SemanticPilotCombatV111Tests
                 SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
     }
 
+    [Fact]
+    public void WeightedIntentSupportMatchesSourceTicketAndSemanticSelection()
+    {
+        var state = SemanticPilotCombatEngineV111.Begin(
+            Opening("semantic-p0-eligible-weights"));
+        var end = Assert.Single(new PrototypeAiEnvironment()
+            .Observe(state.Run).LegalActions, a => a.Kind == "end_turn");
+        state = SemanticPilotCombatEngineV111.Step(
+            state, state.Fingerprint, end.ActionId);
+        var intents = state.PendingEndTurn!.Intents!;
+        var pending = Assert.IsType<RandomIndexRequestV111>(intents.Pending);
+        var support = Assert.IsType<SemanticIntentSupportV111>(
+            ControlledTurnIntentEngineV111.DescribePendingSemanticIntent(intents));
+        Assert.Equal(pending.OwnerId, support.OwnerId);
+        Assert.Equal(pending.SupportCount, support.TotalRawWeight);
+        Assert.NotEmpty(support.Candidates);
+        Assert.Equal(support.TotalRawWeight,
+            support.Candidates.Sum(candidate => candidate.RawWeight));
+        var nextTicket = 0;
+        foreach (var candidate in support.Candidates)
+        {
+            Assert.True(candidate.RawWeight > 0);
+            Assert.Equal(nextTicket, candidate.TicketStart);
+            Assert.False(string.IsNullOrWhiteSpace(candidate.IntentId));
+            Assert.False(string.IsNullOrWhiteSpace(candidate.MoveId));
+            nextTicket += candidate.RawWeight;
+        }
+        var last = support.Candidates[^1];
+        var bySemanticId = SemanticPilotCombatEngineV111.ResolveIntent(
+            state, state.Fingerprint, last.IntentId);
+        var bySourceTicket = SemanticPilotCombatEngineV111.Resolve(
+            state, state.Fingerprint, last.TicketStart);
+        Assert.Equal(bySourceTicket.Fingerprint, bySemanticId.Fingerprint);
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticPilotCombatEngineV111.ResolveIntent(
+                state, state.Fingerprint, "forged-intent-id"));
+        Assert.Equal(bySemanticId.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(bySemanticId)).Fingerprint);
+    }
+
     private static SemanticSeededEntryV111 Seeded(string seed) =>
         new(seed, 2, PrototypeNativeHiveNormals.ExoskeletonsNormalId,
             "ExoskeletonsNormal", 20, 0, 1, 3, 5);

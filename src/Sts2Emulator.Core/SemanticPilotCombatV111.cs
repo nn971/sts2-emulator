@@ -256,6 +256,33 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// Resolve one source-filtered weighted semantic intent by its stable
+    /// candidate ID, translating it into the first legal native-shaped
+    /// ticket of the corresponding weight interval. Old numeric ticket
+    /// resolution stays available for protocol compatibility.
+    /// </summary>
+    public static SemanticPilotCombatV111 ResolveIntent(
+        SemanticPilotCombatV111 current, string fingerprint, string intentId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException("Stale semantic intent fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
+        var ticket = current.PendingEndTurn?.Intents;
+        if (ticket?.Pending is null)
+            throw new InvalidOperationException(
+                "Only a pending enemy_intent supports semantic intent IDs.");
+        var support = ControlledTurnIntentEngineV111
+            .DescribePendingSemanticIntent(ticket) ??
+            throw new InvalidDataException("Missing weighted intent support.");
+        var candidate = support.Candidates.SingleOrDefault(x =>
+            x.IntentId == intentId) ??
+            throw new InvalidOperationException(
+                "Illegal or stale semantic intent candidate ID.");
+        return Resolve(current, fingerprint, candidate.TicketStart);
+    }
+
+    /// <summary>
     /// The initial two-site pilot does not optimize drawn-card costs.
     /// Bound and source hook are taken from the actual semantic cost
     /// continuation, but sampling is an explicitly declared engine-owned

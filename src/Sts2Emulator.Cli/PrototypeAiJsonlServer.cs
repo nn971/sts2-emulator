@@ -64,6 +64,9 @@ internal static class PrototypeAiJsonlServer
         object? DescribeSemanticPending(SemanticPilotCombatV111 state)
         {
             if (state.IntentPending is { } intent)
+            {
+                var support = ControlledTurnIntentEngineV111
+                    .DescribePendingSemanticIntent(state.PendingEndTurn!.Intents!);
                 return new
                 {
                     kind = "enemy_intent",
@@ -74,12 +77,18 @@ internal static class PrototypeAiJsonlServer
                     operationKind = intent.OperationKind,
                     supportCount = intent.SupportCount,
                     eligibleIndices = Enumerable.Range(0, intent.SupportCount),
-                    rawEligibleWeights = (int[]?)null,
+                    semanticIntentSupportSchemaId = SemanticIntentSupportV111.SchemaId,
+                    semanticCandidates = support?.Candidates,
+                    rawEligibleWeights = support?.Candidates
+                        .Select(candidate => candidate.RawWeight).ToArray(),
+                    totalRawWeight = support?.TotalRawWeight,
+                    semanticSupportFingerprint = CanonicalJson.Sha256(support),
                     weightsVerified = false,
                     probabilityStatus = "UNVERIFIED",
                     supportFingerprint = CanonicalJson.Sha256(intent),
-                    sourceScope = "opaque_eligible_selector_ticket"
+                    sourceScope = "source_filtered_semantic_eligible_moves"
                 };
+            }
             if (state.DrawPending is { } drawn)
             {
                 var combat = state.Run.World?.Combat ??
@@ -262,6 +271,8 @@ internal static class PrototypeAiJsonlServer
                             semanticOpeningProvider = "precommitted-fixture-v1",
                             semanticSeededOpeningProvider =
                                 "engine-owned-seeded-source-shaped-unverified-v1",
+                            semanticIntentSupportSchemaId =
+                                SemanticIntentSupportV111.SchemaId,
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
                             controlledChanceSupportedSites = new[]
@@ -625,6 +636,19 @@ internal static class PrototypeAiJsonlServer
                             current, RequiredString(request, "fingerprint"),
                             OptionalInt(request, "selected_index") ??
                                 throw new ArgumentException("Missing selected_index."));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_intent":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveIntent(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "intent_id"));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

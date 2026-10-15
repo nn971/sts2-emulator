@@ -64,6 +64,77 @@ public static class ControlledTurnIntentEngineV111
         });
     }
 
+    private sealed class InspectIntentBoundary : Exception { }
+
+    /// <summary>
+    /// Inspect exactly the current suspended source ticket. Replay any prior
+    /// per-enemy ticket prefix through the same pure selector and capture
+    /// candidates immediately before the next real random draw. This adds
+    /// no gameplay hooks and consumes no native RNG.
+    /// </summary>
+    public static SemanticIntentSupportV111? DescribePendingSemanticIntent(
+        ControlledTurnIntentsV111 state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        Validate(state);
+        if (state.Pending is not { } pending)
+            return null;
+        if (state.NextEnemyIndex >= state.Combat.Enemies.Length)
+            throw new InvalidDataException("Pending intent has no enemy.");
+        var enemy = state.Combat.Enemies[state.NextEnemyIndex];
+        var owner = "creature:" + enemy.InstanceId;
+        if (pending.OwnerId != owner ||
+            pending.StreamId != "run.monster_ai")
+            throw new InvalidDataException("Pending semantic intent owner mismatch.");
+        var prefix = state.Transcript.Where(decision =>
+            decision.Request.OwnerId == owner).ToArray();
+        int position = 0;
+        SemanticIntentCandidateV111[]? candidates = null;
+        try
+        {
+            _ = PrototypeGameEngine.EvaluateEnemyIntentChoice(
+                state.Combat.Enemies, state.NextEnemyIndex,
+                state.NativeEncounterEntry,
+                bound =>
+                {
+                    if (position < prefix.Length)
+                    {
+                        var choice = prefix[position++];
+                        if (choice.Request.SupportCount != bound)
+                            throw new InvalidDataException(
+                                "Recorded intent prefix bound diverged.");
+                        return choice.SelectedIndex;
+                    }
+                    if (bound != pending.SupportCount)
+                        throw new InvalidDataException(
+                            "Semantic intent weight total differs from source ticket.");
+                    throw new InspectIntentBoundary();
+                },
+                support =>
+                {
+                    if (position == prefix.Length)
+                        candidates = support;
+                });
+            throw new InvalidDataException(
+                "Expected the suspended source intent ticket.");
+        }
+        catch (InspectIntentBoundary)
+        {
+            // Normal suspension: no random value was selected.
+        }
+        if (position != prefix.Length || candidates is not { Length: > 0 })
+            throw new InvalidDataException(
+                "Pending semantic intent has no source-filtered support.");
+        var total = checked(candidates.Sum(candidate => candidate.RawWeight));
+        if (candidates.Any(candidate => candidate.RawWeight <= 0 ||
+                candidate.TicketStart < 0 ||
+                candidate.TicketStart + candidate.RawWeight > total) ||
+            total != pending.SupportCount)
+            throw new InvalidDataException(
+                "Semantic intent weights disagree with primitive source support.");
+        return new SemanticIntentSupportV111(owner, candidates, total);
+    }
+
     public static void Validate(ControlledTurnIntentsV111 state)
     {
         if (string.IsNullOrWhiteSpace(state.NativeEncounterEntry) ||
