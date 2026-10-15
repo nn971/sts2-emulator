@@ -110,8 +110,13 @@ public sealed class ControlledDrawCostV111Tests
             NatureBoundaryMetadataV111.Describe(first).Pending!.SiteId);
         var cardId = context.CardInstanceId;
         Assert.Equal(4, first.ActivePending!.SupportCount);
+        var drawsBefore = first.Run.World!.Combat!.CounterState.CardsDrawnThisCombat;
         var next = ControlledPlayableCombatEngineV111.Resolve(
             first, first.Fingerprint, 1);
+        // A second cost roll belongs to the same drawn card: its hooks
+        // cannot run before both cost choices have been committed.
+        Assert.Equal(drawsBefore,
+            next.Run.World!.Combat!.CounterState.CardsDrawnThisCombat);
         Assert.Equal("slither",
             next.Run.World!.Combat!.PendingChoice!.ControlledDrawCost!.Stage);
         Assert.Equal(cardId,
@@ -124,6 +129,8 @@ public sealed class ControlledDrawCostV111Tests
             next, next.Fingerprint, 3);
         Assert.Equal(3, final.Run.World!.Combat!.Cards.Single(c =>
             c.InstanceId == cardId).TemporaryEnergyCost!.Cost);
+        Assert.True(final.Run.World!.Combat!.CounterState.CardsDrawnThisCombat
+            >= drawsBefore + 1);
         Assert.Equal(2, final.DrawCostTranscript.Length);
         Assert.Equal(2, final.LiveTranscript
             .Count(x => x.Request.SiteId.StartsWith("combat.card_draw.")));
